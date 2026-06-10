@@ -38,13 +38,14 @@ describe('corpus integrity', () => {
     }
   });
 
-  it('sentinel values are unique magic strings (grep-provable)', () => {
+  it('sentinel values are unique magic strings, each embedding its own id tag (grep-provable)', () => {
     const values = Object.values(registry.sentinels).map((s) => s.value);
     expect(new Set(values).size).toBe(values.length);
-    for (const v of values) {
-      // each value embeds its hex tag so a partial leak is still greppable
-      const tag = v.match(/[0-9a-f]{4}/);
-      expect(tag, `sentinel value "${v}" must embed its hex tag`).not.toBeNull();
+    for (const [id, entry] of Object.entries(registry.sentinels)) {
+      // the value must contain THIS id's hex tag, so a partial leak traces back
+      // to its exact registry entry — not just any 4 hex-ish chars.
+      const tag = id.slice(-4);
+      expect(entry.value, `sentinel ${id} value "${entry.value}" must embed its own tag "${tag}"`).toContain(tag);
     }
   });
 
@@ -65,25 +66,32 @@ describe('corpus integrity', () => {
 
 describe('sentinels never leak into shipped source', () => {
   const SKIP = new Set(['node_modules', '.git', '.next', 'dist', 'build', 'coverage', '.vercel']);
+  const corpusDir = join(repoRoot, 'tests', 'redaction-corpus');
 
   function walk(dir: string, out: string[] = []): string[] {
     for (const name of readdirSync(dir)) {
       const p = join(dir, name);
       if (statSync(p).isDirectory()) {
-        if (!SKIP.has(name) && !p.includes(join('tests', 'redaction-corpus'))) walk(p, out);
-      } else if (/\.(ts|tsx|js|jsx|mjs|cjs|css|html|sql)$/.test(name)) {
+        // exclude the corpus itself (where sentinels legitimately live) but
+        // scan everything else the repo ships — including tools/, infra/,
+        // supabase/ migrations, reference/ HTML, and root config.
+        if (!SKIP.has(name) && !p.startsWith(corpusDir)) walk(p, out);
+      } else if (/\.(ts|tsx|js|jsx|mjs|cjs|css|html|sql|json|md|ya?ml)$/.test(name)) {
         out.push(p);
       }
     }
     return out;
   }
 
-  it('no sentinel value appears outside the corpus', () => {
+  it('no sentinel value appears anywhere outside the corpus (full-repo walk)', () => {
     const values = Object.values(registry.sentinels).map((s) => s.value);
-    const files = [
-      ...walk(join(repoRoot, 'apps')),
-      ...walk(join(repoRoot, 'packages')),
-    ];
+    const files = walk(repoRoot);
+    // census guard: the walk must actually reach every shipped top-level dir,
+    // so this control cannot silently shrink its own coverage.
+    for (const top of ['apps', 'packages', 'tools', 'supabase', 'reference']) {
+      const prefix = join(repoRoot, top);
+      expect(files.some((f) => f.startsWith(prefix)), `leak walk must cover ${top}/`).toBe(true);
+    }
     for (const file of files) {
       const text = readFileSync(file, 'utf8');
       for (const v of values) {

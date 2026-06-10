@@ -1,5 +1,14 @@
 @import '../../../packages/shared/tokens.css';
 
+/* Map the canonical design-token font vars onto the self-hosted next/font
+   faces (apps/web only). tokens.css keeps the bare family names as the
+   cross-surface fallback for desktop and email. */
+:root {
+  --display: var(--font-bricolage), 'Bricolage Grotesque', 'Archivo', sans-serif;
+  --sans: var(--font-archivo), 'Archivo', -apple-system, 'Helvetica Neue', sans-serif;
+  --mono: var(--font-plex-mono), 'IBM Plex Mono', ui-monospace, monospace;
+}
+
 * {
   margin: 0;
   padding: 0;

@@ -1,5 +1,28 @@
 # GOTCHAS — traps already paid for (append; newest first)
 
+- Pushing `.github/workflows/*` fails with the `gh` OAuth token (no `workflow` scope:
+  "refusing to allow an OAuth App to create or update workflow"). Use the Windows credential
+  manager helper: `git -c credential.helper=manager push`. `gh` API calls are unaffected.
+- Branch protection via the API returns 403 on private repos without GitHub Pro
+  ("Upgrade to GitHub Pro or make this repository public"). Don't burn time scripting it;
+  it needs a plan/visibility decision.
+- Creature engine is the single sink feeding `dangerouslySetInnerHTML` everywhere (app, chat,
+  email, marketing). Treat every `BuildOptions` field as untrusted at `buildCreature` —
+  `color`/`size` are validated there (`safeColor`/`safeSize`); never add a new species/part that
+  interpolates a raw option into SVG without routing through that validation. `shade()` throws on
+  non-hex by design.
+- `tsc` `noUncheckedIndexedAccess` is OFF repo-wide (kept full `strict` otherwise) because the
+  engine's per-stage `[a,b,c][i]` indexing is pervasive; re-enabling it means a non-null-assertion
+  sweep through ported geometry. Don't "fix" indexing errors by turning it back on piecemeal.
+- The redaction-corpus leak-walk must scan the WHOLE repo (minus the corpus dir), not just
+  `apps/`+`packages/` — a sentinel leaking into a `.sql` migration or a `reference/*.html` page is
+  exactly the deploy-time leak the control exists to catch. The test now has a census guard that
+  fails if the walk stops covering a shipped top-level dir.
+- `next/font/google` self-hosts fonts at build (no runtime Google CDN hit). For a privacy-forward
+  brand, prefer it over `<link>` to fonts.googleapis.com (which leaks visitor IPs). The canonical
+  `tokens.css` keeps bare family names as cross-surface fallbacks; the web app maps the token vars
+  onto the next/font CSS variables in `globals.css`.
+
 - Landing-page reveal system assigns .reveal from a JS selector config; adding the
   class by hand in markup leaves elements at opacity:0 forever (invisible but taking
   layout space — looks like mystery whitespace). Register selectors in the groups

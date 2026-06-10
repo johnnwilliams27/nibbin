@@ -1,6 +1,6 @@
 {
- "generated": "2026-06-10T18:29:56.800Z",
- "root": "nibbin-project",
+ "generated": "2026-06-10T19:44:58.121Z",
+ "root": "Nibbin",
  "nodes": [
   {
    "id": ".claude/agents/claims-auditor.md",
@@ -29,6 +29,11 @@
   },
   {
    "id": ".claude/settings.json",
+   "group": ".claude",
+   "deg": 0
+  },
+  {
+   "id": ".claude/settings.local.json",
    "group": ".claude",
    "deg": 0
   },
@@ -65,7 +70,7 @@
   {
    "id": ".github/workflows/ci.yml",
    "group": ".github",
-   "deg": 0
+   "deg": 1
   },
   {
    "id": "CLAUDE.md",
@@ -75,7 +80,7 @@
   {
    "id": "LEARNINGS.md",
    "group": "root",
-   "deg": 3
+   "deg": 4
   },
   {
    "id": "README.md",
@@ -86,6 +91,56 @@
    "id": "SPEC.md",
    "group": "root",
    "deg": 16
+  },
+  {
+   "id": "apps/desktop/README.md",
+   "group": "apps",
+   "deg": 1
+  },
+  {
+   "id": "apps/web/app/fonts.ts",
+   "group": "apps",
+   "deg": 1
+  },
+  {
+   "id": "apps/web/app/globals.css",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/web/app/harness/page.tsx",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/web/app/layout.tsx",
+   "group": "apps",
+   "deg": 1
+  },
+  {
+   "id": "apps/web/app/page.tsx",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/web/next-env.d.ts",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/web/next.config.mjs",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/web/package.json",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/web/tsconfig.json",
+   "group": "apps",
+   "deg": 0
   },
   {
    "id": "docs/AGREEMENTS.md",
@@ -105,7 +160,7 @@
   {
    "id": "docs/INVARIANTS.md",
    "group": "docs",
-   "deg": 2
+   "deg": 3
   },
   {
    "id": "docs/RISKS.md",
@@ -115,7 +170,122 @@
   {
    "id": "docs/STATE.md",
    "group": "docs",
+   "deg": 3
+  },
+  {
+   "id": "eslint.config.mjs",
+   "group": "root",
+   "deg": 0
+  },
+  {
+   "id": "infra/README.md",
+   "group": "infra",
+   "deg": 1
+  },
+  {
+   "id": "package-lock.json",
+   "group": "root",
+   "deg": 0
+  },
+  {
+   "id": "package.json",
+   "group": "root",
+   "deg": 0
+  },
+  {
+   "id": "packages/connectors/package.json",
+   "group": "packages",
+   "deg": 0
+  },
+  {
+   "id": "packages/connectors/src/index.ts",
+   "group": "packages",
+   "deg": 0
+  },
+  {
+   "id": "packages/connectors/tsconfig.json",
+   "group": "packages",
+   "deg": 0
+  },
+  {
+   "id": "packages/creatures/package.json",
+   "group": "packages",
+   "deg": 0
+  },
+  {
+   "id": "packages/creatures/src/build.ts",
+   "group": "packages",
+   "deg": 5
+  },
+  {
+   "id": "packages/creatures/src/color.ts",
+   "group": "packages",
+   "deg": 6
+  },
+  {
+   "id": "packages/creatures/src/css.ts",
+   "group": "packages",
+   "deg": 1
+  },
+  {
+   "id": "packages/creatures/src/index.ts",
+   "group": "packages",
+   "deg": 6
+  },
+  {
+   "id": "packages/creatures/src/layers.ts",
+   "group": "packages",
+   "deg": 3
+  },
+  {
+   "id": "packages/creatures/src/mass.ts",
+   "group": "packages",
+   "deg": 3
+  },
+  {
+   "id": "packages/creatures/src/parts.ts",
+   "group": "packages",
    "deg": 2
+  },
+  {
+   "id": "packages/creatures/src/species.ts",
+   "group": "packages",
+   "deg": 6
+  },
+  {
+   "id": "packages/creatures/src/types.ts",
+   "group": "packages",
+   "deg": 5
+  },
+  {
+   "id": "packages/creatures/test/engine.test.ts",
+   "group": "packages",
+   "deg": 1
+  },
+  {
+   "id": "packages/creatures/tsconfig.json",
+   "group": "packages",
+   "deg": 0
+  },
+  {
+   "id": "packages/shared/package.json",
+   "group": "packages",
+   "deg": 0
+  },
+  {
+   "id": "packages/shared/src/index.ts",
+   "group": "packages",
+   "deg": 0
+  },
+  {
+   "id": "packages/shared/tokens.css",
+   "group": "packages",
+   "deg": 0
+  },
+  {
+   "id": "packages/shared/tsconfig.json",
+   "group": "packages",
+   "deg": 0
   },
   {
    "id": "reference/data-ai.html",
@@ -153,6 +323,41 @@
    "deg": 0
   },
   {
+   "id": "supabase/migrations/README.md",
+   "group": "supabase",
+   "deg": 0
+  },
+  {
+   "id": "tests/redaction-corpus/corpus.test.ts",
+   "group": "tests",
+   "deg": 0
+  },
+  {
+   "id": "tests/redaction-corpus/fixtures/ax-tree-basic.json",
+   "group": "tests",
+   "deg": 0
+  },
+  {
+   "id": "tests/redaction-corpus/fixtures/blocklist-c5.json",
+   "group": "tests",
+   "deg": 0
+  },
+  {
+   "id": "tests/redaction-corpus/fixtures/secure-field-c4.json",
+   "group": "tests",
+   "deg": 0
+  },
+  {
+   "id": "tests/redaction-corpus/fixtures/sentinels.json",
+   "group": "tests",
+   "deg": 0
+  },
+  {
+   "id": "tests/redaction-corpus/tsconfig.json",
+   "group": "tests",
+   "deg": 0
+  },
+  {
    "id": "tools/grovemap/README.md",
    "group": "tools",
    "deg": 1
@@ -171,6 +376,21 @@
    "id": "tools/grovemap/grovemap.mjs",
    "group": "tools",
    "deg": 0
+  },
+  {
+   "id": "tsconfig.base.json",
+   "group": "root",
+   "deg": 0
+  },
+  {
+   "id": "vercel.json",
+   "group": "root",
+   "deg": 2
+  },
+  {
+   "id": "vitest.config.ts",
+   "group": "root",
+   "deg": 0
   }
  ],
  "links": [
@@ -188,6 +408,16 @@
    "source": ".claude/skills/design-system/SKILL.md",
    "target": "reference/nibbin-style-guide.html",
    "kind": "mention"
+  },
+  {
+   "source": "apps/desktop/README.md",
+   "target": "docs/INVARIANTS.md",
+   "kind": "mention"
+  },
+  {
+   "source": "apps/web/app/layout.tsx",
+   "target": "apps/web/app/fonts.ts",
+   "kind": "import"
   },
   {
    "source": "CLAUDE.md",
@@ -243,6 +473,116 @@
    "source": "CLAUDE.md",
    "target": "reference/nibbin-creature-lab.html",
    "kind": "mention"
+  },
+  {
+   "source": "docs/STATE.md",
+   "target": "vercel.json",
+   "kind": "mention"
+  },
+  {
+   "source": "infra/README.md",
+   "target": "vercel.json",
+   "kind": "mention"
+  },
+  {
+   "source": "LEARNINGS.md",
+   "target": ".github/workflows/ci.yml",
+   "kind": "mention"
+  },
+  {
+   "source": "packages/creatures/src/build.ts",
+   "target": "packages/creatures/src/mass.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/creatures/src/build.ts",
+   "target": "packages/creatures/src/species.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/creatures/src/build.ts",
+   "target": "packages/creatures/src/layers.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/creatures/src/build.ts",
+   "target": "packages/creatures/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/creatures/src/color.ts",
+   "target": "packages/creatures/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/creatures/src/index.ts",
+   "target": "packages/creatures/src/build.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/creatures/src/index.ts",
+   "target": "packages/creatures/src/css.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/creatures/src/index.ts",
+   "target": "packages/creatures/src/color.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/creatures/src/index.ts",
+   "target": "packages/creatures/src/species.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/creatures/src/index.ts",
+   "target": "packages/creatures/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/creatures/src/layers.ts",
+   "target": "packages/creatures/src/color.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/creatures/src/layers.ts",
+   "target": "packages/creatures/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/creatures/src/mass.ts",
+   "target": "packages/creatures/src/color.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/creatures/src/parts.ts",
+   "target": "packages/creatures/src/color.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/creatures/src/species.ts",
+   "target": "packages/creatures/src/color.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/creatures/src/species.ts",
+   "target": "packages/creatures/src/mass.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/creatures/src/species.ts",
+   "target": "packages/creatures/src/parts.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/creatures/src/species.ts",
+   "target": "packages/creatures/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/creatures/test/engine.test.ts",
+   "target": "packages/creatures/src/index.ts",
+   "kind": "import"
   },
   {
    "source": "README.md",
@@ -275,6 +615,66 @@
    "kind": "mention"
   },
   {
+   "source": "reference/data-ai.html",
+   "target": "reference/nibbin-demo.html",
+   "kind": "link"
+  },
+  {
+   "source": "reference/data-ai.html",
+   "target": "reference/privacy.html",
+   "kind": "link"
+  },
+  {
+   "source": "reference/data-ai.html",
+   "target": "reference/terms.html",
+   "kind": "link"
+  },
+  {
+   "source": "reference/nibbin-demo.html",
+   "target": "reference/data-ai.html",
+   "kind": "link"
+  },
+  {
+   "source": "reference/nibbin-demo.html",
+   "target": "reference/privacy.html",
+   "kind": "link"
+  },
+  {
+   "source": "reference/nibbin-demo.html",
+   "target": "reference/terms.html",
+   "kind": "link"
+  },
+  {
+   "source": "reference/privacy.html",
+   "target": "reference/nibbin-demo.html",
+   "kind": "link"
+  },
+  {
+   "source": "reference/privacy.html",
+   "target": "reference/data-ai.html",
+   "kind": "link"
+  },
+  {
+   "source": "reference/privacy.html",
+   "target": "reference/terms.html",
+   "kind": "link"
+  },
+  {
+   "source": "reference/terms.html",
+   "target": "reference/nibbin-demo.html",
+   "kind": "link"
+  },
+  {
+   "source": "reference/terms.html",
+   "target": "reference/privacy.html",
+   "kind": "link"
+  },
+  {
+   "source": "reference/terms.html",
+   "target": "reference/data-ai.html",
+   "kind": "link"
+  },
+  {
    "source": "SPEC.md",
    "target": "reference/nibbin-creature-lab.html",
    "kind": "mention"
@@ -343,66 +743,6 @@
    "source": "SPEC.md",
    "target": "reference/terms.html",
    "kind": "mention"
-  },
-  {
-   "source": "reference/data-ai.html",
-   "target": "reference/nibbin-demo.html",
-   "kind": "link"
-  },
-  {
-   "source": "reference/data-ai.html",
-   "target": "reference/privacy.html",
-   "kind": "link"
-  },
-  {
-   "source": "reference/data-ai.html",
-   "target": "reference/terms.html",
-   "kind": "link"
-  },
-  {
-   "source": "reference/nibbin-demo.html",
-   "target": "reference/data-ai.html",
-   "kind": "link"
-  },
-  {
-   "source": "reference/nibbin-demo.html",
-   "target": "reference/privacy.html",
-   "kind": "link"
-  },
-  {
-   "source": "reference/nibbin-demo.html",
-   "target": "reference/terms.html",
-   "kind": "link"
-  },
-  {
-   "source": "reference/privacy.html",
-   "target": "reference/nibbin-demo.html",
-   "kind": "link"
-  },
-  {
-   "source": "reference/privacy.html",
-   "target": "reference/terms.html",
-   "kind": "link"
-  },
-  {
-   "source": "reference/privacy.html",
-   "target": "reference/data-ai.html",
-   "kind": "link"
-  },
-  {
-   "source": "reference/terms.html",
-   "target": "reference/nibbin-demo.html",
-   "kind": "link"
-  },
-  {
-   "source": "reference/terms.html",
-   "target": "reference/privacy.html",
-   "kind": "link"
-  },
-  {
-   "source": "reference/terms.html",
-   "target": "reference/data-ai.html",
-   "kind": "link"
   },
   {
    "source": "tools/grovemap/README.md",
