@@ -1,0 +1,64 @@
+/* Nibbin design tokens — canonical sheet (source of truth: reference/nibbin-style-guide.html).
+   Any hardcoded value not in this sheet is a PR comment. */
+:root {
+  /* Surfaces */
+  --canopy: #FFFFFF;       /* cards */
+  --paper: #F5F6F2;        /* page */
+  --understory: #EAEDE3;   /* recessed */
+  --shell: #FBF6E6;        /* ceremonial / email only */
+
+  /* Ink */
+  --ink: #23291A;          /* text */
+  --ink-soft: #5A6248;     /* secondary */
+  --ink-faint: #8A917B;    /* decorative only — never body */
+
+  /* Bases (fills) */
+  --moss: #5B7C2E;
+  --leaf: #9CC25B;         /* never text on light */
+  --honey: #D9A21B;
+  --coral: #E2603A;
+
+  /* Deeps (the only text-safe colors) */
+  --moss-deep: #44601F;
+  --teal-deep: #2E5F58;
+  --honey-deep: #8A5F0C;
+  --coral-deep: #B14A22;
+  --plum-deep: #5C3FB0;
+  --sky-deep: #36619F;
+  --rose-deep: #A23E66;
+  --slate-deep: #4E5447;
+
+  /* Lines */
+  --line: #D6DAC8;
+
+  /* Type */
+  --display: 'Bricolage Grotesque', 'Archivo', sans-serif;
+  --sans: 'Archivo', -apple-system, 'Helvetica Neue', sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  /* Motion */
+  --dur-1: 160ms;
+  --dur-2: 250ms;
+  --dur-3: 350ms;
+  --dur-4: 650ms;
+  --ease-settle: cubic-bezier(.16, 1, .3, 1);
+  --ease-pop: cubic-bezier(.34, 1.45, .64, 1);
+
+  /* Shape */
+  --r-button: 4px;
+  --r-input: 6px;
+  --r-card: 10px;
+  --r-shell: 12px;
+  --r-pill: 20px;
+
+  /* Shadows (ink-tinted) */
+  --shadow-1: 0 1px 2px rgba(35, 41, 26, .07);
+  --shadow-2: 0 3px 10px rgba(35, 41, 26, .09);
+  --shadow-3: 0 10px 30px rgba(35, 41, 26, .14);
+
+  /* Dusk theme (chat scene / evening) */
+  --dusk-bg: #222B1B;
+  --dusk-card: #2C3622;
+  --dusk-text: #E8ECDD;
+  --dusk-secondary: #B7C0A6;
+}

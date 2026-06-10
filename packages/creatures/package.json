@@ -1,0 +1,13 @@
+{
+  "name": "@nibbin/creatures",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Nibbin parametric SVG creature engine (v2) — one engine renders everything.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}

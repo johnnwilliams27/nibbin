@@ -3,18 +3,62 @@ on:
   pull_request:
   push:
     branches: [main]
+
+permissions:
+  contents: read
+
 jobs:
   gates:
+    name: Typecheck, lint, tests, redaction corpus, build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
-      - name: typecheck-test-lint
-        run: echo "wire at M0: pnpm typecheck && pnpm test && pnpm lint"
-      - name: dependency-audit-and-sast
-        run: echo "wire at M0: pnpm audit + SAST"
-      - name: redaction-corpus
-        run: echo "wire at M1/M6: corpus suite (CI-blocking, P0)"
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - name: tests (includes redaction corpus — CI-blocking, P0)
+        run: npm test
+      - run: npm run build
       - name: trigger-graph-validation
-        run: echo "wire at M4: cycle-check suite"
-      - name: grovemap-artifact
-        run: echo "wire at M0: node tools/grovemap/grovemap.mjs && upload artifact"
+        run: echo "wire at M4 - cycle-check suite (agent runtime does not exist yet)"
+
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run audit
+
+  sast:
+    name: SAST (semgrep)
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - run: semgrep scan --config p/default --error --exclude reference --exclude tools/grovemap/grovemap.html
+
+  grovemap:
+    name: Grovemap artifact
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24
+      - run: node tools/grovemap/grovemap.mjs
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: grovemap
+          path: |
+            tools/grovemap/grovemap.html
+            tools/grovemap/graph.json

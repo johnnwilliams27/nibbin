@@ -5,7 +5,7 @@
 //   tools/grovemap/grovemap.html     (self-contained interactive map — just open it)
 // Zero dependencies. Usage: node tools/grovemap/grovemap.mjs [repoRoot]
 
-import { readdirSync, readFileSync, statSync, writeFileSync, existsSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join, dirname, relative, resolve, extname, basename, sep } from 'node:path';
 
 const ROOT = resolve(process.argv[2] || process.cwd());

@@ -1,0 +1,13 @@
+{
+  "name": "@nibbin/connectors",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Connector platform — OAuth integrations, MCP servers, scan modules (built at M3).",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}
