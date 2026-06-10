@@ -9,12 +9,15 @@
     "start": "next start",
     "typecheck": "tsc --noEmit"
   },
+  "//": "typescript + @types/node are runtime deps (not devDeps) so Vercel's production install (NODE_ENV=production) keeps them — Next's build-time TS setup check requires the typescript package present even with typescript.ignoreBuildErrors.",
   "dependencies": {
     "@nibbin/creatures": "*",
     "@nibbin/shared": "*",
+    "@types/node": "^22.10.0",
     "next": "^15.3.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "typescript": "^5.7.0"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",
