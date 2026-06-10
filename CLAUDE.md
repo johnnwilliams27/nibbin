@@ -22,6 +22,7 @@ orchestrates but has no hands. Two surfaces: Day One web app + desktop Observer.
 | UI, CSS, visual output | skill: `.claude/skills/design-system` + `reference/nibbin-style-guide.html` |
 | Milestone gate | `/gate` command + `.claude/agents/*` reviewers |
 | Codebase orientation | run `node tools/grovemap/grovemap.mjs` and open the map |
+| Marketing, growth, GTM, the Marketing Grove agents | `docs/GTM.md` |
 
 Brand reference: `reference/nibbin-demo.html`. Engine reference: `reference/nibbin-creature-lab.html`.
 
