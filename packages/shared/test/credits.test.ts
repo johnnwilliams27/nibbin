@@ -6,6 +6,7 @@ import {
   TOP_UP,
   balance,
   canRun,
+  tryCharge,
   chargeForRun,
   grantEntry,
   topUpEntry,
@@ -14,6 +15,7 @@ import {
   refundableFor,
   topUpsToCover,
   validateEntry,
+  validateAppend,
 } from '../src/credits';
 import type { LedgerEntry, WeightClass } from '../src/credits';
 
@@ -21,12 +23,16 @@ const WEIGHT_CLASSES = Object.keys(WEIGHTS) as WeightClass[];
 
 const arbWeightClass = fc.constantFrom(...WEIGHT_CLASSES);
 const arbRunId = fc.uuid().map((u) => `run_${u}`);
+const arbPeriodKey = fc.uuid().map((u) => `inv_${u}`);
 
 /** Arbitrary valid ledger entry built only through the public constructors. */
 const arbEntry: fc.Arbitrary<LedgerEntry> = fc.oneof(
   fc.tuple(arbWeightClass, arbRunId).map(([w, id]) => chargeForRun(w, id)),
-  fc.constantFrom(...(Object.keys(TIERS) as (keyof typeof TIERS)[])).map((t) => grantEntry(t)),
-  fc.integer({ min: 1, max: 5 }).map((n) => topUpEntry(n)),
+  fc
+    .tuple(fc.constantFrom(...(Object.keys(TIERS) as (keyof typeof TIERS)[])), arbPeriodKey)
+    .map(([t, k]) => grantEntry(t, k)),
+  fc.integer({ min: 1, max: 5 }).map((n) => topUpEntry('canopy', n)),
+  fc.integer({ min: 1, max: 5000 }).map((n) => clawbackEntry(n)),
 );
 
 describe('locked constants (SPEC §6.2 / §6.4)', () => {
@@ -77,6 +83,14 @@ describe('balance derivation (append-only ledger, balances derived never stored)
       }),
     );
   });
+
+  it('balance throws rather than silently losing precision past MAX_SAFE_INTEGER', () => {
+    const huge: LedgerEntry[] = [
+      { delta: Number.MAX_SAFE_INTEGER - 1, reason: 'grant', sourceId: 'inv_1' },
+      { delta: Number.MAX_SAFE_INTEGER - 1, reason: 'grant', sourceId: 'inv_2' },
+    ];
+    expect(() => balance(huge)).toThrow(RangeError);
+  });
 });
 
 describe('pre-run budget check (§6.2: never overdraw via runs)', () => {
@@ -89,7 +103,34 @@ describe('pre-run budget check (§6.2: never overdraw via runs)', () => {
     expect(canRun(10, 'computer_use')).toBe(true);
   });
 
-  it('a gated charge sequence can never drive the balance negative', () => {
+  it('canRun rejects non-integer balances instead of waving them through', () => {
+    expect(() => canRun(Infinity, 'standard')).toThrow(RangeError);
+    expect(() => canRun(NaN, 'standard')).toThrow(RangeError);
+    expect(() => canRun(1.5, 'standard')).toThrow(RangeError);
+  });
+
+  it('tryCharge charges when affordable and returns null at cap (pause politely)', () => {
+    const ledger = [grantEntry('hatchling', 'inv_1')]; // 100 credits
+    const charge = tryCharge(ledger, 'computer_use', 'run_1');
+    expect(charge).toMatchObject({ delta: -10, reason: 'run', runId: 'run_1' });
+    expect(tryCharge([], 'standard', 'run_2')).toBeNull();
+  });
+
+  it('a stale-snapshot second charge is rejected at append time', () => {
+    // Two concurrent pre-run checks read balance 1; only one charge may land.
+    const ledger: LedgerEntry[] = [
+      grantEntry('hatchling', 'inv_1'),
+      clawbackEntry(99), // balance: 1
+    ];
+    const c1 = tryCharge(ledger, 'standard', 'run_1');
+    const c2 = tryCharge(ledger, 'standard', 'run_2'); // stale read, also non-null
+    expect(c1).not.toBeNull();
+    expect(c2).not.toBeNull();
+    const applied = [...ledger, c1!];
+    expect(() => validateAppend(applied, c2!)).toThrow(RangeError);
+  });
+
+  it('property: a validateAppend-gated sequence can never drive the balance negative via runs', () => {
     fc.assert(
       fc.property(
         fc.array(
@@ -104,12 +145,13 @@ describe('pre-run budget check (§6.2: never overdraw via runs)', () => {
           const ledger: LedgerEntry[] = [];
           let i = 0;
           for (const o of ops) {
-            if (o.op === 'grant') ledger.push(grantEntry('hatchling'));
-            else if (o.op === 'topup') ledger.push(topUpEntry(1));
-            else if (canRun(balance(ledger), o.weight)) {
-              ledger.push(chargeForRun(o.weight, `run_${i++}`));
+            if (o.op === 'grant') ledger.push(grantEntry('hatchling', `inv_${i++}`));
+            else if (o.op === 'topup') ledger.push(topUpEntry('canopy', 1));
+            else {
+              const charge = tryCharge(ledger, o.weight, `run_${i++}`);
+              if (charge) ledger.push(charge);
+              // at cap: pause politely — the charge is simply not appended
             }
-            // at cap: pause politely — the charge is simply not appended
             expect(balance(ledger)).toBeGreaterThanOrEqual(0);
           }
         },
@@ -118,7 +160,7 @@ describe('pre-run budget check (§6.2: never overdraw via runs)', () => {
   });
 });
 
-describe('entry constructors and sign-by-reason validation', () => {
+describe('entry constructors and shape validation', () => {
   it('chargeForRun debits exactly the weighted cost and records the run', () => {
     for (const w of WEIGHT_CLASSES) {
       const e = chargeForRun(w, 'run_1');
@@ -126,19 +168,25 @@ describe('entry constructors and sign-by-reason validation', () => {
     }
   });
 
-  it('grantEntry credits the tier monthly allowance', () => {
-    expect(grantEntry('grove')).toMatchObject({ delta: 1000, reason: 'grant' });
+  it('grantEntry credits the tier monthly allowance and carries its period key', () => {
+    expect(grantEntry('grove', 'inv_2026_06')).toMatchObject({
+      delta: 1000,
+      reason: 'grant',
+      sourceId: 'inv_2026_06',
+    });
   });
 
-  it('topUpEntry credits 1,000 per top-up purchased', () => {
-    expect(topUpEntry(1)).toMatchObject({ delta: 1000, reason: 'topup' });
-    expect(topUpEntry(3)).toMatchObject({ delta: 3000, reason: 'topup' });
+  it('topUpEntry credits 1,000 per top-up purchased — Canopy only (§6.4)', () => {
+    expect(topUpEntry('canopy', 1)).toMatchObject({ delta: 1000, reason: 'topup' });
+    expect(topUpEntry('canopy', 3)).toMatchObject({ delta: 3000, reason: 'topup' });
+    expect(() => topUpEntry('hatchling', 1)).toThrow();
+    expect(() => topUpEntry('grove', 1)).toThrow();
   });
 
   it('rejects non-positive or fractional top-up counts', () => {
-    expect(() => topUpEntry(0)).toThrow();
-    expect(() => topUpEntry(-1)).toThrow();
-    expect(() => topUpEntry(1.5)).toThrow();
+    expect(() => topUpEntry('canopy', 0)).toThrow();
+    expect(() => topUpEntry('canopy', -1)).toThrow();
+    expect(() => topUpEntry('canopy', 1.5)).toThrow();
   });
 
   it('clawbackEntry debits and requires a positive integer amount', () => {
@@ -146,6 +194,13 @@ describe('entry constructors and sign-by-reason validation', () => {
     expect(() => clawbackEntry(0)).toThrow();
     expect(() => clawbackEntry(-5)).toThrow();
     expect(() => clawbackEntry(2.5)).toThrow();
+  });
+
+  it('a clawback may drive the balance negative; runs are then blocked', () => {
+    // Documented policy: chargebacks can overdraw; canRun gates all further spend.
+    const ledger = [grantEntry('hatchling', 'inv_1'), clawbackEntry(150)];
+    expect(balance(ledger)).toBe(-50);
+    expect(canRun(balance(ledger), 'standard')).toBe(false);
   });
 
   it('validateEntry enforces sign-by-reason for every constructor output', () => {
@@ -156,41 +211,106 @@ describe('entry constructors and sign-by-reason validation', () => {
     );
     // runs and clawbacks debit; grants, top-ups, refunds credit
     expect(() => validateEntry({ delta: 5, reason: 'run', runId: 'r' })).toThrow();
-    expect(() => validateEntry({ delta: -5, reason: 'grant' })).toThrow();
+    expect(() => validateEntry({ delta: -5, reason: 'grant', sourceId: 's' })).toThrow();
     expect(() => validateEntry({ delta: -5, reason: 'topup' })).toThrow();
     expect(() => validateEntry({ delta: -5, reason: 'refund', runId: 'r' })).toThrow();
     expect(() => validateEntry({ delta: 5, reason: 'clawback' })).toThrow();
-    expect(() => validateEntry({ delta: 0, reason: 'grant' })).toThrow();
-    expect(() => validateEntry({ delta: 1.5, reason: 'grant' })).toThrow();
+    expect(() => validateEntry({ delta: 0, reason: 'grant', sourceId: 's' })).toThrow();
+    expect(() => validateEntry({ delta: 1.5, reason: 'grant', sourceId: 's' })).toThrow();
   });
 
-  it('run charges and refunds must reference a run', () => {
+  it('run charges and refunds must reference a run; grants must carry a period key', () => {
     expect(() => validateEntry({ delta: -1, reason: 'run' })).toThrow();
     expect(() => validateEntry({ delta: 1, reason: 'refund' })).toThrow();
+    expect(() => validateEntry({ delta: 100, reason: 'grant' })).toThrow();
+  });
+
+  it('rejects blank or whitespace ids', () => {
+    expect(() => chargeForRun('standard', '')).toThrow();
+    expect(() => chargeForRun('standard', '   ')).toThrow();
+    expect(() => grantEntry('grove', ' ')).toThrow();
+    expect(() => refundableFor([], '')).toThrow();
+  });
+});
+
+describe('validateAppend (ledger-aware: what validateEntry alone cannot enforce)', () => {
+  it('rejects a refund larger than the run actually charged — credits cannot be minted', () => {
+    const ledger = [grantEntry('grove', 'inv_1'), chargeForRun('frontier', 'run_a')];
+    expect(() =>
+      validateAppend(ledger, { delta: 1_000_000, reason: 'refund', runId: 'run_a' }),
+    ).toThrow(RangeError);
+    expect(() =>
+      validateAppend(ledger, { delta: 3, reason: 'refund', runId: 'run_a' }),
+    ).not.toThrow();
+  });
+
+  it('rejects a second refund produced from a stale snapshot', () => {
+    const ledger = [grantEntry('grove', 'inv_1'), chargeForRun('computer_use', 'run_a')];
+    const r1 = refundEntry(ledger, 'run_a');
+    const r2 = refundEntry(ledger, 'run_a'); // both built from the same stale snapshot
+    const applied = [...ledger, r1];
+    expect(() => validateAppend(applied, r2)).toThrow(RangeError);
+    expect(balance([...applied])).toBe(TIERS.grove.monthlyCredits);
+  });
+
+  it('rejects a duplicate grant for the same billing period (webhook replay)', () => {
+    const ledger = [grantEntry('grove', 'inv_2026_06')];
+    expect(() => validateAppend(ledger, grantEntry('grove', 'inv_2026_06'))).toThrow(RangeError);
+    expect(() => validateAppend(ledger, grantEntry('grove', 'inv_2026_07'))).not.toThrow();
+  });
+
+  it('rejects grant amounts that match no tier and top-ups that are not whole top-ups', () => {
+    expect(() => validateAppend([], { delta: 999_999, reason: 'grant', sourceId: 'inv_x' })).toThrow(RangeError);
+    expect(() => validateAppend([], { delta: 1500, reason: 'topup' })).toThrow(RangeError);
+    expect(() => validateAppend([], { delta: 2000, reason: 'topup' })).not.toThrow();
+  });
+
+  it('rejects a run charge the balance cannot cover', () => {
+    expect(() => validateAppend([], chargeForRun('standard', 'run_x'))).toThrow(RangeError);
+  });
+
+  it('accepts every entry of a constructor-built, properly gated ledger', () => {
+    fc.assert(
+      fc.property(fc.array(arbEntry, { maxLength: 60 }), (candidates) => {
+        const ledger: LedgerEntry[] = [grantEntry('canopy', 'inv_seed')];
+        for (const e of candidates) {
+          try {
+            validateAppend(ledger, e);
+          } catch {
+            continue; // rejected appends are simply not applied
+          }
+          ledger.push(e);
+        }
+        expect(balance(ledger)).toBeGreaterThanOrEqual(
+          // only clawbacks may take the ledger negative
+          -ledger.filter((e) => e.reason === 'clawback').reduce((s, e) => s - e.delta, 0),
+        );
+      }),
+    );
   });
 });
 
 describe('refunds (never exceed what the run actually charged)', () => {
   it('refundEntry returns the remaining refundable amount for the run', () => {
-    const ledger = [grantEntry('grove'), chargeForRun('computer_use', 'run_a')];
+    const ledger = [grantEntry('grove', 'inv_1'), chargeForRun('computer_use', 'run_a')];
     const refund = refundEntry(ledger, 'run_a');
     expect(refund).toMatchObject({ delta: 10, reason: 'refund', runId: 'run_a' });
   });
 
   it('a run can never be refunded twice', () => {
-    const ledger = [grantEntry('grove'), chargeForRun('frontier', 'run_a')];
+    const ledger = [grantEntry('grove', 'inv_1'), chargeForRun('frontier', 'run_a')];
     const first = refundEntry(ledger, 'run_a');
     expect(() => refundEntry([...ledger, first], 'run_a')).toThrow();
   });
 
   it('refunding a run that never charged throws', () => {
-    expect(() => refundEntry([grantEntry('grove')], 'run_missing')).toThrow();
+    expect(() => refundEntry([grantEntry('grove', 'inv_1')], 'run_missing')).toThrow();
   });
 
   it('property: total refunds per run never exceed the original charge', () => {
     fc.assert(
       fc.property(fc.array(fc.tuple(arbWeightClass, arbRunId), { maxLength: 50 }), (runs) => {
-        const ledger: LedgerEntry[] = [grantEntry('canopy')];
+        const ledger: LedgerEntry[] = [grantEntry('canopy', 'inv_1')];
         for (const [w, id] of runs) ledger.push(chargeForRun(w, id));
         // refund every distinct run once; a second attempt must always throw
         const seen = new Set<string>();
