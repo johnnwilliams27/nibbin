@@ -1,0 +1,20 @@
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+      - name: typecheck-test-lint
+        run: echo "wire at M0: pnpm typecheck && pnpm test && pnpm lint"
+      - name: dependency-audit-and-sast
+        run: echo "wire at M0: pnpm audit + SAST"
+      - name: redaction-corpus
+        run: echo "wire at M1/M6: corpus suite (CI-blocking, P0)"
+      - name: trigger-graph-validation
+        run: echo "wire at M4: cycle-check suite"
+      - name: grovemap-artifact
+        run: echo "wire at M0: node tools/grovemap/grovemap.mjs && upload artifact"

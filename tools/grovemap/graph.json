@@ -1,0 +1,413 @@
+{
+ "generated": "2026-06-10T18:29:56.800Z",
+ "root": "nibbin-project",
+ "nodes": [
+  {
+   "id": ".claude/agents/claims-auditor.md",
+   "group": ".claude",
+   "deg": 0
+  },
+  {
+   "id": ".claude/agents/cost-auditor.md",
+   "group": ".claude",
+   "deg": 0
+  },
+  {
+   "id": ".claude/agents/logic-skeptic.md",
+   "group": ".claude",
+   "deg": 0
+  },
+  {
+   "id": ".claude/agents/red-team.md",
+   "group": ".claude",
+   "deg": 0
+  },
+  {
+   "id": ".claude/commands/gate.md",
+   "group": ".claude",
+   "deg": 0
+  },
+  {
+   "id": ".claude/settings.json",
+   "group": ".claude",
+   "deg": 0
+  },
+  {
+   "id": ".claude/skills/brand-voice/SKILL.md",
+   "group": ".claude",
+   "deg": 1
+  },
+  {
+   "id": ".claude/skills/connector-builder/SKILL.md",
+   "group": ".claude",
+   "deg": 0
+  },
+  {
+   "id": ".claude/skills/creature-engine/SKILL.md",
+   "group": ".claude",
+   "deg": 1
+  },
+  {
+   "id": ".claude/skills/design-system/SKILL.md",
+   "group": ".claude",
+   "deg": 1
+  },
+  {
+   "id": ".claude/skills/redaction-corpus/SKILL.md",
+   "group": ".claude",
+   "deg": 0
+  },
+  {
+   "id": ".github/pull_request_template.md",
+   "group": ".github",
+   "deg": 0
+  },
+  {
+   "id": ".github/workflows/ci.yml",
+   "group": ".github",
+   "deg": 0
+  },
+  {
+   "id": "CLAUDE.md",
+   "group": "root",
+   "deg": 13
+  },
+  {
+   "id": "LEARNINGS.md",
+   "group": "root",
+   "deg": 3
+  },
+  {
+   "id": "README.md",
+   "group": "root",
+   "deg": 6
+  },
+  {
+   "id": "SPEC.md",
+   "group": "root",
+   "deg": 16
+  },
+  {
+   "id": "docs/AGREEMENTS.md",
+   "group": "docs",
+   "deg": 2
+  },
+  {
+   "id": "docs/ENVIRONMENT.md",
+   "group": "docs",
+   "deg": 2
+  },
+  {
+   "id": "docs/GOTCHAS.md",
+   "group": "docs",
+   "deg": 2
+  },
+  {
+   "id": "docs/INVARIANTS.md",
+   "group": "docs",
+   "deg": 2
+  },
+  {
+   "id": "docs/RISKS.md",
+   "group": "docs",
+   "deg": 2
+  },
+  {
+   "id": "docs/STATE.md",
+   "group": "docs",
+   "deg": 2
+  },
+  {
+   "id": "reference/data-ai.html",
+   "group": "reference",
+   "deg": 7
+  },
+  {
+   "id": "reference/nibbin-creature-lab.html",
+   "group": "reference",
+   "deg": 4
+  },
+  {
+   "id": "reference/nibbin-demo.html",
+   "group": "reference",
+   "deg": 10
+  },
+  {
+   "id": "reference/nibbin-style-guide.html",
+   "group": "reference",
+   "deg": 3
+  },
+  {
+   "id": "reference/privacy.html",
+   "group": "reference",
+   "deg": 7
+  },
+  {
+   "id": "reference/terms.html",
+   "group": "reference",
+   "deg": 7
+  },
+  {
+   "id": "review/briefs/README.md",
+   "group": "review",
+   "deg": 0
+  },
+  {
+   "id": "tools/grovemap/README.md",
+   "group": "tools",
+   "deg": 1
+  },
+  {
+   "id": "tools/grovemap/graph.json",
+   "group": "tools",
+   "deg": 0
+  },
+  {
+   "id": "tools/grovemap/grovemap.html",
+   "group": "tools",
+   "deg": 2
+  },
+  {
+   "id": "tools/grovemap/grovemap.mjs",
+   "group": "tools",
+   "deg": 0
+  }
+ ],
+ "links": [
+  {
+   "source": ".claude/skills/brand-voice/SKILL.md",
+   "target": "reference/nibbin-demo.html",
+   "kind": "mention"
+  },
+  {
+   "source": ".claude/skills/creature-engine/SKILL.md",
+   "target": "reference/nibbin-creature-lab.html",
+   "kind": "mention"
+  },
+  {
+   "source": ".claude/skills/design-system/SKILL.md",
+   "target": "reference/nibbin-style-guide.html",
+   "kind": "mention"
+  },
+  {
+   "source": "CLAUDE.md",
+   "target": "docs/STATE.md",
+   "kind": "mention"
+  },
+  {
+   "source": "CLAUDE.md",
+   "target": "SPEC.md",
+   "kind": "mention"
+  },
+  {
+   "source": "CLAUDE.md",
+   "target": "docs/INVARIANTS.md",
+   "kind": "mention"
+  },
+  {
+   "source": "CLAUDE.md",
+   "target": "docs/AGREEMENTS.md",
+   "kind": "mention"
+  },
+  {
+   "source": "CLAUDE.md",
+   "target": "docs/ENVIRONMENT.md",
+   "kind": "mention"
+  },
+  {
+   "source": "CLAUDE.md",
+   "target": "docs/RISKS.md",
+   "kind": "mention"
+  },
+  {
+   "source": "CLAUDE.md",
+   "target": "docs/GOTCHAS.md",
+   "kind": "mention"
+  },
+  {
+   "source": "CLAUDE.md",
+   "target": "LEARNINGS.md",
+   "kind": "mention"
+  },
+  {
+   "source": "CLAUDE.md",
+   "target": "reference/nibbin-style-guide.html",
+   "kind": "mention"
+  },
+  {
+   "source": "CLAUDE.md",
+   "target": "reference/nibbin-demo.html",
+   "kind": "mention"
+  },
+  {
+   "source": "CLAUDE.md",
+   "target": "reference/nibbin-creature-lab.html",
+   "kind": "mention"
+  },
+  {
+   "source": "README.md",
+   "target": "SPEC.md",
+   "kind": "mention"
+  },
+  {
+   "source": "README.md",
+   "target": "CLAUDE.md",
+   "kind": "mention"
+  },
+  {
+   "source": "README.md",
+   "target": "reference/nibbin-demo.html",
+   "kind": "mention"
+  },
+  {
+   "source": "README.md",
+   "target": "reference/nibbin-creature-lab.html",
+   "kind": "mention"
+  },
+  {
+   "source": "README.md",
+   "target": "tools/grovemap/grovemap.html",
+   "kind": "mention"
+  },
+  {
+   "source": "README.md",
+   "target": "LEARNINGS.md",
+   "kind": "mention"
+  },
+  {
+   "source": "SPEC.md",
+   "target": "reference/nibbin-creature-lab.html",
+   "kind": "mention"
+  },
+  {
+   "source": "SPEC.md",
+   "target": "CLAUDE.md",
+   "kind": "mention"
+  },
+  {
+   "source": "SPEC.md",
+   "target": "docs/STATE.md",
+   "kind": "mention"
+  },
+  {
+   "source": "SPEC.md",
+   "target": "docs/INVARIANTS.md",
+   "kind": "mention"
+  },
+  {
+   "source": "SPEC.md",
+   "target": "docs/AGREEMENTS.md",
+   "kind": "mention"
+  },
+  {
+   "source": "SPEC.md",
+   "target": "docs/ENVIRONMENT.md",
+   "kind": "mention"
+  },
+  {
+   "source": "SPEC.md",
+   "target": "docs/RISKS.md",
+   "kind": "mention"
+  },
+  {
+   "source": "SPEC.md",
+   "target": "docs/GOTCHAS.md",
+   "kind": "mention"
+  },
+  {
+   "source": "SPEC.md",
+   "target": "LEARNINGS.md",
+   "kind": "mention"
+  },
+  {
+   "source": "SPEC.md",
+   "target": "reference/nibbin-demo.html",
+   "kind": "mention"
+  },
+  {
+   "source": "SPEC.md",
+   "target": "reference/data-ai.html",
+   "kind": "mention"
+  },
+  {
+   "source": "SPEC.md",
+   "target": "reference/nibbin-style-guide.html",
+   "kind": "mention"
+  },
+  {
+   "source": "SPEC.md",
+   "target": "reference/privacy.html",
+   "kind": "mention"
+  },
+  {
+   "source": "SPEC.md",
+   "target": "reference/terms.html",
+   "kind": "mention"
+  },
+  {
+   "source": "reference/data-ai.html",
+   "target": "reference/nibbin-demo.html",
+   "kind": "link"
+  },
+  {
+   "source": "reference/data-ai.html",
+   "target": "reference/privacy.html",
+   "kind": "link"
+  },
+  {
+   "source": "reference/data-ai.html",
+   "target": "reference/terms.html",
+   "kind": "link"
+  },
+  {
+   "source": "reference/nibbin-demo.html",
+   "target": "reference/data-ai.html",
+   "kind": "link"
+  },
+  {
+   "source": "reference/nibbin-demo.html",
+   "target": "reference/privacy.html",
+   "kind": "link"
+  },
+  {
+   "source": "reference/nibbin-demo.html",
+   "target": "reference/terms.html",
+   "kind": "link"
+  },
+  {
+   "source": "reference/privacy.html",
+   "target": "reference/nibbin-demo.html",
+   "kind": "link"
+  },
+  {
+   "source": "reference/privacy.html",
+   "target": "reference/terms.html",
+   "kind": "link"
+  },
+  {
+   "source": "reference/privacy.html",
+   "target": "reference/data-ai.html",
+   "kind": "link"
+  },
+  {
+   "source": "reference/terms.html",
+   "target": "reference/nibbin-demo.html",
+   "kind": "link"
+  },
+  {
+   "source": "reference/terms.html",
+   "target": "reference/privacy.html",
+   "kind": "link"
+  },
+  {
+   "source": "reference/terms.html",
+   "target": "reference/data-ai.html",
+   "kind": "link"
+  },
+  {
+   "source": "tools/grovemap/README.md",
+   "target": "tools/grovemap/grovemap.html",
+   "kind": "mention"
+  }
+ ]
+}
