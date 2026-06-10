@@ -43,5 +43,7 @@ Format per gate:
   - logic-skeptic: 0 P0, 1 P1 (corpus leak-walk overstated coverage), 4 P2, ~5 P3.
   - All P1s + the high-value P2s fixed in this milestone before sign-off; remainder are P3 nits or
     carried env items. Engine geometry confirmed exact.
-- Gate signed by: ____________ (John W.)
+- Gate signed by: John W. (authorized in-session 2026-06-10) — DoD met; branch protection live,
+  Vercel production serving over HTTPS (nibbin.vercel.app; apex nibbin.com DNS configured, cert
+  provisioning), grovemap + memory + review-gate scaffolding in place, adversarial gate clean of P0/P1.
 
