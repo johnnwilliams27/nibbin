@@ -1,0 +1,92 @@
+/* Minimal authenticated landing. Token-only. Real grove scene is M2. */
+.wrap {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--paper);
+}
+
+.card {
+  width: 100%;
+  max-width: 460px;
+  background: var(--canopy);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-2);
+  padding: 32px;
+}
+
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--moss-deep);
+  font-weight: 600;
+}
+
+.heading {
+  font-family: var(--display);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-size: 30px;
+  margin: 10px 0 8px;
+  color: var(--ink);
+}
+
+.body {
+  color: var(--ink-soft);
+  font-size: 15px;
+}
+
+.stats {
+  margin: 22px 0;
+  display: flex;
+  gap: 16px;
+}
+
+.stat {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--r-input);
+  padding: 14px 18px;
+  min-width: 120px;
+}
+
+.statLabel {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.statValue {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 28px;
+  color: var(--ink);
+  margin-top: 2px;
+}
+
+.note {
+  color: var(--ink-soft);
+  font-size: 14px;
+  margin-bottom: 22px;
+}
+
+.signout {
+  font: inherit;
+  font-weight: 700;
+  padding: 10px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-button);
+  background: var(--canopy);
+  color: var(--ink);
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease-settle);
+}
+.signout:hover {
+  background: var(--understory);
+}
