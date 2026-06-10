@@ -1,5 +1,13 @@
 # GOTCHAS — traps already paid for (append; newest first)
 
+- Vercel + npm-workspaces monorepo: with Root Directory = `apps/web`, Vercel's build runs a
+  *production* install (`NODE_ENV=production`) that omits root-level devDependencies, so Next's
+  build-time TS-setup check and ESLint step fail ("typescript … not installed"). Fixes that stuck:
+  (1) `eslint.ignoreDuringBuilds` + `typescript.ignoreBuildErrors` in next.config — CI already
+  gates typecheck/lint, the deploy should only compile; (2) put `typescript` + `@types/node` in
+  the app's *dependencies* (not devDeps) so the prod install keeps them. Vercel reads `vercel.json`
+  from the Root Directory, not the repo root — a repo-root vercel.json is silently ignored.
+
 - Pushing `.github/workflows/*` fails with the `gh` OAuth token (no `workflow` scope:
   "refusing to allow an OAuth App to create or update workflow"). Use the Windows credential
   manager helper: `git -c credential.helper=manager push`. `gh` API calls are unaffected.
