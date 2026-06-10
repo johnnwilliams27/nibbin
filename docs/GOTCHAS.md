@@ -1,5 +1,17 @@
 # GOTCHAS — traps already paid for (append; newest first)
 
+- Magic-link `emailRedirectTo` (and any auth redirect origin) must be PINNED from
+  env, never derived from the request `Host` header — Host is attacker-controllable,
+  so a reflected origin lets a genuine Nibbin email point its link at an attacker
+  domain that harvests the PKCE code. Use `lib/site-url.ts` (`NEXT_PUBLIC_SITE_URL`
+  → `VERCEL_URL` → localhost). The Supabase redirect allow-list is the second gate —
+  keep it to EXACT callback URLs, never `/**` wildcards (wildcards re-open the hole).
+  Preview deploys therefore don't do magic-link sign-in; test auth on dev/staging.
+- First-sign-in account bootstrap is reachable from two places (the auth callback
+  and every /app load). A check-then-create in app code double-creates on the first
+  sign-in race. Bootstrap goes through `bootstrap_account` (advisory-locked,
+  self-scoped SELECT) so it's idempotent at the DB layer — don't reintroduce an
+  app-side "does the user have an account?" read to gate creation.
 - RLS attack tests must run migrations as a NON-superuser owner. The CI Postgres
   container connects as `postgres` (a superuser that owns every table); a superuser
   bypasses un-forced RLS *and* can `DISABLE TRIGGER`/`set session_replication_role`,

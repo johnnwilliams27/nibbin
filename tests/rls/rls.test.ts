@@ -294,6 +294,42 @@ describe.skipIf(!dbAvailable)('RLS attack suite (SPEC §6.1)', () => {
     });
   });
 
+  describe('bootstrap_account (idempotent, race-safe first-sign-in)', () => {
+    const UID_E = '55555555-5555-4555-8555-555555555555';
+    const asE = { kind: 'authenticated', uid: UID_E } as const;
+
+    it('returns the same account on repeated calls and never creates a second', async () => {
+      await h.sql(`insert into auth.users (id, email) values ($1, 'e@example.test')`, [UID_E]);
+      await h.as(asE, async (c) => {
+        await c.query(`insert into public.users (id, email, name) values ($1, 'e@example.test', 'E')`, [UID_E]);
+      });
+
+      const first = await h.as(asE, async (c) =>
+        (await c.query(`select public.bootstrap_account('Fresh grove') as id`)).rows[0].id,
+      );
+      const second = await h.as(asE, async (c) =>
+        (await c.query(`select public.bootstrap_account('Different name') as id`)).rows[0].id,
+      );
+      expect(second).toBe(first);
+
+      const owned = await h.as(asE, async (c) =>
+        (await c.query(`select count(*)::int as n from public.memberships where role = 'owner'`)).rows[0].n,
+      );
+      expect(owned).toBe(1);
+      // the name from the first (creating) call wins; the second is ignored
+      const name = await h.as(asE, async (c) =>
+        (await c.query(`select name from public.accounts where id = $1`, [first])).rows[0].name,
+      );
+      expect(name).toBe('Fresh grove');
+    });
+
+    it('is authenticated-only (anon cannot bootstrap)', async () => {
+      await expect(h.as(anon, (c) => c.query(`select public.bootstrap_account('x')`))).rejects.toThrow(
+        /permission denied/,
+      );
+    });
+  });
+
   describe('impersonation is always visible in the account audit log (INVARIANTS §6.10)', () => {
     it('creating a session writes a member-visible audit row in the same transaction', async () => {
       await h.as(service, async (c) => {
