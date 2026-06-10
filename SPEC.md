@@ -462,6 +462,7 @@ Every milestone ends with the §6.7 adversarial gate; `CLAUDE.md`/`LEARNINGS.md`
 | Thin-router CLAUDE.md + docs tree + skills/subagents | Progressive disclosure: sessions load only task-relevant context instead of a monolith | If routing misses cause repeated mistakes, promote items into the router |
 | Grovemap (in-repo graph tool) | AI-native repos need a live structural picture for humans and agents alike | Replace with richer tooling if the repo outgrows it |
 | Account→Membership hierarchy from day one | Multi-seat later becomes a permissions feature, not a migration; single-user is just the default shape | Never — scoping to user_id alone is the mistake |
+| No `auth_identities` table — Supabase `auth.identities` is the record of provider/provider_uid | Duplicating the auth provider's own identity store invites drift; §6.1's sketch predates the Supabase decision | If we ever leave Supabase Auth |
 | Separate admin app + staff identity world | Support without DB-poking; insider risk bounded by RBAC, consent, and append-only audit | SOC 2 evidence needs at M8 |
 | Landing page leads with Day One; study is the deepener | Spec evolved to dual-track; marketing must mirror the product or trust dies at first use | If Day-One adoption underwhelms in beta, re-weight |
 | Day-1 agent creation = Shop templates + Keeper tailoring; free-form bespoke specs gated until post-M8 | Template specs are validated and safe on launch day; arbitrary spec synthesis needs a hardened runtime first | Open bespoke creation when injection/cost suites pass at scale |

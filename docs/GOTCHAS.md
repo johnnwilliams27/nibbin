@@ -1,5 +1,22 @@
 # GOTCHAS — traps already paid for (append; newest first)
 
+- RLS attack tests must run migrations as a NON-superuser owner. The CI Postgres
+  container connects as `postgres` (a superuser that owns every table); a superuser
+  bypasses un-forced RLS *and* can `DISABLE TRIGGER`/`set session_replication_role`,
+  so append-only and owner-bypass tests can false-pass. The harness creates a
+  `nibbin_owner` role (nosuperuser) and `set role`s to it for migrations, matching
+  Supabase prod where `postgres` owns but isn't superuser. Default privileges are
+  keyed to the creating role — set them `FOR ROLE nibbin_owner`, not bare.
+- RLS is intentionally NOT forced (`force row level security`) on account tables:
+  the `create_account_with_owner` security-definer bootstrap relies on the owner
+  bypassing the (absent) memberships INSERT policy. Consequence: any owner-owned
+  view/secdef reader over these tables bypasses RLS — `credit_balances` is safe only
+  because it's `security_invoker = true`. There's a guard test that fails if any
+  public view isn't security_invoker; keep it.
+- Membership policies gate on `status = 'active'` via `private.is_account_member`.
+  A suspended/invited member must read nothing — don't drop the status filter when
+  touching that helper (regression-tested).
+
 - Vercel + npm-workspaces monorepo: with Root Directory = `apps/web`, Vercel's build runs a
   *production* install (`NODE_ENV=production`) that omits root-level devDependencies, so Next's
   build-time TS-setup check and ESLint step fail ("typescript … not installed"). Fixes that stuck:
