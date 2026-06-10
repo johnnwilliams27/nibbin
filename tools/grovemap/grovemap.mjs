@@ -223,7 +223,7 @@ tick();setTimeout(()=>document.getElementById('fit').click(),1400);
 const escJs = (s) => s.replace(/</g, '\\u003c');
 const escHtml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
 // nosemgrep: javascript.lang.security.audit.unknown-value-with-script-tag.unknown-value-with-script-tag -- local dev tool writing repo-derived data to disk; both interpolations are escaped above
-writeFileSync(join(outDir, 'grovemap.html'),
-  TEMPLATE.replace('__ROOT__', escHtml(basename(ROOT))).replace('__GRAPH__', escJs(JSON.stringify(graph))));
+const html = TEMPLATE.replace('__ROOT__', escHtml(basename(ROOT))).replace('__GRAPH__', escJs(JSON.stringify(graph)));
+writeFileSync(join(outDir, 'grovemap.html'), html);
 
 console.log(`Grovemap: ${nodes.length} files, ${links.length} links → tools/grovemap/grovemap.html`);
