@@ -3,13 +3,18 @@
 - Milestone: M1 — IN PROGRESS (started 2026-06-10). Account hierarchy, auth, Stripe skeleton,
   credit ledger, admin console at admin.nibbin.com, file Google/Meta approvals.
 - M0: COMPLETE, gate signed by John W. 2026-06-10 (LEARNINGS.md).
-- VERIFIED 2026-06-10: apex https://nibbin.com serves 200 over HTTPS (cert provisioned) — M0 DoD
-  fully closed. Cloudflare token was shared in chat — John still needs to roll it.
-- M1 progress: credit ledger math + property tests landed in packages/shared (src/credits.ts;
-  weights 1/3/10, tiers, top-ups, never-overdraw budget check, single-refund-per-run — all
-  fast-check property-tested). Next: Supabase migrations + RLS (RLS attack tests run in CI
-  against a Postgres service container). Stripe/Supabase/Google/Meta need John's credentials
-  (see below).
+- VERIFIED 2026-06-10: apex https://nibbin.com serves 200 over HTTPS — M0 DoD fully closed.
+  Cloudflare token that was shared in chat: ROLLED (John, 2026-06-10).
+- M1 progress (also tracked in the session task list):
+  - DONE (PR #4): credit ledger math + property tests in packages/shared (weights 1/3/10,
+    tiers, top-ups, never-overdraw, single-refund-per-run, validateAppend authority).
+  - DONE (this PR): first Supabase migration — §6.1 account hierarchy + credit_ledger +
+    audit_log + staff world, RLS-via-membership on everything, append-only triggers,
+    create_account_with_owner bootstrap; RLS attack suite (tests/rls) runs in CI against a
+    digest-pinned Postgres service container and locally via Docker. auth_identities dropped
+    in favor of Supabase auth.identities (SPEC §9 decision logged).
+  - NEXT: auth sign-in flows (needs Supabase projects), Stripe skeleton (needs test keys),
+    admin console skeleton, file Google/Meta approvals (needs accounts) — credentials below.
 - Open P0/P1: none
 - M1 service credentials needed from John (building credential-free parts first):
   - Supabase: create projects (dev/staging/prod) + provide access token / project ref + DB URL —
