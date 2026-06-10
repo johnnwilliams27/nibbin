@@ -8,7 +8,7 @@
     "packages/*"
   ],
   "scripts": {
-    "typecheck": "tsc --noEmit -p packages/creatures && tsc --noEmit -p packages/shared && tsc --noEmit -p packages/connectors && tsc --noEmit -p apps/web && tsc --noEmit -p tests/redaction-corpus",
+    "typecheck": "tsc --noEmit -p packages/creatures && tsc --noEmit -p packages/shared && tsc --noEmit -p packages/connectors && tsc --noEmit -p apps/web && tsc --noEmit -p tests/redaction-corpus && tsc --noEmit -p tests/rls",
     "lint": "eslint .",
     "test": "vitest run",
     "audit": "npm audit --omit=dev --audit-level=high",
@@ -17,8 +17,10 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
+    "@types/pg": "^8.20.0",
     "eslint": "^9.17.0",
     "fast-check": "^4.8.0",
+    "pg": "^8.21.0",
     "typescript": "^5.7.0",
     "typescript-eslint": "^8.18.0",
     "vitest": "^4.1.8"
