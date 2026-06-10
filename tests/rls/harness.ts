@@ -59,13 +59,22 @@ export class RlsHarness {
     } catch {
       // no migrations directory yet — tables simply won't exist
     }
-    for (const f of files) {
-      const sql = await readFile(join(MIGRATIONS_DIR, f), 'utf8');
-      try {
-        await this.pool.query(sql);
-      } catch (e) {
-        throw new Error(`migration ${f} failed: ${(e as Error).message}`);
+    // Apply migrations as the non-superuser owner (see supabase-stub.sql, F4):
+    // one dedicated connection so `set role` persists across the files.
+    const client = await this.pool.connect();
+    try {
+      await client.query('set role nibbin_owner');
+      for (const f of files) {
+        const sql = await readFile(join(MIGRATIONS_DIR, f), 'utf8');
+        try {
+          await client.query(sql);
+        } catch (e) {
+          throw new Error(`migration ${f} failed: ${(e as Error).message}`);
+        }
       }
+      await client.query('reset role');
+    } finally {
+      client.release();
     }
   }
 

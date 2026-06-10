@@ -60,8 +60,11 @@ create table public.subscriptions (
 create table public.credit_ledger (
   id uuid primary key default gen_random_uuid(),
   account_id uuid not null references public.accounts (id) on delete restrict,
+  -- delta already IS the signed weighted unit count: run charges are written as
+  -- -WEIGHTS[class] (1/3/10) by packages/shared/src/credits.ts, so there is no
+  -- separate weight column to drift out of sync (§6.1 sketch's weighted_units
+  -- collapses into delta).
   delta integer not null check (delta <> 0),
-  weighted_units integer not null generated always as (abs(delta)) stored,
   reason text not null check (reason in ('run', 'topup', 'grant', 'refund', 'clawback')),
   run_id text check (run_id is null or btrim(run_id) <> ''),  -- FK to runs(id) lands at M4
   source_id text check (source_id is null or btrim(source_id) <> ''),
@@ -137,6 +140,30 @@ create trigger audit_log_append_only_truncate
   before truncate on public.audit_log
   for each statement execute function private.raise_append_only();
 
+-- ── impersonation is always visible in the account's audit log (INVARIANTS) ───
+-- Enforced at the table layer: a session cannot exist without its audit row,
+-- written in the same transaction. Definer so it runs regardless of who inserts.
+
+create function private.log_impersonation()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  insert into public.audit_log (account_id, actor, actor_id, action, subject, meta)
+  values (
+    new.account_id, 'staff', new.staff_id::text, 'impersonation.started', new.id::text,
+    jsonb_build_object('scope', new.scope, 'reason', new.reason)
+  );
+  return new;
+end;
+$$;
+
+create trigger impersonation_audit
+  after insert on public.impersonation_sessions
+  for each row execute function private.log_impersonation();
+
 -- ── membership helper (security definer breaks the memberships↔policy recursion) ─
 
 create function private.is_account_member(target_account uuid)
@@ -158,6 +185,9 @@ grant execute on function private.is_account_member(uuid) to authenticated, serv
 
 -- ── account bootstrap (the only way clients create accounts/memberships) ─────
 
+-- Per-user cap on owned accounts: a single JWT cannot farm accounts/memberships/
+-- audit rows without bound (red-team F2). Generous vs. the one-user-one-account
+-- default shape; raise deliberately if real multi-account use emerges.
 create function public.create_account_with_owner(account_name text)
 returns uuid
 language plpgsql
@@ -166,6 +196,7 @@ set search_path = ''
 as $$
 declare
   uid uuid := (select auth.uid());
+  owned int;
   new_account uuid;
 begin
   if uid is null then
@@ -174,6 +205,12 @@ begin
   if account_name is null or btrim(account_name) = '' then
     raise exception 'account name required';
   end if;
+  select count(*) into owned
+    from public.memberships
+    where user_id = uid and role = 'owner';
+  if owned >= 20 then
+    raise exception 'owned-account limit reached';
+  end if;
   insert into public.accounts (name) values (btrim(account_name)) returning id into new_account;
   insert into public.memberships (account_id, user_id, role) values (new_account, uid, 'owner');
   insert into public.audit_log (account_id, actor, actor_id, action, subject)
@@ -181,7 +218,8 @@ begin
   return new_account;
 end;
 $$;
-revoke execute on function public.create_account_with_owner(text) from public, anon;
+-- authenticated users only; backend writes accounts through its own path.
+revoke execute on function public.create_account_with_owner(text) from public, anon, service_role;
 grant execute on function public.create_account_with_owner(text) to authenticated;
 
 -- ── RLS: denial at the database layer regardless of application bugs ────────

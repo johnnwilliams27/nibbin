@@ -21,6 +21,8 @@ if (!dbAvailable && !process.env.CI) {
 
 const UID_A = '11111111-1111-4111-8111-111111111111';
 const UID_B = '22222222-2222-4222-8222-222222222222';
+const UID_C = '33333333-3333-4333-8333-333333333333'; // suspended member of A
+const UID_D = '44444444-4444-4444-8444-444444444444'; // second active member of B
 
 describe.skipIf(!dbAvailable)('RLS attack suite (SPEC §6.1)', () => {
   const h = new RlsHarness();
@@ -57,6 +59,18 @@ describe.skipIf(!dbAvailable)('RLS attack suite (SPEC §6.1)', () => {
     accountB = await h.as(asB, async (c) =>
       (await c.query(`select public.create_account_with_owner('B Studio') as id`)).rows[0].id,
     );
+
+    // extra members: C suspended on A, D a second active member of B
+    await h.sql(`insert into auth.users (id, email) values ($1, 'c@example.test'), ($2, 'd@example.test')`, [UID_C, UID_D]);
+    for (const [uid, name] of [[UID_C, 'C'], [UID_D, 'D']] as const) {
+      await h.as({ kind: 'authenticated', uid } as const, async (c) => {
+        await c.query(`insert into public.users (id, email, name) values ($1, $2, $3)`, [uid, `${name.toLowerCase()}@example.test`, name]);
+      });
+    }
+    await h.as(service, async (c) => {
+      await c.query(`insert into public.memberships (account_id, user_id, role, status) values ($1, $2, 'member', 'suspended')`, [accountA, UID_C]);
+      await c.query(`insert into public.memberships (account_id, user_id, role, status) values ($1, $2, 'member', 'active')`, [accountB, UID_D]);
+    });
 
     // server-side state lands via service role (Stripe webhooks, runtime)
     await h.as(service, async (c) => {
@@ -114,6 +128,23 @@ describe.skipIf(!dbAvailable)('RLS attack suite (SPEC §6.1)', () => {
     it('users table exposes only the requesting user', async () => {
       const rows = await h.as(asB, async (c) => (await c.query('select id from public.users')).rows);
       expect(rows).toEqual([{ id: UID_B }]);
+    });
+
+    it('a second active member of an account can read that account', async () => {
+      const rows = await h.as({ kind: 'authenticated', uid: UID_D } as const, async (c) =>
+        (await c.query('select id from public.accounts')).rows,
+      );
+      expect(rows).toEqual([{ id: accountB }]);
+    });
+
+    it('a suspended member is denied — membership alone is not enough, it must be active', async () => {
+      const asC = { kind: 'authenticated', uid: UID_C } as const;
+      await h.as(asC, async (c) => {
+        expect((await c.query('select * from public.accounts')).rowCount).toBe(0);
+        expect((await c.query('select * from public.credit_ledger')).rowCount).toBe(0);
+        // C can still see their own membership row? No — is_account_member gates it too.
+        expect((await c.query('select * from public.memberships')).rowCount).toBe(0);
+      });
     });
   });
 
@@ -249,10 +280,47 @@ describe.skipIf(!dbAvailable)('RLS attack suite (SPEC §6.1)', () => {
         /permission denied/,
       );
     });
+
+    it('a single user cannot farm unbounded accounts (per-user owner cap)', async () => {
+      const farmer = { kind: 'authenticated', uid: UID_D } as const;
+      await h.as(farmer, async (c) => {
+        await c.query(`insert into public.users (id, email, name) values ($1, 'farmer@example.test', 'F') on conflict do nothing`, [UID_D]);
+      });
+      await expect(
+        h.as(farmer, async (c) => {
+          for (let i = 0; i < 25; i++) await c.query(`select public.create_account_with_owner($1)`, [`farm ${i}`]);
+        }),
+      ).rejects.toThrow(/owned-account limit reached/);
+    });
+  });
+
+  describe('impersonation is always visible in the account audit log (INVARIANTS §6.10)', () => {
+    it('creating a session writes a member-visible audit row in the same transaction', async () => {
+      await h.as(service, async (c) => {
+        const staffId = (
+          await c.query(`insert into public.staff_users (email, role) values ('support@nibbin.com', 'support') returning id`)
+        ).rows[0].id;
+        await c.query(
+          `insert into public.impersonation_sessions (staff_id, account_id, reason, scope) values ($1, $2, 'support ticket 42', 'read')`,
+          [staffId, accountA],
+        );
+      });
+      const visible = await h.as(asA, async (c) =>
+        (await c.query(`select action, meta from public.audit_log where action = 'impersonation.started'`)).rows,
+      );
+      expect(visible.length).toBe(1);
+      expect(visible[0].meta).toMatchObject({ scope: 'read', reason: 'support ticket 42' });
+
+      // and account B never sees A's impersonation
+      const leak = await h.as(asB, async (c) =>
+        (await c.query(`select * from public.audit_log where action = 'impersonation.started'`)).rowCount,
+      );
+      expect(leak).toBe(0);
+    });
   });
 
   describe('RLS is actually enabled everywhere it must be', () => {
-    it('every account-scoped table has RLS enabled and forced rows through policies', async () => {
+    it('every public table has RLS enabled', async () => {
       const r = await h.sql(`
         select c.relname
         from pg_class c
@@ -260,6 +328,24 @@ describe.skipIf(!dbAvailable)('RLS attack suite (SPEC §6.1)', () => {
         where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity
       `);
       expect(r.rows, 'tables without RLS enabled').toEqual([]);
+    });
+
+    it('no public view bypasses RLS — every view is security_invoker', async () => {
+      // A view owned by the table owner would bypass (un-forced) RLS and leak
+      // across accounts unless it runs as the invoker. RLS is deliberately not
+      // FORCED (the bootstrap security-definer relies on the owner bypass), so
+      // this guard is what stops a future leaky view. (red-team F3)
+      const r = await h.sql(`
+        select c.relname,
+               coalesce((select option_value from pg_options_to_table(c.reloptions)
+                         where option_name = 'security_invoker'), 'off') as security_invoker
+        from pg_class c
+        join pg_namespace n on n.oid = c.relnamespace
+        where n.nspname = 'public' and c.relkind = 'v'
+      `);
+      expect(r.rows.length, 'expected at least credit_balances view').toBeGreaterThan(0);
+      const leaky = r.rows.filter((v) => v.security_invoker !== 'true' && v.security_invoker !== 'on');
+      expect(leaky, 'views that bypass RLS').toEqual([]);
     });
   });
 });
