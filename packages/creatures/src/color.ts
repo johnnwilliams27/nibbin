@@ -11,7 +11,17 @@ export const PALETTES: readonly Palette[] = [
   { n: 'Slate', c: '#6B7261' },
 ];
 
+/**
+ * Lighten (pct > 0) or darken (pct < 0) a 6-digit hex color. Throws on
+ * malformed input rather than silently emitting `#nannannan` — callers pass
+ * either a literal brand hex or a value already validated by `safeColor`, so a
+ * non-hex here is a programming error that should fail loudly, not a render to
+ * paper over.
+ */
 export function shade(hex: string, pct: number): string {
+  if (!/^#[0-9a-fA-F]{6}$/.test(hex)) {
+    throw new Error(`shade(): expected a 6-digit hex color, got ${JSON.stringify(hex)}`);
+  }
   const n = parseInt(hex.slice(1), 16);
   const r = (n >> 16) & 255;
   const g = (n >> 8) & 255;

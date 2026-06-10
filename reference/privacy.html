@@ -87,12 +87,18 @@ footer a{color:inherit}
 <p>We share information only with: service providers acting on our instructions (hosting, database, email delivery, payments, model providers — a current subprocessor list is available at nibbin.com/subprocessors); parties you direct us to share with (the recipient of an email your Nibbin sends for you); and authorities when legally required, in which case our data-minimization design means there is little to produce. If Nibbin is involved in a merger or acquisition, this policy continues to govern transferred data.</p>
 
 <h2>8. Retention &amp; deletion</h2>
-<ul>
-<li>Raw study data: deleted from your device after diagnosis (and never held by us).</li>
-<li>Agent run logs: 90 days by default, configurable; journals are deletable by you anytime.</li>
-<li>Account data: kept while your account is active; deleted within 30 days of a verified deletion request, excepting records we must keep (e.g., billing) for legal compliance.</li>
-<li>You can export your data and delete your account from settings on the web or desktop app.</li>
-</ul>
+<p>This schedule is the same one published on our <a href="data-ai.html">Data &amp; AI</a> page, and the product enforces it exactly.</p>
+<table>
+<tr><th>Data</th><th>Kept</th><th>Your control</th></tr>
+<tr><td>Raw Field Study data (on device)</td><td>Until your diagnosis is built, max 14 days</td><td>Review daily, delete blocks, or abort the study — deletion is shown to you</td></tr>
+<tr><td>Synthesis packet</td><td>Processed into your diagnosis, then stored as part of it</td><td>Delete the diagnosis anytime</td></tr>
+<tr><td>Agent run logs</td><td>90 days by default</td><td>Shorten the window or wipe logs anytime</td></tr>
+<tr><td>Nibbin journals (what each agent learned)</td><td>Until you delete them</td><td>Per-entry or per-Nibbin deletion</td></tr>
+<tr><td>Scan results</td><td>While the connection is active</td><td>Disconnect to remove; re-scan anytime</td></tr>
+<tr><td>Connection tokens</td><td>While connected, in an encrypted vault</td><td>One-click revoke; dependent Nibbins pause politely</td></tr>
+<tr><td>Account data</td><td>Life of the account + 30 days after verified deletion</td><td>Export and delete from settings, web or desktop</td></tr>
+<tr><td>Encrypted backups</td><td>Roll off within 35 days of deletion</td><td>Automatic</td></tr>
+</table>
 
 <h2>9. Security</h2>
 <p>Connection tokens are stored in an encrypted vault, never in our application database in plaintext. Study data on your device is encrypted with keys held in your device's secure hardware. Access within Nibbin is role-restricted, multi-factor protected, and logged; staff cannot view your study data (it never reaches us) and cannot read your message content without an explicit, time-boxed consent grant from you.</p>

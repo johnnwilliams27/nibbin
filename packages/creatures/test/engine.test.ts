@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   buildCreature,
   creatureCss,
+  shade,
   PALETTES,
   STAGES,
   ACCS,
@@ -50,6 +51,80 @@ describe('exhaustive render: species × stage × accessory × marking × palette
 
   it('throws on an unknown species', () => {
     expect(() => buildCreature({ species: 'Gremlin' } as unknown as BuildOptions)).toThrow();
+  });
+});
+
+describe('hostile input is neutralized at the chokepoint (XSS / markup injection)', () => {
+  const payloads = [
+    '#000"/><image href="x" onerror="alert(1)"/><rect fill="',
+    '"><script>alert(1)</script>',
+    '#fff', // 3-digit hex is not accepted — only full 6-digit
+    'red',
+    'url(#x)',
+    '#5B7C2E;animation:evil',
+  ];
+
+  // tokens that only an injection could introduce — none appear in any
+  // legitimate static render (unlike e.g. `#fff` eye-whites).
+  const evilTokens = ['<image', '<script', '<animate', 'onerror', 'onload', 'onbegin', 'alert', 'animation:evil'];
+
+  it('no hostile color introduces script/handlers/markup into any render', () => {
+    for (const species of USER_SPECIES) {
+      for (const stage of ['student', 'senior', 'grad', 'egg'] as const) {
+        for (const color of payloads) {
+          const svg = buildCreature({ species, stage, color });
+          for (const token of evilTokens) {
+            expect(svg, `${species}/${stage} leaked "${token}" from color "${color}"`).not.toContain(token);
+          }
+          assertWellFormed(svg, `${species}/${stage}/${color}`);
+        }
+      }
+    }
+  });
+
+  it('an invalid color renders identically to an explicit brand-moss render (fallback proven)', () => {
+    for (const species of USER_SPECIES) {
+      for (const stage of ['student', 'senior', 'grad', 'egg'] as const) {
+        const fallback = normalize(buildCreature({ species, stage, color: 'not-a-color' }));
+        const moss = normalize(buildCreature({ species, stage, color: '#5B7C2E' }));
+        expect(fallback, `${species}/${stage}`).toBe(moss);
+      }
+    }
+  });
+
+  it('a hostile size cannot break out of the width/height attributes', () => {
+    const svg = buildCreature({ species: 'Sprout', stage: 'student', size: NaN });
+    expect(svg).not.toContain('NaN');
+    expect(svg).toContain('width="120"');
+    const big = buildCreature({ species: 'Sprout', stage: 'student', size: 999999 });
+    expect(big).toContain('width="1024"');
+  });
+});
+
+describe('grad-stage anatomy suppression (cap replaces the growth signature)', () => {
+  // At Graduate the cap occupies the headspace, so Wisp's flame, Puff's crest,
+  // and Glim's antennae are removed. A regression (cap drawn over the feature,
+  // or feature left in) is a brand defect, so assert senior-has / grad-lacks
+  // using a color token unique to each feature. mass() only ever emits
+  // shade(±32/22/16/40), so shade(color, 30/45/50) are feature-only markers.
+  const C = '#3E7C74';
+  const cases = [
+    { species: 'Wisp', pct: 45, feature: 'flame' },
+    { species: 'Puff', pct: 30, feature: 'crest' },
+    { species: 'Glim', pct: 50, feature: 'antennae' },
+  ] as const;
+
+  for (const { species, pct, feature } of cases) {
+    it(`${species} shows its ${feature} at senior and drops it at grad`, () => {
+      const marker = shade(C, pct);
+      expect(buildCreature({ species, stage: 'senior', color: C }), `senior ${species} should have ${feature}`).toContain(marker);
+      expect(buildCreature({ species, stage: 'grad', color: C }), `grad ${species} should drop ${feature}`).not.toContain(marker);
+    });
+  }
+
+  it('only the Sprout graduate cap carries the honey bloom', () => {
+    expect(buildCreature({ species: 'Sprout', stage: 'grad', color: '#3E7C74' })).toContain('#B5D87A');
+    expect(buildCreature({ species: 'Longear', stage: 'grad', color: '#3E7C74' })).not.toContain('#B5D87A');
   });
 });
 

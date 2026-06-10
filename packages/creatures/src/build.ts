@@ -3,6 +3,27 @@ import { SPECIES } from './species';
 import { gradCap, marking, accessory } from './layers';
 import type { BodyParts, BuildOptions, EggParts } from './types';
 
+const HEX = /^#[0-9a-fA-F]{6}$/;
+const BRAND_MOSS = '#5B7C2E';
+
+/**
+ * The engine builds SVG by string interpolation and its output is rendered via
+ * `dangerouslySetInnerHTML`. `color` is the one BuildOptions field that flows
+ * raw into dozens of SVG attributes, and in later milestones it becomes
+ * user/connector-influenced — so it is the markup-injection chokepoint. Reject
+ * anything that is not a plain 6-digit hex and fall back to brand moss, rather
+ * than letting `"/><image onerror=...>` reach the DOM. `size` is coerced to a
+ * bounded integer for the same reason.
+ */
+function safeColor(color: string | undefined): string {
+  return color !== undefined && HEX.test(color) ? color : BRAND_MOSS;
+}
+
+function safeSize(size: number | undefined): number {
+  if (typeof size !== 'number' || !Number.isFinite(size)) return 120;
+  return Math.min(1024, Math.max(8, Math.round(size)));
+}
+
 /**
  * Render a creature as a single self-contained `<svg>` element string.
  * Animation classes (cr / eggy / floaty / lid / tassel / glowpulse) are
@@ -13,7 +34,7 @@ import type { BodyParts, BuildOptions, EggParts } from './types';
  */
 export function buildCreature(o: BuildOptions): string {
   const sp = SPECIES[o.species];
-  const size = o.size ?? 120;
+  const size = safeSize(o.size);
   if (!sp) throw new Error(`Unknown species: ${String(o.species)}`);
   if (sp.canonical) {
     const b = sp.body();
@@ -21,7 +42,7 @@ export function buildCreature(o: BuildOptions): string {
     const parts = `<g transform="rotate(${sp.tilt} 36 44)">` + [b.pre, b.body, b.post].join('') + `</g>`;
     return `<svg class="cr" style="animation-delay:${(nextUid() % 6) * 0.35}s" width="${size}" height="${size}" viewBox="0 0 72 72" role="img" aria-label="Grovekeeper">${parts}</svg>`;
   }
-  const color = o.color ?? '#5B7C2E';
+  const color = safeColor(o.color);
   if (o.stage === 'egg') {
     const e = sp.egg(color) as EggParts;
     return `<svg class="cr eggy" width="${size}" height="${size}" viewBox="0 0 72 72" role="img" aria-label="${o.species} egg">${e.art}</svg>`;
