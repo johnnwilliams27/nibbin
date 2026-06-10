@@ -9,6 +9,16 @@ export const metadata: Metadata = { title: 'Your grove — Nibbin' };
 // Force dynamic: this page reads the per-request session.
 export const dynamic = 'force-dynamic';
 
+function SignOut() {
+  return (
+    <form action="/auth/signout" method="post">
+      <button className={styles.signout} type="submit">
+        Sign out
+      </button>
+    </form>
+  );
+}
+
 export default async function AppPage() {
   const supabase = await createClient();
   const {
@@ -16,30 +26,34 @@ export default async function AppPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  // Idempotent: covers the rare case where a session exists but bootstrap
-  // never ran (e.g. the callback was interrupted).
+  // Idempotent + race-safe (advisory-locked RPC). Safe to run on every load.
   let accountId: string;
   try {
     accountId = await ensureAccount({
       getEmail: async () => user.email ?? null,
-      getOwnedAccountId: async () => {
-        const { data } = await supabase
-          .from('memberships')
-          .select('account_id')
-          .eq('role', 'owner')
-          .limit(1);
-        return data?.[0]?.account_id ?? null;
-      },
-      createAccount: async (name) => {
-        const { data, error } = await supabase.rpc('create_account_with_owner', {
-          account_name: name,
-        });
+      bootstrap: async (name) => {
+        const { data, error } = await supabase.rpc('bootstrap_account', { account_name: name });
         if (error) throw error;
         return data as string;
       },
     });
   } catch {
-    redirect('/login?error=bootstrap');
+    // Render the snag inline — redirecting to /login would just bounce back here
+    // (middleware sends signed-in users to /app), looping the user.
+    return (
+      <main className={styles.wrap}>
+        <div className={styles.card}>
+          <p className={styles.eyebrow}>Your grove</p>
+          <h1 className={styles.heading}>Just a moment</h1>
+          <p className={styles.body}>
+            You&apos;re signed in, but I hit a snag setting up your grove. Refresh in a moment and
+            it should settle.
+          </p>
+          <p className={styles.note} />
+          <SignOut />
+        </div>
+      </main>
+    );
   }
 
   // Every read below is gated by RLS on the user's own session — this is the
@@ -77,11 +91,7 @@ export default async function AppPage() {
           Grovekeeper and adopting your first Nibbins comes next.
         </p>
 
-        <form action="/auth/signout" method="post">
-          <button className={styles.signout} type="submit">
-            Sign out
-          </button>
-        </form>
+        <SignOut />
       </div>
     </main>
   );
