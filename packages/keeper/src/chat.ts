@@ -1,12 +1,17 @@
 /**
- * Freeform Grovekeeper chat (post-onboarding). Every request goes through the
- * §6.3 router first; the decision (tier, model, degradation notice) comes back
- * with the reply so surfaces stay transparent about cost decisions.
+ * Freeform Grovekeeper chat (post-onboarding). When a model caller is wired,
+ * every request goes through the §6.3 router first; the decision (tier, model,
+ * degradation notice) comes back with the reply so surfaces stay transparent
+ * about cost decisions.
  *
  * M2 ships a local scripted responder as the T0 floor — zero tokens, honest
  * about what exists today. A real model call slots in through `generate`
  * (given the routed model id) without changing this interface. C10 holds
  * regardless of what the model says: there are no tools here to call.
+ *
+ * Without `generate` there is nothing to dispatch, so the router is never
+ * consulted: consuming frontier budget or claiming degradation for work that
+ * is never performed would both be dishonest (gate finding #25).
  */
 import type { RouteDecision, RouteRequest } from '@nibbin/router';
 import { CHAT } from './copy';
@@ -45,6 +50,19 @@ function scriptedReply(text: string): string {
   return CHAT.fallback;
 }
 
+/**
+ * The decision reported when no model caller is wired: the reply is the
+ * scripted floor, no model is invoked, no budget is consulted. Honest by
+ * construction — there is nothing to route.
+ */
+const SCRIPTED_FLOOR_DECISION: RouteDecision = {
+  tier: 't0',
+  model: 'scripted-floor',
+  requestedTier: 't0',
+  degraded: false,
+  notice: null,
+};
+
 let chatSeq = 0;
 
 export async function keeperChat(
@@ -54,16 +72,16 @@ export async function keeperChat(
 ): Promise<KeeperChatReply> {
   const text = rawText.trim().slice(0, CHAT_INPUT_MAX);
 
-  const decision = await deps.route({
-    userId: ctx.userId,
-    task: 'chat',
-    origin: 'chat',
-    text,
-    timezone: ctx.timezone,
-  });
-
+  let decision: RouteDecision = SCRIPTED_FLOOR_DECISION;
   let reply: string | null = null;
   if (deps.generate) {
+    decision = await deps.route({
+      userId: ctx.userId,
+      task: 'chat',
+      origin: 'chat',
+      text,
+      timezone: ctx.timezone,
+    });
     reply = await deps.generate(decision.model, text);
   }
   if (reply === null || reply === undefined || reply.trim() === '') {
