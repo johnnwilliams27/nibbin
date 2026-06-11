@@ -20,12 +20,61 @@ describe('keeperChat routes through §6.3 before replying', () => {
     expect(reply.message.card.transcript.length).toBeGreaterThan(0);
   });
 
-  it('a degraded decision leads the reply with the transparent notice', async () => {
-    const router = createRouter({ dailyFrontierBudget: 0 });
+  it('without a model wired, the scripted floor consumes no budget and never claims degradation', async () => {
+    // Gate finding #25: budget consumption and the degradation notice must be
+    // gated on an actual model dispatch. With no `generate`, every reply is the
+    // zero-cost scripted floor — burning a frontier unit or telling the user
+    // "doing this the simple way today" would both be lies.
+    let takes = 0;
+    const store = {
+      take: async () => {
+        takes += 1;
+        return { granted: false, used: 0 };
+      },
+      used: async () => 0,
+    };
+    const router = createRouter({ dailyFrontierBudget: 0, budgetStore: store });
     const reply = await keeperChat(T2_TEXT, ctx, { route: (r) => router.route(r) });
+    expect(takes).toBe(0);
+    expect(reply.decision.degraded).toBe(false);
+    expect(reply.decision.tier).toBe('t0');
+    if (reply.message.card.kind !== 'prose') throw new Error('expected prose');
+    expect(reply.message.card.text.startsWith(DEGRADATION_NOTICE)).toBe(false);
+  });
+
+  it('with a model wired, a degraded decision leads the reply with the transparent notice', async () => {
+    const router = createRouter({ dailyFrontierBudget: 0 });
+    const seen: string[] = [];
+    const reply = await keeperChat(T2_TEXT, ctx, {
+      route: (r) => router.route(r),
+      generate: async (model) => {
+        seen.push(model);
+        return 'A plan, the simple way.';
+      },
+    });
     expect(reply.decision.degraded).toBe(true);
+    expect(seen).toEqual([router.config.models.t1]);
     if (reply.message.card.kind !== 'prose') throw new Error('expected prose');
     expect(reply.message.card.text.startsWith(DEGRADATION_NOTICE)).toBe(true);
+  });
+
+  it('with a model wired, a granted frontier request consumes exactly one budget unit', async () => {
+    const takes: string[] = [];
+    const store = {
+      take: async (userId: string) => {
+        takes.push(userId);
+        return { granted: true, used: 1 };
+      },
+      used: async () => 1,
+    };
+    const router = createRouter({ dailyFrontierBudget: 5, budgetStore: store });
+    const reply = await keeperChat(T2_TEXT, ctx, {
+      route: (r) => router.route(r),
+      generate: async () => 'On it.',
+    });
+    expect(takes).toEqual(['user-1']);
+    expect(reply.decision.tier).toBe('t2');
+    expect(reply.decision.degraded).toBe(false);
   });
 
   it('uses the generate hook when provided, scripted floor when it returns null', async () => {
@@ -57,6 +106,7 @@ describe('keeperChat routes through §6.3 before replying', () => {
         routedText = r.text ?? '';
         return router.route(r);
       },
+      generate: async () => null,
     });
     expect(routedText.length).toBe(CHAT_INPUT_MAX);
   });
