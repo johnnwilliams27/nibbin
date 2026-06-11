@@ -1,6 +1,6 @@
 {
- "generated": "2026-06-10T19:44:58.121Z",
- "root": "Nibbin",
+ "generated": "2026-06-11T04:37:23.037Z",
+ "root": "nib-m3-connectors",
  "nodes": [
   {
    "id": ".claude/agents/claims-auditor.md",
@@ -73,14 +73,19 @@
    "deg": 1
   },
   {
+   "id": "AGENTS.md",
+   "group": "root",
+   "deg": 11
+  },
+  {
    "id": "CLAUDE.md",
    "group": "root",
-   "deg": 13
+   "deg": 14
   },
   {
    "id": "LEARNINGS.md",
    "group": "root",
-   "deg": 4
+   "deg": 5
   },
   {
    "id": "README.md",
@@ -90,12 +95,192 @@
   {
    "id": "SPEC.md",
    "group": "root",
-   "deg": 16
+   "deg": 17
+  },
+  {
+   "id": "apps/admin/app/accounts/[id]/actions.ts",
+   "group": "apps",
+   "deg": 4
+  },
+  {
+   "id": "apps/admin/app/accounts/[id]/page.tsx",
+   "group": "apps",
+   "deg": 4
+  },
+  {
+   "id": "apps/admin/app/accounts/page.tsx",
+   "group": "apps",
+   "deg": 4
+  },
+  {
+   "id": "apps/admin/app/admin.module.css",
+   "group": "apps",
+   "deg": 2
+  },
+  {
+   "id": "apps/admin/app/auth/callback/route.ts",
+   "group": "apps",
+   "deg": 3
+  },
+  {
+   "id": "apps/admin/app/auth/signout/route.ts",
+   "group": "apps",
+   "deg": 2
+  },
+  {
+   "id": "apps/admin/app/globals.css",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/admin/app/layout.tsx",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/admin/app/login/actions.ts",
+   "group": "apps",
+   "deg": 3
+  },
+  {
+   "id": "apps/admin/app/login/login.module.css",
+   "group": "apps",
+   "deg": 1
+  },
+  {
+   "id": "apps/admin/app/login/page.tsx",
+   "group": "apps",
+   "deg": 2
+  },
+  {
+   "id": "apps/admin/app/page.tsx",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/admin/lib/site-url.ts",
+   "group": "apps",
+   "deg": 3
+  },
+  {
+   "id": "apps/admin/lib/staff/adjust.test.ts",
+   "group": "apps",
+   "deg": 1
+  },
+  {
+   "id": "apps/admin/lib/staff/adjust.ts",
+   "group": "apps",
+   "deg": 2
+  },
+  {
+   "id": "apps/admin/lib/staff/rbac.test.ts",
+   "group": "apps",
+   "deg": 1
+  },
+  {
+   "id": "apps/admin/lib/staff/rbac.ts",
+   "group": "apps",
+   "deg": 2
+  },
+  {
+   "id": "apps/admin/lib/staff/search.ts",
+   "group": "apps",
+   "deg": 1
+  },
+  {
+   "id": "apps/admin/lib/staff/session.ts",
+   "group": "apps",
+   "deg": 6
+  },
+  {
+   "id": "apps/admin/lib/supabase/admin.ts",
+   "group": "apps",
+   "deg": 6
+  },
+  {
+   "id": "apps/admin/lib/supabase/env.ts",
+   "group": "apps",
+   "deg": 3
+  },
+  {
+   "id": "apps/admin/lib/supabase/middleware.ts",
+   "group": "apps",
+   "deg": 2
+  },
+  {
+   "id": "apps/admin/lib/supabase/server.ts",
+   "group": "apps",
+   "deg": 5
+  },
+  {
+   "id": "apps/admin/middleware.ts",
+   "group": "apps",
+   "deg": 1
+  },
+  {
+   "id": "apps/admin/next-env.d.ts",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/admin/next.config.mjs",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/admin/package.json",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/admin/tsconfig.json",
+   "group": "apps",
+   "deg": 0
   },
   {
    "id": "apps/desktop/README.md",
    "group": "apps",
    "deg": 1
+  },
+  {
+   "id": "apps/web/app/api/stripe/webhook/route.ts",
+   "group": "apps",
+   "deg": 4
+  },
+  {
+   "id": "apps/web/app/app/app.module.css",
+   "group": "apps",
+   "deg": 1
+  },
+  {
+   "id": "apps/web/app/app/page.tsx",
+   "group": "apps",
+   "deg": 3
+  },
+  {
+   "id": "apps/web/app/auth/callback/route.ts",
+   "group": "apps",
+   "deg": 3
+  },
+  {
+   "id": "apps/web/app/auth/signout/route.ts",
+   "group": "apps",
+   "deg": 2
+  },
+  {
+   "id": "apps/web/app/billing/actions.ts",
+   "group": "apps",
+   "deg": 6
+  },
+  {
+   "id": "apps/web/app/billing/billing.module.css",
+   "group": "apps",
+   "deg": 1
+  },
+  {
+   "id": "apps/web/app/billing/page.tsx",
+   "group": "apps",
+   "deg": 5
   },
   {
    "id": "apps/web/app/fonts.ts",
@@ -118,9 +303,104 @@
    "deg": 1
   },
   {
+   "id": "apps/web/app/login/actions.ts",
+   "group": "apps",
+   "deg": 3
+  },
+  {
+   "id": "apps/web/app/login/login.module.css",
+   "group": "apps",
+   "deg": 1
+  },
+  {
+   "id": "apps/web/app/login/page.tsx",
+   "group": "apps",
+   "deg": 2
+  },
+  {
    "id": "apps/web/app/page.tsx",
    "group": "apps",
    "deg": 0
+  },
+  {
+   "id": "apps/web/lib/auth/account-name.test.ts",
+   "group": "apps",
+   "deg": 1
+  },
+  {
+   "id": "apps/web/lib/auth/account-name.ts",
+   "group": "apps",
+   "deg": 2
+  },
+  {
+   "id": "apps/web/lib/auth/bootstrap.test.ts",
+   "group": "apps",
+   "deg": 1
+  },
+  {
+   "id": "apps/web/lib/auth/bootstrap.ts",
+   "group": "apps",
+   "deg": 7
+  },
+  {
+   "id": "apps/web/lib/billing/catalog.test.ts",
+   "group": "apps",
+   "deg": 1
+  },
+  {
+   "id": "apps/web/lib/billing/catalog.ts",
+   "group": "apps",
+   "deg": 4
+  },
+  {
+   "id": "apps/web/lib/billing/grant.test.ts",
+   "group": "apps",
+   "deg": 1
+  },
+  {
+   "id": "apps/web/lib/billing/grant.ts",
+   "group": "apps",
+   "deg": 4
+  },
+  {
+   "id": "apps/web/lib/site-url.ts",
+   "group": "apps",
+   "deg": 4
+  },
+  {
+   "id": "apps/web/lib/stripe/client.ts",
+   "group": "apps",
+   "deg": 2
+  },
+  {
+   "id": "apps/web/lib/supabase/client.ts",
+   "group": "apps",
+   "deg": 1
+  },
+  {
+   "id": "apps/web/lib/supabase/env.ts",
+   "group": "apps",
+   "deg": 3
+  },
+  {
+   "id": "apps/web/lib/supabase/middleware.ts",
+   "group": "apps",
+   "deg": 2
+  },
+  {
+   "id": "apps/web/lib/supabase/server.ts",
+   "group": "apps",
+   "deg": 7
+  },
+  {
+   "id": "apps/web/lib/supabase/service.ts",
+   "group": "apps",
+   "deg": 1
+  },
+  {
+   "id": "apps/web/middleware.ts",
+   "group": "apps",
+   "deg": 1
   },
   {
    "id": "apps/web/next-env.d.ts",
@@ -145,32 +425,57 @@
   {
    "id": "docs/AGREEMENTS.md",
    "group": "docs",
-   "deg": 2
+   "deg": 3
   },
   {
    "id": "docs/ENVIRONMENT.md",
    "group": "docs",
-   "deg": 2
+   "deg": 3
   },
   {
    "id": "docs/GOTCHAS.md",
    "group": "docs",
-   "deg": 2
+   "deg": 3
+  },
+  {
+   "id": "docs/GTM.md",
+   "group": "docs",
+   "deg": 1
   },
   {
    "id": "docs/INVARIANTS.md",
    "group": "docs",
-   "deg": 3
+   "deg": 7
   },
   {
    "id": "docs/RISKS.md",
    "group": "docs",
-   "deg": 2
+   "deg": 3
   },
   {
    "id": "docs/STATE.md",
    "group": "docs",
-   "deg": 3
+   "deg": 4
+  },
+  {
+   "id": "docs/submissions/README.md",
+   "group": "docs",
+   "deg": 4
+  },
+  {
+   "id": "docs/submissions/google-oauth-verification.md",
+   "group": "docs",
+   "deg": 4
+  },
+  {
+   "id": "docs/submissions/meta-app-review.md",
+   "group": "docs",
+   "deg": 2
+  },
+  {
+   "id": "docs/superpowers/specs/2026-06-10-auth-magic-link-design.md",
+   "group": "docs",
+   "deg": 1
   },
   {
    "id": "eslint.config.mjs",
@@ -180,7 +485,7 @@
   {
    "id": "infra/README.md",
    "group": "infra",
-   "deg": 1
+   "deg": 0
   },
   {
    "id": "package-lock.json",
@@ -198,9 +503,194 @@
    "deg": 0
   },
   {
+   "id": "packages/connectors/src/aggregator.ts",
+   "group": "packages",
+   "deg": 7
+  },
+  {
+   "id": "packages/connectors/src/connectors/base.ts",
+   "group": "packages",
+   "deg": 14
+  },
+  {
+   "id": "packages/connectors/src/connectors/gmail.ts",
+   "group": "packages",
+   "deg": 7
+  },
+  {
+   "id": "packages/connectors/src/connectors/google-calendar.ts",
+   "group": "packages",
+   "deg": 5
+  },
+  {
+   "id": "packages/connectors/src/connectors/honeybook.ts",
+   "group": "packages",
+   "deg": 6
+  },
+  {
+   "id": "packages/connectors/src/connectors/instagram.ts",
+   "group": "packages",
+   "deg": 7
+  },
+  {
+   "id": "packages/connectors/src/connectors/pixieset.ts",
+   "group": "packages",
+   "deg": 5
+  },
+  {
+   "id": "packages/connectors/src/connectors/stripe.ts",
+   "group": "packages",
+   "deg": 5
+  },
+  {
+   "id": "packages/connectors/src/egress/ip.ts",
+   "group": "packages",
+   "deg": 4
+  },
+  {
+   "id": "packages/connectors/src/egress/safe-fetch.ts",
+   "group": "packages",
+   "deg": 23
+  },
+  {
    "id": "packages/connectors/src/index.ts",
    "group": "packages",
-   "deg": 0
+   "deg": 28
+  },
+  {
+   "id": "packages/connectors/src/oauth/flow.ts",
+   "group": "packages",
+   "deg": 8
+  },
+  {
+   "id": "packages/connectors/src/oauth/pkce.ts",
+   "group": "packages",
+   "deg": 3
+  },
+  {
+   "id": "packages/connectors/src/oauth/providers.ts",
+   "group": "packages",
+   "deg": 3
+  },
+  {
+   "id": "packages/connectors/src/quarantine.ts",
+   "group": "packages",
+   "deg": 11
+  },
+  {
+   "id": "packages/connectors/src/rails/caldav.ts",
+   "group": "packages",
+   "deg": 3
+  },
+  {
+   "id": "packages/connectors/src/rails/csv.ts",
+   "group": "packages",
+   "deg": 3
+  },
+  {
+   "id": "packages/connectors/src/rails/imap.ts",
+   "group": "packages",
+   "deg": 4
+  },
+  {
+   "id": "packages/connectors/src/rails/mcp.ts",
+   "group": "packages",
+   "deg": 4
+  },
+  {
+   "id": "packages/connectors/src/rails/outbound-webhook.ts",
+   "group": "packages",
+   "deg": 5
+  },
+  {
+   "id": "packages/connectors/src/rails/safe-socket.ts",
+   "group": "packages",
+   "deg": 6
+  },
+  {
+   "id": "packages/connectors/src/rails/smtp.ts",
+   "group": "packages",
+   "deg": 5
+  },
+  {
+   "id": "packages/connectors/src/registry/registry.ts",
+   "group": "packages",
+   "deg": 10
+  },
+  {
+   "id": "packages/connectors/src/registry/types.ts",
+   "group": "packages",
+   "deg": 6
+  },
+  {
+   "id": "packages/connectors/src/send-velocity.ts",
+   "group": "packages",
+   "deg": 10
+  },
+  {
+   "id": "packages/connectors/src/types.ts",
+   "group": "packages",
+   "deg": 11
+  },
+  {
+   "id": "packages/connectors/src/vault.ts",
+   "group": "packages",
+   "deg": 13
+  },
+  {
+   "id": "packages/connectors/src/webhooks/idempotency.ts",
+   "group": "packages",
+   "deg": 3
+  },
+  {
+   "id": "packages/connectors/src/webhooks/verify.ts",
+   "group": "packages",
+   "deg": 4
+  },
+  {
+   "id": "packages/connectors/test/clients.test.ts",
+   "group": "packages",
+   "deg": 9
+  },
+  {
+   "id": "packages/connectors/test/db.integration.test.ts",
+   "group": "packages",
+   "deg": 1
+  },
+  {
+   "id": "packages/connectors/test/dev-supabase.integration.test.ts",
+   "group": "packages",
+   "deg": 2
+  },
+  {
+   "id": "packages/connectors/test/egress.test.ts",
+   "group": "packages",
+   "deg": 2
+  },
+  {
+   "id": "packages/connectors/test/oauth.test.ts",
+   "group": "packages",
+   "deg": 3
+  },
+  {
+   "id": "packages/connectors/test/quarantine-velocity.test.ts",
+   "group": "packages",
+   "deg": 3
+  },
+  {
+   "id": "packages/connectors/test/rails.test.ts",
+   "group": "packages",
+   "deg": 10
+  },
+  {
+   "id": "packages/connectors/test/registry.test.ts",
+   "group": "packages",
+   "deg": 4
+  },
+  {
+   "id": "packages/connectors/test/webhooks.test.ts",
+   "group": "packages",
+   "deg": 2
   },
   {
    "id": "packages/connectors/tsconfig.json",
@@ -273,9 +763,19 @@
    "deg": 0
   },
   {
+   "id": "packages/shared/src/credits.ts",
+   "group": "packages",
+   "deg": 2
+  },
+  {
    "id": "packages/shared/src/index.ts",
    "group": "packages",
-   "deg": 0
+   "deg": 1
+  },
+  {
+   "id": "packages/shared/test/credits.test.ts",
+   "group": "packages",
+   "deg": 1
   },
   {
    "id": "packages/shared/tokens.css",
@@ -295,27 +795,27 @@
   {
    "id": "reference/nibbin-creature-lab.html",
    "group": "reference",
-   "deg": 4
+   "deg": 5
   },
   {
    "id": "reference/nibbin-demo.html",
    "group": "reference",
-   "deg": 10
+   "deg": 11
   },
   {
    "id": "reference/nibbin-style-guide.html",
    "group": "reference",
-   "deg": 3
+   "deg": 4
   },
   {
    "id": "reference/privacy.html",
    "group": "reference",
-   "deg": 7
+   "deg": 8
   },
   {
    "id": "reference/terms.html",
    "group": "reference",
-   "deg": 7
+   "deg": 8
   },
   {
    "id": "review/briefs/README.md",
@@ -358,6 +858,31 @@
    "deg": 0
   },
   {
+   "id": "tests/rls/billing-ledger.test.ts",
+   "group": "tests",
+   "deg": 1
+  },
+  {
+   "id": "tests/rls/harness.ts",
+   "group": "tests",
+   "deg": 4
+  },
+  {
+   "id": "tests/rls/rls.test.ts",
+   "group": "tests",
+   "deg": 1
+  },
+  {
+   "id": "tests/rls/staff-ops.test.ts",
+   "group": "tests",
+   "deg": 1
+  },
+  {
+   "id": "tests/rls/tsconfig.json",
+   "group": "tests",
+   "deg": 0
+  },
+  {
    "id": "tools/grovemap/README.md",
    "group": "tools",
    "deg": 1
@@ -383,11 +908,6 @@
    "deg": 0
   },
   {
-   "id": "vercel.json",
-   "group": "root",
-   "deg": 2
-  },
-  {
    "id": "vitest.config.ts",
    "group": "root",
    "deg": 0
@@ -410,13 +930,393 @@
    "kind": "mention"
   },
   {
+   "source": "AGENTS.md",
+   "target": "docs/STATE.md",
+   "kind": "mention"
+  },
+  {
+   "source": "AGENTS.md",
+   "target": "SPEC.md",
+   "kind": "mention"
+  },
+  {
+   "source": "AGENTS.md",
+   "target": "docs/INVARIANTS.md",
+   "kind": "mention"
+  },
+  {
+   "source": "AGENTS.md",
+   "target": "docs/AGREEMENTS.md",
+   "kind": "mention"
+  },
+  {
+   "source": "AGENTS.md",
+   "target": "docs/ENVIRONMENT.md",
+   "kind": "mention"
+  },
+  {
+   "source": "AGENTS.md",
+   "target": "docs/RISKS.md",
+   "kind": "mention"
+  },
+  {
+   "source": "AGENTS.md",
+   "target": "docs/GOTCHAS.md",
+   "kind": "mention"
+  },
+  {
+   "source": "AGENTS.md",
+   "target": "LEARNINGS.md",
+   "kind": "mention"
+  },
+  {
+   "source": "AGENTS.md",
+   "target": "reference/nibbin-style-guide.html",
+   "kind": "mention"
+  },
+  {
+   "source": "AGENTS.md",
+   "target": "reference/nibbin-demo.html",
+   "kind": "mention"
+  },
+  {
+   "source": "AGENTS.md",
+   "target": "reference/nibbin-creature-lab.html",
+   "kind": "mention"
+  },
+  {
+   "source": "apps/admin/app/accounts/page.tsx",
+   "target": "apps/admin/lib/staff/session.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/admin/app/accounts/page.tsx",
+   "target": "apps/admin/lib/supabase/admin.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/admin/app/accounts/page.tsx",
+   "target": "apps/admin/lib/staff/search.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/admin/app/accounts/page.tsx",
+   "target": "apps/admin/app/admin.module.css",
+   "kind": "import"
+  },
+  {
+   "source": "apps/admin/app/accounts/[id]/actions.ts",
+   "target": "apps/admin/lib/staff/session.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/admin/app/accounts/[id]/actions.ts",
+   "target": "apps/admin/lib/supabase/admin.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/admin/app/accounts/[id]/actions.ts",
+   "target": "apps/admin/lib/staff/adjust.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/admin/app/accounts/[id]/page.tsx",
+   "target": "apps/admin/lib/staff/session.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/admin/app/accounts/[id]/page.tsx",
+   "target": "apps/admin/lib/supabase/admin.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/admin/app/accounts/[id]/page.tsx",
+   "target": "apps/admin/app/accounts/[id]/actions.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/admin/app/accounts/[id]/page.tsx",
+   "target": "apps/admin/app/admin.module.css",
+   "kind": "import"
+  },
+  {
+   "source": "apps/admin/app/auth/callback/route.ts",
+   "target": "apps/admin/lib/supabase/server.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/admin/app/auth/callback/route.ts",
+   "target": "apps/admin/lib/supabase/admin.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/admin/app/auth/callback/route.ts",
+   "target": "apps/admin/lib/site-url.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/admin/app/auth/signout/route.ts",
+   "target": "apps/admin/lib/supabase/server.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/admin/app/auth/signout/route.ts",
+   "target": "apps/admin/lib/site-url.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/admin/app/login/actions.ts",
+   "target": "apps/admin/lib/supabase/server.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/admin/app/login/actions.ts",
+   "target": "apps/admin/lib/site-url.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/admin/app/login/page.tsx",
+   "target": "apps/admin/app/login/actions.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/admin/app/login/page.tsx",
+   "target": "apps/admin/app/login/login.module.css",
+   "kind": "import"
+  },
+  {
+   "source": "apps/admin/lib/staff/adjust.test.ts",
+   "target": "apps/admin/lib/staff/adjust.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/admin/lib/staff/rbac.test.ts",
+   "target": "apps/admin/lib/staff/rbac.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/admin/lib/staff/session.ts",
+   "target": "apps/admin/lib/supabase/server.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/admin/lib/staff/session.ts",
+   "target": "apps/admin/lib/supabase/admin.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/admin/lib/staff/session.ts",
+   "target": "apps/admin/lib/staff/rbac.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/admin/lib/supabase/admin.ts",
+   "target": "apps/admin/lib/supabase/env.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/admin/lib/supabase/middleware.ts",
+   "target": "apps/admin/lib/supabase/env.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/admin/lib/supabase/server.ts",
+   "target": "apps/admin/lib/supabase/env.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/admin/middleware.ts",
+   "target": "apps/admin/lib/supabase/middleware.ts",
+   "kind": "import"
+  },
+  {
    "source": "apps/desktop/README.md",
    "target": "docs/INVARIANTS.md",
    "kind": "mention"
   },
   {
+   "source": "apps/web/app/api/stripe/webhook/route.ts",
+   "target": "apps/web/lib/stripe/client.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/api/stripe/webhook/route.ts",
+   "target": "apps/web/lib/supabase/service.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/api/stripe/webhook/route.ts",
+   "target": "apps/web/lib/billing/catalog.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/api/stripe/webhook/route.ts",
+   "target": "apps/web/lib/billing/grant.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/app/page.tsx",
+   "target": "apps/web/lib/supabase/server.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/app/page.tsx",
+   "target": "apps/web/lib/auth/bootstrap.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/app/page.tsx",
+   "target": "apps/web/app/app/app.module.css",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/auth/callback/route.ts",
+   "target": "apps/web/lib/supabase/server.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/auth/callback/route.ts",
+   "target": "apps/web/lib/auth/bootstrap.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/auth/callback/route.ts",
+   "target": "apps/web/lib/site-url.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/auth/signout/route.ts",
+   "target": "apps/web/lib/supabase/server.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/auth/signout/route.ts",
+   "target": "apps/web/lib/site-url.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/billing/actions.ts",
+   "target": "apps/web/lib/supabase/server.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/billing/actions.ts",
+   "target": "apps/web/lib/auth/bootstrap.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/billing/actions.ts",
+   "target": "apps/web/lib/site-url.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/billing/actions.ts",
+   "target": "apps/web/lib/stripe/client.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/billing/actions.ts",
+   "target": "apps/web/lib/billing/catalog.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/billing/page.tsx",
+   "target": "apps/web/lib/supabase/server.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/billing/page.tsx",
+   "target": "apps/web/lib/auth/bootstrap.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/billing/page.tsx",
+   "target": "apps/web/lib/billing/grant.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/billing/page.tsx",
+   "target": "apps/web/app/billing/actions.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/billing/page.tsx",
+   "target": "apps/web/app/billing/billing.module.css",
+   "kind": "import"
+  },
+  {
    "source": "apps/web/app/layout.tsx",
    "target": "apps/web/app/fonts.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/login/actions.ts",
+   "target": "apps/web/lib/supabase/server.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/login/actions.ts",
+   "target": "apps/web/lib/site-url.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/login/page.tsx",
+   "target": "apps/web/app/login/actions.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/login/page.tsx",
+   "target": "apps/web/app/login/login.module.css",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/lib/auth/account-name.test.ts",
+   "target": "apps/web/lib/auth/account-name.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/lib/auth/bootstrap.test.ts",
+   "target": "apps/web/lib/auth/bootstrap.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/lib/auth/bootstrap.ts",
+   "target": "apps/web/lib/auth/account-name.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/lib/billing/catalog.test.ts",
+   "target": "apps/web/lib/billing/catalog.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/lib/billing/grant.test.ts",
+   "target": "apps/web/lib/billing/grant.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/lib/billing/grant.ts",
+   "target": "apps/web/lib/billing/catalog.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/lib/supabase/client.ts",
+   "target": "apps/web/lib/supabase/env.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/lib/supabase/middleware.ts",
+   "target": "apps/web/lib/supabase/env.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/lib/supabase/server.ts",
+   "target": "apps/web/lib/supabase/env.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/middleware.ts",
+   "target": "apps/web/lib/supabase/middleware.ts",
    "kind": "import"
   },
   {
@@ -466,6 +1366,11 @@
   },
   {
    "source": "CLAUDE.md",
+   "target": "docs/GTM.md",
+   "kind": "mention"
+  },
+  {
+   "source": "CLAUDE.md",
    "target": "reference/nibbin-demo.html",
    "kind": "mention"
   },
@@ -475,19 +1380,704 @@
    "kind": "mention"
   },
   {
-   "source": "docs/STATE.md",
-   "target": "vercel.json",
+   "source": "docs/submissions/google-oauth-verification.md",
+   "target": "docs/INVARIANTS.md",
    "kind": "mention"
   },
   {
-   "source": "infra/README.md",
-   "target": "vercel.json",
+   "source": "docs/submissions/google-oauth-verification.md",
+   "target": "reference/privacy.html",
+   "kind": "mention"
+  },
+  {
+   "source": "docs/submissions/google-oauth-verification.md",
+   "target": "reference/terms.html",
+   "kind": "mention"
+  },
+  {
+   "source": "docs/submissions/meta-app-review.md",
+   "target": "docs/INVARIANTS.md",
+   "kind": "mention"
+  },
+  {
+   "source": "docs/submissions/README.md",
+   "target": "docs/submissions/google-oauth-verification.md",
+   "kind": "link"
+  },
+  {
+   "source": "docs/submissions/README.md",
+   "target": "docs/submissions/meta-app-review.md",
+   "kind": "link"
+  },
+  {
+   "source": "docs/submissions/README.md",
+   "target": "docs/INVARIANTS.md",
+   "kind": "mention"
+  },
+  {
+   "source": "docs/submissions/README.md",
+   "target": "docs/STATE.md",
+   "kind": "mention"
+  },
+  {
+   "source": "docs/superpowers/specs/2026-06-10-auth-magic-link-design.md",
+   "target": "apps/web/lib/auth/bootstrap.ts",
    "kind": "mention"
   },
   {
    "source": "LEARNINGS.md",
    "target": ".github/workflows/ci.yml",
    "kind": "mention"
+  },
+  {
+   "source": "packages/connectors/src/aggregator.ts",
+   "target": "packages/connectors/src/registry/registry.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/aggregator.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/aggregator.ts",
+   "target": "packages/connectors/src/quarantine.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/aggregator.ts",
+   "target": "packages/connectors/src/vault.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/aggregator.ts",
+   "target": "packages/connectors/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/base.ts",
+   "target": "packages/connectors/src/registry/registry.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/base.ts",
+   "target": "packages/connectors/src/registry/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/base.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/base.ts",
+   "target": "packages/connectors/src/quarantine.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/base.ts",
+   "target": "packages/connectors/src/vault.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/base.ts",
+   "target": "packages/connectors/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/gmail.ts",
+   "target": "packages/connectors/src/connectors/base.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/gmail.ts",
+   "target": "packages/connectors/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/gmail.ts",
+   "target": "packages/connectors/src/vault.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/gmail.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/gmail.ts",
+   "target": "packages/connectors/src/send-velocity.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/google-calendar.ts",
+   "target": "packages/connectors/src/connectors/base.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/google-calendar.ts",
+   "target": "packages/connectors/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/google-calendar.ts",
+   "target": "packages/connectors/src/vault.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/google-calendar.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/honeybook.ts",
+   "target": "packages/connectors/src/connectors/base.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/honeybook.ts",
+   "target": "packages/connectors/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/honeybook.ts",
+   "target": "packages/connectors/src/vault.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/honeybook.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/honeybook.ts",
+   "target": "packages/connectors/src/send-velocity.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/instagram.ts",
+   "target": "packages/connectors/src/connectors/base.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/instagram.ts",
+   "target": "packages/connectors/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/instagram.ts",
+   "target": "packages/connectors/src/vault.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/instagram.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/instagram.ts",
+   "target": "packages/connectors/src/send-velocity.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/pixieset.ts",
+   "target": "packages/connectors/src/connectors/base.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/pixieset.ts",
+   "target": "packages/connectors/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/pixieset.ts",
+   "target": "packages/connectors/src/vault.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/pixieset.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/stripe.ts",
+   "target": "packages/connectors/src/connectors/base.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/stripe.ts",
+   "target": "packages/connectors/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/stripe.ts",
+   "target": "packages/connectors/src/vault.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/stripe.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/egress/safe-fetch.ts",
+   "target": "packages/connectors/src/egress/ip.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/registry/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/registry/registry.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/oauth/pkce.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/oauth/providers.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/oauth/flow.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/vault.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/webhooks/verify.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/webhooks/idempotency.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/egress/ip.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/quarantine.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/send-velocity.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/connectors/base.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/connectors/gmail.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/connectors/google-calendar.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/connectors/stripe.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/connectors/honeybook.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/connectors/pixieset.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/connectors/instagram.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/aggregator.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/rails/safe-socket.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/rails/mcp.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/rails/imap.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/rails/smtp.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/rails/caldav.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/rails/csv.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/rails/outbound-webhook.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/oauth/flow.ts",
+   "target": "packages/connectors/src/registry/registry.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/oauth/flow.ts",
+   "target": "packages/connectors/src/registry/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/oauth/flow.ts",
+   "target": "packages/connectors/src/oauth/providers.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/oauth/flow.ts",
+   "target": "packages/connectors/src/oauth/pkce.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/oauth/flow.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/oauth/flow.ts",
+   "target": "packages/connectors/src/vault.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/rails/caldav.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/rails/caldav.ts",
+   "target": "packages/connectors/src/quarantine.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/rails/csv.ts",
+   "target": "packages/connectors/src/quarantine.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/rails/imap.ts",
+   "target": "packages/connectors/src/quarantine.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/rails/imap.ts",
+   "target": "packages/connectors/src/rails/safe-socket.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/rails/mcp.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/rails/mcp.ts",
+   "target": "packages/connectors/src/quarantine.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/rails/outbound-webhook.ts",
+   "target": "packages/connectors/src/registry/registry.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/rails/outbound-webhook.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/rails/outbound-webhook.ts",
+   "target": "packages/connectors/src/send-velocity.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/rails/safe-socket.ts",
+   "target": "packages/connectors/src/egress/ip.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/rails/safe-socket.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/rails/smtp.ts",
+   "target": "packages/connectors/src/registry/registry.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/rails/smtp.ts",
+   "target": "packages/connectors/src/send-velocity.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/rails/smtp.ts",
+   "target": "packages/connectors/src/rails/safe-socket.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/registry/registry.ts",
+   "target": "packages/connectors/src/registry/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/send-velocity.ts",
+   "target": "packages/connectors/src/registry/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/types.ts",
+   "target": "packages/connectors/src/quarantine.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/vault.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/webhooks/idempotency.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/webhooks/verify.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/clients.test.ts",
+   "target": "packages/connectors/src/connectors/base.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/clients.test.ts",
+   "target": "packages/connectors/src/connectors/gmail.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/clients.test.ts",
+   "target": "packages/connectors/src/connectors/instagram.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/clients.test.ts",
+   "target": "packages/connectors/src/vault.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/clients.test.ts",
+   "target": "packages/connectors/src/aggregator.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/clients.test.ts",
+   "target": "packages/connectors/src/send-velocity.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/clients.test.ts",
+   "target": "packages/connectors/src/quarantine.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/clients.test.ts",
+   "target": "packages/connectors/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/clients.test.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/db.integration.test.ts",
+   "target": "tests/rls/harness.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/dev-supabase.integration.test.ts",
+   "target": "packages/connectors/src/vault.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/dev-supabase.integration.test.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/egress.test.ts",
+   "target": "packages/connectors/src/egress/ip.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/egress.test.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/oauth.test.ts",
+   "target": "packages/connectors/src/oauth/pkce.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/oauth.test.ts",
+   "target": "packages/connectors/src/oauth/flow.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/oauth.test.ts",
+   "target": "packages/connectors/src/registry/registry.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/quarantine-velocity.test.ts",
+   "target": "packages/connectors/src/quarantine.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/quarantine-velocity.test.ts",
+   "target": "packages/connectors/src/send-velocity.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/quarantine-velocity.test.ts",
+   "target": "packages/connectors/src/registry/registry.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/rails.test.ts",
+   "target": "packages/connectors/src/rails/csv.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/rails.test.ts",
+   "target": "packages/connectors/src/rails/mcp.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/rails.test.ts",
+   "target": "packages/connectors/src/rails/imap.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/rails.test.ts",
+   "target": "packages/connectors/src/rails/smtp.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/rails.test.ts",
+   "target": "packages/connectors/src/rails/outbound-webhook.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/rails.test.ts",
+   "target": "packages/connectors/src/webhooks/verify.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/rails.test.ts",
+   "target": "packages/connectors/src/quarantine.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/rails.test.ts",
+   "target": "packages/connectors/src/send-velocity.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/rails.test.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/rails.test.ts",
+   "target": "packages/connectors/src/rails/safe-socket.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/registry.test.ts",
+   "target": "packages/connectors/src/registry/registry.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/registry.test.ts",
+   "target": "packages/connectors/src/registry/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/registry.test.ts",
+   "target": "packages/connectors/src/oauth/providers.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/registry.test.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/webhooks.test.ts",
+   "target": "packages/connectors/src/webhooks/verify.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/webhooks.test.ts",
+   "target": "packages/connectors/src/webhooks/idempotency.ts",
+   "kind": "import"
   },
   {
    "source": "packages/creatures/src/build.ts",
@@ -582,6 +2172,16 @@
   {
    "source": "packages/creatures/test/engine.test.ts",
    "target": "packages/creatures/src/index.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/shared/src/index.ts",
+   "target": "packages/shared/src/credits.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/shared/test/credits.test.ts",
+   "target": "packages/shared/src/credits.ts",
    "kind": "import"
   },
   {
@@ -743,6 +2343,21 @@
    "source": "SPEC.md",
    "target": "reference/terms.html",
    "kind": "mention"
+  },
+  {
+   "source": "tests/rls/billing-ledger.test.ts",
+   "target": "tests/rls/harness.ts",
+   "kind": "import"
+  },
+  {
+   "source": "tests/rls/rls.test.ts",
+   "target": "tests/rls/harness.ts",
+   "kind": "import"
+  },
+  {
+   "source": "tests/rls/staff-ops.test.ts",
+   "target": "tests/rls/harness.ts",
+   "kind": "import"
   },
   {
    "source": "tools/grovemap/README.md",
