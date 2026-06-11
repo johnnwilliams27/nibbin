@@ -19,13 +19,29 @@ function assertId(v: string, what: string): void {
   if (typeof v !== 'string' || v.trim() === '') throw new Error(`${what} must be a non-blank string`);
 }
 
-/** Monthly subscription grant for a paid tier, keyed to the Stripe invoice. */
-export function buildGrant(accountId: string, tier: PurchasableTier, invoiceId: string): LedgerInsert {
+/** Monthly subscription grant for a paid tier, keyed to the billing PERIOD. */
+export function buildGrant(accountId: string, tier: PurchasableTier, sourceId: string): LedgerInsert {
   assertId(accountId, 'account_id');
-  assertId(invoiceId, 'invoice id');
-  // grantEntry validates sign-by-reason + the period key; reuse it as the source of truth.
-  const entry = grantEntry(tier, invoiceId);
-  return { account_id: accountId, delta: entry.delta, reason: 'grant', source_id: invoiceId };
+  assertId(sourceId, 'grant source id');
+  // grantEntry validates sign-by-reason + the source key; reuse it as the source of truth.
+  const entry = grantEntry(tier, sourceId);
+  return { account_id: accountId, delta: entry.delta, reason: 'grant', source_id: sourceId };
+}
+
+/**
+ * Idempotency key for a subscription grant: the billing PERIOD, not the invoice.
+ * Any second invoice in the same period (mid-period upgrade proration, etc.)
+ * reuses this key and is deduped by the unique (account_id, source_id) grant
+ * index — so an upgrade can't double-grant a month (gate logic-skeptic P1).
+ */
+export function subscriptionGrantKey(subscriptionId: string, periodStart: number): string {
+  if (!subscriptionId || !Number.isFinite(periodStart)) throw new Error('invalid grant key inputs');
+  return `sub_${subscriptionId}_p${periodStart}`;
+}
+
+/** Grant only when the invoice actually moved money — never on a $0/trial invoice (P1). */
+export function shouldGrantForInvoice(amountPaid: number): boolean {
+  return Number.isFinite(amountPaid) && amountPaid > 0;
 }
 
 /** One-time top-up grant (Canopy only), keyed to the Stripe payment. */

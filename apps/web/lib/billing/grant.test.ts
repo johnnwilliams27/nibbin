@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { buildGrant, buildTopup, type LedgerInsert } from './grant';
+import {
+  buildGrant,
+  buildTopup,
+  subscriptionGrantKey,
+  shouldGrantForInvoice,
+  type LedgerInsert,
+} from './grant';
 
 describe('webhook → credit-ledger grant builders', () => {
   it('a Grove subscription invoice grants 1,000 credits keyed to the invoice', () => {
@@ -40,6 +46,20 @@ describe('webhook → credit-ledger grant builders', () => {
     expect(() => buildGrant('', 'grove', 'in_1')).toThrow();
     expect(() => buildGrant('acct_1', 'grove', '')).toThrow();
     expect(() => buildTopup('', 1, 'pi')).toThrow();
+  });
+
+  it('the subscription grant key is per-period, so two invoices in one period dedupe (P1 fix)', () => {
+    const key1 = subscriptionGrantKey('sub_1', 1000);
+    const key2 = subscriptionGrantKey('sub_1', 1000); // upgrade proration, SAME period
+    const next = subscriptionGrantKey('sub_1', 2000); // next renewal, new period
+    expect(key1).toBe(key2); // same key ⇒ unique index dedupes the second grant
+    expect(key1).not.toBe(next); // new period ⇒ a fresh grant
+  });
+
+  it('grants only when the invoice actually moved money — never a $0/trial invoice (P1 fix)', () => {
+    expect(shouldGrantForInvoice(0)).toBe(false);
+    expect(shouldGrantForInvoice(1900)).toBe(true);
+    expect(shouldGrantForInvoice(Number.NaN)).toBe(false);
   });
 
   it('produces entries that pass the shared ledger sign-by-reason validation', () => {
