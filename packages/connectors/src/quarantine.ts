@@ -27,9 +27,13 @@ export interface QuarantinedContent {
  */
 export function quarantine(content: string, source: string): QuarantinedContent {
   const tag = randomBytes(12).toString('hex');
-  // neutralize anything that even looks like one of our markers inside the
-  // payload (defense in depth — the random tag already makes forgery fail)
-  const neutralized = content.replaceAll(QUARANTINE_PREFIX, `${QUARANTINE_PREFIX}​`);
+  // Neutralize anything marker-shaped inside the payload (defense in depth —
+  // the random tag already makes forging the closer fail). Break BOTH the
+  // prefix and the bare `<<<` opener so a downstream parser that splits on
+  // `<<<END-` rather than the full tagged marker still can't be fooled.
+  const neutralized = content
+    .replaceAll(QUARANTINE_PREFIX, `${QUARANTINE_PREFIX}​`)
+    .replaceAll('<<<', '<​<​<');
   const open = `<<<${QUARANTINE_PREFIX}:${tag} source="${source.replaceAll('"', "'")}">>>`;
   const close = `<<<END-${QUARANTINE_PREFIX}:${tag}>>>`;
   const wrapped = [

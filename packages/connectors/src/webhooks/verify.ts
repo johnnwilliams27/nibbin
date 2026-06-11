@@ -129,6 +129,11 @@ export interface OidcClaims {
  * Verify the `Authorization: Bearer <jwt>` a Pub/Sub push subscription sends.
  * Checks RS256 signature against Google's JWKS, issuer, audience, expiry,
  * and (when configured) the service-account email.
+ *
+ * Callers SHOULD always pass `expectedEmail` (the push subscription's service
+ * account) so a different Google project cannot post to this endpoint even if
+ * the audience URL leaks. It is optional only because the Gmail watch wiring
+ * lands at M4; treat it as required there.
  */
 export async function verifyGooglePubSubOidc(
   authorizationHeader: string,

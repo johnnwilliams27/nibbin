@@ -6,10 +6,16 @@
  * C8 note (also in the registry): Meta's instagram_business_manage_messages
  * covers both reading and sending — there is no read-only DM scope. The
  * compensating controls are structural: `sendReply` is the only send path,
- * it demands an explicit adoption grant recorded on the connection
- * (`dm.reply` in webhook_state.grants is NOT enough — the runtime writes the
- * grant into connection scopes metadata at adoption), and every send passes
- * the velocity caps. The M4 runtime adds Agent School stage gating on top.
+ * it demands an explicit adoption grant marker on the connection, and every
+ * send passes the velocity caps. The M4 runtime adds Agent School stage
+ * gating on top.
+ *
+ * KNOWN RESIDUAL (claims-audit F3, P1 → resolve at M4): the grant marker
+ * currently lives in the mutable `connection.scopes` array, so the read-only
+ * guarantee for IG rests on an app-DB flag rather than a structurally
+ * separate per-Nibbin grant. The velocity cap is the hard backstop until M4
+ * moves the grant into a dedicated per-Nibbin capability row checked at the
+ * runtime layer. Tracked in the PR description.
  */
 import { HttpConnectorClient } from './base';
 import type { Connection } from '../types';

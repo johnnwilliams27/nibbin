@@ -15,6 +15,19 @@ export interface SendRecordStore {
   recordSend(accountId: string, provider: string, atMs: number): Promise<void>;
 }
 
+/**
+ * ATOMICITY CONTRACT (read before implementing a production store):
+ * `SendVelocityLimiter.checkAndConsume` reads the window then records — two
+ * statements. Under concurrency that is a TOCTOU: two simultaneous sends can
+ * both pass the read and both record, blowing past the cap that RISKS §2
+ * calls the OAuth-app killer. `MemorySendRecordStore` is single-threaded and
+ * safe for tests, but any real (DB-backed) `SendRecordStore` MUST serialize
+ * check-and-record — e.g. an `insert ... where (count in window) < cap`
+ * returning whether the row landed, or a `select ... for update` around both
+ * steps. The M4 runtime is responsible for wiring such a store; do not ship
+ * the read-then-write pair against a concurrent backend.
+ */
+
 export class MemorySendRecordStore implements SendRecordStore {
   private sends = new Map<string, number[]>();
 
