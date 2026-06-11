@@ -13,8 +13,14 @@
     `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`, `SUPABASE_PROJECT_REF`
     (staging/prod also carry `SUPABASE_DB_PASSWORD`). Local dev reads `apps/web/.env.local`
     (gitignored). The new `sb_publishable_*`/`sb_secret_*` API keys are used, not legacy anon/service JWTs.
-  - **TODO (John):** rotate the personal access token shared in chat; set the same Supabase vars
-    as Vercel env (Production/Preview) so deploys can reach Supabase, or hand over a Vercel token.
+  - **TODO (John):** rotate the personal access token shared in chat.
+  - **Supabase keys in Vercel FIXED (2026-06-11):** the stored `SUPABASE_SECRET_KEY` had
+    gone stale (rotated in the dashboard at some point; "Invalid API key" against prod) —
+    service-role paths (Stripe webhook ledger grants, admin staff lookups) were broken
+    while it was stale. Current prod secret set on BOTH Vercel projects (web Production,
+    admin Production+Preview), both redeployed and serving. **Check Stripe webhook
+    delivery logs** for failed events during the stale window and replay if any.
+    john@nibbin.com provisioned as staff `superadmin` (auth user + staff_users row).
 - Vercel: apps/web + apps/admin; preview per PR; staging.nibbin.com; prod nibbin.com + app.nibbin.com; **admin.nibbin.com** (separate app, staff SSO + passkeys, no shared session with product).
   Env vars mirrored from GitHub environments.
   - **apps/admin deployed (2026-06-11):** separate Vercel project `nibbin-admin` (root
