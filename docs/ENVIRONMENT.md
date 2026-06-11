@@ -38,6 +38,14 @@
     **TODO (John):** prod Supabase **publishable + secret keys** still need setting in Vercel —
     needs a fresh Supabase access token (the chat-shared one was rotated). Swap Stripe to live keys
     before real launch.
+- Sentry: error monitoring + tracing wired in apps/web and apps/admin (one Sentry project
+  per app). Env per Vercel project: `NEXT_PUBLIC_SENTRY_DSN` (client) + `SENTRY_DSN`
+  (server/edge); source-map upload additionally needs `SENTRY_ORG`, `SENTRY_PROJECT`,
+  `SENTRY_AUTH_TOKEN` (build-time secret). The SDK and the upload step are no-ops while
+  these are unset, so the code is safe to ship ahead of the account setup. Web replay is
+  error-only with full masking; admin has no replay (staff screens show member data —
+  prod data never leaves prod). **TODO (John):** create the Sentry org + `nibbin-web` /
+  `nibbin-admin` projects, set the vars in Vercel Production/Preview.
 - LLM providers: primary + fallback configured per routing tier (SPEC §6.3); provider
   hard spend caps set; routing config hot-reloadable.
 - Desktop signing: Apple Developer ID + notarization; Windows code-signing cert.
