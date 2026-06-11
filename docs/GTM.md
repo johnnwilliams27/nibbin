@@ -17,6 +17,12 @@ of clients and afraid of surveillance. Both answers are architectural and we say
 *nothing sends without your approval until it has earned it* (Agent School), and *screen
 captures never leave your device* (Observer). Privacy is a growth asset, not fine print.
 **One-liner:** "Little creatures that grow up working for you."
+**Category line:** "AI agents for creative freelancers" — used in SEO titles, meta,
+Product Hunt tagline, directories, and the landing eyebrow. Human-voice copy keeps
+"people who work for themselves" (photographers and tattoo artists self-ID as business
+owners, not freelancers; the warmer phrase covers both). Graduate the category line to
+"AI agents for freelancers" only when case studies span ≥3 verticals — claim earned,
+not asserted.
 **Proof number:** first agent in 10 minutes (TTFAD is a marketing SLO, per SPEC §6.12).
 
 **Wedge:** solo photographers (weddings/portraits/events). Why: acute admin pain (inquiries,
@@ -24,6 +30,29 @@ galleries, invoices, mini-session logistics), dense communities, educator-driven
 portal-heavy tools that APIs don't reach (the Observer's moat), willingness to pay for time.
 Expansion verticals (same playbook, later): designers/creatives, coaches/consultants,
 tradespeople, Etsy sellers.
+
+### 1.6 Competitive map (June 2026)
+| Player | Axis they own | Gap we exploit |
+|---|---|---|
+| Sintra ($97–197/mo) | Personality-roster consumer "AI employees," TikTok GTM | Drafting-only — no autonomy, no trust system, no verticals. Our line: "characters whose trust is real" |
+| HoneyBook | Photographer distribution + assistive AI | Publicly committed to never acting autonomously; 89.5% price-hike resentment. Connect to them, out-position on autonomy |
+| Screenpipe ($400 lifetime, OSS) | Local-first screen capture + basic pipes | Developer audience; no bounded study, diagnosis, trust staging, or vertical packs |
+| Read AI "Ada," OpenAI screen control | Horizontal digital-twin/operator gravity | No vertical loop, no trust ceremony, no freelancer positioning |
+Window revised: 9–12 months. Actions: rename demo "Penny" (Sintra collision); Phase 2
+comparison pages (Sintra/HoneyBook alternatives); anti-Sintra positioning line.
+
+**Vertical-specific competitors (pass 2, June 2026):**
+| Vertical | Players | Read |
+|---|---|---|
+| Tattoo | Studioflo "Athena" ($138–197/mo solo), Inky Studio/Inky AI, AI SmartTalk, Telegate, Anolla | Inbound-DM booking slice crowded; whole-loop + trust model open. Price signal validates premium vertical tiers. A3 stands, annotated |
+| Beauty | GlossGenius (100K+ biz; AI Analyst, auto-texting), Fresha, Mangomint | Incumbent-dense salon suites; freelance/bridal artists underserved. B4 confirmed |
+| Audio | EngineEars (VC-backed vertical OS: marketplace, escrow, CRM, ads) | Don't fight — future [H] connector; agents ride their rails + off-platform work. B2 confirmed |
+| Freelancer suites | Bonsai (NO AI as of 4/2026), Moxie (drafting AI), Dubsado, 17hats, Bloom | "AI agents for freelancers" unclaimed by every incumbent suite |
+| Video/post, VO | None agent-grade found (Frame.io = review infra; VO = marketplaces) | Open lanes |
+Market structure: front-desk bots (vertical, inbound-only) vs drafting suites (horizontal,
+no hands). The middle — trusted whole-loop autonomy, vertical-aware — is unoccupied.
+Positioning line: "Receptionist bots book the job. Nibbins run the business."
+SEO additions: Studioflo alternative, GlossGenius + AI agents, Bonsai AI, Moxie alternative.
 
 ---
 
@@ -184,3 +213,4 @@ enrichment + small search test). Affiliates are CAC paid on results — turn the
 | Marketing run by agents under Agent School rules | One-man scale + the meta-story is the content | Hire #1 (likely community) when approval queue >20 min/day for 30 days |
 | No paid acquisition before Phase 2 | $19 ACV can't carry cold CAC; trust channels compound | If a paid test hits <3-month payback organically |
 | Community posting never automated | Authenticity is the moat in trust-graph channels | Never |
+| Category = "AI agents for creative freelancers"; human copy = "people who work for themselves" | Beachhead precision + self-ID nuance across verticals | Widen to "freelancers" at ≥3-vertical case-study coverage |
