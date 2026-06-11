@@ -23,6 +23,21 @@
   before first drip send.
 - Domain: registrar lock + DNSSEC + auto-renew. Actions→cloud via OIDC (no long-lived keys). mail.nibbin.com warm-up ramp before drip launch.
 - Stripe: per-env keys; webhook endpoints per env, signature-verified; Radar on.
+  - **Test-mode set up (2026-06-10):** products + prices created — Grove `grove_monthly` $19/mo,
+    Canopy `canopy_monthly` $49/mo, top-up `credit_topup` $5 one-time. Price IDs in
+    `STRIPE_PRICE_GROVE/CANOPY/TOPUP`. Webhook endpoint `we_…` registered at
+    `https://nibbin.com/api/stripe/webhook` (checkout.session.completed, invoice.paid,
+    customer.subscription.updated/deleted). Billing code in `apps/web` (`lib/billing`, `lib/stripe`,
+    `app/billing`, `app/api/stripe/webhook`); the webhook writes subscription rows + credit grants
+    via the **service role** (server-only).
+  - **Local demo (tiers purchasable in test mode):** run `apps/web` against dev Supabase + test
+    Stripe with the CLI forwarding webhooks: `stripe listen --forward-to
+    localhost:3000/api/stripe/webhook`, set the printed `whsec_…` as `STRIPE_WEBHOOK_SECRET` in
+    `apps/web/.env.local`, pay with test card `4242 4242 4242 4242`.
+  - **Vercel production env:** Stripe vars + `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SITE_URL` set.
+    **TODO (John):** prod Supabase **publishable + secret keys** still need setting in Vercel —
+    needs a fresh Supabase access token (the chat-shared one was rotated). Swap Stripe to live keys
+    before real launch.
 - LLM providers: primary + fallback configured per routing tier (SPEC §6.3); provider
   hard spend caps set; routing config hot-reloadable.
 - Desktop signing: Apple Developer ID + notarization; Windows code-signing cert.
