@@ -12,6 +12,7 @@
   "//": "typescript + @types/node are runtime deps (not devDeps) so Vercel's production install keeps them — same reason as apps/web.",
   "dependencies": {
     "@nibbin/shared": "*",
+    "@sentry/nextjs": "^10.43.0",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.95.0",
     "@types/node": "^22.10.0",

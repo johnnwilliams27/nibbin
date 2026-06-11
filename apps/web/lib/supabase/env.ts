@@ -2,7 +2,8 @@
  * Public Supabase config. Both vars are NEXT_PUBLIC (safe in the browser): the
  * publishable key is the client-facing key and carries no elevated rights —
  * every read is still gated by RLS on the user's session. The sb_secret_* key
- * is deliberately NOT read here; this milestone makes no service-role calls.
+ * is read only by the server-only service client (lib/supabase/service.ts) for
+ * the Stripe webhook — never here, and never on the client.
  *
  * Accessors are functions (not module constants) so a missing var throws at
  * request time, never at import/build time — the CI `build` gate compiles
