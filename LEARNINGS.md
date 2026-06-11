@@ -91,5 +91,9 @@ Format per gate:
     open: P2 (audit-log staff PII redaction — before the audit UI ships), P2 (upgrade doesn't
     immediately top up to Canopy — conservation-safe, product call), P3s (refund DB cap at M4,
     impersonation time-boxing, webhook integration test).
-- Gate signed by: ____________ (John W.)
+- Gate signed by: John W. (authorized in-session 2026-06-10) — M1 build scope (account hierarchy,
+  RLS, credit ledger, magic-link auth, admin console, Stripe billing) gate-clean of P0/P1 after the
+  2 webhook P1s were fixed + re-verified. DEFERRED by John: filing the Google OAuth/CASA + Meta
+  approvals and enabling Google/Apple auth providers (need the Google Cloud + Meta accounts) —
+  drafts + wiring ready, tracked in docs/STATE.md. M1 fully closes once those land.
 
