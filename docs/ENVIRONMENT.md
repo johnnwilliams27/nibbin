@@ -17,6 +17,18 @@
     as Vercel env (Production/Preview) so deploys can reach Supabase, or hand over a Vercel token.
 - Vercel: apps/web + apps/admin; preview per PR; staging.nibbin.com; prod nibbin.com + app.nibbin.com; **admin.nibbin.com** (separate app, staff SSO + passkeys, no shared session with product).
   Env vars mirrored from GitHub environments.
+  - **apps/admin deployed (2026-06-11):** separate Vercel project `nibbin-admin` (root
+    `apps/admin`, linked to the repo — pushes to `main` auto-deploy). Env set
+    (Production + Preview): prod Supabase trio, `NEXT_PUBLIC_SITE_URL=https://admin.nibbin.com`,
+    and the five Sentry vars pointing at `nibbin-admin`. First deploy built clean; source
+    maps uploaded. Raw `*.vercel.app` URL is 401 by design (Vercel deployment protection;
+    custom domain bypasses it).
+  - **TODO (John) — two steps to make admin.nibbin.com live:** (1) nibbin.com DNS is on
+    Cloudflare, so add a CNAME: `admin` → `cname.vercel-dns.com`, **DNS-only/grey cloud**
+    (Cloudflare proxy breaks Vercel TLS issuance). Domain is already attached to the
+    project; it serves as soon as the record exists. (2) Add the admin redirect URL to the
+    **prod** Supabase auth redirect allow-list (exact, no wildcards) so staff magic-link
+    sign-in works on the new domain.
 - DNS (nibbin.com): apex/www/app -> Vercel. hello@nibbin.com on workspace email.
   Transactional + Field Notes mail from mail.nibbin.com via Resend/Postmark
   (SPF/DKIM/DMARC; root reputation protected). Unsubscribe + suppression list wired
@@ -47,8 +59,8 @@
   pointing at `nibbin-web`. DSNs are public (retrievable in Sentry → project settings →
   Client Keys). Web replay is error-only with full masking; admin has no replay (staff
   screens show member data — prod data never leaves prod).
-  - **Pending:** apps/admin has no Vercel project yet — when admin.nibbin.com is set up,
-    mirror the five vars there with `SENTRY_PROJECT=nibbin-admin` + the nibbin-admin DSN.
+  - The five vars are also set on the `nibbin-admin` Vercel project with
+    `SENTRY_PROJECT=nibbin-admin` + the nibbin-admin DSN (2026-06-11; upload verified).
   - **Token note:** `SENTRY_AUTH_TOKEN` is the org auth token `nibbin-sourcemaps-vercel`
     (source-map upload scope only; created 2026-06-11 after the original chat-shared user
     token was rotated out, deleted, and verified revoked). To rotate again: mint a new org
