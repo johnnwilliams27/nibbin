@@ -23,12 +23,11 @@
     and the five Sentry vars pointing at `nibbin-admin`. First deploy built clean; source
     maps uploaded. Raw `*.vercel.app` URL is 401 by design (Vercel deployment protection;
     custom domain bypasses it).
-  - **TODO (John) — two steps to make admin.nibbin.com live:** (1) nibbin.com DNS is on
-    Cloudflare, so add a CNAME: `admin` → `cname.vercel-dns.com`, **DNS-only/grey cloud**
-    (Cloudflare proxy breaks Vercel TLS issuance). Domain is already attached to the
-    project; it serves as soon as the record exists. (2) Add the admin redirect URL to the
-    **prod** Supabase auth redirect allow-list (exact, no wildcards) so staff magic-link
-    sign-in works on the new domain.
+  - **admin.nibbin.com LIVE (2026-06-11):** Cloudflare CNAME `admin` → `cname.vercel-dns.com`
+    added (DNS-only/grey cloud — Cloudflare proxy breaks Vercel TLS issuance; keep it grey).
+    Verified: global DNS resolution, TLS issued, `/login` 200, `/` 307→login. John also added
+    the admin redirect URL to the prod Supabase auth allow-list — verify on first real staff
+    magic-link sign-in (GoTrue silently falls back to the site URL if an entry mismatches).
 - DNS (nibbin.com): apex/www/app -> Vercel. hello@nibbin.com on workspace email.
   Transactional + Field Notes mail from mail.nibbin.com via Resend/Postmark
   (SPF/DKIM/DMARC; root reputation protected). Unsubscribe + suppression list wired
