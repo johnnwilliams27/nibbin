@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '../../lib/supabase/server';
 import { ensureAccount } from '../../lib/auth/bootstrap';
+import { upsertOwnProfile } from '../../lib/auth/profile';
 import { siteOrigin } from '../../lib/site-url';
 import { stripe } from '../../lib/stripe/client';
 import { loadCatalog, priceForTier, type PurchasableTier } from '../../lib/billing/catalog';
@@ -15,6 +16,7 @@ async function currentAccount() {
   if (!user) redirect('/login');
   const accountId = await ensureAccount({
     getEmail: async () => user.email ?? null,
+    ensureProfile: () => upsertOwnProfile(supabase, user),
     bootstrap: async (name) => {
       const { data, error } = await supabase.rpc('bootstrap_account', { account_name: name });
       if (error) throw error;
