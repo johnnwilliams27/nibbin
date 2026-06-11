@@ -1,5 +1,32 @@
 # GOTCHAS — traps already paid for (append; newest first)
 
+- Budget/degradation must be gated on an ACTUAL model dispatch, not on routing. M2 shipped chat
+  that consumed frontier budget and showed the "Doing this the simple way today" notice while every
+  reply came from the scripted floor (no `generate` wired) — a user-visible lie. Worse, the unit
+  test asserted the buggy behavior (keeper chat.test.ts drove budget:0 with no generate and
+  *expected* the notice). Write tests that assert what the user experiences, not what the code
+  happens to do. Issue #25.
+- `recordOnce`-style webhook idempotency is "at-most-once": it marks an event the moment it is
+  SEEN, so a handler that throws after recording loses the provider's retry forever. Separate
+  "seen" from "successfully processed" (or use an outbox) before any side-effecting handler
+  consumes the API. The M1 Stripe gate bugs were this same class. Issue #28.
+- Some providers have NO read-only platform scope (QuickBooks accounting; Instagram
+  `manage_messages`): the token vaulted on first connect is write-capable at the provider, and C8
+  is held at Nibbin's client layer + the DB making `connections.scopes` client-immutable. Never add
+  an RPC that lets clients mutate `connections.scopes`, and don't describe these providers as
+  "read-only scopes" on claims surfaces. Issue #26.
+- Bare `Sentry.init({dsn})` on server/edge has NO beforeSend scrub: exception messages, breadcrumbs,
+  and transaction names (which carry URL query strings — auth callbacks have `?code=…&state=…`)
+  flow to Sentry verbatim. RISKS §3 requires the scrub hook; add it before any content-bearing
+  route can throw. Issue #27.
+- The frontier-budget "day" is keyed to user-controlled `users.tz` — flipping profile timezone
+  rolls the day key and mints a fresh allowance. The durable store must key the window to UTC or a
+  fixed zone. Issue #24.
+- npm workspaces: after a PR adds new workspace packages, a stale node_modules typechecks to
+  "Cannot find module '@nibbin/<pkg>'" — run plain `npm install` from the root (NOT `npm ci`;
+  Defender races the wipe on Windows). Also: `tools/grovemap/grovemap.mjs` walks from cwd — run it
+  from the repo root.
+
 - Stripe subscription credit grants must be idempotent at the BILLING PERIOD, not the
   invoice. Keying to invoice.id double-grants on a mid-period upgrade (the proration is a
   new invoice in the same period). Use `subscriptionGrantKey(subId, item.current_period_start)`

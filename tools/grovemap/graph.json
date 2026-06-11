@@ -1,6 +1,6 @@
 {
- "generated": "2026-06-11T04:37:23.037Z",
- "root": "nib-m3-connectors",
+ "generated": "2026-06-11T06:29:02.130Z",
+ "root": "nibbin",
  "nodes": [
   {
    "id": ".claude/agents/claims-auditor.md",
@@ -128,6 +128,11 @@
    "deg": 2
   },
   {
+   "id": "apps/admin/app/global-error.tsx",
+   "group": "apps",
+   "deg": 0
+  },
+  {
    "id": "apps/admin/app/globals.css",
    "group": "apps",
    "deg": 0
@@ -156,6 +161,16 @@
    "id": "apps/admin/app/page.tsx",
    "group": "apps",
    "deg": 0
+  },
+  {
+   "id": "apps/admin/instrumentation-client.ts",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/admin/instrumentation.ts",
+   "group": "apps",
+   "deg": 2
   },
   {
    "id": "apps/admin/lib/site-url.ts",
@@ -233,6 +248,16 @@
    "deg": 0
   },
   {
+   "id": "apps/admin/sentry.edge.config.ts",
+   "group": "apps",
+   "deg": 1
+  },
+  {
+   "id": "apps/admin/sentry.server.config.ts",
+   "group": "apps",
+   "deg": 1
+  },
+  {
    "id": "apps/admin/tsconfig.json",
    "group": "apps",
    "deg": 0
@@ -240,7 +265,242 @@
   {
    "id": "apps/desktop/README.md",
    "group": "apps",
+   "deg": 3
+  },
+  {
+   "id": "apps/desktop/index.html",
+   "group": "apps",
+   "deg": 2
+  },
+  {
+   "id": "apps/desktop/package.json",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/desktop/src-tauri/app/build.rs",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/desktop/src-tauri/app/src/auth.rs",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/desktop/src-tauri/app/src/commands.rs",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/desktop/src-tauri/app/src/lib.rs",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/desktop/src-tauri/app/src/main.rs",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/desktop/src-tauri/app/tauri.conf.json",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/desktop/src-tauri/crates/nibbin-capture/src/gate.rs",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/desktop/src-tauri/crates/nibbin-capture/src/lib.rs",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/desktop/src-tauri/crates/nibbin-capture/src/macos.rs",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/desktop/src-tauri/crates/nibbin-capture/src/mock.rs",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/desktop/src-tauri/crates/nibbin-capture/src/windows.rs",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/desktop/src-tauri/crates/nibbin-ner/src/lib.rs",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/desktop/src-tauri/crates/nibbin-redaction/src/battery.rs",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/desktop/src-tauri/crates/nibbin-redaction/src/blocklist.rs",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/desktop/src-tauri/crates/nibbin-redaction/src/capture_norm.rs",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/desktop/src-tauri/crates/nibbin-redaction/src/event.rs",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/desktop/src-tauri/crates/nibbin-redaction/src/lib.rs",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/desktop/src-tauri/crates/nibbin-redaction/src/ner.rs",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/desktop/src-tauri/crates/nibbin-redaction/src/pipeline.rs",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/desktop/src-tauri/crates/nibbin-redaction/src/url_scrub.rs",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/desktop/src-tauri/crates/nibbin-redaction/tests/corpus.rs",
+   "group": "apps",
    "deg": 1
+  },
+  {
+   "id": "apps/desktop/src-tauri/crates/nibbin-store/src/key.rs",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/desktop/src-tauri/crates/nibbin-store/src/lib.rs",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/desktop/src-tauri/crates/nibbin-study/src/lib.rs",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/desktop/src-tauri/observerd/src/lib.rs",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/desktop/src-tauri/observerd/src/main.rs",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/desktop/src-tauri/observerd/tests/day14_headless.rs",
+   "group": "apps",
+   "deg": 1
+  },
+  {
+   "id": "apps/desktop/src/core/field-notes.ts",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/desktop/src/core/study-machine.ts",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/desktop/src/daemon-sim/daemon.ts",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/desktop/src/daemon-sim/file-store.ts",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/desktop/src/ui/bridge.ts",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/desktop/src/ui/dom.ts",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/desktop/src/ui/main.ts",
+   "group": "apps",
+   "deg": 1
+  },
+  {
+   "id": "apps/desktop/src/ui/observer.css",
+   "group": "apps",
+   "deg": 1
+  },
+  {
+   "id": "apps/desktop/src/ui/views/account.ts",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/desktop/src/ui/views/consent.ts",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/desktop/src/ui/views/notes.ts",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/desktop/src/ui/views/review.ts",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/desktop/src/ui/views/study.ts",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/desktop/src/vite-env.d.ts",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/desktop/test/field-notes.test.ts",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/desktop/test/study-machine.test.ts",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/desktop/tsconfig.json",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/desktop/vite.config.ts",
+   "group": "apps",
+   "deg": 0
   },
   {
    "id": "apps/web/app/api/stripe/webhook/route.ts",
@@ -253,14 +513,44 @@
    "deg": 1
   },
   {
-   "id": "apps/web/app/app/page.tsx",
+   "id": "apps/web/app/app/grove/GroveChat.tsx",
+   "group": "apps",
+   "deg": 5
+  },
+  {
+   "id": "apps/web/app/app/grove/KeeperSprite.tsx",
+   "group": "apps",
+   "deg": 2
+  },
+  {
+   "id": "apps/web/app/app/grove/actions.ts",
+   "group": "apps",
+   "deg": 6
+  },
+  {
+   "id": "apps/web/app/app/grove/cards.tsx",
+   "group": "apps",
+   "deg": 2
+  },
+  {
+   "id": "apps/web/app/app/grove/grove.module.css",
    "group": "apps",
    "deg": 3
   },
   {
+   "id": "apps/web/app/app/grove/page.tsx",
+   "group": "apps",
+   "deg": 5
+  },
+  {
+   "id": "apps/web/app/app/page.tsx",
+   "group": "apps",
+   "deg": 4
+  },
+  {
    "id": "apps/web/app/auth/callback/route.ts",
    "group": "apps",
-   "deg": 3
+   "deg": 4
   },
   {
    "id": "apps/web/app/auth/signout/route.ts",
@@ -270,7 +560,7 @@
   {
    "id": "apps/web/app/billing/actions.ts",
    "group": "apps",
-   "deg": 6
+   "deg": 7
   },
   {
    "id": "apps/web/app/billing/billing.module.css",
@@ -280,12 +570,17 @@
   {
    "id": "apps/web/app/billing/page.tsx",
    "group": "apps",
-   "deg": 5
+   "deg": 6
   },
   {
    "id": "apps/web/app/fonts.ts",
    "group": "apps",
    "deg": 1
+  },
+  {
+   "id": "apps/web/app/global-error.tsx",
+   "group": "apps",
+   "deg": 0
   },
   {
    "id": "apps/web/app/globals.css",
@@ -323,6 +618,16 @@
    "deg": 0
   },
   {
+   "id": "apps/web/instrumentation-client.ts",
+   "group": "apps",
+   "deg": 0
+  },
+  {
+   "id": "apps/web/instrumentation.ts",
+   "group": "apps",
+   "deg": 2
+  },
+  {
    "id": "apps/web/lib/auth/account-name.test.ts",
    "group": "apps",
    "deg": 1
@@ -340,7 +645,12 @@
   {
    "id": "apps/web/lib/auth/bootstrap.ts",
    "group": "apps",
-   "deg": 7
+   "deg": 9
+  },
+  {
+   "id": "apps/web/lib/auth/profile.ts",
+   "group": "apps",
+   "deg": 6
   },
   {
    "id": "apps/web/lib/billing/catalog.test.ts",
@@ -361,6 +671,21 @@
    "id": "apps/web/lib/billing/grant.ts",
    "group": "apps",
    "deg": 4
+  },
+  {
+   "id": "apps/web/lib/grove/router.ts",
+   "group": "apps",
+   "deg": 1
+  },
+  {
+   "id": "apps/web/lib/grove/state.test.ts",
+   "group": "apps",
+   "deg": 1
+  },
+  {
+   "id": "apps/web/lib/grove/state.ts",
+   "group": "apps",
+   "deg": 3
   },
   {
    "id": "apps/web/lib/site-url.ts",
@@ -390,7 +715,7 @@
   {
    "id": "apps/web/lib/supabase/server.ts",
    "group": "apps",
-   "deg": 7
+   "deg": 9
   },
   {
    "id": "apps/web/lib/supabase/service.ts",
@@ -418,6 +743,16 @@
    "deg": 0
   },
   {
+   "id": "apps/web/sentry.edge.config.ts",
+   "group": "apps",
+   "deg": 1
+  },
+  {
+   "id": "apps/web/sentry.server.config.ts",
+   "group": "apps",
+   "deg": 1
+  },
+  {
    "id": "apps/web/tsconfig.json",
    "group": "apps",
    "deg": 0
@@ -435,7 +770,7 @@
   {
    "id": "docs/GOTCHAS.md",
    "group": "docs",
-   "deg": 3
+   "deg": 4
   },
   {
    "id": "docs/GTM.md",
@@ -758,6 +1093,186 @@
    "deg": 0
   },
   {
+   "id": "packages/keeper/package.json",
+   "group": "packages",
+   "deg": 0
+  },
+  {
+   "id": "packages/keeper/src/chat.ts",
+   "group": "packages",
+   "deg": 3
+  },
+  {
+   "id": "packages/keeper/src/copy.ts",
+   "group": "packages",
+   "deg": 4
+  },
+  {
+   "id": "packages/keeper/src/index.ts",
+   "group": "packages",
+   "deg": 6
+  },
+  {
+   "id": "packages/keeper/src/onboarding.ts",
+   "group": "packages",
+   "deg": 3
+  },
+  {
+   "id": "packages/keeper/src/types.ts",
+   "group": "packages",
+   "deg": 4
+  },
+  {
+   "id": "packages/keeper/test/chat.test.ts",
+   "group": "packages",
+   "deg": 1
+  },
+  {
+   "id": "packages/keeper/test/onboarding.test.ts",
+   "group": "packages",
+   "deg": 1
+  },
+  {
+   "id": "packages/keeper/tsconfig.json",
+   "group": "packages",
+   "deg": 0
+  },
+  {
+   "id": "packages/redaction/package.json",
+   "group": "packages",
+   "deg": 0
+  },
+  {
+   "id": "packages/redaction/rules/category-blocklist.json",
+   "group": "packages",
+   "deg": 1
+  },
+  {
+   "id": "packages/redaction/rules/redaction-rules.json",
+   "group": "packages",
+   "deg": 1
+  },
+  {
+   "id": "packages/redaction/src/battery.ts",
+   "group": "packages",
+   "deg": 1
+  },
+  {
+   "id": "packages/redaction/src/blocklist.ts",
+   "group": "packages",
+   "deg": 1
+  },
+  {
+   "id": "packages/redaction/src/capture.ts",
+   "group": "packages",
+   "deg": 0
+  },
+  {
+   "id": "packages/redaction/src/index.ts",
+   "group": "packages",
+   "deg": 0
+  },
+  {
+   "id": "packages/redaction/src/ner.ts",
+   "group": "packages",
+   "deg": 0
+  },
+  {
+   "id": "packages/redaction/src/packet.ts",
+   "group": "packages",
+   "deg": 0
+  },
+  {
+   "id": "packages/redaction/src/pipeline.ts",
+   "group": "packages",
+   "deg": 0
+  },
+  {
+   "id": "packages/redaction/src/review.ts",
+   "group": "packages",
+   "deg": 0
+  },
+  {
+   "id": "packages/redaction/src/types.ts",
+   "group": "packages",
+   "deg": 0
+  },
+  {
+   "id": "packages/redaction/src/url.ts",
+   "group": "packages",
+   "deg": 0
+  },
+  {
+   "id": "packages/redaction/test/battery.test.ts",
+   "group": "packages",
+   "deg": 0
+  },
+  {
+   "id": "packages/redaction/test/blocklist-url.test.ts",
+   "group": "packages",
+   "deg": 0
+  },
+  {
+   "id": "packages/redaction/test/packet.test.ts",
+   "group": "packages",
+   "deg": 0
+  },
+  {
+   "id": "packages/redaction/test/pipeline.test.ts",
+   "group": "packages",
+   "deg": 0
+  },
+  {
+   "id": "packages/redaction/tsconfig.json",
+   "group": "packages",
+   "deg": 0
+  },
+  {
+   "id": "packages/router/package.json",
+   "group": "packages",
+   "deg": 0
+  },
+  {
+   "id": "packages/router/src/budget.ts",
+   "group": "packages",
+   "deg": 3
+  },
+  {
+   "id": "packages/router/src/classifier.ts",
+   "group": "packages",
+   "deg": 3
+  },
+  {
+   "id": "packages/router/src/index.ts",
+   "group": "packages",
+   "deg": 6
+  },
+  {
+   "id": "packages/router/src/router.ts",
+   "group": "packages",
+   "deg": 5
+  },
+  {
+   "id": "packages/router/src/tiers.ts",
+   "group": "packages",
+   "deg": 3
+  },
+  {
+   "id": "packages/router/src/types.ts",
+   "group": "packages",
+   "deg": 5
+  },
+  {
+   "id": "packages/router/test/router.test.ts",
+   "group": "packages",
+   "deg": 1
+  },
+  {
+   "id": "packages/router/tsconfig.json",
+   "group": "packages",
+   "deg": 0
+  },
+  {
    "id": "packages/shared/package.json",
    "group": "packages",
    "deg": 0
@@ -848,7 +1363,17 @@
    "deg": 0
   },
   {
+   "id": "tests/redaction-corpus/fixtures/secure-nested-c4.json",
+   "group": "tests",
+   "deg": 0
+  },
+  {
    "id": "tests/redaction-corpus/fixtures/sentinels.json",
+   "group": "tests",
+   "deg": 0
+  },
+  {
+   "id": "tests/redaction-corpus/pipeline.test.ts",
    "group": "tests",
    "deg": 0
   },
@@ -863,9 +1388,14 @@
    "deg": 1
   },
   {
+   "id": "tests/rls/grove-state.test.ts",
+   "group": "tests",
+   "deg": 1
+  },
+  {
    "id": "tests/rls/harness.ts",
    "group": "tests",
-   "deg": 4
+   "deg": 5
   },
   {
    "id": "tests/rls/rls.test.ts",
@@ -900,7 +1430,7 @@
   {
    "id": "tools/grovemap/grovemap.mjs",
    "group": "tools",
-   "deg": 0
+   "deg": 1
   },
   {
    "id": "tsconfig.base.json",
@@ -1085,6 +1615,16 @@
    "kind": "import"
   },
   {
+   "source": "apps/admin/instrumentation.ts",
+   "target": "apps/admin/sentry.server.config.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/admin/instrumentation.ts",
+   "target": "apps/admin/sentry.edge.config.ts",
+   "kind": "import"
+  },
+  {
    "source": "apps/admin/lib/staff/adjust.test.ts",
    "target": "apps/admin/lib/staff/adjust.ts",
    "kind": "import"
@@ -1130,6 +1670,26 @@
    "kind": "import"
   },
   {
+   "source": "apps/desktop/index.html",
+   "target": "apps/desktop/src/ui/observer.css",
+   "kind": "link"
+  },
+  {
+   "source": "apps/desktop/index.html",
+   "target": "apps/desktop/src/ui/main.ts",
+   "kind": "link"
+  },
+  {
+   "source": "apps/desktop/README.md",
+   "target": "apps/desktop/src-tauri/crates/nibbin-redaction/tests/corpus.rs",
+   "kind": "mention"
+  },
+  {
+   "source": "apps/desktop/README.md",
+   "target": "apps/desktop/src-tauri/observerd/tests/day14_headless.rs",
+   "kind": "mention"
+  },
+  {
    "source": "apps/desktop/README.md",
    "target": "docs/INVARIANTS.md",
    "kind": "mention"
@@ -1155,6 +1715,86 @@
    "kind": "import"
   },
   {
+   "source": "apps/web/app/app/grove/actions.ts",
+   "target": "apps/web/lib/auth/bootstrap.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/app/grove/actions.ts",
+   "target": "apps/web/lib/auth/profile.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/app/grove/actions.ts",
+   "target": "apps/web/lib/grove/router.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/app/grove/actions.ts",
+   "target": "apps/web/lib/grove/state.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/app/grove/actions.ts",
+   "target": "apps/web/lib/supabase/server.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/app/grove/cards.tsx",
+   "target": "apps/web/app/app/grove/grove.module.css",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/app/grove/GroveChat.tsx",
+   "target": "apps/web/app/app/grove/actions.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/app/grove/GroveChat.tsx",
+   "target": "apps/web/app/app/grove/cards.tsx",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/app/grove/GroveChat.tsx",
+   "target": "apps/web/app/app/grove/KeeperSprite.tsx",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/app/grove/GroveChat.tsx",
+   "target": "apps/web/app/app/grove/grove.module.css",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/app/grove/KeeperSprite.tsx",
+   "target": "apps/web/app/app/grove/grove.module.css",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/app/grove/page.tsx",
+   "target": "apps/web/lib/supabase/server.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/app/grove/page.tsx",
+   "target": "apps/web/lib/auth/bootstrap.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/app/grove/page.tsx",
+   "target": "apps/web/lib/auth/profile.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/app/grove/page.tsx",
+   "target": "apps/web/lib/grove/state.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/app/grove/page.tsx",
+   "target": "apps/web/app/app/grove/GroveChat.tsx",
+   "kind": "import"
+  },
+  {
    "source": "apps/web/app/app/page.tsx",
    "target": "apps/web/lib/supabase/server.ts",
    "kind": "import"
@@ -1162,6 +1802,11 @@
   {
    "source": "apps/web/app/app/page.tsx",
    "target": "apps/web/lib/auth/bootstrap.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/app/page.tsx",
+   "target": "apps/web/lib/auth/profile.ts",
    "kind": "import"
   },
   {
@@ -1181,6 +1826,11 @@
   },
   {
    "source": "apps/web/app/auth/callback/route.ts",
+   "target": "apps/web/lib/auth/profile.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/auth/callback/route.ts",
    "target": "apps/web/lib/site-url.ts",
    "kind": "import"
   },
@@ -1202,6 +1852,11 @@
   {
    "source": "apps/web/app/billing/actions.ts",
    "target": "apps/web/lib/auth/bootstrap.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/billing/actions.ts",
+   "target": "apps/web/lib/auth/profile.ts",
    "kind": "import"
   },
   {
@@ -1227,6 +1882,11 @@
   {
    "source": "apps/web/app/billing/page.tsx",
    "target": "apps/web/lib/auth/bootstrap.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/billing/page.tsx",
+   "target": "apps/web/lib/auth/profile.ts",
    "kind": "import"
   },
   {
@@ -1270,6 +1930,16 @@
    "kind": "import"
   },
   {
+   "source": "apps/web/instrumentation.ts",
+   "target": "apps/web/sentry.server.config.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/instrumentation.ts",
+   "target": "apps/web/sentry.edge.config.ts",
+   "kind": "import"
+  },
+  {
    "source": "apps/web/lib/auth/account-name.test.ts",
    "target": "apps/web/lib/auth/account-name.ts",
    "kind": "import"
@@ -1297,6 +1967,11 @@
   {
    "source": "apps/web/lib/billing/grant.ts",
    "target": "apps/web/lib/billing/catalog.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/lib/grove/state.test.ts",
+   "target": "apps/web/lib/grove/state.ts",
    "kind": "import"
   },
   {
@@ -1377,6 +2052,11 @@
   {
    "source": "CLAUDE.md",
    "target": "reference/nibbin-creature-lab.html",
+   "kind": "mention"
+  },
+  {
+   "source": "docs/GOTCHAS.md",
+   "target": "tools/grovemap/grovemap.mjs",
    "kind": "mention"
   },
   {
@@ -2175,6 +2855,136 @@
    "kind": "import"
   },
   {
+   "source": "packages/keeper/src/chat.ts",
+   "target": "packages/keeper/src/copy.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/keeper/src/chat.ts",
+   "target": "packages/keeper/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/keeper/src/copy.ts",
+   "target": "packages/keeper/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/keeper/src/index.ts",
+   "target": "packages/keeper/src/onboarding.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/keeper/src/index.ts",
+   "target": "packages/keeper/src/chat.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/keeper/src/index.ts",
+   "target": "packages/keeper/src/copy.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/keeper/src/index.ts",
+   "target": "packages/keeper/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/keeper/src/onboarding.ts",
+   "target": "packages/keeper/src/copy.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/keeper/src/onboarding.ts",
+   "target": "packages/keeper/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/keeper/test/chat.test.ts",
+   "target": "packages/keeper/src/index.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/keeper/test/onboarding.test.ts",
+   "target": "packages/keeper/src/index.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/redaction/src/battery.ts",
+   "target": "packages/redaction/rules/redaction-rules.json",
+   "kind": "import"
+  },
+  {
+   "source": "packages/redaction/src/blocklist.ts",
+   "target": "packages/redaction/rules/category-blocklist.json",
+   "kind": "import"
+  },
+  {
+   "source": "packages/router/src/budget.ts",
+   "target": "packages/router/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/router/src/classifier.ts",
+   "target": "packages/router/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/router/src/index.ts",
+   "target": "packages/router/src/router.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/router/src/index.ts",
+   "target": "packages/router/src/classifier.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/router/src/index.ts",
+   "target": "packages/router/src/budget.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/router/src/index.ts",
+   "target": "packages/router/src/tiers.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/router/src/index.ts",
+   "target": "packages/router/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/router/src/router.ts",
+   "target": "packages/router/src/classifier.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/router/src/router.ts",
+   "target": "packages/router/src/budget.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/router/src/router.ts",
+   "target": "packages/router/src/tiers.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/router/src/router.ts",
+   "target": "packages/router/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/router/src/tiers.ts",
+   "target": "packages/router/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/router/test/router.test.ts",
+   "target": "packages/router/src/index.ts",
+   "kind": "import"
+  },
+  {
    "source": "packages/shared/src/index.ts",
    "target": "packages/shared/src/credits.ts",
    "kind": "import"
@@ -2346,6 +3156,11 @@
   },
   {
    "source": "tests/rls/billing-ledger.test.ts",
+   "target": "tests/rls/harness.ts",
+   "kind": "import"
+  },
+  {
+   "source": "tests/rls/grove-state.test.ts",
    "target": "tests/rls/harness.ts",
    "kind": "import"
   },
