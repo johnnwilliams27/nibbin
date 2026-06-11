@@ -80,8 +80,11 @@ export async function advanceGroveAction(rawInput: unknown): Promise<GroveTurnPa
   }
 
   // The user's name lives on their own users row (self-update under RLS).
+  // Surface a failure the same way save_grove_state does — a silently
+  // swallowed error would let the displayed name diverge from storage.
   if (turn.state.userName && turn.state.userName !== state.userName) {
-    await supabase.from('users').update({ name: turn.state.userName }).eq('id', user.id);
+    const { error } = await supabase.from('users').update({ name: turn.state.userName }).eq('id', user.id);
+    if (error) throw new Error('could not save your name — try again in a moment');
   }
 
   return {
@@ -95,6 +98,11 @@ export async function advanceGroveAction(rawInput: unknown): Promise<GroveTurnPa
 export interface GroveChatPayload {
   message: KeeperMessage;
   expression: KeeperExpression;
+  // Structured routing signal (§6.3) for the surface + M8 COGS dashboards.
+  // The user-facing degradation copy is already inside message.text; this is
+  // the machine-readable mirror so telemetry survives once a model authors
+  // the prose. Tier/signals only — never the model id (server-internal).
+  routing: { tier: string; degraded: boolean; complexity?: number };
 }
 
 export async function keeperChatAction(rawText: unknown): Promise<GroveChatPayload> {
@@ -116,5 +124,13 @@ export async function keeperChatAction(rawText: unknown): Promise<GroveChatPaylo
     { route: (r) => groveRouter.route(r) },
   );
 
-  return { message: reply.message, expression: reply.expression };
+  return {
+    message: reply.message,
+    expression: reply.expression,
+    routing: {
+      tier: reply.decision.tier,
+      degraded: reply.decision.degraded,
+      complexity: reply.decision.classification?.score,
+    },
+  };
 }

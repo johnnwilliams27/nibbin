@@ -241,6 +241,9 @@ export function GroveChat({
     } else {
       void runTurn(text, async () => {
         const payload = await keeperChatAction(text);
+        // payload.routing carries the structured §6.3 decision (tier/degraded)
+        // for future styling + telemetry; the user-facing notice already rides
+        // inside the message prose.
         return { messages: [payload.message], expression: payload.expression };
       });
     }
