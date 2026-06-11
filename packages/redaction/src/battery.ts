@@ -20,11 +20,16 @@ interface ValueClassRule {
 const battery: BatteryRule[] = rulesJson.battery.map((r) => ({
   id: r.id,
   placeholder: r.placeholder,
+  // Patterns come from the committed, trusted rules file (rules/redaction-rules.json),
+  // not from user/runtime input — this is a fixed in-repo battery, not a dynamic regex.
+  // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp
   regex: new RegExp(r.pattern, 'g'),
 }));
 
 const valueClasses: ValueClassRule[] = rulesJson.valueClasses.map((r) => ({
   klass: r.class as ValueClass,
+  // trusted committed rules file (see above) — not runtime input
+  // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp
   regex: new RegExp(r.pattern),
 }));
 
