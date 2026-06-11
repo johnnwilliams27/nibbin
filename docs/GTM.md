@@ -51,8 +51,9 @@ tradespeople, Etsy sellers.
   carry the founder's Nibbin on the card.
 - Educator partnerships convert: 3–5 educators run it free, affiliate terms ready (30%
   recurring, 12 months) for launch.
-- Pricing validation, churn interviews, TTFAD tuning. Exit criteria: TTFAD median <10 min,
-  W4 graduate rate >25%, 10 case studies, CASA verification passed (lifts the 100 cap).
+- Pricing validation, churn interviews, TTFAD tuning. Exit criteria: TTFAD median <10 min, 
+  W4 graduate rate >25%, 10 case studies — at least 5 with photo + quote + website rights secured, 
+  CASA verification passed (lifts the 100 cap).
 
 ### Phase 2 — Public launch
 - **Launch week stack:** Product Hunt (creature brand is built for it) + Hacker News
@@ -93,6 +94,23 @@ tradespeople, Etsy sellers.
 - Community: 5 genuine answers/week minimum (answers, not pitches).
 - Everything drafted by agents, **everything public approved by John** — the company runs
   its own Agent School (§6).
+
+### 4.5 Social proof on the website
+
+- **Testimonial band on the landing page** ships at Phase 2 launch: real founder name,
+  real photo, real number ("6.2 hrs/week back"), linked to the full case study. For
+  photographers, use their own photography as the visual (with rights) — authentic and
+  beautiful beats stock by a mile.
+- **Collection is built into the beta, not asked for later:** the photo + quote + website
+  rights ask happens at the two peak-delight moments — the Diagnosis Reveal and the first
+  graduation. Founding member agreement includes an optional marketing-rights consent
+  (separate checkbox, never bundled, revocable).
+- **Honesty rule:** no fabricated, placeholder, or "as seen on" testimonials, ever. Until
+  real ones exist, the landing page shows the Founding Grove invite in that slot, and
+  Maya's demo grove stays labeled fictional. The first real testimonial replacing the
+  invite block is itself a build-in-public post.
+- Formats beyond the band: a /customers case-study page per founder story; pull-quotes in
+  drip emails; testimonial frames in Herald's short-form clips (with per-use consent).
 
 ---
 
