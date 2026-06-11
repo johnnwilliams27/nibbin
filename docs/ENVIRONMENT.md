@@ -31,9 +31,11 @@
     custom domain bypasses it).
   - **admin.nibbin.com LIVE (2026-06-11):** Cloudflare CNAME `admin` → `cname.vercel-dns.com`
     added (DNS-only/grey cloud — Cloudflare proxy breaks Vercel TLS issuance; keep it grey).
-    Verified: global DNS resolution, TLS issued, `/login` 200, `/` 307→login. John also added
-    the admin redirect URL to the prod Supabase auth allow-list — verify on first real staff
-    magic-link sign-in (GoTrue silently falls back to the site URL if an entry mismatches).
+    Verified: global DNS resolution, TLS issued, `/login` 200, `/` 307→login. Staff
+    magic-link sign-in verified end-to-end 2026-06-11. Gotcha for future domains: the prod
+    Supabase redirect allow-list entry must be the EXACT callback path
+    (`https://admin.nibbin.com/auth/callback`) — an origin-only entry silently falls back
+    to the site URL and dumps the `?code=` on nibbin.com.
 - DNS (nibbin.com): apex/www/app -> Vercel. hello@nibbin.com on workspace email.
   Transactional + Field Notes mail from mail.nibbin.com via Resend/Postmark
   (SPF/DKIM/DMARC; root reputation protected). Unsubscribe + suppression list wired
