@@ -26,13 +26,11 @@ export async function getStaff(): Promise<Staff | null> {
   } = await supabase.auth.getUser();
   if (!user?.email) return null;
 
-  const { data, error } = await adminClient()
-    .from('staff_users')
-    .select('id, role')
-    .ilike('email', user.email)
-    .limit(1)
-    .maybeSingle();
-  if (error || !data) return null;
+  // Exact, case-folded, wildcard-free match via the RPC — never a PostgREST
+  // .ilike() on the attacker-controlled login email (red-team P0).
+  const { data, error } = await adminClient().rpc('staff_identity_for_email', { p_email: user.email });
+  const row = Array.isArray(data) ? data[0] : null;
+  if (error || !row) return null;
 
-  return { authUserId: user.id, email: user.email, staffId: data.id, role: data.role as StaffRole };
+  return { authUserId: user.id, email: user.email, staffId: row.id, role: row.role as StaffRole };
 }

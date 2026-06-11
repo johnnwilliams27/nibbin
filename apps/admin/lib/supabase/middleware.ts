@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
+import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { NextResponse, type NextRequest } from 'next/server';
-import { getSupabaseUrl, getSupabasePublishableKey } from './env';
+import { getSupabaseUrl, getSupabasePublishableKey, getSupabaseSecretKey } from './env';
 
 /**
  * Refresh the staff session and gate routes: unauthenticated users can only
@@ -35,6 +36,23 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
     url.pathname = '/login';
     return NextResponse.redirect(url);
   }
+
+  // Defense in depth (red-team P2): a valid *product* session must not reach the
+  // admin perimeter. getStaff() gates every page/action, but enforce the staff
+  // allowlist here too so a forgotten getStaff() on a future route can't leak.
+  if (user && !isPublic) {
+    const svc = createServiceClient(getSupabaseUrl(), getSupabaseSecretKey(), {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const { data } = await svc.rpc('staff_identity_for_email', { p_email: user.email });
+    if (!Array.isArray(data) || data.length === 0) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/login';
+      url.search = '?error=denied';
+      return NextResponse.redirect(url);
+    }
+  }
+
   if (user && path === '/login') {
     const url = request.nextUrl.clone();
     url.pathname = '/accounts';

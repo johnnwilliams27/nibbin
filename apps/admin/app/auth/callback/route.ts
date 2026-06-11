@@ -24,13 +24,9 @@ export async function GET(request: NextRequest) {
 
   let isStaff = false;
   if (user?.email) {
-    const { data } = await adminClient()
-      .from('staff_users')
-      .select('id')
-      .ilike('email', user.email)
-      .limit(1)
-      .maybeSingle();
-    isStaff = Boolean(data);
+    // exact, wildcard-free match (red-team P0) — never .ilike() on user input.
+    const { data } = await adminClient().rpc('staff_identity_for_email', { p_email: user.email });
+    isStaff = Array.isArray(data) && data.length > 0;
   }
 
   if (!isStaff) {

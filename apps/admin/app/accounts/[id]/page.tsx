@@ -38,6 +38,15 @@ export default async function AccountDetail({
     .maybeSingle();
   if (!account) notFound();
 
+  // Everything audited (§6.10): record the staff view — the insider-threat
+  // control. account_id is set so it shows in the account's own audit log.
+  await admin.rpc('staff_log_access', {
+    p_staff_id: staff.staffId,
+    p_action: 'account.viewed',
+    p_account_id: id,
+    p_meta: {},
+  });
+
   const { data: sub } = await admin
     .from('subscriptions')
     .select('tier, status, period_end')

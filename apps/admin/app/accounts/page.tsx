@@ -18,7 +18,19 @@ export default async function AccountsPage({
 
   const { q } = await searchParams;
   const query = (q ?? '').trim();
-  const results = query ? await searchAccounts(adminClient(), query) : [];
+  const admin = adminClient();
+  const results = query ? await searchAccounts(admin, query) : [];
+
+  if (query) {
+    // Audit the search itself (§6.10 everything-audited). account_id is null —
+    // a cross-account search belongs to no single account's member-visible log.
+    await admin.rpc('staff_log_access', {
+      p_staff_id: staff.staffId,
+      p_action: 'account.searched',
+      p_account_id: null,
+      p_meta: { query, results: results.length },
+    });
+  }
 
   return (
     <main className={styles.page}>

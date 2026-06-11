@@ -159,4 +159,51 @@ describe.skipIf(!dbAvailable)('staff operations (SPEC §6.10)', () => {
       ).rejects.toThrow(/scope must be read or act/);
     });
   });
+
+  describe('hardening (PR #9 review)', () => {
+    it('staff_identity_for_email does exact case-folded matching — no wildcards (P0)', async () => {
+      const exact = await h.as(service, async (c) =>
+        (await c.query(`select * from public.staff_identity_for_email('SUPPORT@nibbin.com')`)).rows,
+      );
+      expect(exact).toHaveLength(1);
+      expect(exact[0].role).toBe('support');
+
+      // wildcard / near-match emails must NOT match a staff row
+      for (const probe of ['%', '%@nibbin.com', 'support@nibbin_com', 'support+x@nibbin.com', 'support@nibbin.com.evil']) {
+        const r = await h.as(service, async (c) =>
+          (await c.query(`select * from public.staff_identity_for_email($1)`, [probe])).rows,
+        );
+        expect(r, `probe ${probe} leaked a staff identity`).toHaveLength(0);
+      }
+    });
+
+    it('staff_adjust_credits enforces RBAC at the DB layer — engineer is refused (P1)', async () => {
+      await expect(
+        h.as(service, (c) => c.query(`select public.staff_adjust_credits($1, 5000, 'free money', $2)`, [accountId, engineerId])),
+      ).rejects.toThrow(/may not adjust credits/);
+    });
+
+    it('staff_adjust_credits caps the reason length', async () => {
+      const long = 'x'.repeat(501);
+      await expect(
+        h.as(service, (c) => c.query(`select public.staff_adjust_credits($1, 1, $2, $3)`, [accountId, long, supportId])),
+      ).rejects.toThrow(/too long/);
+    });
+
+    it('staff_log_access records an account view in the account-visible audit log', async () => {
+      await h.as(service, async (c) => {
+        await c.query(`select public.staff_log_access($1, 'account.viewed', $2, '{}'::jsonb)`, [supportId, accountId]);
+      });
+      const viewed = await h.as({ kind: 'authenticated', uid: UID } as const, async (c) =>
+        (await c.query(`select count(*)::int as n from public.audit_log where action = 'account.viewed'`)).rows[0].n,
+      );
+      expect(viewed).toBe(1);
+    });
+
+    it('staff_log_access rejects an unsupported action', async () => {
+      await expect(
+        h.as(service, (c) => c.query(`select public.staff_log_access($1, 'account.deleted', $2)`, [supportId, accountId])),
+      ).rejects.toThrow(/unsupported access action/);
+    });
+  });
 });

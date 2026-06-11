@@ -9,11 +9,12 @@ export async function sendStaffLink(formData: FormData) {
   if (!email) redirect('/login?error=email');
 
   const supabase = await createClient();
-  // shouldCreateUser:false — staff don't self-register; only known auth users
-  // (whose email must also be in staff_users) can receive a link.
+  // shouldCreateUser:false — staff don't self-register. Staff auth users are
+  // provisioned out of band; the admin login must never mint auth users for
+  // arbitrary emails (red-team P1).
   const { error } = await supabase.auth.signInWithOtp({
     email,
-    options: { emailRedirectTo: `${siteOrigin()}/auth/callback`, shouldCreateUser: true },
+    options: { emailRedirectTo: `${siteOrigin()}/auth/callback`, shouldCreateUser: false },
   });
   if (error) redirect('/login?error=send');
 

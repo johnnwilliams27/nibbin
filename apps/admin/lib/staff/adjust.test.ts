@@ -33,6 +33,12 @@ describe('parseAdjustment (staff credit adjustment → signed delta)', () => {
     }
   });
 
+  it('rejects an over-long reason', () => {
+    expect(() =>
+      parseAdjustment({ amount: '10', direction: 'grant', reason: 'x'.repeat(501) }),
+    ).toThrow(/too long/i);
+  });
+
   it('rejects an unknown direction', () => {
     // @ts-expect-error testing runtime guard
     expect(() => parseAdjustment({ amount: '10', direction: 'bonus', reason: 'r' })).toThrow(/direction/i);

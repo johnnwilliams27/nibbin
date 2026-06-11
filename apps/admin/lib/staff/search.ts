@@ -8,6 +8,11 @@ export interface AccountHit {
   name: string;
 }
 
+/** Escape LIKE metacharacters so a staff query can't inject extra wildcards (red-team P3). */
+function likeLiteral(s: string): string {
+  return s.replace(/[\\%_]/g, (ch) => `\\${ch}`);
+}
+
 /**
  * Staff account search. A UUID matches an account directly; otherwise we match
  * by member email (users.email) → memberships → accounts, plus account name.
@@ -23,9 +28,10 @@ export async function searchAccounts(admin: SupabaseClient, query: string): Prom
   }
 
   const ids = new Set<string>();
+  const term = likeLiteral(q);
 
   // by member email
-  const { data: users } = await admin.from('users').select('id').ilike('email', `%${q}%`).limit(25);
+  const { data: users } = await admin.from('users').select('id').ilike('email', `%${term}%`).limit(25);
   const userIds = (users ?? []).map((u) => u.id);
   if (userIds.length) {
     const { data: memberships } = await admin
@@ -37,7 +43,7 @@ export async function searchAccounts(admin: SupabaseClient, query: string): Prom
   }
 
   // by account name
-  const { data: byName } = await admin.from('accounts').select('id').ilike('name', `%${q}%`).limit(25);
+  const { data: byName } = await admin.from('accounts').select('id').ilike('name', `%${term}%`).limit(25);
   for (const a of byName ?? []) ids.add(a.id);
 
   if (ids.size === 0) return [];

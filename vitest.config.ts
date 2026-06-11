@@ -15,5 +15,9 @@ export default defineConfig({
       'apps/*/lib/**/*.test.ts',
       'tests/**/*.test.ts',
     ],
+    // The RLS test files share one Postgres and each drops/recreates the public
+    // schema in setup; running files in parallel races that reset. The suite is
+    // small, so run files sequentially for determinism.
+    fileParallelism: false,
   },
 });

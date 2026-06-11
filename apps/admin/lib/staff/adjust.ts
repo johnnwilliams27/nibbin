@@ -24,6 +24,9 @@ export function parseAdjustment(input: AdjustmentInput): Adjustment {
   if (reason === '') {
     throw new Error('a reason is required');
   }
+  if (reason.length > 500) {
+    throw new Error('reason is too long (max 500 characters)');
+  }
   if (!/^\d+$/.test(input.amount)) {
     throw new Error('amount must be a whole number of credits');
   }
