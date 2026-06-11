@@ -1,5 +1,10 @@
 # STATE
 
+- Milestone: M3 — connector framework + tier-1 MERGED 2026-06-11 (PR #14, squash b03553b). Built
+  ahead of M2 (Grovekeeper visual chat still TODO). Adversarial review run on the diff (red-team +
+  claims-auditor): no P0; C8/C9 hold by construction. NOT formally gated — the §6.7 milestone gate
+  (full §7 suites + human sign-off) hasn't been run, and "12+ connectors live in staging" is code-
+  complete but not deployment-verified. M2 + the M3 gate remain before M4.
 - Milestone: M1 — GATE RUN 2026-06-10, CLEAN of P0/P1 (awaiting John's signature in LEARNINGS.md).
   The gate caught + fixed 2 P1 credit-conservation bugs (webhook upgrade/$0 grants), re-verified
   closed. Remaining M1 work is external-only: enable Google/Apple auth providers + FILE the Google
@@ -29,6 +34,24 @@
 - PR #12: Stripe billing skeleton (apps/web) — fixed-price subs + Canopy-only top-up; signature-verified
   webhook → idempotent ledger grants via service role (server-only); /billing + Customer Portal.
   Red-team closed a P0 top-up idempotency hole (+ P1 grant-time tier check, P2 amount-paid quantity).
+
+## M3 — merged this milestone (CI-green, adversarially reviewed)
+- PR #14: connector platform (packages/connectors + migration 20260611000000). Registry with the
+  §4.3 declarations (20 tier-1 entries, runtime-validated); OAuth engine (PKCE+state+nonce, read-only
+  default scopes per C8, per-Nibbin write upgrades w/ plain-language reason); Supabase Vault token
+  storage per C9 (token_ref uuid only; service-role-execute RPCs; revoke destroys secret + cascades);
+  webhook signature verification (HMAC/Stripe/Meta/Slack/Google channel-token/Pub-Sub OIDC) + replay
+  windows + DB idempotency; deny-by-default egress proxy (public-IP-only, DNS-pinned connect, redirect
+  credential-stripping) per §6.9; quarantine markers; send-velocity caps per RISKS §2. Six hand-built
+  [H] clients (Gmail, GCal, Stripe, HoneyBook, Pixieset, Instagram), aggregator adapter [A], generic
+  rails [G] (MCP, IMAP EXAMINE-read-only, SMTP, CalDAV, CSV, outbound webhooks). M4-facing interface
+  (ConnectorClient, ScanModule/ScanContext/Finding) per §4.4. 285 tests incl. a DB-integration suite
+  proving C9 end-to-end on the harnessed Postgres.
+- Google connectors gated behind the 100-user tester allowlist + cap pending OAuth verification/CASA;
+  Instagram behind Meta app review (enforced in the OAuth engine).
+- Deferred to M4 (need runtime/nibbins tables): Instagram dm.reply grant → structural per-Nibbin grant
+  row (currently a marker in connections.scopes; velocity cap is the backstop); revoke→dependent-Nibbin
+  "pause politely" cascade; production send-velocity store with ATOMIC check-and-consume.
 
 ## Platforms / environments
 - Supabase: org `Nibbin` (paid), us-east-2, PG17. Projects: dev `oqnqzytctwlptfdvyagl`, staging
