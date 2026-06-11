@@ -1,0 +1,296 @@
+//! observerd — the Observer capture daemon.
+//!
+//! Process model: observerd runs as a LaunchAgent (macOS) / service
+//! (Windows), fully independent of the Tauri app. The UI is a CLIENT: it
+//! reads `study.json` + `daemon.status` and writes single-line JSON commands
+//! to `control.jsonl` in the store directory. The day-14 stop (C2), the
+//! fail-closed pipeline, and verified deletion (C3) all execute here — kill
+//! the UI and every privacy invariant still holds. There is deliberately no
+//! network listener in this process (C1: capture has no network dependency;
+//! the only network egress anywhere in the desktop product is the
+//! user-initiated packet upload in the app, C7).
+
+use anyhow::Context;
+use chrono::{DateTime, Utc};
+use nibbin_capture::{CaptureGate, CaptureSource};
+use nibbin_redaction::ner::{DownNer, HeuristicNer, PresidioSidecarClient};
+use nibbin_redaction::{snapshot_to_raw_events, NerClient, ProcessOutcome, RedactionPipeline};
+use nibbin_store::{KeyProvider, ObserverStore, StaticTestKey};
+use nibbin_study::{
+    capture_allowed, deadline_passed, new_study, transition, StudyCommand, StudySnapshot,
+};
+use serde::Deserialize;
+use std::path::{Path, PathBuf};
+
+/// Daemon clock. Tests pin it via NIBBIN_FAKE_NOW (ISO-8601); production is
+/// wall clock. The fake is read once per call so long-running tests can move
+/// time by rewriting the env of a child they relaunch.
+pub fn daemon_now() -> DateTime<Utc> {
+    match std::env::var("NIBBIN_FAKE_NOW") {
+        Ok(iso) => iso
+            .parse()
+            .unwrap_or_else(|e| panic!("NIBBIN_FAKE_NOW must be ISO-8601: {e}")),
+        Err(_) => Utc::now(),
+    }
+}
+
+/// NER engine selection. Production default is the supervised Presidio
+/// sidecar; `heuristic`/`down` exist for tests and the corpus only.
+pub fn ner_from_env() -> Box<dyn NerClient> {
+    match std::env::var("NIBBIN_NER").as_deref() {
+        Ok("heuristic") => Box::new(HeuristicNer),
+        Ok("down") => Box::new(DownNer),
+        Ok(spec) if spec.starts_with("presidio:") => {
+            let port = spec["presidio:".len()..].parse().expect("presidio port");
+            Box::new(PresidioSidecarClient::new(port))
+        }
+        _ => Box::new(PresidioSidecarClient::new(7811)),
+    }
+}
+
+fn key_provider() -> Box<dyn KeyProvider> {
+    if let Ok(hex) = std::env::var("NIBBIN_TEST_KEY_HEX") {
+        let mut key = [0u8; 32];
+        for (i, byte) in key.iter_mut().enumerate() {
+            *byte = u8::from_str_radix(&hex[i * 2..i * 2 + 2], 16).expect("test key hex");
+        }
+        return Box::new(StaticTestKey(key));
+    }
+    #[cfg(feature = "os-keystore")]
+    {
+        return Box::new(nibbin_store::OsKeystoreKey::observer_default());
+    }
+    #[allow(unreachable_code)]
+    {
+        panic!("no key source: build with --features os-keystore or set NIBBIN_TEST_KEY_HEX")
+    }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(tag = "cmd", rename_all = "snake_case")]
+pub enum ControlCommand {
+    Consent,
+    Start,
+    Pause,
+    Resume,
+    StopEarly,
+    FinishReview,
+    SynthesisComplete,
+    DeleteEverything,
+    /// Review's "never record this again" (layer 4 → layer 2).
+    AddExclusion {
+        #[serde(default)]
+        host: Option<String>,
+        #[serde(default)]
+        bundle_id: Option<String>,
+        #[serde(default)]
+        app_name: Option<String>,
+    },
+}
+
+pub struct Daemon {
+    store_root: PathBuf,
+    study: StudySnapshot,
+    pipeline: RedactionPipeline<Box<dyn NerClient>>,
+    store: Option<ObserverStore>,
+    gate: CaptureGate,
+    source: Box<dyn CaptureSource>,
+    control_offset: u64,
+}
+
+impl Daemon {
+    pub fn open(store_root: &Path, source: Box<dyn CaptureSource>) -> anyhow::Result<Self> {
+        std::fs::create_dir_all(store_root)?;
+        let study = nibbin_study::load(store_root)?.unwrap_or_else(|| new_study("study_local"));
+        nibbin_study::save(store_root, &study)?;
+        Ok(Self {
+            store_root: store_root.to_path_buf(),
+            study,
+            pipeline: RedactionPipeline::new(ner_from_env()),
+            store: None,
+            gate: CaptureGate::new(),
+            source,
+            control_offset: 0,
+        })
+    }
+
+    pub fn study(&self) -> &StudySnapshot {
+        &self.study
+    }
+
+    pub fn gate(&self) -> CaptureGate {
+        self.gate.clone()
+    }
+
+    fn apply(&mut self, cmd: StudyCommand) -> anyhow::Result<()> {
+        self.study = transition(&self.study, cmd)?;
+        nibbin_study::save(&self.store_root, &self.study)?;
+        Ok(())
+    }
+
+    /// The daemon heartbeat: C2 enforcement. Returns true when the day-14
+    /// stop fired on this tick.
+    pub fn tick(&mut self) -> anyhow::Result<bool> {
+        let now = daemon_now();
+        if deadline_passed(&self.study, now) {
+            self.apply(StudyCommand::StopDay14)?;
+            self.source.stop();
+            return Ok(true);
+        }
+        Ok(false)
+    }
+
+    /// One capture pass: deadline first, then gates, then the 4-layer
+    /// pipeline. Nothing persists unless every gate passes.
+    pub fn capture_pass(&mut self) -> anyhow::Result<()> {
+        self.tick()?;
+        if !capture_allowed(&self.study) || self.gate.is_paused() || self.pipeline.halted() {
+            return Ok(());
+        }
+        let snapshots = self.source.poll()?;
+        if snapshots.is_empty() {
+            return Ok(());
+        }
+        let now_iso = daemon_now().to_rfc3339();
+        // split borrows: take the store handle before iterating
+        if self.store.is_none() {
+            self.store = Some(ObserverStore::open(
+                &self.store_root,
+                key_provider().as_ref(),
+            )?);
+        }
+        let store = self.store.as_mut().expect("opened above");
+        for snapshot in snapshots {
+            if self.gate.is_paused() {
+                break; // C6: the flip kills forwarding mid-batch too
+            }
+            for raw in snapshot_to_raw_events(&snapshot, "ses_local", &now_iso) {
+                match self.pipeline.process(&raw, store)? {
+                    ProcessOutcome::HaltedNerUnavailable => {
+                        // fail-closed: suspend capture; the supervisor decides
+                        // when the sidecar is healthy enough to resume.
+                        self.source.stop();
+                        return Ok(());
+                    }
+                    ProcessOutcome::Persisted | ProcessOutcome::BlockedCategory(_) => {}
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Drain new lines from control.jsonl (the UI's command channel).
+    pub fn drain_control(&mut self) -> anyhow::Result<()> {
+        let path = self.store_root.join("control.jsonl");
+        if !path.exists() {
+            return Ok(());
+        }
+        let text = std::fs::read_to_string(&path)?;
+        let fresh = &text[usize::try_from(self.control_offset)
+            .unwrap_or(0)
+            .min(text.len())..];
+        self.control_offset = text.len() as u64;
+        for line in fresh.lines().filter(|l| !l.trim().is_empty()) {
+            let cmd: ControlCommand = match serde_json::from_str(line) {
+                Ok(c) => c,
+                Err(_) => continue, // a malformed command never crashes the daemon
+            };
+            self.handle(cmd)?;
+        }
+        Ok(())
+    }
+
+    pub fn handle(&mut self, cmd: ControlCommand) -> anyhow::Result<()> {
+        let now = daemon_now();
+        match cmd {
+            ControlCommand::Consent => self.apply(StudyCommand::Consent { at: now })?,
+            ControlCommand::Start => {
+                self.apply(StudyCommand::Start { at: now })?;
+                self.source.start()?;
+            }
+            ControlCommand::Pause => {
+                self.gate.pause(); // C6 first: kill forwarding before any IO
+                self.apply(StudyCommand::Pause)?;
+            }
+            ControlCommand::Resume => {
+                self.apply(StudyCommand::Resume)?;
+                self.gate.resume();
+            }
+            ControlCommand::StopEarly => {
+                self.apply(StudyCommand::StopEarly)?;
+                self.source.stop();
+            }
+            ControlCommand::FinishReview => self.apply(StudyCommand::FinishReview)?,
+            ControlCommand::SynthesisComplete => {
+                self.apply(StudyCommand::SynthesisComplete)?;
+                self.delete_raw_and_verify()?;
+            }
+            ControlCommand::DeleteEverything => {
+                self.gate.pause();
+                self.source.stop();
+                self.apply(StudyCommand::DeleteEverything)?;
+                self.delete_raw_and_verify()?;
+            }
+            ControlCommand::AddExclusion {
+                host,
+                bundle_id,
+                app_name,
+            } => {
+                self.pipeline
+                    .add_exclusions(nibbin_redaction::UserExclusions {
+                        hosts: host.into_iter().collect(),
+                        bundle_ids: bundle_id.into_iter().collect(),
+                        app_names: app_name.into_iter().collect(),
+                    });
+            }
+        }
+        Ok(())
+    }
+
+    /// RAW_DELETING → destroy → independent verification → receipt (C3).
+    fn delete_raw_and_verify(&mut self) -> anyhow::Result<()> {
+        // make sure the db exists as a store handle, then consume it
+        if self.store.is_none() && self.store_root.join("observer.db").exists() {
+            self.store = Some(ObserverStore::open(
+                &self.store_root,
+                key_provider().as_ref(),
+            )?);
+        }
+        if let Some(store) = self.store.take() {
+            store.destroy_raw_data()?;
+        }
+        // residual control/status bookkeeping files hold no raw data but are
+        // removed anyway so the verifier's bar stays "nothing but study.json"
+        for extra in ["control.jsonl", "daemon.status"] {
+            let p = self.store_root.join(extra);
+            if p.exists() {
+                std::fs::remove_file(p)?;
+            }
+        }
+        self.control_offset = 0;
+        let receipt =
+            nibbin_store::verify_raw_data_deleted(&self.store_root, &daemon_now().to_rfc3339());
+        anyhow::ensure!(
+            receipt.verified,
+            "deletion verification failed: {:?}",
+            receipt.residual_files
+        );
+        self.apply(StudyCommand::DeletionVerified { receipt })?;
+        Ok(())
+    }
+
+    /// Heartbeat file for the tray UI (countdown is daemon-derived).
+    pub fn write_status(&self) -> anyhow::Result<()> {
+        let now = daemon_now();
+        let status = serde_json::json!({
+            "state": self.study.state,
+            "remaining_ms": nibbin_study::remaining_ms(&self.study, now),
+            "paused": self.gate.is_paused(),
+            "pipeline_halted": self.pipeline.halted(),
+            "at": now.to_rfc3339(),
+        });
+        std::fs::write(self.store_root.join("daemon.status"), status.to_string())
+            .context("writing daemon.status")?;
+        Ok(())
+    }
+}

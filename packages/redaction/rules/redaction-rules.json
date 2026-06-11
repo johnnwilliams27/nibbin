@@ -1,0 +1,60 @@
+{
+  "comment": "Layer-3 machine redaction battery — SINGLE SOURCE OF TRUTH. Loaded by @nibbin/redaction (TS) and embedded into the Rust daemon via include_str! (apps/desktop/src-tauri/crates/redaction). Patterns must stay valid in BOTH JS RegExp and the Rust `regex` crate: no lookaround, no backreferences. Order matters: specific shapes run before the generic NUM sweep. The battery always runs, sidecar up or down (fail-closed is enforced in the pipeline, not here).",
+  "version": 1,
+  "battery": [
+    {
+      "id": "EMAIL",
+      "placeholder": "{EMAIL}",
+      "pattern": "[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}"
+    },
+    {
+      "id": "CARD",
+      "placeholder": "{NUM}",
+      "pattern": "\\b\\d{4}[- ]\\d{4}[- ]\\d{4}[- ][0-9A-Za-z]{4}\\b|\\b\\d{13,19}\\b"
+    },
+    {
+      "id": "SSN",
+      "placeholder": "{NUM}",
+      "pattern": "\\b\\d{3}-\\d{2}-[0-9A-Za-z]{4}\\b"
+    },
+    {
+      "id": "EIN",
+      "placeholder": "{NUM}",
+      "pattern": "\\b\\d{2}-[0-9A-Za-z]{6,9}\\b"
+    },
+    {
+      "id": "PHONE",
+      "placeholder": "{NUM}",
+      "pattern": "\\+\\d{1,3}[-. ]\\d{3}[-. ]\\d{3,4}(?:[-.][0-9A-Za-z]{1,6})*|\\(\\d{3}\\)[ ]?\\d{3}[-. ]\\d{4}|\\b\\d{3}[-. ]\\d{3}[-. ]\\d{4}\\b"
+    },
+    {
+      "id": "APIKEY",
+      "placeholder": "{KEY}",
+      "pattern": "\\b(?:sk|pk|rk|whsec|sbp|ghp|gho|ghu|ghs|glpat|xox[abps])_[A-Za-z0-9_-]{6,}|\\bAKIA[0-9A-Z]{16}\\b|\\beyJ[A-Za-z0-9_-]{20,}\\b"
+    },
+    {
+      "id": "ADDR",
+      "placeholder": "{ADDR}",
+      "pattern": "\\b[0-9][0-9A-Za-z-]*\\s+(?:[A-Z][A-Za-z]+\\s+){0,3}[A-Z][A-Za-z]+\\s+(?:Lane|Ln|Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Court|Ct|Way|Place|Pl|Terrace|Ter|Circle|Cir)\\b"
+    },
+    {
+      "id": "NUM",
+      "placeholder": "{NUM}",
+      "pattern": "\\b\\d{2,}\\b"
+    }
+  ],
+  "valueClasses": [
+    {
+      "class": "email",
+      "pattern": "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"
+    },
+    {
+      "class": "currency",
+      "pattern": "^[$€£¥]\\s?-?[0-9][0-9,.]*$|^-?[0-9][0-9,.]*\\s?(?:USD|EUR|GBP|CAD|AUD)$"
+    },
+    {
+      "class": "date",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}|^\\d{1,2}[/.-]\\d{1,2}[/.-]\\d{2,4}$"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+[package]
+name = "nibbin-capture"
+description = "Capture trait + platform sources (macOS AX first, Windows UIA behind the same trait — SPEC §5/§8 M6). Event-driven, AX-first, pixels-second. The capture module has NO network dependency, by construction (C1): this crate must never grow a network import."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+default = []
+# Platform bring-up wires the vendored Screenpipe a11y fork (vendor/screenpipe,
+# MIT commit 892199f742) behind this flag during macOS hardware bring-up.
+screenpipe = []
+
+[dependencies]
+nibbin-redaction = { path = "../nibbin-redaction" }
+anyhow = { workspace = true }

@@ -1,15 +1,11 @@
 /**
  * Redaction corpus — CI-blocking and P0 (SPEC §7.1).
  *
- * M0 scope: the Observer's 4-layer pipeline does not exist yet (M6), so the
- * pipeline assertions (zero persisted sentinels, fail-closed NER, day-14 stop)
- * cannot run against real code. What IS enforced from day one:
- *   1. Corpus integrity — registry well-formed, sentinel values unique and
- *      grep-provable, every fixture references only registered sentinels.
- *   2. No sentinel value ever appears in shipped source code or built app
- *      output (a leak of the corpus itself into the product would poison
- *      grep-provability).
- * The pipeline suites attach here at M6 and reuse these fixtures.
+ * This file enforces corpus INTEGRITY (registry well-formed, sentinel values
+ * unique and grep-provable, fixtures reference only registered sentinels, no
+ * sentinel ever leaks into shipped source). The pipeline assertions attached
+ * at M6 — see pipeline.test.ts, which drives the real 4-layer pipeline and
+ * daemon over these same fixtures.
  */
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'node:fs';

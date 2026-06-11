@@ -63,6 +63,21 @@ jobs:
       - run: npm ci
       - run: npm run audit
 
+  desktop-rust:
+    name: Observer daemon (fmt, clippy, cargo test incl. Rust corpus)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: apps/desktop/src-tauri
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - run: rustup component add rustfmt clippy
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets -- -D warnings
+      - name: cargo test (runs the same redaction-corpus fixtures as vitest)
+        run: cargo test
+
   sast:
     name: SAST (semgrep)
     runs-on: ubuntu-latest
@@ -73,7 +88,10 @@ jobs:
       image: semgrep/semgrep@sha256:f4791a54c891eabe1188248135574e6e03dfc31dfd3f3b747c7bec7079bfed1b
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-      - run: semgrep scan --config p/default --error --exclude reference --exclude tools/grovemap/grovemap.html
+      # vendor/ is frozen third-party source (Screenpipe fork at its last MIT
+      # commit, see vendor/screenpipe/VENDOR.md) — audited at vendor time, not
+      # eligible for in-PR SAST noise; our wrapping code IS scanned.
+      - run: semgrep scan --config p/default --error --exclude reference --exclude vendor --exclude tools/grovemap/grovemap.html
 
   grovemap:
     name: Grovemap artifact

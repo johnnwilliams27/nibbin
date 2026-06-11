@@ -1,0 +1,45 @@
+# The Tauri shell — tray countdown, review UI host, sign-in, account module.
+# This crate is a CLIENT of observerd: it renders state and writes control
+# commands. No privacy invariant lives here (C2/C3/C4/C5 are daemon-side by
+# construction); the shell owns C6's hotkey registration and the C7 packet
+# export, both of which the daemon/store still gate.
+#
+# Excluded from workspace default-members: building it needs the platform
+# webview toolchain (macOS first). CI builds the privacy-core crates; this
+# crate compiles in the platform release pipeline (signed, notarized — §5.9).
+[package]
+name = "nibbin-observer-app"
+description = "Nibbin Observer — Tauri 2 shell"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+name = "nibbin_observer_app"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+nibbin-redaction = { path = "../crates/nibbin-redaction" }
+nibbin-store = { path = "../crates/nibbin-store", features = ["os-keystore"] }
+nibbin-study = { path = "../crates/nibbin-study" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+chrono = { version = "0.4", default-features = false, features = ["clock", "serde", "std"] }
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-opener = "2"
+keyring = { version = "3", features = ["apple-native", "windows-native"] }
+ureq = { version = "2", default-features = false, features = ["tls", "json"] }
+url = "2"
+sha2 = "0.10"
+base64 = "0.22"
+getrandom = "0.2"
+flate2 = "1"
+
+[target."cfg(not(any(target_os = \"android\", target_os = \"ios\")))".dependencies]
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-deep-link = "2"
