@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { createClient } from '../../lib/supabase/server';
 import { ensureAccount } from '../../lib/auth/bootstrap';
+import { upsertOwnProfile } from '../../lib/auth/profile';
 import { TIER_CREDITS, TOPUP_CREDITS } from '../../lib/billing/grant';
 import { subscribeToTier, buyTopups, openBillingPortal } from './actions';
 import styles from './billing.module.css';
@@ -34,6 +35,7 @@ export default async function BillingPage({
 
   const accountId = await ensureAccount({
     getEmail: async () => user.email ?? null,
+    ensureProfile: () => upsertOwnProfile(supabase, user),
     bootstrap: async (name) => {
       const { data, error } = await supabase.rpc('bootstrap_account', { account_name: name });
       if (error) throw error;

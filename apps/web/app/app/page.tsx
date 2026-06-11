@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { createClient } from '../../lib/supabase/server';
 import { ensureAccount } from '../../lib/auth/bootstrap';
+import { upsertOwnProfile } from '../../lib/auth/profile';
 import styles from './app.module.css';
 
 export const metadata: Metadata = { title: 'Your grove — Nibbin' };
@@ -31,6 +32,7 @@ export default async function AppPage() {
   try {
     accountId = await ensureAccount({
       getEmail: async () => user.email ?? null,
+      ensureProfile: () => upsertOwnProfile(supabase, user),
       bootstrap: async (name) => {
         const { data, error } = await supabase.rpc('bootstrap_account', { account_name: name });
         if (error) throw error;
@@ -58,6 +60,15 @@ export default async function AppPage() {
 
   // Every read below is gated by RLS on the user's own session — this is the
   // live demonstration that membership scoping holds at the database layer.
+  const { data: grove } = await supabase
+    .from('grove_state')
+    .select('keeper_name, onboarding_step')
+    .eq('account_id', accountId)
+    .maybeSingle();
+  // A grove that hasn't finished hatching pulls the user back into the
+  // ceremony (§4.1 steps 2–3) — the dashboard comes after.
+  if (!grove || grove.onboarding_step !== 'done') redirect('/app/grove');
+
   const { data: account } = await supabase
     .from('accounts')
     .select('name')
@@ -87,8 +98,8 @@ export default async function AppPage() {
         </dl>
 
         <p className={styles.note}>
-          Your grove is empty for now — there&apos;s nothing to do here yet. Hatching your
-          Grovekeeper and adopting your first Nibbins comes next.
+          {grove.keeper_name} is keeping the grove —{' '}
+          <a href="/app/grove">step in and say hello</a>. Adopting your first Nibbins comes next.
         </p>
 
         <SignOut />

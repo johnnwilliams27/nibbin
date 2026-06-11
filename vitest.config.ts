@@ -6,6 +6,8 @@ export default defineConfig({
     alias: {
       '@nibbin/creatures': fileURLToPath(new URL('./packages/creatures/src/index.ts', import.meta.url)),
       '@nibbin/shared': fileURLToPath(new URL('./packages/shared/src/index.ts', import.meta.url)),
+      '@nibbin/router': fileURLToPath(new URL('./packages/router/src/index.ts', import.meta.url)),
+      '@nibbin/keeper': fileURLToPath(new URL('./packages/keeper/src/index.ts', import.meta.url)),
     },
   },
   test: {

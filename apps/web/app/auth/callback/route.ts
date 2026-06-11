@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '../../../lib/supabase/server';
 import { ensureAccount } from '../../../lib/auth/bootstrap';
+import { upsertOwnProfile } from '../../../lib/auth/profile';
 import { siteOrigin } from '../../../lib/site-url';
 
 /**
@@ -23,8 +24,14 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     await ensureAccount({
-      getEmail: async () => (await supabase.auth.getUser()).data.user?.email ?? null,
+      getEmail: async () => user?.email ?? null,
+      ensureProfile: async () => {
+        if (user) await upsertOwnProfile(supabase, user);
+      },
       bootstrap: async (name) => {
         const { data, error: rpcError } = await supabase.rpc('bootstrap_account', {
           account_name: name,

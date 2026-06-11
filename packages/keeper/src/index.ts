@@ -1,0 +1,38 @@
+/**
+ * @nibbin/keeper — the Grovekeeper's conversation core (SPEC §4.2).
+ *
+ * C10 (INVARIANTS): the Grovekeeper holds zero side-effect tools, permanently.
+ * This package is pure by construction — state machines and copy in, messages
+ * and state out. It performs no IO, exports no tool interface, and must never
+ * grow one. Side-effectful work belongs to specialists, gated by Agent School
+ * at the runtime layer (M4) — never here.
+ */
+export {
+  advanceOnboarding,
+  initialOnboardingState,
+  isOnboardingComplete,
+  ONBOARDING_STEPS,
+  turnForState,
+} from './onboarding';
+export { CHAT_INPUT_MAX, keeperChat } from './chat';
+export type { KeeperChatContext, KeeperChatDeps, KeeperChatReply } from './chat';
+export { ANSWER_MAX, CHANNEL_CHIPS, NAME_MAX, SKIP_CHIP } from './copy';
+export type {
+  CelebrationCard,
+  ChartCard,
+  DraftApprovalCard,
+  FieldNotesCard,
+  KeeperCard,
+  KeeperExpression,
+  KeeperMessage,
+  KeeperTurn,
+  OnboardingAnswers,
+  OnboardingInput,
+  OnboardingState,
+  OnboardingStep,
+  ProseCard,
+  QuestionCard,
+  QuestionChip,
+  RecommendationCard,
+  ScanFindingCard,
+} from './types';
