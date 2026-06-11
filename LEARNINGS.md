@@ -169,7 +169,8 @@ Format per gate:
   - Triage stance recorded for the signature: severity judged against the shipped surface; the five
     claims-auditor P1s are tracked conditions (issues above), not live violations — nothing served
     today promises more than the code delivers. John accepts or overrules at sign-off.
-- Gate signed by: ____________ (awaiting John W. — see gate report 2026-06-11; DoD caveats: M3
-  "12+ connectors live in staging" not deployment-verified; M6 "budgets met" + <100ms pause await
-  macOS bring-up).
+- Gate signed by: John W. (authorized in-session 2026-06-11) — accepts the condition-based triage
+  (issues #22–#30: five forward-coupling P1 conditions, no live P0/P1) and the two DoD caveats:
+  M3 "12+ connectors live in staging" not deployment-verified; M6 "budgets met" + <100ms pause
+  await macOS bring-up.
 
