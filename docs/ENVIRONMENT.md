@@ -39,13 +39,19 @@
     needs a fresh Supabase access token (the chat-shared one was rotated). Swap Stripe to live keys
     before real launch.
 - Sentry: error monitoring + tracing wired in apps/web and apps/admin (one Sentry project
-  per app). Env per Vercel project: `NEXT_PUBLIC_SENTRY_DSN` (client) + `SENTRY_DSN`
-  (server/edge); source-map upload additionally needs `SENTRY_ORG`, `SENTRY_PROJECT`,
-  `SENTRY_AUTH_TOKEN` (build-time secret). The SDK and the upload step are no-ops while
-  these are unset, so the code is safe to ship ahead of the account setup. Web replay is
-  error-only with full masking; admin has no replay (staff screens show member data —
-  prod data never leaves prod). **TODO (John):** create the Sentry org + `nibbin-web` /
-  `nibbin-admin` projects, set the vars in Vercel Production/Preview.
+  per app). Org `nibbin` (https://nibbin.sentry.io, US region). Projects: `nibbin-web`,
+  `nibbin-admin` (created 2026-06-11; both verified ingesting via test events). Env per
+  Vercel project: `NEXT_PUBLIC_SENTRY_DSN` (client) + `SENTRY_DSN` (server/edge);
+  source-map upload additionally needs `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN`
+  (build-time secret). All five SET on the `nibbin` Vercel project (Production + Preview)
+  pointing at `nibbin-web`. DSNs are public (retrievable in Sentry → project settings →
+  Client Keys). Web replay is error-only with full masking; admin has no replay (staff
+  screens show member data — prod data never leaves prod).
+  - **Pending:** apps/admin has no Vercel project yet — when admin.nibbin.com is set up,
+    mirror the five vars there with `SENTRY_PROJECT=nibbin-admin` + the nibbin-admin DSN.
+  - **Token note (John):** `SENTRY_AUTH_TOKEN` is a user auth token shared in chat
+    2026-06-11; rotate at will (only source-map upload depends on it — update the Vercel
+    var when you do).
 - LLM providers: primary + fallback configured per routing tier (SPEC §6.3); provider
   hard spend caps set; routing config hot-reloadable.
 - Desktop signing: Apple Developer ID + notarization; Windows code-signing cert.
