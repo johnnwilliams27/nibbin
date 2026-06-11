@@ -1,0 +1,27 @@
+[package]
+name = "nibbin-store"
+description = "The Observer's local store: SQLCipher (SQLite encrypted at rest), key wrapped by the OS keystore (Keychain / DPAPI). Raw events never sync — this is a separate world from the cloud DB (SPEC §6.1). Includes the independent deletion verifier (C3)."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+default = []
+# OS keystore key wrapping for production builds (macOS Keychain / Windows
+# Credential Manager via DPAPI). Off in CI: Linux runners have no keystore;
+# tests use an explicit ephemeral key.
+os-keystore = ["dep:keyring", "dep:getrandom"]
+
+[dependencies]
+nibbin-redaction = { path = "../nibbin-redaction" }
+nibbin-study = { path = "../nibbin-study" }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+rusqlite = { version = "0.32", features = ["bundled-sqlcipher-vendored-openssl"] }
+keyring = { version = "3", optional = true, features = ["apple-native", "windows-native"] }
+getrandom = { version = "0.2", optional = true }
+
+[dev-dependencies]
+tempfile = "3"

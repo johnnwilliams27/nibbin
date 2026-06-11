@@ -1,0 +1,15 @@
+[package]
+name = "nibbin-redaction"
+description = "The Observer's 4-layer pre-persistence redaction pipeline (C4/C5/battery+NER fail-closed). Rules are embedded verbatim from packages/redaction/rules/ — the TS package and this crate can never drift on rule content."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+regex = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+url = "2"

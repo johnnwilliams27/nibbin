@@ -1,0 +1,27 @@
+{
+  "comment": "C4 regression fixture (P1-1): the OS secure flag sits on a PARENT container while the sensitive value lives in a child node. Suppression must cover the whole subtree — every descendant of a secure node produces no value, no label, no frame.",
+  "window": {
+    "app": "SyntheticBrowser",
+    "title": "Sign in",
+    "category": "general"
+  },
+  "axTree": {
+    "role": "window",
+    "children": [
+      {
+        "role": "group",
+        "secure": true,
+        "label": "Password manager autofill",
+        "children": [
+          { "role": "textbox", "label": "Password", "value": "SENTINEL_PASSWORD_6f21" },
+          { "role": "textbox", "label": "Recovery email", "value": "SENTINEL_EMAIL_4c77" }
+        ]
+      },
+      { "role": "button", "label": "Sign in" }
+    ]
+  },
+  "expectations": {
+    "secureFieldCaptured": false,
+    "persistedSentinels": 0
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "@nibbin/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The Observer — Tauri desktop client (capture → redaction → SQLCipher → study lifecycle → review UI → local Field Notes).",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@nibbin/redaction": "*",
+    "@nibbin/shared": "*",
+    "@tauri-apps/api": "^2.9.0"
+  },
+  "devDependencies": {
+    "vite": "^7.3.4"
+  }
+}
