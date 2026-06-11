@@ -16,8 +16,23 @@
   - DONE: Supabase fully provisioned — dev/staging/prod projects created (us-east-2, PG17),
     M1 migration applied + verified on all three; keys stored as GitHub env secrets; dev
     apps/web/.env.local written (gitignored). Refs + secret layout in docs/ENVIRONMENT.md.
-  - NEXT (credential-free): wire magic-link auth + account/owner bootstrap on first sign-in
-    (apps/web) — Supabase Auth is live. Google/Apple providers still need John's OAuth creds.
+  - DONE (PR #8, merged): magic-link auth + first-sign-in account bootstrap (apps/web) — login,
+    callback, /app dashboard reading account+balance through the user's RLS session; bootstrap_account
+    RPC (advisory-locked, idempotent). Red-teamed (pinned redirect origin, CSRF on signout).
+  - DONE (PR #9, merged): staff admin console (apps/admin, §6.10) — magic-link staff auth gated to
+    staff_users, account search, account detail, audited credit adjustment, read-only governed
+    impersonation; service-role server-only; staff ops + hardening migrations. Red-teamed (closed a
+    P0 ILIKE-wildcard auth bypass) + claims-audited (read-access auditing added).
+  - DONE (this PR): platform-approval submission DRAFTS in docs/submissions/ (Google OAuth
+    verification + CASA; Meta IG-DM app review) — content to lift into the consoles once accounts exist.
+  - NEXT (credential-blocked): Stripe billing skeleton (needs test keys); enable Google/Apple auth
+    providers + FILE the two approvals (needs Google Cloud + Meta accounts). Everything credential-free
+    in M1 is now done.
+- M1 approval tracking (M1 DoD = "both processes initiated and tracked here"):
+  - Google OAuth verification/CASA: NOT YET FILED (blocked on Google Cloud project). Draft:
+    docs/submissions/google-oauth-verification.md. Record submission + CASA dates here when filed.
+  - Meta App Review (IG DMs) + Business Verification: NOT YET FILED (blocked on Meta account). Draft:
+    docs/submissions/meta-app-review.md. Record submission + business-verification dates here when filed.
 - Open P0/P1: none
 - M1 service credentials still needed from John:
   - Stripe: test-mode keys + webhook secret — blocks "tiers purchasable in test mode".
