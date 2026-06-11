@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import type Stripe from 'stripe';
 import { stripe, webhookSecret } from '../../../../lib/stripe/client';
 import { serviceClient } from '../../../../lib/supabase/service';
+import { TOP_UP } from '@nibbin/shared';
 import { loadCatalog, tierForPrice, type PurchasableTier } from '../../../../lib/billing/catalog';
 import { buildGrant, buildTopup, type LedgerInsert } from '../../../../lib/billing/grant';
 
@@ -19,6 +20,16 @@ async function accountIdForCustomer(customerId: string): Promise<string | null> 
   const customer = await stripe().customers.retrieve(customerId);
   if (customer.deleted) return null;
   return (customer.metadata?.account_id as string | undefined) ?? null;
+}
+
+/** Re-verify Canopy at grant time — top-ups are Canopy-only (§6.4), not just at checkout. */
+async function isCanopy(accountId: string): Promise<boolean> {
+  const { data } = await serviceClient()
+    .from('subscriptions')
+    .select('tier')
+    .eq('account_id', accountId)
+    .maybeSingle();
+  return data?.tier === 'canopy';
 }
 
 async function upsertSubscription(fields: {
@@ -67,8 +78,9 @@ export async function POST(request: NextRequest) {
   let event: Stripe.Event;
   try {
     event = stripe().webhooks.constructEvent(raw, sig, webhookSecret());
-  } catch (e) {
-    return new NextResponse(`signature verification failed: ${(e as Error).message}`, { status: 400 });
+  } catch {
+    // Generic response — don't echo verification internals to the caller (P3).
+    return new NextResponse('invalid signature', { status: 400 });
   }
 
   try {
@@ -82,11 +94,13 @@ export async function POST(request: NextRequest) {
         } else if (session.mode === 'payment') {
           // one-time top-up
           const accountId = session.client_reference_id ?? (session.metadata?.account_id as string | undefined);
-          const quantity = Number(session.metadata?.topup_quantity ?? '0');
+          // Quantity from the amount ACTUALLY paid, never trusted metadata (P2).
+          const quantity = Math.floor((session.amount_total ?? 0) / TOP_UP.priceUsdCents);
           const paymentId =
             (typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id) ??
             session.id;
-          if (accountId && quantity > 0) {
+          // Re-verify Canopy at grant time (P1) — the checkout gate alone is not enough.
+          if (accountId && quantity > 0 && (await isCanopy(accountId))) {
             await applyLedger(buildTopup(accountId, quantity, paymentId));
           }
         }
@@ -123,8 +137,10 @@ export async function POST(request: NextRequest) {
         break;
     }
   } catch (e) {
-    // Return 500 so Stripe retries; the grants are idempotent so retries are safe.
-    return new NextResponse(`handler error: ${(e as Error).message}`, { status: 500 });
+    // Return 500 so Stripe retries; grant + top-up are both idempotent (unique
+    // (account_id, source_id) per reason), so retries can't double-credit.
+    console.error('stripe webhook handler error', e);
+    return new NextResponse('handler error', { status: 500 });
   }
 
   return NextResponse.json({ received: true });
