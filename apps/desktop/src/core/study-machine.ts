@@ -45,6 +45,12 @@ export interface StudySnapshot {
   /** True when the study was aborted via delete-everything. */
   aborted: boolean;
   deletionReceipt: DeletionReceipt | null;
+  /**
+   * Highest wall-clock observed while ACTIVE/PAUSED. The day-14 stop fires
+   * against max(now, clockHighWater), so winding the clock back cannot revive
+   * an expired study (C2 anti-rollback). Mirrors the Rust twin.
+   */
+  clockHighWater: string | null;
 }
 
 export type StudyCommand =
@@ -78,7 +84,20 @@ export function newStudy(studyId: string): StudySnapshot {
     stoppedBy: null,
     aborted: false,
     deletionReceipt: null,
+    clockHighWater: null,
   };
+}
+
+/** Monotonic clock observation — never lowers the high-water mark (C2). */
+export function observeClock(snap: StudySnapshot, nowIso: string): StudySnapshot {
+  if (snap.state !== 'ACTIVE' && snap.state !== 'PAUSED') return snap;
+  const high =
+    snap.clockHighWater !== null && snap.clockHighWater >= nowIso ? snap.clockHighWater : nowIso;
+  return { ...snap, clockHighWater: high };
+}
+
+function effectiveNow(snap: StudySnapshot, nowIso: string): string {
+  return snap.clockHighWater !== null && snap.clockHighWater > nowIso ? snap.clockHighWater : nowIso;
 }
 
 const TERMINAL: ReadonlySet<StudyState> = new Set(['COMPLETE', 'DELETED']);
@@ -136,17 +155,19 @@ export function captureAllowed(snap: StudySnapshot): boolean {
   return snap.state === 'ACTIVE';
 }
 
-/** True when the daemon must fire the day-14 stop on its next tick. */
+/** True when the daemon must fire the day-14 stop on its next tick. Uses the
+ * monotonic high-water mark, so a rolled-back clock cannot revive the study. */
 export function deadlinePassed(snap: StudySnapshot, nowIso: string): boolean {
   return (
     (snap.state === 'ACTIVE' || snap.state === 'PAUSED') &&
     snap.endsAt !== null &&
-    nowIso >= snap.endsAt
+    effectiveNow(snap, nowIso) >= snap.endsAt
   );
 }
 
-/** Countdown for the always-visible tray display. Never negative. */
+/** Countdown for the always-visible tray display. Never negative; never counts
+ * back up if the clock is wound backward. */
 export function remainingMs(snap: StudySnapshot, nowIso: string): number {
   if (snap.endsAt === null) return STUDY_DURATION_MS;
-  return Math.max(0, new Date(snap.endsAt).getTime() - new Date(nowIso).getTime());
+  return Math.max(0, new Date(snap.endsAt).getTime() - new Date(effectiveNow(snap, nowIso)).getTime());
 }

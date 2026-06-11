@@ -126,6 +126,38 @@ fn secure_field_fixture_c4_no_value_no_label_no_frame() {
 }
 
 #[test]
+fn secure_parent_suppresses_valued_children_c4() {
+    // P1-1: the OS secure flag on a parent must suppress the whole subtree.
+    let snapshot = load_seeded("secure-nested-c4.json");
+    let raws = snapshot_to_raw_events(&snapshot, "ses_rust", "2026-06-12T14:03:22.114Z");
+
+    let suppressed = raws
+        .iter()
+        .filter(|r| {
+            matches!(
+                r.ax,
+                Some(nibbin_redaction::AxObservation::SecureSuppressed { .. })
+            )
+        })
+        .count();
+    assert!(
+        suppressed >= 2,
+        "both child fields under the secure group must be suppressed"
+    );
+    assert_no_sentinels(&format!("{raws:?}"), "nested secure subtree (raw)");
+
+    let mut sink = MemorySink::default();
+    let mut pipeline = RedactionPipeline::new(HeuristicNer);
+    for raw in &raws {
+        pipeline.process(raw, &mut sink).unwrap();
+    }
+    assert_no_sentinels(
+        &serde_json::to_string(&sink.events).unwrap(),
+        "nested secure (persisted)",
+    );
+}
+
+#[test]
 fn blocklist_fixture_c5_zero_persisted_events() {
     let snapshot = load_seeded("blocklist-c5.json");
     let mut sink = MemorySink::default();

@@ -102,7 +102,11 @@ function walkFiles(dir: string, out: string[] = []): string[] {
  */
 export function verifyRawDataDeleted(root: string, nowIso: string): DeletionReceipt {
   const all = walkFiles(root);
-  const residual = all.filter((p) => !p.endsWith('study.json'));
+  // Only the study snapshot at the store ROOT may survive — exact basename and
+  // exact parent, never a path-suffix match (which would clear
+  // "raw-data-study.json"). Mirrors the Rust verifier (C3).
+  const rootSnapshot = join(root, 'study.json');
+  const residual = all.filter((p) => p !== rootSnapshot);
   return {
     verified_at: nowIso,
     checked_paths: [root],

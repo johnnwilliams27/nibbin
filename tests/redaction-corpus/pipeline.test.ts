@@ -156,6 +156,27 @@ describe('assertion 3 — C4 secure fields: no value, no label, no frame, at cap
     const obs = toObservation({ role: 'textbox', secure: true, label: 'x', value: 'y' }, 'window/textbox');
     expect(Object.keys(obs).sort()).toEqual(['action', 'rolePath', 'secureSuppressed']);
 
+    // P1-1: a secure PARENT suppresses its valued children too
+    const nested = loadSeededFixture('secure-nested-c4.json');
+    const nestedRaw = snapshotToRawEvents(nested.snapshot, 'ses_c4_nested');
+    expectNoSentinels(JSON.stringify(nestedRaw), 'nested secure subtree (raw)');
+    expect(nestedRaw.filter((e) => e.ax && !e.ax.secureSuppressed).every((e) => e.ax!.secureSuppressed === false)).toBe(true);
+    // the two child fields under the secure group must be suppressed
+    const suppressed = nestedRaw.filter((e) => e.ax?.secureSuppressed === true);
+    expect(suppressed.length).toBeGreaterThanOrEqual(2);
+
+    const nestedClock = clockAt(at(1));
+    const nestedDaemon = new ObserverDaemon({
+      storeRoot: join(storeRoot, 'nested'),
+      ner: new HeuristicNer(),
+      clock: nestedClock.now,
+      studyId: 'study_nested',
+    });
+    nestedDaemon.consent();
+    nestedDaemon.start();
+    await nestedDaemon.captureSnapshot(nested.snapshot, 'ses_c4_nested');
+    expectNoSentinels(readFileSync(nestedDaemon.store.paths.eventsFile, 'utf8'), 'nested secure (persisted)');
+
     // and after the full pipeline the persisted event carries the constant
     const clock = clockAt(at(1));
     const daemon = startedDaemon(clock.now);
@@ -245,11 +266,13 @@ describe('assertion 6 — verified deletion after RAW_DELETING', () => {
     expectNoSentinels(readFileSync(daemon.store.paths.studyFile, 'utf8'), 'study snapshot');
   });
 
-  it('the verifier itself refuses residue', () => {
+  it('the verifier itself refuses residue, including lookalike filenames', () => {
     writeFileSync(join(storeRoot, 'events.jsonl'), '{"leftover":true}\n', 'utf8');
+    // a path-suffix match would wrongly clear this "…study.json" file (P0-2)
+    writeFileSync(join(storeRoot, 'raw-data-study.json'), 'leak', 'utf8');
     const receipt = verifyRawDataDeleted(storeRoot, at(15));
     expect(receipt.verified).toBe(false);
-    expect(receipt.residual_files).toHaveLength(1);
+    expect(receipt.residual_files).toHaveLength(2);
   });
 });
 

@@ -10,6 +10,7 @@
 resolver = "2"
 members = [
     "crates/nibbin-redaction",
+    "crates/nibbin-ner",
     "crates/nibbin-store",
     "crates/nibbin-study",
     "crates/nibbin-capture",
@@ -18,6 +19,7 @@ members = [
 ]
 default-members = [
     "crates/nibbin-redaction",
+    "crates/nibbin-ner",
     "crates/nibbin-store",
     "crates/nibbin-study",
     "crates/nibbin-capture",

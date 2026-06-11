@@ -26,11 +26,11 @@ function reviewStateView(status: StudyStatus): HTMLElement {
       el('p', { class: 'eyebrow' }, ['Field study']),
       el('h1', {}, ['The study ended. Really.']),
       el('p', { class: 'muted' }, [
-        'Day 14 came and the Observer stopped itself — that switch lives in the background process, not this window. Look through what it kept, delete anything, then send your packet when you’re ready. Synthesis builds your workflow map, and the raw data on this machine is deleted and verified right after.',
+        'Day 14 came and the Observer stopped itself — that switch lives in the background process, not this window. Look through what it kept, delete anything, then build your map when you’re ready. Synthesis builds your workflow map, and the raw data on this machine is deleted and verified right after.',
       ]),
       el('div', { class: 'card row' }, [
         button('Open review', () => setTab('review'), 'primary'),
-        button('Build my map (send packet)', () => void bridge.sendControl('finish_review').then(render)),
+        button('Build my map', () => void bridge.sendControl('finish_review').then(render)),
       ]),
       deleteEverythingCard(render),
     );

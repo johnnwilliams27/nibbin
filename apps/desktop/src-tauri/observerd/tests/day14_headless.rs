@@ -66,6 +66,43 @@ fn before_the_deadline_the_daemon_leaves_the_study_running() {
 }
 
 #[test]
+fn pause_then_resume_records_a_visible_gap() {
+    let dir = tempfile::tempdir().unwrap();
+    let lines = [
+        "{\"cmd\":\"consent\"}",
+        "{\"cmd\":\"start\"}",
+        "{\"cmd\":\"pause\"}",
+        "{\"cmd\":\"resume\"}",
+    ]
+    .join("\n");
+    std::fs::write(dir.path().join("control.jsonl"), lines + "\n").unwrap();
+
+    let output = run_observerd(dir.path(), "2026-06-12T08:00:00Z");
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    // C6: the pause must appear as a visible capture_gap event in the store —
+    // this is what the consent/Field-Notes copy promises.
+    use nibbin_redaction::event::EventKind;
+    use nibbin_store::{ObserverStore, StaticTestKey};
+    let mut key = [0u8; 32];
+    for (i, b) in key.iter_mut().enumerate() {
+        *b = u8::from_str_radix(&"11".repeat(32)[i * 2..i * 2 + 2], 16).unwrap();
+    }
+    let store = ObserverStore::open(dir.path(), &StaticTestKey(key)).unwrap();
+    let gaps = store
+        .list_events()
+        .unwrap()
+        .into_iter()
+        .filter(|e| e.kind == EventKind::CaptureGap)
+        .count();
+    assert_eq!(gaps, 1, "resume must emit exactly one visible gap");
+}
+
+#[test]
 fn delete_everything_via_control_file_destroys_and_verifies() {
     let dir = tempfile::tempdir().unwrap();
     let t0 = "2026-06-10T08:00:00Z".parse().unwrap();

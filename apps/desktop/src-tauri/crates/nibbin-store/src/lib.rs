@@ -157,30 +157,61 @@ impl PersistSink for ObserverStore {
 /// re-walks the store root with raw fs calls. Anything that is not the
 /// (raw-data-free) study snapshot is residue.
 pub fn verify_raw_data_deleted(root: &Path, now_iso: &str) -> DeletionReceipt {
-    fn walk(dir: &Path, out: &mut Vec<String>) {
+    // Only the study snapshot file at the store root may survive; anything
+    // else is residue. Match the EXACT basename (not a path suffix — a suffix
+    // match would clear "raw-data-study.json"), and treat symlinks as residue
+    // so a dangling/redirecting link can't masquerade as the snapshot (C3).
+    fn walk(dir: &Path, root: &Path, out: &mut Vec<String>) {
         let Ok(entries) = std::fs::read_dir(dir) else {
             return;
         };
         for entry in entries.flatten() {
             let p = entry.path();
-            if p.is_dir() {
-                walk(&p, out);
-            } else {
+            let is_symlink = entry.file_type().map(|t| t.is_symlink()).unwrap_or(true);
+            let is_snapshot = !is_symlink
+                && p.parent() == Some(root)
+                && p.file_name().and_then(|n| n.to_str()) == Some("study.json");
+            if p.is_dir() && !is_symlink {
+                walk(&p, root, out);
+            } else if !is_snapshot {
                 out.push(p.to_string_lossy().into_owned());
             }
         }
     }
-    let mut all = Vec::new();
-    walk(root, &mut all);
-    let residual: Vec<String> = all
-        .into_iter()
-        .filter(|p| !p.ends_with("study.json"))
-        .collect();
+    let mut residual = Vec::new();
+    walk(root, root, &mut residual);
     DeletionReceipt {
         verified_at: now_iso.to_string(),
         checked_paths: vec![root.to_string_lossy().into_owned()],
         residual_files: residual.clone(),
         verified: residual.is_empty(),
+    }
+}
+
+#[cfg(test)]
+mod verifier_tests {
+    use super::*;
+
+    #[test]
+    fn lookalike_filenames_are_residue_not_cleared() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("study.json"), "{}").unwrap();
+        // a suffix match would wrongly clear this
+        std::fs::write(dir.path().join("raw-data-study.json"), "leak").unwrap();
+        let receipt = verify_raw_data_deleted(dir.path(), "2026-06-24T00:00:00Z");
+        assert!(!receipt.verified);
+        assert_eq!(receipt.residual_files.len(), 1);
+        assert!(receipt.residual_files[0].ends_with("raw-data-study.json"));
+    }
+
+    #[test]
+    fn a_nested_study_json_is_residue() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("study.json"), "{}").unwrap();
+        std::fs::create_dir(dir.path().join("frames")).unwrap();
+        std::fs::write(dir.path().join("frames").join("study.json"), "leak").unwrap();
+        let receipt = verify_raw_data_deleted(dir.path(), "2026-06-24T00:00:00Z");
+        assert!(!receipt.verified, "only the ROOT study.json may survive");
     }
 }
 

@@ -25,13 +25,24 @@ const KEYRING_SERVICE: &str = "com.nibbin.observer";
 const KEYRING_SESSION: &str = "supabase-session";
 const REDIRECT: &str = "nibbin://auth";
 
-static PENDING_VERIFIER: Mutex<Option<String>> = Mutex::new(None);
+/// A sign-in we started and are waiting on. The `state` nonce binds the
+/// deep-link callback to THIS request: the custom `nibbin://` scheme is not
+/// exclusive, so any local app can deliver a callback — without a matching
+/// state we would exchange an attacker-supplied auth code against our pending
+/// verifier and log the user into the attacker's account (login-CSRF). The
+/// callback must echo the exact state we generated, or we reject it.
+struct PendingSignIn {
+    verifier: String,
+    state: String,
+}
+
+static PENDING: Mutex<Option<PendingSignIn>> = Mutex::new(None);
 
 fn b64url(bytes: &[u8]) -> String {
     base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(bytes)
 }
 
-fn new_verifier() -> Result<String, anyhow::Error> {
+fn random_token() -> Result<String, anyhow::Error> {
     let mut random = [0u8; 48];
     getrandom::getrandom(&mut random)?;
     Ok(b64url(&random))
@@ -49,57 +60,93 @@ fn auth_start_inner(
     provider: &str,
     email: Option<&str>,
 ) -> Result<(), anyhow::Error> {
-    let verifier = new_verifier()?;
+    let verifier = random_token()?;
+    let state = random_token()?;
     let challenge = b64url(&Sha256::digest(verifier.as_bytes()));
-    *PENDING_VERIFIER.lock().expect("verifier lock") = Some(verifier);
 
-    match provider {
-        "google" | "apple" => {
-            let url = format!(
-                "{}/auth/v1/authorize?provider={}&redirect_to={}&code_challenge={}&code_challenge_method=s256",
-                supabase_url(),
-                provider,
-                urlencode(REDIRECT),
-                challenge,
-            );
-            app.opener().open_url(url, None::<&str>)?;
+    // Arm the pending request only AFTER the browser/OTP leg succeeds, so a
+    // failed start never leaves a verifier armed for an injected callback.
+    let result = (|| -> Result<(), anyhow::Error> {
+        match provider {
+            "google" | "apple" => {
+                let url = format!(
+                    "{}/auth/v1/authorize?provider={}&redirect_to={}&code_challenge={}&code_challenge_method=s256&state={}",
+                    supabase_url(),
+                    provider,
+                    urlencode(REDIRECT),
+                    challenge,
+                    state,
+                );
+                app.opener().open_url(url, None::<&str>)?;
+            }
+            "magic" => {
+                let email = email.ok_or_else(|| anyhow::anyhow!("magic link needs an email"))?;
+                let response = ureq::post(&format!("{}/auth/v1/otp", supabase_url()))
+                    .set("apikey", supabase_publishable_key())
+                    .send_json(serde_json::json!({
+                        "email": email,
+                        "create_user": true,
+                        "code_challenge": challenge,
+                        "code_challenge_method": "s256",
+                        "options": { "email_redirect_to": REDIRECT, "data": { "state": state } },
+                    }))?;
+                anyhow::ensure!(response.status() < 300, "otp request failed");
+            }
+            other => anyhow::bail!("unknown provider: {other}"),
         }
-        "magic" => {
-            let email = email.ok_or_else(|| anyhow::anyhow!("magic link needs an email"))?;
-            let response = ureq::post(&format!("{}/auth/v1/otp", supabase_url()))
-                .set("apikey", supabase_publishable_key())
-                .send_json(serde_json::json!({
-                    "email": email,
-                    "create_user": true,
-                    "code_challenge": challenge,
-                    "code_challenge_method": "s256",
-                    "options": { "email_redirect_to": REDIRECT },
-                }))?;
-            anyhow::ensure!(response.status() < 300, "otp request failed");
+        Ok(())
+    })();
+
+    match result {
+        Ok(()) => {
+            *PENDING.lock().expect("pending lock") = Some(PendingSignIn { verifier, state });
+            Ok(())
         }
-        other => anyhow::bail!("unknown provider: {other}"),
+        Err(e) => {
+            *PENDING.lock().expect("pending lock") = None;
+            Err(e)
+        }
     }
-    Ok(())
 }
 
-/// Deep-link callback: nibbin://auth?code=... → PKCE token exchange → keychain.
+/// Deep-link callback: nibbin://auth?code=...&state=... → PKCE token exchange
+/// → keychain. The callback is rejected unless a sign-in is pending AND its
+/// `state` matches exactly (anti-CSRF / code-injection, P1-2).
 pub fn complete_from_url(_app: &AppHandle, url: &str) -> Result<(), anyhow::Error> {
     let parsed = url::Url::parse(url)?;
+    // Only accept our exact callback shape.
+    anyhow::ensure!(
+        parsed.scheme() == "nibbin" && parsed.host_str() == Some("auth"),
+        "unexpected auth callback target"
+    );
     let code = parsed
         .query_pairs()
         .find(|(k, _)| k == "code")
         .map(|(_, v)| v.into_owned())
         .ok_or_else(|| anyhow::anyhow!("auth callback had no code"))?;
+    let callback_state = parsed
+        .query_pairs()
+        .find(|(k, _)| k == "state")
+        .map(|(_, v)| v.into_owned());
 
-    let verifier = PENDING_VERIFIER
+    // Take the pending request: a callback consumes it whether or not it
+    // matches, so a bad callback can't be replayed against a future request.
+    let pending = PENDING
         .lock()
-        .expect("verifier lock")
+        .expect("pending lock")
         .take()
-        .ok_or_else(|| anyhow::anyhow!("no sign-in in progress (verifier missing)"))?;
+        .ok_or_else(|| anyhow::anyhow!("no sign-in in progress"))?;
+
+    // Constant-ish equality is unnecessary here (state is a 384-bit random
+    // nonce), but the match MUST be exact and present.
+    anyhow::ensure!(
+        callback_state.as_deref() == Some(pending.state.as_str()),
+        "auth callback state mismatch — rejecting (possible injected callback)"
+    );
 
     let response = ureq::post(&format!("{}/auth/v1/token?grant_type=pkce", supabase_url()))
         .set("apikey", supabase_publishable_key())
-        .send_json(serde_json::json!({ "auth_code": code, "code_verifier": verifier }))?;
+        .send_json(serde_json::json!({ "auth_code": code, "code_verifier": pending.verifier }))?;
     anyhow::ensure!(response.status() < 300, "token exchange failed");
     let session: serde_json::Value = response.into_json()?;
 

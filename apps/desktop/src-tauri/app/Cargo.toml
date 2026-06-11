@@ -1,8 +1,9 @@
 # The Tauri shell — tray countdown, review UI host, sign-in, account module.
 # This crate is a CLIENT of observerd: it renders state and writes control
 # commands. No privacy invariant lives here (C2/C3/C4/C5 are daemon-side by
-# construction); the shell owns C6's hotkey registration and the C7 packet
-# export, both of which the daemon/store still gate.
+# construction); the shell owns C6's hotkey registration. The C7 synthesis-
+# packet EXPORT/upload is built at M7 (packet builder already exists in
+# packages/redaction) — it is not wired in this crate yet.
 #
 # Excluded from workspace default-members: building it needs the platform
 # webview toolchain (macOS first). CI builds the privacy-core crates; this

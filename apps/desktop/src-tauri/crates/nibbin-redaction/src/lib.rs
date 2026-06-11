@@ -17,5 +17,5 @@ pub use battery::{apply_battery, battery_still_matches, classify_value};
 pub use blocklist::{blocked_category_for, UserExclusions};
 pub use capture_norm::{snapshot_to_raw_events, AxSnapshot, AxSnapshotNode};
 pub use event::{AxObservation, ObserverEvent, RawCaptureEvent, ValueClass};
-pub use ner::{HeuristicNer, NerClient, NerError, PresidioSidecarClient};
+pub use ner::{HeuristicNer, NerClient, NerError, NerResult};
 pub use pipeline::{PersistSink, ProcessOutcome, RedactionPipeline};

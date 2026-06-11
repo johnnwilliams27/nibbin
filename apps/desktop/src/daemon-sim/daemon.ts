@@ -21,6 +21,7 @@ import {
   captureAllowed,
   deadlinePassed,
   newStudy,
+  observeClock,
   remainingMs,
   transition,
   type StudyCommand,
@@ -71,6 +72,13 @@ export class ObserverDaemon {
    */
   tick(): boolean {
     const now = this.clock();
+    // Advance the monotonic high-water mark first — that is what makes the
+    // deadline check rollback-proof (C2).
+    const observed = observeClock(this.study, now);
+    if (observed.clockHighWater !== this.study.clockHighWater) {
+      this.study = observed;
+      this.store.saveStudy(this.study);
+    }
     if (deadlinePassed(this.study, now)) {
       this.apply({ type: 'stop_day14', at: now });
       return true;

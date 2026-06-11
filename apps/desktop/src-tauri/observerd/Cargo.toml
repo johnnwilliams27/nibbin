@@ -12,6 +12,7 @@ os-keystore = ["nibbin-store/os-keystore"]
 
 [dependencies]
 nibbin-redaction = { path = "../crates/nibbin-redaction" }
+nibbin-ner = { path = "../crates/nibbin-ner" }
 nibbin-store = { path = "../crates/nibbin-store" }
 nibbin-study = { path = "../crates/nibbin-study" }
 nibbin-capture = { path = "../crates/nibbin-capture" }

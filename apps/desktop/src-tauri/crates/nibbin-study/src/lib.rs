@@ -52,6 +52,12 @@ pub struct StudySnapshot {
     pub stopped_by: Option<StoppedBy>,
     pub aborted: bool,
     pub deletion_receipt: Option<DeletionReceipt>,
+    /// Highest wall-clock the daemon has ever observed while this study was
+    /// running. Persisted every tick. The day-14 stop fires against
+    /// `max(now, clock_high_water)`, so winding the OS clock backward cannot
+    /// un-expire a study the daemon has already seen reach its deadline (C2).
+    #[serde(default)]
+    pub clock_high_water: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Clone)]
@@ -97,6 +103,32 @@ pub fn new_study(study_id: &str) -> StudySnapshot {
         stopped_by: None,
         aborted: false,
         deletion_receipt: None,
+        clock_high_water: None,
+    }
+}
+
+/// Record the latest wall-clock the daemon has seen. Monotonic by
+/// construction: the stored value never decreases, so a backward clock jump
+/// is ignored for deadline purposes (C2 anti-rollback). Only meaningful while
+/// the study can still be stopped (ACTIVE/PAUSED).
+pub fn observe_clock(snap: &StudySnapshot, now: DateTime<Utc>) -> StudySnapshot {
+    if !matches!(snap.state, StudyState::Active | StudyState::Paused) {
+        return snap.clone();
+    }
+    let high = match snap.clock_high_water {
+        Some(prev) if prev >= now => prev,
+        _ => now,
+    };
+    let mut next = snap.clone();
+    next.clock_high_water = Some(high);
+    next
+}
+
+/// The deadline-relevant "now": never earlier than the high-water mark.
+fn effective_now(snap: &StudySnapshot, now: DateTime<Utc>) -> DateTime<Utc> {
+    match snap.clock_high_water {
+        Some(high) if high > now => high,
+        _ => now,
     }
 }
 
@@ -188,16 +220,20 @@ pub fn capture_allowed(snap: &StudySnapshot) -> bool {
     snap.state == StudyState::Active
 }
 
-/// True when the daemon must fire the day-14 stop on its next tick.
+/// True when the daemon must fire the day-14 stop on its next tick. Uses the
+/// monotonic high-water mark, so a rolled-back clock cannot revive the study.
 pub fn deadline_passed(snap: &StudySnapshot, now: DateTime<Utc>) -> bool {
     matches!(snap.state, StudyState::Active | StudyState::Paused)
-        && snap.ends_at.is_some_and(|ends| now >= ends)
+        && snap
+            .ends_at
+            .is_some_and(|ends| effective_now(snap, now) >= ends)
 }
 
-/// Countdown for the always-visible tray display. Never negative.
+/// Countdown for the always-visible tray display. Never negative; never
+/// counts back up if the clock is wound backward.
 pub fn remaining_ms(snap: &StudySnapshot, now: DateTime<Utc>) -> i64 {
     match snap.ends_at {
-        Some(ends) => (ends - now).num_milliseconds().max(0),
+        Some(ends) => (ends - effective_now(snap, now)).num_milliseconds().max(0),
         None => Duration::days(STUDY_DAYS).num_milliseconds(),
     }
 }
@@ -276,6 +312,22 @@ mod tests {
     }
 
     #[test]
+    fn clock_rollback_cannot_revive_an_expired_study() {
+        // the daemon observes a time past the deadline...
+        let s = observe_clock(&started(), t("2026-06-25T08:00:00Z"));
+        assert_eq!(s.clock_high_water, Some(t("2026-06-25T08:00:00Z")));
+        // ...then the OS clock is wound back before the deadline.
+        assert!(
+            deadline_passed(&s, t("2026-06-11T08:00:00Z")),
+            "high-water mark must keep the study expired after a rollback"
+        );
+        assert_eq!(remaining_ms(&s, t("2026-06-11T08:00:00Z")), 0);
+        // observing an earlier time never lowers the high-water mark
+        let rolled = observe_clock(&s, t("2026-06-11T08:00:00Z"));
+        assert_eq!(rolled.clock_high_water, Some(t("2026-06-25T08:00:00Z")));
+    }
+
+    #[test]
     fn delete_everything_from_any_nonterminal_state_ends_deleted() {
         for snap in [
             new_study("s1"),
@@ -327,9 +379,18 @@ mod tests {
             "consentedAt": "2026-06-10T08:00:00.000Z",
             "startedAt": "2026-06-10T08:00:00.000Z",
             "endsAt": "2026-06-24T08:00:00.000Z",
-            "stoppedBy": null, "aborted": false, "deletionReceipt": null
+            "stoppedBy": null, "aborted": false, "deletionReceipt": null,
+            "clockHighWater": "2026-06-12T09:00:00.000Z"
         }"#;
         let parsed: StudySnapshot = serde_json::from_str(ts_written).unwrap();
         assert_eq!(parsed.state, StudyState::Paused);
+        assert!(parsed.clock_high_water.is_some());
+        // a snapshot written by an older daemon (no high-water field) still loads
+        let legacy = r#"{
+            "v": 1, "studyId": "s", "state": "ACTIVE",
+            "consentedAt": null, "startedAt": null, "endsAt": null,
+            "stoppedBy": null, "aborted": false, "deletionReceipt": null
+        }"#;
+        assert!(serde_json::from_str::<StudySnapshot>(legacy).is_ok());
     }
 }

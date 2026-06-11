@@ -53,8 +53,16 @@ fn event_id() -> String {
     format!("evt_{:x}", COUNTER.fetch_add(1, Ordering::Relaxed))
 }
 
-pub fn to_observation(node: &AxSnapshotNode, role_path: &str) -> AxObservation {
-    if node.secure == Some(true) {
+/// Build an observation. `secure_context` is true when this node OR any
+/// ancestor is OS-flagged secure (C4): the flag commonly sits on the
+/// field/group while the value lives in a child, so suppression must cover
+/// the whole subtree, not just the flagged node.
+pub fn to_observation(
+    node: &AxSnapshotNode,
+    role_path: &str,
+    secure_context: bool,
+) -> AxObservation {
+    if secure_context {
         AxObservation::SecureSuppressed {
             role_path: format!("{role_path}[secure]"),
             action: node.action.unwrap_or(AxAction::Read),
@@ -72,16 +80,18 @@ pub fn to_observation(node: &AxSnapshotNode, role_path: &str) -> AxObservation {
 fn flatten<'a>(
     node: &'a AxSnapshotNode,
     prefix: &str,
-    out: &mut Vec<(&'a AxSnapshotNode, String)>,
+    inherited_secure: bool,
+    out: &mut Vec<(&'a AxSnapshotNode, String, bool)>,
 ) {
     let role_path = if prefix.is_empty() {
         node.role.clone()
     } else {
         format!("{prefix}/{}", node.role)
     };
-    out.push((node, role_path.clone()));
+    let secure_context = inherited_secure || node.secure == Some(true);
+    out.push((node, role_path.clone(), secure_context));
     for child in &node.children {
-        flatten(child, &role_path, out);
+        flatten(child, &role_path, secure_context, out);
     }
 }
 
@@ -92,12 +102,12 @@ pub fn snapshot_to_raw_events(
     now_iso: &str,
 ) -> Vec<RawCaptureEvent> {
     let mut flat = Vec::new();
-    flatten(&snapshot.ax_tree, "", &mut flat);
+    flatten(&snapshot.ax_tree, "", false, &mut flat);
 
     flat.into_iter()
-        .filter(|(node, _)| node.role != "window" && node.role != "group")
-        .map(|(node, role_path)| {
-            let obs = to_observation(node, &role_path);
+        .filter(|(node, _, _)| node.role != "window" && node.role != "group")
+        .map(|(node, role_path, secure_context)| {
+            let obs = to_observation(node, &role_path, secure_context);
             let secure = matches!(obs, AxObservation::SecureSuppressed { .. });
             RawCaptureEvent {
                 id: event_id(),

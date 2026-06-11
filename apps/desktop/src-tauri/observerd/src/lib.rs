@@ -13,8 +13,14 @@
 use anyhow::Context;
 use chrono::{DateTime, Utc};
 use nibbin_capture::{CaptureGate, CaptureSource};
-use nibbin_redaction::ner::{DownNer, HeuristicNer, PresidioSidecarClient};
-use nibbin_redaction::{snapshot_to_raw_events, NerClient, ProcessOutcome, RedactionPipeline};
+use nibbin_ner::PresidioSidecarClient;
+use nibbin_redaction::event::{
+    AppRef, EventKind, InputRef, ObserverEvent, RedactionMeta, ReviewState, WindowRef,
+};
+use nibbin_redaction::ner::{DownNer, HeuristicNer};
+use nibbin_redaction::{
+    snapshot_to_raw_events, NerClient, PersistSink, ProcessOutcome, RedactionPipeline,
+};
 use nibbin_store::{KeyProvider, ObserverStore, StaticTestKey};
 use nibbin_study::{
     capture_allowed, deadline_passed, new_study, transition, StudyCommand, StudySnapshot,
@@ -26,12 +32,18 @@ use std::path::{Path, PathBuf};
 /// wall clock. The fake is read once per call so long-running tests can move
 /// time by rewriting the env of a child they relaunch.
 pub fn daemon_now() -> DateTime<Utc> {
-    match std::env::var("NIBBIN_FAKE_NOW") {
-        Ok(iso) => iso
+    // The fake-clock hook is compiled in only for debug/test builds. A
+    // release daemon ALWAYS uses the real wall clock, so the day-14 stop
+    // can never be defeated by setting NIBBIN_FAKE_NOW on the process
+    // (anti-rollback also covers genuine OS clock manipulation — see
+    // nibbin_study::observe_clock).
+    #[cfg(debug_assertions)]
+    if let Ok(iso) = std::env::var("NIBBIN_FAKE_NOW") {
+        return iso
             .parse()
-            .unwrap_or_else(|e| panic!("NIBBIN_FAKE_NOW must be ISO-8601: {e}")),
-        Err(_) => Utc::now(),
+            .unwrap_or_else(|e| panic!("NIBBIN_FAKE_NOW must be ISO-8601: {e}"));
     }
+    Utc::now()
 }
 
 /// NER engine selection. Production default is the supervised Presidio
@@ -49,7 +61,11 @@ pub fn ner_from_env() -> Box<dyn NerClient> {
 }
 
 fn key_provider() -> Box<dyn KeyProvider> {
+    // Explicit test key — debug builds only, and length-validated so a short
+    // value is a clean error, not an index-out-of-bounds panic (P3-1).
+    #[cfg(debug_assertions)]
     if let Ok(hex) = std::env::var("NIBBIN_TEST_KEY_HEX") {
+        assert_eq!(hex.len(), 64, "NIBBIN_TEST_KEY_HEX must be 32 bytes hex");
         let mut key = [0u8; 32];
         for (i, byte) in key.iter_mut().enumerate() {
             *byte = u8::from_str_radix(&hex[i * 2..i * 2 + 2], 16).expect("test key hex");
@@ -96,6 +112,7 @@ pub struct Daemon {
     gate: CaptureGate,
     source: Box<dyn CaptureSource>,
     control_offset: u64,
+    paused_at: Option<DateTime<Utc>>,
 }
 
 impl Daemon {
@@ -103,6 +120,12 @@ impl Daemon {
         std::fs::create_dir_all(store_root)?;
         let study = nibbin_study::load(store_root)?.unwrap_or_else(|| new_study("study_local"));
         nibbin_study::save(store_root, &study)?;
+        // Resume the control cursor where we left off (persisted), so a daemon
+        // restart does not re-apply already-consumed commands (P2-2).
+        let control_offset = std::fs::read_to_string(store_root.join("control.offset"))
+            .ok()
+            .and_then(|s| s.trim().parse().ok())
+            .unwrap_or(0);
         Ok(Self {
             store_root: store_root.to_path_buf(),
             study,
@@ -110,7 +133,8 @@ impl Daemon {
             store: None,
             gate: CaptureGate::new(),
             source,
-            control_offset: 0,
+            control_offset,
+            paused_at: None,
         })
     }
 
@@ -132,6 +156,13 @@ impl Daemon {
     /// stop fired on this tick.
     pub fn tick(&mut self) -> anyhow::Result<bool> {
         let now = daemon_now();
+        // Record the observed time first: the high-water mark this advances is
+        // what makes the deadline check rollback-proof (C2).
+        let observed = nibbin_study::observe_clock(&self.study, now);
+        if observed.clock_high_water != self.study.clock_high_water {
+            self.study = observed;
+            nibbin_study::save(&self.store_root, &self.study)?;
+        }
         if deadline_passed(&self.study, now) {
             self.apply(StudyCommand::StopDay14)?;
             self.source.stop();
@@ -190,12 +221,20 @@ impl Daemon {
             .unwrap_or(0)
             .min(text.len())..];
         self.control_offset = text.len() as u64;
+        std::fs::write(
+            self.store_root.join("control.offset"),
+            self.control_offset.to_string(),
+        )?;
         for line in fresh.lines().filter(|l| !l.trim().is_empty()) {
             let cmd: ControlCommand = match serde_json::from_str(line) {
                 Ok(c) => c,
                 Err(_) => continue, // a malformed command never crashes the daemon
             };
-            self.handle(cmd)?;
+            // A single bad/stale command (e.g. an invalid transition after a
+            // restart) must never brick the daemon — log and keep going.
+            if let Err(e) = self.handle(cmd) {
+                eprintln!("control command failed (continuing): {e}");
+            }
         }
         Ok(())
     }
@@ -211,9 +250,13 @@ impl Daemon {
             ControlCommand::Pause => {
                 self.gate.pause(); // C6 first: kill forwarding before any IO
                 self.apply(StudyCommand::Pause)?;
+                self.paused_at = Some(now);
             }
             ControlCommand::Resume => {
                 self.apply(StudyCommand::Resume)?;
+                // C6: pauses are recorded as VISIBLE gaps (never hidden). The
+                // gap carries no content — only its duration.
+                self.record_gap(now)?;
                 self.gate.resume();
             }
             ControlCommand::StopEarly => {
@@ -247,6 +290,56 @@ impl Daemon {
         Ok(())
     }
 
+    fn store_mut(&mut self) -> anyhow::Result<&mut ObserverStore> {
+        if self.store.is_none() {
+            self.store = Some(ObserverStore::open(
+                &self.store_root,
+                key_provider().as_ref(),
+            )?);
+        }
+        Ok(self.store.as_mut().expect("opened above"))
+    }
+
+    /// Append a visible capture gap covering the pause (C6: pauses are logged,
+    /// never hidden). The event carries only the gap's duration — no app, no
+    /// window content, no frame.
+    fn record_gap(&mut self, now: DateTime<Utc>) -> anyhow::Result<()> {
+        let duration_ms = self
+            .paused_at
+            .take()
+            .map(|start| (now - start).num_milliseconds().max(0) as u64)
+            .unwrap_or(0);
+        let gap = ObserverEvent {
+            v: 1,
+            id: format!("evt_gap_{}", now.to_rfc3339()),
+            ts: now.to_rfc3339(),
+            session: "ses_gap".to_string(),
+            kind: EventKind::CaptureGap,
+            app: AppRef {
+                bundle_id: "app.nibbin.observer".to_string(),
+                name: "Observer".to_string(),
+            },
+            window: WindowRef {
+                title_redacted: String::new(),
+                id: "w_gap".to_string(),
+            },
+            url: None,
+            ax: None,
+            input: Some(InputRef {
+                keys: 0,
+                clicks: 0,
+                duration_ms,
+            }),
+            frame_ref: None,
+            redaction: RedactionMeta {
+                rules_hit: vec![],
+                review_state: ReviewState::Auto,
+            },
+        };
+        self.store_mut()?.append(&gap)?;
+        Ok(())
+    }
+
     /// RAW_DELETING → destroy → independent verification → receipt (C3).
     fn delete_raw_and_verify(&mut self) -> anyhow::Result<()> {
         // make sure the db exists as a store handle, then consume it
@@ -261,7 +354,7 @@ impl Daemon {
         }
         // residual control/status bookkeeping files hold no raw data but are
         // removed anyway so the verifier's bar stays "nothing but study.json"
-        for extra in ["control.jsonl", "daemon.status"] {
+        for extra in ["control.jsonl", "control.offset", "daemon.status"] {
             let p = self.store_root.join(extra);
             if p.exists() {
                 std::fs::remove_file(p)?;

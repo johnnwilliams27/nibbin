@@ -18,17 +18,32 @@ function eventId(): string {
 interface FlatNode {
   node: AxSnapshotNode;
   rolePath: string;
+  /** True when this node OR any ancestor was OS-flagged secure (C4). */
+  secureContext: boolean;
 }
 
-function flatten(node: AxSnapshotNode, prefix: string, out: FlatNode[]): FlatNode[] {
+function flatten(
+  node: AxSnapshotNode,
+  prefix: string,
+  inheritedSecure: boolean,
+  out: FlatNode[],
+): FlatNode[] {
   const rolePath = prefix === '' ? node.role : `${prefix}/${node.role}`;
-  out.push({ node, rolePath });
-  for (const child of node.children ?? []) flatten(child, rolePath, out);
+  // Secure context flows DOWN the tree: the OS flag commonly sits on the
+  // field/group while the actual value lives in a child node. Suppressing only
+  // the flagged node would leak those descendant values (C4).
+  const secureContext = inheritedSecure || node.secure === true;
+  out.push({ node, rolePath, secureContext });
+  for (const child of node.children ?? []) flatten(child, rolePath, secureContext, out);
   return out;
 }
 
-export function toObservation(node: AxSnapshotNode, rolePath: string): RawAxObservation {
-  if (node.secure === true) {
+export function toObservation(
+  node: AxSnapshotNode,
+  rolePath: string,
+  secureContext = node.secure === true,
+): RawAxObservation {
+  if (secureContext) {
     return {
       secureSuppressed: true,
       rolePath: `${rolePath}[secure]`,
@@ -53,11 +68,11 @@ export function snapshotToRawEvents(
   session: string,
   now: () => string = () => new Date().toISOString(),
 ): RawCaptureEvent[] {
-  const flat = flatten(snapshot.axTree, '', []);
+  const flat = flatten(snapshot.axTree, '', false, []);
   const interactive = flat.filter(({ node }) => node.role !== 'window' && node.role !== 'group');
 
-  return interactive.map(({ node, rolePath }) => {
-    const obs = toObservation(node, rolePath);
+  return interactive.map(({ node, rolePath, secureContext }) => {
+    const obs = toObservation(node, rolePath, secureContext);
     return {
       id: eventId(),
       ts: now(),

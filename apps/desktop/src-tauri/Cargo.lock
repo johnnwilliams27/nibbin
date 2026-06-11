@@ -2207,6 +2207,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "nibbin-ner"
+version = "0.1.0"
+dependencies = [
+ "nibbin-redaction",
+ "serde_json",
+ "ureq",
+]
+
+[[package]]
 name = "nibbin-observer-app"
 version = "0.1.0"
 dependencies = [
@@ -2240,7 +2249,6 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 2.0.18",
- "ureq",
  "url",
 ]
 
@@ -2509,6 +2517,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "nibbin-capture",
+ "nibbin-ner",
  "nibbin-redaction",
  "nibbin-store",
  "nibbin-study",

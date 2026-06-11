@@ -13,4 +13,3 @@ regex = { workspace = true }
 thiserror = { workspace = true }
 anyhow = { workspace = true }
 url = "2"
-ureq = { version = "2", default-features = false, features = ["tls", "json"] }

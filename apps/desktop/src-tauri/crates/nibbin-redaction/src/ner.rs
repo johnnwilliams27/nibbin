@@ -1,6 +1,12 @@
 //! Layer 3b — NER. Production NER is the supervised Presidio sidecar; the
 //! pipeline FAIL-CLOSES on it: any sidecar failure halts persistence rather
 //! than degrading to regex-only output (GOTCHAS "Redaction fail-closed").
+//!
+//! This module defines only the CONTRACT (`NerClient`/`NerError`) and the
+//! network-free deterministic engines used by tests/corpus. The HTTP client
+//! that actually talks to the sidecar lives in the separate `nibbin-ner`
+//! crate, so this crate — and therefore `nibbin-capture`, which depends on
+//! it — has NO network dependency in its closure (C1 "by construction").
 
 use regex::Regex;
 use std::sync::OnceLock;
@@ -20,52 +26,6 @@ pub struct NerResult {
 pub trait NerClient: Send + Sync {
     /// Redact entities. MUST return Err(Unavailable) when the engine is down.
     fn redact(&self, text: &str) -> Result<NerResult, NerError>;
-}
-
-/// HTTP client for the supervised Presidio sidecar (loopback only — the
-/// capture pipeline has no non-loopback network dependency, C1).
-pub struct PresidioSidecarClient {
-    endpoint: String,
-    timeout: std::time::Duration,
-}
-
-impl PresidioSidecarClient {
-    pub fn new(port: u16) -> Self {
-        Self {
-            endpoint: format!("http://127.0.0.1:{port}/redact"),
-            timeout: std::time::Duration::from_millis(1500),
-        }
-    }
-}
-
-impl NerClient for PresidioSidecarClient {
-    fn redact(&self, text: &str) -> Result<NerResult, NerError> {
-        let response = ureq::post(&self.endpoint)
-            .timeout(self.timeout)
-            .send_json(serde_json::json!({ "text": text }))
-            .map_err(|e| NerError::Unavailable(e.to_string()))?;
-        let body: serde_json::Value = response
-            .into_json()
-            .map_err(|e| NerError::Unavailable(format!("bad sidecar response: {e}")))?;
-        let redacted = body
-            .get("redacted")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| NerError::Unavailable("sidecar response missing 'redacted'".into()))?
-            .to_string();
-        let rules_hit = body
-            .get("rules_hit")
-            .and_then(|v| v.as_array())
-            .map(|a| {
-                a.iter()
-                    .filter_map(|v| v.as_str().map(String::from))
-                    .collect()
-            })
-            .unwrap_or_default();
-        Ok(NerResult {
-            redacted,
-            rules_hit,
-        })
-    }
 }
 
 const STOPWORDS: &[&str] = &[
