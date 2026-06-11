@@ -1,0 +1,13 @@
+{
+  "name": "@nibbin/router",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "LLM routing & cost control (SPEC §6.3) — T0/T1/T2 tiers, complexity classifier, per-user frontier budgets, transparent degradation.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}
