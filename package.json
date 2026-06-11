@@ -8,11 +8,11 @@
     "packages/*"
   ],
   "scripts": {
-    "typecheck": "tsc --noEmit -p packages/creatures && tsc --noEmit -p packages/shared && tsc --noEmit -p packages/connectors && tsc --noEmit -p apps/web && tsc --noEmit -p tests/redaction-corpus && tsc --noEmit -p tests/rls",
+    "typecheck": "tsc --noEmit -p packages/creatures && tsc --noEmit -p packages/shared && tsc --noEmit -p packages/connectors && tsc --noEmit -p apps/web && tsc --noEmit -p apps/admin && tsc --noEmit -p tests/redaction-corpus && tsc --noEmit -p tests/rls",
     "lint": "eslint .",
     "test": "vitest run",
     "audit": "npm audit --omit=dev --audit-level=high",
-    "build": "npm run build -w apps/web",
+    "build": "npm run build -w apps/web && npm run build -w apps/admin",
     "grovemap": "node tools/grovemap/grovemap.mjs"
   },
   "devDependencies": {
