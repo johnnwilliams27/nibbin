@@ -49,9 +49,11 @@
   screens show member data — prod data never leaves prod).
   - **Pending:** apps/admin has no Vercel project yet — when admin.nibbin.com is set up,
     mirror the five vars there with `SENTRY_PROJECT=nibbin-admin` + the nibbin-admin DSN.
-  - **Token note (John):** `SENTRY_AUTH_TOKEN` is a user auth token shared in chat
-    2026-06-11; rotate at will (only source-map upload depends on it — update the Vercel
-    var when you do).
+  - **Token note:** `SENTRY_AUTH_TOKEN` is the org auth token `nibbin-sourcemaps-vercel`
+    (source-map upload scope only; created 2026-06-11 after the original chat-shared user
+    token was rotated out, deleted, and verified revoked). To rotate again: mint a new org
+    token at Sentry → org settings → Auth Tokens, update the Vercel var (Production +
+    Preview), delete the old one — only source-map upload depends on it.
 - LLM providers: primary + fallback configured per routing tier (SPEC §6.3); provider
   hard spend caps set; routing config hot-reloadable.
 - Desktop signing: Apple Developer ID + notarization; Windows code-signing cert.
