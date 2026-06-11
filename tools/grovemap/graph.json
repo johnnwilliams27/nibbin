@@ -1,6 +1,6 @@
 {
- "generated": "2026-06-11T03:24:01.616Z",
- "root": "Nibbin",
+ "generated": "2026-06-11T04:37:23.037Z",
+ "root": "nib-m3-connectors",
  "nodes": [
   {
    "id": ".claude/agents/claims-auditor.md",
@@ -503,9 +503,194 @@
    "deg": 0
   },
   {
+   "id": "packages/connectors/src/aggregator.ts",
+   "group": "packages",
+   "deg": 7
+  },
+  {
+   "id": "packages/connectors/src/connectors/base.ts",
+   "group": "packages",
+   "deg": 14
+  },
+  {
+   "id": "packages/connectors/src/connectors/gmail.ts",
+   "group": "packages",
+   "deg": 7
+  },
+  {
+   "id": "packages/connectors/src/connectors/google-calendar.ts",
+   "group": "packages",
+   "deg": 5
+  },
+  {
+   "id": "packages/connectors/src/connectors/honeybook.ts",
+   "group": "packages",
+   "deg": 6
+  },
+  {
+   "id": "packages/connectors/src/connectors/instagram.ts",
+   "group": "packages",
+   "deg": 7
+  },
+  {
+   "id": "packages/connectors/src/connectors/pixieset.ts",
+   "group": "packages",
+   "deg": 5
+  },
+  {
+   "id": "packages/connectors/src/connectors/stripe.ts",
+   "group": "packages",
+   "deg": 5
+  },
+  {
+   "id": "packages/connectors/src/egress/ip.ts",
+   "group": "packages",
+   "deg": 4
+  },
+  {
+   "id": "packages/connectors/src/egress/safe-fetch.ts",
+   "group": "packages",
+   "deg": 23
+  },
+  {
    "id": "packages/connectors/src/index.ts",
    "group": "packages",
-   "deg": 0
+   "deg": 28
+  },
+  {
+   "id": "packages/connectors/src/oauth/flow.ts",
+   "group": "packages",
+   "deg": 8
+  },
+  {
+   "id": "packages/connectors/src/oauth/pkce.ts",
+   "group": "packages",
+   "deg": 3
+  },
+  {
+   "id": "packages/connectors/src/oauth/providers.ts",
+   "group": "packages",
+   "deg": 3
+  },
+  {
+   "id": "packages/connectors/src/quarantine.ts",
+   "group": "packages",
+   "deg": 11
+  },
+  {
+   "id": "packages/connectors/src/rails/caldav.ts",
+   "group": "packages",
+   "deg": 3
+  },
+  {
+   "id": "packages/connectors/src/rails/csv.ts",
+   "group": "packages",
+   "deg": 3
+  },
+  {
+   "id": "packages/connectors/src/rails/imap.ts",
+   "group": "packages",
+   "deg": 4
+  },
+  {
+   "id": "packages/connectors/src/rails/mcp.ts",
+   "group": "packages",
+   "deg": 4
+  },
+  {
+   "id": "packages/connectors/src/rails/outbound-webhook.ts",
+   "group": "packages",
+   "deg": 5
+  },
+  {
+   "id": "packages/connectors/src/rails/safe-socket.ts",
+   "group": "packages",
+   "deg": 6
+  },
+  {
+   "id": "packages/connectors/src/rails/smtp.ts",
+   "group": "packages",
+   "deg": 5
+  },
+  {
+   "id": "packages/connectors/src/registry/registry.ts",
+   "group": "packages",
+   "deg": 10
+  },
+  {
+   "id": "packages/connectors/src/registry/types.ts",
+   "group": "packages",
+   "deg": 6
+  },
+  {
+   "id": "packages/connectors/src/send-velocity.ts",
+   "group": "packages",
+   "deg": 10
+  },
+  {
+   "id": "packages/connectors/src/types.ts",
+   "group": "packages",
+   "deg": 11
+  },
+  {
+   "id": "packages/connectors/src/vault.ts",
+   "group": "packages",
+   "deg": 13
+  },
+  {
+   "id": "packages/connectors/src/webhooks/idempotency.ts",
+   "group": "packages",
+   "deg": 3
+  },
+  {
+   "id": "packages/connectors/src/webhooks/verify.ts",
+   "group": "packages",
+   "deg": 4
+  },
+  {
+   "id": "packages/connectors/test/clients.test.ts",
+   "group": "packages",
+   "deg": 9
+  },
+  {
+   "id": "packages/connectors/test/db.integration.test.ts",
+   "group": "packages",
+   "deg": 1
+  },
+  {
+   "id": "packages/connectors/test/dev-supabase.integration.test.ts",
+   "group": "packages",
+   "deg": 2
+  },
+  {
+   "id": "packages/connectors/test/egress.test.ts",
+   "group": "packages",
+   "deg": 2
+  },
+  {
+   "id": "packages/connectors/test/oauth.test.ts",
+   "group": "packages",
+   "deg": 3
+  },
+  {
+   "id": "packages/connectors/test/quarantine-velocity.test.ts",
+   "group": "packages",
+   "deg": 3
+  },
+  {
+   "id": "packages/connectors/test/rails.test.ts",
+   "group": "packages",
+   "deg": 10
+  },
+  {
+   "id": "packages/connectors/test/registry.test.ts",
+   "group": "packages",
+   "deg": 4
+  },
+  {
+   "id": "packages/connectors/test/webhooks.test.ts",
+   "group": "packages",
+   "deg": 2
   },
   {
    "id": "packages/connectors/tsconfig.json",
@@ -680,7 +865,7 @@
   {
    "id": "tests/rls/harness.ts",
    "group": "tests",
-   "deg": 3
+   "deg": 4
   },
   {
    "id": "tests/rls/rls.test.ts",
@@ -1243,6 +1428,656 @@
    "source": "LEARNINGS.md",
    "target": ".github/workflows/ci.yml",
    "kind": "mention"
+  },
+  {
+   "source": "packages/connectors/src/aggregator.ts",
+   "target": "packages/connectors/src/registry/registry.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/aggregator.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/aggregator.ts",
+   "target": "packages/connectors/src/quarantine.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/aggregator.ts",
+   "target": "packages/connectors/src/vault.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/aggregator.ts",
+   "target": "packages/connectors/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/base.ts",
+   "target": "packages/connectors/src/registry/registry.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/base.ts",
+   "target": "packages/connectors/src/registry/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/base.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/base.ts",
+   "target": "packages/connectors/src/quarantine.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/base.ts",
+   "target": "packages/connectors/src/vault.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/base.ts",
+   "target": "packages/connectors/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/gmail.ts",
+   "target": "packages/connectors/src/connectors/base.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/gmail.ts",
+   "target": "packages/connectors/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/gmail.ts",
+   "target": "packages/connectors/src/vault.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/gmail.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/gmail.ts",
+   "target": "packages/connectors/src/send-velocity.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/google-calendar.ts",
+   "target": "packages/connectors/src/connectors/base.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/google-calendar.ts",
+   "target": "packages/connectors/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/google-calendar.ts",
+   "target": "packages/connectors/src/vault.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/google-calendar.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/honeybook.ts",
+   "target": "packages/connectors/src/connectors/base.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/honeybook.ts",
+   "target": "packages/connectors/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/honeybook.ts",
+   "target": "packages/connectors/src/vault.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/honeybook.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/honeybook.ts",
+   "target": "packages/connectors/src/send-velocity.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/instagram.ts",
+   "target": "packages/connectors/src/connectors/base.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/instagram.ts",
+   "target": "packages/connectors/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/instagram.ts",
+   "target": "packages/connectors/src/vault.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/instagram.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/instagram.ts",
+   "target": "packages/connectors/src/send-velocity.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/pixieset.ts",
+   "target": "packages/connectors/src/connectors/base.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/pixieset.ts",
+   "target": "packages/connectors/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/pixieset.ts",
+   "target": "packages/connectors/src/vault.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/pixieset.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/stripe.ts",
+   "target": "packages/connectors/src/connectors/base.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/stripe.ts",
+   "target": "packages/connectors/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/stripe.ts",
+   "target": "packages/connectors/src/vault.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/connectors/stripe.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/egress/safe-fetch.ts",
+   "target": "packages/connectors/src/egress/ip.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/registry/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/registry/registry.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/oauth/pkce.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/oauth/providers.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/oauth/flow.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/vault.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/webhooks/verify.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/webhooks/idempotency.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/egress/ip.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/quarantine.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/send-velocity.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/connectors/base.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/connectors/gmail.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/connectors/google-calendar.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/connectors/stripe.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/connectors/honeybook.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/connectors/pixieset.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/connectors/instagram.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/aggregator.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/rails/safe-socket.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/rails/mcp.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/rails/imap.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/rails/smtp.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/rails/caldav.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/rails/csv.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/index.ts",
+   "target": "packages/connectors/src/rails/outbound-webhook.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/oauth/flow.ts",
+   "target": "packages/connectors/src/registry/registry.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/oauth/flow.ts",
+   "target": "packages/connectors/src/registry/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/oauth/flow.ts",
+   "target": "packages/connectors/src/oauth/providers.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/oauth/flow.ts",
+   "target": "packages/connectors/src/oauth/pkce.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/oauth/flow.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/oauth/flow.ts",
+   "target": "packages/connectors/src/vault.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/rails/caldav.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/rails/caldav.ts",
+   "target": "packages/connectors/src/quarantine.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/rails/csv.ts",
+   "target": "packages/connectors/src/quarantine.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/rails/imap.ts",
+   "target": "packages/connectors/src/quarantine.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/rails/imap.ts",
+   "target": "packages/connectors/src/rails/safe-socket.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/rails/mcp.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/rails/mcp.ts",
+   "target": "packages/connectors/src/quarantine.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/rails/outbound-webhook.ts",
+   "target": "packages/connectors/src/registry/registry.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/rails/outbound-webhook.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/rails/outbound-webhook.ts",
+   "target": "packages/connectors/src/send-velocity.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/rails/safe-socket.ts",
+   "target": "packages/connectors/src/egress/ip.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/rails/safe-socket.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/rails/smtp.ts",
+   "target": "packages/connectors/src/registry/registry.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/rails/smtp.ts",
+   "target": "packages/connectors/src/send-velocity.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/rails/smtp.ts",
+   "target": "packages/connectors/src/rails/safe-socket.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/registry/registry.ts",
+   "target": "packages/connectors/src/registry/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/send-velocity.ts",
+   "target": "packages/connectors/src/registry/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/types.ts",
+   "target": "packages/connectors/src/quarantine.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/vault.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/webhooks/idempotency.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/src/webhooks/verify.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/clients.test.ts",
+   "target": "packages/connectors/src/connectors/base.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/clients.test.ts",
+   "target": "packages/connectors/src/connectors/gmail.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/clients.test.ts",
+   "target": "packages/connectors/src/connectors/instagram.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/clients.test.ts",
+   "target": "packages/connectors/src/vault.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/clients.test.ts",
+   "target": "packages/connectors/src/aggregator.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/clients.test.ts",
+   "target": "packages/connectors/src/send-velocity.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/clients.test.ts",
+   "target": "packages/connectors/src/quarantine.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/clients.test.ts",
+   "target": "packages/connectors/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/clients.test.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/db.integration.test.ts",
+   "target": "tests/rls/harness.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/dev-supabase.integration.test.ts",
+   "target": "packages/connectors/src/vault.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/dev-supabase.integration.test.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/egress.test.ts",
+   "target": "packages/connectors/src/egress/ip.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/egress.test.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/oauth.test.ts",
+   "target": "packages/connectors/src/oauth/pkce.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/oauth.test.ts",
+   "target": "packages/connectors/src/oauth/flow.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/oauth.test.ts",
+   "target": "packages/connectors/src/registry/registry.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/quarantine-velocity.test.ts",
+   "target": "packages/connectors/src/quarantine.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/quarantine-velocity.test.ts",
+   "target": "packages/connectors/src/send-velocity.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/quarantine-velocity.test.ts",
+   "target": "packages/connectors/src/registry/registry.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/rails.test.ts",
+   "target": "packages/connectors/src/rails/csv.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/rails.test.ts",
+   "target": "packages/connectors/src/rails/mcp.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/rails.test.ts",
+   "target": "packages/connectors/src/rails/imap.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/rails.test.ts",
+   "target": "packages/connectors/src/rails/smtp.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/rails.test.ts",
+   "target": "packages/connectors/src/rails/outbound-webhook.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/rails.test.ts",
+   "target": "packages/connectors/src/webhooks/verify.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/rails.test.ts",
+   "target": "packages/connectors/src/quarantine.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/rails.test.ts",
+   "target": "packages/connectors/src/send-velocity.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/rails.test.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/rails.test.ts",
+   "target": "packages/connectors/src/rails/safe-socket.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/registry.test.ts",
+   "target": "packages/connectors/src/registry/registry.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/registry.test.ts",
+   "target": "packages/connectors/src/registry/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/registry.test.ts",
+   "target": "packages/connectors/src/oauth/providers.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/registry.test.ts",
+   "target": "packages/connectors/src/egress/safe-fetch.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/webhooks.test.ts",
+   "target": "packages/connectors/src/webhooks/verify.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/connectors/test/webhooks.test.ts",
+   "target": "packages/connectors/src/webhooks/idempotency.ts",
+   "kind": "import"
   },
   {
    "source": "packages/creatures/src/build.ts",
