@@ -1,5 +1,24 @@
 # GOTCHAS — traps already paid for (append; newest first)
 
+- Stripe subscription credit grants must be idempotent at the BILLING PERIOD, not the
+  invoice. Keying to invoice.id double-grants on a mid-period upgrade (the proration is a
+  new invoice in the same period). Use `subscriptionGrantKey(subId, item.current_period_start)`
+  and the unique `(account_id, source_id) where reason='grant'` index. Also: only grant when
+  `invoice.amount_paid > 0` — a $0/trial invoice otherwise mints a free month. `current_period_*`
+  live on the SubscriptionItem in current Stripe API, not the Subscription.
+- OPEN follow-up (before the account audit-log UI ships): `audit_log_member_read` lets a product
+  user read their own account's audit rows — which currently include staff EMAIL (`actor_id`) and
+  internal free-text `meta.reason` (e.g. fraud-investigation notes). Redact staff identity/notes
+  from the member-visible projection (a member-facing RPC/view) before any product surface renders
+  audit_log. The invariant only requires the member to see THAT staff acted, not who or why.
+- Stripe webhook → ledger has only pure-builder unit tests, no integration test of the route's
+  grant gate. The two gate P1s lived exactly there. Add a `handleSubscription` integration test
+  ($0 invoice, two same-period invoices, two different-period invoices) before extending billing.
+- credits.ts refund logic is validated only in TS (`validateAppend`); the DB does not cap refunds
+  or require a tier-amount for grants. No M1 writer hits `reason='run'|'refund'` (M4), but when the
+  run/refund writer lands, enforce the per-run refund cap in a security-definer function under
+  per-account serialization — don't rely on the app layer.
+
 - Magic-link `emailRedirectTo` (and any auth redirect origin) must be PINNED from
   env, never derived from the request `Host` header — Host is attacker-controllable,
   so a reflected origin lets a genuine Nibbin email point its link at an attacker
