@@ -1,19 +1,21 @@
 # STATE
 
-- Milestone: **M6.5 — Model Bring-Up — GATE SIGNED by John W. 2026-06-12** (PR #51, LEARNINGS.md). The first real model calls
-  ship: Anthropic-direct behind the §6.3 router (T1 Haiku 4.5, T2 Sonnet 4.6, Opus pinned to
-  diagnosis), durable frontier budget (#24 CLOSED), keeper chat + agent drafts + scan/diagnosis on
-  real models, eval suite (`npm run evals`) as the model/prompt-change gate, model_calls COGS
-  ledger + admin card, top-up repriced $5→$10/1,000 (founder-approved on measured numbers).
-  **No live P0/P1 after in-gate fixes**: 1 P1 + 2 P2 (logic-skeptic — token-ceiling cache tokens,
-  COGS-tier mislabel, orphan compose step) FIXED in `fa31bfb`. One claims P1 (C11 opt-in is
-  recorded/default-off/audited but write-only, no UI/read-path) tracked on #29 as an M7-entry item
-  on a non-routing surface. P3s + the M7 diagnosis-pricing watch-item in #52. Margins confirmed
-  90–95% every SKU (floor 60%). 598 tests + 19 live evals + 5 live-stack green; migration
-  20260612120000 applied to **dev** (apply to staging/prod at merge). **Awaiting John:** sign the
-  gate; add `ANTHROPIC_API_KEY` to GitHub env secrets + Vercel prod; update `STRIPE_PRICE_TOPUP` in
-  Vercel prod to the new $10 id; confirm the signed Anthropic no-training agreement + Anthropic on
-  nibbin.com/subprocessors before claims pages route.
+- Milestone: **M6.5 — Model Bring-Up — SIGNED + MERGED 2026-06-12** (PR #51 → main `4d5529c`). The
+  first real model calls ship: Anthropic-direct behind the §6.3 router (T1 Haiku 4.5, T2 Sonnet 4.6,
+  Opus pinned to diagnosis), durable frontier budget (#24 CLOSED), keeper chat + agent drafts +
+  scan/diagnosis on real models, eval suite (`npm run evals`) as the model/prompt-change gate,
+  model_calls COGS ledger + admin card, top-up repriced $5→$10/1,000 (founder-approved on measured
+  numbers). No live P0/P1 (1 P1 + 2 P2 fixed in-gate `fa31bfb`); 1 claims P1 (C11 opt-in write-only)
+  tracked on #29 as M7-entry; P3s + M7 diagnosis-pricing watch in #52. Margins 90–95% every SKU.
+  **Rollout done 2026-06-12:** migration 20260612120000 applied + hash-verified identical on
+  dev/staging/prod (digest `a74c9fc4…`; dev's `frontier_budget_take` was re-synced from a pre-fix
+  iteration). `ANTHROPIC_API_KEY` set in GitHub dev/staging/prod env secrets + Vercel `nibbin`
+  Production; `STRIPE_PRICE_TOPUP` updated to the $10 id in Vercel Production; prod redeployed
+  (nibbin.com 200). **Still John's (out-of-band):** confirm the signed Anthropic no-training
+  agreement + publish nibbin.com/subprocessors listing Anthropic (currently 404) BEFORE data-ai/
+  privacy route — the prod key is live now, so a real user reaching the model path depends on the
+  contract being in place. Trivial follow-up: add `ANTHROPIC_API_KEY` to Vercel **Preview** via the
+  dashboard (CLI wouldn't take the piped value).
 
 ## Previous gate (M4+M5)
 
