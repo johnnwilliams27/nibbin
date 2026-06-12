@@ -225,6 +225,28 @@ Shop Nibbins (Sweep, Tally, Echo, Brief, Hopper, Scribe + vertical packs) are sp
 
 Egg (observes; no output) → Student (drafts everything; user approves) → Senior (autonomous on routine patterns repeatedly matched; flags novelty) → Graduate (autonomous within spec; every run logged; exceptions raised as questions). Promotion requires **verified accuracy** (e.g., Senior→Graduate: ≥95% approved-unedited over a rolling 25-run window — thresholds in spec config, never time-served). Demotion is one click, instant, treated as normal ("back to drafts — good instinct"). Badges reward accuracy and milestones only; no badge, streak, or mechanic may grant or accelerate autonomy. No decay, no death, no guilt.
 
+### 4.8 The Grove Home, approvals everywhere, and Grove Memory
+
+Grove Home (daily surface). The web app's home is the approval queue dressed as a
+grove, not a dashboard: draft cards (action summary, full preview, one-tap approve /
+edit-then-approve / reject-with-reason — reasons feed accuracy scoring), creature presence
+with report cards, a plain-language activity ledger, and ceremony moments (promotions,
+graduations, first autonomous run). Approval friction is a product metric: median
+notification→decision time is tracked per §6.12 (approval_latency).
+
+Approvals everywhere (PWA + push). The web app is an installable PWA with web push.
+The push approval card supports one-tap decisions. Quiet hours and max-1-push-per-day rules
+do NOT apply to approval requests (they are work the user asked for), only to drip/celebration
+notifications. Approval pushes batch if >3 are pending within 10 minutes.
+
+Grove Memory (business brain). A per-account, user-editable knowledge layer shared by
+all agents: structured sections (facts, pricing, policies, FAQ, voice samples, hard rules)
+plus freeform notes. Versioned; injected into agent context by the router with per-section
+toggles; populated initially by the Day-One scan and the Keeper interview (including the
+scan-empty fallback), then curated by the user. Hard rules in Grove Memory are enforced as
+draft-time constraints, not suggestions. Covered by §6.11 retention/export/deletion
+guarantees and rendered inspectable in plain language ("what the grove knows").
+
 ---
 
 ## 5. Track B — The Observer (desktop)
@@ -395,11 +417,12 @@ The retention schedule is a **product surface and a claims surface**: it appears
 | Raw study data (device) | Until synthesis, hard max 14 days | Daemon-enforced (C2/C3); deletion verifier user-visible |
 | Synthesis packet | Becomes the diagnosis | Deleting the diagnosis deletes the packet |
 | Agent run logs | 90 days default, user-configurable shorter; user wipe anytime | Nightly purge job; per-account setting; wipe endpoint |
-| Nibbin journals | Until user deletes | Per-entry + per-Nibbin delete |
+| Nibbin journals (derived from draft decisions — what changed and how much, never draft text) | Follows the run-log clock | Derived view over approvals; wiping run logs clears them (gate F-4: there is no separate journal store) |
 | Scan results | While the connection is active | Cascade-delete on disconnect |
 | Connection tokens | While connected, vault only | C9; revoke cascades, dependents pause |
 | Account data | Account life + ≤30 days after verified deletion | Deletion job with completion receipt to user |
 | Backups | Deleted data rolls off ≤35 days | PITR window config; restore drills respect tombstones |
+| Unsubscribe & bounce record (email address only) | Kept indefinitely | Intentionally outlives the account — the suppression must keep being honored (CAN-SPAM); gate F-3 |
 
 Build requirements: purge jobs are idempotent, monitored, and alarmed on failure; deletion produces a user-visible receipt; staging retention identical to prod (no "keep everything in staging"); the settings → privacy panel exposes every user control listed on data-ai.html.
 
@@ -410,6 +433,8 @@ Build requirements: purge jobs are idempotent, monitored, and alarmed on failure
 **Analytics: cookieless and privacy-respecting** (Plausible-class, no consent banner needed — a brand statement as much as a compliance one). Product events flow to our own Postgres for the admin unit-economics view.
 
 Event taxonomy (instrument from day one): `account_created`, `connector_linked`, `scan_completed`, `scan_empty` (triggers Keeper interview fallback), `nibbin_adopted`, `first_draft_approved`, `run_approved` / `run_edited` / `run_rejected`, `stage_promoted` / `stage_demoted`, `study_started` / `study_completed` / `study_aborted`, `diagnosis_viewed`, `plan_upgraded`, `topup_purchased`, `drip_{beat}_sent/opened`.
+
+Grove Home / push additions (PRODUCT-FOUNDATION.md, 2026-06-12): `approval_latency` (push→decision, per channel), `grove_memory_edited`, `push_optin`, `pwa_installed`, `approval_via_push` vs `approval_via_web`.
 
 North stars: **TTFAD** (time to first approved draft — target median <10 min, the contractual Day-One promise), W4 graduate rate, D14 study completion, gross margin per account (admin console renders COGS vs revenue per account).
 
@@ -443,6 +468,14 @@ Every milestone ends with the §6.7 adversarial gate; `CLAUDE.md`/`LEARNINGS.md`
 | M7 | Synthesis packet pipeline + diagnosis synthesis (T2) + Day-14 reveal | User zero completes a full 14-day study; packet → map → reveal works on real data; every leak/papercut filed |
 | M8 | **External pen test, OSS license audit, restore drill executed; scrutiny pass (Author note):** security + architecture + business-logic review; scale review (DB indexes/load, queue throughput, COGS dashboards + alarms); pen-test checklist; Windows capture parity | Findings triaged to zero P0/P1; load test at 10k-user profile; cost-per-user dashboard live |
 
+Post-gate amendments (2026-06-12, PRODUCT-FOUNDATION.md — the M4+M5 gates of 2026-06-12 predate
+these additions; they land with the M7-readiness wave, not retroactively):
+M4 DoD adds: Grove Home shipped (approval queue, report cards, ledger, ceremonies) wired
+to runtime events; Grove Memory schema + router injection + Keeper-interview population
+live; approval_latency instrumented.
+M5 DoD adds: PWA installability + web push approval cards (batching, quiet-hour exemption
+for approvals); push opt-in flow honest and revocable.
+
 ---
 
 ## 9. Decision log
@@ -462,6 +495,9 @@ Every milestone ends with the §6.7 adversarial gate; `CLAUDE.md`/`LEARNINGS.md`
 | Thin-router CLAUDE.md + docs tree + skills/subagents | Progressive disclosure: sessions load only task-relevant context instead of a monolith | If routing misses cause repeated mistakes, promote items into the router |
 | Grovemap (in-repo graph tool) | AI-native repos need a live structural picture for humans and agents alike | Replace with richer tooling if the repo outgrows it |
 | Account→Membership hierarchy from day one | Multi-seat later becomes a permissions feature, not a migration; single-user is just the default shape | Never — scoping to user_id alone is the mistake |
+| The approval queue is the flagship surface, mobile-first | Approval latency gates Agent School velocity; trust ceremony must be a pleasure, not triage | If usage shows desktop-only behavior at scale |
+| Grove Memory is explicit, user-editable, and enforced | Implicit knowledge caps draft quality; editable memory is also the trust answer to "what does it know" | Never — extend sections instead |
+| Anti-feature register adopted (no canvas builder, client portal, native payments, voice, marketplace, team seats in v1) | Each concedes the thesis, fights incumbents on their ground, or exceeds current security/compliance maturity | Each row carries its own revisit trigger in PRODUCT-FOUNDATION.md §4 |
 | No `auth_identities` table — Supabase `auth.identities` is the record of provider/provider_uid | Duplicating the auth provider's own identity store invites drift; §6.1's sketch predates the Supabase decision | If we ever leave Supabase Auth |
 | Separate admin app + staff identity world | Support without DB-poking; insider risk bounded by RBAC, consent, and append-only audit | SOC 2 evidence needs at M8 |
 | Landing page leads with Day One; study is the deepener | Spec evolved to dual-track; marketing must mirror the product or trust dies at first use | If Day-One adoption underwhelms in beta, re-weight |
