@@ -59,14 +59,19 @@
     before real launch.
   - **M6.5 top-up reprice (2026-06-12):** test-mode top-up price recreated at **$10/1,000 credits**
     (`price_1ThadWE6MwGkrdl0jbJOh2hM`), set as the product default; the old $5 price archived.
-    `STRIPE_PRICE_TOPUP` in `apps/web/.env.local` updated. **TODO (John):** update `STRIPE_PRICE_TOPUP`
-    in the Vercel prod env to the new id (and recreate the equivalent price in **live** mode at launch).
+    `STRIPE_PRICE_TOPUP` updated in `apps/web/.env.local` AND in **Vercel prod** (production env,
+    verified `price_1Thad…`); prod redeployed to pick it up. **TODO (John):** recreate the
+    equivalent top-up price in **live** Stripe mode at launch and repoint `STRIPE_PRICE_TOPUP`.
 - **Model API (Anthropic) — wired at M6.5 (2026-06-12):**
   - `ANTHROPIC_API_KEY` — server-only (never `NEXT_PUBLIC_`, never in a client bundle; read in
-    `apps/web/lib/llm/client.ts`). Local dev in `apps/web/.env.local` (gitignored). **TODO (John):**
-    add as a GitHub `dev`/`staging`/`prod` environment secret + the Vercel prod env before the model
-    path serves real users. Absent key → every model path falls back to its honest no-model behavior
-    (scripted keeper floor, deterministic drafts) with zero spend — nothing breaks.
+    `apps/web/lib/llm/client.ts`). **Set 2026-06-12:** GitHub `dev`/`staging`/`prod` environment
+    secrets + **Vercel `nibbin` Production** (verified, prod redeployed). Absent key → every model
+    path falls back to its honest no-model behavior (scripted keeper floor, deterministic drafts)
+    with zero spend — nothing breaks. **Outstanding (trivial):** Vercel **Preview** env — the CLI
+    wouldn't take the piped value non-interactively; add via the dashboard so PR previews exercise
+    the model path (previews without it just use the no-model fallback). **Risk note:** the prod key
+    is LIVE, so the Anthropic no-training/no-retention agreement should be confirmed before real
+    users reach the model path (claims-auditor precondition; the claims pages don't route yet).
   - Optional per-env overrides (defaults in `@nibbin/router`, founder decision 2026-06-12 — T1 Haiku
     4.5, T2 Sonnet 4.6, Opus 4.8 pinned to diagnosis): `NIBBIN_MODEL_T0/T1/T2` (model id strings),
     `NIBBIN_FRONTIER_BUDGET` (daily T2-from-chat grants/user, default 5). Any model change gates on
