@@ -1,7 +1,7 @@
 # STATE
 
 - Milestone: M4+M5 — COMBINED GATE RUN 2026-06-12 on integrated main (`41b4d47` + fix PR #38),
-  awaiting John's signature in LEARNINGS.md. **No live P0/P1 after the in-gate fix**: the one live
+  SIGNED by John W. 2026-06-12 (LEARNINGS.md). **No live P0/P1 after the in-gate fix**: the one live
   P1 (nearGraduation counted all decisions as graduation progress — pg-arc-data.ts, post-rebase
   code) was fixed + DB-tested in PR #38 during the gate. Two claims P1s are forward-coupling
   conditions on #29 (account-deletion clock structurally impossible while audit_log/credit_ledger
@@ -19,14 +19,21 @@
   f816e4d07ca7906e3c52c8c8ec852b14 matches a from-disk local apply on all four databases). Apply
   discipline going forward: verify information_schema, never trust the doc claim (GOTCHAS).
 - Next build milestone: **M7** (synthesis packet pipeline + diagnosis synthesis + Day-14 reveal).
+  **M7 ENTRY requirements (per the signed gate triage — not backlog)**: #29's two mechanisms
+  (account-deletion design for the RESTRICT/append-only ledgers; scan-results purge inside
+  connection_revoke) and the remaining #46 corrections — M7's reveal runs on real data and the
+  claims pages route in its wake. The journal/suppression/C8 wording is already corrected on
+  reference/data-ai.html + reference/privacy.html (this gate); SPEC §6.11 still needs the
+  suppression-record row (deferred — SPEC carries an unrelated work-in-progress edit).
   M4 hard conditions stand: #24 (durable budget + C11 opt-in with first real `generate`, now also
-  carrying the router origin-enforcement + top-up pricing criteria), #26 (C8 grant writer before
-  IG/QB), #28 (webhook seen≠processed before side-effecting handlers).
+  carrying the router origin-enforcement + top-up pricing criteria; all latent — zero frontier/
+  free/local models are wired on main), #26 (C8 grant writer before IG/QB), #28 (webhook
+  seen≠processed before side-effecting handlers).
 
 ## Previous gate (M2+M3+M6)
 
-- M2+M3+M6 — COMBINED GATE RUN 2026-06-11 on integrated main (`ba047cf`), awaiting
-  John's signature in LEARNINGS.md. **No P0. No live-exploitable P1.** Five P1-labeled findings are
+- M2+M3+M6 — COMBINED GATE RUN 2026-06-11 on integrated main (`ba047cf`), SIGNED by John W.
+  2026-06-11 (PR #32). **No P0. No live-exploitable P1.** Five P1-labeled findings are
   forward-coupling conditions on unbuilt surfaces (issues #22–#24, #26, #29); one live P2 honesty
   bug in scripted chat (#25); P2/P3 sweep in #27, #28, #30. Full CI green locally + on main HEAD
   (run 27327110748, all 5 jobs). DoD caveats for John: M3 "12+ connectors live in staging" is
@@ -120,10 +127,7 @@ capture bring-up), #24 (C11 opt-in + durable budget with first real `generate`),
 structural grants before IG/QB live), #29 (retention enforcement before claims pages route).
 
 ## Outstanding for John
-- SIGN the M4+M5 gate in LEARNINGS.md (report delivered 2026-06-12) — includes accepting the
-  condition-based triage (#39–#47 + the #24/#29 additions) or overruling it.
-- SIGN the M2+M3+M6 gate in LEARNINGS.md (report delivered 2026-06-11) — includes accepting the
-  forward-coupling-condition triage or overruling it.
+- (Both combined gates are signed: M2+M3+M6 on 2026-06-11 via PR #32, M4+M5 on 2026-06-12.)
 - ROTATE the Supabase access token + the Vercel token (both shared in chat; all uses complete).
 - Swap Stripe to LIVE keys before real launch (prod runs test-mode Stripe now).
 - Provide Google Cloud + Meta developer accounts → enable Google/Apple auth providers + file the
