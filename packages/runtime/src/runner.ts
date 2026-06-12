@@ -11,7 +11,7 @@
  *  - tool output without quarantine markers is refused (§6.5)
  */
 import { createHash } from 'node:crypto';
-import { isQuarantined, type QuarantinedContent } from '@nibbin/connectors';
+import { isQuarantined, quarantine, type QuarantinedContent } from '@nibbin/connectors';
 import { gateSideEffect } from './school';
 import type { GrantStore, RoutineStore, RunStore, IdempotencyStore } from './stores';
 import type {
@@ -45,6 +45,22 @@ export interface EffectExecutor {
   }): Promise<void>;
 }
 
+/**
+ * The model seam (M6.5). The runner owns every model call a program asks
+ * for: pre-call token clamping, quarantining the reply, recording real
+ * counts. `null` means "no draft" (no model wired, outage, empty reply) —
+ * programs MUST degrade to their deterministic text, never fail the run.
+ */
+export interface ModelDrafter {
+  draft(req: {
+    runId: string;
+    nibbin: NibbinRef;
+    intent: string;
+    context: string;
+    maxTokens: number;
+  }): Promise<{ text: string; tokens: number } | null>;
+}
+
 export interface RunnerDeps {
   runs: RunStore;
   routines: RoutineStore;
@@ -53,6 +69,8 @@ export interface RunnerDeps {
   reader: ToolReader;
   effects: EffectExecutor;
   events: EventSink;
+  /** Absent = v0 behavior: every compose is deterministic, zero tokens. */
+  model?: ModelDrafter;
   now(): number;
 }
 
@@ -174,6 +192,38 @@ export async function executeRun(
       }
 
       if (step.kind === 'compose') {
+        if (step.prompt && deps.model) {
+          // Pre-call ceiling (§6.2): the clamp happens BEFORE the call, so a
+          // run can never buy more tokens than its spec has left.
+          const remaining = ceilings.maxTokens - tokens;
+          if (remaining <= 0) return await kill('max_tokens');
+          const maxTokens = Math.min(step.prompt.maxTokens ?? 1024, remaining);
+          const drafted = await deps.model.draft({
+            runId,
+            nibbin,
+            intent: step.prompt.intent,
+            context: step.prompt.context,
+            maxTokens,
+          });
+          if (drafted !== null) {
+            tokens += drafted.tokens;
+            if (tokens > ceilings.maxTokens) return await kill('max_tokens');
+            await deps.runs.recordStep(nibbin.accountId, runId, {
+              idx: idx++, kind: 'compose', tokens: drafted.tokens, payload: { ...step.payload, model: true },
+            });
+            // Model output re-enters the program as quarantined content only
+            // (§6.5): it was derived from external data and is data itself,
+            // never instructions — same rule as connector reads.
+            feed = quarantine(drafted.text, 'model');
+            continue;
+          }
+          // Honest degradation: no model output → the program's deterministic
+          // fallback composes the draft; the step records the miss.
+          await deps.runs.recordStep(nibbin.accountId, runId, {
+            idx: idx++, kind: 'compose', tokens: 0, payload: { ...step.payload, model: false, fallback: true },
+          });
+          continue;
+        }
         tokens += step.tokens ?? 0;
         if (tokens > ceilings.maxTokens) return await kill('max_tokens');
         await deps.runs.recordStep(nibbin.accountId, runId, {
