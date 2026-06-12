@@ -1,6 +1,13 @@
 import { classifyComplexity } from './classifier';
 import { dayKey, InMemoryBudgetStore } from './budget';
-import { DEFAULT_DAILY_FRONTIER_BUDGET, DEFAULT_MODELS, DEGRADATION_NOTICE, TIER_FOR_TASK } from './tiers';
+import {
+  DEFAULT_DAILY_FRONTIER_BUDGET,
+  DEFAULT_MODELS,
+  DEFAULT_TASK_MODELS,
+  DEGRADATION_NOTICE,
+  TIER_FOR_TASK,
+  UNBUDGETED_T2_TASKS,
+} from './tiers';
 import type {
   BudgetStatus,
   Classification,
@@ -25,6 +32,11 @@ function validate(config: RouterConfig): void {
       throw new Error(`router config: missing model for ${tier}`);
     }
   }
+  for (const [task, model] of Object.entries(config.taskModels)) {
+    if (!model || model.trim() === '') {
+      throw new Error(`router config: empty task-model pin for ${task}`);
+    }
+  }
   if (!Number.isInteger(config.dailyFrontierBudget) || config.dailyFrontierBudget < 0) {
     throw new Error('router config: dailyFrontierBudget must be a non-negative integer');
   }
@@ -33,6 +45,7 @@ function validate(config: RouterConfig): void {
 export function createRouter(overrides: Partial<RouterConfig> = {}): Router {
   const config: RouterConfig = {
     models: { ...DEFAULT_MODELS, ...overrides.models },
+    taskModels: { ...DEFAULT_TASK_MODELS, ...overrides.taskModels },
     dailyFrontierBudget: overrides.dailyFrontierBudget ?? DEFAULT_DAILY_FRONTIER_BUDGET,
     budgetStore: overrides.budgetStore ?? new InMemoryBudgetStore(),
     now: overrides.now ?? (() => new Date()),
@@ -48,10 +61,12 @@ export function createRouter(overrides: Partial<RouterConfig> = {}): Router {
       const next: RouterConfig = {
         ...config,
         models: { ...config.models, ...patch.models },
+        taskModels: { ...config.taskModels, ...patch.taskModels },
         dailyFrontierBudget: patch.dailyFrontierBudget ?? config.dailyFrontierBudget,
       };
       validate(next);
       config.models = next.models;
+      config.taskModels = next.taskModels;
       config.dailyFrontierBudget = next.dailyFrontierBudget;
     },
 
@@ -60,11 +75,18 @@ export function createRouter(overrides: Partial<RouterConfig> = {}): Router {
         throw new Error('route: userId is required');
       }
       const { tier: requestedTier, classification } = requestedTierFor(req);
+      // Task pins (the Opus diagnosis pin) apply only when serving the
+      // requested tier — a degraded request serves the plain tier default.
+      const modelFor = (tier: Tier): string =>
+        (tier === requestedTier ? config.taskModels[req.task] : undefined) ?? config.models[tier];
 
-      // §6.3: only T2 reached *from chat* draws the per-user daily frontier
-      // budget. Pipeline T2 (diagnosis synthesis, custom-spec drafting) is the
-      // deliberate splurge and is never degraded here.
-      if (requestedTier === 't2' && req.origin === 'chat') {
+      // §6.3 + #24 gate condition: ALL T2 draws the per-user daily frontier
+      // budget EXCEPT the two named pipeline splurges (diagnosis synthesis,
+      // custom-spec drafting), which carry their own caller-side controls.
+      // Origin is caller-claimed, so it alone must never bypass the budget:
+      // complex_plan with origin:'pipeline' is budgeted like everything else.
+      const unbudgeted = req.origin === 'pipeline' && UNBUDGETED_T2_TASKS.has(req.task);
+      if (requestedTier === 't2' && !unbudgeted) {
         const day = dayKey(config.now(), req.timezone);
         const limit = config.dailyFrontierBudget;
         const take = await config.budgetStore.take(req.userId, day, limit);
@@ -77,7 +99,7 @@ export function createRouter(overrides: Partial<RouterConfig> = {}): Router {
         if (take.granted) {
           return {
             tier: 't2',
-            model: config.models.t2,
+            model: modelFor('t2'),
             requestedTier,
             degraded: false,
             notice: null,
@@ -88,7 +110,7 @@ export function createRouter(overrides: Partial<RouterConfig> = {}): Router {
         // At cap: degrade to T1 with transparent phrasing — never silent.
         return {
           tier: 't1',
-          model: config.models.t1,
+          model: modelFor('t1'),
           requestedTier,
           degraded: true,
           notice: DEGRADATION_NOTICE,
@@ -99,7 +121,7 @@ export function createRouter(overrides: Partial<RouterConfig> = {}): Router {
 
       return {
         tier: requestedTier,
-        model: config.models[requestedTier],
+        model: modelFor(requestedTier),
         requestedTier,
         degraded: false,
         notice: null,

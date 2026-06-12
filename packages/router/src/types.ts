@@ -101,6 +101,11 @@ export interface BudgetStore {
 export interface RouterConfig {
   /** Model id per tier — hot-reloadable via Router.reconfigure (ENVIRONMENT). */
   models: Record<Tier, string>;
+  /**
+   * Per-task pins overriding the tier default (the Opus diagnosis pin lives
+   * here). Hot-reloadable; model changes gate on the eval suite.
+   */
+  taskModels: Partial<Record<RoutedTask, string>>;
   /** T2-from-chat grants per user per day. */
   dailyFrontierBudget: number;
   budgetStore: BudgetStore;
@@ -111,6 +116,6 @@ export interface RouterConfig {
 export interface Router {
   route(req: RouteRequest): Promise<RouteDecision>;
   /** Hot-reload models/budget without dropping budget state. */
-  reconfigure(patch: Partial<Pick<RouterConfig, 'models' | 'dailyFrontierBudget'>>): void;
+  reconfigure(patch: Partial<Pick<RouterConfig, 'models' | 'taskModels' | 'dailyFrontierBudget'>>): void;
   readonly config: Readonly<RouterConfig>;
 }
