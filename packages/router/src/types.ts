@@ -113,9 +113,18 @@ export interface RouterConfig {
   now: () => Date;
 }
 
+/** Construction/reconfiguration input — sparse maps merge over defaults. */
+export interface RouterOverrides {
+  models?: Partial<Record<Tier, string>>;
+  taskModels?: Partial<Record<RoutedTask, string>>;
+  dailyFrontierBudget?: number;
+  budgetStore?: BudgetStore;
+  now?: () => Date;
+}
+
 export interface Router {
   route(req: RouteRequest): Promise<RouteDecision>;
   /** Hot-reload models/budget without dropping budget state. */
-  reconfigure(patch: Partial<Pick<RouterConfig, 'models' | 'taskModels' | 'dailyFrontierBudget'>>): void;
+  reconfigure(patch: Pick<RouterOverrides, 'models' | 'taskModels' | 'dailyFrontierBudget'>): void;
   readonly config: Readonly<RouterConfig>;
 }

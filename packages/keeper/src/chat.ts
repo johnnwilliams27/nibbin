@@ -86,6 +86,12 @@ export async function keeperChat(
   }
   if (reply === null || reply === undefined || reply.trim() === '') {
     reply = scriptedReply(text);
+    // #25 on the real path: the surface must describe what the user actually
+    // received. A model failure after routing means the scripted floor
+    // answered — report that, not the tier we tried to serve, and never the
+    // degradation notice. The budget consult (and any spent unit) stays in
+    // `budget`: the attempt happened, telemetry should say so.
+    decision = { ...SCRIPTED_FLOOR_DECISION, classification: decision.classification, budget: decision.budget };
   }
 
   // Degradation is never silent (§6.3): the notice leads the reply.

@@ -98,6 +98,26 @@ describe('keeperChat routes through §6.3 before replying', () => {
     expect(fallback.message.card.transcript.length).toBeGreaterThan(0);
   });
 
+  it('a model failure after routing falls back honestly: no tier claim, no degradation notice', async () => {
+    // #25 on the real path: the decision reported to the surface must
+    // describe what the user actually received. If the model call dies and
+    // the scripted floor answers, claiming t1/t2 service or prepending the
+    // degradation notice would both misreport the turn. (The spent budget
+    // unit is kept in `budget` — the attempt happened and telemetry should
+    // say so.)
+    const router = createRouter({ dailyFrontierBudget: 0 });
+    const reply = await keeperChat(T2_TEXT, ctx, {
+      route: (r) => router.route(r),
+      generate: async () => null, // provider outage / empty completion
+    });
+    expect(reply.decision.model).toBe('scripted-floor');
+    expect(reply.decision.tier).toBe('t0');
+    expect(reply.decision.degraded).toBe(false);
+    expect(reply.decision.budget).toBeDefined(); // the consult is still reported
+    if (reply.message.card.kind !== 'prose') throw new Error('expected prose');
+    expect(reply.message.card.text.startsWith(DEGRADATION_NOTICE)).toBe(false);
+  });
+
   it('caps input length before routing', async () => {
     const router = createRouter();
     let routedText = '';

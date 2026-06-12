@@ -23,5 +23,6 @@ export type {
   RouteRequest,
   Router,
   RouterConfig,
+  RouterOverrides,
   Tier,
 } from './types';

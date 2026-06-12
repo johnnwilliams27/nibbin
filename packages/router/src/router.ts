@@ -15,6 +15,7 @@ import type {
   RouteRequest,
   Router,
   RouterConfig,
+  RouterOverrides,
   Tier,
 } from './types';
 
@@ -42,7 +43,7 @@ function validate(config: RouterConfig): void {
   }
 }
 
-export function createRouter(overrides: Partial<RouterConfig> = {}): Router {
+export function createRouter(overrides: RouterOverrides = {}): Router {
   const config: RouterConfig = {
     models: { ...DEFAULT_MODELS, ...overrides.models },
     taskModels: { ...DEFAULT_TASK_MODELS, ...overrides.taskModels },
