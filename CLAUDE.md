@@ -24,7 +24,7 @@ orchestrates but has no hands. Two surfaces: Day One web app + desktop Observer.
 | Codebase orientation | run `node tools/grovemap/grovemap.mjs` and open the map |
 | Marketing, growth, GTM, the Marketing Grove agents | `docs/GTM.md` |
 
-Brand reference: `reference/nibbin-demo.html`. Engine reference: `reference/nibbin-creature-lab.html`.
+Brand reference: `reference/nibbin-demo.html`. Wordmark: `reference/nibbin-logo-guide.html` (frozen), assets in `packages/shared/brand/`. Engine reference: `reference/nibbin-creature-lab.html`.
 
 **Update protocol:** at every milestone gate update `docs/STATE.md`, append `LEARNINGS.md`,
 and add new traps to `docs/GOTCHAS.md`. Keep this file under 50 lines — it is a router,
