@@ -59,8 +59,9 @@ begin
   -- the insert path grants even when p_limit = 0 would forbid it: guard that
   -- edge (first call of the day with a zero limit must deny, not seed used=1)
   if v_used > p_limit then
-    update public.frontier_budget set used = used - 1, updated_at = now()
-      where user_id = p_user and day_key = p_day;
+    update public.frontier_budget b
+      set used = b.used - 1, updated_at = now()
+      where b.user_id = p_user and b.day_key = p_day;
     return query select false, v_used - 1;
     return;
   end if;
