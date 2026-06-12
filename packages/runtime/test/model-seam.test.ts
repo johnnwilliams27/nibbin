@@ -118,8 +118,8 @@ describe('runner model seam (M6.5)', () => {
     expect(seen).toEqual([120]);
   });
 
-  it('kills the run when the model reports more tokens than the ceiling allows', async () => {
-    const { deps } = harness({
+  it('kills the run when the model reports more tokens than the ceiling allows, but records the paid compose step', async () => {
+    const { deps, runs } = harness({
       async draft() {
         return { text: 'way too much', tokens: 5000 }; // provider overshoot
       },
@@ -128,6 +128,13 @@ describe('runner model seam (M6.5)', () => {
     expect(out.kind).toBe('killed');
     if (out.kind !== 'killed') throw new Error('unreachable');
     expect(out.reason).toBe('max_tokens');
+    // gate finding logic-skeptic P2: the model call incurred COGS, so its
+    // compose step must be in the ledger even though the run was killed —
+    // no orphan model_calls row.
+    const compose = (runs.runs.get(out.runId)?.steps ?? []).find((s) => s.kind === 'compose');
+    expect(compose).toBeDefined();
+    expect(compose?.tokens).toBe(5000);
+    expect(compose?.payload).toMatchObject({ model: true, overshoot: true });
   });
 
   it('null from the drafter degrades honestly to the deterministic fallback', async () => {

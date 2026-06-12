@@ -53,8 +53,12 @@ export function modelDrafterFor(accountId: string): ModelDrafter | undefined {
         });
         const text = result.text.trim();
         if (text === '') return null;
-        // ceiling math counts what the run consumed: prompt + completion
-        return { text, tokens: result.usage.inputTokens + result.usage.outputTokens };
+        // ceiling math counts EVERY token the run consumed — cached prefix
+        // tokens are real consumption (billed, just discounted), and omitting
+        // them lets a run slip past its §6.2 token ceiling in real-token terms
+        // (gate finding logic-skeptic P1).
+        const u = result.usage;
+        return { text, tokens: u.inputTokens + u.cacheWriteTokens + u.cacheReadTokens + u.outputTokens };
       } catch (err) {
         console.error('[drafting] model call failed — deterministic fallback', err instanceof Error ? err.message : err);
         return null;

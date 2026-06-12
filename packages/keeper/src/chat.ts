@@ -36,6 +36,17 @@ export interface KeeperChatReply {
   message: KeeperMessage;
   decision: RouteDecision;
   expression: KeeperExpression;
+  /**
+   * The tier a model was ACTUALLY dispatched at this turn, or null if no
+   * model ran (scripted floor, or a routed call that came back empty/failed
+   * — `decision` reports the scripted floor in that case for the user, but a
+   * real call may still have been billed). COGS recording keys on THIS, never
+   * `decision.tier`, so a degraded/failed turn can't mislabel a paid call as
+   * t0 (gate finding logic-skeptic P2).
+   */
+  dispatchedTier: import('@nibbin/router').Tier | null;
+  /** The model id actually called, or null — pairs with dispatchedTier. */
+  dispatchedModel: string | null;
 }
 
 export const CHAT_INPUT_MAX = 2000;
@@ -74,6 +85,10 @@ export async function keeperChat(
 
   let decision: RouteDecision = SCRIPTED_FLOOR_DECISION;
   let reply: string | null = null;
+  // The tier/model a model was genuinely dispatched at — captured BEFORE any
+  // empty-completion fallback rewrites `decision`, so COGS keys on the truth.
+  let dispatchedTier: import('@nibbin/router').Tier | null = null;
+  let dispatchedModel: string | null = null;
   if (deps.generate) {
     decision = await deps.route({
       userId: ctx.userId,
@@ -82,6 +97,8 @@ export async function keeperChat(
       text,
       timezone: ctx.timezone,
     });
+    dispatchedTier = decision.tier;
+    dispatchedModel = decision.model;
     reply = await deps.generate(decision.model, text);
   }
   if (reply === null || reply === undefined || reply.trim() === '') {
@@ -106,5 +123,7 @@ export async function keeperChat(
     },
     decision,
     expression: 'presenting',
+    dispatchedTier,
+    dispatchedModel,
   };
 }

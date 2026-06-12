@@ -158,12 +158,16 @@ export async function keeperChatAction(rawText: unknown): Promise<GroveChatPaylo
     { route: (r) => groveRouter.route(r), ...(generate ? { generate } : {}) },
   );
 
-  if (lastCall !== null) {
+  if (lastCall !== null && reply.dispatchedTier !== null) {
     const call = lastCall as { model: string; usage: TokenUsage };
+    // Key COGS on the tier the model was actually dispatched at, never
+    // reply.decision.tier — an empty completion rewrites decision to the
+    // scripted floor (t0) while the real T1/T2 call was still billed (gate
+    // finding logic-skeptic P2).
     await recordModelCall({
       accountId,
       userId: user.id,
-      tier: reply.decision.tier,
+      tier: reply.dispatchedTier,
       task: 'chat',
       model: call.model,
       usage: call.usage,

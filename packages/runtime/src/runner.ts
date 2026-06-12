@@ -207,10 +207,19 @@ export async function executeRun(
           });
           if (drafted !== null) {
             tokens += drafted.tokens;
-            if (tokens > ceilings.maxTokens) return await kill('max_tokens');
+            // Record the compose step BEFORE the overshoot check: the model
+            // call already happened and incurred COGS (model_calls row), so
+            // the run's own step ledger must carry it even when the run is
+            // then killed for exceeding the ceiling — otherwise the COGS row
+            // is an orphan with no reconcilable step (gate finding
+            // logic-skeptic P2).
             await deps.runs.recordStep(nibbin.accountId, runId, {
-              idx: idx++, kind: 'compose', tokens: drafted.tokens, payload: { ...step.payload, model: true },
+              idx: idx++,
+              kind: 'compose',
+              tokens: drafted.tokens,
+              payload: { ...step.payload, model: true, ...(tokens > ceilings.maxTokens ? { overshoot: true } : {}) },
             });
+            if (tokens > ceilings.maxTokens) return await kill('max_tokens');
             // Model output re-enters the program as quarantined content only
             // (§6.5): it was derived from external data and is data itself,
             // never instructions — same rule as connector reads.
