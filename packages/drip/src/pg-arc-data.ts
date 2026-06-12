@@ -152,32 +152,58 @@ export function pgArcData(pool: Pool): ArcDataPort {
     },
 
     async nearGraduation(accountId): Promise<NearGraduation | null> {
-      // Mirrors nibbin_promote's stage-scoped window: only decisions after
-      // stage_changed_at count, window is curriculum-tightened but never
-      // below 25. "Within reach" = a senior with ≤5 decided runs to go.
-      const r = await pool.query<{ name: string; remaining: number }>(
-        `select n.name,
-                greatest(
-                  greatest(coalesce((sp.curriculum -> 'promotion' ->> 'windowRuns')::integer, $2), $2)
-                  - (
-                    select count(*) from approvals a
-                     where a.account_id = $1
-                       and a.decided_at > n.stage_changed_at
-                       and a.run_id in (select r2.id from runs r2 where r2.nibbin_id = n.id)
-                  ),
-                  1
-                )::integer as remaining
+      // Mirrors nibbin_promote's FULL semantics, not just its window scoping:
+      // only the most recent `window` decisions since stage_changed_at count,
+      // and only 'approved' ones advance the climb — a rejection-heavy senior
+      // is NOT near graduation no matter how many runs it has (§4.7 "earned,
+      // never time-served"; gate finding logic-skeptic P1-1). The accuracy
+      // guard also keeps the flag from sticking forever at remaining=1.
+      const r = await pool.query<{
+        name: string;
+        window_runs: number;
+        min_pct: string;
+        decided: string;
+        approved: string;
+      }>(
+        `select n.name, w.window_runs, w.min_pct::text,
+                coalesce(d.decided, 0)::text as decided,
+                coalesce(d.approved, 0)::text as approved
            from nibbins n
            join agent_specs sp on sp.id = n.spec_id
+          cross join lateral (
+            select greatest(coalesce((sp.curriculum -> 'promotion' ->> 'windowRuns')::integer, $2), $2) as window_runs,
+                   greatest(coalesce((sp.curriculum -> 'promotion' ->> 'minApprovedUneditedPct')::numeric, 0.95), 0.95) as min_pct
+          ) w
+          cross join lateral (
+            select count(*) as decided, count(*) filter (where x.decision = 'approved') as approved
+              from (
+                select a.decision from approvals a
+                 where a.account_id = $1
+                   and a.decided_at > n.stage_changed_at
+                   and a.run_id in (select r2.id from runs r2 where r2.nibbin_id = n.id)
+                 order by a.decided_at desc
+                 limit w.window_runs
+              ) x
+          ) d
           where n.account_id = $1 and n.kind = 'specialist'
             and n.stage = 'senior' and n.status = 'active'
-          order by remaining asc, n.hatched_at asc
+          order by w.window_runs - coalesce(d.approved, 0) asc, n.hatched_at asc
           limit 1`,
         [accountId, PROMOTION_WINDOW_FLOOR],
       );
       const row = r.rows[0];
-      if (!row || row.remaining > 5) return null;
-      return { nibbin: row.name, approvedDraftsRemaining: row.remaining };
+      if (!row) return null;
+      const window = Number(row.window_runs);
+      const decided = Number(row.decided);
+      const approved = Number(row.approved);
+      // promote tolerates at most floor(window × (1 − minPct)) non-approved
+      // decisions in the window; beyond that the bad ones must age out first
+      // and no honest "N to go" exists.
+      const allowedMisses = Math.floor(window * (1 - Number(row.min_pct)));
+      if (decided - approved > allowedMisses) return null;
+      const remaining = Math.max(1, window - approved);
+      if (remaining > 5) return null;
+      return { nibbin: row.name, approvedDraftsRemaining: remaining };
     },
 
     async earnedEvents(accountId): Promise<EarnedEvent[]> {

@@ -20,6 +20,7 @@ describe.skipIf(!dbAvailable)('pgArcData over the M4 tables', () => {
 
   let accountId = '';
   let emptyAccount = '';
+  let rejectAccount = '';
   let echoId = '';
   const port = () => pgArcData(h.pool);
   const todayUtc = new Date().toISOString().slice(0, 10);
@@ -51,9 +52,40 @@ describe.skipIf(!dbAvailable)('pgArcData over the M4 tables', () => {
     emptyAccount = await h.as(other, async (c) =>
       (await c.query(`select public.create_account_with_owner('Bare Grove') as id`)).rows[0].id,
     );
+    rejectAccount = await h.as(other, async (c) =>
+      (await c.query(`select public.create_account_with_owner('Reject Grove') as id`)).rows[0].id,
+    );
 
     echoId = await adopt('echo', 'Echo');
     const mossId = await adopt('sweep', 'Moss');
+
+    // a rejection-heavy senior — decided runs alone must never read as
+    // "near graduation" (§4.7; gate finding logic-skeptic P1-1)
+    const burrId = await h.as(service, async (c) =>
+      (
+        await c.query(
+          `select * from public.adopt_nibbin($1, $2, 'echo', 1, 'echo', array['email.read','email.draft'],
+             array['gmail'], '[{"kind":"user"}]'::jsonb, '{}'::jsonb, '{}'::jsonb, 'Burr', 'Wisp', null, null, null, 1)`,
+          [rejectAccount, OTHER],
+        )
+      ).rows[0].nibbin_id as string,
+    );
+    await h.as(service, async (c) => {
+      await c.query(
+        `update public.nibbins set stage = 'senior', stage_changed_at = now() - interval '1 hour' where id = $1`,
+        [burrId],
+      );
+      await c.query(
+        `with window_runs as (
+           insert into public.runs (account_id, nibbin_id, status, weight_class, created_at)
+           select $1, $2, 'rejected', 'standard', now() - interval '2 days' from generate_series(1, 20)
+           returning id
+         )
+         insert into public.approvals (run_id, account_id, user_id, decision)
+         select id, $1, $3, 'rejected' from window_runs`,
+        [rejectAccount, burrId, OTHER],
+      );
+    });
 
     await h.as(service, async (c) => {
       // the port is only ever called for accounts with an open arc (the
@@ -174,9 +206,14 @@ describe.skipIf(!dbAvailable)('pgArcData over the M4 tables', () => {
     expect(await port().clusters(emptyAccount)).toEqual([]);
   });
 
-  it('nearGraduation: stage-scoped window math (21 decided of 25 → 4 to go)', async () => {
+  it('nearGraduation: stage-scoped window math (21 approved of 25 → 4 to go)', async () => {
     expect(await port().nearGraduation(accountId)).toEqual({ nibbin: 'Echo', approvedDraftsRemaining: 4 });
     expect(await port().nearGraduation(emptyAccount)).toBeNull();
+  });
+
+  it('nearGraduation: only approved decisions advance the climb — 20 rejections is not "5 to go"', async () => {
+    expect(await port().nearGraduation(rejectAccount)).toBeNull();
+    expect((await port().flags(rejectAccount)).nearGraduation).toBe(false);
   });
 
   it('earnedEvents: promotions from audit_log, oldest first, grad = graduation', async () => {
