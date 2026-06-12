@@ -174,3 +174,63 @@ Format per gate:
   M3 "12+ connectors live in staging" not deployment-verified; M6 "budgets met" + <100ms pause
   await macOS bring-up.
 
+
+## M4+M5 — 2026-06-12 (combined gate, integrated main `41b4d47` + in-gate fix `be8f7de`)
+- What broke / what surprised us:
+  - **The documentation of record was wrong about production.** STATE.md claimed M2/M3 migrations
+    "applied + verified on all three" Supabase projects; in reality every hosted DB carried only
+    the M1 schema — prod served grove/connector (and briefly shop) code against missing tables.
+    Found by querying information_schema during the gate, closed by applying M2–M5 to all three
+    with hash verification (function-def digest identical to a from-disk local apply on all four
+    DBs). Trap recorded in GOTCHAS: verify hosted schema, never trust the doc claim.
+  - **Parallel branches minted the same migration timestamp** (M4 and M5 both 20260611120000).
+    The RLS harness applies in filename order, so the collision was silent until rebase.
+    M5's renumbered to 20260612000000.
+  - The M5 rebase reconcile (stubArcData → real pg-arc-data port) produced the gate's only live
+    P1: nearGraduation counted ALL decisions as graduation progress where nibbin_promote requires
+    ≥95% approved in the window — a senior with 20 rejections read "5 approved drafts from
+    graduating" on the day-12 beat. The test that should have caught it seeded approved-only
+    decisions (happy-shape seed masking window math). Fixed + adversarial seed added in PR #38.
+  - Floating semgrep p/default rules failed branches that were green days earlier on unchanged
+    code (M4 dynamic-RegExp in unwrap.ts, M5 console.error format string). Both fixed at root.
+  - next build regenerates next-env.d.ts with a routes.d.ts reference eslint rejects; reverting
+    cannot stick. Generated file added to the eslint ignore list (web precedent).
+- Patterns that worked:
+  - **PR-time review + integrated gate still catch different things**: all four reviewers re-run
+    on integrated main found nothing live in the PR-reviewed code — every live finding was in the
+    one file written AFTER the PR reviews (pg-arc-data.ts). Post-review code is where gate
+    attention belongs.
+  - The ArcDataPort seam worked exactly as designed: M5 shipped against a stub, M4 landed, and the
+    real adapter dropped in at rebase with an 8-test DB suite, no interface drift.
+  - Hash-verifying hosted DDL against a from-disk local apply (md5 of pg_get_functiondef across
+    public+private) made 43KB of MCP-applied migration provably transcription-safe.
+  - In-DB enforcement held against the red team again: RLS + zero-grant tables, advisory-locked
+    credit RPCs, DB-resident drip double-send guards, HMAC unsubscribe — 0 red-team P0/P1.
+- Perf & cost numbers:
+  - Local CI on integrated main: typecheck/lint/audit green (2 moderate npm advisories below the
+    high gate), vitest 566 passed / 3 intentionally skipped in ~22s incl. full RLS attack suites
+    against the pinned-digest Postgres 17. GitHub CI ~4 min, all 5 jobs green on main HEAD.
+  - LLM COGS still **$0.00/user/mo by construction** (cost-auditor verified zero model calls on
+    integrated main; chat = scripted T0 floor). v0 marginal COGS ≈ $0.05–0.10/user/mo (~99.5%
+    gross margin on Grove $19).
+  - T1-era projection sanity-checked: ~55% margin at typical Grove usage uncached, ~70% with
+    prompt-prefix caching; Canopy negative uncached; top-ups under water even cached — pricing +
+    caching criteria appended to #24.
+  - Drip worker tick is O(lifetime accounts), ~5-10s at 1k accounts, breaks 5-min cron around
+    ~10k — set-based tick + working-set exit recommended (#47 ranks it).
+- Adversarial findings (counts by severity, integrated-main pass):
+  - red-team: 0 P0, 0 P1, 0 confirmed P2, 3 P3 (#47; event-forgery + member-demote accepted/
+    by-design candidates). AuthZ/injection/SSRF/secrets/replay attacks all held, validated live.
+  - claims-auditor: 0 live P0/P1. 2 P1 forward-coupling conditions on #29 (account-deletion clock
+    structurally impossible; scan-results disconnect purge absent — both P0 the moment data-ai/
+    privacy route), 3 P2 claims-surface corrections (#46), C1–C11 verdicts otherwise enforced or
+    fail-closed; pg-arc-data C1/C7 boundary verified clean.
+  - logic-skeptic: 1 P1 **fixed in-gate** (PR #38, nearGraduation accuracy semantics), 7 P2
+    (#39–#45), 6 P3 (#47). Credit ledger, scheduler math, slot dedup, idempotency: clean.
+  - cost-auditor: 0 live P0/P1; 2 latent P2 routing items + pricing flag appended to #24; 3 P3
+    (#47). Zero-model-call claim, ceilings, and 1/3/10 debits verified compliant.
+  - Triage stance for the signature: severity judged against the shipped surface. One live P1
+    found and fixed inside the gate window; the two claims P1s are tracked conditions on #29,
+    consistent with the M2+M3+M6 precedent. Nothing served today promises more than the code
+    delivers.
+- Gate signed by: ___________________ (awaiting John)

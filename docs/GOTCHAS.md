@@ -124,3 +124,21 @@
   run never persisted — verify file state after any aborted batch.
 - Google restricted scopes (gmail.readonly and up) trigger OAuth verification + annual
   CASA assessment with weeks-to-months lead time; unverified apps cap at 100 users.
+- NEVER trust a doc claim that migrations are "applied + verified" on hosted databases — query
+  information_schema/pg_tables on each project before gating or shipping dependent code. The
+  M4+M5 gate found dev/staging/prod all carrying only the M1 schema while STATE.md claimed
+  M2/M3 were applied everywhere; prod served code against missing tables.
+- Parallel feature branches can mint identical migration timestamps (M4 and M5 both chose
+  20260611120000). The harness applies in filename order, so the collision stays silent until
+  the second branch rebases. Renumber at rebase; grep for the old filename in code comments.
+- `next build` (15.3) regenerates next-env.d.ts with a routes.d.ts triple-slash reference that
+  @typescript-eslint/triple-slash-reference rejects — reverting the file cannot stick because
+  every build rewrites it. Add the generated file to the eslint ignore list per app.
+- Git worktrees opened with different path casing (C:/Nibbin vs /c/nibbin) make tsc fail with
+  TS1149 "differs only in casing" errors that do not reproduce in CI. cd with the canonical
+  casing before typechecking on Windows.
+- Happy-shape test seeds mask window math: seeding only `approved` decisions hid that
+  nearGraduation counted rejections as graduation progress (gate P1). When testing anything
+  windowed/thresholded, seed the adversarial decision mix, not just the shape the query expects.
+- semgrep `p/default` is a floating ruleset: a branch green last week can fail SAST today with
+  unchanged code. Fix findings at the root (the rules are usually right) rather than pinning.

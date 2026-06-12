@@ -1,6 +1,6 @@
 {
- "generated": "2026-06-11T06:29:02.130Z",
- "root": "nibbin",
+ "generated": "2026-06-12T04:43:58.684Z",
+ "root": "Nibbin",
  "nodes": [
   {
    "id": ".claude/agents/claims-auditor.md",
@@ -55,7 +55,7 @@
   {
    "id": ".claude/skills/design-system/SKILL.md",
    "group": ".claude",
-   "deg": 1
+   "deg": 2
   },
   {
    "id": ".claude/skills/redaction-corpus/SKILL.md",
@@ -80,7 +80,7 @@
   {
    "id": "CLAUDE.md",
    "group": "root",
-   "deg": 14
+   "deg": 15
   },
   {
    "id": "LEARNINGS.md",
@@ -503,6 +503,16 @@
    "deg": 0
   },
   {
+   "id": "apps/web/app/api/email/unsubscribe/route.ts",
+   "group": "apps",
+   "deg": 1
+  },
+  {
+   "id": "apps/web/app/api/email/webhook/route.ts",
+   "group": "apps",
+   "deg": 1
+  },
+  {
    "id": "apps/web/app/api/stripe/webhook/route.ts",
    "group": "apps",
    "deg": 4
@@ -515,7 +525,7 @@
   {
    "id": "apps/web/app/app/grove/GroveChat.tsx",
    "group": "apps",
-   "deg": 5
+   "deg": 6
   },
   {
    "id": "apps/web/app/app/grove/KeeperSprite.tsx",
@@ -540,12 +550,42 @@
   {
    "id": "apps/web/app/app/grove/page.tsx",
    "group": "apps",
-   "deg": 5
+   "deg": 6
+  },
+  {
+   "id": "apps/web/app/app/grove/scan-actions.ts",
+   "group": "apps",
+   "deg": 7
+  },
+  {
+   "id": "apps/web/app/app/notifications/notifications.module.css",
+   "group": "apps",
+   "deg": 1
+  },
+  {
+   "id": "apps/web/app/app/notifications/page.tsx",
+   "group": "apps",
+   "deg": 4
   },
   {
    "id": "apps/web/app/app/page.tsx",
    "group": "apps",
    "deg": 4
+  },
+  {
+   "id": "apps/web/app/app/shop/actions.ts",
+   "group": "apps",
+   "deg": 3
+  },
+  {
+   "id": "apps/web/app/app/shop/page.tsx",
+   "group": "apps",
+   "deg": 3
+  },
+  {
+   "id": "apps/web/app/app/shop/shop.module.css",
+   "group": "apps",
+   "deg": 1
   },
   {
    "id": "apps/web/app/auth/callback/route.ts",
@@ -638,6 +678,11 @@
    "deg": 2
   },
   {
+   "id": "apps/web/lib/auth/app-session.ts",
+   "group": "apps",
+   "deg": 6
+  },
+  {
    "id": "apps/web/lib/auth/bootstrap.test.ts",
    "group": "apps",
    "deg": 1
@@ -645,12 +690,12 @@
   {
    "id": "apps/web/lib/auth/bootstrap.ts",
    "group": "apps",
-   "deg": 9
+   "deg": 11
   },
   {
    "id": "apps/web/lib/auth/profile.ts",
    "group": "apps",
-   "deg": 6
+   "deg": 8
   },
   {
    "id": "apps/web/lib/billing/catalog.test.ts",
@@ -688,6 +733,36 @@
    "deg": 3
   },
   {
+   "id": "apps/web/lib/runtime/adopt.ts",
+   "group": "apps",
+   "deg": 5
+  },
+  {
+   "id": "apps/web/lib/runtime/decide.ts",
+   "group": "apps",
+   "deg": 4
+  },
+  {
+   "id": "apps/web/lib/runtime/engine.ts",
+   "group": "apps",
+   "deg": 8
+  },
+  {
+   "id": "apps/web/lib/runtime/programs.ts",
+   "group": "apps",
+   "deg": 1
+  },
+  {
+   "id": "apps/web/lib/runtime/stores.ts",
+   "group": "apps",
+   "deg": 4
+  },
+  {
+   "id": "apps/web/lib/scan/run.ts",
+   "group": "apps",
+   "deg": 4
+  },
+  {
    "id": "apps/web/lib/site-url.ts",
    "group": "apps",
    "deg": 4
@@ -715,12 +790,12 @@
   {
    "id": "apps/web/lib/supabase/server.ts",
    "group": "apps",
-   "deg": 9
+   "deg": 11
   },
   {
    "id": "apps/web/lib/supabase/service.ts",
    "group": "apps",
-   "deg": 1
+   "deg": 8
   },
   {
    "id": "apps/web/middleware.ts",
@@ -1093,6 +1168,156 @@
    "deg": 0
   },
   {
+   "id": "packages/drip/package.json",
+   "group": "packages",
+   "deg": 0
+  },
+  {
+   "id": "packages/drip/src/beats.ts",
+   "group": "packages",
+   "deg": 6
+  },
+  {
+   "id": "packages/drip/src/ceremonies.ts",
+   "group": "packages",
+   "deg": 6
+  },
+  {
+   "id": "packages/drip/src/content.ts",
+   "group": "packages",
+   "deg": 5
+  },
+  {
+   "id": "packages/drip/src/field-notes.ts",
+   "group": "packages",
+   "deg": 4
+  },
+  {
+   "id": "packages/drip/src/index.ts",
+   "group": "packages",
+   "deg": 10
+  },
+  {
+   "id": "packages/drip/src/localtime.ts",
+   "group": "packages",
+   "deg": 6
+  },
+  {
+   "id": "packages/drip/src/pg-arc-data.ts",
+   "group": "packages",
+   "deg": 4
+  },
+  {
+   "id": "packages/drip/src/pg-store.ts",
+   "group": "packages",
+   "deg": 2
+  },
+  {
+   "id": "packages/drip/src/run.ts",
+   "group": "packages",
+   "deg": 3
+  },
+  {
+   "id": "packages/drip/src/scheduler.ts",
+   "group": "packages",
+   "deg": 7
+  },
+  {
+   "id": "packages/drip/src/stub.ts",
+   "group": "packages",
+   "deg": 3
+  },
+  {
+   "id": "packages/drip/src/types.ts",
+   "group": "packages",
+   "deg": 12
+  },
+  {
+   "id": "packages/drip/src/worker.ts",
+   "group": "packages",
+   "deg": 8
+  },
+  {
+   "id": "packages/drip/test/arc.test.ts",
+   "group": "packages",
+   "deg": 6
+  },
+  {
+   "id": "packages/drip/test/scheduler.test.ts",
+   "group": "packages",
+   "deg": 3
+  },
+  {
+   "id": "packages/drip/tsconfig.json",
+   "group": "packages",
+   "deg": 0
+  },
+  {
+   "id": "packages/email/package.json",
+   "group": "packages",
+   "deg": 0
+  },
+  {
+   "id": "packages/email/src/index.ts",
+   "group": "packages",
+   "deg": 8
+  },
+  {
+   "id": "packages/email/src/render.ts",
+   "group": "packages",
+   "deg": 6
+  },
+  {
+   "id": "packages/email/src/resend.ts",
+   "group": "packages",
+   "deg": 2
+  },
+  {
+   "id": "packages/email/src/sender.ts",
+   "group": "packages",
+   "deg": 6
+  },
+  {
+   "id": "packages/email/src/templates.ts",
+   "group": "packages",
+   "deg": 3
+  },
+  {
+   "id": "packages/email/src/types.ts",
+   "group": "packages",
+   "deg": 7
+  },
+  {
+   "id": "packages/email/src/unsubscribe.ts",
+   "group": "packages",
+   "deg": 5
+  },
+  {
+   "id": "packages/email/src/warmup.ts",
+   "group": "packages",
+   "deg": 3
+  },
+  {
+   "id": "packages/email/src/webhook.ts",
+   "group": "packages",
+   "deg": 3
+  },
+  {
+   "id": "packages/email/test/render.test.ts",
+   "group": "packages",
+   "deg": 4
+  },
+  {
+   "id": "packages/email/test/sender.test.ts",
+   "group": "packages",
+   "deg": 5
+  },
+  {
+   "id": "packages/email/tsconfig.json",
+   "group": "packages",
+   "deg": 0
+  },
+  {
    "id": "packages/keeper/package.json",
    "group": "packages",
    "deg": 0
@@ -1273,6 +1498,156 @@
    "deg": 0
   },
   {
+   "id": "packages/runtime/package.json",
+   "group": "packages",
+   "deg": 0
+  },
+  {
+   "id": "packages/runtime/src/events.ts",
+   "group": "packages",
+   "deg": 2
+  },
+  {
+   "id": "packages/runtime/src/index.ts",
+   "group": "packages",
+   "deg": 12
+  },
+  {
+   "id": "packages/runtime/src/runner.ts",
+   "group": "packages",
+   "deg": 5
+  },
+  {
+   "id": "packages/runtime/src/school.ts",
+   "group": "packages",
+   "deg": 3
+  },
+  {
+   "id": "packages/runtime/src/stores.ts",
+   "group": "packages",
+   "deg": 3
+  },
+  {
+   "id": "packages/runtime/src/templates.ts",
+   "group": "packages",
+   "deg": 2
+  },
+  {
+   "id": "packages/runtime/src/types.ts",
+   "group": "packages",
+   "deg": 6
+  },
+  {
+   "id": "packages/runtime/src/validate.ts",
+   "group": "packages",
+   "deg": 2
+  },
+  {
+   "id": "packages/runtime/src/velocity.ts",
+   "group": "packages",
+   "deg": 1
+  },
+  {
+   "id": "packages/runtime/test/events-velocity.test.ts",
+   "group": "packages",
+   "deg": 1
+  },
+  {
+   "id": "packages/runtime/test/runner-invariants.test.ts",
+   "group": "packages",
+   "deg": 1
+  },
+  {
+   "id": "packages/runtime/test/trigger-graph.test.ts",
+   "group": "packages",
+   "deg": 1
+  },
+  {
+   "id": "packages/runtime/test/trust-gate.test.ts",
+   "group": "packages",
+   "deg": 1
+  },
+  {
+   "id": "packages/runtime/tsconfig.json",
+   "group": "packages",
+   "deg": 0
+  },
+  {
+   "id": "packages/scan/package.json",
+   "group": "packages",
+   "deg": 0
+  },
+  {
+   "id": "packages/scan/src/engine.ts",
+   "group": "packages",
+   "deg": 6
+  },
+  {
+   "id": "packages/scan/src/findings.ts",
+   "group": "packages",
+   "deg": 6
+  },
+  {
+   "id": "packages/scan/src/fixtures.ts",
+   "group": "packages",
+   "deg": 1
+  },
+  {
+   "id": "packages/scan/src/index.ts",
+   "group": "packages",
+   "deg": 12
+  },
+  {
+   "id": "packages/scan/src/interview.ts",
+   "group": "packages",
+   "deg": 1
+  },
+  {
+   "id": "packages/scan/src/modules/calendar.ts",
+   "group": "packages",
+   "deg": 4
+  },
+  {
+   "id": "packages/scan/src/modules/crm.ts",
+   "group": "packages",
+   "deg": 4
+  },
+  {
+   "id": "packages/scan/src/modules/dm.ts",
+   "group": "packages",
+   "deg": 4
+  },
+  {
+   "id": "packages/scan/src/modules/email.ts",
+   "group": "packages",
+   "deg": 4
+  },
+  {
+   "id": "packages/scan/src/modules/payments.ts",
+   "group": "packages",
+   "deg": 4
+  },
+  {
+   "id": "packages/scan/src/unwrap.ts",
+   "group": "packages",
+   "deg": 6
+  },
+  {
+   "id": "packages/scan/test/interview-unwrap.test.ts",
+   "group": "packages",
+   "deg": 1
+  },
+  {
+   "id": "packages/scan/test/modules.test.ts",
+   "group": "packages",
+   "deg": 1
+  },
+  {
+   "id": "packages/scan/tsconfig.json",
+   "group": "packages",
+   "deg": 0
+  },
+  {
    "id": "packages/shared/package.json",
    "group": "packages",
    "deg": 0
@@ -1316,6 +1691,11 @@
    "id": "reference/nibbin-demo.html",
    "group": "reference",
    "deg": 11
+  },
+  {
+   "id": "reference/nibbin-logo-guide.html",
+   "group": "reference",
+   "deg": 2
   },
   {
    "id": "reference/nibbin-style-guide.html",
@@ -1383,7 +1763,17 @@
    "deg": 0
   },
   {
+   "id": "tests/rls/arc-data.test.ts",
+   "group": "tests",
+   "deg": 2
+  },
+  {
    "id": "tests/rls/billing-ledger.test.ts",
+   "group": "tests",
+   "deg": 1
+  },
+  {
+   "id": "tests/rls/drip.test.ts",
    "group": "tests",
    "deg": 1
   },
@@ -1395,7 +1785,12 @@
   {
    "id": "tests/rls/harness.ts",
    "group": "tests",
-   "deg": 5
+   "deg": 8
+  },
+  {
+   "id": "tests/rls/m4-runtime.test.ts",
+   "group": "tests",
+   "deg": 1
   },
   {
    "id": "tests/rls/rls.test.ts",
@@ -1410,6 +1805,21 @@
   {
    "id": "tests/rls/tsconfig.json",
    "group": "tests",
+   "deg": 0
+  },
+  {
+   "id": "tools/brand/cut-wordmark.mjs",
+   "group": "tools",
+   "deg": 0
+  },
+  {
+   "id": "tools/brand/package-lock.json",
+   "group": "tools",
+   "deg": 0
+  },
+  {
+   "id": "tools/brand/package.json",
+   "group": "tools",
    "deg": 0
   },
   {
@@ -1457,6 +1867,11 @@
   {
    "source": ".claude/skills/design-system/SKILL.md",
    "target": "reference/nibbin-style-guide.html",
+   "kind": "mention"
+  },
+  {
+   "source": ".claude/skills/design-system/SKILL.md",
+   "target": "reference/nibbin-logo-guide.html",
    "kind": "mention"
   },
   {
@@ -1695,6 +2110,16 @@
    "kind": "mention"
   },
   {
+   "source": "apps/web/app/api/email/unsubscribe/route.ts",
+   "target": "apps/web/lib/supabase/service.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/api/email/webhook/route.ts",
+   "target": "apps/web/lib/supabase/service.ts",
+   "kind": "import"
+  },
+  {
    "source": "apps/web/app/api/stripe/webhook/route.ts",
    "target": "apps/web/lib/stripe/client.ts",
    "kind": "import"
@@ -1751,6 +2176,11 @@
   },
   {
    "source": "apps/web/app/app/grove/GroveChat.tsx",
+   "target": "apps/web/app/app/grove/scan-actions.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/app/grove/GroveChat.tsx",
    "target": "apps/web/app/app/grove/cards.tsx",
    "kind": "import"
   },
@@ -1795,6 +2225,61 @@
    "kind": "import"
   },
   {
+   "source": "apps/web/app/app/grove/page.tsx",
+   "target": "apps/web/lib/runtime/engine.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/app/grove/scan-actions.ts",
+   "target": "apps/web/lib/auth/app-session.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/app/grove/scan-actions.ts",
+   "target": "apps/web/lib/runtime/adopt.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/app/grove/scan-actions.ts",
+   "target": "apps/web/lib/runtime/decide.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/app/grove/scan-actions.ts",
+   "target": "apps/web/lib/runtime/engine.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/app/grove/scan-actions.ts",
+   "target": "apps/web/lib/supabase/service.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/app/grove/scan-actions.ts",
+   "target": "apps/web/lib/scan/run.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/app/notifications/page.tsx",
+   "target": "apps/web/lib/supabase/server.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/app/notifications/page.tsx",
+   "target": "apps/web/lib/auth/bootstrap.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/app/notifications/page.tsx",
+   "target": "apps/web/lib/auth/profile.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/app/notifications/page.tsx",
+   "target": "apps/web/app/app/notifications/notifications.module.css",
+   "kind": "import"
+  },
+  {
    "source": "apps/web/app/app/page.tsx",
    "target": "apps/web/lib/supabase/server.ts",
    "kind": "import"
@@ -1812,6 +2297,31 @@
   {
    "source": "apps/web/app/app/page.tsx",
    "target": "apps/web/app/app/app.module.css",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/app/shop/actions.ts",
+   "target": "apps/web/lib/auth/app-session.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/app/shop/actions.ts",
+   "target": "apps/web/lib/runtime/adopt.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/app/shop/page.tsx",
+   "target": "apps/web/lib/auth/app-session.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/app/shop/page.tsx",
+   "target": "apps/web/app/app/shop/actions.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/app/shop/page.tsx",
+   "target": "apps/web/app/app/shop/shop.module.css",
    "kind": "import"
   },
   {
@@ -1945,6 +2455,21 @@
    "kind": "import"
   },
   {
+   "source": "apps/web/lib/auth/app-session.ts",
+   "target": "apps/web/lib/auth/bootstrap.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/lib/auth/app-session.ts",
+   "target": "apps/web/lib/auth/profile.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/lib/auth/app-session.ts",
+   "target": "apps/web/lib/supabase/server.ts",
+   "kind": "import"
+  },
+  {
    "source": "apps/web/lib/auth/bootstrap.test.ts",
    "target": "apps/web/lib/auth/bootstrap.ts",
    "kind": "import"
@@ -1972,6 +2497,66 @@
   {
    "source": "apps/web/lib/grove/state.test.ts",
    "target": "apps/web/lib/grove/state.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/lib/runtime/adopt.ts",
+   "target": "apps/web/lib/supabase/service.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/lib/runtime/adopt.ts",
+   "target": "apps/web/lib/runtime/stores.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/lib/runtime/adopt.ts",
+   "target": "apps/web/lib/runtime/engine.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/lib/runtime/decide.ts",
+   "target": "apps/web/lib/supabase/service.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/lib/runtime/decide.ts",
+   "target": "apps/web/lib/runtime/stores.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/lib/runtime/decide.ts",
+   "target": "apps/web/lib/runtime/engine.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/lib/runtime/engine.ts",
+   "target": "apps/web/lib/supabase/service.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/lib/runtime/engine.ts",
+   "target": "apps/web/lib/runtime/programs.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/lib/runtime/engine.ts",
+   "target": "apps/web/lib/runtime/stores.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/lib/scan/run.ts",
+   "target": "apps/web/lib/supabase/service.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/lib/scan/run.ts",
+   "target": "apps/web/lib/runtime/stores.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/lib/scan/run.ts",
+   "target": "apps/web/lib/runtime/engine.ts",
    "kind": "import"
   },
   {
@@ -2047,6 +2632,11 @@
   {
    "source": "CLAUDE.md",
    "target": "reference/nibbin-demo.html",
+   "kind": "mention"
+  },
+  {
+   "source": "CLAUDE.md",
+   "target": "reference/nibbin-logo-guide.html",
    "kind": "mention"
   },
   {
@@ -2855,6 +3445,346 @@
    "kind": "import"
   },
   {
+   "source": "packages/drip/src/beats.ts",
+   "target": "packages/drip/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/drip/src/ceremonies.ts",
+   "target": "packages/drip/src/beats.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/drip/src/ceremonies.ts",
+   "target": "packages/drip/src/localtime.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/drip/src/ceremonies.ts",
+   "target": "packages/drip/src/field-notes.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/drip/src/ceremonies.ts",
+   "target": "packages/drip/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/drip/src/content.ts",
+   "target": "packages/drip/src/ceremonies.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/drip/src/content.ts",
+   "target": "packages/drip/src/field-notes.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/drip/src/content.ts",
+   "target": "packages/drip/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/drip/src/field-notes.ts",
+   "target": "packages/drip/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/drip/src/index.ts",
+   "target": "packages/drip/src/beats.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/drip/src/index.ts",
+   "target": "packages/drip/src/content.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/drip/src/index.ts",
+   "target": "packages/drip/src/field-notes.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/drip/src/index.ts",
+   "target": "packages/drip/src/ceremonies.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/drip/src/index.ts",
+   "target": "packages/drip/src/localtime.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/drip/src/index.ts",
+   "target": "packages/drip/src/scheduler.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/drip/src/index.ts",
+   "target": "packages/drip/src/pg-arc-data.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/drip/src/index.ts",
+   "target": "packages/drip/src/stub.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/drip/src/index.ts",
+   "target": "packages/drip/src/worker.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/drip/src/index.ts",
+   "target": "packages/drip/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/drip/src/pg-arc-data.ts",
+   "target": "packages/drip/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/drip/src/pg-store.ts",
+   "target": "packages/drip/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/drip/src/run.ts",
+   "target": "packages/drip/src/pg-arc-data.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/drip/src/run.ts",
+   "target": "packages/drip/src/pg-store.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/drip/src/run.ts",
+   "target": "packages/drip/src/worker.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/drip/src/scheduler.ts",
+   "target": "packages/drip/src/beats.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/drip/src/scheduler.ts",
+   "target": "packages/drip/src/localtime.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/drip/src/scheduler.ts",
+   "target": "packages/drip/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/drip/src/stub.ts",
+   "target": "packages/drip/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/drip/src/worker.ts",
+   "target": "packages/drip/src/beats.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/drip/src/worker.ts",
+   "target": "packages/drip/src/content.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/drip/src/worker.ts",
+   "target": "packages/drip/src/localtime.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/drip/src/worker.ts",
+   "target": "packages/drip/src/scheduler.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/drip/src/worker.ts",
+   "target": "packages/drip/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/drip/test/arc.test.ts",
+   "target": "packages/drip/src/beats.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/drip/test/arc.test.ts",
+   "target": "packages/drip/src/localtime.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/drip/test/arc.test.ts",
+   "target": "packages/drip/src/stub.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/drip/test/arc.test.ts",
+   "target": "packages/drip/src/worker.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/drip/test/arc.test.ts",
+   "target": "packages/drip/src/scheduler.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/drip/test/arc.test.ts",
+   "target": "packages/drip/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/drip/test/scheduler.test.ts",
+   "target": "packages/drip/src/localtime.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/drip/test/scheduler.test.ts",
+   "target": "packages/drip/src/scheduler.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/drip/test/scheduler.test.ts",
+   "target": "packages/drip/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/email/src/index.ts",
+   "target": "packages/email/src/render.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/email/src/index.ts",
+   "target": "packages/email/src/templates.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/email/src/index.ts",
+   "target": "packages/email/src/sender.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/email/src/index.ts",
+   "target": "packages/email/src/resend.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/email/src/index.ts",
+   "target": "packages/email/src/unsubscribe.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/email/src/index.ts",
+   "target": "packages/email/src/warmup.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/email/src/index.ts",
+   "target": "packages/email/src/webhook.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/email/src/index.ts",
+   "target": "packages/email/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/email/src/render.ts",
+   "target": "packages/email/src/templates.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/email/src/render.ts",
+   "target": "packages/email/src/unsubscribe.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/email/src/render.ts",
+   "target": "packages/email/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/email/src/resend.ts",
+   "target": "packages/email/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/email/src/sender.ts",
+   "target": "packages/email/src/render.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/email/src/sender.ts",
+   "target": "packages/email/src/unsubscribe.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/email/src/sender.ts",
+   "target": "packages/email/src/warmup.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/email/src/sender.ts",
+   "target": "packages/email/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/email/src/webhook.ts",
+   "target": "packages/email/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/email/test/render.test.ts",
+   "target": "packages/email/src/render.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/email/test/render.test.ts",
+   "target": "packages/email/src/templates.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/email/test/render.test.ts",
+   "target": "packages/email/src/unsubscribe.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/email/test/render.test.ts",
+   "target": "packages/email/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/email/test/sender.test.ts",
+   "target": "packages/email/src/sender.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/email/test/sender.test.ts",
+   "target": "packages/email/src/unsubscribe.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/email/test/sender.test.ts",
+   "target": "packages/email/src/warmup.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/email/test/sender.test.ts",
+   "target": "packages/email/src/webhook.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/email/test/sender.test.ts",
+   "target": "packages/email/src/types.ts",
+   "kind": "import"
+  },
+  {
    "source": "packages/keeper/src/chat.ts",
    "target": "packages/keeper/src/copy.ts",
    "kind": "import"
@@ -2982,6 +3912,241 @@
   {
    "source": "packages/router/test/router.test.ts",
    "target": "packages/router/src/index.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/runtime/src/index.ts",
+   "target": "packages/runtime/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/runtime/src/index.ts",
+   "target": "packages/runtime/src/events.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/runtime/src/index.ts",
+   "target": "packages/runtime/src/validate.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/runtime/src/index.ts",
+   "target": "packages/runtime/src/school.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/runtime/src/index.ts",
+   "target": "packages/runtime/src/stores.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/runtime/src/index.ts",
+   "target": "packages/runtime/src/runner.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/runtime/src/index.ts",
+   "target": "packages/runtime/src/templates.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/runtime/src/index.ts",
+   "target": "packages/runtime/src/velocity.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/runtime/src/runner.ts",
+   "target": "packages/runtime/src/school.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/runtime/src/runner.ts",
+   "target": "packages/runtime/src/stores.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/runtime/src/runner.ts",
+   "target": "packages/runtime/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/runtime/src/runner.ts",
+   "target": "packages/runtime/src/events.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/runtime/src/school.ts",
+   "target": "packages/runtime/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/runtime/src/stores.ts",
+   "target": "packages/runtime/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/runtime/src/templates.ts",
+   "target": "packages/runtime/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/runtime/src/validate.ts",
+   "target": "packages/runtime/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/runtime/test/events-velocity.test.ts",
+   "target": "packages/runtime/src/index.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/runtime/test/runner-invariants.test.ts",
+   "target": "packages/runtime/src/index.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/runtime/test/trigger-graph.test.ts",
+   "target": "packages/runtime/src/index.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/runtime/test/trust-gate.test.ts",
+   "target": "packages/runtime/src/index.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/scan/src/engine.ts",
+   "target": "packages/scan/src/modules/calendar.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/scan/src/engine.ts",
+   "target": "packages/scan/src/modules/crm.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/scan/src/engine.ts",
+   "target": "packages/scan/src/modules/dm.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/scan/src/engine.ts",
+   "target": "packages/scan/src/modules/email.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/scan/src/engine.ts",
+   "target": "packages/scan/src/modules/payments.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/scan/src/index.ts",
+   "target": "packages/scan/src/engine.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/scan/src/index.ts",
+   "target": "packages/scan/src/findings.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/scan/src/index.ts",
+   "target": "packages/scan/src/fixtures.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/scan/src/index.ts",
+   "target": "packages/scan/src/interview.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/scan/src/index.ts",
+   "target": "packages/scan/src/unwrap.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/scan/src/index.ts",
+   "target": "packages/scan/src/modules/email.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/scan/src/index.ts",
+   "target": "packages/scan/src/modules/calendar.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/scan/src/index.ts",
+   "target": "packages/scan/src/modules/payments.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/scan/src/index.ts",
+   "target": "packages/scan/src/modules/crm.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/scan/src/index.ts",
+   "target": "packages/scan/src/modules/dm.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/scan/src/modules/calendar.ts",
+   "target": "packages/scan/src/findings.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/scan/src/modules/calendar.ts",
+   "target": "packages/scan/src/unwrap.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/scan/src/modules/crm.ts",
+   "target": "packages/scan/src/findings.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/scan/src/modules/crm.ts",
+   "target": "packages/scan/src/unwrap.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/scan/src/modules/dm.ts",
+   "target": "packages/scan/src/findings.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/scan/src/modules/dm.ts",
+   "target": "packages/scan/src/unwrap.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/scan/src/modules/email.ts",
+   "target": "packages/scan/src/findings.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/scan/src/modules/email.ts",
+   "target": "packages/scan/src/unwrap.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/scan/src/modules/payments.ts",
+   "target": "packages/scan/src/findings.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/scan/src/modules/payments.ts",
+   "target": "packages/scan/src/unwrap.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/scan/test/interview-unwrap.test.ts",
+   "target": "packages/scan/src/index.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/scan/test/modules.test.ts",
+   "target": "packages/scan/src/index.ts",
    "kind": "import"
   },
   {
@@ -3155,12 +4320,32 @@
    "kind": "mention"
   },
   {
+   "source": "tests/rls/arc-data.test.ts",
+   "target": "packages/drip/src/pg-arc-data.ts",
+   "kind": "import"
+  },
+  {
+   "source": "tests/rls/arc-data.test.ts",
+   "target": "tests/rls/harness.ts",
+   "kind": "import"
+  },
+  {
    "source": "tests/rls/billing-ledger.test.ts",
    "target": "tests/rls/harness.ts",
    "kind": "import"
   },
   {
+   "source": "tests/rls/drip.test.ts",
+   "target": "tests/rls/harness.ts",
+   "kind": "import"
+  },
+  {
    "source": "tests/rls/grove-state.test.ts",
+   "target": "tests/rls/harness.ts",
+   "kind": "import"
+  },
+  {
+   "source": "tests/rls/m4-runtime.test.ts",
    "target": "tests/rls/harness.ts",
    "kind": "import"
   },
