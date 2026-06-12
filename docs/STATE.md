@@ -1,7 +1,6 @@
 # STATE
 
-- Milestone: **M6.5 — Model Bring-Up — GATE RUN 2026-06-12** on `feature/m6.5-model-bringup`
-  (PR #51, HEAD `ce47603`), awaiting John's signature in LEARNINGS.md. The first real model calls
+- Milestone: **M6.5 — Model Bring-Up — GATE SIGNED by John W. 2026-06-12** (PR #51, LEARNINGS.md). The first real model calls
   ship: Anthropic-direct behind the §6.3 router (T1 Haiku 4.5, T2 Sonnet 4.6, Opus pinned to
   diagnosis), durable frontier budget (#24 CLOSED), keeper chat + agent drafts + scan/diagnosis on
   real models, eval suite (`npm run evals`) as the model/prompt-change gate, model_calls COGS

@@ -313,4 +313,10 @@ Format per gate:
     remaining claims P1 is a tracked M7-entry condition on a non-routing surface (#29), consistent
     with the M4+M5 precedent. P3s + the M7 cost watch-item in #52. Pricing approved by John in
     session on measured numbers.
-- Gate signed by: ___________________ (awaiting John)
+- Gate signed by: John W. (authorized in-session 2026-06-12) — accepts the triage: 1 P1 + 2 P2
+  found and fixed inside the gate; the one remaining claims P1 (C11 opt-in write-only) is a tracked
+  M7-entry condition on a non-routing surface (#29); P3s + the M7 diagnosis-pricing watch in #52.
+  Approves the measured pricing (top-up $10/1,000, allotments held, weights 1/3/10) at the
+  confirmed 90–95% margins. Two external artifacts accepted as John's to confirm out-of-band: the
+  signed Anthropic no-training/no-retention agreement, and Anthropic listed on
+  nibbin.com/subprocessors before data-ai/privacy route.
