@@ -47,7 +47,7 @@ footer a{color:inherit}
 <b>2.</b> Your data is never sold and never used for advertising.<br>
 <b>3.</b> No AI training on your data without a separate, default-off opt-in — not by us, and contractually not by our model providers.<br>
 <b>4.</b> Everything is retained on a clock you can see, and most clocks you can shorten.<br>
-<b>5.</b> Connections start read-only; write access is granted per-Nibbin, by you, in plain words.</p></div>
+<b>5.</b> Connections start read-only; write access is granted per-Nibbin, by you, in plain words. Where a platform offers no read-only permission (Instagram DMs, QuickBooks), we request the narrowest scope it has and enforce read-only in our own connector and database layers until you grant writes.</p></div>
 
 <h2>Where AI runs, and on what</h2>
 <p>Nibbin uses large language models to do three jobs: hold the Grovekeeper conversation, turn scan findings into plain language, and do the work you delegate (drafting a reply, chasing an invoice). For each task, the model sees only what that task needs — the email thread being answered, not your inbox; the invoice being chased, not your books. Light routine steps run on small fast models; only genuinely hard steps use frontier models. Models act as processors: they perform the task and are contractually barred from retaining or training on your content.</p>
@@ -67,11 +67,12 @@ footer a{color:inherit}
 <tr><td>Raw Field Study data (on device)</td><td>Until your diagnosis is built, max 14 days</td><td>Review daily, delete blocks, or abort the study — deletion is shown to you</td></tr>
 <tr><td>Synthesis packet</td><td>Processed into your diagnosis, then stored as part of it</td><td>Delete the diagnosis anytime</td></tr>
 <tr><td>Agent run logs</td><td>90 days by default</td><td>Shorten the window or wipe logs anytime</td></tr>
-<tr><td>Nibbin journals (what each agent learned)</td><td>Until you delete them</td><td>Per-entry or per-Nibbin deletion</td></tr>
+<tr><td>Nibbin journals (derived from your draft decisions — what changed and how much, never the draft text)</td><td>Follows the run-log clock</td><td>Wiping run logs clears them</td></tr>
 <tr><td>Scan results</td><td>While the connection is active</td><td>Disconnect to remove; re-scan anytime</td></tr>
 <tr><td>Connection tokens</td><td>While connected, in an encrypted vault</td><td>One-click revoke; dependent Nibbins pause politely</td></tr>
 <tr><td>Account data</td><td>Life of the account + 30 days after verified deletion</td><td>Export and delete from settings, web or desktop</td></tr>
 <tr><td>Encrypted backups</td><td>Roll off within 35 days of deletion</td><td>Automatic</td></tr>
+<tr><td>Unsubscribe &amp; bounce record (email address only)</td><td>Kept indefinitely</td><td>Kept to honor your request — that address is never mailed again</td></tr>
 </table>
 
 <h2>Who touches your data</h2>

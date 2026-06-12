@@ -233,4 +233,12 @@ Format per gate:
     found and fixed inside the gate window; the two claims P1s are tracked conditions on #29,
     consistent with the M2+M3+M6 precedent. Nothing served today promises more than the code
     delivers.
-- Gate signed by: ___________________ (awaiting John)
+- Gate signed by: John W. (authorized in-session 2026-06-12) — accepts the condition-based triage
+  (#39–#47 + the #24/#29 additions) with one reframing: **#29's two mechanisms (account-deletion
+  clock, scan-results purge-on-disconnect) and #46's claims-surface corrections are M7 entry
+  requirements, not backlog** — M7's reveal runs on real data and its verification scope covers
+  the published claims, so they land before M7 starts, and in any case before privacy.html /
+  data-ai.html route. The C8 reality (Instagram DMs / QuickBooks have no read-only platform
+  scope; Nibbin holds read-only at the connector + DB layers) is now stated plainly on both
+  claims pages. Confirms the #24 router-origin item is latent by construction: no frontier,
+  free, or local model is wired anywhere on main (cost-auditor verified zero model calls).
