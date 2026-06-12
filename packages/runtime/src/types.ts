@@ -1,0 +1,186 @@
+/**
+ * Agent runtime core types — SPEC §6.2, §4.6, §4.7.
+ *
+ * The package is pure by construction: every invariant is enforced in
+ * functions over injected stores, so the whole runtime is unit-testable
+ * without a database. apps/web wires the Supabase-backed stores (whose RPCs
+ * re-enforce the money- and trust-critical checks in SQL under per-account
+ * serialization — the DB is the last line of defense, this package is the
+ * API-layer authority).
+ */
+import type { WeightClass } from '@nibbin/shared';
+
+/* ── Agent School (§4.7) ──────────────────────────────────────────────────── */
+
+export const STAGES = ['egg', 'student', 'senior', 'grad'] as const;
+export type StageName = (typeof STAGES)[number];
+
+export function stageRank(stage: StageName): number {
+  return STAGES.indexOf(stage);
+}
+
+/* ── Triggers (§6.2) ──────────────────────────────────────────────────────── */
+
+export type TriggerKind = 'user' | 'schedule' | 'event';
+
+export interface TriggerDef {
+  kind: TriggerKind;
+  /**
+   * For kind 'event': where the event comes from.
+   *  - `connector:<provider>:<event>` (e.g. connector:gmail:message.received)
+   *  - `nibbin:<templateKey>:run.completed` — another Nibbin finishing
+   * The trigger-graph validator builds edges from nibbin:* sources; the
+   * Grovekeeper may never appear as one (§4.2 terminal hub).
+   */
+  source?: string;
+  /** For kind 'schedule': a named cadence ('daily.morning', 'weekly.monday'). */
+  schedule?: string;
+  /** Identical events inside this window collapse to one (§6.2 dedupe). */
+  debounceSecs?: number;
+  /** Minimum seconds between runs of this Nibbin (§6.2 cooldown). */
+  cooldownSecs?: number;
+}
+
+/* ── Spec (§4.6: spec-versioned templates; custom specs validate the same) ── */
+
+export interface PromotionThresholds {
+  /** Rolling window of decided runs. Floor 25 — config may only tighten. */
+  windowRuns: number;
+  /** Approved-unedited share required. Floor 0.95 — config may only tighten. */
+  minApprovedUneditedPct: number;
+}
+
+export interface CurriculumConfig {
+  /** What accuracy is measured against — shown in the shop and School UI. */
+  measures: string;
+  promotion: PromotionThresholds;
+  /**
+   * Senior autonomy: a side effect is "routine" only after this many
+   * approved-unedited runs of the identical pattern (§4.7 "autonomous on
+   * routine patterns repeatedly matched; flags novelty").
+   */
+  routineMinApprovals: number;
+}
+
+export interface RunCeilings {
+  maxSteps: number;
+  maxTokens: number;
+  maxWallClockMs: number;
+}
+
+export interface CreditProfile {
+  weightClass: WeightClass;
+  ceilings: RunCeilings;
+}
+
+export interface AgentSpec {
+  /** Shop template key; null for custom hatch-wizard specs. */
+  templateKey: string | null;
+  version: number;
+  displayName: string;
+  /** Connector capability ids this Nibbin may use — checked on every step. */
+  toolsAllowlist: string[];
+  requiredConnectors: string[];
+  triggers: TriggerDef[];
+  curriculum: CurriculumConfig;
+  creditProfile: CreditProfile;
+}
+
+/* ── Runs ─────────────────────────────────────────────────────────────────── */
+
+export type RunStatus =
+  | 'queued'
+  | 'running'
+  | 'awaiting_approval'
+  | 'completed'
+  | 'rejected'
+  | 'failed'
+  | 'killed';
+
+export interface RunTrigger {
+  kind: TriggerKind;
+  /** What fired (schedule name, event source). */
+  key?: string;
+  /** Identity for §6.2 debounce/dedupe. */
+  dedupeKey?: string;
+}
+
+export interface NibbinRef {
+  id: string;
+  accountId: string;
+  name: string;
+  stage: StageName;
+  status: 'active' | 'paused' | 'sleeping';
+  spec: AgentSpec;
+}
+
+export type AdmissionOutcome =
+  | { kind: 'started'; runId: string; balance: number }
+  | { kind: 'queued_cap'; runId: string; balance: number }
+  | { kind: 'deduped' }
+  | { kind: 'cooldown' }
+  | { kind: 'anomaly_paused' }
+  | { kind: 'nibbin_unavailable' };
+
+/* ── Steps the runner executes ────────────────────────────────────────────── */
+
+export interface ReadStep {
+  kind: 'read';
+  capability: string;
+  connectionId: string;
+  /** Provider-relative GET path. */
+  path: string;
+}
+
+export interface ComposeStep {
+  kind: 'compose';
+  /** Model-free in v0 — deterministic composition; tokens stay 0. */
+  tokens?: number;
+  payload: Record<string, unknown>;
+}
+
+export interface DraftStep {
+  kind: 'draft';
+  capability: string;
+  /** Routine-matching identity (§4.7) — same pattern, same key. */
+  patternKey: string;
+  title: string;
+  draft: string;
+  /** Args the side effect would execute with, if approved. */
+  effectArgs: Record<string, unknown>;
+  connectionId?: string;
+  /**
+   * Presentation drafts (digests, keep-or-clear lists) have NO side effect to
+   * execute — they always land as drafts for review at every stage, train
+   * accuracy through approvals, and can never reach the effect executor.
+   */
+  presentation?: boolean;
+}
+
+export type ProgramStep = ReadStep | ComposeStep | DraftStep;
+
+export interface StepRecord {
+  idx: number;
+  kind: 'read' | 'compose' | 'tool' | 'draft' | 'execute';
+  tool?: string;
+  inputHash?: string;
+  model?: string;
+  tokens: number;
+  payload?: Record<string, unknown>;
+}
+
+export type RunResult =
+  | { kind: 'awaiting_approval'; runId: string; draft: DraftStep }
+  | { kind: 'completed'; runId: string }
+  | { kind: 'executed'; runId: string; effect: { capability: string; idempotencyKey: string } }
+  | { kind: 'killed'; runId: string; reason: KillReason }
+  | { kind: 'failed'; runId: string; error: string };
+
+export type KillReason =
+  | 'repetition'        // same-tool-same-args loop kill (§6.2)
+  | 'max_steps'
+  | 'max_tokens'
+  | 'wall_clock'
+  | 'allowlist'         // capability outside the spec's tool allowlist
+  | 'unquarantined'     // tool output missing quarantine markers (§6.5)
+  | 'stage';            // egg attempted output (§4.7: Eggs observe only)

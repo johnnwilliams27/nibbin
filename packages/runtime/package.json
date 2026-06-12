@@ -1,0 +1,18 @@
+{
+  "name": "@nibbin/runtime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Agent runtime (SPEC §6.2) — Agent School stage gating, weighted-credit budget checks, per-run ceilings, loop kill, idempotency, cycle-checked trigger graphs, anomaly auto-pause, §6.12 event taxonomy.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@nibbin/connectors": "*",
+    "@nibbin/creatures": "*",
+    "@nibbin/shared": "*"
+  }
+}
