@@ -7,6 +7,10 @@
   --display: var(--font-bricolage), 'Bricolage Grotesque', 'Archivo', sans-serif;
   --sans: var(--font-archivo), 'Archivo', -apple-system, 'Helvetica Neue', sans-serif;
   --mono: var(--font-plex-mono), 'IBM Plex Mono', ui-monospace, monospace;
+  /* Landing aliases for canonical brand tokens (understory / honey / canopy). */
+  --paper-deep: #eaede3;
+  --sun: #d9a21b;
+  --card: #fff;
 }
 
 * {
