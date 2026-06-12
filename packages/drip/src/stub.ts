@@ -1,9 +1,7 @@
 /**
- * M4 stub. M4 (scan engine, Agent Shop, runtime) is in flight on another
- * branch; until its data surfaces land, the arc runs on this port and every
- * beat degrades to its honest no-data copy. Reconcile on rebase: replace
- * `stubArcData` with the real adapter over runs/scan tables, keep the
- * interface (it was published for exactly this seam).
+ * Test/dev port. Production runs on pg-arc-data.ts (the real adapter over
+ * M4's runs/scan tables); this stub keeps the scheduler/content tests
+ * deterministic and shows every beat's honest no-data degradation.
  */
 import type { ArcDataPort } from './types';
 

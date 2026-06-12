@@ -13,8 +13,8 @@
 import { Pool } from 'pg';
 import { createBeatMailer, resendProvider } from '@nibbin/email';
 import type { SendLog, SuppressionStore } from '@nibbin/email';
+import { pgArcData } from './pg-arc-data';
 import { pgDripStore } from './pg-store';
-import { stubArcData } from './stub';
 import { tick } from './worker';
 
 function required(name: string): string {
@@ -94,9 +94,7 @@ async function main(): Promise<void> {
     const opened = await store.ensureArcs();
     const result = await tick({
       store,
-      // M4 in flight: the stub port keeps every beat honest-but-short.
-      // Reconcile on rebase: swap in the adapter over runs/scan tables.
-      data: stubArcData(),
+      data: pgArcData(pool),
       email,
       clock: () => new Date(),
       onError: (accountId, err) => {

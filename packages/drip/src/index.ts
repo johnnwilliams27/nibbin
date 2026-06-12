@@ -4,6 +4,7 @@ export { buildFirstFieldNotes, scoreboardCards } from './field-notes';
 export { buildDiagnosisReveal, buildGraduationEve, buildHalfTime, buildMapPreview } from './ceremonies';
 export { FALLBACK_TZ, arcDay, localDay, localHour, safeTz } from './localtime';
 export { CATCH_UP_GRACE_DAYS, MIN_PUSH_SPACING_MS, planBeat } from './scheduler';
+export { pgArcData } from './pg-arc-data';
 export { stubArcData } from './stub';
 export { tick } from './worker';
 export type {

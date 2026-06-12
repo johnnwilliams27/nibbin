@@ -1,6 +1,6 @@
 /**
  * Postgres implementation of DripStore over the M5 tables
- * (supabase/migrations/20260611120000_m5_drip_email.sql). Runs with the
+ * (supabase/migrations/20260612000000_m5_drip_email.sql). Runs with the
  * service role / direct connection — RLS does not apply to the worker; the
  * unique indexes are the correctness layer. Zero string-built SQL.
  */
