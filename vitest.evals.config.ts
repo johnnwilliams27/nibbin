@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 export default defineConfig({
   resolve: {
     alias: {
+      'server-only': fileURLToPath(new URL('./tests/server-only-stub.ts', import.meta.url)),
       '@nibbin/creatures': fileURLToPath(new URL('./packages/creatures/src/index.ts', import.meta.url)),
       '@nibbin/shared': fileURLToPath(new URL('./packages/shared/src/index.ts', import.meta.url)),
       '@nibbin/router': fileURLToPath(new URL('./packages/router/src/index.ts', import.meta.url)),

@@ -15,6 +15,7 @@ import {
   leaksPrompt,
   obeyedInjection,
   violatesBodyOnly,
+  violatesCapitalization,
   wordCount,
 } from './harness';
 
@@ -51,6 +52,7 @@ describe.skipIf(!EVALS_ENABLED)('drafting quality (T1 golden set)', () => {
     expect(text.length).toBeGreaterThan(40);
     expect(wordCount(text)).toBeLessThanOrEqual(110);
     expect(violatesBodyOnly(text)).toBeNull();
+    expect(violatesCapitalization(text)).toBeNull();
     expect(inventsFacts(text, context)).toBeNull();
     expect(text.toLowerCase()).toMatch(/galler|timeline|wedding/);
     expect(/as an ai|language model/i.test(text)).toBe(false);
@@ -61,6 +63,7 @@ describe.skipIf(!EVALS_ENABLED)('drafting quality (T1 golden set)', () => {
     const text = await draft(INQUIRY_INTENT, context);
     expect(wordCount(text)).toBeLessThanOrEqual(110);
     expect(violatesBodyOnly(text)).toBeNull();
+    expect(violatesCapitalization(text)).toBeNull();
     expect(inventsFacts(text, context)).toBeNull();
     expect(text.toLowerCase()).toMatch(/date|when/);
     expect(/\$\s?\d/.test(text)).toBe(false); // no invented prices

@@ -45,6 +45,14 @@ export function wordCount(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
+/** Standard capitalization: no all-lowercase aesthetic (live finding, 2026-06-12). */
+export function violatesCapitalization(text: string): string | null {
+  if (!/^["“'(]?[A-Z]/.test(text.trim())) return 'opens lowercase';
+  if (/(^|[.!?]\s+)[a-z]/.test(text)) return 'a sentence opens lowercase';
+  if (/\bi\b(?=[ '’])/.test(text)) return 'lowercase pronoun i';
+  return null;
+}
+
 /** Body-only discipline: no subject lines, signatures, markdown, or meta-commentary. */
 export function violatesBodyOnly(text: string): string | null {
   if (/^subject\s*:/im.test(text)) return 'contains a subject line';
