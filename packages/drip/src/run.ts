@@ -98,7 +98,8 @@ async function main(): Promise<void> {
       email,
       clock: () => new Date(),
       onError: (accountId, err) => {
-        console.error(`[drip] arc ${accountId} failed`, err instanceof Error ? err.message : err);
+        // constant first argument — never a format-string position for ids
+        console.error('[drip] arc failed', accountId, err instanceof Error ? err.message : err);
       },
     });
     console.log(
