@@ -142,3 +142,24 @@
   windowed/thresholded, seed the adversarial decision mix, not just the shape the query expects.
 - semgrep `p/default` is a floating ruleset: a branch green last week can fail SAST today with
   unchanged code. Fix findings at the root (the rules are usually right) rather than pinning.
+- The block-no-verify hook scans the whole bash command STRING, not just the git invocation:
+  any `-n` flag (or the literal "no-verify") elsewhere in a compound command containing a git
+  commit trips it. Keep commits as standalone `git commit -F <file>` calls, and don't chain a
+  `-n`-bearing command (grep -n, sed -n, heredocs quoting these) onto the same line.
+- Anthropic prompt caching (cache_control ephemeral) is SILENTLY IGNORED below the model's
+  minimum cacheable prefix (~1-2k tokens depending on class). A flagged-but-short stable block
+  returns cache_creation=0, cache_read=0 and bills at full input rate — no error, no warning.
+  Don't assume a cached prefix is saving money until you've measured cache_read_input_tokens > 0.
+  Nibbin's voice prompts (~200-500 tokens) are below the floor today; caching activates when
+  Grove Memory grows the prefix (SPEC §4.8).
+- Token accounting for run ceilings MUST include cache tokens (cache_creation + cache_read), not
+  just input + output — cached tokens are real consumption (billed, just discounted), and
+  omitting them lets a run slip past its §6.2 token ceiling in real-token terms (M6.5 gate P1).
+- When a model call is routed then comes back empty/failed, the user-facing decision degrades to
+  the scripted floor (tier t0) but a real T1/T2 call may already be billed — record COGS on the
+  DISPATCHED tier (keeperChat returns dispatchedTier/dispatchedModel), never the user-facing
+  decision.tier, or the COGS-by-tier view is corrupted (M6.5 gate P2).
+- M7 trap: the diagnosis (Opus, ~$0.025/call, ~37x a draft) is an UNMETERED pipeline splurge
+  today (once per study, subscription-absorbed). If M7 makes it a user-triggerable metered action
+  it must be charged FRONTIER (3 credits) — STANDARD (1 credit) is −147% margin, a guaranteed
+  loss (#52).

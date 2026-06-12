@@ -1,5 +1,23 @@
 # STATE
 
+- Milestone: **M6.5 — Model Bring-Up — GATE RUN 2026-06-12** on `feature/m6.5-model-bringup`
+  (PR #51, HEAD `ce47603`), awaiting John's signature in LEARNINGS.md. The first real model calls
+  ship: Anthropic-direct behind the §6.3 router (T1 Haiku 4.5, T2 Sonnet 4.6, Opus pinned to
+  diagnosis), durable frontier budget (#24 CLOSED), keeper chat + agent drafts + scan/diagnosis on
+  real models, eval suite (`npm run evals`) as the model/prompt-change gate, model_calls COGS
+  ledger + admin card, top-up repriced $5→$10/1,000 (founder-approved on measured numbers).
+  **No live P0/P1 after in-gate fixes**: 1 P1 + 2 P2 (logic-skeptic — token-ceiling cache tokens,
+  COGS-tier mislabel, orphan compose step) FIXED in `fa31bfb`. One claims P1 (C11 opt-in is
+  recorded/default-off/audited but write-only, no UI/read-path) tracked on #29 as an M7-entry item
+  on a non-routing surface. P3s + the M7 diagnosis-pricing watch-item in #52. Margins confirmed
+  90–95% every SKU (floor 60%). 598 tests + 19 live evals + 5 live-stack green; migration
+  20260612120000 applied to **dev** (apply to staging/prod at merge). **Awaiting John:** sign the
+  gate; add `ANTHROPIC_API_KEY` to GitHub env secrets + Vercel prod; update `STRIPE_PRICE_TOPUP` in
+  Vercel prod to the new $10 id; confirm the signed Anthropic no-training agreement + Anthropic on
+  nibbin.com/subprocessors before claims pages route.
+
+## Previous gate (M4+M5)
+
 - Milestone: M4+M5 — COMBINED GATE RUN 2026-06-12 on integrated main (`41b4d47` + fix PR #38),
   SIGNED by John W. 2026-06-12 (LEARNINGS.md). **No live P0/P1 after the in-gate fix**: the one live
   P1 (nearGraduation counted all decisions as graduation progress — pg-arc-data.ts, post-rebase
