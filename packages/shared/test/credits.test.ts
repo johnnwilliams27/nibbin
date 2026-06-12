@@ -48,8 +48,8 @@ describe('locked constants (SPEC §6.2 / §6.4)', () => {
     expect(TIERS.grove.topUpsAllowed).toBe(false);
   });
 
-  it('top-ups are $5 per extra 1,000 credits', () => {
-    expect(TOP_UP).toEqual({ priceUsdCents: 500, credits: 1000 });
+  it('top-ups are $10 per extra 1,000 credits (founder decision 2026-06-12)', () => {
+    expect(TOP_UP).toEqual({ priceUsdCents: 1000, credits: 1000 });
   });
 });
 

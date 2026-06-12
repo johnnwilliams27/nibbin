@@ -117,6 +117,35 @@ alter table public.model_calls enable row level security;
 -- role on admin.nibbin.com; members see credits, not raw COGS)
 revoke all on public.model_calls from anon, authenticated;
 
+-- One aggregate for the §6.10 admin COGS card (service role only — members
+-- see credits, never raw provider economics).
+create function public.account_model_cogs(p_account uuid, p_days integer default 30)
+returns table (
+  calls bigint,
+  input_tokens bigint,
+  cache_write_tokens bigint,
+  cache_read_tokens bigint,
+  output_tokens bigint,
+  cost_microusd bigint
+)
+language sql
+security definer
+set search_path = ''
+stable
+as $$
+  select count(*),
+         coalesce(sum(m.input_tokens), 0),
+         coalesce(sum(m.cache_write_tokens), 0),
+         coalesce(sum(m.cache_read_tokens), 0),
+         coalesce(sum(m.output_tokens), 0),
+         coalesce(sum(m.cost_microusd), 0)
+    from public.model_calls m
+   where m.account_id = p_account
+     and m.created_at > now() - make_interval(days => greatest(p_days, 1));
+$$;
+revoke execute on function public.account_model_cogs(uuid, integer) from public, anon, authenticated;
+grant execute on function public.account_model_cogs(uuid, integer) to service_role;
+
 -- ── C11 training opt-in (#24 condition: ships with the first real generate) ─
 -- Default OFF; flipping it is an explicit, audited account-level act. The
 -- flag gates any FUTURE training use of account content; model providers are

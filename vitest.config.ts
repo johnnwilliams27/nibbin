@@ -4,6 +4,10 @@ import { fileURLToPath } from 'node:url';
 export default defineConfig({
   resolve: {
     alias: {
+      // Next's build-time RSC guard throws on import outside react-server
+      // conditions; under tests it is inert so server-only lib modules
+      // (engine, synthesis, drafting) stay unit-testable.
+      'server-only': fileURLToPath(new URL('./tests/server-only-stub.ts', import.meta.url)),
       '@nibbin/creatures': fileURLToPath(new URL('./packages/creatures/src/index.ts', import.meta.url)),
       '@nibbin/shared': fileURLToPath(new URL('./packages/shared/src/index.ts', import.meta.url)),
       '@nibbin/router': fileURLToPath(new URL('./packages/router/src/index.ts', import.meta.url)),

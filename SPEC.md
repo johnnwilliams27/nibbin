@@ -332,17 +332,17 @@ Pre-run budget check against weighted credits (**standard 1 / frontier-heavy 3 /
 
 ### 6.3 LLM routing & cost control
 
-| Tier | Model class | Used for |
+| Tier | Model class (founder decision 2026-06-12, M6.5) | Used for |
 |---|---|---|
-| T0 | Local/open-weight + smallest API class | Chat smalltalk, intent classification, routing, formatting, Field Notes copy, journal phrasing |
-| T1 | Mid (Sonnet-class) | Specialist drafts, scan synthesis, training feedback, map labeling |
-| T2 | Frontier (Opus/Fable-class) | Diagnosis synthesis, custom-spec drafting at hatch, genuinely complex multi-step plans |
+| T0 | Scripted/templated wherever possible — no model; smallest API class (Haiku) on the rare dispatch | Chat smalltalk, intent classification, routing, formatting, Field Notes copy, journal phrasing |
+| T1 | Haiku-class — the ~80% workhorse | Specialist drafts, scan synthesis, training feedback, map labeling, keeper chat beyond the scripted floor |
+| T2 | Sonnet-class; the diagnosis alone pinned to Opus-class (the deliberate splurge) | Diagnosis synthesis, custom-spec drafting at hatch, genuinely complex multi-step plans |
 
 A T0 **complexity classifier** scores every Grovekeeper request and routes it. T2 access from chat is budgeted per user per day; on cap the router degrades to T1 with transparent phrasing ("doing this the simple way today — it'll still be right"). Grovekeeper chat is free/near-free **by construction**: T0 default, cached system prompts and grove context, T1 only on classified need, T2 only within the daily budget. Aggressive prompt caching everywhere; batch APIs for scans and diagnosis; per-cohort COGS dashboards with alarms (M8). The diagnosis is the one deliberate splurge — never cost-optimize the moment that earns belief.
 
 ### 6.4 Metering & billing
 
-Tiers per locked pricing: **Hatchling** free (2 Nibbins, 100 actions/mo), **Grove** $19/mo (5 Nibbins, 1,000), **Canopy** $49/mo (unlimited Nibbins, 5,000, top-ups $5 per extra 1,000 credits). An *action* is one completed task; weighted units per §6.2 debit the ledger. Meter always visible in the grove. Stripe for billing; webhooks verified; downgrade/cancel never deletes Nibbins (they sleep, journals intact).
+Tiers per locked pricing: **Hatchling** free (2 Nibbins, 100 actions/mo), **Grove** $19/mo (5 Nibbins, 1,000), **Canopy** $49/mo (unlimited Nibbins, 5,000, top-ups $10 per extra 1,000 credits — repriced at M6.5 by founder decision; the $5 top-up was under water at T1 model prices and below the industry overage norm). An *action* is one completed task; weighted units per §6.2 debit the ledger. Meter always visible in the grove. Stripe for billing; webhooks verified; downgrade/cancel never deletes Nibbins (they sleep, journals intact).
 
 ### 6.5 Security engineering (author item 10)
 
@@ -487,7 +487,7 @@ for approvals); push opt-in flow honest and revocable.
 | MCP-first + aggregator; hand-build only vertical moats | Hundreds of connectors at near-zero cost; differentiation lives in HoneyBook/Pixieset/IG-DM-class depth | Aggregator pricing/reliability problems |
 | Visual mascot chat over generic chat box | Generic chat is like every other product; the grove scene + emoting Keeper is a moat a copycat can't ship in a weekend | If low-end-device perf fails reduced-mode users |
 | Tiered LLM router with frontier caps + transparent fallback | Grovekeeper chat must be ~free; the diagnosis is the only splurge | Model price shifts (re-tune quarterly) |
-| Weighted credits (1/3/10) | The heavy tail (computer-use) funds itself; $5 top-ups stay solvent | Cost telemetry says weights are wrong |
+| Weighted credits (1/3/10) | The heavy tail (computer-use) funds itself; $10 top-ups stay solvent (repriced from $5 at M6.5 — measured T1 economics) | Cost telemetry says weights are wrong |
 | Fork Screenpipe; Tauri; SQLCipher; Presidio sidecar; AX-first | Months saved under MIT; the moat is inference + agents, not capture plumbing | Vendored surface fights OS updates |
 | Postgres+RLS, append-only ledgers, vaulted tokens | Boring, auditable, scales past this phase; the Author's scaling note is M8's mandate | M8 findings |
 | Supabase + Vercel + GitHub as the managed platform | Solo-founder velocity: RLS, auth, vault, previews, CI without ops headcount | Scale/cost findings at M8; egress or vendor limits |
