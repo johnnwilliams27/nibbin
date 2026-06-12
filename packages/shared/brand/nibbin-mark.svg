@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 72" role="img" aria-label="nibbin">
+  <!-- nibbin sprout mark v1.0 — the wordmark's living glyph (Plate L3), never a separate drawing. -->
+  <path d="M32 66 C33 52 35 40 36 30 L40 30 C41.4 40 43.4 52 44.6 66 Z" fill="#44601F"/>
+  <path d="M37.4 31 C26 32 14 27 11 16.5 C22 14 33 20.5 37.4 31 Z" fill="#5B7C2E" stroke="#44601F" stroke-width="2.2" stroke-linejoin="round"/>
+  <path d="M39 31 C49.5 28.5 57.5 20 59.5 10 C48.5 8.5 41 18 39 31 Z" fill="#7FAF45" stroke="#44601F" stroke-width="2.2" stroke-linejoin="round"/>
+</svg>

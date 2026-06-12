@@ -19,3 +19,16 @@ Source of truth: `reference/nibbin-style-guide.html` (the Field Guide). Canonica
 - Creatures: engine-only, unique gradient IDs, idle animation always on (reduced-motion: static but visible), no graduation cap on the Keeper, clear space >= half creature width.
 - Capitalization: sentence case everywhere; chips/status callouts capitalize first word ("Waiting on you"); mono labels are the only uppercase.
 - Dusk theme (chat scene/evening): bg #222B1B, card #2C3622, text #E8ECDD, secondary #B7C0A6.
+
+## The wordmark (frozen v1.0)
+
+Source of truth: `reference/nibbin-logo-guide.html`. Production assets in `packages/shared/brand/` are outlined paths (no webfont) — always use the files, never re-set the name in type; re-cut via `tools/brand` only.
+
+- "nibbin" in Bricolage Grotesque 800 lowercase, second i replaced by a sprout (tapered stem = body, two leaves = dot). One living letter; the first i keeps its plain dot.
+- Light and dusk are **two separate artworks**, never one recolored: light kerns +4/−12, no overshoot, leaves #5B7C2E/#7FAF45 outlined 1.4 #44601F; dusk kerns +5/−11, +1.2 baseline overshoot, leaves #9CC25B/#7FAF45 outlined 1.2 #5F8F33.
+- Six laws: organic elements at ~60% font stem weight · nothing above ascender height (right leaf tip y=28.6 at master, exactly ascender) · one sprout per word, second i only · ground variants are real artwork · leaves unfurl outward, never pray upward · exit, not entry.
+- Leaf overhang is load-bearing for the kerns — never trim. Clear space ≥1Λ all sides (Λ = leaf-span, 30 master units ≈ 0.54× wordmark height); only the Grovekeeper may stand at exactly 1Λ.
+- Wordmark ≥16px tall; below that use the extracted sprout mark (`nibbin-mark.svg`) — favicons 16/32 always use the mark, never the word.
+- Grounds: light artwork on paper/canopy/shell/understory; dusk artwork on #222B1B and darker. Never on mid-greens, photos, or gradients (use the Clearing badge). Mono = all-ink / all-dusk-ink silhouettes for single-color print only; never an all-green wordmark, never #9CC25B shapes on light without dark outlines.
+- Never: honey leaves, sprout on first i, two sprouts, stretch/condense, rotate, dusk art on light, shadows/gradients in letterforms, sprout as bullet point.
+- Motion (the only two, both skip under reduced-motion): the Growing on load (sprout grows from dotless stem, ≤900ms, once per session) and the Settle on hover (leaves rock ±4° once, 350ms).

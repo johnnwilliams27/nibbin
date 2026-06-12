@@ -1,0 +1,15 @@
+{
+  "name": "nibbin-brand-tools",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Wordmark v1.0 production cutter — outlines the wordmark per reference/nibbin-logo-guide.html frozen values",
+  "type": "module",
+  "scripts": {
+    "cut": "node cut-wordmark.mjs"
+  },
+  "dependencies": {
+    "fontkit": "^2.0.4",
+    "png-to-ico": "^3.0.1",
+    "sharp": "^0.35.1"
+  }
+}
