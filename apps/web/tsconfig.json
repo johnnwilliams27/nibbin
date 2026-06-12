@@ -9,7 +9,9 @@
     "plugins": [{ "name": "next" }],
     "paths": {
       "@nibbin/creatures": ["../../packages/creatures/src/index.ts"],
-      "@nibbin/shared": ["../../packages/shared/src/index.ts"]
+      "@nibbin/shared": ["../../packages/shared/src/index.ts"],
+      "@nibbin/drip": ["../../packages/drip/src/index.ts"],
+      "@nibbin/email": ["../../packages/email/src/index.ts"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
