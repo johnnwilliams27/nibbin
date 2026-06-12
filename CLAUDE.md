@@ -23,6 +23,7 @@ orchestrates but has no hands. Two surfaces: Day One web app + desktop Observer.
 | Milestone gate | `/gate` command + `.claude/agents/*` reviewers |
 | Codebase orientation | run `node tools/grovemap/grovemap.mjs` and open the map |
 | Marketing, growth, GTM, the Marketing Grove agents | `docs/GTM.md` |
+| Competitive framing, moat mechanics, positioning | `docs/MOAT.md` |
 | Next-phase prep (M6.5 bring-up, M7 readiness, macOS test) | `docs/tasks/` + `docs/PRODUCT-FOUNDATION.md` |
 
 Brand reference: `reference/nibbin-demo.html`. Wordmark: `reference/nibbin-logo-guide.html` (frozen), assets in `packages/shared/brand/`. Engine reference: `reference/nibbin-creature-lab.html`.

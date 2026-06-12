@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '../../lib/supabase/server';
 import { ensureAccount } from '../../lib/auth/bootstrap';
 import { upsertOwnProfile } from '../../lib/auth/profile';
+import { TOP_UP } from '@nibbin/shared';
 import { TIER_CREDITS, TOPUP_CREDITS } from '../../lib/billing/grant';
 import { subscribeToTier, buyTopups, openBillingPortal } from './actions';
 import styles from './billing.module.css';
@@ -106,7 +107,7 @@ export default async function BillingPage({
             <input type="hidden" name="quantity" value="1" />
             <span>Need more this month?</span>
             <button className={styles.secondary} type="submit">
-              Add {TOPUP_CREDITS.toLocaleString()} credits · $5
+              Add {TOPUP_CREDITS.toLocaleString()} credits · ${(TOP_UP.priceUsdCents / 100).toFixed(0)}
             </button>
           </form>
         )}

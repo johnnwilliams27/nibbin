@@ -40,7 +40,15 @@ export const TIERS = {
 
 export type Tier = keyof typeof TIERS;
 
-export const TOP_UP = { priceUsdCents: 500, credits: 1000 } as const;
+/**
+ * Founder decision 2026-06-12 (docs/tasks/M6.5-model-bringup.md): $10 per
+ * 1,000 credits — matches Lindy's overage rate and prices above the Canopy
+ * plan rate per industry norm; the $5/1,000 it replaces was under water at
+ * T1 model prices. MUST agree with the live Stripe price behind
+ * STRIPE_PRICE_TOPUP — the webhook grants `credits` per unit purchased
+ * while Stripe charges the price object's amount.
+ */
+export const TOP_UP = { priceUsdCents: 1000, credits: 1000 } as const;
 
 const GRANT_AMOUNTS: ReadonlySet<number> = new Set(
   Object.values(TIERS).map((t) => t.monthlyCredits),
@@ -216,7 +224,7 @@ export function refundEntry(entries: readonly LedgerEntry[], runId: string): Led
   return entry;
 }
 
-/** Smallest whole number of $5 top-ups that covers a credit deficit. */
+/** Smallest whole number of top-ups that covers a credit deficit. */
 export function topUpsToCover(deficit: number): number {
   if (!Number.isSafeInteger(deficit) || deficit < 0) {
     throw new RangeError(`deficit must be a non-negative integer, got ${deficit}`);

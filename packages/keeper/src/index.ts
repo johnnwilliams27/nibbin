@@ -16,6 +16,8 @@ export {
 } from './onboarding';
 export { CHAT_INPUT_MAX, keeperChat } from './chat';
 export type { KeeperChatContext, KeeperChatDeps, KeeperChatReply } from './chat';
+export { buildKeeperContext, KEEPER_SYSTEM_PROMPT } from './prompt';
+export type { KeeperPromptContext } from './prompt';
 export { ANSWER_MAX, CHANNEL_CHIPS, NAME_MAX, SKIP_CHIP } from './copy';
 export type {
   CelebrationCard,

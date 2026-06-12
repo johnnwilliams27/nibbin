@@ -1,5 +1,5 @@
 {
- "generated": "2026-06-12T04:43:58.684Z",
+ "generated": "2026-06-12T20:42:29.822Z",
  "root": "Nibbin",
  "nodes": [
   {
@@ -80,7 +80,7 @@
   {
    "id": "CLAUDE.md",
    "group": "root",
-   "deg": 15
+   "deg": 17
   },
   {
    "id": "LEARNINGS.md",
@@ -535,7 +535,7 @@
   {
    "id": "apps/web/app/app/grove/actions.ts",
    "group": "apps",
-   "deg": 6
+   "deg": 7
   },
   {
    "id": "apps/web/app/app/grove/cards.tsx",
@@ -555,7 +555,7 @@
   {
    "id": "apps/web/app/app/grove/scan-actions.ts",
    "group": "apps",
-   "deg": 7
+   "deg": 8
   },
   {
    "id": "apps/web/app/app/notifications/notifications.module.css",
@@ -718,9 +718,14 @@
    "deg": 4
   },
   {
+   "id": "apps/web/lib/grove/budget-store.ts",
+   "group": "apps",
+   "deg": 3
+  },
+  {
    "id": "apps/web/lib/grove/router.ts",
    "group": "apps",
-   "deg": 1
+   "deg": 5
   },
   {
    "id": "apps/web/lib/grove/state.test.ts",
@@ -731,6 +736,31 @@
    "id": "apps/web/lib/grove/state.ts",
    "group": "apps",
    "deg": 3
+  },
+  {
+   "id": "apps/web/lib/llm/client.ts",
+   "group": "apps",
+   "deg": 6
+  },
+  {
+   "id": "apps/web/lib/llm/drafting.ts",
+   "group": "apps",
+   "deg": 4
+  },
+  {
+   "id": "apps/web/lib/llm/prompts.ts",
+   "group": "apps",
+   "deg": 3
+  },
+  {
+   "id": "apps/web/lib/llm/synthesis.test.ts",
+   "group": "apps",
+   "deg": 1
+  },
+  {
+   "id": "apps/web/lib/llm/synthesis.ts",
+   "group": "apps",
+   "deg": 5
   },
   {
    "id": "apps/web/lib/runtime/adopt.ts",
@@ -745,7 +775,7 @@
   {
    "id": "apps/web/lib/runtime/engine.ts",
    "group": "apps",
-   "deg": 8
+   "deg": 10
   },
   {
    "id": "apps/web/lib/runtime/programs.ts",
@@ -760,7 +790,7 @@
   {
    "id": "apps/web/lib/scan/run.ts",
    "group": "apps",
-   "deg": 4
+   "deg": 5
   },
   {
    "id": "apps/web/lib/site-url.ts",
@@ -795,7 +825,7 @@
   {
    "id": "apps/web/lib/supabase/service.ts",
    "group": "apps",
-   "deg": 8
+   "deg": 11
   },
   {
    "id": "apps/web/middleware.ts",
@@ -840,7 +870,7 @@
   {
    "id": "docs/ENVIRONMENT.md",
    "group": "docs",
-   "deg": 3
+   "deg": 4
   },
   {
    "id": "docs/GOTCHAS.md",
@@ -856,6 +886,16 @@
    "id": "docs/INVARIANTS.md",
    "group": "docs",
    "deg": 7
+  },
+  {
+   "id": "docs/MOAT.md",
+   "group": "docs",
+   "deg": 1
+  },
+  {
+   "id": "docs/PRODUCT-FOUNDATION.md",
+   "group": "docs",
+   "deg": 1
   },
   {
    "id": "docs/RISKS.md",
@@ -886,6 +926,21 @@
    "id": "docs/superpowers/specs/2026-06-10-auth-magic-link-design.md",
    "group": "docs",
    "deg": 1
+  },
+  {
+   "id": "docs/tasks/M6.5-model-bringup.md",
+   "group": "docs",
+   "deg": 0
+  },
+  {
+   "id": "docs/tasks/M7-READINESS.md",
+   "group": "docs",
+   "deg": 1
+  },
+  {
+   "id": "docs/tasks/MACOS-TEST-PLAN.md",
+   "group": "docs",
+   "deg": 0
   },
   {
    "id": "eslint.config.mjs",
@@ -1335,12 +1390,17 @@
   {
    "id": "packages/keeper/src/index.ts",
    "group": "packages",
-   "deg": 6
+   "deg": 7
   },
   {
    "id": "packages/keeper/src/onboarding.ts",
    "group": "packages",
    "deg": 3
+  },
+  {
+   "id": "packages/keeper/src/prompt.ts",
+   "group": "packages",
+   "deg": 1
   },
   {
    "id": "packages/keeper/src/types.ts",
@@ -1458,6 +1518,11 @@
    "deg": 0
   },
   {
+   "id": "packages/router/src/anthropic.ts",
+   "group": "packages",
+   "deg": 2
+  },
+  {
    "id": "packages/router/src/budget.ts",
    "group": "packages",
    "deg": 3
@@ -1470,7 +1535,12 @@
   {
    "id": "packages/router/src/index.ts",
    "group": "packages",
-   "deg": 6
+   "deg": 9
+  },
+  {
+   "id": "packages/router/src/pricing.ts",
+   "group": "packages",
+   "deg": 2
   },
   {
    "id": "packages/router/src/router.ts",
@@ -1486,6 +1556,11 @@
    "id": "packages/router/src/types.ts",
    "group": "packages",
    "deg": 5
+  },
+  {
+   "id": "packages/router/test/anthropic.test.ts",
+   "group": "packages",
+   "deg": 1
   },
   {
    "id": "packages/router/test/router.test.ts",
@@ -1510,7 +1585,7 @@
   {
    "id": "packages/runtime/src/index.ts",
    "group": "packages",
-   "deg": 12
+   "deg": 13
   },
   {
    "id": "packages/runtime/src/runner.ts",
@@ -1549,6 +1624,11 @@
   },
   {
    "id": "packages/runtime/test/events-velocity.test.ts",
+   "group": "packages",
+   "deg": 1
+  },
+  {
+   "id": "packages/runtime/test/model-seam.test.ts",
    "group": "packages",
    "deg": 1
   },
@@ -1690,7 +1770,7 @@
   {
    "id": "reference/nibbin-demo.html",
    "group": "reference",
-   "deg": 11
+   "deg": 12
   },
   {
    "id": "reference/nibbin-logo-guide.html",
@@ -1720,6 +1800,36 @@
   {
    "id": "supabase/migrations/README.md",
    "group": "supabase",
+   "deg": 0
+  },
+  {
+   "id": "tests/evals/caching.eval.ts",
+   "group": "tests",
+   "deg": 2
+  },
+  {
+   "id": "tests/evals/drafting.eval.ts",
+   "group": "tests",
+   "deg": 2
+  },
+  {
+   "id": "tests/evals/harness.ts",
+   "group": "tests",
+   "deg": 4
+  },
+  {
+   "id": "tests/evals/keeper.eval.ts",
+   "group": "tests",
+   "deg": 1
+  },
+  {
+   "id": "tests/evals/live-stack.eval.ts",
+   "group": "tests",
+   "deg": 8
+  },
+  {
+   "id": "tests/evals/tsconfig.json",
+   "group": "tests",
    "deg": 0
   },
   {
@@ -1785,10 +1895,15 @@
   {
    "id": "tests/rls/harness.ts",
    "group": "tests",
-   "deg": 8
+   "deg": 9
   },
   {
    "id": "tests/rls/m4-runtime.test.ts",
+   "group": "tests",
+   "deg": 1
+  },
+  {
+   "id": "tests/rls/m65-budget.test.ts",
    "group": "tests",
    "deg": 1
   },
@@ -1804,6 +1919,11 @@
   },
   {
    "id": "tests/rls/tsconfig.json",
+   "group": "tests",
+   "deg": 0
+  },
+  {
+   "id": "tests/server-only-stub.ts",
    "group": "tests",
    "deg": 0
   },
@@ -1849,6 +1969,11 @@
   },
   {
    "id": "vitest.config.ts",
+   "group": "root",
+   "deg": 0
+  },
+  {
+   "id": "vitest.evals.config.ts",
    "group": "root",
    "deg": 0
   }
@@ -2156,6 +2281,11 @@
   },
   {
    "source": "apps/web/app/app/grove/actions.ts",
+   "target": "apps/web/lib/llm/client.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/app/grove/actions.ts",
    "target": "apps/web/lib/grove/state.ts",
    "kind": "import"
   },
@@ -2232,6 +2362,11 @@
   {
    "source": "apps/web/app/app/grove/scan-actions.ts",
    "target": "apps/web/lib/auth/app-session.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/app/app/grove/scan-actions.ts",
+   "target": "apps/web/lib/llm/synthesis.ts",
    "kind": "import"
   },
   {
@@ -2495,11 +2630,56 @@
    "kind": "import"
   },
   {
+   "source": "apps/web/lib/grove/budget-store.ts",
+   "target": "apps/web/lib/supabase/service.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/lib/grove/router.ts",
+   "target": "apps/web/lib/grove/budget-store.ts",
+   "kind": "import"
+  },
+  {
    "source": "apps/web/lib/grove/state.test.ts",
    "target": "apps/web/lib/grove/state.ts",
    "kind": "import"
   },
   {
+   "source": "apps/web/lib/llm/client.ts",
+   "target": "apps/web/lib/supabase/service.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/lib/llm/drafting.ts",
+   "target": "apps/web/lib/grove/router.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/lib/llm/drafting.ts",
+   "target": "apps/web/lib/llm/client.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/lib/llm/drafting.ts",
+   "target": "apps/web/lib/llm/prompts.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/lib/llm/synthesis.test.ts",
+   "target": "apps/web/lib/llm/synthesis.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/lib/llm/synthesis.ts",
+   "target": "apps/web/lib/grove/router.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/lib/llm/synthesis.ts",
+   "target": "apps/web/lib/llm/client.ts",
+   "kind": "import"
+  },
+  {
    "source": "apps/web/lib/runtime/adopt.ts",
    "target": "apps/web/lib/supabase/service.ts",
    "kind": "import"
@@ -2527,6 +2707,11 @@
   {
    "source": "apps/web/lib/runtime/decide.ts",
    "target": "apps/web/lib/runtime/engine.ts",
+   "kind": "import"
+  },
+  {
+   "source": "apps/web/lib/runtime/engine.ts",
+   "target": "apps/web/lib/llm/drafting.ts",
    "kind": "import"
   },
   {
@@ -2631,6 +2816,16 @@
   },
   {
    "source": "CLAUDE.md",
+   "target": "docs/MOAT.md",
+   "kind": "mention"
+  },
+  {
+   "source": "CLAUDE.md",
+   "target": "docs/PRODUCT-FOUNDATION.md",
+   "kind": "mention"
+  },
+  {
+   "source": "CLAUDE.md",
    "target": "reference/nibbin-demo.html",
    "kind": "mention"
   },
@@ -2642,6 +2837,11 @@
   {
    "source": "CLAUDE.md",
    "target": "reference/nibbin-creature-lab.html",
+   "kind": "mention"
+  },
+  {
+   "source": "docs/ENVIRONMENT.md",
+   "target": "apps/web/lib/llm/client.ts",
    "kind": "mention"
   },
   {
@@ -2692,6 +2892,11 @@
   {
    "source": "docs/superpowers/specs/2026-06-10-auth-magic-link-design.md",
    "target": "apps/web/lib/auth/bootstrap.ts",
+   "kind": "mention"
+  },
+  {
+   "source": "docs/tasks/M7-READINESS.md",
+   "target": "reference/nibbin-demo.html",
    "kind": "mention"
   },
   {
@@ -3811,6 +4016,11 @@
   },
   {
    "source": "packages/keeper/src/index.ts",
+   "target": "packages/keeper/src/prompt.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/keeper/src/index.ts",
    "target": "packages/keeper/src/copy.ts",
    "kind": "import"
   },
@@ -3850,6 +4060,11 @@
    "kind": "import"
   },
   {
+   "source": "packages/router/src/anthropic.ts",
+   "target": "packages/router/src/pricing.ts",
+   "kind": "import"
+  },
+  {
    "source": "packages/router/src/budget.ts",
    "target": "packages/router/src/types.ts",
    "kind": "import"
@@ -3881,6 +4096,16 @@
   },
   {
    "source": "packages/router/src/index.ts",
+   "target": "packages/router/src/anthropic.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/router/src/index.ts",
+   "target": "packages/router/src/pricing.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/router/src/index.ts",
    "target": "packages/router/src/types.ts",
    "kind": "import"
   },
@@ -3907,6 +4132,11 @@
   {
    "source": "packages/router/src/tiers.ts",
    "target": "packages/router/src/types.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/router/test/anthropic.test.ts",
+   "target": "packages/router/src/index.ts",
    "kind": "import"
   },
   {
@@ -3996,6 +4226,11 @@
   },
   {
    "source": "packages/runtime/test/events-velocity.test.ts",
+   "target": "packages/runtime/src/index.ts",
+   "kind": "import"
+  },
+  {
+   "source": "packages/runtime/test/model-seam.test.ts",
    "target": "packages/runtime/src/index.ts",
    "kind": "import"
   },
@@ -4320,6 +4555,71 @@
    "kind": "mention"
   },
   {
+   "source": "tests/evals/caching.eval.ts",
+   "target": "apps/web/lib/llm/prompts.ts",
+   "kind": "import"
+  },
+  {
+   "source": "tests/evals/caching.eval.ts",
+   "target": "tests/evals/harness.ts",
+   "kind": "import"
+  },
+  {
+   "source": "tests/evals/drafting.eval.ts",
+   "target": "apps/web/lib/llm/prompts.ts",
+   "kind": "import"
+  },
+  {
+   "source": "tests/evals/drafting.eval.ts",
+   "target": "tests/evals/harness.ts",
+   "kind": "import"
+  },
+  {
+   "source": "tests/evals/keeper.eval.ts",
+   "target": "tests/evals/harness.ts",
+   "kind": "import"
+  },
+  {
+   "source": "tests/evals/live-stack.eval.ts",
+   "target": "tests/evals/harness.ts",
+   "kind": "import"
+  },
+  {
+   "source": "tests/evals/live-stack.eval.ts",
+   "target": "apps/web/lib/supabase/service.ts",
+   "kind": "import"
+  },
+  {
+   "source": "tests/evals/live-stack.eval.ts",
+   "target": "apps/web/lib/scan/run.ts",
+   "kind": "import"
+  },
+  {
+   "source": "tests/evals/live-stack.eval.ts",
+   "target": "apps/web/lib/runtime/engine.ts",
+   "kind": "import"
+  },
+  {
+   "source": "tests/evals/live-stack.eval.ts",
+   "target": "apps/web/lib/grove/router.ts",
+   "kind": "import"
+  },
+  {
+   "source": "tests/evals/live-stack.eval.ts",
+   "target": "apps/web/lib/llm/client.ts",
+   "kind": "import"
+  },
+  {
+   "source": "tests/evals/live-stack.eval.ts",
+   "target": "apps/web/lib/grove/budget-store.ts",
+   "kind": "import"
+  },
+  {
+   "source": "tests/evals/live-stack.eval.ts",
+   "target": "apps/web/lib/llm/synthesis.ts",
+   "kind": "import"
+  },
+  {
    "source": "tests/rls/arc-data.test.ts",
    "target": "packages/drip/src/pg-arc-data.ts",
    "kind": "import"
@@ -4346,6 +4646,11 @@
   },
   {
    "source": "tests/rls/m4-runtime.test.ts",
+   "target": "tests/rls/harness.ts",
+   "kind": "import"
+  },
+  {
+   "source": "tests/rls/m65-budget.test.ts",
    "target": "tests/rls/harness.ts",
    "kind": "import"
   },

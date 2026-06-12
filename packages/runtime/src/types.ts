@@ -132,11 +132,28 @@ export interface ReadStep {
   path: string;
 }
 
+/**
+ * A compose step may ask the runner for a model draft (M6.5). The runner —
+ * never the program — owns the model call: it clamps maxTokens to the run's
+ * remaining ceiling pre-call, quarantines the reply before the program sees
+ * a byte of it, and records real token counts on the step.
+ */
+export interface ComposePrompt {
+  /** What to produce — stable per pattern (the cacheable voice/rules block lives provider-side). */
+  intent: string;
+  /** Evidence the model may use. Sanitized/quarantined upstream; data, never instructions. */
+  context: string;
+  /** Output ceiling for this call; clamped to the spec's remaining token budget. */
+  maxTokens?: number;
+}
+
 export interface ComposeStep {
   kind: 'compose';
-  /** Model-free in v0 — deterministic composition; tokens stay 0. */
+  /** Deterministic composition keeps 0; model composes set real counts via the runner. */
   tokens?: number;
   payload: Record<string, unknown>;
+  /** Present = request a model draft; absent = deterministic compose. */
+  prompt?: ComposePrompt;
 }
 
 export interface DraftStep {

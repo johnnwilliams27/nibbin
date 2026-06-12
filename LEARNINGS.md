@@ -242,3 +242,81 @@ Format per gate:
   scope; Nibbin holds read-only at the connector + DB layers) is now stated plainly on both
   claims pages. Confirms the #24 router-origin item is latent by construction: no frontier,
   free, or local model is wired anywhere on main (cost-auditor verified zero model calls).
+
+## M6.5 — 2026-06-12 (Model Bring-Up · solo milestone · feature/m6.5-model-bringup, PR #51)
+- What broke / what surprised us:
+  - **The eval suite earned its existence on day one — it caught three real things the unit
+    tests structurally could not.** (1) `cache_control` is silently ignored below the model's
+    minimum cacheable prefix (~1–2k tokens), so today's ~200–500-token prompts don't cache and
+    never will until Grove Memory grows the prefix — the eval now proves the mechanism above the
+    threshold (19.4k-token prefix → 27 full-price tokens, ~90% input saving) and documents the
+    production reality below it. (2) Haiku drifted all-lowercase on the drafting/scan voices —
+    a prompt rule + a `violatesCapitalization` grader lock it. (3) Persona graders flaked on
+    denial phrasing at temperature 0.7; evals now grade at temperature 0 with hard
+    forbidden-behavior asserts and loose phrasing asserts.
+  - **PR-time + four-reviewer integrated pass still catch different things** — the reviewers
+    found nothing exploitable but surfaced three genuine accounting/ceiling bugs in code that
+    had unit tests: cache tokens omitted from the §6.2 run-token ceiling (a run could exceed its
+    real-token cap), an empty model completion logged at tier t0 while a real T1/T2 call was
+    billed (COGS-by-tier corruption), and an overshoot-kill returning before recording the paid
+    compose step (orphan model_calls row). All three fixed in-gate (`fa31bfb`) with regression
+    tests.
+  - The block-no-verify hook false-positives on any `-n` flag inside a compound command with
+    `git commit` — commits must be standalone `git commit -F <file>` calls (recorded in GOTCHAS).
+- Patterns that worked:
+  - **The honest no-model fallback everywhere** (absent `ANTHROPIC_API_KEY` → scripted keeper
+    floor + deterministic drafts, zero spend) meant the whole milestone's code shipped and tested
+    green before a key existed; the key only unlocked live verification, not the build.
+  - **Live-stack verification against hosted dev + the real API** proved the DoD items that stubs
+    can't: a seeded account's Nibbin run produced a real Haiku draft into the approval queue with
+    its COGS row bound to the run; keeper chat refused a "send it now" request in a live voice
+    (C10 held); the durable budget granted-twice-then-degraded against the live RPC.
+  - **Provider-per-capability decision** (not per-vendor): Anthropic for language tiers now, with
+    the three invariant bars (contractual no-training/retention, passing evals, published
+    subprocessor row) governing any future image/voice/embedding provider. Routing policy was
+    already ours behind the `Generate` seam, so an aggregator buys nothing but a subprocessor and
+    a fee.
+- Perf & cost numbers (MEASURED, live, uncached — the honest floor until Grove Memory grows the
+  prefix):
+  - specialist_draft (Haiku T1): ~$0.00067/call · chat (Haiku T1): ~$0.00095 · scan_synthesis
+    (Haiku T1): ~$0.00044 · diagnosis_synthesis (Opus T2): ~$0.0248 (once per study).
+  - **Margins (cost-auditor, confirmed): 90–95% on every T1 SKU at measured AND stress rates** —
+    far above the 60% floor. Canopy at full 5,000-action utilization = 90.3%. The $10 top-up
+    reprice fixed the one binding case (old $5 dipped to ~58% in the worst-case-ceiling stress).
+  - 1 standard credit (~$0.0098 revenue) = at most one T1 draft (~$0.00067) → 15× coverage; the
+    12k-token run ceiling is the solvency backstop bounding any future multi-compose run to ~6¢.
+  - One full `npm run evals` run ≈ a few cents (the Opus diagnosis dominates) — cheap enough to
+    gate every model-change PR, which SPEC §9 requires.
+  - Caching dormant today but structured to activate (~90% input saving) the moment Grove Memory
+    crosses the prefix threshold — margins only improve from the measured floor. Re-measure at M7.
+- Adversarial findings (counts by severity, milestone-diff pass):
+  - red-team: 0 P0/P1, 2 P3 (#52: tz-boundary budget straddle; cosmetic `<<<` mangling).
+    Prompt-injection end-to-end held (model output re-quarantined before re-entry; no path from
+    model text to effectArgs; no write grants in v0). Budget RPC survived a 50-way concurrency
+    race (exactly limit grants). model_calls/frontier_budget client-denied; C11 opt-in
+    member-gated + audited.
+  - claims-auditor: 0 live P0; 1 P1 — the C11 training opt-in is recorded/default-off/audited but
+    write-only (no Settings UI, no read path) while the (non-routing) claims pages advertise a
+    live control. Tracked on #29 as an M7-entry item, same coupling as the deletion/scan-purge
+    mechanisms. C7/C10 and the COGS-no-content claim enforced by construction. Two human-gate
+    confirmations flagged: the signed Anthropic no-training/no-retention agreement, and Anthropic
+    listed on nibbin.com/subprocessors before the pages route.
+  - logic-skeptic: 1 P1 + 2 P2 — all three FIXED in-gate (`fa31bfb`): cache-token ceiling escape,
+    empty-completion tier mislabel, orphan compose step. 1 P3 (#52). Budget RPC edges, cost math,
+    and #25 honesty validated correct.
+  - cost-auditor: 0 P0/P1. "≥60% every SKU" CONFIRMED (actuals 90–95%). #24 acceptance criteria
+    all satisfied (durable budget wired + fail-closed, router origin-enforcement live, cache
+    discipline structural). **M7 watch-item (#52): the diagnosis must be metered FRONTIER (3
+    credits) or stay subscription-absorbed if it ever becomes user-triggerable — STANDARD would
+    be −147% margin.**
+  - Triage stance for the signature: 1 live P1 + 2 P2 found and fixed inside the gate; the one
+    remaining claims P1 is a tracked M7-entry condition on a non-routing surface (#29), consistent
+    with the M4+M5 precedent. P3s + the M7 cost watch-item in #52. Pricing approved by John in
+    session on measured numbers.
+- Gate signed by: John W. (authorized in-session 2026-06-12) — accepts the triage: 1 P1 + 2 P2
+  found and fixed inside the gate; the one remaining claims P1 (C11 opt-in write-only) is a tracked
+  M7-entry condition on a non-routing surface (#29); P3s + the M7 diagnosis-pricing watch in #52.
+  Approves the measured pricing (top-up $10/1,000, allotments held, weights 1/3/10) at the
+  confirmed 90–95% margins. Two external artifacts accepted as John's to confirm out-of-band: the
+  signed Anthropic no-training/no-retention agreement, and Anthropic listed on
+  nibbin.com/subprocessors before data-ai/privacy route.

@@ -20,6 +20,7 @@ import {
   type InterviewQuestionId,
 } from '@nibbin/scan';
 import { appSession } from '../../../lib/auth/app-session';
+import { scanSummaryLine } from '../../../lib/llm/synthesis';
 import { adoptTemplate } from '../../../lib/runtime/adopt';
 import { decideDraft, editDistance, type DraftDecision } from '../../../lib/runtime/decide';
 import { devSeedEnabled } from '../../../lib/runtime/engine';
@@ -177,9 +178,17 @@ export async function runScanAction(): Promise<ScanTurnPayload> {
     .slice(0, 5);
   const recs = recommendationCards(scan.findings);
 
+  // M6.5: T1 scan synthesis narrates the summary in the Keeper's voice when
+  // a model is wired; the templated line stands otherwise (and on any
+  // failure) — the scan surface never waits on or breaks over synthesis.
+  const synthesized = await scanSummaryLine(accountId, user.id, scan.findings);
+
   return {
     messages: [
-      prose(`Scan's done — I read across ${scan.scannedConnections} connected accounts. Here's what I found.`),
+      prose(
+        synthesized ??
+          `Scan's done — I read across ${scan.scannedConnections} connected accounts. Here's what I found.`,
+      ),
       ...top.map(findingCard),
       prose('Here’s who I’d bring in first. Each one drafts everything for your approval — nothing goes out without you.'),
       ...recs.messages,

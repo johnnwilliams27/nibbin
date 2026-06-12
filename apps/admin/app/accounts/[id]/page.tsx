@@ -69,6 +69,9 @@ export default async function AccountDetail({
     .eq('account_id', id)
     .order('at', { ascending: false })
     .limit(10);
+  // §6.10 unit economics: 30-day model COGS for this account (M6.5)
+  const { data: cogsRows } = await admin.rpc('account_model_cogs', { p_account: id, p_days: 30 });
+  const cogs = Array.isArray(cogsRows) ? (cogsRows[0] ?? null) : null;
 
   const credits = bal?.balance ?? 0;
 
@@ -111,6 +114,41 @@ export default async function AccountDetail({
           <span className={styles.statLabel}>Credits</span>
           <span className={styles.statValue}>{credits}</span>
         </div>
+      </section>
+
+      <section className={styles.panel}>
+        <h2 className={styles.h2}>Model COGS — last 30 days</h2>
+        {cogs && Number(cogs.calls) > 0 ? (
+          <section className={styles.statsRow}>
+            <div className={styles.stat}>
+              <span className={styles.statLabel}>Cost</span>
+              <span className={styles.statValue}>${(Number(cogs.cost_microusd) / 1_000_000).toFixed(4)}</span>
+            </div>
+            <div className={styles.stat}>
+              <span className={styles.statLabel}>Model calls</span>
+              <span className={styles.statValue}>{Number(cogs.calls)}</span>
+            </div>
+            <div className={styles.stat}>
+              <span className={styles.statLabel}>Cache hit rate</span>
+              <span className={styles.statValue}>
+                {(() => {
+                  const read = Number(cogs.cache_read_tokens);
+                  const promptTokens = Number(cogs.input_tokens) + Number(cogs.cache_write_tokens) + read;
+                  return promptTokens === 0 ? '—' : `${Math.round((read / promptTokens) * 100)}%`;
+                })()}
+              </span>
+            </div>
+            <div className={styles.stat}>
+              <span className={styles.statLabel}>Tokens (in / out)</span>
+              <span className={styles.statValue}>
+                {Number(cogs.input_tokens) + Number(cogs.cache_write_tokens) + Number(cogs.cache_read_tokens)} /{' '}
+                {Number(cogs.output_tokens)}
+              </span>
+            </div>
+          </section>
+        ) : (
+          <p className={styles.muted}>No model calls in the window — this account is running on the scripted/deterministic floor.</p>
+        )}
       </section>
 
       {canAdjustCredits(staff.role) && (

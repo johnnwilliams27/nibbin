@@ -12,14 +12,18 @@
  */
 import {
   advanceOnboarding,
+  buildKeeperContext,
+  KEEPER_SYSTEM_PROMPT,
   keeperChat,
   type KeeperExpression,
   type KeeperMessage,
   type OnboardingStep,
 } from '@nibbin/keeper';
+import type { TokenUsage } from '@nibbin/router';
 import { ensureAccount } from '../../../lib/auth/bootstrap';
 import { upsertOwnProfile } from '../../../lib/auth/profile';
 import { groveRouter } from '../../../lib/grove/router';
+import { anthropicGenerate, recordModelCall } from '../../../lib/llm/client';
 import { sanitizeInput, stateFromRow, type GroveRow } from '../../../lib/grove/state';
 import { createClient } from '../../../lib/supabase/server';
 
@@ -118,11 +122,57 @@ export async function keeperChatAction(rawText: unknown): Promise<GroveChatPaylo
     supabase.from('users').select('tz').eq('id', user.id).maybeSingle<{ tz: string | null }>(),
   ]);
 
+  // M6.5: the real generate path. Without an API key this is null, keeperChat
+  // gets no generate dep, and the scripted floor answers with zero routing
+  // and zero debits (#25). With one, the stable persona block caches (§6.3
+  // prefix discipline) and only the small context suffix is paid per turn.
+  const llm = anthropicGenerate();
+  let lastCall: { model: string; usage: TokenUsage } | null = null;
+  const generate = llm
+    ? async (model: string, userText: string) => {
+        try {
+          const result = await llm({
+            model,
+            system: [
+              { text: KEEPER_SYSTEM_PROMPT, cache: true },
+              { text: buildKeeperContext({ keeperName: row?.keeper_name }) },
+            ],
+            messages: [{ role: 'user', content: userText }],
+            maxTokens: 400,
+            temperature: 0.7,
+          });
+          lastCall = { model: result.model, usage: result.usage };
+          return result.text;
+        } catch (err) {
+          // keeperChat falls back to the scripted floor and reports it
+          // honestly; the turn never fails on a provider outage.
+          console.error('[keeper] model call failed — scripted floor', err instanceof Error ? err.message : err);
+          return null;
+        }
+      }
+    : undefined;
+
   const reply = await keeperChat(
     text,
     { userId: user.id, keeperName: row?.keeper_name ?? null, timezone: me?.tz ?? undefined },
-    { route: (r) => groveRouter.route(r) },
+    { route: (r) => groveRouter.route(r), ...(generate ? { generate } : {}) },
   );
+
+  if (lastCall !== null && reply.dispatchedTier !== null) {
+    const call = lastCall as { model: string; usage: TokenUsage };
+    // Key COGS on the tier the model was actually dispatched at, never
+    // reply.decision.tier — an empty completion rewrites decision to the
+    // scripted floor (t0) while the real T1/T2 call was still billed (gate
+    // finding logic-skeptic P2).
+    await recordModelCall({
+      accountId,
+      userId: user.id,
+      tier: reply.dispatchedTier,
+      task: 'chat',
+      model: call.model,
+      usage: call.usage,
+    });
+  }
 
   return {
     message: reply.message,

@@ -43,8 +43,8 @@
 - Domain: registrar lock + DNSSEC + auto-renew. Actions→cloud via OIDC (no long-lived keys). mail.nibbin.com warm-up ramp before drip launch.
 - Stripe: per-env keys; webhook endpoints per env, signature-verified; Radar on.
   - **Test-mode set up (2026-06-10):** products + prices created — Grove `grove_monthly` $19/mo,
-    Canopy `canopy_monthly` $49/mo, top-up `credit_topup` $5 one-time. Price IDs in
-    `STRIPE_PRICE_GROVE/CANOPY/TOPUP`. Webhook endpoint `we_…` registered at
+    Canopy `canopy_monthly` $49/mo, top-up `credit_topup` (now **$10**/1,000 credits — see M6.5
+    note below). Price IDs in `STRIPE_PRICE_GROVE/CANOPY/TOPUP`. Webhook endpoint `we_…` registered at
     `https://nibbin.com/api/stripe/webhook` (checkout.session.completed, invoice.paid,
     customer.subscription.updated/deleted). Billing code in `apps/web` (`lib/billing`, `lib/stripe`,
     `app/billing`, `app/api/stripe/webhook`); the webhook writes subscription rows + credit grants
@@ -57,6 +57,24 @@
     **TODO (John):** prod Supabase **publishable + secret keys** still need setting in Vercel —
     needs a fresh Supabase access token (the chat-shared one was rotated). Swap Stripe to live keys
     before real launch.
+  - **M6.5 top-up reprice (2026-06-12):** test-mode top-up price recreated at **$10/1,000 credits**
+    (`price_1ThadWE6MwGkrdl0jbJOh2hM`), set as the product default; the old $5 price archived.
+    `STRIPE_PRICE_TOPUP` in `apps/web/.env.local` updated. **TODO (John):** update `STRIPE_PRICE_TOPUP`
+    in the Vercel prod env to the new id (and recreate the equivalent price in **live** mode at launch).
+- **Model API (Anthropic) — wired at M6.5 (2026-06-12):**
+  - `ANTHROPIC_API_KEY` — server-only (never `NEXT_PUBLIC_`, never in a client bundle; read in
+    `apps/web/lib/llm/client.ts`). Local dev in `apps/web/.env.local` (gitignored). **TODO (John):**
+    add as a GitHub `dev`/`staging`/`prod` environment secret + the Vercel prod env before the model
+    path serves real users. Absent key → every model path falls back to its honest no-model behavior
+    (scripted keeper floor, deterministic drafts) with zero spend — nothing breaks.
+  - Optional per-env overrides (defaults in `@nibbin/router`, founder decision 2026-06-12 — T1 Haiku
+    4.5, T2 Sonnet 4.6, Opus 4.8 pinned to diagnosis): `NIBBIN_MODEL_T0/T1/T2` (model id strings),
+    `NIBBIN_FRONTIER_BUDGET` (daily T2-from-chat grants/user, default 5). Any model change gates on
+    the eval suite (`npm run evals`; SPEC §9).
+  - **Eval CI**: `npm run evals` makes real model calls (~few cents/run). Runs when `ANTHROPIC_API_KEY`
+    is present; set `NIBBIN_REQUIRE_EVALS=1` on the model-change workflow so a missing key FAILS the
+    gate rather than skipping it. `NIBBIN_EVAL_MODEL_T1` overrides the eval target for candidate-model
+    runs.
 - Sentry: error monitoring + tracing wired in apps/web and apps/admin (one Sentry project
   per app). Org `nibbin` (https://nibbin.sentry.io, US region). Projects: `nibbin-web`,
   `nibbin-admin` (created 2026-06-11; both verified ingesting via test events). Env per

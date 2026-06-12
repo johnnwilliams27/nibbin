@@ -1,21 +1,18 @@
 /**
  * The web app's router instance (§6.3).
  *
- * ⚠️ BUDGET SCOPE — READ BEFORE WIRING A REAL MODEL CALL ⚠️
- * The frontier budget here is an in-memory store on globalThis. It is a true
- * per-user/day cap only within ONE server process. apps/web runs on Vercel
- * (multiple short-lived instances, no shared memory), so the effective cap is
- * `budget × live instances` — i.e. NOT a real cap. This is acceptable today
- * only because M2 chat replies come from the zero-cost scripted T0 floor and
- * NO real T2 model call ships (keeperChat is called without a `generate` dep).
+ * The frontier budget is DURABLE as of M6.5: pgBudgetStore's take() is one
+ * atomic Postgres statement keyed (user_id, day), so the per-user/day cap
+ * holds across every Vercel instance and survives deploys (#24 closed —
+ * this file used to carry the in-memory-store warning).
  *
- * Before wiring `generate` to any real (esp. T2/frontier) model, replace
- * InMemoryBudgetStore with a durable atomic store (Postgres upsert on
- * (user_id, day) or Redis INCR with daily TTL) — see BudgetStore in
- * @nibbin/router. The interface is already isolated; only this construction
- * changes. Tracked for M4. (cost-auditor M2, P1.)
+ * Model pins (T1 Haiku, T2 Sonnet, Opus diagnosis pin) come from
+ * @nibbin/router defaults — founder decision 2026-06-12. Override per
+ * environment via NIBBIN_MODEL_T{0,1,2} / NIBBIN_FRONTIER_BUDGET; any model
+ * change gates on the eval suite (SPEC §9 decision log).
  */
-import { createRouter, type Router } from '@nibbin/router';
+import { createRouter, type Router, type Tier } from '@nibbin/router';
+import { pgBudgetStore } from './budget-store';
 
 function budgetFromEnv(): number | undefined {
   const raw = process.env.NIBBIN_FRONTIER_BUDGET;
@@ -24,8 +21,19 @@ function budgetFromEnv(): number | undefined {
   return Number.isInteger(n) && n >= 0 ? n : undefined;
 }
 
+function modelsFromEnv(): Partial<Record<Tier, string>> | undefined {
+  const models: Partial<Record<Tier, string>> = {};
+  for (const tier of ['t0', 't1', 't2'] as const) {
+    const v = process.env[`NIBBIN_MODEL_${tier.toUpperCase()}`];
+    if (v && v.trim() !== '') models[tier] = v.trim();
+  }
+  return Object.keys(models).length > 0 ? models : undefined;
+}
+
 const forGlobal = globalThis as typeof globalThis & { __nibbinRouter?: Router };
 
 export const groveRouter: Router = (forGlobal.__nibbinRouter ??= createRouter({
   dailyFrontierBudget: budgetFromEnv(),
+  models: modelsFromEnv(),
+  budgetStore: pgBudgetStore(),
 }));

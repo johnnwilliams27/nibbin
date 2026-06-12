@@ -14,10 +14,30 @@ import 'server-only';
  */
 import type { QuarantinedContent } from '@nibbin/connectors';
 import type { ProgramFn, ProgramStep } from '@nibbin/runtime';
-import { parseQuarantinedJson } from '@nibbin/scan';
+import { parseQuarantinedJson, unwrapQuarantined } from '@nibbin/scan';
 
 /** Provider → connection id for the adopting account. */
 export type ConnectionMap = Partial<Record<string, string>>;
+
+/** Longest body a model draft may contribute; beyond this we trust the template. */
+const MODEL_DRAFT_MAX_CHARS = 1200;
+
+/**
+ * Use a runner-provided model draft when one came back, the deterministic
+ * template when it didn't (no model wired, outage, ceiling, or junk output).
+ * The unwrap can only throw on content the runner didn't produce — treat any
+ * irregularity as "no draft" and fall back; a run never fails over prose.
+ */
+function modelDraftOr(fallback: string, fed: QuarantinedContent | undefined): string {
+  if (!fed) return fallback;
+  try {
+    const text = unwrapQuarantined(fed).trim();
+    if (text.length === 0 || text.length > MODEL_DRAFT_MAX_CHARS) return fallback;
+    return text;
+  } catch {
+    return fallback;
+  }
+}
 
 function gmailListPath(scope: 'in:inbox' | 'in:sent', sinceMs: number): string {
   const d = new Date(sinceMs);
@@ -147,16 +167,31 @@ function echoProgram(connections: ConnectionMap, nowMs: number): ProgramFn {
     const from = safeHeaderValue(header(oldest, 'From')) || 'them';
     const subject = safeHeaderValue(header(oldest, 'Subject')) || 'your last message';
     const waitedDays = Math.round((nowMs - Number(oldest.internalDate ?? nowMs)) / DAY);
+    const fallback =
+      `Hi — thanks for your patience, and sorry for the slow reply. ` +
+      `I wanted to pick this back up: happy to answer anything still open on “${subject}”. ` +
+      `If the timing moved on, no trouble at all — just let me know either way.`;
+    // M6.5: ask the runner for a model draft (T1). Context is the same
+    // sanitized metadata the template uses — never raw message bodies.
+    const fed = yield {
+      kind: 'compose',
+      payload: { note: 'drafting overdue follow-up' },
+      prompt: {
+        intent:
+          'Draft a short, warm follow-up email body for a conversation the sender let go quiet. ' +
+          'Apologize briefly for the slow reply without groveling, reopen the thread, and make ' +
+          'responding easy. Under 90 words. Output only the email body text.',
+        context: `Subject: ${subject}\nWaiting: ${waitedDays} days\nRecipient (from header): ${from}`,
+        maxTokens: 300,
+      },
+    };
     yield {
       kind: 'draft',
       capability: 'email.draft',
       connectionId: gmail,
       patternKey: 'email.draft:overdue-followup',
       title: `Follow-up on “${subject}” (waiting ${waitedDays} days)`,
-      draft:
-        `Hi — thanks for your patience, and sorry for the slow reply. ` +
-        `I wanted to pick this back up: happy to answer anything still open on “${subject}”. ` +
-        `If the timing moved on, no trouble at all — just let me know either way.`,
+      draft: modelDraftOr(fallback, fed),
       effectArgs: { threadId: oldest.threadId, to: safeAddress(from), subject: `Re: ${subject}` },
     };
   };
@@ -205,17 +240,31 @@ function scribeProgram(connections: ConnectionMap, nowMs: number): ProgramFn {
     }
     const newest = inquiries[0];
     const subject = safeHeaderValue(header(newest, 'Subject')) || 'your note';
+    const fallback =
+      `Hi, and thanks so much for reaching out — I’d love to help. ` +
+      `Could you share the date you have in mind and a little about what you’re planning? ` +
+      `I’ll send over availability and a clear picture of how I work and what it costs. ` +
+      `Looking forward to it.`;
+    const fed = yield {
+      kind: 'compose',
+      payload: { note: 'drafting inquiry reply' },
+      prompt: {
+        intent:
+          'Draft a short, warm first reply to a new business inquiry. Thank them for reaching ' +
+          'out, ask for the date and a little about what they are planning, and say a clear ' +
+          'picture of availability and pricing will follow. Under 90 words. Output only the ' +
+          'email body text.',
+        context: `Subject: ${subject}`,
+        maxTokens: 300,
+      },
+    };
     yield {
       kind: 'draft',
       capability: 'email.draft',
       connectionId: gmail,
       patternKey: 'email.draft:inquiry-reply',
       title: `Reply to “${subject}”`,
-      draft:
-        `Hi, and thanks so much for reaching out — I’d love to help. ` +
-        `Could you share the date you have in mind and a little about what you’re planning? ` +
-        `I’ll send over availability and a clear picture of how I work and what it costs. ` +
-        `Looking forward to it.`,
+      draft: modelDraftOr(fallback, fed),
       effectArgs: { threadId: newest.threadId, subject: `Re: ${subject}` },
     };
   };

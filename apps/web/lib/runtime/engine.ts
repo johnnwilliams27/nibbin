@@ -31,6 +31,7 @@ import {
 } from '@nibbin/runtime';
 import { fixtureReader, FIXTURE_PROVIDERS } from '@nibbin/scan';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { modelDrafterFor } from '../llm/drafting';
 import { serviceClient } from '../supabase/service';
 import { buildProgram, type ConnectionMap } from './programs';
 import {
@@ -190,6 +191,10 @@ export async function triggerNibbinRun(nibbinId: string, trigger: RunTrigger): P
         throw new Error('write execution is not wired yet — no write grants exist in v0');
       },
     },
+    // M6.5: the model seam. Absent ANTHROPIC_API_KEY this is undefined and
+    // every compose stays deterministic — same honest no-model behavior the
+    // keeper chat has (#25).
+    model: modelDrafterFor(nibbin.accountId),
     now: () => Date.now(),
   });
 }

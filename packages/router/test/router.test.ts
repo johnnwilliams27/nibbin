@@ -37,12 +37,22 @@ describe('tier table (§6.3)', () => {
   ];
 
   it.each(expectations)('%s routes to %s', async (task, tier) => {
-    const router = createRouter();
+    // generous budget so the tier mapping is what's under test here
+    const router = createRouter({ dailyFrontierBudget: 100 });
     const decision = await router.route({ userId: 'u', task, origin: 'pipeline' });
     expect(decision.tier).toBe(tier);
-    expect(decision.model).toBe(router.config.models[tier]);
+    // task pins (the Opus diagnosis pin) override the tier default
+    expect(decision.model).toBe(router.config.taskModels[task] ?? router.config.models[tier]);
     expect(decision.degraded).toBe(false);
     expect(decision.notice).toBeNull();
+  });
+
+  it('the diagnosis alone rides the Opus pin; plain t2 rides the tier default', async () => {
+    const router = createRouter({ dailyFrontierBudget: 100 });
+    const diagnosis = await router.route({ userId: 'u', task: 'diagnosis_synthesis', origin: 'pipeline' });
+    expect(diagnosis.model).toBe('claude-opus-4-8');
+    const plan = await router.route({ userId: 'u', task: 'complex_plan', origin: 'pipeline' });
+    expect(plan.model).toBe(router.config.models.t2);
   });
 
   it('the table covers every task except chat', () => {
@@ -150,6 +160,24 @@ describe('frontier budget (per user per day)', () => {
     expect(decision.tier).toBe('t2');
     expect(decision.degraded).toBe(false);
     expect(decision.budget).toBeUndefined();
+  });
+
+  it('origin is not a budget bypass: complex_plan with origin pipeline is budgeted (#24)', async () => {
+    const router = createRouter({ dailyFrontierBudget: 0 });
+    const decision = await router.route({ userId: 'u', task: 'complex_plan', origin: 'pipeline' });
+    expect(decision.tier).toBe('t1');
+    expect(decision.degraded).toBe(true);
+    expect(decision.notice).toBe(DEGRADATION_NOTICE);
+    expect(decision.budget).toBeDefined();
+  });
+
+  it('the splurge tasks ARE budgeted when claimed from chat origin', async () => {
+    const router = createRouter({ dailyFrontierBudget: 0 });
+    const decision = await router.route({ userId: 'u', task: 'diagnosis_synthesis', origin: 'chat' });
+    expect(decision.degraded).toBe(true);
+    expect(decision.budget).toBeDefined();
+    // degraded service never carries the requested-tier task pin
+    expect(decision.model).toBe(router.config.models.t1);
   });
 
   it('chat t0/t1 never touches the budget', async () => {

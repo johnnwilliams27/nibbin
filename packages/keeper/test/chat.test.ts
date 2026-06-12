@@ -98,6 +98,47 @@ describe('keeperChat routes through §6.3 before replying', () => {
     expect(fallback.message.card.transcript.length).toBeGreaterThan(0);
   });
 
+  it('an empty model completion is billed at the dispatched tier, not the scripted floor (COGS truth)', async () => {
+    // gate finding logic-skeptic P2: a real T2 call that returns "" must
+    // record COGS at t2, even though the user-facing decision degrades to
+    // the scripted floor.
+    const router = createRouter({ dailyFrontierBudget: 5 });
+    const reply = await keeperChat(T2_TEXT, ctx, {
+      route: (r) => router.route(r),
+      generate: async () => '', // real call, empty body
+    });
+    expect(reply.decision.model).toBe('scripted-floor'); // honest to the user
+    expect(reply.dispatchedTier).toBe('t2'); // but COGS keys on the truth
+    expect(reply.dispatchedModel).toBe(router.config.models.t2);
+  });
+
+  it('no model dispatched → dispatchedTier is null (nothing to bill)', async () => {
+    const router = createRouter();
+    const reply = await keeperChat('hello', ctx, { route: (r) => router.route(r) });
+    expect(reply.dispatchedTier).toBeNull();
+    expect(reply.dispatchedModel).toBeNull();
+  });
+
+  it('a model failure after routing falls back honestly: no tier claim, no degradation notice', async () => {
+    // #25 on the real path: the decision reported to the surface must
+    // describe what the user actually received. If the model call dies and
+    // the scripted floor answers, claiming t1/t2 service or prepending the
+    // degradation notice would both misreport the turn. (The spent budget
+    // unit is kept in `budget` — the attempt happened and telemetry should
+    // say so.)
+    const router = createRouter({ dailyFrontierBudget: 0 });
+    const reply = await keeperChat(T2_TEXT, ctx, {
+      route: (r) => router.route(r),
+      generate: async () => null, // provider outage / empty completion
+    });
+    expect(reply.decision.model).toBe('scripted-floor');
+    expect(reply.decision.tier).toBe('t0');
+    expect(reply.decision.degraded).toBe(false);
+    expect(reply.decision.budget).toBeDefined(); // the consult is still reported
+    if (reply.message.card.kind !== 'prose') throw new Error('expected prose');
+    expect(reply.message.card.text.startsWith(DEGRADATION_NOTICE)).toBe(false);
+  });
+
   it('caps input length before routing', async () => {
     const router = createRouter();
     let routedText = '';
