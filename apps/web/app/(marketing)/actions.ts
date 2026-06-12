@@ -29,27 +29,44 @@ export async function joinWaitlist(_prev: JoinResult | null, formData: FormData)
     message: 'Almost there — check your inbox for a one-click confirmation to claim your seat.',
   };
 
+  const oops: JoinResult = { ok: false, message: 'Something hiccuped on our end — try again in a moment?' };
+
   try {
     const svc = serviceClient();
 
-    // CAN-SPAM: never mail an address that asked to be left alone.
-    const { data: suppressed } = await svc
+    // CAN-SPAM: never mail an address that asked to be left alone. Fail closed
+    // on a DB error — better to ask the user to retry than to risk mailing a
+    // suppressed address or downgrading a confirmed row on a null-from-error.
+    const { data: suppressed, error: supErr } = await svc
       .from('email_suppressions')
       .select('email')
       .eq('email', email)
       .maybeSingle();
+    if (supErr) return oops;
     if (suppressed) return friendly;
 
-    const { data: existing } = await svc
+    const { data: existing, error: exErr } = await svc
       .from('waitlist')
-      .select('status')
+      .select('status, last_email_sent_at')
       .eq('email', email)
-      .maybeSingle<{ status: string }>();
+      .maybeSingle<{ status: string; last_email_sent_at: string | null }>();
+    if (exErr) return oops;
     if (existing?.status === 'confirmed') {
       return { ok: true, message: 'You’re already on the list — see you in the grove.' };
     }
 
-    await svc.from('waitlist').upsert({ email, status: 'pending', source: 'landing' }, { onConflict: 'email' });
+    // Resend cooldown: a re-submit within the window is a silent no-op, so the
+    // form can't be used to spray confirmation emails at a chosen address.
+    const COOLDOWN_MS = 5 * 60 * 1000;
+    if (existing?.last_email_sent_at && Date.now() - Date.parse(existing.last_email_sent_at) < COOLDOWN_MS) {
+      return friendly;
+    }
+
+    // upsert never downgrades a confirmed row (DB trigger enforces it too).
+    const { error: upErr } = await svc
+      .from('waitlist')
+      .upsert({ email, status: 'pending', source: 'landing' }, { onConflict: 'email' });
+    if (upErr) return oops;
 
     const apiKey = process.env.RESEND_API_KEY;
     const secret = process.env.EMAIL_UNSUBSCRIBE_SECRET;
@@ -71,13 +88,17 @@ export async function joinWaitlist(_prev: JoinResult | null, formData: FormData)
         text,
         headers: {},
       });
+      // stamp the send so the cooldown above can throttle re-submits
+      await svc.from('waitlist').update({ last_email_sent_at: new Date().toISOString() }).eq('email', email);
     }
 
     // §6.12 cookieless product event (pre-auth, account-less). Best-effort.
     await svc.from('product_events').insert({ name: 'waitlist_joined', props: { source: 'landing' } });
 
     return friendly;
-  } catch {
-    return { ok: false, message: 'Something hiccuped on our end — try again in a moment?' };
+  } catch (err) {
+    // PII never reaches the log — message only, no recipient address.
+    console.error('[waitlist] join failed', err instanceof Error ? err.message : String(err));
+    return oops;
   }
 }

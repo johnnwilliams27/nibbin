@@ -16,18 +16,21 @@ export async function GET(req: Request): Promise<Response> {
   const token = url.searchParams.get('token') ?? '';
   const secret = process.env.EMAIL_UNSUBSCRIBE_SECRET ?? '';
   const email = verifyWaitlistToken(token, secret);
-  const site = (process.env.NEXT_PUBLIC_SITE_URL ?? url.origin).replace(/\/$/, '');
+  // Redirect to a RELATIVE path (resolved against the request) — never an
+  // env/Host-derived absolute origin, so a misconfigured proxy can't turn
+  // this into an open redirect.
+  const dest = (ok: 0 | 1) => NextResponse.redirect(new URL(`/waitlist/confirmed?ok=${ok}`, req.url));
 
-  if (!email) {
-    return NextResponse.redirect(`${site}/waitlist/confirmed?ok=0`);
-  }
+  if (!email) return dest(0);
   try {
+    // pending-only: never re-stamp confirmed_at on an already-confirmed row.
     await serviceClient()
       .from('waitlist')
       .update({ status: 'confirmed', confirmed_at: new Date().toISOString() })
-      .eq('email', email);
+      .eq('email', email)
+      .eq('status', 'pending');
   } catch {
-    return NextResponse.redirect(`${site}/waitlist/confirmed?ok=0`);
+    return dest(0);
   }
-  return NextResponse.redirect(`${site}/waitlist/confirmed?ok=1`);
+  return dest(1);
 }
