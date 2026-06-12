@@ -206,7 +206,12 @@ export async function interviewStepAction(
   const answers: InterviewAnswers = { ...answersSoFar, [questionId]: clean };
 
   const order = INTERVIEW_QUESTIONS.map((x) => x.id);
-  const nextId = order[order.indexOf(questionId) + 1];
+  const idx = order.indexOf(questionId);
+  // the client only advances one question at a time; reject a jump to the end
+  // that would skip questions (the forge that writes an empty map row and marks
+  // context "observed" forever — logic-skeptic P2-3)
+  const answered = order.filter((id) => (answers[id]?.length ?? 0) > 0 || id === questionId);
+  const nextId = order[idx + 1];
   if (nextId) {
     return {
       messages: [interviewQuestionCard(nextId)],
@@ -216,6 +221,11 @@ export async function interviewStepAction(
       pendingDraft: null,
       answers,
     };
+  }
+
+  // only complete when every question has actually been visited in order
+  if (idx !== order.length - 1 || answered.length < order.length) {
+    throw new Error('interview answered out of order');
   }
 
   // interview complete → manual workflow map + recommendations (§6.12)
@@ -336,6 +346,19 @@ export async function adoptFromGroveAction(templateKey: string): Promise<ScanTur
     );
   } else if (adoption.firstRun?.kind === 'completed') {
     messages.push(prose(`${adoption.name} had a look around and found nothing urgent — a quiet start is a fine start.`));
+  } else if (adoption.firstRun?.kind === 'not_started' && adoption.firstRun.why === 'queued_cap') {
+    // §6.2: never silent degradation — pause politely, queue, explain, top-up.
+    messages.push(
+      msg({
+        kind: 'scan_finding',
+        title: `${adoption.name} is ready, but the meter’s empty`,
+        detail: `${adoption.name} hatched and has work lined up, but you’re out of credits this cycle. It’ll run the moment the meter refills — top up or change plan and I’ll set it loose.`,
+        stat: { value: 'Queued', label: 'waiting on credits' },
+        transcript: `${adoption.name} is queued — out of credits. It runs when the meter refills.`,
+      }),
+    );
+  } else if (adoption.firstRun?.kind === 'failed' || adoption.firstRun?.kind === 'killed') {
+    messages.push(prose(`${adoption.name} hit a snag on its first look — nothing was lost or sent. I’ll have it try again shortly.`));
   }
 
   return {
@@ -355,14 +378,15 @@ export async function decideDraftAction(
 ): Promise<ScanTurnPayload> {
   const { supabase, user, accountId } = await appSession();
 
-  // original draft text for the edit distance
-  const svc = serviceClient();
-  const { data: step } = await svc
+  // membership-scope the read FIRST (validate-then-read, claims F-8): only
+  // fetch the draft of a run on the caller's own account. Using the RLS
+  // session client (not the service client) makes the scoping structural.
+  const { data: step } = await supabase
     .from('run_steps')
-    .select('payload')
+    .select('payload, runs!inner(account_id)')
     .eq('run_id', runId)
     .eq('kind', 'draft')
-    .single();
+    .maybeSingle();
   const original = ((step?.payload as Record<string, unknown> | null)?.draft as string) ?? '';
   const distance =
     decision === 'edited' && editedText !== undefined ? Math.max(1, editDistance(original, editedText)) : 0;
@@ -381,9 +405,12 @@ export async function decideDraftAction(
       }),
     );
   } else if (decision === 'approved') {
-    messages.push(prose('Approved and noted — that yes goes straight into the training record.'));
+    // v0 truth: approving records a training session; nothing is sent yet —
+    // send authority is granted later, per Nibbin, explicitly (C8). Copy must
+    // not claim a dispatch that didn't happen (claims-auditor F-1).
+    messages.push(prose('Approved — that yes goes straight into the training record. Once you give them the keys to send, drafts you approve go out on your say-so.'));
   } else if (decision === 'edited') {
-    messages.push(prose('Got it — sent your version, and the correction is in the journal. That’s exactly how they learn.'));
+    messages.push(prose('Got it — your version is saved and the correction is in the journal. That’s exactly how they learn.'));
   } else {
     messages.push(prose('Back to drafts — good instinct. Nothing went anywhere, and the no is part of the training too.'));
   }

@@ -318,7 +318,7 @@ export function GroveChat({
       // an edited approval — the correction is the training signal (§4.7)
       const runId = pendingDraft.runId;
       setEditingDraft(false);
-      void scanTurn('Send my version', () => decideDraftAction(runId, 'edited', text));
+      void scanTurn('Approve my edit', () => decideDraftAction(runId, 'edited', text));
       return;
     }
     if (step !== 'done') {
@@ -429,7 +429,7 @@ export function GroveChat({
                       <button
                         type="button"
                         className={styles.chipConfirm}
-                        onClick={() => decide('approved', 'Looks good — send it')}
+                        onClick={() => decide('approved', 'Looks good — approve it')}
                       >
                         Looks good — approve it
                       </button>

@@ -61,6 +61,9 @@ export default async function GrovePage() {
   let pendingDraft: { runId: string; specialistName: string; title: string; draft: string } | null = null;
   const initialMessages = [...turn.messages];
   if (state.step === 'done') {
+    // §6.2: a top-up since last visit should quietly unblock cap-queued runs.
+    const { resumeQueuedRuns } = await import('../../../lib/runtime/engine');
+    await resumeQueuedRuns(accountId).catch(() => 0);
     const { data: waiting } = await supabase
       .from('runs')
       .select('id, nibbins!inner(name)')

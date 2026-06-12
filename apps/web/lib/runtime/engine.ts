@@ -201,27 +201,66 @@ export async function triggerNibbinRun(nibbinId: string, trigger: RunTrigger): P
  */
 export async function maybePromote(nibbinId: string): Promise<StageName | null> {
   const svc = serviceClient();
-  const nibbin = await loadNibbin(svc, nibbinId);
-  if (nibbin.stage === 'grad' || nibbin.stage === 'egg') return null;
+  // stage_changed_at scopes the window to the current stage (matches SQL)
+  const { data: nrow } = await svc
+    .from('nibbins')
+    .select('stage, stage_changed_at, agent_specs!inner(curriculum)')
+    .eq('id', nibbinId)
+    .single();
+  if (!nrow) return null;
+  const stage = nrow.stage as StageName;
+  if (stage === 'grad' || stage === 'egg') return null;
+  const specRow = (Array.isArray(nrow.agent_specs) ? nrow.agent_specs[0] : nrow.agent_specs) as {
+    curriculum: AgentSpec['curriculum'];
+  };
+  const windowRuns = Math.max(specRow.curriculum.promotion.windowRuns, 25);
 
-  const { data: runRows } = await svc
-    .from('runs')
-    .select('id')
-    .eq('nibbin_id', nibbinId);
+  const { data: runRows } = await svc.from('runs').select('id').eq('nibbin_id', nibbinId);
   const runIds = (runRows ?? []).map((r) => r.id as string);
   if (runIds.length === 0) return null;
   const { data: decisions } = await svc
     .from('approvals')
     .select('decision, decided_at')
     .in('run_id', runIds)
+    .gt('decided_at', nrow.stage_changed_at as string)
     .order('decided_at', { ascending: false })
-    .limit(100);
+    .limit(windowRuns);
   const newestFirst = (decisions ?? []).map((d) => d.decision as Decision);
-  if (!promotionCheck(newestFirst, nibbin.spec.curriculum).eligible) return null;
+  if (!promotionCheck(newestFirst, specRow.curriculum).eligible) return null;
 
   const { data, error } = await svc.rpc('nibbin_promote', { p_nibbin: nibbinId });
   if (error) return null; // SQL is the authority; a refusal here is final
   return data as StageName;
+}
+
+/**
+ * §6.2 "pause politely, queue, explain, one-tap top-up": resume an account's
+ * cap-queued runs once credits arrive. Idempotent and gate-safe — run_resume
+ * re-faces every admission check, so a run queued against a since-paused
+ * Nibbin (or past the anomaly ceiling) stays queued. Called opportunistically
+ * when the grove loads, so a top-up quietly unblocks waiting work.
+ */
+export async function resumeQueuedRuns(accountId: string): Promise<number> {
+  const svc = serviceClient();
+  const { data: queued } = await svc
+    .from('runs')
+    .select('id')
+    .eq('account_id', accountId)
+    .eq('status', 'queued')
+    .order('created_at', { ascending: true })
+    .limit(25);
+  let started = 0;
+  for (const row of queued ?? []) {
+    try {
+      const res = await svc.rpc('run_resume', { p_run: row.id });
+      const r = (Array.isArray(res.data) ? res.data[0] : res.data) as { outcome: string } | null;
+      if (r?.outcome === 'started') started += 1;
+      else if (r?.outcome === 'still_capped') break; // balance exhausted; stop
+    } catch {
+      // never let a resume error block a page load
+    }
+  }
+  return started;
 }
 
 /** Egg → Student the moment observed context exists (scan or interview). */

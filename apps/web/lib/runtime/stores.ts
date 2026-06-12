@@ -16,6 +16,7 @@ import type {
   IdempotencyClaim,
   IdempotencyStore,
   ProductEvent,
+  ResumeOutcome,
   RoutineStore,
   RunStore,
   StepRecord,
@@ -63,10 +64,10 @@ export class SupabaseRunStore implements RunStore {
     }
   }
 
-  async resume(runId: string): Promise<{ outcome: 'started' | 'still_capped'; balance: number }> {
+  async resume(runId: string): Promise<{ outcome: ResumeOutcome; balance: number }> {
     const { data, error } = await this.svc.rpc('run_resume', { p_run: runId });
     if (error) throw new Error(`run_resume failed: ${error.message}`);
-    const row = (Array.isArray(data) ? data[0] : data) as { outcome: 'started' | 'still_capped'; balance: number };
+    const row = (Array.isArray(data) ? data[0] : data) as { outcome: ResumeOutcome; balance: number };
     return { outcome: row.outcome, balance: row.balance };
   }
 

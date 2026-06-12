@@ -51,10 +51,34 @@ export interface AccountScanResult {
   scannedConnections: number;
 }
 
+/** The connector scan recomputes weekly (§4.4) and is cheap — but it is free
+ *  compute over real provider quota, so we don't let it be looped. One real
+ *  recompute per account per hour; inside the window we serve the cached latest
+ *  batch (cost-auditor P2-1 — "free diagnosis is compute someone will farm"). */
+const SCAN_MIN_INTERVAL_MS = 60 * 60 * 1000;
+
 export async function runAccountScan(accountId: string, userId?: string): Promise<AccountScanResult> {
   const svc = serviceClient();
   const events = new SupabaseEventSink(svc);
   const nowMs = Date.now();
+
+  const { data: lastBatch } = await svc
+    .from('scan_results')
+    .select('batch_id, computed_at')
+    .eq('account_id', accountId)
+    .neq('module', 'interview.manual-map')
+    .order('computed_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (lastBatch && nowMs - Date.parse(lastBatch.computed_at as string) < SCAN_MIN_INTERVAL_MS) {
+    const cached = await latestFindings(accountId);
+    return {
+      findings: cached,
+      empty: cached.length === 0,
+      batchId: lastBatch.batch_id as string,
+      scannedConnections: (await activeConnections(svc, accountId)).length,
+    };
+  }
 
   const connections = await activeConnections(svc, accountId);
   const result = await runScan(
@@ -103,6 +127,7 @@ export async function latestFindings(accountId: string): Promise<Finding[]> {
     .from('scan_results')
     .select('batch_id, finding, computed_at')
     .eq('account_id', accountId)
+    .neq('module', 'interview.manual-map') // shop findings only, not the interview map
     .order('computed_at', { ascending: false })
     .limit(50);
   if (error || !data || data.length === 0) return [];

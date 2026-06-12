@@ -46,7 +46,29 @@ function header(m: GmailMeta, name: string): string | undefined {
 }
 
 const DAY = 86_400_000;
+// Sampled per scope; ×2 scopes + 2 list calls must stay under the run's
+// maxSteps ceiling (120) with headroom (cost-auditor P1-1).
 const MAIL_SAMPLE = 40;
+
+/**
+ * Connector-derived strings (From/Subject/attendee email) are external,
+ * attacker-influenceable data. They are safe to RENDER (React escapes), but
+ * before they become the recipient/subject ARGUMENTS of a real side effect
+ * they must be neutralized: strip CR/LF (header-injection) and cap length.
+ * Quarantine keeps connector content as data; this keeps it from becoming the
+ * parameters of an action (red-team P2-2). Applied at the effectArgs boundary.
+ */
+function safeHeaderValue(raw: string | undefined, max = 256): string {
+  return (raw ?? '').replace(/[\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max);
+}
+
+/** A plausible single email address, or '' — never a header-injection vector. */
+function safeAddress(raw: string | undefined): string {
+  const v = safeHeaderValue(raw, 320);
+  const m = v.match(/<([^<>@\s]+@[^<>@\s]+)>/) ?? v.match(/([^<>@\s]+@[^<>@\s]+)/);
+  const addr = m?.[1] ?? '';
+  return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(addr) ? addr : '';
+}
 
 interface MailScan {
   inbox: GmailMeta[];
@@ -122,8 +144,8 @@ function echoProgram(connections: ConnectionMap, nowMs: number): ProgramFn {
       return;
     }
     const oldest = overdue[0];
-    const from = header(oldest, 'From') ?? 'them';
-    const subject = header(oldest, 'Subject') ?? 'your last message';
+    const from = safeHeaderValue(header(oldest, 'From')) || 'them';
+    const subject = safeHeaderValue(header(oldest, 'Subject')) || 'your last message';
     const waitedDays = Math.round((nowMs - Number(oldest.internalDate ?? nowMs)) / DAY);
     yield {
       kind: 'draft',
@@ -135,7 +157,7 @@ function echoProgram(connections: ConnectionMap, nowMs: number): ProgramFn {
         `Hi — thanks for your patience, and sorry for the slow reply. ` +
         `I wanted to pick this back up: happy to answer anything still open on “${subject}”. ` +
         `If the timing moved on, no trouble at all — just let me know either way.`,
-      effectArgs: { threadId: oldest.threadId, to: from, subject: `Re: ${subject}` },
+      effectArgs: { threadId: oldest.threadId, to: safeAddress(from), subject: `Re: ${subject}` },
     };
   };
 }
@@ -182,7 +204,7 @@ function scribeProgram(connections: ConnectionMap, nowMs: number): ProgramFn {
       return;
     }
     const newest = inquiries[0];
-    const subject = header(newest, 'Subject') ?? 'your note';
+    const subject = safeHeaderValue(header(newest, 'Subject')) || 'your note';
     yield {
       kind: 'draft',
       capability: 'email.draft',
@@ -358,7 +380,7 @@ function hopperProgram(connections: ConnectionMap, nowMs: number): ProgramFn {
     const when = next.start?.dateTime
       ? new Date(next.start.dateTime).toLocaleString('en-US', { weekday: 'long', hour: 'numeric', minute: '2-digit' })
       : 'our scheduled time';
-    const guest = (next.attendees ?? []).find((a) => !a.self)?.email ?? 'them';
+    const guestEmail = safeAddress((next.attendees ?? []).find((a) => !a.self)?.email);
     yield {
       kind: 'draft',
       capability: 'email.draft',
@@ -369,7 +391,7 @@ function hopperProgram(connections: ConnectionMap, nowMs: number): ProgramFn {
         `Hi! Looking forward to ${next.summary ?? 'our session'} on ${when}. ` +
         `Just confirming the time still works on your end — if anything changed, ` +
         `reply here and we’ll find a better slot. See you soon!`,
-      effectArgs: { eventId: next.id, to: guest },
+      effectArgs: { eventId: next.id, to: guestEmail },
     };
   };
 }

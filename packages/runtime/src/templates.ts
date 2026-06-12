@@ -30,8 +30,13 @@ export interface ShopTemplate {
 }
 
 const DEFAULT_CEILINGS: RunCeilings = {
-  maxSteps: 20,
-  maxTokens: 50_000,
+  // Read steps are cheap and free (connector REST, no model), and a single
+  // mailbox sweep is dozens of metadata reads — so the step ceiling must clear
+  // a realistic inbox sample or the email programs self-kill before drafting
+  // (cost-auditor P1-1). maxTokens stays conservative for the model era:
+  // standard-weight work is draft-shaped, not long-context (cost-auditor P3-2).
+  maxSteps: 120,
+  maxTokens: 12_000,
   maxWallClockMs: 60_000,
 };
 

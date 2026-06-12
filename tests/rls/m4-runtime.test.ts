@@ -45,6 +45,17 @@ describe.skipIf(!dbAvailable)('M4: agent runtime at the DB layer', () => {
     );
   }
 
+  /** Start a run, attach a draft step (decide_run requires one), park it for approval. */
+  async function draftRun(dedupe: string): Promise<string> {
+    const run = await beginRun('standard', dedupe);
+    if (run.outcome !== 'started') throw new Error(`expected started, got ${run.outcome}`);
+    await h.as(service, (c) =>
+      c.query(`insert into public.run_steps (run_id, account_id, idx, kind, tokens) values ($1, $2, 0, 'draft', 0)`, [run.run_id, accountId]),
+    );
+    await h.as(service, (c) => c.query(`select public.run_finish($1, 'awaiting_approval')`, [run.run_id]));
+    return run.run_id as string;
+  }
+
   beforeAll(async () => {
     await h.reset();
     for (const [uid, email] of [
@@ -183,41 +194,36 @@ describe.skipIf(!dbAvailable)('M4: agent runtime at the DB layer', () => {
   });
 
   it('decide_run: member decides own awaiting run; outsider is blind; one decision per run', async () => {
-    const run = await beginRun('standard', 'decide-1');
-    expect(run.outcome).toBe('started');
-    await h.as(service, (c) => c.query(`select public.run_finish($1, 'awaiting_approval')`, [run.run_id]));
+    const runId = await draftRun('decide-1');
 
     await expect(
-      h.as(outsider, (c) => c.query(`select * from public.decide_run($1, 'approved', 0)`, [run.run_id])),
+      h.as(outsider, (c) => c.query(`select * from public.decide_run($1, 'approved', 0)`, [runId])),
     ).rejects.toThrow(/unknown run/); // no existence oracle for non-members
 
     const decided = await h.as(owner, async (c) =>
-      (await c.query(`select * from public.decide_run($1, 'approved', 0)`, [run.run_id])).rows[0],
+      (await c.query(`select * from public.decide_run($1, 'approved', 0)`, [runId])).rows[0],
     );
     expect(decided.decision).toBe('approved');
 
     await expect(
-      h.as(owner, (c) => c.query(`select * from public.decide_run($1, 'rejected', 0)`, [run.run_id])),
+      h.as(owner, (c) => c.query(`select * from public.decide_run($1, 'rejected', 0)`, [runId])),
     ).rejects.toThrow(/not awaiting approval/);
   });
 
   it('an approved-unedited decision cannot smuggle an edit distance', async () => {
-    const run = await beginRun('standard', 'decide-2');
-    await h.as(service, (c) => c.query(`select public.run_finish($1, 'awaiting_approval')`, [run.run_id]));
+    const runId = await draftRun('decide-2');
     await expect(
-      h.as(owner, (c) => c.query(`select * from public.decide_run($1, 'approved', 12)`, [run.run_id])),
+      h.as(owner, (c) => c.query(`select * from public.decide_run($1, 'approved', 12)`, [runId])),
     ).rejects.toThrow(/cannot carry edits/);
-    await h.as(owner, (c) => c.query(`select * from public.decide_run($1, 'edited', 12)`, [run.run_id]));
+    await h.as(owner, (c) => c.query(`select * from public.decide_run($1, 'edited', 12)`, [runId]));
   });
 
   it('promotion stays refused below 95%/25 and unlocks exactly at the bar', async () => {
     // seed 25 decided runs: 24 approved + the 1 'edited' from above = 96%? No:
     // build a clean window — 23 more approved (with the 2 existing: approved + edited = 25 total)
     for (let i = 0; i < 23; i++) {
-      const run = await beginRun('standard', `window-${i}`);
-      expect(run.outcome).toBe('started');
-      await h.as(service, (c) => c.query(`select public.run_finish($1, 'awaiting_approval')`, [run.run_id]));
-      await h.as(owner, (c) => c.query(`select * from public.decide_run($1, 'approved', 0)`, [run.run_id]));
+      const runId = await draftRun(`window-${i}`);
+      await h.as(owner, (c) => c.query(`select * from public.decide_run($1, 'approved', 0)`, [runId]));
     }
     // window now holds 25 decisions: 24 approved, 1 edited → 96% ≥ 95%
     const stage = await h.as(service, async (c) =>
@@ -226,11 +232,72 @@ describe.skipIf(!dbAvailable)('M4: agent runtime at the DB layer', () => {
     expect(stage).toBe('senior');
   });
 
-  it('demotion is one click for a member, floors at student, and is audited', async () => {
+  it('promotion is stage-scoped: one extra approval cannot jump senior→grad (logic-skeptic P1-2)', async () => {
+    // we just reached senior on a 25-decision window. The window is now scoped
+    // to decisions AFTER the promotion, so a single fresh approval is nowhere
+    // near a new 25-run window.
+    const runId = await draftRun('post-promote-1');
+    await h.as(owner, (c) => c.query(`select * from public.decide_run($1, 'approved', 0)`, [runId]));
+    await expect(h.as(service, (c) => c.query(`select public.nibbin_promote($1)`, [nibbinId]))).rejects.toThrow(
+      /has not earned promotion/,
+    );
+  });
+
+  it('decide_run rejects a decision on a run with no draft step, and edited needs distance ≥ 1', async () => {
+    const run = await beginRun('standard', 'no-draft');
+    await h.as(service, (c) => c.query(`select public.run_finish($1, 'awaiting_approval')`, [run.run_id]));
+    await expect(h.as(owner, (c) => c.query(`select * from public.decide_run($1, 'approved', 0)`, [run.run_id]))).rejects.toThrow(
+      /no draft to decide/,
+    );
+    // add a draft, then 'edited' with distance 0 is rejected
+    await h.as(service, (c) =>
+      c.query(`insert into public.run_steps (run_id, account_id, idx, kind, tokens) values ($1, $2, 0, 'draft', 0)`, [run.run_id, accountId]),
+    );
+    await expect(h.as(owner, (c) => c.query(`select * from public.decide_run($1, 'edited', 0)`, [run.run_id]))).rejects.toThrow(
+      /positive edit distance/,
+    );
+  });
+
+  it('a queued run cannot be finished as completed/awaiting_approval (logic-skeptic P2-1)', async () => {
+    // drain to force a queue
+    const bal = await h.as(service, async (c) =>
+      (await c.query(`select sum(delta)::int as b from public.credit_ledger where account_id=$1`, [accountId])).rows[0].b,
+    );
+    if (bal > 0) {
+      await h.as(service, (c) =>
+        c.query(`insert into public.credit_ledger (account_id, delta, reason, source_id) values ($1, $2, 'clawback', 'drain2')`, [accountId, -bal]),
+      );
+    }
+    const queued = await beginRun('standard', 'queued-finish');
+    expect(queued.outcome).toBe('queued_cap');
+    await expect(h.as(service, (c) => c.query(`select public.run_finish($1, 'completed')`, [queued.run_id]))).rejects.toThrow(
+      /can only be cancelled/,
+    );
+    // cancel the queued run and restore the balance for later tests
+    await h.as(service, (c) => c.query(`select public.run_finish($1, 'killed')`, [queued.run_id]));
+    await h.as(service, (c) =>
+      c.query(`insert into public.credit_ledger (account_id, delta, reason, source_id) values ($1, 1000, 'topup', 'restore-1')`, [accountId]),
+    );
+  });
+
+  it('emit_product_event rejects names outside the §6.12 taxonomy (SQL allowlist)', async () => {
+    await expect(
+      h.as(owner, (c) => c.query(`select public.emit_product_event($1, 'made_up_event', '{}'::jsonb)`, [accountId])),
+    ).rejects.toThrow(/unknown product event/);
+    // a valid drip beat passes the pattern
+    await h.as(owner, (c) => c.query(`select public.emit_product_event($1, 'drip_half_time_sent', '{}'::jsonb)`, [accountId]));
+  });
+
+  it('demotion is one click for a member, floors at student, and resets the climb', async () => {
     const down = await h.as(owner, async (c) =>
       (await c.query(`select public.nibbin_demote($1) as s`, [nibbinId])).rows[0].s,
     );
     expect(down).toBe('student');
+    // demotion reset the window: the senior stage must be re-earned from
+    // scratch — a stale qualifying window cannot re-promote (logic-skeptic P1-2)
+    await expect(h.as(service, (c) => c.query(`select public.nibbin_promote($1)`, [nibbinId]))).rejects.toThrow(
+      /has not earned promotion/,
+    );
     await expect(h.as(owner, (c) => c.query(`select public.nibbin_demote($1)`, [nibbinId]))).rejects.toThrow(
       /already drafting everything/,
     );
@@ -282,13 +349,14 @@ describe.skipIf(!dbAvailable)('M4: agent runtime at the DB layer', () => {
     await expect(
       h.as(outsider, (c) => c.query(`select public.emit_product_event($1, 'scan_completed', '{}'::jsonb)`, [accountId])),
     ).rejects.toThrow(/cannot emit events/);
+    // a junk/injection-shaped name is rejected by the SQL-side allowlist
     await expect(
-      h.as(owner, (c) => c.query(`select public.emit_product_event($1, 'Robert"); DROP', '{}'::jsonb)`, [accountId])),
-    ).rejects.toThrow(/check constraint|violates/);
+      h.as(owner, (c) => c.query(`select public.emit_product_event($1, 'Robert_drop', '{}'::jsonb)`, [accountId])),
+    ).rejects.toThrow(/unknown product event/);
   });
 
-  it('approvals, run_steps and product_events are append-only — even for service', async () => {
-    // seed a step row so the per-row triggers actually fire
+  it('run_steps/approvals/product_events are tamper-evident (no UPDATE) yet deletable (retention)', async () => {
+    // seed a step row so the per-row triggers can fire
     const run = await beginRun('standard', 'append-only-1');
     await h.as(service, (c) =>
       c.query(
@@ -298,11 +366,49 @@ describe.skipIf(!dbAvailable)('M4: agent runtime at the DB layer', () => {
     );
     await h.as(service, (c) => c.query(`select public.run_finish($1, 'completed')`, [run.run_id]));
 
+    // UPDATE is blocked — decisions and logs cannot be rewritten after the fact
     await expect(h.as(service, (c) => c.query(`update public.approvals set decision = 'approved'`))).rejects.toThrow(
       /append-only/,
     );
-    await expect(h.as(service, (c) => c.query(`delete from public.product_events`))).rejects.toThrow(/append-only/);
-    await expect(h.as(service, (c) => c.query(`delete from public.run_steps`))).rejects.toThrow(/append-only/);
+    await expect(h.as(service, (c) => c.query(`update public.run_steps set tokens = 1`))).rejects.toThrow(/append-only/);
+    // TRUNCATE is blocked — a stray wipe can't erase history
+    await expect(h.as(service, (c) => c.query(`truncate public.product_events`))).rejects.toThrow(/append-only/);
+
+    // DELETE IS allowed — the §6.11 retention purge (run logs 90d) and account
+    // deletion (≤30d) must be able to remove these rows (claims-auditor F-3/F-4).
+    // A run_steps row exists from above; deleting it must succeed.
+    const deleted = await h.as(service, async (c) =>
+      (await c.query(`delete from public.run_steps where run_id = $1`, [run.run_id])).rowCount,
+    );
+    expect(deleted).toBeGreaterThan(0);
+  });
+
+  it('product_events no longer blocks retention: DELETE not trigger-blocked, FK cascades not restricts (F-4)', async () => {
+    // the §6.11 purge job and account-deletion cascade must be able to remove
+    // these rows. M4 originally copied the ledger's append-only-on-DELETE
+    // trigger here (would raise) and used ON DELETE RESTRICT (would pin the
+    // account). Prove the schema no longer prevents retention, structurally.
+    const blocking = await h.as(service, async (c) => {
+      const res = await c.query(`
+        select count(*)::int as n
+        from pg_trigger
+        where tgrelid = 'public.product_events'::regclass
+          and not tgisinternal
+          and (tgtype & 8) <> 0`); // bit 3 = fires on DELETE
+      return res.rows[0].n as number;
+    });
+    expect(blocking).toBe(0); // no DELETE-blocking trigger → purge can run
+
+    const rule = await h.as(service, async (c) => {
+      const res = await c.query(`
+        select rc.delete_rule
+        from information_schema.referential_constraints rc
+        join information_schema.table_constraints tc on tc.constraint_name = rc.constraint_name
+        join information_schema.key_column_usage kcu on kcu.constraint_name = rc.constraint_name
+        where tc.table_name = 'product_events' and kcu.column_name = 'account_id'`);
+      return res.rows[0]?.delete_rule as string | undefined;
+    });
+    expect(rule).toBe('CASCADE'); // account deletion is no longer pinned by analytics
   });
 
   it('credit_ledger.run_id is a real FK now: phantom runs cannot be charged', async () => {

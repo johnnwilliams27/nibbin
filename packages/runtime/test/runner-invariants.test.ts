@@ -155,6 +155,33 @@ describe('§6.2: per-run ceilings', () => {
   });
 });
 
+describe('default ceilings clear a realistic mailbox sweep (cost-auditor P1-1)', () => {
+  it('an 82-read program completes under the shop templates default maxSteps', async () => {
+    // echo/sweep/scribe read up to 2 lists + 80 metadata reads per run; the
+    // default ceiling must not self-kill them before they draft (the Day-One
+    // first-draft DoD). Mirror the SHOP_TEMPLATES standard-weight ceiling.
+    const h = harness({ credits: 100 });
+    const mailboxSpec = spec({
+      creditProfile: { weightClass: 'standard', ceilings: { maxSteps: 120, maxTokens: 12_000, maxWallClockMs: 60_000 } },
+    });
+    const program: ProgramFn = async function* () {
+      for (let i = 0; i < 82; i++) yield read(`/gmail/v1/users/me/messages/m-${i}`);
+      yield {
+        kind: 'draft',
+        capability: 'email.draft',
+        connectionId: CONN,
+        patternKey: 'p',
+        title: 't',
+        draft: 'd',
+        effectArgs: {},
+        presentation: true,
+      };
+    };
+    const outcome = await executeRun(nib(mailboxSpec), TRIGGER, program, h.deps);
+    expect(outcome.kind).toBe('awaiting_approval'); // drafted, not max_steps-killed
+  });
+});
+
 describe('§6.2: same-tool-same-args repetition kill', () => {
   it(`kills on call #${REPETITION_KILL_AT} of an identical read`, async () => {
     const h = harness();
@@ -233,6 +260,49 @@ describe('§6.2: trigger dedupe + cooldown + anomaly auto-pause', () => {
     expect(h.runs.nibbinState('nib-1')).toEqual({ status: 'paused', pausedReason: 'anomaly' });
     // and a paused Nibbin is unavailable until un-paused
     expect(await executeRun(nib(), TRIGGER, program, h.deps)).toMatchObject({ kind: 'not_started', why: 'nibbin_unavailable' });
+  });
+
+  it('the queue→top-up path cannot bypass the anomaly ceiling (logic-skeptic P1-1)', async () => {
+    const h = harness({ credits: 0 }); // start at cap
+    const program: ProgramFn = async function* () {
+      yield read('/a');
+    };
+    // queue 15 runs at cap (distinct dedupe keys); none have started, so none
+    // count toward the anomaly window
+    const queued: string[] = [];
+    for (let i = 0; i < 15; i++) {
+      const out = await executeRun(
+        { ...nib(), id: 'nib-1' },
+        { kind: 'user', dedupeKey: `q-${i}` },
+        program,
+        h.deps,
+      );
+      expect(out).toMatchObject({ kind: 'not_started', why: 'queued_cap' });
+      queued.push((out as { runId: string }).runId);
+    }
+    // fund the account and resume: the floor (10/day) must still bite
+    h.runs.seedCredits(ACCOUNT, 1000);
+    let started = 0;
+    let paused = false;
+    for (const runId of queued) {
+      const res = await h.runs.resume(runId);
+      if (res.outcome === 'started') started += 1;
+      if (res.outcome === 'anomaly_paused') paused = true;
+    }
+    expect(started).toBeLessThanOrEqual(10); // never more than the daily ceiling
+    expect(paused).toBe(true); // the ceiling was enforced on resume, not bypassed
+  });
+
+  it('a run queued before an anomaly pause does not resume past the pause', async () => {
+    const h = harness({ credits: 0 });
+    const program: ProgramFn = async function* () {
+      yield read('/a');
+    };
+    const out = await executeRun(nib(), { kind: 'user', dedupeKey: 'q' }, program, h.deps);
+    const runId = (out as { runId: string }).runId;
+    h.runs.nibbinState('nib-1').status = 'paused'; // paused while queued
+    h.runs.seedCredits(ACCOUNT, 100);
+    expect((await h.runs.resume(runId)).outcome).toBe('nibbin_unavailable');
   });
 });
 

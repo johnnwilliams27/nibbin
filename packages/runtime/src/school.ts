@@ -58,7 +58,9 @@ export interface PromotionCheck {
 /**
  * Pure mirror of the nibbin_promote SQL check (the SQL is authoritative —
  * this drives UI progress display and the runtime's "should I even ask").
- * `decisions` must be newest-first.
+ * `decisions` must be newest-first AND already filtered to the current stage
+ * (decided after the Nibbin's stage_changed_at) — the promotion window is
+ * stage-scoped so each stage is earned fresh and a demotion resets the climb.
  */
 export function promotionCheck(decisions: readonly Decision[], curriculum: CurriculumConfig): PromotionCheck {
   // The floors are invariant: config may tighten, never loosen (§4.7).

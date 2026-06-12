@@ -53,6 +53,10 @@ create table public.nibbins (
   -- nibbin_demote below — there is no other write path for clients, and the
   -- promote function re-verifies accuracy in SQL ("never time-served").
   stage text not null default 'egg' check (stage in ('egg', 'student', 'senior', 'grad')),
+  -- when the CURRENT stage began — the promotion window only counts decisions
+  -- after this, so each stage is earned on its own merits and a demotion truly
+  -- resets the climb (no re-promote on one stale approval). §4.7.
+  stage_changed_at timestamptz not null default now(),
   palette text,
   accessory text,
   marking text,
@@ -122,10 +126,18 @@ create index approvals_account_idx on public.approvals (account_id, decided_at);
 
 -- ── per-Nibbin write grants (C8 structural rows — issue #26 / IG client F3) ──
 -- A side effect may execute ONLY when a grant row exists for exactly that
--- (nibbin, connection, capability). Granting happens at adoption time with a
--- plain-language explanation; revoking a connection orphans the grant rows
--- (cascade) and dependent Nibbins pause politely. This replaces the mutable
--- connection.scopes marker as the authority the runtime checks.
+-- (nibbin, connection, capability) — the runtime layer's structural authority,
+-- replacing the mutable connection.scopes marker that the connector clients
+-- still trust. Granting happens at adoption time with a plain-language
+-- explanation.
+--   PARTIAL at M4 (tracked, #26 stays OPEN): the runtime honors these rows, but
+--   (a) no code writes them yet — v0 ships no write path (the effect executor
+--   fails closed), so the table is intentionally empty; (b) connection revoke
+--   does not yet null revoked_at on dependent grants or set
+--   nibbins.paused_reason='connection' — the FK cascade only fires on row
+--   DELETE, and M3 revoke keeps the connection row. The grant writer + the
+--   revoke→pause cascade land with the first real write adoption, BEFORE
+--   Instagram/QuickBooks go live (the #26 condition).
 
 create table public.nibbin_write_grants (
   id uuid primary key default gen_random_uuid(),
@@ -203,12 +215,19 @@ create table public.scan_results (
 );
 create index scan_results_account_idx on public.scan_results (account_id, batch_id);
 
--- ── product events (§6.12; append-only; cookieless, our own Postgres) ────────
+-- ── product events (§6.12; cookieless, our own Postgres) ─────────────────────
+-- NOTE on append-only vs retention: run_steps, approvals, and product_events
+-- are operational/analytics records governed by the §6.11 retention clocks
+-- (run logs 90d, account ≤30d post-deletion), NOT permanent ledgers like
+-- credit_ledger/audit_log. They are tamper-evident (UPDATE blocked) but MUST
+-- remain deletable so the retention purge jobs and account-deletion cascade
+-- (issue #29) can run — blocking DELETE here would make the published clocks
+-- structurally impossible (claims-auditor F-3/F-4). FKs therefore cascade.
 
 create table public.product_events (
   id uuid primary key default gen_random_uuid(),
-  account_id uuid references public.accounts (id) on delete restrict,
-  user_id uuid references public.users (id) on delete restrict,
+  account_id uuid references public.accounts (id) on delete cascade,
+  user_id uuid references public.users (id) on delete set null,
   name text not null check (name ~ '^[a-z][a-z0-9_]{1,63}$'),
   props jsonb not null default '{}'::jsonb,
   at timestamptz not null default now()
@@ -216,24 +235,26 @@ create table public.product_events (
 create index product_events_name_idx on public.product_events (name, at);
 create index product_events_account_idx on public.product_events (account_id, at);
 
-create trigger product_events_append_only
-  before update or delete on public.product_events
+-- tamper-evidence only: no in-place edits, but deletion (retention/erasure) is
+-- allowed. Truncate stays blocked so a stray TRUNCATE can't wipe history.
+create trigger product_events_no_update
+  before update on public.product_events
   for each row execute function private.raise_append_only();
-create trigger product_events_append_only_truncate
+create trigger product_events_no_truncate
   before truncate on public.product_events
   for each statement execute function private.raise_append_only();
 
-create trigger approvals_append_only
-  before update or delete on public.approvals
+create trigger approvals_no_update
+  before update on public.approvals
   for each row execute function private.raise_append_only();
-create trigger approvals_append_only_truncate
+create trigger approvals_no_truncate
   before truncate on public.approvals
   for each statement execute function private.raise_append_only();
 
-create trigger run_steps_append_only
-  before update or delete on public.run_steps
+create trigger run_steps_no_update
+  before update on public.run_steps
   for each row execute function private.raise_append_only();
-create trigger run_steps_append_only_truncate
+create trigger run_steps_no_truncate
   before truncate on public.run_steps
   for each statement execute function private.raise_append_only();
 
@@ -269,6 +290,58 @@ as $$
 $$;
 revoke execute on function private.account_balance(uuid) from public, anon, authenticated;
 grant execute on function private.account_balance(uuid) to service_role;
+
+-- Shared admission gate (§6.2): cooldown + anomaly auto-pause. Both run_begin
+-- and run_resume call it under the account lock, so a cap-queued run cannot
+-- launch past the anomaly ceiling when it finally resumes. "Ran today" and the
+-- cooldown clock key on started_at (queued runs have null started_at and never
+-- count), so a run resumed today counts toward today's anomaly window, not the
+-- day it was first queued. UTC day windows on purpose (user tz must not roll
+-- the window — GOTCHAS). Returns 'cooldown' | 'anomaly_paused' | null (= admit);
+-- on anomaly it pauses the Nibbin and audits, as a side effect.
+create function private.run_admission_block(
+  p_account uuid,
+  p_nibbin uuid,
+  p_cooldown_secs integer,
+  p_anomaly_multiplier numeric,
+  p_anomaly_floor integer
+)
+returns text
+language plpgsql
+as $$
+declare
+  v_last timestamptz;
+  v_today integer;
+  v_baseline numeric;
+begin
+  select max(r.started_at) into v_last
+    from public.runs r
+    where r.nibbin_id = p_nibbin and r.started_at is not null;
+  if v_last is not null and v_last > now() - make_interval(secs => p_cooldown_secs) then
+    return 'cooldown';
+  end if;
+
+  select count(*) into v_today
+    from public.runs r
+    where r.nibbin_id = p_nibbin and r.started_at >= date_trunc('day', now());
+  select count(*) / 7.0 into v_baseline
+    from public.runs r
+    where r.nibbin_id = p_nibbin
+      and r.started_at >= date_trunc('day', now()) - interval '7 days'
+      and r.started_at < date_trunc('day', now());
+  if v_today + 1 > greatest(p_anomaly_floor, ceil(p_anomaly_multiplier * v_baseline)) then
+    update public.nibbins set status = 'paused', paused_reason = 'anomaly'
+      where id = p_nibbin and status = 'active';
+    insert into public.audit_log (account_id, actor, actor_id, action, subject, meta)
+    values (p_account, 'system', 'runtime', 'nibbin.anomaly_paused', p_nibbin::text,
+      jsonb_build_object('today', v_today, 'baseline_per_day', round(v_baseline, 2)));
+    return 'anomaly_paused';
+  end if;
+  return null;
+end;
+$$;
+revoke execute on function private.run_admission_block(uuid, uuid, integer, numeric, integer) from public, anon, authenticated;
+grant execute on function private.run_admission_block(uuid, uuid, integer, numeric, integer) to service_role;
 
 -- ── adoption (tier cap enforced here; spec validation happens app-side and
 --    only the service role can reach this function) ──────────────────────────
@@ -378,9 +451,7 @@ declare
   v_weight integer;
   v_status text;
   v_balance integer;
-  v_last timestamptz;
-  v_today integer;
-  v_baseline numeric;
+  v_block text;
   v_run uuid;
 begin
   v_weight := case p_weight
@@ -425,35 +496,10 @@ begin
     end if;
   end if;
 
-  -- per-Nibbin cooldown (queued runs don't count — they haven't run)
-  select max(r.created_at) into v_last
-    from public.runs r
-    where r.nibbin_id = p_nibbin and r.status <> 'queued';
-  if v_last is not null and v_last > now() - make_interval(secs => p_cooldown_secs) then
-    return query select null::uuid, 'cooldown'::text, private.account_balance(p_account);
-    return;
-  end if;
-
-  -- anomaly auto-pause (§6.2): 5–10× the trailing per-day baseline, with a
-  -- floor so a brand-new Nibbin (baseline 0) can still work. UTC day windows
-  -- on purpose — user-controlled timezones must not roll the window (GOTCHAS).
-  select count(*) into v_today
-    from public.runs r
-    where r.nibbin_id = p_nibbin
-      and r.status <> 'queued'
-      and r.created_at >= date_trunc('day', now());
-  select count(*) / 7.0 into v_baseline
-    from public.runs r
-    where r.nibbin_id = p_nibbin
-      and r.status <> 'queued'
-      and r.created_at >= date_trunc('day', now()) - interval '7 days'
-      and r.created_at < date_trunc('day', now());
-  if v_today + 1 > greatest(p_anomaly_floor, ceil(p_anomaly_multiplier * v_baseline)) then
-    update public.nibbins set status = 'paused', paused_reason = 'anomaly' where id = p_nibbin;
-    insert into public.audit_log (account_id, actor, actor_id, action, subject, meta)
-    values (p_account, 'system', 'runtime', 'nibbin.anomaly_paused', p_nibbin::text,
-      jsonb_build_object('today', v_today, 'baseline_per_day', round(v_baseline, 2)));
-    return query select null::uuid, 'anomaly_paused'::text, private.account_balance(p_account);
+  -- cooldown + anomaly auto-pause (§6.2), shared with run_resume
+  v_block := private.run_admission_block(p_account, p_nibbin, p_cooldown_secs, p_anomaly_multiplier, p_anomaly_floor);
+  if v_block is not null then
+    return query select null::uuid, v_block, private.account_balance(p_account);
     return;
   end if;
 
@@ -492,12 +538,15 @@ set search_path = ''
 as $$
 declare
   v_account uuid;
+  v_nibbin uuid;
   v_status text;
   v_weight text;
   v_units integer;
   v_balance integer;
+  v_nibbin_status text;
+  v_block text;
 begin
-  select account_id, status, weight_class into v_account, v_status, v_weight
+  select account_id, nibbin_id, status, weight_class into v_account, v_nibbin, v_status, v_weight
     from public.runs where id = p_run;
   if not found then
     raise exception 'unknown run %', p_run;
@@ -508,6 +557,24 @@ begin
   select status into v_status from public.runs where id = p_run;
   if v_status <> 'queued' then
     raise exception 'run % is not queued', p_run;
+  end if;
+
+  -- a run cannot resume past the gates it would face fresh: a Nibbin paused
+  -- (anomaly/user) or asleep since queuing must not launch, and the anomaly
+  -- ceiling is re-evaluated as of NOW so a queue→top-up path can't blow past
+  -- 5–10× baseline by draining the queue (logic-skeptic P1-1). Cooldown is a
+  -- trigger-frequency control, not a queue gate — passing 0 lets backlogged
+  -- work clear once the account can afford it; the anomaly ceiling still caps
+  -- the daily volume.
+  select status into v_nibbin_status from public.nibbins where id = v_nibbin for update;
+  if v_nibbin_status <> 'active' then
+    return query select 'nibbin_unavailable'::text, private.account_balance(v_account);
+    return;
+  end if;
+  v_block := private.run_admission_block(v_account, v_nibbin, 0, 5, 10);
+  if v_block is not null then
+    return query select v_block, private.account_balance(v_account);
+    return;
   end if;
 
   v_units := case v_weight when 'standard' then 1 when 'frontier' then 3 else 10 end;
@@ -563,6 +630,12 @@ begin
   if v_old not in ('running', 'queued') then
     raise exception 'run % is % — cannot finish', p_run, v_old;
   end if;
+  -- a queued run never charged and never ran: it may only be cancelled
+  -- (failed/killed), never marked completed/awaiting_approval — otherwise a
+  -- free, unrun run could mint an approvable artifact (logic-skeptic P2-1).
+  if v_old = 'queued' and p_status not in ('failed', 'killed') then
+    raise exception 'queued run % can only be cancelled (failed/killed), not %', p_run, p_status;
+  end if;
 
   update public.runs
     set status = p_status,
@@ -614,8 +687,15 @@ begin
   if p_edit_distance is null or p_edit_distance < 0 then
     raise exception 'edit distance must be >= 0';
   end if;
+  -- the two decisions are kept honest at the data layer: an approved decision
+  -- is unedited (distance 0); an edited one changed something (distance ≥ 1).
+  -- This is the accuracy signal the promotion window reads — it must not be
+  -- forgeable into "approved" when the user actually rewrote the draft.
   if p_decision = 'approved' and p_edit_distance <> 0 then
     raise exception 'an approved-unedited decision cannot carry edits';
+  end if;
+  if p_decision = 'edited' and p_edit_distance < 1 then
+    raise exception 'an edited decision must carry a positive edit distance';
   end if;
 
   select account_id, status into v_account, v_status from public.runs where id = p_run;
@@ -625,6 +705,11 @@ begin
   end if;
   if v_status <> 'awaiting_approval' then
     raise exception 'run % is not awaiting approval', p_run;
+  end if;
+  -- a decision must be ABOUT a drafted artifact — no minting approvals (which
+  -- feed the promotion window) for runs with no draft step (logic-skeptic P3-9).
+  if not exists (select 1 from public.run_steps s where s.run_id = p_run and s.kind = 'draft') then
+    raise exception 'run % has no draft to decide on', p_run;
   end if;
 
   insert into public.approvals (run_id, account_id, user_id, decision, edit_distance)
@@ -659,13 +744,14 @@ as $$
 declare
   v_account uuid;
   v_stage text;
+  v_stage_since timestamptz;
   v_next text;
   v_window integer;
   v_min_pct numeric;
   v_decided integer;
   v_approved integer;
 begin
-  select n.account_id, n.stage into v_account, v_stage
+  select n.account_id, n.stage, n.stage_changed_at into v_account, v_stage, v_stage_since
     from public.nibbins n where n.id = p_nibbin for update;
   if not found then
     raise exception 'unknown nibbin %', p_nibbin;
@@ -704,24 +790,28 @@ begin
       from public.nibbins n join public.agent_specs s on s.id = n.spec_id
       where n.id = p_nibbin;
 
+    -- window is scoped to THIS stage: only decisions made since the stage
+    -- began count, so each promotion is earned fresh and a demotion resets the
+    -- climb (logic-skeptic P1-2). 'edited' rows are decided-but-not-approved.
     select count(*), count(*) filter (where a.decision = 'approved')
       into v_decided, v_approved
       from (
         select a2.decision
         from public.approvals a2
         where a2.account_id = v_account
+          and a2.decided_at > v_stage_since
           and a2.run_id in (select r.id from public.runs r where r.nibbin_id = p_nibbin)
         order by a2.decided_at desc
         limit v_window
       ) a;
 
-    if v_decided < v_window or v_approved::numeric / v_decided < v_min_pct then
+    if v_decided < v_window or v_approved::numeric / greatest(v_decided, 1) < v_min_pct then
       raise exception 'nibbin % has not earned promotion (% approved of % in window, need % of %)',
         p_nibbin, v_approved, v_decided, v_min_pct, v_window;
     end if;
   end if;
 
-  update public.nibbins set stage = v_next where id = p_nibbin;
+  update public.nibbins set stage = v_next, stage_changed_at = now() where id = p_nibbin;
   insert into public.audit_log (account_id, actor, actor_id, action, subject, meta)
   values (v_account, 'system', 'runtime', 'nibbin.stage_promoted', p_nibbin::text,
     jsonb_build_object('from', v_stage, 'to', v_next));
@@ -763,7 +853,8 @@ begin
     raise exception 'nibbin % is already drafting everything', p_nibbin;
   end if;
 
-  update public.nibbins set stage = v_next where id = p_nibbin;
+  -- reset the climb: the next stage must be re-earned from scratch (§4.7)
+  update public.nibbins set stage = v_next, stage_changed_at = now() where id = p_nibbin;
   insert into public.audit_log (account_id, actor, actor_id, action, subject, meta)
   values (v_account, coalesce(case when uid is null then 'system' end, 'user'),
     coalesce(uid::text, 'runtime'), 'nibbin.stage_demoted', p_nibbin::text,
@@ -824,6 +915,12 @@ grant execute on function public.send_velocity_consume(uuid, text, integer, inte
 -- ── product event emission (§6.12) ───────────────────────────────────────────
 -- Authenticated callers may only emit into accounts they belong to; the
 -- service role emits freely (runtime/system events).
+--
+-- The event name is allowlisted IN SQL (mirrors packages/runtime PRODUCT_EVENT_
+-- NAMES + the drip_<beat>_(sent|opened) pattern). The TS taxonomy guard alone
+-- is bypassable by a direct RPC call, which would let a member poison the
+-- §6.12 funnel (fake first_draft_approved / topup_purchased) on their own
+-- account (red-team P3 / claims F-10).
 
 create function public.emit_product_event(
   p_account uuid,
@@ -838,6 +935,14 @@ as $$
 declare
   uid uuid := (select auth.uid());
 begin
+  if p_name not in (
+    'account_created', 'connector_linked', 'scan_completed', 'scan_empty', 'nibbin_adopted',
+    'first_draft_approved', 'run_approved', 'run_edited', 'run_rejected', 'stage_promoted',
+    'stage_demoted', 'study_started', 'study_completed', 'study_aborted', 'diagnosis_viewed',
+    'plan_upgraded', 'topup_purchased'
+  ) and p_name !~ '^drip_[a-z0-9_]+_(sent|opened)$' then
+    raise exception 'unknown product event %', p_name;
+  end if;
   if uid is not null and (p_account is null or not (select private.is_account_member(p_account))) then
     raise exception 'cannot emit events for this account';
   end if;

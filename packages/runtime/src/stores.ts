@@ -22,11 +22,14 @@ export interface AdmissionRequest {
   anomalyFloor: number;
 }
 
+/** run_resume re-faces every admission gate, so it can return any of these. */
+export type ResumeOutcome = 'started' | 'still_capped' | 'cooldown' | 'anomaly_paused' | 'nibbin_unavailable';
+
 export interface RunStore {
   /** §6.2 admission: dedupe, cooldown, anomaly, pre-run budget check + charge. */
   begin(req: AdmissionRequest): Promise<AdmissionOutcome>;
-  /** Start a cap-queued run once credits arrived. */
-  resume(runId: string): Promise<{ outcome: 'started' | 'still_capped'; balance: number }>;
+  /** Start a cap-queued run once credits arrived — re-checks every gate. */
+  resume(runId: string): Promise<{ outcome: ResumeOutcome; balance: number }>;
   /** Terminal transitions; failed/killed auto-refund, capped per run. */
   finish(runId: string, status: 'awaiting_approval' | 'completed' | 'failed' | 'killed', modelMix?: Record<string, unknown>): Promise<void>;
   recordStep(accountId: string, runId: string, step: StepRecord): Promise<void>;
@@ -73,6 +76,8 @@ interface MemoryRun {
   status: RunStatus;
   weight: WeightClass;
   createdAtMs: number;
+  /** set when the run actually starts (charges) — null while cap-queued */
+  startedAtMs?: number;
   steps: StepRecord[];
 }
 
@@ -133,24 +138,9 @@ export class MemoryRunStore implements RunStore {
       if (dup) return { kind: 'deduped' };
     }
 
-    // per-Nibbin cooldown (queued runs haven't run)
-    const last = Math.max(
-      0,
-      ...this.runsOf(req.nibbinId).filter((r) => r.status !== 'queued').map((r) => r.createdAtMs),
-    );
-    if (last > 0 && at - last < req.cooldownSecs * 1000) return { kind: 'cooldown' };
-
-    // anomaly auto-pause: 5–10× the trailing per-day baseline (UTC days)
-    const dayStart = new Date(at).setUTCHours(0, 0, 0, 0);
-    const ran = this.runsOf(req.nibbinId).filter((r) => r.status !== 'queued');
-    const today = ran.filter((r) => r.createdAtMs >= dayStart).length;
-    const trailing = ran.filter((r) => r.createdAtMs >= dayStart - 7 * 86_400_000 && r.createdAtMs < dayStart).length;
-    const baseline = trailing / 7;
-    if (today + 1 > Math.max(req.anomalyFloor, Math.ceil(req.anomalyMultiplier * baseline))) {
-      state.status = 'paused';
-      state.pausedReason = 'anomaly';
-      return { kind: 'anomaly_paused' };
-    }
+    // per-Nibbin cooldown + anomaly auto-pause (shared with resume)
+    const block = this.admissionBlock(req.nibbinId, req.cooldownSecs, req.anomalyMultiplier, req.anomalyFloor);
+    if (block) return { kind: block };
 
     // pre-run budget check against weighted credits; at cap: queue, explain
     const id = `run-${++this.seq}`;
@@ -168,21 +158,59 @@ export class MemoryRunStore implements RunStore {
     this.ledger(req.accountId).push(entry);
     this.runs.set(id, {
       id, accountId: req.accountId, nibbinId: req.nibbinId, trigger: req.trigger,
-      status: 'running', weight: req.weight, createdAtMs: at, steps: [],
+      status: 'running', weight: req.weight, createdAtMs: at, startedAtMs: at, steps: [],
     });
     return { kind: 'started', runId: id, balance: bal - WEIGHTS[req.weight] };
   }
 
-  async resume(runId: string): Promise<{ outcome: 'started' | 'still_capped'; balance: number }> {
+  async resume(runId: string): Promise<{ outcome: ResumeOutcome; balance: number }> {
     const run = this.runs.get(runId);
     if (!run || run.status !== 'queued') throw new Error(`run ${runId} is not queued`);
+    // re-face the admission gates as of NOW: a Nibbin paused/asleep since
+    // queuing must not launch, and cooldown + anomaly are re-evaluated so the
+    // queue→top-up path can't bypass the §6.2 ceiling (mirrors run_resume SQL).
+    const state = this.nibbinState(run.nibbinId);
+    if (state.status !== 'active') return { outcome: 'nibbin_unavailable', balance: this.balance(run.accountId) };
+    // cooldown 0 on resume (trigger-frequency control, not a queue gate); the
+    // anomaly ceiling still caps daily volume on the queue-drain path.
+    const block = this.admissionBlock(run.nibbinId, 0, 5, 10);
+    if (block) return { outcome: block, balance: this.balance(run.accountId) };
+
     const bal = this.balance(run.accountId);
     if (bal < WEIGHTS[run.weight]) return { outcome: 'still_capped', balance: bal };
     const entry: LedgerEntry = { delta: -WEIGHTS[run.weight], reason: 'run', runId };
     validateAppend(this.ledger(run.accountId), entry);
     this.ledger(run.accountId).push(entry);
     run.status = 'running';
+    run.startedAtMs = this.now();
     return { outcome: 'started', balance: bal - WEIGHTS[run.weight] };
+  }
+
+  /** Shared cooldown + anomaly gate (mirrors private.run_admission_block). */
+  private admissionBlock(
+    nibbinId: string,
+    cooldownSecs: number,
+    anomalyMultiplier: number,
+    anomalyFloor: number,
+  ): 'cooldown' | 'anomaly_paused' | null {
+    const at = this.now();
+    const started = this.runsOf(nibbinId)
+      .map((r) => r.startedAtMs)
+      .filter((t): t is number => t !== undefined);
+    const last = started.length > 0 ? Math.max(...started) : 0;
+    if (last > 0 && at - last < cooldownSecs * 1000) return 'cooldown';
+
+    const dayStart = new Date(at).setUTCHours(0, 0, 0, 0);
+    const today = started.filter((t) => t >= dayStart).length;
+    const trailing = started.filter((t) => t >= dayStart - 7 * 86_400_000 && t < dayStart).length;
+    const baseline = trailing / 7;
+    if (today + 1 > Math.max(anomalyFloor, Math.ceil(anomalyMultiplier * baseline))) {
+      const state = this.nibbinState(nibbinId);
+      state.status = 'paused';
+      state.pausedReason = 'anomaly';
+      return 'anomaly_paused';
+    }
+    return null;
   }
 
   async finish(runId: string, status: 'awaiting_approval' | 'completed' | 'failed' | 'killed'): Promise<void> {
