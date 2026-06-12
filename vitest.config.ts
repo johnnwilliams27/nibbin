@@ -8,6 +8,8 @@ export default defineConfig({
       '@nibbin/shared': fileURLToPath(new URL('./packages/shared/src/index.ts', import.meta.url)),
       '@nibbin/router': fileURLToPath(new URL('./packages/router/src/index.ts', import.meta.url)),
       '@nibbin/keeper': fileURLToPath(new URL('./packages/keeper/src/index.ts', import.meta.url)),
+      '@nibbin/drip': fileURLToPath(new URL('./packages/drip/src/index.ts', import.meta.url)),
+      '@nibbin/email': fileURLToPath(new URL('./packages/email/src/index.ts', import.meta.url)),
     },
   },
   test: {

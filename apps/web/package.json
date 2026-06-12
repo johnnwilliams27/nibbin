@@ -13,6 +13,8 @@
   "dependencies": {
     "@nibbin/connectors": "*",
     "@nibbin/creatures": "*",
+    "@nibbin/drip": "*",
+    "@nibbin/email": "*",
     "@nibbin/keeper": "*",
     "@nibbin/router": "*",
     "@nibbin/runtime": "*",

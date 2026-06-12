@@ -1,0 +1,17 @@
+{
+  "name": "@nibbin/drip",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The 14-day companion arc (SPEC §4.5) — beat scheduler, cloud Field Notes, ceremony beats. Per-user timezone + quiet hours, max one push/day, nothing decays, nothing nags.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@nibbin/email": "*",
+    "pg": "^8.21.0"
+  }
+}
