@@ -1,0 +1,203 @@
+/* Agent Shop (§4.6) — tokens from @nibbin/shared/tokens.css only. */
+
+.wrap {
+  min-height: 100vh;
+  background: var(--paper);
+  padding: 48px 24px 80px;
+}
+
+.inner {
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin: 0 0 4px;
+}
+
+.title {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 34px;
+  color: var(--ink);
+  margin: 0;
+}
+
+.meter {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+.meterValue {
+  color: var(--moss-deep);
+  font-weight: 600;
+}
+
+.lede {
+  font-family: var(--sans);
+  font-size: 15px;
+  color: var(--ink-soft);
+  max-width: 62ch;
+  margin: 0 0 32px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.card {
+  background: var(--canopy);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-1);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cardTop {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.sprite {
+  flex: 0 0 auto;
+  width: 88px;
+  height: 88px;
+}
+
+.name {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 20px;
+  color: var(--ink);
+  margin: 0;
+}
+
+.tagline {
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin: 2px 0 0;
+}
+
+.description {
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink);
+  margin: 0;
+}
+
+.measures {
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+.connectors {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+.actions {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.adopt {
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--canopy);
+  background: var(--moss-deep);
+  border: none;
+  border-radius: var(--r-button);
+  padding: 10px 16px;
+  min-height: 44px;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease-settle);
+}
+
+.adopt:hover {
+  background: var(--moss);
+}
+
+.adopt:focus-visible {
+  outline: 2px solid var(--moss);
+  outline-offset: 2px;
+}
+
+/* Stage pills — load-bearing trust UI; canonical styling, never local riffs. */
+.pill {
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: var(--r-pill);
+  padding: 4px 12px;
+  display: inline-block;
+}
+
+.pillEgg {
+  background: var(--shell);
+  color: var(--ink-soft);
+}
+
+.pillStudent {
+  background: var(--understory);
+  color: var(--moss-deep);
+}
+
+.pillSenior {
+  background: #f6ecd4;
+  color: var(--honey-deep);
+}
+
+.pillGrad {
+  background: var(--moss-deep);
+  color: var(--canopy);
+}
+
+.adoptedNote {
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+.backRow {
+  margin-top: 36px;
+}
+
+.backLink {
+  font-family: var(--sans);
+  font-size: 14px;
+  color: var(--moss-deep);
+}

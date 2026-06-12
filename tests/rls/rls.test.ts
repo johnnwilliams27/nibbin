@@ -28,6 +28,7 @@ describe.skipIf(!dbAvailable)('RLS attack suite (SPEC §6.1)', () => {
   const h = new RlsHarness();
   let accountA = '';
   let accountB = '';
+  let runA = '';
 
   const asA = { kind: 'authenticated', uid: UID_A } as const;
   const asB = { kind: 'authenticated', uid: UID_B } as const;
@@ -82,9 +83,30 @@ describe.skipIf(!dbAvailable)('RLS attack suite (SPEC §6.1)', () => {
         `insert into public.credit_ledger (account_id, delta, reason, source_id) values ($1, 1000, 'grant', 'inv_a_2026_06'), ($2, 100, 'grant', 'inv_b_2026_06')`,
         [accountA, accountB],
       );
+      // run charges reference real runs since M4 (uuid FK): seed the chain
+      const specId = (
+        await c.query(
+          `insert into public.agent_specs (account_id, template_key, version, display_name, validated_at)
+           values ($1, 'echo', 1, 'Echo', now()) returning id`,
+          [accountA],
+        )
+      ).rows[0].id;
+      const nibbinId = (
+        await c.query(
+          `insert into public.nibbins (account_id, spec_id, name, species) values ($1, $2, 'Echo', 'Wisp') returning id`,
+          [accountA, specId],
+        )
+      ).rows[0].id;
+      runA = (
+        await c.query(
+          `insert into public.runs (account_id, nibbin_id, weight_class, status, credits_charged)
+           values ($1, $2, 'frontier', 'completed', 3) returning id`,
+          [accountA, nibbinId],
+        )
+      ).rows[0].id;
       await c.query(
-        `insert into public.credit_ledger (account_id, delta, reason, run_id) values ($1, -3, 'run', 'run_a_1')`,
-        [accountA],
+        `insert into public.credit_ledger (account_id, delta, reason, run_id) values ($1, -3, 'run', $2)`,
+        [accountA, runA],
       );
       await c.query(
         `insert into public.audit_log (account_id, actor, actor_id, action, subject) values ($1, 'system', 'stripe', 'grant.applied', 'inv_a_2026_06')`,
@@ -218,8 +240,9 @@ describe.skipIf(!dbAvailable)('RLS attack suite (SPEC §6.1)', () => {
     it('sign-by-reason is a database constraint: a positive run charge is rejected', async () => {
       await expect(
         h.as(service, (c) =>
-          c.query(`insert into public.credit_ledger (account_id, delta, reason, run_id) values ($1, 3, 'run', 'run_x')`, [
+          c.query(`insert into public.credit_ledger (account_id, delta, reason, run_id) values ($1, 3, 'run', $2)`, [
             accountA,
+            runA,
           ]),
         ),
       ).rejects.toThrow(/violates check constraint/);

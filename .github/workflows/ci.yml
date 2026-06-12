@@ -48,7 +48,10 @@ jobs:
         run: npm test
       - run: npm run build
       - name: trigger-graph-validation
-        run: echo "wire at M4 - cycle-check suite (agent runtime does not exist yet)"
+        # §7.3 cycle-check suite + §7.2 trust gates as an explicit named gate
+        # (they also run inside `npm test` above — this step makes a
+        # regression unmissable in the required-checks list)
+        run: npx vitest run packages/runtime/test/trigger-graph.test.ts packages/runtime/test/trust-gate.test.ts
 
   audit:
     name: Dependency audit

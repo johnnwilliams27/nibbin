@@ -81,6 +81,26 @@ export default async function AppPage() {
     .maybeSingle();
   const credits = balanceRow?.balance ?? 0;
 
+  const [{ data: nibbins }, { count: waitingCount }, { count: queuedCount }] = await Promise.all([
+    supabase
+      .from('nibbins')
+      .select('id, name, stage, status')
+      .eq('account_id', accountId)
+      .eq('kind', 'specialist')
+      .order('hatched_at', { ascending: true }),
+    supabase
+      .from('runs')
+      .select('id', { count: 'exact', head: true })
+      .eq('account_id', accountId)
+      .eq('status', 'awaiting_approval'),
+    supabase
+      .from('runs')
+      .select('id', { count: 'exact', head: true })
+      .eq('account_id', accountId)
+      .eq('status', 'queued'),
+  ]);
+  const stageLabel: Record<string, string> = { egg: 'Egg', student: 'Student', senior: 'Senior', grad: 'Graduate' };
+
   return (
     <main className={styles.wrap}>
       <div className={styles.card}>
@@ -95,11 +115,40 @@ export default async function AppPage() {
             <dt className={styles.statLabel}>Credits</dt>
             <dd className={styles.statValue}>{credits}</dd>
           </div>
+          <div className={styles.stat}>
+            <dt className={styles.statLabel}>Waiting on you</dt>
+            <dd className={styles.statValue}>{waitingCount ?? 0}</dd>
+          </div>
         </dl>
 
+        {(queuedCount ?? 0) > 0 && (
+          <p className={styles.note} role="status">
+            {queuedCount} {queuedCount === 1 ? 'task is' : 'tasks are'} waiting for credits — they
+            run the moment the meter refills. <a href="/billing">Top up or change plan</a>.
+          </p>
+        )}
+
+        {(nibbins ?? []).length > 0 && (
+          <p className={styles.body}>
+            Your grove:{' '}
+            {(nibbins ?? [])
+              .map((n) => `${n.name} (${stageLabel[n.stage] ?? n.stage}${n.status !== 'active' ? `, ${n.status}` : ''})`)
+              .join(' · ')}
+          </p>
+        )}
+
         <p className={styles.note}>
-          {grove.keeper_name} is keeping the grove —{' '}
-          <a href="/app/grove">step in and say hello</a>. Adopting your first Nibbins comes next.
+          {grove.keeper_name} is keeping the grove — <a href="/app/grove">step in and say hello</a>.{' '}
+          <a href="/app/shop">Browse the Agent Shop</a>
+          {(waitingCount ?? 0) > 0 ? (
+            <>
+              {' '}
+              — and {waitingCount === 1 ? 'a draft is' : 'drafts are'}{' '}
+              <a href="/app/grove">waiting on your yes</a>.
+            </>
+          ) : (
+            '.'
+          )}
         </p>
 
         <SignOut />
