@@ -133,7 +133,7 @@ export const crmDeliveryLatency: ScanModule = {
           ctx.connection.id,
           `Galleries take a median ${medianDays} days from shoot to delivery — clients are happiest (and pay fastest) inside a week.`,
           {
-            hoursPerWeek: round1((gaps.length * 6) / 60 / 13),
+            hoursPerWeek: Math.max(0.1, round1((gaps.length * 6) / 60 / 13)),
             basis: `${gaps.length} collections published in 90 days; median created→published gap ${medianDays} days`,
           },
           { published: gaps.length, medianDays },

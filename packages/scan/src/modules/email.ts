@@ -166,7 +166,8 @@ export const emailNewsletterNoise: ScanModule = {
         ctx.connection.id,
         `${Math.round(share * 100)}% of your inbox is newsletters and notifications — about ${Math.round(noisePerWeek)} a week to wade through.`,
         {
-          hoursPerWeek: round1((noisePerWeek * 0.5) / 60),
+          // floor at 0.1h — below that the number reads as "free", which it isn't
+          hoursPerWeek: Math.max(0.1, round1((noisePerWeek * 0.5) / 60)),
           basis: `${noise.length} of ${inbox.length} sampled inbox messages carry List-Unsubscribe; ~30 sec each to triage`,
         },
         { sampled: inbox.length, noise: noise.length, sharePct: Math.round(share * 100) },

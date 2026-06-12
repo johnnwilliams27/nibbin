@@ -241,6 +241,8 @@ create trigger run_steps_append_only_truncate
 -- No 'run'/'refund' writer existed before M4, so every existing run_id is null
 -- and the type change is safe.
 
+-- the M1 btrim() shape check is superseded by uuid typing + the FK below
+alter table public.credit_ledger drop constraint if exists credit_ledger_run_id_check;
 alter table public.credit_ledger
   alter column run_id type uuid using run_id::uuid;
 alter table public.credit_ledger
@@ -388,6 +390,12 @@ begin
   end;
   if v_weight is null then
     raise exception 'unknown weight class %', p_weight;
+  end if;
+
+  -- the dedupe key lives inside the stored trigger so the window check below
+  -- works regardless of what shape the caller passed
+  if p_dedupe_key is not null then
+    p_trigger := coalesce(p_trigger, '{}'::jsonb) || jsonb_build_object('dedupeKey', p_dedupe_key);
   end if;
 
   perform private.lock_account(p_account);
