@@ -8,13 +8,14 @@
     "packages/*"
   ],
   "scripts": {
-    "typecheck": "tsc --noEmit -p packages/creatures && tsc --noEmit -p packages/shared && tsc --noEmit -p packages/connectors && tsc --noEmit -p packages/router && tsc --noEmit -p packages/keeper && tsc --noEmit -p packages/redaction && tsc --noEmit -p packages/runtime && tsc --noEmit -p packages/scan && tsc --noEmit -p packages/drip && tsc --noEmit -p packages/email && tsc --noEmit -p apps/web && tsc --noEmit -p apps/admin && tsc --noEmit -p apps/desktop && tsc --noEmit -p tests/redaction-corpus && tsc --noEmit -p tests/rls",
+    "typecheck": "tsc --noEmit -p packages/creatures && tsc --noEmit -p packages/shared && tsc --noEmit -p packages/connectors && tsc --noEmit -p packages/router && tsc --noEmit -p packages/keeper && tsc --noEmit -p packages/redaction && tsc --noEmit -p packages/runtime && tsc --noEmit -p packages/scan && tsc --noEmit -p packages/drip && tsc --noEmit -p packages/email && tsc --noEmit -p apps/web && tsc --noEmit -p apps/admin && tsc --noEmit -p apps/desktop && tsc --noEmit -p tests/redaction-corpus && tsc --noEmit -p tests/rls && tsc --noEmit -p tests/evals",
     "lint": "eslint .",
     "test": "vitest run",
     "audit": "npm audit --omit=dev --audit-level=high",
     "build": "npm run build -w apps/web && npm run build -w apps/admin",
     "grovemap": "node tools/grovemap/grovemap.mjs",
-    "drip:worker": "tsx packages/drip/src/run.ts"
+    "drip:worker": "tsx packages/drip/src/run.ts",
+    "evals": "vitest run --config vitest.evals.config.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
