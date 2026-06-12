@@ -77,11 +77,14 @@ async function buildJournal(accountId: string, data: ArcDataPort): Promise<BeatC
 
 function buildStudyWhisper(): BeatContent {
   // C1/C7: the "~6h in {app}" teaser is computed and shown ON-DEVICE only.
-  // This cloud beat points at it without carrying any study numbers.
+  // This cloud beat points at it without carrying any study numbers. The
+  // privacy claim must match C7 exactly: what the study WATCHES stays on the
+  // machine; the redacted map is the one thing that ever leaves, at review —
+  // never claim "nothing ever leaves" (claims-auditor M5 finding).
   return {
     key: 'study_whisper',
     title: 'The study is whispering',
-    body: 'Your Field Study has been watching quietly from your desk all week — nothing it sees ever leaves your machine. It’s starting to see the shape of something. Open your grove on that computer and it’ll show you the first sketch.',
+    body: 'Your Field Study has been watching quietly from your desk all week. What it watches stays on your machine — when the study ends, the only thing that will ever leave is the redacted map, and only when you say so. It’s starting to see the shape of something. Open your grove on that computer and it’ll show you the first sketch.',
     cards: [],
     celebration: null,
     ctaPath: '/app',

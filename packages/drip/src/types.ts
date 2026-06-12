@@ -52,6 +52,8 @@ export interface SendRecord {
   claimedAt: Date | null;
 }
 
+export type ArcStatus = 'active' | 'completed' | 'stopped';
+
 export interface ArcState {
   accountId: string;
   startedAt: Date;
@@ -166,20 +168,30 @@ export interface ArcDataPort {
 export interface ArcRow extends ArcState {
   /** The arc owner's email for the mirror (memberships → users). */
   email: string;
+  /** Beats run only while 'active'; earned-event leaves deliver regardless. */
+  status: ArcStatus;
+}
+
+/** A skip retires a whole slot — beat is what would have shown, slot dedups. */
+export interface SkipEntry {
+  beat: BeatKey;
+  slot: BeatKey;
 }
 
 export interface DripStore {
-  activeArcs(): Promise<ArcRow[]>;
+  /** Every arc, any status — the worker filters; School events outlive beats. */
+  arcs(): Promise<ArcRow[]>;
   /**
-   * Atomically claim (account, beat) for today's push. MUST return false if
-   * the beat was ever claimed before OR any other push already claimed this
-   * local day — this is the double-send guard, enforced by unique indexes,
-   * not application reads.
+   * Atomically claim a slot for today's push. MUST return false if this slot
+   * was ever resolved before, if any other push already claimed this local
+   * day, OR if any non-skipped claim is younger than the 20h spacing floor —
+   * all enforced in the store (unique indexes + insert guard), never by the
+   * caller's snapshot: a stale worker must not be able to double-push.
    */
-  claimSend(accountId: string, beat: BeatKey, localDay: string): Promise<boolean>;
+  claimSend(accountId: string, beat: BeatKey, slot: BeatKey, localDay: string): Promise<boolean>;
   markSent(accountId: string, beat: BeatKey): Promise<void>;
   markFailed(accountId: string, beat: BeatKey): Promise<void>;
-  recordSkipped(accountId: string, beats: BeatKey[], localDay: string): Promise<void>;
+  recordSkipped(accountId: string, skips: SkipEntry[], localDay: string): Promise<void>;
   completeArc(accountId: string): Promise<void>;
   /** Idempotent on event.id — earned events must not duplicate on retry. */
   insertEarnedNotification(accountId: string, event: EarnedEvent): Promise<void>;

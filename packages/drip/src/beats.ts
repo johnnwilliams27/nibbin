@@ -40,6 +40,15 @@ export function beatDef(key: BeatKey): BeatDef {
   return def;
 }
 
+/**
+ * The table slot a delivered beat resolves. study_whisper and scan_depth are
+ * the same day-5 slot — dedup (the store's unique index) keys on this, never
+ * on the delivered key, or a flag flip between ticks doubles the day.
+ */
+export function slotFor(key: BeatKey): BeatKey {
+  return beatDef(key).key;
+}
+
 /** Default quiet hours: nothing between 21:00 and 09:00 local. */
 export const DEFAULT_QUIET: QuietHours = { start: 21, end: 9 };
 

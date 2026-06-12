@@ -37,7 +37,7 @@ const TEMPLATES: Record<BeatKey, Omit<BeatTemplate, 'subject'> & { subject: stri
   },
   study_whisper: {
     subject: 'The study is whispering',
-    preheader: 'It runs on your desk, and nothing it sees leaves your machine.',
+    preheader: 'It runs on your desk; what it captures stays on your machine.',
     creature: KEEPER,
   },
   scan_depth: {

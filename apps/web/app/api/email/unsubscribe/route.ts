@@ -10,7 +10,7 @@
  * Suppression is idempotent — repeating the request is always safe.
  */
 import { NextResponse, type NextRequest } from 'next/server';
-import { verifyUnsubscribeToken } from '@nibbin/email';
+import { esc, verifyUnsubscribeToken } from '@nibbin/email';
 import { serviceClient } from '../../../../lib/supabase/service';
 
 export const runtime = 'nodejs';
@@ -35,7 +35,7 @@ function page(body: string, status = 200): NextResponse {
 const invalid = () =>
   page(
     `<h1 style="font-size:20px;margin:0 0 12px;">That link didn't check out</h1>
-     <p style="line-height:1.6;margin:0;">This unsubscribe link is malformed or was altered. You can also stop emails from your grove's settings, or write to hello@nibbin.com and a person will sort it.</p>`,
+     <p style="line-height:1.6;margin:0;">This unsubscribe link is malformed or was altered. Try the link from a newer email, or write to hello@nibbin.com and a person will sort it.</p>`,
     400,
   );
 
@@ -48,7 +48,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   // single page visit; the button keeps prefetchers from unsubscribing you).
   return page(
     `<h1 style="font-size:20px;margin:0 0 12px;">Stop these emails?</h1>
-     <p style="line-height:1.6;margin:0 0 20px;">One click and we stop emailing <strong>${email.replace(/</g, '&lt;')}</strong>. Your grove keeps growing in the app either way.</p>
+     <p style="line-height:1.6;margin:0 0 20px;">One click and we stop emailing <strong>${esc(email)}</strong>. Your grove keeps growing in the app either way.</p>
      <form method="post" action="/api/email/unsubscribe?token=${encodeURIComponent(token)}">
        <button type="submit" style="background:#44601F;color:#FFFFFF;border:0;border-radius:4px;padding:11px 20px;font-size:14px;font-weight:700;cursor:pointer;">Unsubscribe</button>
      </form>`,
@@ -71,8 +71,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 
+  // No resubscribe promise: suppression is permanent by design (the list is
+  // the CAN-SPAM record), and no settings toggle exists yet. Copy must not
+  // claim more than the architecture delivers (claims-auditor M5 finding).
   return page(
     `<h1 style="font-size:20px;margin:0 0 12px;">Done — no more emails</h1>
-     <p style="line-height:1.6;margin:0;">We won't email you again. Your grove keeps growing in the app, and you can turn emails back on from settings whenever you like.</p>`,
+     <p style="line-height:1.6;margin:0;">We won't email you again. Your grove keeps growing in the app either way.</p>`,
   );
 }

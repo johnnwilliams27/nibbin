@@ -14,6 +14,7 @@
  * and warm-up — a withheld email does NOT fail the beat (the in-product leaf
  * is the primary surface).
  */
+import { slotFor } from './beats';
 import { buildBeatContent } from './content';
 import { localDay, safeTz } from './localtime';
 import { planBeat } from './scheduler';
@@ -39,7 +40,7 @@ export interface TickResult {
 
 export async function tick(deps: WorkerDeps): Promise<TickResult> {
   const result: TickResult = { arcs: 0, pushed: 0, skipped: 0, completed: 0, earnedNotifications: 0, errors: 0 };
-  const arcs = await deps.store.activeArcs();
+  const arcs = await deps.store.arcs();
   result.arcs = arcs.length;
 
   for (const arc of arcs) {
@@ -58,24 +59,35 @@ async function tickArc(deps: WorkerDeps, arc: ArcRow, result: TickResult): Promi
   const tz = safeTz(arc.tz);
   const today = localDay(now, tz);
 
-  // Earned events first — they fire whenever earned, independent of the table.
+  // Earned events first — they fire whenever earned, independent of the
+  // table AND of the arc: a graduation on day 20 still lands its leaf even
+  // though the 14-day arc completed days ago.
   const events = await deps.data.earnedEvents(arc.accountId);
   for (const event of events) {
     await deps.store.insertEarnedNotification(arc.accountId, event);
     result.earnedNotifications += 1;
   }
 
+  // Beats are the drip; they stop with the arc.
+  if (arc.status !== 'active') return;
+
   const flags = await deps.data.flags(arc.accountId);
   const plan = planBeat(arc, flags, now);
 
   if (plan.skip.length > 0) {
-    await deps.store.recordSkipped(arc.accountId, plan.skip, today);
+    await deps.store.recordSkipped(
+      arc.accountId,
+      plan.skip.map((beat) => ({ beat, slot: slotFor(beat) })),
+      today,
+    );
     result.skipped += plan.skip.length;
   }
 
   if (plan.send) {
-    // Claim before building anything: the claim is the atomic gate.
-    const claimed = await deps.store.claimSend(arc.accountId, plan.send, today);
+    // Claim before building anything: the claim is the atomic gate, and the
+    // store re-checks the slot, the local day, AND the 20h floor — a stale
+    // snapshot in this process must not be able to double-push.
+    const claimed = await deps.store.claimSend(arc.accountId, plan.send, slotFor(plan.send), today);
     if (claimed) {
       try {
         const content = await buildBeatContent(plan.send, {

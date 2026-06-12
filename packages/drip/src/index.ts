@@ -1,4 +1,4 @@
-export { ARC_LENGTH_DAYS, BEATS, BEAT_KEYS, DEFAULT_QUIET, beatDef, inQuietHours } from './beats';
+export { ARC_LENGTH_DAYS, BEATS, BEAT_KEYS, DEFAULT_QUIET, beatDef, inQuietHours, slotFor } from './beats';
 export { buildBeatContent } from './content';
 export { buildFirstFieldNotes, scoreboardCards } from './field-notes';
 export { buildDiagnosisReveal, buildGraduationEve, buildHalfTime, buildMapPreview } from './ceremonies';
@@ -11,6 +11,7 @@ export type {
   ArcFlags,
   ArcRow,
   ArcState,
+  ArcStatus,
   BeatCard,
   BeatContent,
   BeatDef,
@@ -29,6 +30,7 @@ export type {
   ScanInsight,
   SendRecord,
   SendStatus,
+  SkipEntry,
   WorkflowCluster,
 } from './types';
 export type { ContentCtx } from './content';

@@ -43,13 +43,21 @@ create table public.drip_sends (
     'scan_depth', 'half_time', 'training_2', 'map_preview', 'graduation_eve',
     'diagnosis_reveal'
   )),
+  -- The §4.5 table slot this delivery resolves. study_whisper/scan_depth are
+  -- ONE slot (day 5) under two keys — uniqueness must live on the slot, or a
+  -- worker whose study flag flips between ticks delivers day 5 twice.
+  slot text not null check (slot in (
+    'field_notes_1', 'species', 'training_1', 'journal', 'study_whisper',
+    'half_time', 'training_2', 'map_preview', 'graduation_eve',
+    'diagnosis_reveal'
+  )),
   status text not null default 'claimed' check (status in ('claimed', 'sent', 'failed', 'skipped')),
   -- The user's LOCAL calendar day this push claims (max one push/day).
   local_day date not null,
   claimed_at timestamptz not null default now(),
   sent_at timestamptz,
-  -- A beat fires once per arc, ever — sent, failed, or skipped.
-  unique (account_id, beat)
+  -- A slot fires once per arc, ever — sent, failed, or skipped.
+  unique (account_id, slot)
 );
 
 -- One push per local day. Partial: skipped rows are bookkeeping, not pushes.
@@ -138,10 +146,16 @@ alter table public.email_suppressions enable row level security;
 revoke all on public.email_suppressions from anon, authenticated;
 
 -- ── send log (feeds the §6.8 warm-up daily cap; service role only) ───────────
+-- Cascades with the account: the published §6.11 clock says account data is
+-- gone ≤30 days after verified deletion, and this table holds bare addresses.
+-- The warm-up cap only ever counts TODAY's rows, so losing history is free.
+-- (email_suppressions intentionally outlives accounts — the unsubscribe/
+-- bounce record must keep being honored; needs its own row on the claims
+-- surfaces, tracked in the M5 PR.)
 
 create table public.email_sends (
   id uuid primary key default gen_random_uuid(),
-  account_id uuid references public.accounts (id) on delete set null,
+  account_id uuid not null references public.accounts (id) on delete cascade,
   to_email text not null,
   beat text not null,
   provider_id text,

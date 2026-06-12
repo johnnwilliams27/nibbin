@@ -6,6 +6,7 @@
  *   npm run drip:worker
  *
  * Env: DRIP_DATABASE_URL (service connection), RESEND_API_KEY,
+ * RESEND_WEBHOOK_SECRET (webhooks precede the first send, §6.8),
  * EMAIL_UNSUBSCRIBE_SECRET, EMAIL_WARMUP_START (ISO date — REQUIRED before
  * anything sends, §6.8), NEXT_PUBLIC_SITE_URL, EMAIL_POSTAL_ADDRESS.
  */
@@ -42,9 +43,12 @@ function pgSuppressions(pool: Pool): SuppressionStore {
 function pgSendLog(pool: Pool): SendLog {
   return {
     async countForUtcDay(utcDay) {
+      // Pin the window to UTC explicitly — a bare ::date cast shifts with
+      // the session TimeZone and would skew the warm-up cap by the offset.
       const r = await pool.query<{ n: string }>(
         `select count(*)::text as n from email_sends
-          where sent_at >= $1::date and sent_at < ($1::date + interval '1 day')`,
+          where sent_at >= ($1 || 'T00:00:00Z')::timestamptz
+            and sent_at < (($1 || 'T00:00:00Z')::timestamptz + interval '1 day')`,
         [utcDay],
       );
       return Number(r.rows[0]?.n ?? 0);
@@ -62,6 +66,11 @@ async function main(): Promise<void> {
   const pool = new Pool({ connectionString: required('DRIP_DATABASE_URL') });
   const store = pgDripStore(pool);
 
+  // §6.8: bounce/complaint webhooks live BEFORE the first send. The worker
+  // can't probe Resend's dashboard, but it can refuse to run while the
+  // webhook route is unconfigured — same env var the route 503s without.
+  required('RESEND_WEBHOOK_SECRET');
+
   const warmupStart = process.env.EMAIL_WARMUP_START ? new Date(process.env.EMAIL_WARMUP_START) : null;
   const email = createBeatMailer({
     config: {
@@ -74,6 +83,11 @@ async function main(): Promise<void> {
     suppressions: pgSuppressions(pool),
     log: pgSendLog(pool),
     provider: resendProvider(required('RESEND_API_KEY')),
+    // Withheld mirrors are invisible otherwise — log beat + reason, NEVER
+    // the address (PII stays out of logs).
+    onWithheld: (e, reason) => {
+      console.warn(`[drip] email withheld account=${e.accountId} beat=${e.beat} reason=${reason}`);
+    },
   });
 
   try {

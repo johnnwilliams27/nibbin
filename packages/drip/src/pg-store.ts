@@ -5,11 +5,12 @@
  * unique indexes are the correctness layer. Zero string-built SQL.
  */
 import type { Pool } from 'pg';
-import type { ArcRow, BeatContent, BeatKey, DripStore, EarnedEvent, SendRecord, SendStatus } from './types';
+import type { ArcRow, ArcStatus, BeatContent, BeatKey, DripStore, EarnedEvent, SendRecord, SendStatus } from './types';
 
 interface ArcQueryRow {
   account_id: string;
   started_at: Date;
+  status: ArcStatus;
   email_enabled: boolean;
   quiet_start: number;
   quiet_end: number;
@@ -37,15 +38,17 @@ export function pgDripStore(pool: Pool): DripStore & { ensureArcs(): Promise<num
       return r.rowCount ?? 0;
     },
 
-    async activeArcs(): Promise<ArcRow[]> {
+    async arcs(): Promise<ArcRow[]> {
+      // Every arc, any status: earned-event leaves keep flowing after the
+      // 14 days close (a graduation on day 20 still lands); the worker only
+      // plans beats for status='active'.
       const arcs = await pool.query<ArcQueryRow>(
-        `select a.account_id, a.started_at, a.email_enabled, a.quiet_start, a.quiet_end,
+        `select a.account_id, a.started_at, a.status, a.email_enabled, a.quiet_start, a.quiet_end,
                 u.tz, u.email
            from drip_arcs a
            join memberships m on m.account_id = a.account_id
                              and m.role = 'owner' and m.status = 'active'
-           join users u on u.id = m.user_id
-          where a.status = 'active'`,
+           join users u on u.id = m.user_id`,
       );
       if (arcs.rows.length === 0) return [];
 
@@ -65,6 +68,7 @@ export function pgDripStore(pool: Pool): DripStore & { ensureArcs(): Promise<num
       return arcs.rows.map((r) => ({
         accountId: r.account_id,
         startedAt: r.started_at,
+        status: r.status,
         tz: r.tz,
         quiet: { start: r.quiet_start, end: r.quiet_end },
         emailEnabled: r.email_enabled,
@@ -73,13 +77,25 @@ export function pgDripStore(pool: Pool): DripStore & { ensureArcs(): Promise<num
       }));
     },
 
-    /** The atomic gate: both unique indexes arbitrate, not a read. */
-    async claimSend(accountId, beat, localDay): Promise<boolean> {
+    /**
+     * The atomic gate. Three guards, ALL in the database so a worker holding
+     * a stale arc snapshot cannot double-push: unique (account_id, slot),
+     * the one-push-per-local-day partial index, and the 20h spacing floor
+     * re-checked here against live rows (the scheduler's in-memory check is
+     * a courtesy; this is the enforcement).
+     */
+    async claimSend(accountId, beat, slot, localDay): Promise<boolean> {
       const r = await pool.query(
-        `insert into drip_sends (account_id, beat, local_day, status)
-         values ($1, $2, $3, 'claimed')
+        `insert into drip_sends (account_id, beat, slot, local_day, status)
+         select $1, $2, $3, $4, 'claimed'
+          where not exists (
+            select 1 from drip_sends
+             where account_id = $1
+               and status <> 'skipped'
+               and claimed_at > now() - interval '20 hours'
+          )
          on conflict do nothing`,
-        [accountId, beat, localDay],
+        [accountId, beat, slot, localDay],
       );
       return (r.rowCount ?? 0) === 1;
     },
@@ -100,13 +116,13 @@ export function pgDripStore(pool: Pool): DripStore & { ensureArcs(): Promise<num
       );
     },
 
-    async recordSkipped(accountId, beats, localDay): Promise<void> {
-      for (const beat of beats) {
+    async recordSkipped(accountId, skips, localDay): Promise<void> {
+      for (const { beat, slot } of skips) {
         await pool.query(
-          `insert into drip_sends (account_id, beat, local_day, status)
-           values ($1, $2, $3, 'skipped')
+          `insert into drip_sends (account_id, beat, slot, local_day, status)
+           values ($1, $2, $3, $4, 'skipped')
            on conflict do nothing`,
-          [accountId, beat, localDay],
+          [accountId, beat, slot, localDay],
         );
       }
     },

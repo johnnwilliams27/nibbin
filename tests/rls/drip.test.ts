@@ -51,7 +51,8 @@ describe.skipIf(!dbAvailable)('drip + email RLS (M5)', () => {
     await h.as(service, async (c) => {
       await c.query(`insert into public.drip_arcs (account_id) values ($1), ($2)`, [accountA, accountB]);
       await c.query(
-        `insert into public.drip_sends (account_id, beat, local_day, status) values ($1, 'field_notes_1', '2026-06-02', 'sent')`,
+        `insert into public.drip_sends (account_id, beat, slot, local_day, status)
+         values ($1, 'field_notes_1', 'field_notes_1', '2026-06-02', 'sent')`,
         [accountA],
       );
       leafA = (
@@ -99,9 +100,10 @@ describe.skipIf(!dbAvailable)('drip + email RLS (M5)', () => {
     it('a member cannot forge a send record or flip their arc', async () => {
       await expect(
         h.as(asA, async (c) =>
-          c.query(`insert into public.drip_sends (account_id, beat, local_day) values ($1, 'species', '2026-06-03')`, [
-            accountA,
-          ]),
+          c.query(
+            `insert into public.drip_sends (account_id, beat, slot, local_day) values ($1, 'species', 'species', '2026-06-03')`,
+            [accountA],
+          ),
         ),
       ).rejects.toThrow();
       await expect(
@@ -175,31 +177,47 @@ describe.skipIf(!dbAvailable)('drip + email RLS (M5)', () => {
   });
 
   describe('double-send guards live in the database', () => {
-    it('the same beat can never be claimed twice', async () => {
+    it('the same slot can never be claimed twice — even under its other beat key', async () => {
       await h.as(service, async (c) => {
         const again = await c.query(
-          `insert into public.drip_sends (account_id, beat, local_day, status)
-           values ($1, 'field_notes_1', '2026-06-03', 'claimed')
+          `insert into public.drip_sends (account_id, beat, slot, local_day, status)
+           values ($1, 'field_notes_1', 'field_notes_1', '2026-06-03', 'claimed')
            on conflict do nothing`,
           [accountA],
         );
         expect(again.rowCount).toBe(0);
+        // The day-5 slot under both keys: scan_depth claims it…
+        const first = await c.query(
+          `insert into public.drip_sends (account_id, beat, slot, local_day, status)
+           values ($1, 'scan_depth', 'study_whisper', '2026-06-06', 'claimed')
+           on conflict do nothing`,
+          [accountA],
+        );
+        expect(first.rowCount).toBe(1);
+        // …and study_whisper can never re-deliver the same slot.
+        const twin = await c.query(
+          `insert into public.drip_sends (account_id, beat, slot, local_day, status)
+           values ($1, 'study_whisper', 'study_whisper', '2026-06-07', 'claimed')
+           on conflict do nothing`,
+          [accountA],
+        );
+        expect(twin.rowCount).toBe(0);
       });
     });
 
     it('a second non-skipped push on the same local day is refused', async () => {
       await h.as(service, async (c) => {
         const sameDay = await c.query(
-          `insert into public.drip_sends (account_id, beat, local_day, status)
-           values ($1, 'species', '2026-06-02', 'claimed')
+          `insert into public.drip_sends (account_id, beat, slot, local_day, status)
+           values ($1, 'species', 'species', '2026-06-02', 'claimed')
            on conflict do nothing`,
           [accountA],
         );
         expect(sameDay.rowCount).toBe(0);
         // Skipped bookkeeping on the same day is fine.
         const skipped = await c.query(
-          `insert into public.drip_sends (account_id, beat, local_day, status)
-           values ($1, 'training_1', '2026-06-02', 'skipped')
+          `insert into public.drip_sends (account_id, beat, slot, local_day, status)
+           values ($1, 'training_1', 'training_1', '2026-06-02', 'skipped')
            on conflict do nothing`,
           [accountA],
         );
