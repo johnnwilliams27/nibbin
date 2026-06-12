@@ -1,6 +1,7 @@
 import './(marketing)/landing.css';
 import { Creature } from './(marketing)/Creature';
 import { Enhancers } from './(marketing)/Enhancers';
+import { MayaDemo } from './(marketing)/MayaDemo';
 import { WaitlistForm } from './(marketing)/WaitlistForm';
 import { Wordmark } from './(marketing)/Wordmark';
 
@@ -96,7 +97,7 @@ export default function Home() {
           </a>
           <div className="nav-links">
             <a href="#how">How it works</a>
-            <a href="#keeper">The Grovekeeper</a>
+            <a href="#demo">Live demo</a>
             <a href="#privacy">Privacy</a>
             <a href="#pricing">Pricing</a>
           </div>
@@ -238,6 +239,22 @@ export default function Home() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="demo">
+        <div className="wrap">
+          <div className="sec-head reveal">
+            <span className="eyebrow">Interactive demo · fictional client</span>
+            <h2>Maya’s grove</h2>
+            <p>
+              Maya Reyes is a wedding photographer. Her study ended three weeks ago, and her four Nibbins are at four
+              different grades of Agent School. Click around — everything responds.
+            </p>
+          </div>
+          <div className="reveal">
+            <MayaDemo />
           </div>
         </div>
       </section>
