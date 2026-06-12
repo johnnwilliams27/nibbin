@@ -1,6 +1,31 @@
 # STATE
 
-- Milestone: M2+M3+M6 — COMBINED GATE RUN 2026-06-11 on integrated main (`ba047cf`), awaiting
+- Milestone: M4+M5 — COMBINED GATE RUN 2026-06-12 on integrated main (`41b4d47` + fix PR #38),
+  awaiting John's signature in LEARNINGS.md. **No live P0/P1 after the in-gate fix**: the one live
+  P1 (nearGraduation counted all decisions as graduation progress — pg-arc-data.ts, post-rebase
+  code) was fixed + DB-tested in PR #38 during the gate. Two claims P1s are forward-coupling
+  conditions on #29 (account-deletion clock structurally impossible while audit_log/credit_ledger
+  are RESTRICT + DELETE-blocked; scan-results disconnect purge has no mechanism) — both convert to
+  P0 when data-ai/privacy route. P2 sweep in #39–#46, P3 sweep in #47, cost/router additions
+  appended to #24's acceptance criteria.
+- Merged this wave: brand wordmark v1.0 (PR #37, `c2de2a0`), M4 scan+shop+runtime (PR #36,
+  `8fae27f`), M5 drip+email (PR #35, `41b4d47`; M5 migration renumbered 20260612000000 to clear
+  the timestamp collision with M4's; stubArcData swapped for the real pg-arc-data port over M4's
+  tables at rebase, with a DB test suite tests/rls/arc-data.test.ts).
+- **Hosted-DB drift found and closed at this gate**: dev/staging/prod actually carried ONLY the
+  M1 schema — the M2 + M3 "applied + verified on all three" claim below was wrong, and prod served
+  grove/connector/shop code against missing tables until 2026-06-12. M2/M3/M4/M5 are now applied
+  to all three projects and hash-verified identical (26 public tables; function-definition digest
+  f816e4d07ca7906e3c52c8c8ec852b14 matches a from-disk local apply on all four databases). Apply
+  discipline going forward: verify information_schema, never trust the doc claim (GOTCHAS).
+- Next build milestone: **M7** (synthesis packet pipeline + diagnosis synthesis + Day-14 reveal).
+  M4 hard conditions stand: #24 (durable budget + C11 opt-in with first real `generate`, now also
+  carrying the router origin-enforcement + top-up pricing criteria), #26 (C8 grant writer before
+  IG/QB), #28 (webhook seen≠processed before side-effecting handlers).
+
+## Previous gate (M2+M3+M6)
+
+- M2+M3+M6 — COMBINED GATE RUN 2026-06-11 on integrated main (`ba047cf`), awaiting
   John's signature in LEARNINGS.md. **No P0. No live-exploitable P1.** Five P1-labeled findings are
   forward-coupling conditions on unbuilt surfaces (issues #22–#24, #26, #29); one live P2 honesty
   bug in scripted chat (#25); P2/P3 sweep in #27, #28, #30. Full CI green locally + on main HEAD
@@ -69,9 +94,11 @@
 
 ## Platforms / environments
 - Supabase: org `Nibbin` (paid), us-east-2, PG17. Projects: dev `oqnqzytctwlptfdvyagl`, staging
-  `swbbydpuiilnamnyhwnr`, prod `oaymttudfazqaqequrke`. ALL migrations (170000/190000/210000/220000/
-  240000/20260610230000/20260611000000) applied + verified on all three. Secrets in GitHub env
-  secrets + Vercel production. Auth redirect allow-lists exact (no wildcards).
+  `swbbydpuiilnamnyhwnr`, prod `oaymttudfazqaqequrke`. ALL migrations through 20260612000000 (M5)
+  applied 2026-06-12 + hash-verified identical on all three (see gate entry above; the prior
+  "applied + verified" claim for M2/M3 was wrong — they were missing from every hosted project).
+  M2+ applications are tracked in supabase_migrations; the M1-era applications predate tracking.
+  Secrets in GitHub env secrets + Vercel production. Auth redirect allow-lists exact (no wildcards).
 - Vercel: project `nibbin` (team `nibbin`). Production env complete (prod Supabase keys + test
   Stripe + site URL + Sentry); prod live.
 - Stripe (TEST mode): products/prices created (Grove $19/mo, Canopy $49/mo, top-up $5); webhook
@@ -93,6 +120,8 @@ capture bring-up), #24 (C11 opt-in + durable budget with first real `generate`),
 structural grants before IG/QB live), #29 (retention enforcement before claims pages route).
 
 ## Outstanding for John
+- SIGN the M4+M5 gate in LEARNINGS.md (report delivered 2026-06-12) — includes accepting the
+  condition-based triage (#39–#47 + the #24/#29 additions) or overruling it.
 - SIGN the M2+M3+M6 gate in LEARNINGS.md (report delivered 2026-06-11) — includes accepting the
   forward-coupling-condition triage or overruling it.
 - ROTATE the Supabase access token + the Vercel token (both shared in chat; all uses complete).
