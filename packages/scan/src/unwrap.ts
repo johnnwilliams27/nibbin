@@ -17,14 +17,18 @@ import { QUARANTINE_PREFIX } from '@nibbin/connectors';
 
 /** Extract the raw payload text between the tagged quarantine markers. */
 export function unwrapQuarantined(content: QuarantinedContent): string {
-  const open = new RegExp(`^<<<${QUARANTINE_PREFIX}:${content.tag} source="[^"]*">>>\\n`);
+  // exact string matching, not RegExp — content.tag must never reach a regex engine
+  const openPrefix = `<<<${QUARANTINE_PREFIX}:${content.tag} source="`;
+  const headerEnd = '">>>\n';
   const close = `\n<<<END-${QUARANTINE_PREFIX}:${content.tag}>>>`;
   const text = content.wrapped;
-  const m = text.match(open);
-  if (!m || !text.trimEnd().endsWith(close.trim())) {
+  // the source value is quote-free, so the first '"' after the prefix must start '">>>\n'
+  const q = text.startsWith(openPrefix) ? text.indexOf('"', openPrefix.length) : -1;
+  const headerLen = q === -1 ? -1 : text.startsWith(headerEnd, q) ? q + headerEnd.length : -1;
+  if (headerLen === -1 || !text.trimEnd().endsWith(close.trim())) {
     throw new Error('content is not a quarantine wrap from this connection');
   }
-  const body = text.slice(m[0].length, text.lastIndexOf(close));
+  const body = text.slice(headerLen, text.lastIndexOf(close));
   // drop the two fixed preamble lines the wrapper inserts
   const lines = body.split('\n');
   return lines.slice(2).join('\n');
