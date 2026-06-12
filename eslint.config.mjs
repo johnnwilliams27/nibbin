@@ -10,6 +10,7 @@ export default tseslint.config(
       'reference/**',
       'tools/grovemap/grovemap.html',
       'apps/web/next-env.d.ts',
+      'apps/admin/next-env.d.ts',
     ],
   },
   ...tseslint.configs.recommended,
