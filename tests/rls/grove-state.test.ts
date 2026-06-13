@@ -57,7 +57,7 @@ describe.skipIf(!dbAvailable)('grove_state RLS + save_grove_state (M2)', () => {
     });
     // A finishes naming; B has a fresh grove
     await h.as(asA, async (c) => {
-      await c.query(`select public.save_grove_state($1, 'q_craft', 'Bramble', '{}'::jsonb)`, [accountA]);
+      await c.query(`select public.save_grove_state($1, 'understand', 'Bramble', '{}'::jsonb)`, [accountA]);
     });
     await h.as(asB, async (c) => {
       await c.query(`select public.save_grove_state($1, 'ask_user_name', null, '{}'::jsonb)`, [accountB]);
@@ -119,7 +119,7 @@ describe.skipIf(!dbAvailable)('grove_state RLS + save_grove_state (M2)', () => {
 
     it('a suspended member cannot write', async () => {
       await expect(
-        h.as(asC, (c) => c.query(`select public.save_grove_state($1, 'q_time', 'Bramble', '{}'::jsonb)`, [accountA])),
+        h.as(asC, (c) => c.query(`select public.save_grove_state($1, 'understand', 'Bramble', '{}'::jsonb)`, [accountA])),
       ).rejects.toThrow(/not a member/);
     });
 
@@ -137,10 +137,10 @@ describe.skipIf(!dbAvailable)('grove_state RLS + save_grove_state (M2)', () => {
 
     it('the Grovekeeper cannot be renamed once named', async () => {
       await expect(
-        h.as(asA, (c) => c.query(`select public.save_grove_state($1, 'q_time', 'Imposter', '{}'::jsonb)`, [accountA])),
+        h.as(asA, (c) => c.query(`select public.save_grove_state($1, 'understand', 'Imposter', '{}'::jsonb)`, [accountA])),
       ).rejects.toThrow(/keeps the name/);
       await expect(
-        h.as(asA, (c) => c.query(`select public.save_grove_state($1, 'q_time', null, '{}'::jsonb)`, [accountA])),
+        h.as(asA, (c) => c.query(`select public.save_grove_state($1, 'understand', null, '{}'::jsonb)`, [accountA])),
       ).rejects.toThrow(/keeps the name/);
     });
 
@@ -155,7 +155,7 @@ describe.skipIf(!dbAvailable)('grove_state RLS + save_grove_state (M2)', () => {
         h.as(asB, (c) => c.query(`select public.save_grove_state($1, 'become_admin', null, '{}'::jsonb)`, [accountB])),
       ).rejects.toThrow(/unknown onboarding step/);
 
-      const huge = JSON.stringify({ craft: 'x'.repeat(9000) });
+      const huge = JSON.stringify({ craft: 'x'.repeat(35000) });
       await expect(
         h.as(asB, (c) => c.query(`select public.save_grove_state($1, 'ask_user_name', null, $2::jsonb)`, [accountB, huge])),
       ).rejects.toThrow(/answers/);

@@ -56,7 +56,7 @@ describe('tier table (§6.3)', () => {
   });
 
   it('the table covers every task except chat', () => {
-    expect(Object.keys(TIER_FOR_TASK)).toHaveLength(13);
+    expect(Object.keys(TIER_FOR_TASK)).toHaveLength(14);
   });
 });
 

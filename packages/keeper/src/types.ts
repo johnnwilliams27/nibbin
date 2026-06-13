@@ -117,20 +117,54 @@ export interface KeeperTurn {
   expression: KeeperExpression;
 }
 
-/* ── Onboarding (§4.1 steps 2–3) ─────────────────────────────────────────── */
+/* ── Onboarding (§4.1) ──────────────────────────────────────────────────── */
 
 export type OnboardingStep =
   | 'ask_user_name'
   | 'ask_keeper_name'
-  | 'q_craft'
-  | 'q_time'
-  | 'q_channels'
+  | 'understand'
   | 'done';
 
+/** Legacy seeding answers — retained so old grove_state rows still parse. */
 export interface OnboardingAnswers {
   craft?: string;
   timeSinks?: string;
   channels?: string[];
+}
+
+/** What the model is asked to produce each understanding turn. */
+export interface UnderstandingProfile {
+  jobTitle: string | null;
+  businessModel: 'bookings' | 'projects' | 'jobs' | 'products' | 'retainer' | 'mixed' | 'unknown';
+  workShape: string[];
+  channels: string[];
+  tools: string[];
+  pains: string[];
+  confidence: number;
+  raw: Array<{ q: string; a: string }>;
+}
+
+export interface UnderstandingQuestion {
+  prompt: string;
+  placeholder: string;
+  chips?: QuestionChip[];
+  multi?: boolean;
+}
+
+/** The structured object the cheap model returns each turn. */
+export interface UnderstandingModelTurn {
+  extraction: Partial<UnderstandingProfile>;
+  nextQuestion: UnderstandingQuestion | null; // null = "I understand enough"
+  confidence: number; // 0..1
+}
+
+/** Server-owned loop state, persisted in grove_state. */
+export interface UnderstandingState {
+  turns: Array<{ q: string; a: string }>;
+  profile: UnderstandingProfile;
+  askedCount: number;
+  fallbackIndex: number;
+  currentQuestion: UnderstandingQuestion;
 }
 
 export interface OnboardingState {
@@ -138,11 +172,12 @@ export interface OnboardingState {
   userName: string | null;
   keeperName: string | null;
   answers: OnboardingAnswers;
+  understanding: UnderstandingState | null;
+  profile: UnderstandingProfile | null; // finalized at 'done'
 }
 
 export interface OnboardingInput {
   text?: string;
   skip?: boolean;
-  /** Selected chip ids for the channels question. */
   channels?: string[];
 }

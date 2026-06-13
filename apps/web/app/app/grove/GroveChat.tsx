@@ -13,28 +13,18 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { creatureCss } from '@nibbin/creatures';
 import {
-  CHANNEL_CHIPS,
   type KeeperExpression,
   type KeeperMessage,
   type OnboardingStep,
   type QuestionCard,
+  type UnderstandingProfile,
 } from '@nibbin/keeper';
-import { advanceGroveAction, keeperChatAction } from './actions';
-import {
-  adoptFromGroveAction,
-  decideDraftAction,
-  interviewStepAction,
-  runScanAction,
-  type AdoptChip,
-  type PendingDraft,
-  type ScanTurnPayload,
-} from './scan-actions';
+import { advanceGroveAction, keeperChatAction, skipUnderstandingAction, understandStepAction } from './actions';
 import { CardView } from './cards';
 import { KeeperSprite } from './KeeperSprite';
+import { Button } from '../../../components/ui';
+import ui from '../../../components/ui/ui.module.css';
 import styles from './grove.module.css';
-
-type InterviewQuestionId = NonNullable<ScanTurnPayload['interviewQuestionId']>;
-type InterviewAnswers = Partial<Record<InterviewQuestionId, string[]>>;
 
 type Theme = 'dawn' | 'day' | 'dusk';
 
@@ -88,8 +78,8 @@ export function GroveChat({
   keeperName: initialKeeperName,
   freshHatch,
   credits,
-  scanned,
-  initialPendingDraft,
+  initialProfile,
+  downloadUrl,
 }: {
   initialMessages: KeeperMessage[];
   initialExpression: KeeperExpression;
@@ -97,8 +87,8 @@ export function GroveChat({
   keeperName: string | null;
   freshHatch: boolean;
   credits: number;
-  scanned: boolean;
-  initialPendingDraft: PendingDraft | null;
+  initialProfile: UnderstandingProfile | null;
+  downloadUrl: string;
 }) {
   const [items, setItems] = useState<ChatItem[]>(() =>
     freshHatch ? [] : initialMessages.map(keeperItem),
@@ -106,6 +96,7 @@ export function GroveChat({
   const [expression, setExpression] = useState<KeeperExpression>(freshHatch ? 'idle' : initialExpression);
   const [step, setStep] = useState<OnboardingStep>(initialStep);
   const [keeperName, setKeeperName] = useState<string | null>(initialKeeperName);
+  const [profile, setProfile] = useState<UnderstandingProfile | null>(initialProfile);
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState('');
   const [picked, setPicked] = useState<string[]>([]);
@@ -114,14 +105,6 @@ export function GroveChat({
   const [hatched, setHatched] = useState(!freshHatch);
   const [cracking, setCracking] = useState(false);
   const [burstKey, setBurstKey] = useState(0);
-
-  /* §4.1 steps 5–7: scan → adopt → first approved draft, all in the grove. */
-  const [hasScanned, setHasScanned] = useState(scanned);
-  const [adoptChips, setAdoptChips] = useState<AdoptChip[]>([]);
-  const [interviewQ, setInterviewQ] = useState<InterviewQuestionId | null>(null);
-  const [interviewAnswers, setInterviewAnswers] = useState<InterviewAnswers>({});
-  const [pendingDraft, setPendingDraft] = useState<PendingDraft | null>(initialPendingDraft);
-  const [editingDraft, setEditingDraft] = useState(false);
 
   const sceneRef = useRef<HTMLDivElement>(null);
   const logRef = useRef<HTMLDivElement>(null);
@@ -256,72 +239,19 @@ export function GroveChat({
     [runTurn],
   );
 
-  /** Run a scan/adopt/decision turn and absorb its follow-up state. */
-  const scanTurn = useCallback(
-    (userLine: string, perform: () => Promise<ScanTurnPayload>) =>
-      runTurn(userLine, async () => {
-        const payload = await perform();
-        setAdoptChips(payload.adoptChips);
-        setInterviewQ(payload.interviewQuestionId);
-        setPendingDraft(payload.pendingDraft);
-        return payload;
-      }),
-    [runTurn],
-  );
-
-  const startScan = useCallback(() => {
-    setHasScanned(true);
-    void scanTurn('Run my scan', () => runScanAction());
-  }, [scanTurn]);
-
-  const answerInterview = useCallback(
-    (label: string, picked: string[]) => {
-      if (!interviewQ) return;
-      const q = interviewQ;
-      void scanTurn(label, async () => {
-        const payload = await interviewStepAction(interviewAnswers, q, picked);
-        setInterviewAnswers(payload.answers);
-        return payload;
-      });
-    },
-    [interviewAnswers, interviewQ, scanTurn],
-  );
-
-  const adopt = useCallback(
-    (chip: AdoptChip) => {
-      void scanTurn(chip.label, () => adoptFromGroveAction(chip.templateKey));
-    },
-    [scanTurn],
-  );
-
-  const decide = useCallback(
-    (decision: 'approved' | 'rejected', label: string) => {
-      if (!pendingDraft) return;
-      const runId = pendingDraft.runId;
-      void scanTurn(label, () => decideDraftAction(runId, decision));
-    },
-    [pendingDraft, scanTurn],
-  );
-
-  const beginEditDraft = useCallback(() => {
-    if (!pendingDraft) return;
-    setDraft(pendingDraft.draft);
-    setEditingDraft(true);
-    inputRef.current?.focus();
-  }, [pendingDraft]);
-
   const submitText = useCallback(() => {
     const text = draft.trim();
     if (text === '' || busy) return;
     setDraft('');
-    if (editingDraft && pendingDraft) {
-      // an edited approval — the correction is the training signal (§4.7)
-      const runId = pendingDraft.runId;
-      setEditingDraft(false);
-      void scanTurn('Approve my edit', () => decideDraftAction(runId, 'edited', text));
-      return;
-    }
-    if (step !== 'done') {
+    if (step === 'understand') {
+      void runTurn(text, async () => {
+        const payload = await understandStepAction(text);
+        setStep(payload.step);
+        setKeeperName(payload.keeperName);
+        if (payload.profile) setProfile(payload.profile);
+        return { messages: payload.messages, expression: payload.expression };
+      });
+    } else if (step !== 'done') {
       void advance(text, { text });
     } else {
       void runTurn(text, async () => {
@@ -332,24 +262,18 @@ export function GroveChat({
         return { messages: [payload.message], expression: payload.expression };
       });
     }
-  }, [advance, busy, draft, editingDraft, pendingDraft, runTurn, scanTurn, step]);
+  }, [advance, busy, draft, runTurn, step]);
 
   const togglePick = useCallback((id: string) => {
     setPicked((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]));
   }, []);
 
   const submitChannels = useCallback(() => {
-    if (interviewQ && activeQuestion) {
-      const labels = activeQuestion.chips?.filter((c) => picked.includes(c.id)).map((c) => c.label) ?? [];
-      const chosen = picked;
-      setPicked([]);
-      answerInterview(labels.join(', '), chosen);
-      return;
-    }
-    const labels = CHANNEL_CHIPS.filter((c) => picked.includes(c.id)).map((c) => c.label);
+    const labels = activeQuestion?.chips?.filter((c) => picked.includes(c.id)).map((c) => c.label) ?? [];
+    const chosen = picked;
     setPicked([]);
-    void advance(labels.join(', '), { channels: picked });
-  }, [activeQuestion, advance, answerInterview, interviewQ, picked]);
+    void advance(labels.join(', '), { channels: chosen });
+  }, [activeQuestion, advance, picked]);
 
   const skip = useCallback(() => {
     setPicked([]);
@@ -421,49 +345,37 @@ export function GroveChat({
             </div>
 
             <div className={styles.composer}>
-              {/* §4.1 step 5–7 action chips: scan, adopt, first approval */}
-              {step === 'done' && !busy && !activeQuestion && (
-                <div className={styles.chips}>
-                  {pendingDraft && !editingDraft && (
-                    <>
-                      <button
-                        type="button"
-                        className={styles.chipConfirm}
-                        onClick={() => decide('approved', 'Looks good — approve it')}
-                      >
-                        Looks good — approve it
-                      </button>
-                      <button type="button" className={styles.chip} onClick={beginEditDraft}>
-                        Let me edit it first
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.chip}
-                        onClick={() => decide('rejected', 'Not this one')}
-                      >
-                        Not this one
-                      </button>
-                    </>
+              {/* Handoff screen: shown at done, replaces the former scan/adopt chip block */}
+              {step === 'done' && !busy && (
+                <div className={styles.handoff}>
+                  {profile?.jobTitle && (
+                    <p className={styles.handoffReflect}>
+                      Here&apos;s what I picked up — you do <strong>{profile.jobTitle}</strong>
+                      {profile.channels.length > 0 && <> and most of your work comes through <strong>{profile.channels.join(', ')}</strong></>}.
+                    </p>
                   )}
-                  {!pendingDraft &&
-                    adoptChips.map((chip) => (
-                      <button
-                        key={chip.templateKey}
-                        type="button"
-                        className={styles.chipConfirm}
-                        onClick={() => adopt(chip)}
-                      >
-                        {chip.label}
-                      </button>
-                    ))}
-                  {!pendingDraft && adoptChips.length === 0 && (
-                    <button type="button" className={styles.chip} onClick={startScan}>
-                      {hasScanned ? 'Scan again' : 'Run my scan'}
-                    </button>
-                  )}
+                  <p className={styles.handoffLead}>Your team is waiting in the desktop app — that&apos;s where we connect your accounts and start.</p>
+                  <a className={`${ui.btn} ${ui.btnPrimary}`} href={downloadUrl}>Download the desktop app</a>
+                  <Link className={`${ui.btn} ${ui.btnGhost}`} href="/app">Not now — take me to my grove</Link>
                 </div>
               )}
-              {activeQuestion?.chips && !busy && (
+              {/* Understand-phase chips: fill the input as suggestions (not auto-submit) */}
+              {step === 'understand' && activeQuestion?.chips && !busy && (
+                <div className={styles.chips}>
+                  {activeQuestion.chips.map((chip) => (
+                    <button
+                      key={chip.id}
+                      type="button"
+                      className={styles.chip}
+                      onClick={() => { setDraft((d) => (d ? `${d}, ${chip.label}` : chip.label)); inputRef.current?.focus(); }}
+                    >
+                      {chip.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {/* Non-understand chips: existing multi/single select behavior */}
+              {step !== 'understand' && activeQuestion?.chips && !busy && (
                 <div className={styles.chips}>
                   {activeQuestion.chips
                     .filter((c) => c.id !== 'skip')
@@ -483,11 +395,7 @@ export function GroveChat({
                           key={chip.id}
                           type="button"
                           className={styles.chip}
-                          onClick={() =>
-                            interviewQ
-                              ? answerInterview(chip.label, [chip.id])
-                              : void advance(chip.label, { text: chip.label })
-                          }
+                          onClick={() => void advance(chip.label, { text: chip.label })}
                         >
                           {chip.label}
                         </button>
@@ -524,7 +432,7 @@ export function GroveChat({
                   placeholder={placeholder}
                   autoComplete="off"
                   maxLength={2000}
-                  disabled={busy || !hatched || multiQuestion}
+                  disabled={busy || !hatched}
                   onChange={(e) => setDraft(e.target.value)}
                   onFocus={() => setExpression((x) => (x === 'idle' ? 'listening' : x))}
                   onBlur={() => setExpression((x) => (x === 'listening' ? 'idle' : x))}
@@ -533,6 +441,23 @@ export function GroveChat({
                   Say it
                 </button>
               </form>
+              {step === 'understand' && !busy && (
+                <Button
+                  variant="ghost"
+                  type="button"
+                  onClick={() =>
+                    void runTurn("Skip ahead — I'll set up in the app", async () => {
+                      const p = await skipUnderstandingAction();
+                      setStep(p.step);
+                      setKeeperName(p.keeperName);
+                      if (p.profile) setProfile(p.profile);
+                      return { messages: p.messages, expression: p.expression };
+                    })
+                  }
+                >
+                  Skip ahead — I&apos;ll set up in the app
+                </Button>
+              )}
             </div>
           </div>
         </div>

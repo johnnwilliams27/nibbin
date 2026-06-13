@@ -12,19 +12,24 @@
  */
 import {
   advanceOnboarding,
+  applyUnderstandingTurn,
   buildKeeperContext,
   KEEPER_SYSTEM_PROMPT,
   keeperChat,
+  skipUnderstanding,
   type KeeperExpression,
   type KeeperMessage,
   type OnboardingStep,
+  type UnderstandingProfile,
 } from '@nibbin/keeper';
+import { understandingModelTurn } from '../../../lib/llm/understanding';
+import { writeHandoff } from '../../../lib/onboarding/handoff';
 import type { TokenUsage } from '@nibbin/router';
 import { ensureAccount } from '../../../lib/auth/bootstrap';
 import { upsertOwnProfile } from '../../../lib/auth/profile';
 import { groveRouter } from '../../../lib/grove/router';
 import { anthropicGenerate, recordModelCall } from '../../../lib/llm/client';
-import { sanitizeInput, stateFromRow, type GroveRow } from '../../../lib/grove/state';
+import { answersForSave, sanitizeInput, stateFromRow, type GroveRow } from '../../../lib/grove/state';
 import { createClient } from '../../../lib/supabase/server';
 
 export interface GroveTurnPayload {
@@ -32,6 +37,7 @@ export interface GroveTurnPayload {
   expression: KeeperExpression;
   step: OnboardingStep;
   keeperName: string | null;
+  profile?: UnderstandingProfile | null;
 }
 
 async function groveSession() {
@@ -71,6 +77,7 @@ export async function advanceGroveAction(rawInput: unknown): Promise<GroveTurnPa
   const progressed =
     turn.state.step !== state.step ||
     turn.state.keeperName !== state.keeperName ||
+    JSON.stringify(turn.state.understanding) !== JSON.stringify(state.understanding) ||
     JSON.stringify(turn.state.answers) !== JSON.stringify(state.answers);
 
   if (progressed) {
@@ -78,7 +85,11 @@ export async function advanceGroveAction(rawInput: unknown): Promise<GroveTurnPa
       target_account: accountId,
       new_step: turn.state.step,
       new_keeper_name: turn.state.keeperName,
-      new_answers: turn.state.answers,
+      new_answers: answersForSave({
+        answers: turn.state.answers,
+        understanding: turn.state.understanding,
+        profile: turn.state.profile,
+      }),
     });
     if (error) throw new Error('could not save your grove — try again in a moment');
   }
@@ -183,4 +194,82 @@ export async function keeperChatAction(rawText: unknown): Promise<GroveChatPaylo
       complexity: reply.decision.classification?.score,
     },
   };
+}
+
+export async function understandStepAction(rawText: unknown): Promise<GroveTurnPayload> {
+  const { supabase, user, accountId } = await groveSession();
+  const text = typeof rawText === 'string' ? rawText.slice(0, 2000) : '';
+
+  const [{ data: row }, { data: me }] = await Promise.all([
+    supabase
+      .from('grove_state')
+      .select('keeper_name, onboarding_step, answers')
+      .eq('account_id', accountId)
+      .maybeSingle<GroveRow>(),
+    supabase.from('users').select('name').eq('id', user.id).maybeSingle<{ name: string | null }>(),
+  ]);
+  const state = stateFromRow(row, me?.name ?? null);
+  if (state.step !== 'understand' || !state.understanding) {
+    // Not in the understanding phase — nothing to do (defensive).
+    return { messages: [], expression: 'idle', step: state.step, keeperName: state.keeperName };
+  }
+
+  // One model call for this turn; null → the pure engine serves the static fallback.
+  // Build the up-to-date transcript (current answer included) so the model sees the latest reply.
+  const transcript = [...state.understanding.turns, { q: state.understanding.currentQuestion.prompt, a: text }];
+  const modelTurn = await understandingModelTurn(accountId, user.id, transcript, {});
+  const turn = applyUnderstandingTurn(state, text, modelTurn);
+
+  // On completion, derive + persist the desktop handoff before saving state.
+  if (turn.state.step === 'done' && turn.state.profile) {
+    await writeHandoff(supabase, accountId, turn.state.profile);
+  }
+
+  const { error } = await supabase.rpc('save_grove_state', {
+    target_account: accountId,
+    new_step: turn.state.step,
+    new_keeper_name: turn.state.keeperName,
+    new_answers: answersForSave({
+      answers: turn.state.answers,
+      understanding: turn.state.understanding,
+      profile: turn.state.profile,
+    }),
+  });
+  if (error) throw new Error('could not save your grove — try again in a moment');
+
+  return { messages: turn.messages, expression: turn.expression, step: turn.state.step, keeperName: turn.state.keeperName, profile: turn.state.profile };
+}
+
+export async function skipUnderstandingAction(): Promise<GroveTurnPayload> {
+  const { supabase, user, accountId } = await groveSession();
+  const { data: row } = await supabase
+    .from('grove_state')
+    .select('keeper_name, onboarding_step, answers')
+    .eq('account_id', accountId)
+    .maybeSingle<GroveRow>();
+  const { data: me } = await supabase
+    .from('users')
+    .select('name')
+    .eq('id', user.id)
+    .maybeSingle<{ name: string | null }>();
+  const state = stateFromRow(row, me?.name ?? null);
+  const turn = skipUnderstanding(state);
+  if (turn.state.step !== 'done') {
+    return { messages: [], expression: 'idle', step: state.step, keeperName: state.keeperName };
+  }
+  if (turn.state.profile) {
+    await writeHandoff(supabase, accountId, turn.state.profile);
+  }
+  const { error } = await supabase.rpc('save_grove_state', {
+    target_account: accountId,
+    new_step: turn.state.step,
+    new_keeper_name: turn.state.keeperName,
+    new_answers: answersForSave({
+      answers: turn.state.answers,
+      understanding: turn.state.understanding,
+      profile: turn.state.profile,
+    }),
+  });
+  if (error) throw new Error('could not save your grove — try again in a moment');
+  return { messages: turn.messages, expression: turn.expression, step: turn.state.step, keeperName: turn.state.keeperName, profile: turn.state.profile };
 }
