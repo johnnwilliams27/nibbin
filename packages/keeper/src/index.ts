@@ -19,6 +19,14 @@ export type { KeeperChatContext, KeeperChatDeps, KeeperChatReply } from './chat'
 export { buildKeeperContext, KEEPER_SYSTEM_PROMPT } from './prompt';
 export type { KeeperPromptContext } from './prompt';
 export { ANSWER_MAX, CHANNEL_CHIPS, NAME_MAX, SKIP_CHIP } from './copy';
+export {
+  applyUnderstandingTurn,
+  initialUnderstandingState,
+  understandingQuestionCard,
+  UNDERSTANDING_MAX_TURNS,
+  UNDERSTANDING_OPENER,
+  skipUnderstanding,
+} from './understanding';
 export type {
   CelebrationCard,
   ChartCard,
@@ -37,4 +45,8 @@ export type {
   QuestionChip,
   RecommendationCard,
   ScanFindingCard,
+  UnderstandingModelTurn,
+  UnderstandingProfile,
+  UnderstandingQuestion,
+  UnderstandingState,
 } from './types';
