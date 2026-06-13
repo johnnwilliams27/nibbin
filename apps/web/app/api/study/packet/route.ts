@@ -4,6 +4,7 @@ import { serviceClient } from '../../../../lib/supabase/service';
 import { ensureAccount } from '../../../../lib/auth/bootstrap';
 import { upsertOwnProfile } from '../../../../lib/auth/profile';
 import { synthesizeDiagnosis, validateSynthesisPacket } from '../../../../lib/diagnosis/synthesize';
+import { labelDiagnosis } from '../../../../lib/diagnosis/label';
 
 /**
  * Study-packet ingest (SPEC §5, §8 M7). The Observer uploads the redacted,
@@ -44,12 +45,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const packet = validateSynthesisPacket(body);
   if (!packet) return NextResponse.json({ error: 'invalid_packet' }, { status: 422 });
 
-  const map = synthesizeDiagnosis(packet);
+  // Deterministic mining, then the Opus labeling pass (warm labels + the
+  // Grovekeeper's letter); labeling degrades to deterministic labels on failure.
+  const mined = synthesizeDiagnosis(packet);
+  const { map, letter } = await labelDiagnosis(accountId, mined);
 
   const svc = serviceClient();
   const { data, error } = await svc
     .from('diagnoses')
-    .insert({ account_id: accountId, status: 'ready', packet, map })
+    .insert({ account_id: accountId, status: 'ready', packet, map, letter })
     .select('id')
     .single();
   if (error) return NextResponse.json({ error: 'store_failed' }, { status: 502 });
