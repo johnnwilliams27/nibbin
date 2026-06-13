@@ -42,9 +42,10 @@
   before first drip send.
 - Domain: registrar lock + DNSSEC + auto-renew. Actions→cloud via OIDC (no long-lived keys). mail.nibbin.com warm-up ramp before drip launch.
 - Stripe: per-env keys; webhook endpoints per env, signature-verified; Radar on.
-  - **Test-mode set up (2026-06-10):** products + prices created — Grove `grove_monthly` $19/mo,
-    Canopy `canopy_monthly` $49/mo, top-up `credit_topup` (now **$10**/1,000 credits — see M6.5
-    note below). Price IDs in `STRIPE_PRICE_GROVE/CANOPY/TOPUP`. Webhook endpoint `we_…` registered at
+  - **Test-mode set up (2026-06-10):** products + prices created — Grove `grove_monthly`
+    (now **$29/mo**), Canopy `canopy_monthly` (now **$79/mo**) — see the 2026-06-13 reprice
+    note below; top-up `credit_topup` (now **$10**/1,000 credits — see M6.5 note below).
+    Price IDs in `STRIPE_PRICE_GROVE/CANOPY/TOPUP`. Webhook endpoint `we_…` registered at
     `https://nibbin.com/api/stripe/webhook` (checkout.session.completed, invoice.paid,
     customer.subscription.updated/deleted). Billing code in `apps/web` (`lib/billing`, `lib/stripe`,
     `app/billing`, `app/api/stripe/webhook`); the webhook writes subscription rows + credit grants
@@ -62,6 +63,15 @@
     `STRIPE_PRICE_TOPUP` updated in `apps/web/.env.local` AND in **Vercel prod** (production env,
     verified `price_1Thad…`); prod redeployed to pick it up. **TODO (John):** recreate the
     equivalent top-up price in **live** Stripe mode at launch and repoint `STRIPE_PRICE_TOPUP`.
+  - **Grove/Canopy reprice (2026-06-13):** founder decision $19→$29 and $49→$79. New **test-mode**
+    recurring prices created and set as each product's default: Grove `price_1ThwWkE6MwGkrdl0OVkmdr5z`
+    ($29/mo), Canopy `price_1ThwWlE6MwGkrdl06fIDoc1N` ($79/mo). `STRIPE_PRICE_GROVE/CANOPY` updated
+    in `apps/web/.env.local`; `@nibbin/shared` `TIERS.priceUsdCents` updated to 2900/7900 (+ test).
+    The old $19/$49 prices (`price_1Tgxcp…` / `price_1Tgxcq…`) were left **active** (not archived)
+    so the still-old Vercel env keeps working until repointed. **TODO (John):** (1) update
+    `STRIPE_PRICE_GROVE/CANOPY` in **Vercel prod** to the new IDs and redeploy, then archive the old
+    $19/$49 prices; (2) recreate Grove/Canopy at $29/$79 in **live** Stripe mode at launch alongside
+    the top-up. Margin gate unaffected — higher prices only widen it (see NIBBIN-PRICING.md §5.3).
 - **Model API (Anthropic) — wired at M6.5 (2026-06-12):**
   - `ANTHROPIC_API_KEY` — server-only (never `NEXT_PUBLIC_`, never in a client bundle; read in
     `apps/web/lib/llm/client.ts`). **Set 2026-06-12:** GitHub `dev`/`staging`/`prod` environment

@@ -34,8 +34,8 @@ export type WeightClass = keyof typeof WEIGHTS;
 
 export const TIERS = {
   hatchling: { priceUsdCents: 0, monthlyCredits: 100, maxNibbins: 2 as number | null, topUpsAllowed: false },
-  grove: { priceUsdCents: 1900, monthlyCredits: 1000, maxNibbins: 5 as number | null, topUpsAllowed: false },
-  canopy: { priceUsdCents: 4900, monthlyCredits: 5000, maxNibbins: null as number | null, topUpsAllowed: true },
+  grove: { priceUsdCents: 2900, monthlyCredits: 1000, maxNibbins: 5 as number | null, topUpsAllowed: false },
+  canopy: { priceUsdCents: 7900, monthlyCredits: 5000, maxNibbins: null as number | null, topUpsAllowed: true },
 } as const;
 
 export type Tier = keyof typeof TIERS;
