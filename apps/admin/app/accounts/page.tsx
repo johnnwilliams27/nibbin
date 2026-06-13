@@ -35,7 +35,15 @@ export default async function AccountsPage({
   return (
     <main className={styles.page}>
       <header className={styles.topbar}>
-        <span className={styles.brand}>Nibbin · staff</span>
+        <span className={styles.nav}>
+          <span className={styles.brand}>Nibbin · staff</span>
+          <a className={`${styles.navLink} ${styles.navActive}`} href="/accounts">
+            Accounts
+          </a>
+          <a className={styles.navLink} href="/waitlist">
+            Waitlist
+          </a>
+        </span>
         <span className={styles.who}>
           {staff.email} · {staff.role}
           <form action="/auth/signout" method="post" className={styles.inlineForm}>
