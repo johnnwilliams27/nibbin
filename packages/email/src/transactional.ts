@@ -99,14 +99,12 @@ function renderHtml(email: TransactionalEmail, postalAddress?: string): string {
         </table>`
     : '';
 
-  const cta = email.cta
-    ? `
-          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:20px 0 0;">
-            <tr><td style="background:${MOSS_DEEP};border-radius:4px;">
-              <a href="${esc(email.cta.url)}" style="display:inline-block;padding:11px 20px;font-family:${FONT_BODY};font-size:14px;font-weight:700;color:#FFFFFF;text-decoration:none;">${esc(email.cta.label)}</a>
-            </td></tr>
-          </table>`
-    : '';
+  // CTA button, on one line so the suppression applies. The href URL is
+  // app-generated (Supabase invite link / our signed waitlist token), never user
+  // input, and esc()-escaped — raw-html-format is a false positive here (see
+  // packages/redaction/src/battery.ts for the same convention).
+  // nosemgrep: javascript.express.security.injection.raw-html-format.raw-html-format
+  const cta = email.cta ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:20px 0 0;"><tr><td style="background:${MOSS_DEEP};border-radius:4px;"><a href="${esc(email.cta.url)}" style="display:inline-block;padding:11px 20px;font-family:${FONT_BODY};font-size:14px;font-weight:700;color:#FFFFFF;text-decoration:none;">${esc(email.cta.label)}</a></td></tr></table>` : '';
 
   const footnote = email.footnote
     ? `<p style="margin:14px 0 0;font-family:${FONT_BODY};font-size:12.5px;line-height:1.6;color:${INK_SECONDARY};">${esc(email.footnote)}</p>`
