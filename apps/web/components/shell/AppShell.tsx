@@ -4,10 +4,11 @@ import Link from 'next/link';
 import { useState, type ReactNode } from 'react';
 import styles from './shell.module.css';
 
-export type NavKey = 'grove' | 'shop' | 'notifications' | 'billing' | 'settings';
+export type NavKey = 'grove' | 'memory' | 'shop' | 'notifications' | 'billing' | 'settings';
 
 const NAV: { key: NavKey; label: string; href: string }[] = [
   { key: 'grove', label: 'Grove', href: '/app/grove' },
+  { key: 'memory', label: 'Memory', href: '/app/memory' },
   { key: 'shop', label: 'Agent Shop', href: '/app/shop' },
   { key: 'notifications', label: 'Leaves', href: '/app/notifications' },
   { key: 'billing', label: 'Plan & credits', href: '/billing' },
