@@ -111,11 +111,11 @@ export default function Home() {
           <div>
             <span className="eyebrow">AI agents for freelancers</span>
             <h1>
-              Little creatures that <em>grow up</em> working for you.
+              Little helpers that <em>grow up</em> working for you.
             </h1>
             <p className="lede">
               Hatch your first Nibbin in minutes. The Grovekeeper connects your tools, scans for busywork, and
-              staffs it with small creatures that learn your way of doing things, earn your trust draft by draft,
+              staffs it with small helpers that learn your way of doing things, earn your trust draft by draft,
               and graduate to handling the boring parts for real. A two-week Field Study runs quietly alongside and
               deepens the map into a full diagnosis.
             </p>
