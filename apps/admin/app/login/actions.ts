@@ -2,21 +2,33 @@
 
 import { redirect } from 'next/navigation';
 import { createClient } from '../../lib/supabase/server';
-import { siteOrigin } from '../../lib/site-url';
+import { adminClient } from '../../lib/supabase/admin';
 
-export async function sendStaffLink(formData: FormData) {
-  const email = String(formData.get('email') ?? '').trim();
-  if (!email) redirect('/login?error=email');
+/**
+ * Staff sign-in. Same Supabase identity + password as the product app — "staff"
+ * is a permission (staff_users, via staff_identity_for_email), not a separate
+ * credential. Sign in, then require the staff gate; a valid NON-staff session is
+ * signed out and denied, so admin never grants access to an ordinary product user.
+ */
+export async function signInStaff(formData: FormData) {
+  const email = String(formData.get('email') ?? '')
+    .trim()
+    .toLowerCase();
+  const password = String(formData.get('password') ?? '');
+  if (!email || !password) redirect('/login?error=missing');
 
   const supabase = await createClient();
-  // shouldCreateUser:false — staff don't self-register. Staff auth users are
-  // provisioned out of band; the admin login must never mint auth users for
-  // arbitrary emails (red-team P1).
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: { emailRedirectTo: `${siteOrigin()}/auth/callback`, shouldCreateUser: false },
-  });
-  if (error) redirect('/login?error=send');
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error || !data.user?.email) redirect('/login?error=credentials');
 
-  redirect(`/login?sent=${encodeURIComponent(email)}`);
+  // Exact, wildcard-free staff match via the RPC (red-team P0) — never .ilike().
+  const { data: staffRows } = await adminClient().rpc('staff_identity_for_email', {
+    p_email: data.user.email,
+  });
+  if (!Array.isArray(staffRows) || staffRows.length === 0) {
+    await supabase.auth.signOut();
+    redirect('/login?error=denied');
+  }
+
+  redirect('/accounts');
 }

@@ -12,7 +12,7 @@ export function inviteEmail(link: string): TransactionalEmail {
     preheader: 'Create your account — the Grovekeeper is waiting.',
     eyebrow: 'Founding Grove · your seat is ready',
     title: 'A seat just opened in the grove.',
-    body: "You're in. Create your account and the Grovekeeper will be waiting to hatch your first Nibbin — about ten minutes, start to finish.",
+    body: "You're in. Create your account — you'll choose a password, then the Grovekeeper will be waiting to hatch your first Nibbin (about ten minutes, start to finish).",
     cards: [
       {
         title: 'What happens next',
@@ -55,15 +55,15 @@ export function welcomeEmail(appUrl: string, downloadUrl?: string): Transactiona
   };
 }
 
-/** Branded passwordless sign-in link (for when we move auth mail off Supabase defaults). */
-export function signInEmail(link: string): TransactionalEmail {
+/** Password reset — sent via Resend so it isn't subject to Supabase's email throttle. */
+export function passwordResetEmail(link: string): TransactionalEmail {
   return {
-    subject: 'Your sign-in link',
-    preheader: 'Tap to sign in — the link works once and expires soon.',
-    eyebrow: 'Sign in',
-    title: 'Your sign-in link',
-    body: 'Tap below to sign in to your grove. The link works once and expires in 15 minutes. If you didn’t ask to sign in, you can safely ignore this.',
-    cta: { label: 'Sign in to Nibbin', url: link },
+    subject: 'Reset your Nibbin password',
+    preheader: 'Choose a new password — the link works once and expires soon.',
+    eyebrow: 'Password reset',
+    title: 'Let’s get you a new password.',
+    body: 'Click below to choose a new password for your grove. The link works once and expires in an hour. If you didn’t ask to reset it, you can safely ignore this — nothing changes.',
+    cta: { label: 'Set a new password', url: link },
     creature: { species: 'Keeper', size: 88 },
   };
 }

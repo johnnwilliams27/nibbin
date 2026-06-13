@@ -54,16 +54,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // token_hash + verifyOtp works server-side with no PKCE verifier.
   // type:'invite' mints a new auth user; an existing address (re-invite) falls back
   // to a 'magiclink' so the link still signs them in.
+  // New address → invite link (they create a password). An address that already
+  // has an account (re-invite) → recovery link, so they set/reset a password
+  // instead of minting a duplicate. Both land on /auth/callback → set-password.
   let hashedToken: string | null = null;
-  let linkType: 'invite' | 'magiclink' = 'invite';
+  let linkType: 'invite' | 'recovery' = 'invite';
   const invite = await svc.auth.admin.generateLink({ type: 'invite', email });
   if (invite.error || !invite.data?.properties?.hashed_token) {
-    const magic = await svc.auth.admin.generateLink({ type: 'magiclink', email });
-    if (magic.error || !magic.data?.properties?.hashed_token) {
+    const recovery = await svc.auth.admin.generateLink({ type: 'recovery', email });
+    if (recovery.error || !recovery.data?.properties?.hashed_token) {
       return NextResponse.json({ error: 'invite_failed' }, { status: 502 });
     }
-    hashedToken = magic.data.properties.hashed_token;
-    linkType = 'magiclink';
+    hashedToken = recovery.data.properties.hashed_token;
+    linkType = 'recovery';
   } else {
     hashedToken = invite.data.properties.hashed_token;
     linkType = 'invite';

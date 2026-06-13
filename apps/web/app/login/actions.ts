@@ -2,31 +2,25 @@
 
 import { redirect } from 'next/navigation';
 import { createClient } from '../../lib/supabase/server';
-import { siteOrigin } from '../../lib/site-url';
 
-export async function sendMagicLink(formData: FormData) {
-  const email = String(formData.get('email') ?? '').trim();
-  if (!email) redirect('/login?error=email');
+/**
+ * Email + password sign-in against the shared Supabase identity (the same
+ * account used by the web app, admin, and desktop — "staff" is a permission on
+ * top, not a separate login). Sign-up is invite-only: the account is provisioned
+ * by an admin invite and the user sets their password via that link, so there is
+ * no self-registration here.
+ */
+export async function signIn(formData: FormData) {
+  const email = String(formData.get('email') ?? '')
+    .trim()
+    .toLowerCase();
+  const password = String(formData.get('password') ?? '');
+  if (!email || !password) redirect('/login?error=missing');
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: {
-      // Pinned origin (never the Host header) so the link can't be redirected to
-      // an attacker domain. Supabase's redirect allow-list is the second gate.
-      emailRedirectTo: `${siteOrigin()}/auth/callback`,
-      // Invite-only during the Founding Grove: a sign-in attempt must never MINT a
-      // new account. Admin-issued invites create the user first; this only links an
-      // existing one. An unknown email therefore gets no mail.
-      shouldCreateUser: false,
-    },
-  });
-  // No account-existence oracle: an unknown / non-invited email returns an auth
-  // error (422 / "signups not allowed"), but we render the same neutral "sent"
-  // state as a real send. Only a genuine infrastructure failure asks them to retry.
-  if (error && error.status !== 422 && !/signup|not allowed|otp/i.test(error.message ?? '')) {
-    redirect('/login?error=send');
-  }
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  // One neutral message for any failure — no "which part was wrong" oracle.
+  if (error) redirect('/login?error=credentials');
 
-  redirect(`/login?sent=${encodeURIComponent(email)}`);
+  redirect('/app');
 }
