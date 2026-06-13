@@ -1,0 +1,197 @@
+/* About — a calm reading surface in the brand system. Tokens only (tokens.css):
+   paper page, canopy callout cards, moss accents, Bricolage display + Archivo
+   body + IBM Plex mono eyebrows, sentence case, generous measure. */
+
+.page {
+  min-height: 100dvh;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.nav {
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--paper) 92%, transparent);
+  position: sticky;
+  top: 0;
+  backdrop-filter: blur(8px);
+  z-index: 10;
+}
+.navIn {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 0 24px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+}
+.navRight {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.navLink {
+  font-size: 14px;
+  color: var(--ink-soft);
+  text-decoration: none;
+}
+.navLink:hover {
+  color: var(--ink);
+}
+.navCta {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--moss);
+  padding: 8px 16px;
+  border-radius: var(--r-button);
+  text-decoration: none;
+}
+.navCta:hover {
+  background: var(--moss-deep);
+}
+
+.wrap {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.header {
+  padding: 64px 0 8px;
+}
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--moss-deep);
+  font-weight: 600;
+}
+.h1 {
+  font-family: var(--display);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-size: clamp(32px, 5vw, 44px);
+  line-height: 1.1;
+  margin: 12px 0 10px;
+  color: var(--ink);
+}
+.tagline {
+  font-size: 18px;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+.body {
+  padding: 16px 0 90px;
+}
+.body h2 {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 22px;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  margin: 44px 0 12px;
+}
+.body p {
+  font-size: 16px;
+  line-height: 1.7;
+  color: var(--ink-soft);
+  margin: 0 0 14px;
+  max-width: 64ch;
+}
+.body strong {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.box {
+  background: var(--canopy);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-2);
+  padding: 22px 24px;
+  margin: 20px 0;
+}
+.box ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.box li {
+  font-size: 15.5px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.box li:first-child {
+  padding-top: 0;
+}
+.box li:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+.box li strong {
+  color: var(--ink);
+}
+
+.cta {
+  margin: 48px 0 0;
+  padding: 32px;
+  background: var(--canopy);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-2);
+  text-align: center;
+}
+.cta h2 {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 24px;
+  color: var(--ink);
+  margin: 0 0 8px;
+}
+.cta p {
+  color: var(--ink-soft);
+  margin: 0 0 18px;
+}
+.ctaBtn {
+  display: inline-block;
+  font-weight: 700;
+  color: #fff;
+  background: var(--moss);
+  padding: 12px 22px;
+  border-radius: var(--r-button);
+  text-decoration: none;
+}
+.ctaBtn:hover {
+  background: var(--moss-deep);
+}
+
+.footer {
+  border-top: 1px solid var(--line);
+  padding: 26px 0 50px;
+}
+.footerIn {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 24px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.footerIn a {
+  color: inherit;
+}
