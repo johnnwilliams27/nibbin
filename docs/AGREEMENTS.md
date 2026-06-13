@@ -9,6 +9,11 @@
 - Conventional commits. Migrations as in-repo files (Supabase CLI); never dashboard-only.
 - Locked vocabulary in all user-facing copy: Nibbin(s), grove, hatch, adopt, Agent
   School (Egg -> Student -> Senior -> Graduate), Grovekeeper, Field Notes, diagnosis,
-  Field Study, nibble. Never: bot, assistant, "as an AI".
+  Field Study, nibble. The agents are **Nibbins** (the noun) and may be described warmly
+  as **"helpers"** (the descriptor) — "a grove of little helpers," "your first helper."
+  Never in user-facing copy: bot, assistant, "as an AI", or **"creature(s)"**. "Creature"
+  is retained ONLY as the internal name of the rendering engine and design-system
+  primitive (@nibbin/creatures, the style guide's Plate 04, the IP term in terms.html) —
+  never customer-facing.
 - When spec and reality conflict, update the Decision Log (SPEC §9) — never drift silently.
 - Staging uses synthetic data only. Prod data never leaves prod.
