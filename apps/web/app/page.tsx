@@ -109,7 +109,7 @@ export default function Home() {
         </div>
         <div className="wrap hero-grid">
           <div>
-            <span className="eyebrow">AI agents for creative freelancers</span>
+            <span className="eyebrow">AI agents for freelancers</span>
             <h1>
               Little creatures that <em>grow up</em> working for you.
             </h1>
@@ -183,7 +183,7 @@ export default function Home() {
             <h2>Your first agent in 10 minutes. Smarter by day fifteen.</h2>
             <p>
               Most tools make you wait or make you configure. Nibbin does neither: the Grovekeeper puts agents to
-              work on day one, while an optional study quietly builds the deeper map.
+              work on day one, while your Field Study builds the deeper map.
             </p>
           </div>
           <div className="steps reveal">

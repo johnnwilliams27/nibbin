@@ -92,9 +92,11 @@ down June 2026).
 
 ## 6. Targets
 
-**Category line:** "AI agents for creative freelancers" (SEO/meta/PH/eyebrow). Human copy:
-"people who work for themselves." Graduate to "AI agents for freelancers" only at
-≥3-vertical case-study coverage.
+**Category line:** "AI agents for freelancers" (SEO/meta/PH/eyebrow). Human copy:
+"people who work for themselves." (Founder decision 2026-06-12: lead with the broader
+"freelancers" line now rather than waiting for the ≥3-vertical trigger — cleaner and
+more inclusive at this stage. The wedge sequence below still governs *who we serve
+first*; only the public category label widened.)
 
 **ICP filter (every vertical must pass):** solo or ≤2 people; client-services revenue loop
 (inquiry→quote→deposit→schedule→deliver→revise→invoice→review); ≥5 hrs/week admin; lives in
