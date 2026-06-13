@@ -47,21 +47,28 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   const svc = serviceClient();
-  const redirectTo = `${siteOrigin()}/auth/callback`;
 
-  // type:'invite' mints a new auth user. If the address already has an account
-  // (re-invite), fall back to a sign-in (magiclink) so the link still works.
-  let link: string | null = null;
-  const invite = await svc.auth.admin.generateLink({ type: 'invite', email, options: { redirectTo } });
-  if (invite.error || !invite.data?.properties?.action_link) {
-    const magic = await svc.auth.admin.generateLink({ type: 'magiclink', email, options: { redirectTo } });
-    if (magic.error || !magic.data?.properties?.action_link) {
+  // Mint a token_hash and build a link to OUR callback (verifyOtp flow) — NOT the
+  // raw action_link. Admin-generated action_links resolve via Supabase's implicit
+  // /verify flow (session in the URL hash), which a server callback can't read;
+  // token_hash + verifyOtp works server-side with no PKCE verifier.
+  // type:'invite' mints a new auth user; an existing address (re-invite) falls back
+  // to a 'magiclink' so the link still signs them in.
+  let hashedToken: string | null = null;
+  let linkType: 'invite' | 'magiclink' = 'invite';
+  const invite = await svc.auth.admin.generateLink({ type: 'invite', email });
+  if (invite.error || !invite.data?.properties?.hashed_token) {
+    const magic = await svc.auth.admin.generateLink({ type: 'magiclink', email });
+    if (magic.error || !magic.data?.properties?.hashed_token) {
       return NextResponse.json({ error: 'invite_failed' }, { status: 502 });
     }
-    link = magic.data.properties.action_link;
+    hashedToken = magic.data.properties.hashed_token;
+    linkType = 'magiclink';
   } else {
-    link = invite.data.properties.action_link;
+    hashedToken = invite.data.properties.hashed_token;
+    linkType = 'invite';
   }
+  const link = `${siteOrigin()}/auth/callback?token_hash=${encodeURIComponent(hashedToken)}&type=${linkType}`;
 
   try {
     const msg = renderTransactional(inviteEmail(link), { from, to: email, postalAddress });
