@@ -58,6 +58,8 @@ export interface DiagnosisWorkflow {
   friction: string | null;
   /** Shop template key the user can adopt to take this on, or null. */
   recommendedNibbin: string | null;
+  /** One-line human description from the Opus labeling pass (optional). */
+  description?: string;
 }
 
 /** The synthesized diagnosis map — the data behind the Day-14 reveal. */
