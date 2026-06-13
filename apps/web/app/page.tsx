@@ -94,6 +94,7 @@ export default function Home() {
             <a href="#demo">Live demo</a>
             <a href="#privacy">Privacy</a>
             <a href="#pricing">Pricing</a>
+            <a href="/about">About</a>
             <a href="/login">Login</a>
           </div>
           <a className="nav-cta" href="#join">
