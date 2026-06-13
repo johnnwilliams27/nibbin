@@ -19,7 +19,7 @@ import {
   type QuestionCard,
   type UnderstandingProfile,
 } from '@nibbin/keeper';
-import { advanceGroveAction, keeperChatAction, understandStepAction } from './actions';
+import { advanceGroveAction, keeperChatAction, skipUnderstandingAction, understandStepAction } from './actions';
 import { CardView } from './cards';
 import { KeeperSprite } from './KeeperSprite';
 import styles from './grove.module.css';
@@ -437,6 +437,22 @@ export function GroveChat({
                   Say it
                 </button>
               </form>
+              {step === 'understand' && !busy && (
+                <button
+                  type="button"
+                  className={styles.skipAhead}
+                  onClick={() =>
+                    void runTurn("Skip ahead — I'll set up in the app", async () => {
+                      const p = await skipUnderstandingAction();
+                      setStep(p.step);
+                      setKeeperName(p.keeperName);
+                      return { messages: p.messages, expression: p.expression };
+                    })
+                  }
+                >
+                  Skip ahead — I&apos;ll set up in the app
+                </button>
+              )}
             </div>
           </div>
         </div>
