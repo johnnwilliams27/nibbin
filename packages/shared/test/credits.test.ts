@@ -42,8 +42,8 @@ describe('locked constants (SPEC §6.2 / §6.4)', () => {
 
   it('tiers match locked pricing', () => {
     expect(TIERS.hatchling).toMatchObject({ priceUsdCents: 0, monthlyCredits: 100, maxNibbins: 2 });
-    expect(TIERS.grove).toMatchObject({ priceUsdCents: 1900, monthlyCredits: 1000, maxNibbins: 5 });
-    expect(TIERS.canopy).toMatchObject({ priceUsdCents: 4900, monthlyCredits: 5000, maxNibbins: null, topUpsAllowed: true });
+    expect(TIERS.grove).toMatchObject({ priceUsdCents: 2900, monthlyCredits: 1000, maxNibbins: 5 });
+    expect(TIERS.canopy).toMatchObject({ priceUsdCents: 7900, monthlyCredits: 5000, maxNibbins: null, topUpsAllowed: true });
     expect(TIERS.hatchling.topUpsAllowed).toBe(false);
     expect(TIERS.grove.topUpsAllowed).toBe(false);
   });
