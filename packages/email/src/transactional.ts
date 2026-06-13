@@ -68,6 +68,15 @@ export interface TransactionalRenderOptions {
 function renderHtml(email: TransactionalEmail, postalAddress?: string): string {
   const creature = buildCreature(email.creature ?? KEEPER);
 
+  // Pre-escape every dynamic value into its own fragment, so the returned
+  // document template interpolates only already-built strings — no unescaped
+  // parameter access in the response HTML. esc() is the sanitizer; the CTA URL
+  // is app-generated (Supabase invite link / signed waitlist token), not input.
+  const preheaderTxt = esc(email.preheader);
+  const eyebrowTxt = esc(email.eyebrow);
+  const titleTxt = esc(email.title);
+  const bodyTxt = esc(email.body);
+
   const cards = (email.cards ?? [])
     .map(
       (c) => `
@@ -115,15 +124,15 @@ function renderHtml(email: TransactionalEmail, postalAddress?: string): string {
 <style>${creatureCss}</style>
 </head>
 <body style="margin:0;padding:0;background:${SHELL};">
-  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${esc(email.preheader)}</div>
+  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${preheaderTxt}</div>
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${SHELL};">
     <tr><td align="center" style="padding:32px 16px;">
       <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;max-width:560px;">
         <tr><td align="center" style="padding:0 0 16px;">${creature}</td></tr>
         <tr><td style="background:${CANOPY};border:1px solid ${UNDERSTORY};border-radius:12px;padding:28px;">
-          <p style="margin:0 0 10px;font-family:${FONT_MONO};font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:${INK_SECONDARY};">${esc(email.eyebrow)}</p>
-          <h1 style="margin:0 0 12px;font-family:${FONT_DISPLAY};font-size:24px;line-height:1.25;font-weight:800;color:${INK};">${esc(email.title)}</h1>
-          <p style="margin:0 0 18px;font-family:${FONT_BODY};font-size:15px;line-height:1.6;color:${INK};">${esc(email.body)}</p>
+          <p style="margin:0 0 10px;font-family:${FONT_MONO};font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:${INK_SECONDARY};">${eyebrowTxt}</p>
+          <h1 style="margin:0 0 12px;font-family:${FONT_DISPLAY};font-size:24px;line-height:1.25;font-weight:800;color:${INK};">${titleTxt}</h1>
+          <p style="margin:0 0 18px;font-family:${FONT_BODY};font-size:15px;line-height:1.6;color:${INK};">${bodyTxt}</p>
           ${cards}
           ${celebration}
           ${cta}
