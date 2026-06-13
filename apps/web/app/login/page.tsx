@@ -29,8 +29,9 @@ export default async function LoginPage({
           <>
             <h1 className={styles.heading}>Check your email</h1>
             <p className={styles.body}>
-              I sent a magic link to <strong>{sent}</strong>. Click it and you&apos;re in — no
-              password to remember.
+              If an account exists for <strong>{sent}</strong>, a sign-in link is on its way —
+              click it and you&apos;re in, no password to remember. Accounts are invite-only
+              during the Founding Grove.
             </p>
             <a className={styles.subtleLink} href="/login">
               Use a different email
@@ -76,6 +77,11 @@ export default async function LoginPage({
               </button>
               <p className={styles.soon}>Google and Apple sign-in are coming soon.</p>
             </div>
+
+            <p className={styles.soon}>
+              New to Nibbin? Accounts are invite-only during the Founding Grove —{' '}
+              <a href="/#join">join the waitlist</a>.
+            </p>
           </>
         )}
       </div>
