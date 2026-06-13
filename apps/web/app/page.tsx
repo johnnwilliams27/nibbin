@@ -68,7 +68,7 @@ const PRICING = [
     tier: 'Grove',
     feat: true,
     cta: 'Join the waitlist',
-    items: ['Up to 5 Nibbins', '1,000 actions / month', 'Agent School graduation + full run logs', 'Quarterly re-diagnosis'],
+    items: ['Up to 5 Nibbins', '1,000 actions / month', 'Agent School graduation + full run logs', 'Re-diagnosis on demand'],
   },
   {
     tier: 'Canopy',
