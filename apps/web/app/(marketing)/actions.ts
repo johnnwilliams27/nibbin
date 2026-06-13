@@ -1,6 +1,6 @@
 'use server';
 
-import { normalizeEmail, resendProvider } from '@nibbin/email';
+import { normalizeEmail, renderTransactional, resendProvider, waitlistConfirmEmail } from '@nibbin/email';
 import { serviceClient } from '../../lib/supabase/service';
 import { waitlistToken } from '../../lib/waitlist/token';
 
@@ -77,23 +77,12 @@ export async function joinWaitlist(_prev: JoinResult | null, formData: FormData)
     const apiKey = process.env.RESEND_API_KEY;
     const secret = process.env.EMAIL_UNSUBSCRIBE_SECRET;
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://nibbin.com';
-    const from = process.env.EMAIL_FROM ?? 'Nibbin <keeper@mail.nibbin.com>';
+    const from = process.env.EMAIL_FROM ?? 'Nibbin <keeper@nibbin.com>';
+    const postalAddress = process.env.EMAIL_POSTAL_ADDRESS;
     if (apiKey && secret) {
       const link = `${siteUrl.replace(/\/$/, '')}/waitlist/confirm?token=${encodeURIComponent(waitlistToken(email, secret))}`;
-      const text = `You're one click from the Founding Grove.\n\nConfirm your seat: ${link}\n\nIf you didn't ask to join Nibbin's waitlist, ignore this — nothing happens without your click.`;
-      const html = `<div style="font-family:Archivo,Helvetica,Arial,sans-serif;color:#23291A;background:#FBF6E6;padding:32px">
-  <p style="font-size:16px;margin:0 0 16px">You're one click from the Founding Grove.</p>
-  <p style="margin:0 0 24px"><a href="${link}" style="display:inline-block;background:#23291A;color:#F5F6F2;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;text-decoration:none;padding:12px 22px;border-radius:4px">Confirm your seat</a></p>
-  <p style="font-size:12px;color:#5A6248;margin:0">If you didn't ask to join Nibbin's waitlist, ignore this — nothing happens without your click.</p>
-</div>`;
-      await resendProvider(apiKey).send({
-        from,
-        to: email,
-        subject: 'Confirm your seat in the Founding Grove',
-        html,
-        text,
-        headers: {},
-      });
+      const msg = renderTransactional(waitlistConfirmEmail(link), { from, to: email, postalAddress });
+      await resendProvider(apiKey).send(msg);
       // stamp the send so the cooldown above can throttle re-submits
       await svc.from('waitlist').update({ last_email_sent_at: new Date().toISOString() }).eq('email', email);
     }
