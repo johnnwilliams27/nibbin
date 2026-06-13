@@ -14,6 +14,8 @@ import {
   type OnboardingInput,
   type OnboardingState,
   type OnboardingStep,
+  type UnderstandingProfile,
+  type UnderstandingState,
 } from '@nibbin/keeper';
 
 export interface GroveRow {
@@ -36,6 +38,47 @@ function parseAnswers(raw: unknown): OnboardingAnswers {
   return out;
 }
 
+function emptyProfileFallback(): UnderstandingProfile {
+  return { jobTitle: null, businessModel: 'unknown', workShape: [], channels: [], tools: [], pains: [], confidence: 0, raw: [] };
+}
+
+function parseUnderstanding(raw: unknown): UnderstandingState | null {
+  if (typeof raw !== 'object' || raw === null) return null;
+  const o = raw as Record<string, unknown>;
+  const u = o._understanding;
+  if (typeof u !== 'object' || u === null) return null;
+  // trust-but-bound: the row is the user's own; re-validate shape, clamp sizes.
+  const s = u as Partial<UnderstandingState>;
+  if (!s.currentQuestion || typeof (s.currentQuestion as { prompt?: unknown }).prompt !== 'string') return null;
+  return {
+    turns: Array.isArray(s.turns) ? s.turns.slice(0, 5) as UnderstandingState['turns'] : [],
+    profile: (s.profile ?? null) as UnderstandingState['profile'] ?? emptyProfileFallback(),
+    askedCount: typeof s.askedCount === 'number' ? Math.max(0, Math.min(5, s.askedCount)) : 0,
+    fallbackIndex: typeof s.fallbackIndex === 'number' ? Math.max(0, s.fallbackIndex) : 0,
+    currentQuestion: s.currentQuestion as UnderstandingState['currentQuestion'],
+  };
+}
+
+function parseProfile(raw: unknown): UnderstandingProfile | null {
+  if (typeof raw !== 'object' || raw === null) return null;
+  const p = (raw as Record<string, unknown>)._profile;
+  return typeof p === 'object' && p !== null ? (p as UnderstandingProfile) : null;
+}
+
+interface SaveShape {
+  answers: OnboardingAnswers;
+  understanding: UnderstandingState | null;
+  profile: UnderstandingProfile | null;
+}
+
+/** Pack the legacy answers + understanding + profile into the answers jsonb. */
+export function answersForSave(s: SaveShape): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...s.answers };
+  if (s.understanding) out._understanding = s.understanding;
+  if (s.profile) out._profile = s.profile;
+  return out;
+}
+
 export function stateFromRow(row: GroveRow | null, userName: string | null): OnboardingState {
   if (!row) return { ...initialOnboardingState(), userName };
   const step: OnboardingStep = (ONBOARDING_STEPS as readonly string[]).includes(row.onboarding_step)
@@ -45,7 +88,14 @@ export function stateFromRow(row: GroveRow | null, userName: string | null): Onb
     typeof row.keeper_name === 'string' && row.keeper_name.trim() !== ''
       ? row.keeper_name.slice(0, NAME_MAX)
       : null;
-  return { step, userName, keeperName, answers: parseAnswers(row.answers) };
+  return {
+    step,
+    userName,
+    keeperName,
+    answers: parseAnswers(row.answers),
+    understanding: parseUnderstanding(row.answers),
+    profile: parseProfile(row.answers),
+  };
 }
 
 /** Shape-check client input before it reaches the state machine. */
