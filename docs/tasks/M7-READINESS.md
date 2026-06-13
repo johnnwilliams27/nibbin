@@ -88,11 +88,40 @@ the task below (runs fine in parallel with M6.5 — different surfaces).
       content are running before the study generates material
 - [ ] **Support path live:** hello@ receiving, Concierge triage at Student stage
 
+## 2.5 Tester onboarding & access — named 2026-06-13 (founder)
+
+The meta-lesson in action: these were implicit and therefore unbuilt. Named now so a
+design partner can be invited, get in, install the app, and act from the website
+without hand-holding.
+
+- [ ] **Public Login + passwordless flow** — a "Login" entry on nibbin.com → the
+      existing magic-link page. Identifier is the email (no usernames); there is no
+      password (passwordless), so "forgot password" is just "send another link."
+      Sign-up stays invite-only via `signInWithOtp({ shouldCreateUser: false })`, so an
+      unknown email can't self-mint an account. *(Login button + gating: shipped on
+      `feature/tester-access`.)*
+- [ ] **Waitlist → admin invite → account creation** — an "Invite" action on the admin
+      waitlist view that provisions the account and sends the account-creation link.
+      The view shipped read-only (#58); the invite action + invite email are the
+      missing half.
+- [ ] **Branded transactional & auth emails** — route the sign-in link, the invite, and
+      a welcome email through the branded template (Resend), and migrate the hand-rolled
+      waitlist-confirmation onto it. Today the auth emails are Supabase's unbranded
+      defaults — the first thing a tester sees. Full set + previews in
+      `reference/email-previews.html`. *(Supabase custom-SMTP + template is a dashboard
+      step; the generate-link-and-send-ourselves path is buildable in-repo.)*
+- [ ] **App download + distribution** — a `/download` surface, signed installer
+      artifacts, and an update channel. Today there's a Windows dev build and a cert on
+      order, but nowhere for a tester to actually get the app.
+- [ ] **macOS build** (promoted from §3) — testers include photographers, who skew
+      macOS, so the deferral trigger has fired. Needs a Mac + Apple Developer signing;
+      an infra/hardware task, not a code change.
+
 ## 3. DEFERRABLE — explicitly fine to skip for M7, with triggers
 
-- **macOS bring-up** (M6 caveat: budgets + <100ms pause unverified) — John's study runs on
-  Windows. TRIGGER: before design-partner onboarding, because photographers skew heavily
-  macOS; get a Mac mini (or MacStadium/GitHub macOS runners) on order now
+- **macOS bring-up** — PROMOTED to §2.5 (2026-06-13): the design-partner trigger has fired
+  (testers skew macOS). M6 caveat still applies (budgets + <100ms pause unverified); needs a
+  Mac mini (or MacStadium/GitHub macOS runners) + an Apple Developer cert
 - **Stripe live mode** — user-zero on test mode is fine. TRIGGER: first paying design partner
 - **Status page + uptime monitoring** — TRIGGER: first external user
 - **Business Pulse, template marketplace, everything in the anti-feature register** — per
