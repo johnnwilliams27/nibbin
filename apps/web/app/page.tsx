@@ -51,36 +51,30 @@ const PRIVACY = [
     p: 'Connections start read-only. A Nibbin earns the ability to send, per task, only after you grant it — and even then, its accuracy was verified on drafts you approved first.',
   },
   {
-    pi: 'No training, no sale',
+    pi: 'Yours to control',
     h: 'Your data stays yours',
-    p: 'We never sell your data and never train models on it without a separate, default-off opt-in. Model providers are contractually barred from retaining or training on your content.',
+    p: 'We never sell your data. We use it to make Nibbin better, and you can opt out anytime in settings. Either way, your screen captures never leave your device.',
   },
 ];
 
 const PRICING = [
   {
-    tier: 'Hatchling',
-    amt: '$0',
-    per: 'free',
+    tier: 'Hatchling — Free',
     feat: false,
     cta: 'Start free',
-    items: ['2 Nibbins', '100 actions / month', 'The Grovekeeper + 90-day scan', 'Agent School + approvals'],
+    items: ['Full 14-day Field Study + diagnosis', '2 Nibbins · 100 actions / month', 'The Grovekeeper + 90-day scan', 'All privacy guarantees, always'],
   },
   {
     tier: 'Grove',
-    amt: '$19',
-    per: '/ month',
     feat: true,
     cta: 'Join the waitlist',
-    items: ['5 Nibbins', '1,000 actions / month', 'The 14-day Field Study + diagnosis', 'Full Agent Shop'],
+    items: ['Up to 5 Nibbins', '1,000 actions / month', 'Agent School graduation + full run logs', 'Quarterly re-diagnosis'],
   },
   {
     tier: 'Canopy',
-    amt: '$49',
-    per: '/ month',
     feat: false,
     cta: 'Join the waitlist',
-    items: ['Unlimited Nibbins', '5,000 actions / month', 'Top-ups at $10 / 1,000 credits', 'Priority support'],
+    items: ['Unlimited Nibbins', '5,000 actions / month', 'Credit top-ups available', 'Priority support'],
   },
 ];
 
@@ -115,7 +109,7 @@ export default function Home() {
         </div>
         <div className="wrap hero-grid">
           <div>
-            <span className="eyebrow">AI agents for creative freelancers</span>
+            <span className="eyebrow">AI agents for freelancers</span>
             <h1>
               Little creatures that <em>grow up</em> working for you.
             </h1>
@@ -189,7 +183,7 @@ export default function Home() {
             <h2>Your first agent in 10 minutes. Smarter by day fifteen.</h2>
             <p>
               Most tools make you wait or make you configure. Nibbin does neither: the Grovekeeper puts agents to
-              work on day one, while an optional study quietly builds the deeper map.
+              work on day one, while your Field Study builds the deeper map.
             </p>
           </div>
           <div className="steps reveal">
@@ -286,19 +280,16 @@ export default function Home() {
         <div className="wrap">
           <div className="sec-head reveal">
             <span className="eyebrow">Simple, honest pricing</span>
-            <h2>Pay for completed work, never seats.</h2>
+            <h2>The diagnosis is free. Pay as your grove grows.</h2>
             <p>
-              An action is one completed task. The meter is always visible in the grove — no surprise bills, never
-              silent degradation.
+              See your full workflow map and two-week study before you pay a cent. An action is one completed task; the
+              meter is always visible in the grove — no surprise bills, never silent degradation.
             </p>
           </div>
           <div className="price-grid reveal">
             {PRICING.map((p) => (
               <div className={`price${p.feat ? ' feat' : ''}`} key={p.tier}>
                 <span className="tier">{p.tier}</span>
-                <div className="amt">
-                  {p.amt} <span>{p.per}</span>
-                </div>
                 <ul>
                   {p.items.map((it) => (
                     <li key={it}>{it}</li>

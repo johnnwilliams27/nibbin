@@ -17,7 +17,7 @@ of clients and afraid of surveillance. Both answers are architectural and we say
 *nothing sends without your approval until it has earned it* (Agent School), and *screen
 captures never leave your device* (Observer). Privacy is a growth asset, not fine print.
 **One-liner:** "Little creatures that grow up working for you."
-**Category line:** "AI agents for creative freelancers" — used in SEO titles, meta,
+**Category line:** "AI agents for freelancers" — used in SEO titles, meta,
 Product Hunt tagline, directories, and the landing eyebrow. Human-voice copy keeps
 "people who work for themselves" (photographers and tattoo artists self-ID as business
 owners, not freelancers; the warmer phrase covers both). Graduate the category line to
@@ -213,4 +213,4 @@ enrichment + small search test). Affiliates are CAC paid on results — turn the
 | Marketing run by agents under Agent School rules | One-man scale + the meta-story is the content | Hire #1 (likely community) when approval queue >20 min/day for 30 days |
 | No paid acquisition before Phase 2 | $19 ACV can't carry cold CAC; trust channels compound | If a paid test hits <3-month payback organically |
 | Community posting never automated | Authenticity is the moat in trust-graph channels | Never |
-| Category = "AI agents for creative freelancers"; human copy = "people who work for themselves" | Beachhead precision + self-ID nuance across verticals | Widen to "freelancers" at ≥3-vertical case-study coverage |
+| Category = "AI agents for freelancers"; human copy = "people who work for themselves" | Broad, clean, self-ID across verticals | Founder decision 2026-06-12: widened from "creative freelancers" now; wedge sequence still governs who we serve first |

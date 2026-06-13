@@ -37,7 +37,7 @@ the task below (runs fine in parallel with M6.5 — different surfaces).
 >    corrections landing first (the gate ruled those become P0 the moment these pages route).
 >    If those aren't merged yet, ship the landing with footer links marked "available at
 >    launch" and open an issue.
-> 5. SEO/meta: title + description using the category line ("AI agents for creative
+> 5. SEO/meta: title + description using the category line ("AI agents for
 >    freelancers"), OG image from the brand suite, sitemap.xml, robots.txt, favicons.
 > 6. Cookieless analytics (Plausible-class) + the §6.12 web events. No consent banner needed
 >    — verify nothing sets tracking cookies.
