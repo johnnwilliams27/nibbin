@@ -1600,7 +1600,142 @@ git commit -m "feat(web): onboarding handoff screen + desktop download CTA"
 
 ---
 
-## Task 15: Full-suite green + cleanup
+## Task 15: Skip-ahead escape — "I'll set up in the app"
+
+**Files:**
+- Modify: `packages/keeper/src/understanding.ts` (add `skipUnderstanding`)
+- Modify: `packages/keeper/src/index.ts` (export it)
+- Modify: `packages/keeper/test/understanding.test.ts`
+- Modify: `apps/web/app/app/grove/actions.ts` (`skipUnderstandingAction`)
+- Modify: `apps/web/app/app/grove/GroveChat.tsx` (persistent skip button)
+
+A persistent affordance during the understand phase that ends it immediately with whatever profile exists (even empty → the `default_floor` handoff). Guarantees no one is trapped in the Q&A, beyond the 5-turn cap.
+
+- [ ] **Step 1: Write the failing test**
+
+Append to `packages/keeper/test/understanding.test.ts`:
+
+```typescript
+import { skipUnderstanding } from '../src/understanding';
+
+describe('skipUnderstanding — the escape hatch', () => {
+  it('ends the phase immediately with whatever profile exists', () => {
+    const turn = skipUnderstanding(understandingState());
+    expect(turn.state.step).toBe('done');
+    expect(turn.state.profile).not.toBeNull();
+    expect(turn.messages.at(-1)!.card.kind).toBe('celebration');
+  });
+
+  it('is a no-op outside the understand phase', () => {
+    const turn = skipUnderstanding({ ...understandingState(), step: 'done' });
+    expect(turn.messages).toEqual([]);
+  });
+});
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `npm test --prefix packages/keeper -- understanding`
+Expected: FAIL — `skipUnderstanding` is not exported.
+
+- [ ] **Step 3: Implement `skipUnderstanding`**
+
+Add to `packages/keeper/src/understanding.ts`:
+
+```typescript
+/** End the understanding phase now, keeping whatever profile exists (the escape). */
+export function skipUnderstanding(state: OnboardingState): KeeperTurn {
+  const u = state.understanding;
+  if (state.step !== 'understand' || !u) {
+    return { state, messages: [], expression: 'idle' };
+  }
+  return {
+    state: { ...state, step: 'done', profile: u.profile },
+    messages: [
+      prose("No trouble — we'll get the rest set up in the app."),
+      msg({ kind: 'celebration', title: copy.DONE.title, detail: copy.DONE.detail, transcript: `${copy.DONE.title}. ${copy.DONE.detail}` }),
+    ],
+    expression: 'presenting',
+  };
+}
+```
+
+Export it from `packages/keeper/src/index.ts` (add `skipUnderstanding` to the `./understanding` export), and add `'skipUnderstanding'` to the C10 surface-test list in `packages/keeper/test/onboarding.test.ts`.
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `npm test --prefix packages/keeper`
+Expected: PASS (understanding tests + the updated C10 surface list).
+
+- [ ] **Step 5: Add `skipUnderstandingAction` (web)**
+
+Append to `apps/web/app/app/grove/actions.ts`:
+
+```typescript
+import { skipUnderstanding } from '@nibbin/keeper';
+
+export async function skipUnderstandingAction(): Promise<GroveTurnPayload> {
+  const { supabase, user, accountId } = await groveSession();
+  const { data: row } = await supabase
+    .from('grove_state').select('keeper_name, onboarding_step, answers').eq('account_id', accountId).maybeSingle<GroveRow>();
+  const { data: me } = await supabase.from('users').select('name').eq('id', user.id).maybeSingle<{ name: string | null }>();
+  const state = stateFromRow(row, me?.name ?? null);
+  const turn = skipUnderstanding(state);
+  if (turn.state.step !== 'done') {
+    return { messages: [], expression: 'idle', step: state.step, keeperName: state.keeperName };
+  }
+  if (turn.state.profile) {
+    await writeHandoff(supabase, accountId, turn.state.profile);
+  }
+  const { error } = await supabase.rpc('save_grove_state', {
+    target_account: accountId,
+    new_step: turn.state.step,
+    new_keeper_name: turn.state.keeperName,
+    new_answers: answersForSave({ answers: turn.state.answers, understanding: turn.state.understanding, profile: turn.state.profile }),
+  });
+  if (error) throw new Error('could not save your grove — try again in a moment');
+  return { messages: turn.messages, expression: turn.expression, step: turn.state.step, keeperName: turn.state.keeperName };
+}
+```
+
+- [ ] **Step 6: Add the persistent skip button (UI)**
+
+In `GroveChat.tsx`, import `skipUnderstandingAction` and render a persistent button during the understand phase (place it just below the input row, inside the composer):
+
+```tsx
+              {step === 'understand' && !busy && (
+                <button
+                  type="button"
+                  className={styles.skipAhead}
+                  onClick={() =>
+                    void runTurn("Skip ahead — I'll set up in the app", async () => {
+                      const p = await skipUnderstandingAction();
+                      setStep(p.step);
+                      setKeeperName(p.keeperName);
+                      return { messages: p.messages, expression: p.expression };
+                    })
+                  }
+                >
+                  Skip ahead — I&apos;ll set up in the app
+                </button>
+              )}
+```
+
+Add a low-emphasis `.skipAhead` style in `grove.module.css` (text-button styling, follow existing patterns).
+
+- [ ] **Step 7: Verify + commit**
+
+Run: `npm run -w packages/keeper typecheck && npm test --prefix packages/keeper && npm run -w apps/web typecheck`
+Expected: PASS.
+
+```bash
+git add packages/keeper/src packages/keeper/test apps/web/app/app/grove/actions.ts apps/web/app/app/grove/GroveChat.tsx apps/web/app/app/grove/grove.module.css
+git commit -m "feat(onboarding): skip-ahead escape from the understanding phase"
+```
+
+---
+
+## Task 16: Full-suite green + cleanup
 
 **Files:** none (verification)
 
@@ -1629,7 +1764,7 @@ git commit -m "chore(web): onboarding phase 1 cleanup + full suite green"
 
 ## Self-Review (completed during authoring)
 
-- **Spec coverage:** Component 1 (understanding engine) → Tasks 2–6, 9, 12. Component 2 (handoff contract) → Tasks 8, 10, 11, 14. Bug fixes (free text, Enter, removed scan chips) → Task 13. Floor (three points) → derive floor (Task 10), missing-row handled desktop-side (Phase 3, noted), skip path (see open item below).
-- **Open item / deferred to Phase 3:** the desktop-side floor (missing-row → local default) and the in-Q&A "Skip ahead — I'll set up in the app" escape. The skip escape is a small web addition; it is **not** in Phase 1 tasks above. **Add a follow-up task if you want the skip escape in Phase 1** — otherwise the cap (max 5 turns) already bounds time-in-Q&A and the user is never hard-trapped. Flag for the human before implementation.
+- **Spec coverage:** Component 1 (understanding engine) → Tasks 2–6, 9, 12. Component 2 (handoff contract) → Tasks 8, 10, 11, 14. Bug fixes (free text, Enter, removed scan chips) → Task 13. Floor (three points) → derive floor (Task 10), in-Q&A skip escape (Task 15), missing-row handled desktop-side (Phase 3, noted).
+- **Deferred to Phase 3:** the desktop-side floor (missing-row → local default starter set). In Phase 1 the floor is covered at derivation (Task 10) and via the skip escape (Task 15); the cap (max 5 turns) also bounds time-in-Q&A. No one is hard-trapped.
 - **Type consistency:** `UnderstandingState.currentQuestion`, `applyUnderstandingTurn(state, answer, modelTurn)`, `understandingModelTurn(accountId, userId, turns, deps)`, `deriveRecommendations(profile) → { connections, nibbins, source }`, `answersForSave({ answers, understanding, profile })` are used identically across tasks.
 - **Placeholder scan:** the one runtime-coupled value (`templateKey: 'inbox-triage'` / `displayName: 'Scribe'`) is explicitly flagged in Task 10 Step 3 to verify against `packages/runtime` before use.
