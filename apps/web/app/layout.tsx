@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     template: '%s · Nibbin',
   },
   description:
-    'Little creatures that grow up working for you. Hatch a grove of agents that earn your trust in Agent School and take real busywork off your plate — for people who work for themselves.',
+    'Little helpers that grow up working for you. Hatch a grove of agents that earn your trust in Agent School and take real busywork off your plate — for people who work for themselves.',
   applicationName: 'Nibbin',
   keywords: ['AI agents', 'freelancers', 'photographers', 'creative business', 'automation', 'AI employees'],
   alternates: { canonical: '/' },
@@ -21,13 +21,13 @@ export const metadata: Metadata = {
     url: SITE,
     siteName: 'Nibbin',
     title: 'Nibbin — AI agents for freelancers',
-    description: 'Little creatures that grow up working for you.',
+    description: 'Little helpers that grow up working for you.',
     images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'Nibbin' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Nibbin — AI agents for freelancers',
-    description: 'Little creatures that grow up working for you.',
+    description: 'Little helpers that grow up working for you.',
     images: ['/og-image.png'],
   },
 };
