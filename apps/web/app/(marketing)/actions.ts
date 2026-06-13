@@ -29,6 +29,12 @@ export async function joinWaitlist(_prev: JoinResult | null, formData: FormData)
     message: 'Almost there — check your inbox for a one-click confirmation to claim your seat.',
   };
 
+  // One person, one seat: an address already on the list never creates a second
+  // row (email is the primary key) and isn't counted twice — we just say so.
+  const alreadyIn: JoinResult = { ok: true, message: 'You’re already on the list — check your inbox for your confirmation link.' };
+  const alreadyInResent: JoinResult = { ok: true, message: 'You’re already on the list — we’ve re-sent your confirmation link.' };
+  const confirmedAlready: JoinResult = { ok: true, message: 'You’re already on the list — see you in the grove.' };
+
   const oops: JoinResult = { ok: false, message: 'Something hiccuped on our end — try again in a moment?' };
 
   try {
@@ -51,15 +57,15 @@ export async function joinWaitlist(_prev: JoinResult | null, formData: FormData)
       .eq('email', email)
       .maybeSingle<{ status: string; last_email_sent_at: string | null }>();
     if (exErr) return oops;
-    if (existing?.status === 'confirmed') {
-      return { ok: true, message: 'You’re already on the list — see you in the grove.' };
-    }
+    const isNew = !existing;
+    if (existing?.status === 'confirmed') return confirmedAlready;
 
     // Resend cooldown: a re-submit within the window is a silent no-op, so the
-    // form can't be used to spray confirmation emails at a chosen address.
+    // form can't be used to spray confirmation emails at a chosen address. Someone
+    // already on the list is told so, not silently re-queued.
     const COOLDOWN_MS = 5 * 60 * 1000;
     if (existing?.last_email_sent_at && Date.now() - Date.parse(existing.last_email_sent_at) < COOLDOWN_MS) {
-      return friendly;
+      return alreadyIn;
     }
 
     // upsert never downgrades a confirmed row (DB trigger enforces it too).
@@ -92,10 +98,13 @@ export async function joinWaitlist(_prev: JoinResult | null, formData: FormData)
       await svc.from('waitlist').update({ last_email_sent_at: new Date().toISOString() }).eq('email', email);
     }
 
-    // §6.12 cookieless product event (pre-auth, account-less). Best-effort.
-    await svc.from('product_events').insert({ name: 'waitlist_joined', props: { source: 'landing' } });
+    // §6.12 cookieless product event (pre-auth, account-less). Best-effort. Only a
+    // genuinely new signup counts — a re-submit by someone already in is not a join.
+    if (isNew) {
+      await svc.from('product_events').insert({ name: 'waitlist_joined', props: { source: 'landing' } });
+    }
 
-    return friendly;
+    return isNew ? friendly : alreadyInResent;
   } catch (err) {
     // PII never reaches the log — message only, no recipient address.
     console.error('[waitlist] join failed', err instanceof Error ? err.message : String(err));

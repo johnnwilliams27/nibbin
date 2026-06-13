@@ -19,6 +19,23 @@
   color: var(--moss-deep);
   font-weight: 600;
 }
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.navLink {
+  font-size: 13px;
+  color: var(--moss-deep);
+  text-decoration: none;
+}
+.navLink:hover {
+  text-decoration: underline;
+}
+.navActive {
+  font-weight: 700;
+  color: var(--ink);
+}
 .who {
   font-size: 13px;
   color: var(--ink-soft);
