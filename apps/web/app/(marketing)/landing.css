@@ -45,11 +45,9 @@
 .landing .logo {
   display: flex;
   align-items: center;
-  gap: 19px;
   text-decoration: none;
   color: var(--ink);
 }
-.landing .logo .cr,
 .landing .logo > span {
   position: relative;
   top: 3px;

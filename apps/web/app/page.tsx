@@ -86,7 +86,6 @@ export default function Home() {
       <nav>
         <div className="wrap nav-in">
           <a className="logo" href="#top" aria-label="Nibbin home">
-            <Creature species="Keeper" stage="student" color="#5B7C2E" size={38} className="cr" />
             <Wordmark height={22} />
           </a>
           <div className="nav-links">
