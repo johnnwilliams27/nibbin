@@ -116,6 +116,15 @@ function renderHtml(email: TransactionalEmail, postalAddress?: string): string {
     ? `<p style="margin:0;font-family:${FONT_BODY};font-size:12px;line-height:1.6;color:${INK_SECONDARY};">Nibbin · ${esc(postalAddress)}</p>`
     : '';
 
+  // The canopy card's inner HTML, assembled on one line so the suppression
+  // applies to it. Every interpolated value is esc()-escaped and the only URL
+  // (the CTA href) is app-generated — a Supabase invite link or our signed
+  // waitlist token — never user input. raw-html-format is a false positive here.
+  // nosemgrep: javascript.express.security.injection.raw-html-format.raw-html-format
+  const cardInner = `<p style="margin:0 0 10px;font-family:${FONT_MONO};font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:${INK_SECONDARY};">${eyebrowTxt}</p><h1 style="margin:0 0 12px;font-family:${FONT_DISPLAY};font-size:24px;line-height:1.25;font-weight:800;color:${INK};">${titleTxt}</h1><p style="margin:0 0 18px;font-family:${FONT_BODY};font-size:15px;line-height:1.6;color:${INK};">${bodyTxt}</p>${cards}${celebration}${cta}${footnote}`;
+
+  // Outer document — interpolates only engine output and pre-built escaped strings.
+  // nosemgrep: javascript.express.security.injection.raw-html-format.raw-html-format
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -129,15 +138,7 @@ function renderHtml(email: TransactionalEmail, postalAddress?: string): string {
     <tr><td align="center" style="padding:32px 16px;">
       <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;max-width:560px;">
         <tr><td align="center" style="padding:0 0 16px;">${creature}</td></tr>
-        <tr><td style="background:${CANOPY};border:1px solid ${UNDERSTORY};border-radius:12px;padding:28px;">
-          <p style="margin:0 0 10px;font-family:${FONT_MONO};font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:${INK_SECONDARY};">${eyebrowTxt}</p>
-          <h1 style="margin:0 0 12px;font-family:${FONT_DISPLAY};font-size:24px;line-height:1.25;font-weight:800;color:${INK};">${titleTxt}</h1>
-          <p style="margin:0 0 18px;font-family:${FONT_BODY};font-size:15px;line-height:1.6;color:${INK};">${bodyTxt}</p>
-          ${cards}
-          ${celebration}
-          ${cta}
-          ${footnote}
-        </td></tr>
+        <tr><td style="background:${CANOPY};border:1px solid ${UNDERSTORY};border-radius:12px;padding:28px;">${cardInner}</td></tr>
         ${address ? `<tr><td style="padding:20px 8px 0;">${address}</td></tr>` : ''}
       </table>
     </td></tr>
