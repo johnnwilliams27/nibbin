@@ -5,12 +5,12 @@
  * mark_notification_read RPC (the single client write path).
  */
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '../../../lib/supabase/server';
 import { ensureAccount } from '../../../lib/auth/bootstrap';
 import { upsertOwnProfile } from '../../../lib/auth/profile';
+import { AppShell } from '../../../components/shell/AppShell';
 import styles from './notifications.module.css';
 
 export const metadata: Metadata = { title: 'From the grove — Nibbin' };
@@ -65,11 +65,8 @@ export default async function NotificationsPage() {
   const leaves = (data ?? []) as LeafRow[];
 
   return (
-    <main className={styles.page}>
+    <AppShell active="notifications" title="Leaves" email={user.email}>
       <div className={styles.shell}>
-        <Link className={styles.back} href="/app">
-          Back to your grove
-        </Link>
         <p className={styles.eyebrow}>From the grove</p>
         <h1 className={styles.heading}>Your leaves</h1>
         {leaves.length === 0 ? (
@@ -96,6 +93,6 @@ export default async function NotificationsPage() {
           ))
         )}
       </div>
-    </main>
+    </AppShell>
   );
 }

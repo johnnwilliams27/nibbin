@@ -28,6 +28,8 @@ body {
   background: var(--paper);
   color: var(--ink);
   line-height: 1.5;
+  /* Tabular + lining figures so credits/usage numbers align in columns. */
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
 }
 
 a {

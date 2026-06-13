@@ -1,0 +1,194 @@
+/* Home dashboard layout. Token-only; cards/badges come from the UI kit. */
+
+.header {
+  margin-bottom: 22px;
+}
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--moss-deep);
+  font-weight: 600;
+}
+.title {
+  font-family: var(--display);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-size: 30px;
+  margin: 6px 0 4px;
+  color: var(--ink);
+}
+.subtitle {
+  color: var(--ink-soft);
+  font-size: 15px;
+}
+
+.muted {
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+
+/* ---- Hero: approval queue ---- */
+.hero {
+  border-left: 3px solid var(--honey);
+}
+.heroCaughtUp {
+  border-left-color: var(--moss);
+}
+.heroEyebrow {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--honey-deep);
+  font-weight: 600;
+}
+.heroTitle {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 22px;
+  color: var(--ink);
+  margin: 4px 0 12px;
+}
+.heroEmpty {
+  color: var(--ink-soft);
+  font-size: 14.5px;
+}
+.heroList {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.heroItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--r-input);
+  font-size: 14.5px;
+}
+.cta {
+  display: inline-block;
+  font-weight: 700;
+  color: var(--moss-deep);
+  text-decoration: none;
+}
+.cta:hover {
+  text-decoration: underline;
+}
+
+/* ---- Stats ---- */
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 18px 0;
+}
+.stat {
+  flex: 1;
+  min-width: 130px;
+  background: var(--canopy);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-1);
+  padding: 14px 18px;
+}
+.statLabel {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.statValue {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 26px;
+  color: var(--ink);
+  margin-top: 2px;
+}
+
+/* ---- Sections ---- */
+.sectionTitle {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 18px;
+  color: var(--ink);
+  margin: 26px 0 12px;
+}
+.sectionTitleCard {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 18px;
+  color: var(--ink);
+  margin: 0 0 12px;
+}
+
+/* ---- Nibbin report cards ---- */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+.nibbinCard {
+  padding: 18px;
+}
+.nibbinHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.nibbinName {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 17px;
+  color: var(--ink);
+}
+.nibbinMeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.nibbinRuns {
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+/* ---- Activity ledger ---- */
+.ledger {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+.ledgerItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 14.5px;
+}
+.ledgerItem:last-child {
+  border-bottom: none;
+}
+.ledgerText {
+  color: var(--ink);
+}
+.ledgerWhen {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}

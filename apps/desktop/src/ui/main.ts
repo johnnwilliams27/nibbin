@@ -10,10 +10,11 @@ import { button, clear, el } from './dom.js';
 import { accountView } from './views/account.js';
 import { consentView } from './views/consent.js';
 import { notesView } from './views/notes.js';
+import { preferencesView } from './views/preferences.js';
 import { reviewView } from './views/review.js';
 import { deleteEverythingCard, studyView } from './views/study.js';
 
-type Tab = 'study' | 'review' | 'notes' | 'account';
+type Tab = 'study' | 'review' | 'notes' | 'preferences' | 'account';
 
 const app = document.getElementById('app')!;
 let tab: Tab = 'study';
@@ -84,6 +85,7 @@ async function render(): Promise<void> {
     ['study', 'Study'],
     ['review', 'Review'],
     ['notes', 'Field notes'],
+    ['preferences', 'Preferences'],
     ['account', 'Account'],
   ];
   for (const [key, label] of tabs) {
@@ -99,6 +101,10 @@ async function render(): Promise<void> {
   }
   if (tab === 'notes') {
     app.append(notesView());
+    return;
+  }
+  if (tab === 'preferences') {
+    app.append(preferencesView(() => void render()));
     return;
   }
   if (tab === 'account') {
