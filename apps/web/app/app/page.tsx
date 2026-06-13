@@ -140,6 +140,8 @@ export default async function AppPage() {
         <p className={styles.note}>
           {grove.keeper_name} is keeping the grove — <a href="/app/grove">step in and say hello</a>.{' '}
           <a href="/app/shop">Browse the Agent Shop</a>
+          {' · '}
+          <a href="/app/memory">What your grove knows</a>
           {(waitingCount ?? 0) > 0 ? (
             <>
               {' '}
