@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { getStaff } from '../../lib/staff/session';
 import { adminClient } from '../../lib/supabase/admin';
+import { inviteFromWaitlist } from './actions';
 import styles from '../admin.module.css';
 
 export const metadata: Metadata = { title: 'Waitlist — Nibbin admin' };
@@ -13,6 +14,7 @@ interface WaitlistRow {
   source: string | null;
   created_at: string;
   confirmed_at: string | null;
+  invited_at: string | null;
 }
 
 function fmt(ts: string | null): string {
@@ -20,15 +22,21 @@ function fmt(ts: string | null): string {
   return new Date(ts).toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
 }
 
+const NOTICES: Record<string, { cls: 'notice' | 'error'; msg: string }> = {
+  invited: { cls: 'notice', msg: 'Invite sent — the account-creation email is on its way.' },
+  invite_failed: { cls: 'error', msg: 'Invite failed. It’s been logged; give it another try in a moment.' },
+  invite_unconfigured: { cls: 'error', msg: 'Invites aren’t configured yet (INTERNAL_API_SECRET missing on this app).' },
+};
+
 export default async function WaitlistPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; notice?: string }>;
 }) {
   const staff = await getStaff();
   if (!staff) redirect('/login');
 
-  const { status } = await searchParams;
+  const { status, notice } = await searchParams;
   const filter: 'all' | 'pending' | 'confirmed' =
     status === 'pending' || status === 'confirmed' ? status : 'all';
   const admin = adminClient();
@@ -36,7 +44,7 @@ export default async function WaitlistPage({
   // Service role bypasses RLS (waitlist is staff-only, like email_suppressions).
   let q = admin
     .from('waitlist')
-    .select('email, status, source, created_at, confirmed_at')
+    .select('email, status, source, created_at, confirmed_at, invited_at')
     .order('created_at', { ascending: false })
     .limit(1000);
   if (filter !== 'all') q = q.eq('status', filter);
@@ -84,6 +92,10 @@ export default async function WaitlistPage({
 
       <h1 className={styles.h1}>Founding Grove waitlist</h1>
 
+      {notice && NOTICES[notice] && (
+        <p className={styles[NOTICES[notice].cls]}>{NOTICES[notice].msg}</p>
+      )}
+
       <div className={styles.statsRow}>
         <div className={styles.stat}>
           <span className={styles.statLabel}>Total</span>
@@ -123,6 +135,7 @@ export default async function WaitlistPage({
               <th>Source</th>
               <th>Signed up</th>
               <th>Confirmed</th>
+              <th>Invite</th>
             </tr>
           </thead>
           <tbody>
@@ -133,6 +146,18 @@ export default async function WaitlistPage({
                 <td>{r.source ?? '—'}</td>
                 <td className={styles.mono}>{fmt(r.created_at)}</td>
                 <td className={styles.mono}>{fmt(r.confirmed_at)}</td>
+                <td>
+                  {r.invited_at ? (
+                    <span className={styles.muted}>Invited · {fmt(r.invited_at)}</span>
+                  ) : (
+                    <form action={inviteFromWaitlist} className={styles.inlineForm}>
+                      <input type="hidden" name="email" value={r.email} />
+                      <button className={styles.linkBtn} type="submit">
+                        Invite
+                      </button>
+                    </form>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
