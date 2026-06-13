@@ -22,6 +22,8 @@ import {
 import { advanceGroveAction, keeperChatAction, skipUnderstandingAction, understandStepAction } from './actions';
 import { CardView } from './cards';
 import { KeeperSprite } from './KeeperSprite';
+import { Button } from '../../../components/ui';
+import ui from '../../../components/ui/ui.module.css';
 import styles from './grove.module.css';
 
 type Theme = 'dawn' | 'day' | 'dusk';
@@ -353,8 +355,8 @@ export function GroveChat({
                     </p>
                   )}
                   <p className={styles.handoffLead}>Your team is waiting in the desktop app — that&apos;s where we connect your accounts and start.</p>
-                  <a className={styles.chipConfirm} href={downloadUrl}>Download the desktop app</a>
-                  <Link className={styles.backLink} href="/app">Not now — take me to my grove</Link>
+                  <a className={`${ui.btn} ${ui.btnPrimary}`} href={downloadUrl}>Download the desktop app</a>
+                  <Link className={`${ui.btn} ${ui.btnGhost}`} href="/app">Not now — take me to my grove</Link>
                 </div>
               )}
               {/* Understand-phase chips: fill the input as suggestions (not auto-submit) */}
@@ -440,9 +442,9 @@ export function GroveChat({
                 </button>
               </form>
               {step === 'understand' && !busy && (
-                <button
+                <Button
+                  variant="ghost"
                   type="button"
-                  className={styles.skipAhead}
                   onClick={() =>
                     void runTurn("Skip ahead — I'll set up in the app", async () => {
                       const p = await skipUnderstandingAction();
@@ -454,7 +456,7 @@ export function GroveChat({
                   }
                 >
                   Skip ahead — I&apos;ll set up in the app
-                </button>
+                </Button>
               )}
             </div>
           </div>
