@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { appSession } from '../../../lib/auth/app-session';
 import { MEMORY_SECTIONS } from '../../../lib/grove/memory';
+import { AppShell } from '../../../components/shell/AppShell';
 import { saveGroveMemory } from './actions';
 import styles from './memory.module.css';
 
@@ -30,7 +31,7 @@ export default async function MemoryPage({
   searchParams: Promise<{ saved?: string; error?: string }>;
 }) {
   const { saved, error } = await searchParams;
-  const { supabase, accountId } = await appSession();
+  const { supabase, accountId, user } = await appSession();
 
   const { data: mem } = await supabase
     .from('grove_memory')
@@ -57,7 +58,7 @@ export default async function MemoryPage({
   const notes = mem?.notes ?? '';
 
   return (
-    <main className={styles.page}>
+    <AppShell active="memory" title="Grove Memory" email={user.email}>
       <p className={styles.eyebrow}>Grove Memory</p>
       <h1 className={styles.h1}>What your grove knows</h1>
       <p className={styles.lede}>
@@ -119,6 +120,6 @@ export default async function MemoryPage({
           Save
         </button>
       </form>
-    </main>
+    </AppShell>
   );
 }

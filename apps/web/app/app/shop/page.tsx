@@ -5,6 +5,7 @@ import { SHOP_TEMPLATES } from '@nibbin/runtime';
 import { TIERS, type Tier } from '@nibbin/shared';
 import { appSession } from '../../../lib/auth/app-session';
 import { adoptFromShopAction } from './actions';
+import { AppShell } from '../../../components/shell/AppShell';
 import styles from './shop.module.css';
 
 export const metadata: Metadata = { title: 'Agent Shop — Nibbin' };
@@ -30,7 +31,7 @@ export default async function ShopPage({
   } catch {
     redirect('/login');
   }
-  const { supabase, accountId } = session;
+  const { supabase, accountId, user } = session;
   const params = await searchParams;
 
   // RLS-scoped reads under the user's own session.
@@ -57,7 +58,7 @@ export default async function ShopPage({
   const credits = balanceRow?.balance ?? 0;
 
   return (
-    <main className={styles.wrap}>
+    <AppShell active="shop" title="Agent Shop" email={user.email}>
       <div className={styles.inner}>
         <header className={styles.header}>
           <div>
@@ -137,12 +138,7 @@ export default async function ShopPage({
           })}
         </div>
 
-        <p className={styles.backRow}>
-          <a className={styles.backLink} href="/app">
-            Back to your grove
-          </a>
-        </p>
       </div>
-    </main>
+    </AppShell>
   );
 }
