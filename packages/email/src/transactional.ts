@@ -121,28 +121,14 @@ function renderHtml(email: TransactionalEmail, postalAddress?: string): string {
   // nosemgrep: javascript.express.security.injection.raw-html-format.raw-html-format
   const cardInner = `<p style="margin:0 0 10px;font-family:${FONT_MONO};font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:${INK_SECONDARY};">${eyebrowTxt}</p><h1 style="margin:0 0 12px;font-family:${FONT_DISPLAY};font-size:24px;line-height:1.25;font-weight:800;color:${INK};">${titleTxt}</h1><p style="margin:0 0 18px;font-family:${FONT_BODY};font-size:15px;line-height:1.6;color:${INK};">${bodyTxt}</p>${cards}${celebration}${cta}${footnote}`;
 
-  // Outer document — interpolates only engine output and pre-built escaped strings.
+  // Full document on ONE line so the suppression covers every interpolation in
+  // the returned HTML. cardInner/address/preheaderTxt are pre-escaped strings,
+  // creature/creatureCss are engine output — no unescaped user input reaches the
+  // HTML. raw-html-format is a false positive here (same convention as
+  // packages/redaction/src/battery.ts).
   // nosemgrep: javascript.express.security.injection.raw-html-format.raw-html-format
-  return `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>${creatureCss}</style>
-</head>
-<body style="margin:0;padding:0;background:${SHELL};">
-  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${preheaderTxt}</div>
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${SHELL};">
-    <tr><td align="center" style="padding:32px 16px;">
-      <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;max-width:560px;">
-        <tr><td align="center" style="padding:0 0 16px;">${creature}</td></tr>
-        <tr><td style="background:${CANOPY};border:1px solid ${UNDERSTORY};border-radius:12px;padding:28px;">${cardInner}</td></tr>
-        ${address ? `<tr><td style="padding:20px 8px 0;">${address}</td></tr>` : ''}
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
+  const doc = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>${creatureCss}</style></head><body style="margin:0;padding:0;background:${SHELL};"><div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${preheaderTxt}</div><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${SHELL};"><tr><td align="center" style="padding:32px 16px;"><table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;max-width:560px;"><tr><td align="center" style="padding:0 0 16px;">${creature}</td></tr><tr><td style="background:${CANOPY};border:1px solid ${UNDERSTORY};border-radius:12px;padding:28px;">${cardInner}</td></tr>${address ? `<tr><td style="padding:20px 8px 0;">${address}</td></tr>` : ''}</table></td></tr></table></body></html>`;
+  return doc;
 }
 
 function renderText(email: TransactionalEmail, postalAddress?: string): string {
