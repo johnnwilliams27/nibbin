@@ -101,7 +101,7 @@ describe('package step list', () => {
 
 describe('applyUnderstandingTurn — static fallback (no model)', () => {
   it('serves the fallback questions in order, then ends', () => {
-    let state = understandingState();
+    const state = understandingState();
     expect(state.understanding!.currentQuestion.prompt).toBe(UNDERSTANDING_OPENER.prompt);
 
     // answer the opener with no model → first fallback question
