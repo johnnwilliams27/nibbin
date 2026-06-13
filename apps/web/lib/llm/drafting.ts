@@ -14,6 +14,7 @@ import 'server-only';
  * defense in depth, not the load-bearing wall (that's the runtime gate).
  */
 import { groveRouter } from '../grove/router';
+import { loadGroveMemoryBlock } from '../grove/memory';
 import { anthropicGenerate, recordModelCall } from './client';
 import { DRAFTING_SYSTEM_PROMPT } from './prompts';
 import type { ModelDrafter } from '@nibbin/runtime';
@@ -27,6 +28,15 @@ export function modelDrafterFor(accountId: string): ModelDrafter | undefined {
   const llm = anthropicGenerate();
   if (!llm) return undefined; // honest no-model path: deterministic templates
 
+  // Grove Memory (§4.8) is loaded once per run and cached in this closure: a
+  // second cacheable system block, after the stable drafting prompt, so the
+  // model sees the business brain on every draft without re-reading the DB.
+  let memoryBlock: string | null | undefined; // undefined = not yet loaded
+  async function groveBlock(): Promise<string | null> {
+    if (memoryBlock === undefined) memoryBlock = await loadGroveMemoryBlock(accountId);
+    return memoryBlock;
+  }
+
   return {
     async draft({ runId, intent, context, maxTokens }) {
       try {
@@ -35,9 +45,16 @@ export function modelDrafterFor(accountId: string): ModelDrafter | undefined {
           task: 'specialist_draft',
           origin: 'pipeline',
         });
+        const memory = await groveBlock();
+        const system = memory
+          ? [
+              { text: DRAFTING_SYSTEM_PROMPT, cache: true },
+              { text: memory, cache: true },
+            ]
+          : [{ text: DRAFTING_SYSTEM_PROMPT, cache: true }];
         const result = await llm({
           model: decision.model,
-          system: [{ text: DRAFTING_SYSTEM_PROMPT, cache: true }],
+          system,
           messages: [{ role: 'user', content: `${intent}\n\nContext:\n${context}` }],
           maxTokens,
           temperature: 0.6,
