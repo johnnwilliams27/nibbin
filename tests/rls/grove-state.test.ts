@@ -155,7 +155,7 @@ describe.skipIf(!dbAvailable)('grove_state RLS + save_grove_state (M2)', () => {
         h.as(asB, (c) => c.query(`select public.save_grove_state($1, 'become_admin', null, '{}'::jsonb)`, [accountB])),
       ).rejects.toThrow(/unknown onboarding step/);
 
-      const huge = JSON.stringify({ craft: 'x'.repeat(9000) });
+      const huge = JSON.stringify({ craft: 'x'.repeat(35000) });
       await expect(
         h.as(asB, (c) => c.query(`select public.save_grove_state($1, 'ask_user_name', null, $2::jsonb)`, [accountB, huge])),
       ).rejects.toThrow(/answers/);

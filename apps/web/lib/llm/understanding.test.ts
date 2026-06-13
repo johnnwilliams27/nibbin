@@ -35,4 +35,19 @@ describe('understandingModelTurn', () => {
     const result = await understandingModelTurn('acc', 'user', [], { generate: null, router: fakeRoute as never });
     expect(result).toBeNull();
   });
+
+  it('returns a result with confidence=0 when top-level confidence is missing but otherwise valid', async () => {
+    const json = JSON.stringify({
+      extraction: { jobTitle: 'tailor' },
+      nextQuestion: { prompt: 'How do clients find you?', placeholder: 'Word of mouth…' },
+      // no confidence field
+    });
+    const result = await understandingModelTurn('acc', 'user', [], {
+      generate: generateReturning(json),
+      router: fakeRoute as never,
+    });
+    expect(result).not.toBeNull();
+    expect(result?.confidence).toBe(0);
+    expect(result?.extraction.jobTitle).toBe('tailor');
+  });
 });

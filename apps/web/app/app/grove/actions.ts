@@ -20,6 +20,7 @@ import {
   type KeeperExpression,
   type KeeperMessage,
   type OnboardingStep,
+  type UnderstandingProfile,
 } from '@nibbin/keeper';
 import { understandingModelTurn } from '../../../lib/llm/understanding';
 import { writeHandoff } from '../../../lib/onboarding/handoff';
@@ -36,6 +37,7 @@ export interface GroveTurnPayload {
   expression: KeeperExpression;
   step: OnboardingStep;
   keeperName: string | null;
+  profile?: UnderstandingProfile | null;
 }
 
 async function groveSession() {
@@ -213,7 +215,9 @@ export async function understandStepAction(rawText: unknown): Promise<GroveTurnP
   }
 
   // One model call for this turn; null → the pure engine serves the static fallback.
-  const modelTurn = await understandingModelTurn(accountId, user.id, state.understanding.turns, {});
+  // Build the up-to-date transcript (current answer included) so the model sees the latest reply.
+  const transcript = [...state.understanding.turns, { q: state.understanding.currentQuestion.prompt, a: text }];
+  const modelTurn = await understandingModelTurn(accountId, user.id, transcript, {});
   const turn = applyUnderstandingTurn(state, text, modelTurn);
 
   // On completion, derive + persist the desktop handoff before saving state.
@@ -233,7 +237,7 @@ export async function understandStepAction(rawText: unknown): Promise<GroveTurnP
   });
   if (error) throw new Error('could not save your grove — try again in a moment');
 
-  return { messages: turn.messages, expression: turn.expression, step: turn.state.step, keeperName: turn.state.keeperName };
+  return { messages: turn.messages, expression: turn.expression, step: turn.state.step, keeperName: turn.state.keeperName, profile: turn.state.profile };
 }
 
 export async function skipUnderstandingAction(): Promise<GroveTurnPayload> {
@@ -267,5 +271,5 @@ export async function skipUnderstandingAction(): Promise<GroveTurnPayload> {
     }),
   });
   if (error) throw new Error('could not save your grove — try again in a moment');
-  return { messages: turn.messages, expression: turn.expression, step: turn.state.step, keeperName: turn.state.keeperName };
+  return { messages: turn.messages, expression: turn.expression, step: turn.state.step, keeperName: turn.state.keeperName, profile: turn.state.profile };
 }

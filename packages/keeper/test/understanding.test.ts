@@ -126,3 +126,30 @@ describe('applyUnderstandingTurn — static fallback (no model)', () => {
     ]);
   });
 });
+
+describe('applyUnderstandingTurn — answer size clamping', () => {
+  it('clamps each stored answer to 280 chars regardless of input length', () => {
+    const longAnswer = 'x'.repeat(2000);
+    const state = understandingState();
+    const turn = applyUnderstandingTurn(state, longAnswer, modelContinue);
+    const u = turn.state.understanding!;
+    // stored in turns
+    expect(u.turns.at(-1)!.a.length).toBeLessThanOrEqual(280);
+    // stored in profile.raw
+    expect(u.profile.raw.at(-1)!.a.length).toBeLessThanOrEqual(280);
+  });
+
+  it('five turns each with 2000-char answers stay within bounds', () => {
+    const longAnswer = 'y'.repeat(2000);
+    const keepGoing: UnderstandingModelTurn = {
+      extraction: {}, nextQuestion: { prompt: 'and?', placeholder: '' }, confidence: 0.1,
+    };
+    const state = runTurns(understandingState(), [keepGoing, keepGoing, keepGoing, keepGoing]);
+    const fifth = applyUnderstandingTurn(state, longAnswer, keepGoing);
+    // even after cap completion, all stored answers should be <= 280
+    const allTurns = fifth.state.understanding!.turns;
+    for (const t of allTurns) {
+      expect(t.a.length).toBeLessThanOrEqual(280);
+    }
+  });
+});

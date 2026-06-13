@@ -94,6 +94,7 @@ export function GroveChat({
   const [expression, setExpression] = useState<KeeperExpression>(freshHatch ? 'idle' : initialExpression);
   const [step, setStep] = useState<OnboardingStep>(initialStep);
   const [keeperName, setKeeperName] = useState<string | null>(initialKeeperName);
+  const [profile, setProfile] = useState<UnderstandingProfile | null>(initialProfile);
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState('');
   const [picked, setPicked] = useState<string[]>([]);
@@ -245,6 +246,7 @@ export function GroveChat({
         const payload = await understandStepAction(text);
         setStep(payload.step);
         setKeeperName(payload.keeperName);
+        if (payload.profile) setProfile(payload.profile);
         return { messages: payload.messages, expression: payload.expression };
       });
     } else if (step !== 'done') {
@@ -344,10 +346,10 @@ export function GroveChat({
               {/* Handoff screen: shown at done, replaces the former scan/adopt chip block */}
               {step === 'done' && !busy && (
                 <div className={styles.handoff}>
-                  {initialProfile?.jobTitle && (
+                  {profile?.jobTitle && (
                     <p className={styles.handoffReflect}>
-                      Here&apos;s what I picked up — you do <strong>{initialProfile.jobTitle}</strong>
-                      {initialProfile.channels.length > 0 && <> and most of your work comes through <strong>{initialProfile.channels.join(', ')}</strong></>}.
+                      Here&apos;s what I picked up — you do <strong>{profile.jobTitle}</strong>
+                      {profile.channels.length > 0 && <> and most of your work comes through <strong>{profile.channels.join(', ')}</strong></>}.
                     </p>
                   )}
                   <p className={styles.handoffLead}>Your team is waiting in the desktop app — that&apos;s where we connect your accounts and start.</p>
@@ -446,6 +448,7 @@ export function GroveChat({
                       const p = await skipUnderstandingAction();
                       setStep(p.step);
                       setKeeperName(p.keeperName);
+                      if (p.profile) setProfile(p.profile);
                       return { messages: p.messages, expression: p.expression };
                     })
                   }

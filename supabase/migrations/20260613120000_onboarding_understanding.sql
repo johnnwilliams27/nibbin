@@ -12,6 +12,11 @@ alter table public.grove_state drop constraint grove_state_onboarding_step_check
 alter table public.grove_state add constraint grove_state_onboarding_step_check
   check (onboarding_step in ('ask_user_name', 'ask_keeper_name', 'understand', 'done'));
 
+-- 2b. Raise answers size cap to 32 KiB (understanding state > 8 KiB on multi-turn).
+alter table public.grove_state drop constraint grove_state_answers_check;
+alter table public.grove_state add constraint grove_state_answers_check
+  check (pg_column_size(answers) <= 32768);
+
 -- 3. Replace save_grove_state with the new forward-only step order.
 create or replace function public.save_grove_state(
   target_account uuid,
@@ -96,7 +101,7 @@ revoke insert, update, delete, truncate, references, trigger
 
 -- Single client write path (mirrors save_grove_state). Desktop only reads;
 -- claiming the handoff (status flip) is a separate small update path.
-create function public.save_onboarding_handoff(
+create or replace function public.save_onboarding_handoff(
   target_account uuid,
   new_profile jsonb,
   new_recommendations jsonb,
@@ -114,6 +119,9 @@ begin
   if not (select private.is_account_member(target_account)) then
     raise exception 'not a member of this account';
   end if;
+
+  perform pg_advisory_xact_lock(hashtext('onboarding_handoff:' || target_account::text));
+
   if new_source not in ('model', 'static_fallback', 'default_floor') then
     raise exception 'unknown handoff source';
   end if;
