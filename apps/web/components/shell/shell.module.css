@@ -1,0 +1,190 @@
+/* Authenticated app shell — persistent sidebar + topbar. Token-only.
+   The grove ceremony (/app/grove) deliberately does NOT use this shell. */
+
+.shell {
+  min-height: 100dvh;
+  background: var(--paper);
+}
+
+/* ---- Sidebar ---- */
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 220px;
+  background: var(--canopy);
+  border-right: 1px solid var(--line);
+  padding: 22px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  z-index: 30;
+  transition: transform var(--dur-2) var(--ease-settle);
+}
+
+.brand {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  color: var(--moss-deep);
+  text-decoration: none;
+  padding: 0 8px;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.navItem {
+  display: block;
+  padding: 9px 12px;
+  border-radius: var(--r-input);
+  color: var(--ink-soft);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14.5px;
+  border-left: 2px solid transparent;
+  transition: background var(--dur-1) var(--ease-settle), color var(--dur-1) var(--ease-settle);
+}
+.navItem:hover {
+  background: var(--understory);
+  color: var(--ink);
+}
+.navItemActive {
+  background: var(--understory);
+  color: var(--moss-deep);
+  border-left-color: var(--moss);
+}
+
+/* ---- Main column ---- */
+.main {
+  margin-left: 220px;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 24px;
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid var(--line);
+}
+
+.title {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  margin: 0;
+  flex: 1;
+}
+
+.account {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.email {
+  font-size: 13px;
+  color: var(--ink-soft);
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.signout {
+  font: inherit;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 7px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-button);
+  background: var(--canopy);
+  color: var(--ink);
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease-settle);
+}
+.signout:hover {
+  background: var(--understory);
+}
+
+.content {
+  flex: 1;
+  padding: 28px 24px 64px;
+  max-width: 1040px;
+  width: 100%;
+  margin: 0 auto;
+  animation: shellFade var(--dur-3) var(--ease-settle);
+}
+@keyframes shellFade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---- Mobile ---- */
+.hamburger {
+  display: none;
+  font-size: 18px;
+  line-height: 1;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-button);
+  background: var(--canopy);
+  color: var(--ink);
+  cursor: pointer;
+}
+.backdrop {
+  display: none;
+}
+
+@media (max-width: 880px) {
+  .sidebar {
+    transform: translateX(-100%);
+    box-shadow: var(--shadow-3);
+  }
+  .sidebarOpen {
+    transform: translateX(0);
+  }
+  .main {
+    margin-left: 0;
+  }
+  .hamburger {
+    display: inline-block;
+  }
+  .backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(35, 41, 26, 0.32);
+    z-index: 25;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar,
+  .signout,
+  .navItem {
+    transition: none;
+  }
+  .content {
+    animation: none;
+  }
+}

@@ -1,0 +1,145 @@
+/* Day-14 diagnosis reveal. Token-only; cards/badges/buttons from the UI kit,
+   visual scale matched to the dashboard. */
+
+.header {
+  margin-bottom: 18px;
+}
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--moss-deep);
+  font-weight: 600;
+}
+.title {
+  font-family: var(--display);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-size: 30px;
+  margin: 6px 0 4px;
+  color: var(--ink);
+}
+.subtitle {
+  color: var(--ink-soft);
+  font-size: 15px;
+}
+
+/* The Grovekeeper's letter */
+.letterCard {
+  border-left: 3px solid var(--moss);
+}
+.letterEyebrow {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--moss-deep);
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+.letter {
+  white-space: pre-wrap;
+  font-size: 16px;
+  line-height: 1.7;
+  color: var(--ink);
+  margin: 0;
+}
+
+/* Total hours */
+.total {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 18px 0;
+}
+.totalValue {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 30px;
+  color: var(--ink);
+}
+.totalLabel {
+  color: var(--ink-soft);
+  font-size: 14.5px;
+}
+
+.sectionTitle {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 18px;
+  color: var(--ink);
+  margin: 26px 0 12px;
+}
+
+/* Workflow map */
+.wfList {
+  display: grid;
+  gap: 10px;
+}
+.wfCard {
+  padding: 16px 18px;
+}
+.wfHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.wfName {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 16px;
+  color: var(--ink);
+}
+.wfHours {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+.wfMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 8px 0 0;
+}
+.wfDesc {
+  color: var(--ink-soft);
+  font-size: 14px;
+  line-height: 1.55;
+  margin: 8px 0 0;
+}
+.wfFriction {
+  color: var(--ink-soft);
+  font-size: 13.5px;
+  line-height: 1.5;
+  font-style: italic;
+  margin: 6px 0 0;
+}
+
+/* Recommendations */
+.recRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.recText {
+  color: var(--ink);
+  font-size: 14.5px;
+}
+.recForm {
+  display: inline;
+}
+
+.muted {
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+.empty {
+  text-align: center;
+  padding: 12px 8px;
+}

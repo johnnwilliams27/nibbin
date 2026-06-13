@@ -94,13 +94,27 @@ export function accountView(): HTMLElement {
     const userEmail = ((session['user'] as Record<string, unknown> | undefined)?.['email'] as string) ?? '';
     const summary = accessToken ? await fetchAccount(accessToken) : null;
 
+    // Two-tap confirm so a stray click doesn't drop the session.
+    const signOutBtn = (() => {
+      let armed = false;
+      const b = button('Sign out on this device', () => {
+        if (!armed) {
+          armed = true;
+          b.textContent = 'Tap again to sign out';
+          return;
+        }
+        void bridge.signOut().then(() => void refresh());
+      });
+      return b;
+    })();
+
     root.append(
       el('p', { class: 'eyebrow' }, ['Account']),
       el('h1', {}, [summary?.accountName ?? 'Your grove']),
       el('div', { class: 'card' }, [
         el('h2', {}, ['Profile']),
         el('p', {}, [userEmail || 'Signed in']),
-        button('Sign out on this device', () => void bridge.signOut().then(() => void refresh())),
+        signOutBtn,
       ]),
       el('div', { class: 'card' }, [
         el('h2', {}, ['Plan & meter']),

@@ -136,7 +136,7 @@ export async function buildDiagnosisReveal(
     body: `${keeper} here. The study is done, the map has grown in, and your diagnosis is ready — where your hours actually go, what they’re worth, and which chores your grove can take off your hands. I’ve also written you a letter: here’s what I learned about how you work.`,
     cards: [],
     celebration: { heading: 'The reveal', body: 'Fourteen days of quiet watching, grown into one map.' },
-    ctaPath: '/app',
+    ctaPath: '/app/diagnosis',
     ctaLabel: 'Open your diagnosis',
   };
 }

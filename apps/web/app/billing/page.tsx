@@ -6,6 +6,7 @@ import { upsertOwnProfile } from '../../lib/auth/profile';
 import { TOP_UP } from '@nibbin/shared';
 import { TIER_CREDITS, TOPUP_CREDITS } from '../../lib/billing/grant';
 import { subscribeToTier, buyTopups, openBillingPortal } from './actions';
+import { AppShell } from '../../components/shell/AppShell';
 import styles from './billing.module.css';
 
 export const metadata: Metadata = { title: 'Plan & credits — Nibbin' };
@@ -60,7 +61,7 @@ export default async function BillingPage({
   const { done, error } = await searchParams;
 
   return (
-    <main className={styles.wrap}>
+    <AppShell active="billing" title="Plan & credits" email={user.email}>
       <div className={styles.card}>
         <p className={styles.eyebrow}>Plan &amp; credits</p>
         <h1 className={styles.heading}>Your plan</h1>
@@ -120,6 +121,6 @@ export default async function BillingPage({
           </form>
         )}
       </div>
-    </main>
+    </AppShell>
   );
 }

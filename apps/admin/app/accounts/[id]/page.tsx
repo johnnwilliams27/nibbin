@@ -17,6 +17,23 @@ const ERRORS: Record<string, string> = {
   impersonate: 'A written reason is required to start impersonation.',
 };
 
+// §6.12 activation funnel milestones (those currently emitted), in order.
+const FUNNEL: ReadonlyArray<{ name: string; label: string }> = [
+  { name: 'account_created', label: 'created' },
+  { name: 'scan_completed', label: 'scanned' },
+  { name: 'nibbin_adopted', label: 'adopted' },
+  { name: 'first_draft_approved', label: 'first approval' },
+];
+
+function fmtDuration(ms: number): string {
+  const s = Math.max(0, Math.round(ms / 1000));
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ${s % 60}s`;
+  const h = Math.floor(m / 60);
+  return `${h}h ${m % 60}m`;
+}
+
 export default async function AccountDetail({
   params,
   searchParams,
@@ -72,6 +89,21 @@ export default async function AccountDetail({
   // §6.10 unit economics: 30-day model COGS for this account (M6.5)
   const { data: cogsRows } = await admin.rpc('account_model_cogs', { p_account: id, p_days: 30 });
   const cogs = Array.isArray(cogsRows) ? (cogsRows[0] ?? null) : null;
+
+  // §6.12 / TTFAD: the account's product events → activation funnel + the time
+  // from account creation to the first approved draft (the north-star metric).
+  const { data: pevents } = await admin
+    .from('product_events')
+    .select('name, at')
+    .eq('account_id', id)
+    .order('at', { ascending: true })
+    .limit(500);
+  const events = (pevents ?? []) as { name: string; at: string }[];
+  const fired = new Set(events.map((e) => e.name));
+  const firstApprovedAt = events.find((e) => e.name === 'first_draft_approved')?.at ?? null;
+  const ttfadMs = firstApprovedAt
+    ? new Date(firstApprovedAt).getTime() - new Date(account.created_at).getTime()
+    : null;
 
   const credits = bal?.balance ?? 0;
 
@@ -149,6 +181,29 @@ export default async function AccountDetail({
         ) : (
           <p className={styles.muted}>No model calls in the window — this account is running on the scripted/deterministic floor.</p>
         )}
+      </section>
+
+      <section className={styles.panel}>
+        <h2 className={styles.h2}>Activation &amp; TTFAD</h2>
+        <section className={styles.statsRow}>
+          <div className={styles.stat}>
+            <span className={styles.statLabel}>Account created</span>
+            <span className={styles.statValue}>{new Date(account.created_at).toISOString().slice(0, 16).replace('T', ' ')}</span>
+          </div>
+          <div className={styles.stat}>
+            <span className={styles.statLabel}>First approved draft</span>
+            <span className={styles.statValue}>
+              {firstApprovedAt ? new Date(firstApprovedAt).toISOString().slice(0, 16).replace('T', ' ') : '—'}
+            </span>
+          </div>
+          <div className={styles.stat}>
+            <span className={styles.statLabel}>TTFAD</span>
+            <span className={styles.statValue}>{ttfadMs != null ? fmtDuration(ttfadMs) : '—'}</span>
+          </div>
+        </section>
+        <p className={styles.muted}>
+          Funnel: {FUNNEL.map((f) => `${fired.has(f.name) ? '✓' : '·'} ${f.label}`).join('   ')}
+        </p>
       </section>
 
       {canAdjustCredits(staff.role) && (
