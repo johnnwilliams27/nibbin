@@ -1,0 +1,152 @@
+name: desktop-release
+
+# Builds the Nibbin Observer installers (macOS .dmg + Windows .msi) and
+# publishes them to the PUBLIC repo johnnwilliams27/nibbin-desktop, where trial
+# users can download them anonymously (this source repo is private).
+#
+# Signing is CONDITIONAL: when the Apple / Windows signing secrets exist the
+# artifacts are signed + notarized; until then it produces working UNSIGNED
+# installers that download fine but warn (Gatekeeper / SmartScreen) on first
+# launch.
+#
+# Required secrets (in this repo's settings):
+#   RELEASES_REPO_TOKEN  – fine-grained PAT with Contents:write on nibbin-desktop
+#   APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD, APPLE_SIGNING_IDENTITY,
+#   APPLE_ID, APPLE_PASSWORD, APPLE_TEAM_ID  – macOS signing/notarization
+#   (Windows signing wired in a follow-up once a cert exists.)
+#
+# Trigger: push a tag `desktop-v*`, or run manually (workflow_dispatch).
+#
+# NOTE (first cut — expect CI iteration): the Tauri shell lives in the nested
+# layout apps/desktop/src-tauri/app and the `app` crate has never been bundled
+# before; artifact paths / target tuning may need a pass after the first run.
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'desktop-v*'
+
+permissions:
+  contents: read
+
+env:
+  RELEASES_REPO: johnnwilliams27/nibbin-desktop
+
+jobs:
+  build:
+    name: build-${{ matrix.platform }}
+    runs-on: ${{ matrix.platform }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            args: '--target universal-apple-darwin'
+            rust-targets: 'aarch64-apple-darwin,x86_64-apple-darwin'
+          - platform: windows-latest
+            args: ''
+            rust-targets: ''
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable # TODO: pin by SHA to match repo policy
+        with:
+          targets: ${{ matrix.rust-targets }}
+
+      - name: Cache cargo
+        uses: actions/cache@v4 # TODO: pin by SHA
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            apps/desktop/src-tauri/target
+          key: ${{ matrix.platform }}-cargo-${{ hashFiles('apps/desktop/src-tauri/**/Cargo.lock') }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build installers (tauri-action, build only)
+        uses: tauri-apps/tauri-action@v0 # TODO: pin by SHA
+        env:
+          # macOS signing + notarization (no-ops until the secrets are set)
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        with:
+          projectPath: apps/desktop
+          tauriScript: npm run tauri
+          # No tagName → tauri-action builds the bundles but does NOT create a
+          # release here (publishing happens cross-repo in the publish job).
+          args: ${{ matrix.args }}
+
+      - name: Upload installer artifacts
+        uses: actions/upload-artifact@v4 # TODO: pin by SHA
+        with:
+          name: installer-${{ matrix.platform }}
+          if-no-files-found: error
+          path: |
+            apps/desktop/src-tauri/target/**/release/bundle/dmg/*.dmg
+            apps/desktop/src-tauri/target/**/release/bundle/msi/*.msi
+
+  publish:
+    name: publish-release
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      # required for signed build-provenance attestation (supply-chain integrity)
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@v4 # TODO: pin by SHA
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Generate SHA-256 checksums
+        run: |
+          set -euo pipefail
+          ( cd dist && find . -type f \( -name '*.dmg' -o -name '*.msi' \) -print0 \
+              | xargs -0 sha256sum | sed 's# \./# #' > SHA256SUMS.txt )
+          echo "--- SHA256SUMS.txt ---"; cat dist/SHA256SUMS.txt
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2 # TODO: pin by SHA
+        with:
+          subject-path: |
+            dist/**/*.dmg
+            dist/**/*.msi
+
+      - name: Publish to public releases repo
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
+          # github context passed via env (never interpolated into the script) —
+          # ref names are attacker-controllable; semgrep run-shell-injection.
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          set -euo pipefail
+          if [ "$REF_TYPE" = "tag" ]; then TAG="$REF_NAME"; else TAG="desktop-v0.1.0-$RUN_NUMBER"; fi
+          mapfile -t FILES < <(find dist -type f \( -name '*.dmg' -o -name '*.msi' \))
+          if [ ${#FILES[@]} -eq 0 ]; then echo "no installers found in dist/"; exit 1; fi
+          echo "Publishing ${FILES[*]} to $RELEASES_REPO @ $TAG"
+          gh release create "$TAG" \
+            --repo "$RELEASES_REPO" \
+            --title "Nibbin Observer $TAG" \
+            --notes "macOS .dmg (universal — Apple Silicon + Intel) and Windows .msi. Verify with SHA256SUMS.txt; artifacts carry signed build-provenance (gh attestation verify <file> --repo johnnwilliams27/nibbin). Unsigned builds warn (Gatekeeper / SmartScreen) on first launch until code-signing is configured." \
+            --prerelease \
+            "${FILES[@]}" \
+            dist/SHA256SUMS.txt

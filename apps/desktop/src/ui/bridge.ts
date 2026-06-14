@@ -54,7 +54,7 @@ export const bridge = {
       { host: exclusion.host ?? null, bundleId: exclusion.bundleId ?? null, appName: exclusion.appName ?? null },
       undefined,
     ),
-  authStart: (provider: 'google' | 'apple' | 'magic', email?: string) =>
+  authStart: (provider: 'password', email?: string) =>
     call<void>('auth_start', { provider, email: email ?? null }, undefined),
   authSession: () => call<Record<string, unknown> | null>('auth_session', undefined, null),
   signOut: () => call<void>('sign_out', undefined, undefined),
