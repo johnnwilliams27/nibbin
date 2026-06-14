@@ -1,10 +1,9 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { turnForState } from '@nibbin/keeper';
 import { createClient } from '../../../lib/supabase/server';
 import { ensureAccount } from '../../../lib/auth/bootstrap';
 import { upsertOwnProfile } from '../../../lib/auth/profile';
-import { stateFromRow, type GroveRow } from '../../../lib/grove/state';
+import { loadGroveState } from '../../../lib/grove/load';
 import { GroveChat } from './GroveChat';
 
 export const metadata: Metadata = { title: 'Your grove — Nibbin' };
@@ -34,25 +33,8 @@ export default async function GrovePage() {
     redirect('/app');
   }
 
-  // All reads run under the user's own RLS session.
-  const [{ data: row }, { data: me }, { data: balanceRow }] = await Promise.all([
-    supabase
-      .from('grove_state')
-      .select('keeper_name, onboarding_step, answers')
-      .eq('account_id', accountId)
-      .maybeSingle<GroveRow>(),
-    supabase.from('users').select('name').eq('id', user.id).maybeSingle<{ name: string | null }>(),
-    supabase
-      .from('credit_balances')
-      .select('balance')
-      .eq('account_id', accountId)
-      .maybeSingle<{ balance: number }>(),
-  ]);
+  const { state, initialMessages, expression, credits, rowExists } = await loadGroveState(supabase, accountId, user.id);
 
-  const state = stateFromRow(row ?? null, me?.name ?? null);
-  const turn = turnForState(state);
-
-  const initialMessages = [...turn.messages];
   if (state.step === 'done') {
     // §6.2: a top-up since last visit should quietly unblock cap-queued runs.
     const { resumeQueuedRuns } = await import('../../../lib/runtime/engine');
@@ -62,11 +44,11 @@ export default async function GrovePage() {
   return (
     <GroveChat
       initialMessages={initialMessages}
-      initialExpression={turn.expression}
+      initialExpression={expression}
       initialStep={state.step}
       keeperName={state.keeperName}
-      freshHatch={row == null && state.step === 'ask_user_name'}
-      credits={balanceRow?.balance ?? 0}
+      freshHatch={!rowExists && state.step === 'ask_user_name'}
+      credits={credits}
       initialProfile={state.profile}
     />
   );

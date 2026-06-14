@@ -3,8 +3,10 @@ import { redirect } from 'next/navigation';
 import { createClient } from '../../lib/supabase/server';
 import { ensureAccount } from '../../lib/auth/bootstrap';
 import { upsertOwnProfile } from '../../lib/auth/profile';
+import { loadGroveState } from '../../lib/grove/load';
 import { AppShell } from '../../components/shell/AppShell';
 import { Card, Badge } from '../../components/ui';
+import { KeeperPanel } from './grove/KeeperPanel';
 import styles from './app.module.css';
 import dash from './dashboard.module.css';
 
@@ -117,26 +119,16 @@ export default async function AppPage() {
 
   // Every read below is gated by RLS on the user's own session — this is the
   // live demonstration that membership scoping holds at the database layer.
-  const { data: grove } = await supabase
-    .from('grove_state')
-    .select('keeper_name, onboarding_step')
-    .eq('account_id', accountId)
-    .maybeSingle();
+  const [groveLoad, { data: account }] = await Promise.all([
+    loadGroveState(supabase, accountId, user.id),
+    supabase.from('accounts').select('name').eq('id', accountId).single(),
+  ]);
+
+  const { state: grove, initialMessages, expression, credits } = groveLoad;
+
   // A grove that hasn't finished hatching pulls the user back into the
   // ceremony (§4.1 steps 2–3) — the dashboard comes after.
-  if (!grove || grove.onboarding_step !== 'done') redirect('/app/grove');
-
-  const { data: account } = await supabase
-    .from('accounts')
-    .select('name')
-    .eq('id', accountId)
-    .single();
-  const { data: balanceRow } = await supabase
-    .from('credit_balances')
-    .select('balance')
-    .eq('account_id', accountId)
-    .maybeSingle();
-  const credits = balanceRow?.balance ?? 0;
+  if (grove.step !== 'done') redirect('/app/grove');
 
   const [{ data: nibbinsData }, { count: waitingCount }, { count: queuedCount }, { data: runsData }] =
     await Promise.all([
@@ -175,17 +167,25 @@ export default async function AppPage() {
   const activeNibbins = nibbins.filter((n) => n.status === 'active').length;
   const waiting = waitingCount ?? 0;
 
+  const keeperPanel = (
+    <KeeperPanel
+      initialMessages={initialMessages}
+      initialExpression={expression}
+      initialStep={grove.step}
+      keeperName={grove.keeperName}
+      credits={credits}
+      initialProfile={grove.profile}
+    />
+  );
+
   return (
-    <AppShell title="Your grove" email={user.email}>
+    <AppShell title="Your grove" email={user.email} panel={keeperPanel}>
       <header className={dash.header}>
         <p className={dash.eyebrow}>Your grove</p>
         <h1 className={dash.title}>{account?.name ?? 'Your grove'}</h1>
-        <p className={dash.subtitle}>
-          {grove.keeper_name ? `${grove.keeper_name} is keeping things tidy. ` : ''}
-          <a className={dash.cta} href="/app/grove">
-            Step into the grove →
-          </a>
-        </p>
+        {grove.keeperName && (
+          <p className={dash.subtitle}>{grove.keeperName} is keeping things tidy.</p>
+        )}
       </header>
 
       {/* Approval queue — the heartbeat. The yes/no itself happens in the grove. */}
