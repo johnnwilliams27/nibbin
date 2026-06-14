@@ -54,6 +54,7 @@ export function KeeperChat({
   credits,
   initialProfile,
   variant,
+  onStep,
 }: {
   initialMessages: KeeperMessage[];
   initialExpression: KeeperExpression;
@@ -63,13 +64,21 @@ export function KeeperChat({
   credits: number;
   initialProfile: UnderstandingProfile | null;
   variant: 'focal' | 'panel';
+  /** Optional callback fired whenever the onboarding step changes. */
+  onStep?: (step: OnboardingStep) => void;
 }) {
   const isPanel = variant === 'panel';
   const [items, setItems] = useState<ChatItem[]>(() =>
     freshHatch ? [] : initialMessages.map(keeperItem),
   );
   const [expression, setExpression] = useState<KeeperExpression>(freshHatch ? 'idle' : initialExpression);
-  const [step, setStep] = useState<OnboardingStep>(initialStep);
+  const [step, setStepRaw] = useState<OnboardingStep>(initialStep);
+  const onStepRef = useRef(onStep);
+  onStepRef.current = onStep;
+  const setStep = useCallback((s: OnboardingStep) => {
+    setStepRaw(s);
+    onStepRef.current?.(s);
+  }, []);
   const [keeperName, setKeeperName] = useState<string | null>(initialKeeperName);
   const [profile, setProfile] = useState<UnderstandingProfile | null>(initialProfile);
   const [os, setOs] = useState<'mac' | 'windows' | 'other'>('other');

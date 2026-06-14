@@ -1,0 +1,62 @@
+/* OnboardingCanvas — focal in-shell onboarding host. Token-only, no hex.
+   The canvas fills the shell content area; the column provides generous
+   max-width centering and breathing room. */
+
+.canvas {
+  /* Fill whatever height the shell's .content area gives us. The shell
+     already pads; we add vertical breathing room on top. */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* Let the chat stretch to fill available height so the log can scroll */
+  min-height: calc(100dvh - 60px); /* rough topbar offset — the shell handles exact layout */
+  padding: 12px 0 0;
+}
+
+.column {
+  width: 100%;
+  max-width: 860px;
+  display: flex;
+  flex-direction: column;
+  /* Fill the available vertical space so KeeperChat's log can grow + scroll */
+  flex: 1;
+  min-height: 0;
+}
+
+/* KeeperChat's .chatRoot uses display:contents in focal mode — the .content
+   div inside it is full-width inside our column. Give it room to breathe. */
+.chatWrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Subtle entrance animation — calm, not theatrical */
+.canvas {
+  animation: canvasFade var(--dur-3) var(--ease-settle);
+}
+
+@keyframes canvasFade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .canvas {
+    animation: none;
+  }
+}
+
+/* Narrow screens: remove horizontal margin so the chat is full-width */
+@media (max-width: 600px) {
+  .column {
+    max-width: 100%;
+  }
+}
