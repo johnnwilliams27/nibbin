@@ -7,6 +7,7 @@ import { loadGroveState } from '../../lib/grove/load';
 import { AppShell } from '../../components/shell/AppShell';
 import { Card, Badge } from '../../components/ui';
 import { KeeperPanel } from './grove/KeeperPanel';
+import { OnboardingCanvas } from './grove/OnboardingCanvas';
 import styles from './app.module.css';
 import dash from './dashboard.module.css';
 
@@ -126,9 +127,26 @@ export default async function AppPage() {
 
   const { state: grove, initialMessages, expression, credits } = groveLoad;
 
-  // A grove that hasn't finished hatching pulls the user back into the
-  // ceremony (§4.1 steps 2–3) — the dashboard comes after.
-  if (grove.step !== 'done') redirect('/app/grove');
+  // Onboarding not yet complete: render the focal OnboardingCanvas inside the
+  // shell (nav quiet + locked). The canvas handles the chat engine + hatch
+  // delight + stepper; on completion the handoff screen appears and the user
+  // follows the download link or clicks "take me to my grove" to navigate here
+  // again (at which point step === 'done' and the dashboard renders).
+  if (grove.step !== 'done') {
+    return (
+      <AppShell onboarding title="Welcome" email={user.email}>
+        <OnboardingCanvas
+          initialMessages={initialMessages}
+          initialExpression={expression}
+          initialStep={grove.step}
+          keeperName={grove.keeperName}
+          freshHatch={!groveLoad.rowExists}
+          credits={credits}
+          initialProfile={grove.profile}
+        />
+      </AppShell>
+    );
+  }
 
   const [{ data: nibbinsData }, { count: waitingCount }, { count: queuedCount }, { data: runsData }] =
     await Promise.all([
