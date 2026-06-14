@@ -104,11 +104,30 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
+      # required for signed build-provenance attestation (supply-chain integrity)
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/download-artifact@v4 # TODO: pin by SHA
         with:
           path: dist
           merge-multiple: true
+
+      - name: Generate SHA-256 checksums
+        run: |
+          set -euo pipefail
+          ( cd dist && find . -type f \( -name '*.dmg' -o -name '*.msi' \) -print0 \
+              | xargs -0 sha256sum | sed 's# \./# #' > SHA256SUMS.txt )
+          echo "--- SHA256SUMS.txt ---"; cat dist/SHA256SUMS.txt
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2 # TODO: pin by SHA
+        with:
+          subject-path: |
+            dist/**/*.dmg
+            dist/**/*.msi
 
       - name: Publish to public releases repo
         env:
@@ -122,6 +141,7 @@ jobs:
           gh release create "$TAG" \
             --repo "$RELEASES_REPO" \
             --title "Nibbin Observer $TAG" \
-            --notes "macOS .dmg (universal — Apple Silicon + Intel) and Windows .msi. Unsigned builds warn (Gatekeeper / SmartScreen) on first launch until code-signing is configured." \
+            --notes "macOS .dmg (universal — Apple Silicon + Intel) and Windows .msi. Verify with SHA256SUMS.txt; artifacts carry signed build-provenance (gh attestation verify <file> --repo johnnwilliams27/nibbin). Unsigned builds warn (Gatekeeper / SmartScreen) on first launch until code-signing is configured." \
             --prerelease \
-            "${FILES[@]}"
+            "${FILES[@]}" \
+            dist/SHA256SUMS.txt
