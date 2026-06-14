@@ -20,10 +20,14 @@ fn supabase_url() -> &'static str {
 fn supabase_publishable_key() -> &'static str {
     option_env!("NIBBIN_SUPABASE_PUBLISHABLE_KEY").unwrap_or("")
 }
+/// The web origin hosting the desktop sign-in bridge (§6.1). Pinned at build
+/// time per environment — never derived from anything attacker-controllable.
+fn web_url() -> &'static str {
+    option_env!("NIBBIN_WEB_URL").unwrap_or("https://nibbin.com")
+}
 
 const KEYRING_SERVICE: &str = "com.nibbin.observer";
 const KEYRING_SESSION: &str = "supabase-session";
-const REDIRECT: &str = "nibbin://auth";
 
 /// A sign-in we started and are waiting on. The `state` nonce binds the
 /// deep-link callback to THIS request: the custom `nibbin://` scheme is not
@@ -57,54 +61,32 @@ pub fn auth_start(app: AppHandle, provider: String, email: Option<String>) -> Re
 
 fn auth_start_inner(
     app: &AppHandle,
-    provider: &str,
-    email: Option<&str>,
+    _provider: &str,
+    _email: Option<&str>,
 ) -> Result<(), anyhow::Error> {
     let verifier = random_token()?;
     let state = random_token()?;
     let challenge = b64url(&Sha256::digest(verifier.as_bytes()));
 
-    // Arm the pending request only AFTER the browser/OTP leg succeeds, so a
-    // failed start never leaves a verifier armed for an injected callback.
-    let result = (|| -> Result<(), anyhow::Error> {
-        match provider {
-            "google" | "apple" => {
-                let url = format!(
-                    "{}/auth/v1/authorize?provider={}&redirect_to={}&code_challenge={}&code_challenge_method=s256&state={}",
-                    supabase_url(),
-                    provider,
-                    urlencode(REDIRECT),
-                    challenge,
-                    state,
-                );
-                app.opener().open_url(url, None::<&str>)?;
-            }
-            "magic" => {
-                let email = email.ok_or_else(|| anyhow::anyhow!("magic link needs an email"))?;
-                let response = ureq::post(&format!("{}/auth/v1/otp", supabase_url()))
-                    .set("apikey", supabase_publishable_key())
-                    .send_json(serde_json::json!({
-                        "email": email,
-                        "create_user": true,
-                        "code_challenge": challenge,
-                        "code_challenge_method": "s256",
-                        "options": { "email_redirect_to": REDIRECT, "data": { "state": state } },
-                    }))?;
-                anyhow::ensure!(response.status() < 300, "otp request failed");
-            }
-            other => anyhow::bail!("unknown provider: {other}"),
-        }
-        Ok(())
-    })();
-
-    match result {
+    // Open the SYSTEM browser at the web sign-in bridge — never an embedded
+    // webview, and the password never touches the native app. `challenge` and
+    // `state` are URL-safe base64 (no chars needing escaping). Arm the pending
+    // request only AFTER the browser opens, so a failed start never leaves a
+    // verifier armed for an injected callback.
+    let url = format!(
+        "{}/auth/desktop?challenge={}&state={}",
+        web_url(),
+        challenge,
+        state,
+    );
+    match app.opener().open_url(url, None::<&str>) {
         Ok(()) => {
             *PENDING.lock().expect("pending lock") = Some(PendingSignIn { verifier, state });
             Ok(())
         }
         Err(e) => {
             *PENDING.lock().expect("pending lock") = None;
-            Err(e)
+            Err(e.into())
         }
     }
 }
@@ -144,9 +126,11 @@ pub fn complete_from_url(_app: &AppHandle, url: &str) -> Result<(), anyhow::Erro
         "auth callback state mismatch — rejecting (possible injected callback)"
     );
 
-    let response = ureq::post(&format!("{}/auth/v1/token?grant_type=pkce", supabase_url()))
-        .set("apikey", supabase_publishable_key())
-        .send_json(serde_json::json!({ "auth_code": code, "code_verifier": pending.verifier }))?;
+    // Redeem the one-time code at the web bridge by proving the PKCE verifier.
+    // The bridge returns the Supabase session (same shape as a direct token
+    // exchange), which we persist to the keychain below.
+    let response = ureq::post(&format!("{}/api/auth/desktop/token", web_url()))
+        .send_json(serde_json::json!({ "code": code, "code_verifier": pending.verifier }))?;
     anyhow::ensure!(response.status() < 300, "token exchange failed");
     let session: serde_json::Value = response.into_json()?;
 
@@ -210,8 +194,4 @@ pub fn sign_out() -> Result<(), String> {
         Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
         Err(e) => Err(e.to_string()),
     }
-}
-
-fn urlencode(s: &str) -> String {
-    s.replace(':', "%3A").replace('/', "%2F")
 }
