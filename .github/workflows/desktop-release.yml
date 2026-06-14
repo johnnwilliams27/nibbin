@@ -132,9 +132,14 @@ jobs:
       - name: Publish to public releases repo
         env:
           GH_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
+          # github context passed via env (never interpolated into the script) —
+          # ref names are attacker-controllable; semgrep run-shell-injection.
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          RUN_NUMBER: ${{ github.run_number }}
         run: |
           set -euo pipefail
-          TAG="${{ github.ref_type == 'tag' && github.ref_name || format('desktop-v0.1.0-{0}', github.run_number) }}"
+          if [ "$REF_TYPE" = "tag" ]; then TAG="$REF_NAME"; else TAG="desktop-v0.1.0-$RUN_NUMBER"; fi
           mapfile -t FILES < <(find dist -type f \( -name '*.dmg' -o -name '*.msi' \))
           if [ ${#FILES[@]} -eq 0 ]; then echo "no installers found in dist/"; exit 1; fi
           echo "Publishing ${FILES[*]} to $RELEASES_REPO @ $TAG"
