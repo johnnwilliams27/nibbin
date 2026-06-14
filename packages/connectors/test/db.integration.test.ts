@@ -166,7 +166,19 @@ describe.skipIf(!dbAvailable)('connections + vault (M3 migration, C8/C9)', () =>
     ).rejects.toThrow(/check constraint|violates/);
   });
 
-  it('one-click revoke cascades: vault emptied, status flipped, audited, idempotent', async () => {
+  it('one-click revoke cascades: vault emptied, status flipped, audited, scans purged, idempotent', async () => {
+    // seed two findings: one mined from this connection, one not. Revoke must
+    // take the former and leave the latter (#29 scan-purge is connection-scoped,
+    // not an account-wide wipe).
+    await h.as(service, (c) =>
+      c.query(
+        `insert into public.scan_results (account_id, connection_id, batch_id, module, finding)
+         values ($1, $2, gen_random_uuid(), 'gmail_triage', '{"k":1}'::jsonb),
+                ($1, null, gen_random_uuid(), 'manual', '{"k":2}'::jsonb)`,
+        [accountA, connId],
+      ),
+    );
+
     await h.as(service, (c) => c.query(`select public.connection_revoke($1, $2)`, [connId, UID_A]));
 
     const row = await h.sql(`select status, token_ref, revoked_at from public.connections where id = $1`, [connId]);
@@ -175,6 +187,11 @@ describe.skipIf(!dbAvailable)('connections + vault (M3 migration, C8/C9)', () =>
 
     const vaultCount = await h.sql(`select count(*)::int as n from vault.secrets`);
     expect((vaultCount.rows[0] as { n: number }).n).toBe(0);
+
+    // the connection's finding is gone; the unrelated one survives
+    const scans = await h.sql(`select connection_id from public.scan_results where account_id = $1`, [accountA]);
+    expect(scans.rows).toHaveLength(1);
+    expect((scans.rows[0] as { connection_id: string | null }).connection_id).toBeNull();
 
     // visible in the account's own audit log, through the member's RLS session
     const audit = await h.as(asA, (c) =>
