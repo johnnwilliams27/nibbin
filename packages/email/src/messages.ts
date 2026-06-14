@@ -55,6 +55,23 @@ export function welcomeEmail(appUrl: string, downloadUrl?: string): Transactiona
   };
 }
 
+/**
+ * Completion receipt after an account is purged (§6.11). No CTA — the account
+ * is gone; there is nowhere to send them. Sent to the address captured before
+ * the purge scrubbed it.
+ */
+export function accountDeletedEmail(): TransactionalEmail {
+  return {
+    subject: 'Your Nibbin account has been deleted',
+    preheader: 'Your grove and its personal data have been removed.',
+    eyebrow: 'Account deleted',
+    title: 'Your grove has been closed.',
+    body: 'As you asked, your Nibbin account and the personal data in it have been permanently deleted. The few records we’re legally required to keep — like billing history — have been anonymized so they can no longer be tied to you. There’s nothing more you need to do.',
+    footnote: 'If you didn’t ask for this, contact hello@nibbin.com right away.',
+    creature: { species: 'Keeper', size: 88 },
+  };
+}
+
 /** Password reset — sent via Resend so it isn't subject to Supabase's email throttle. */
 export function passwordResetEmail(link: string): TransactionalEmail {
   return {

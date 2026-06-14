@@ -1,7 +1,7 @@
 export { esc, renderBeatEmail } from './render';
 export { renderTransactional } from './transactional';
 export type { TransactionalEmail, TransactionalCard, TransactionalRenderOptions } from './transactional';
-export { inviteEmail, waitlistConfirmEmail, welcomeEmail, passwordResetEmail } from './messages';
+export { inviteEmail, waitlistConfirmEmail, welcomeEmail, passwordResetEmail, accountDeletedEmail } from './messages';
 export { templateFor } from './templates';
 export { createBeatMailer } from './sender';
 export { resendProvider } from './resend';
