@@ -55,25 +55,11 @@ function signInView(refresh: () => void): HTMLElement {
       'Signing in opens your regular browser — the Observer never asks for your password itself. Your field study stays on this machine either way; the account link just lets your diagnosis find its way to your grove.',
     ]),
   ]);
-  const email = el('input', { type: 'email', placeholder: 'you@example.com' });
-  const note = el('p', { class: 'muted' }, ['']);
   root.append(
     el('div', { class: 'card stack' }, [
       el('div', { class: 'row' }, [
-        button('Continue with Google', () => void bridge.authStart('google').then(refresh), 'primary'),
-        button('Continue with Apple', () => void bridge.authStart('apple').then(refresh)),
+        button('Sign in', () => void bridge.authStart('password').then(refresh), 'primary'),
       ]),
-      el('div', { class: 'row' }, [
-        email,
-        button('Email me a sign-in link', () => {
-          const value = email.value.trim();
-          if (!value) return;
-          void bridge.authStart('magic', value).then(() => {
-            note.textContent = 'Check your inbox — the link opens right back here.';
-          });
-        }),
-      ]),
-      note,
     ]),
   );
   return root;
