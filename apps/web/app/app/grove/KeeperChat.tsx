@@ -53,7 +53,7 @@ export function KeeperChat({
   freshHatch,
   credits,
   initialProfile,
-  variant,
+  variant: _variant,
 }: {
   initialMessages: KeeperMessage[];
   initialExpression: KeeperExpression;
