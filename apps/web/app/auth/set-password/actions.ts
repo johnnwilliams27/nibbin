@@ -23,5 +23,23 @@ export async function setPassword(formData: FormData) {
   const { error } = await supabase.auth.updateUser({ password });
   if (error) redirect('/auth/set-password?error=failed');
 
+  // Seed browser-detected timezone/locale on first sign-up — but never clobber
+  // values the user already has (this same flow handles password resets).
+  const tz = String(formData.get('tz') ?? '').trim().slice(0, 64);
+  const locale = String(formData.get('locale') ?? '').trim().slice(0, 20);
+  if (tz || locale) {
+    const { data: me } = await supabase
+      .from('users')
+      .select('tz, locale')
+      .eq('id', user.id)
+      .maybeSingle<{ tz: string | null; locale: string | null }>();
+    const patch: { tz?: string; locale?: string } = {};
+    if (tz && !me?.tz) patch.tz = tz;
+    if (locale && !me?.locale) patch.locale = locale;
+    if (Object.keys(patch).length > 0) {
+      await supabase.from('users').update(patch).eq('id', user.id);
+    }
+  }
+
   redirect('/app');
 }

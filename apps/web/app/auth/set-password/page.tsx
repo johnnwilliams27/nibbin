@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { createClient } from '../../../lib/supabase/server';
 import { setPassword } from './actions';
+import { DetectedFields } from './DetectedFields';
 import styles from '../../login/login.module.css';
 
 export const metadata: Metadata = { title: 'Set your password — Nibbin' };
@@ -47,6 +48,7 @@ export default async function SetPasswordPage({
         )}
 
         <form action={setPassword} className={styles.form}>
+          <DetectedFields />
           <label className={styles.label} htmlFor="password">
             Password
           </label>
