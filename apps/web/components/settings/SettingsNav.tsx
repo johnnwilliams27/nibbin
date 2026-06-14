@@ -1,12 +1,13 @@
 import Link from 'next/link';
 import styles from './settings.module.css';
 
-export type SettingsTab = 'profile' | 'security' | 'connections' | 'billing';
+export type SettingsTab = 'profile' | 'security' | 'connections' | 'account' | 'billing';
 
 const TABS: { key: SettingsTab; label: string; href: string }[] = [
   { key: 'profile', label: 'Profile', href: '/app/settings/profile' },
   { key: 'security', label: 'Security', href: '/app/settings/security' },
   { key: 'connections', label: 'Connections', href: '/app/settings/connections' },
+  { key: 'account', label: 'Account', href: '/app/settings/account' },
   { key: 'billing', label: 'Plan & credits', href: '/billing' },
 ];
 
