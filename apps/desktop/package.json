@@ -7,7 +7,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "dev": "vite",
-    "build": "vite build"
+    "build": "vite build",
+    "tauri": "tauri"
   },
   "dependencies": {
     "@nibbin/redaction": "*",
@@ -15,6 +16,7 @@
     "@tauri-apps/api": "^2.9.0"
   },
   "devDependencies": {
+    "@tauri-apps/cli": "^2.9.0",
     "vite": "^7.3.4"
   }
 }
