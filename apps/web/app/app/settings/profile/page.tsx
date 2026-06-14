@@ -5,21 +5,11 @@ import { AppShell } from '../../../../components/shell/AppShell';
 import { SettingsNav } from '../../../../components/settings/SettingsNav';
 import { Card, Button, InlineFeedback } from '../../../../components/ui';
 import { saveProfile } from './actions';
+import { COMMON_TIMEZONES, COMMON_LOCALES, withCurrent } from '../../../../lib/i18n/zones';
 import styles from '../../../../components/settings/settings.module.css';
 
 export const metadata: Metadata = { title: 'Profile — Settings · Nibbin' };
 export const dynamic = 'force-dynamic';
-
-function timezones(): string[] {
-  try {
-    const supported = (Intl as unknown as { supportedValuesOf?: (key: string) => string[] })
-      .supportedValuesOf;
-    if (typeof supported === 'function') return supported('timeZone');
-  } catch {
-    // older runtime — fall back to a free-text input
-  }
-  return [];
-}
 
 interface ProfileRow {
   name: string | null;
@@ -44,7 +34,6 @@ export default async function ProfileSettingsPage({
     .eq('id', user.id)
     .maybeSingle<ProfileRow>();
   const { saved, error } = await searchParams;
-  const zones = timezones();
 
   return (
     <AppShell active="settings" title="Settings" email={user.email}>
@@ -89,24 +78,14 @@ export default async function ProfileSettingsPage({
               <label className={styles.label} htmlFor="tz">
                 Timezone
               </label>
-              {zones.length > 0 ? (
-                <select className={styles.select} id="tz" name="tz" defaultValue={me?.tz ?? ''}>
-                  <option value="">Not set</option>
-                  {zones.map((zone) => (
-                    <option key={zone} value={zone}>
-                      {zone}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  className={styles.input}
-                  id="tz"
-                  name="tz"
-                  defaultValue={me?.tz ?? ''}
-                  placeholder="e.g. America/New_York"
-                />
-              )}
+              <select className={styles.select} id="tz" name="tz" defaultValue={me?.tz ?? ''}>
+                <option value="">Not set</option>
+                {withCurrent(COMMON_TIMEZONES, me?.tz ?? null).map((z) => (
+                  <option key={z.value} value={z.value}>
+                    {z.label}
+                  </option>
+                ))}
+              </select>
               <span className={styles.fieldHint}>
                 Keeps your grove’s timing and Field Notes lined up with your day.
               </span>
@@ -116,14 +95,15 @@ export default async function ProfileSettingsPage({
               <label className={styles.label} htmlFor="locale">
                 Locale
               </label>
-              <input
-                className={styles.input}
-                id="locale"
-                name="locale"
-                defaultValue={me?.locale ?? ''}
-                placeholder="e.g. en-US"
-                maxLength={20}
-              />
+              <select className={styles.select} id="locale" name="locale" defaultValue={me?.locale ?? ''}>
+                <option value="">Not set</option>
+                {withCurrent(COMMON_LOCALES, me?.locale ?? null).map((l) => (
+                  <option key={l.value} value={l.value}>
+                    {l.label}
+                  </option>
+                ))}
+              </select>
+              <span className={styles.fieldHint}>How dates, times, and numbers are formatted for you.</span>
             </div>
 
             <div className={styles.actions}>
