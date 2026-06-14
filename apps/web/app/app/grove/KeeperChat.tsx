@@ -53,7 +53,7 @@ export function KeeperChat({
   freshHatch,
   credits,
   initialProfile,
-  variant: _variant,
+  variant,
 }: {
   initialMessages: KeeperMessage[];
   initialExpression: KeeperExpression;
@@ -64,6 +64,7 @@ export function KeeperChat({
   initialProfile: UnderstandingProfile | null;
   variant: 'focal' | 'panel';
 }) {
+  const isPanel = variant === 'panel';
   const [items, setItems] = useState<ChatItem[]>(() =>
     freshHatch ? [] : initialMessages.map(keeperItem),
   );
@@ -248,194 +249,213 @@ export function KeeperChat({
       : (activeQuestion?.placeholder ??
         (step === 'done' ? `Say something to ${keeperName ?? 'your Grovekeeper'}` : 'Type your answer'));
 
+  const log = (
+    <div className={styles.log} role="log" aria-live="polite" ref={logRef} tabIndex={0}>
+      {items.map((item) =>
+        item.from === 'user' ? (
+          <div key={item.id} className={styles.userBubble}>
+            {item.text}
+          </div>
+        ) : (
+          <div
+            key={item.id}
+            className={
+              item.message!.card.kind === 'celebration' ? styles.celebrationCard : styles.keeperBubble
+            }
+          >
+            <CardView card={item.message!.card} />
+          </div>
+        ),
+      )}
+      {busy && (
+        <p className={styles.srOnly} role="status">
+          {keeperName ?? 'Your Grovekeeper'} is writing in the journal…
+        </p>
+      )}
+    </div>
+  );
+
+  const composer = (
+    <div className={styles.composer}>
+      {/* Handoff screen: shown at done, replaces the former scan/adopt chip block.
+          In panel mode the handoff is suppressed — the user is already on Grove Home. */}
+      {step === 'done' && !busy && !isPanel && (
+        <div className={styles.handoff}>
+          {profile?.jobTitle && (
+            <p className={styles.handoffReflect}>
+              Here&apos;s what I picked up — you do <strong>{profile.jobTitle}</strong>
+              {profile.channels.length > 0 && <> and most of your work comes through <strong>{profile.channels.join(', ')}</strong></>}.
+            </p>
+          )}
+          <p className={styles.handoffLead}>Your team is waiting in the desktop app — that&apos;s where we connect your accounts and start.</p>
+          {os === 'windows' ? (
+            <>
+              <a className={`${ui.btn} ${ui.btnPrimary}`} href="/download/windows">Download for Windows</a>
+              <a className={`${ui.btn} ${ui.btnGhost}`} href="/download/mac">Download for macOS instead</a>
+            </>
+          ) : os === 'mac' ? (
+            <>
+              <a className={`${ui.btn} ${ui.btnPrimary}`} href="/download/mac">Download for macOS</a>
+              <a className={`${ui.btn} ${ui.btnGhost}`} href="/download/windows">Download for Windows instead</a>
+            </>
+          ) : (
+            <>
+              <a className={`${ui.btn} ${ui.btnPrimary}`} href="/download/mac">Download for macOS</a>
+              <a className={`${ui.btn} ${ui.btnPrimary}`} href="/download/windows">Download for Windows</a>
+            </>
+          )}
+          <Link className={`${ui.btn} ${ui.btnGhost}`} href="/app">Not now — take me to my grove</Link>
+        </div>
+      )}
+      {/* Understand-phase chips: fill the input as suggestions (not auto-submit) */}
+      {step === 'understand' && activeQuestion?.chips && !busy && (
+        <div className={styles.chips}>
+          {activeQuestion.chips.map((chip) => (
+            <button
+              key={chip.id}
+              type="button"
+              className={styles.chip}
+              onClick={() => { setDraft((d) => (d ? `${d}, ${chip.label}` : chip.label)); inputRef.current?.focus(); }}
+            >
+              {chip.label}
+            </button>
+          ))}
+        </div>
+      )}
+      {/* Non-understand chips: existing multi/single select behavior */}
+      {step !== 'understand' && activeQuestion?.chips && !busy && (
+        <div className={styles.chips}>
+          {activeQuestion.chips
+            .filter((c) => c.id !== 'skip')
+            .map((chip) =>
+              multiQuestion ? (
+                <button
+                  key={chip.id}
+                  type="button"
+                  className={styles.chip}
+                  aria-pressed={picked.includes(chip.id)}
+                  onClick={() => togglePick(chip.id)}
+                >
+                  {chip.label}
+                </button>
+              ) : (
+                <button
+                  key={chip.id}
+                  type="button"
+                  className={styles.chip}
+                  onClick={() => void advance(chip.label, { text: chip.label })}
+                >
+                  {chip.label}
+                </button>
+              ),
+            )}
+          {multiQuestion && picked.length > 0 && (
+            <button type="button" className={styles.chipConfirm} onClick={submitChannels}>
+              That&apos;s where
+            </button>
+          )}
+          {activeQuestion.skippable && (
+            <button type="button" className={styles.chip} onClick={skip}>
+              Skip this one
+            </button>
+          )}
+        </div>
+      )}
+
+      <form
+        className={styles.inputRow}
+        onSubmit={(e) => {
+          e.preventDefault();
+          submitText();
+        }}
+      >
+        <label className={styles.srOnly} htmlFor="grove-say">
+          {placeholder}
+        </label>
+        <input
+          id="grove-say"
+          ref={inputRef}
+          className={styles.input}
+          value={draft}
+          placeholder={placeholder}
+          autoComplete="off"
+          maxLength={2000}
+          disabled={busy || !hatched}
+          onChange={(e) => setDraft(e.target.value)}
+          onFocus={() => setExpression((x) => (x === 'idle' ? 'listening' : x))}
+          onBlur={() => setExpression((x) => (x === 'listening' ? 'idle' : x))}
+        />
+        <button className={styles.send} type="submit" disabled={busy || !hatched || draft.trim() === ''}>
+          Say it
+        </button>
+      </form>
+      {step === 'understand' && !busy && (
+        <Button
+          variant="ghost"
+          type="button"
+          onClick={() =>
+            void runTurn("Skip ahead — I'll set up in the app", async () => {
+              const p = await skipUnderstandingAction();
+              setStep(p.step);
+              setKeeperName(p.keeperName);
+              if (p.profile) setProfile(p.profile);
+              return { messages: p.messages, expression: p.expression };
+            })
+          }
+        >
+          Skip ahead — I&apos;ll set up in the app
+        </Button>
+      )}
+    </div>
+  );
+
   return (
-    <div className={styles.chatRoot}>
+    <div className={`${styles.chatRoot} ${isPanel ? styles.chatRootPanel : ''}`}>
       {/* Engine idle/blink animation rules — included once per surface. */}
       <style dangerouslySetInnerHTML={{ __html: creatureCss }} />
 
-      <div className={styles.content}>
-        <header className={styles.header}>
-          <div>
-            <p className={styles.eyebrow}>Your grove</p>
-            <h1 className={styles.title}>{keeperName ?? 'A new arrival'}</h1>
-          </div>
-          <div className={styles.headerRight}>
-            <p className={styles.meter}>
-              <span className={styles.meterValue}>{credits}</span> credits
-            </p>
-            <Link className={styles.backLink} href="/app">
-              Grove home
-            </Link>
-          </div>
-        </header>
-
-        <div className={styles.main}>
-          <KeeperSprite
-            expression={expression}
-            hatched={hatched}
-            cracking={cracking}
-            burstKey={burstKey}
-            name={keeperName}
-          />
-
-          <div className={styles.chat}>
-            <div className={styles.log} role="log" aria-live="polite" ref={logRef} tabIndex={0}>
-              {items.map((item) =>
-                item.from === 'user' ? (
-                  <div key={item.id} className={styles.userBubble}>
-                    {item.text}
-                  </div>
-                ) : (
-                  <div
-                    key={item.id}
-                    className={
-                      item.message!.card.kind === 'celebration' ? styles.celebrationCard : styles.keeperBubble
-                    }
-                  >
-                    <CardView card={item.message!.card} />
-                  </div>
-                ),
-              )}
-              {busy && (
-                <p className={styles.srOnly} role="status">
-                  {keeperName ?? 'Your Grovekeeper'} is writing in the journal…
-                </p>
-              )}
+      {/* focal variant: full-bleed content + 2-col sprite layout */}
+      {!isPanel && (
+        <div className={styles.content}>
+          <header className={styles.header}>
+            <div>
+              <p className={styles.eyebrow}>Your grove</p>
+              <h1 className={styles.title}>{keeperName ?? 'A new arrival'}</h1>
             </div>
+            <div className={styles.headerRight}>
+              <p className={styles.meter}>
+                <span className={styles.meterValue}>{credits}</span> credits
+              </p>
+              <Link className={styles.backLink} href="/app">
+                Grove home
+              </Link>
+            </div>
+          </header>
 
-            <div className={styles.composer}>
-              {/* Handoff screen: shown at done, replaces the former scan/adopt chip block */}
-              {step === 'done' && !busy && (
-                <div className={styles.handoff}>
-                  {profile?.jobTitle && (
-                    <p className={styles.handoffReflect}>
-                      Here&apos;s what I picked up — you do <strong>{profile.jobTitle}</strong>
-                      {profile.channels.length > 0 && <> and most of your work comes through <strong>{profile.channels.join(', ')}</strong></>}.
-                    </p>
-                  )}
-                  <p className={styles.handoffLead}>Your team is waiting in the desktop app — that&apos;s where we connect your accounts and start.</p>
-                  {os === 'windows' ? (
-                    <>
-                      <a className={`${ui.btn} ${ui.btnPrimary}`} href="/download/windows">Download for Windows</a>
-                      <a className={`${ui.btn} ${ui.btnGhost}`} href="/download/mac">Download for macOS instead</a>
-                    </>
-                  ) : os === 'mac' ? (
-                    <>
-                      <a className={`${ui.btn} ${ui.btnPrimary}`} href="/download/mac">Download for macOS</a>
-                      <a className={`${ui.btn} ${ui.btnGhost}`} href="/download/windows">Download for Windows instead</a>
-                    </>
-                  ) : (
-                    <>
-                      <a className={`${ui.btn} ${ui.btnPrimary}`} href="/download/mac">Download for macOS</a>
-                      <a className={`${ui.btn} ${ui.btnPrimary}`} href="/download/windows">Download for Windows</a>
-                    </>
-                  )}
-                  <Link className={`${ui.btn} ${ui.btnGhost}`} href="/app">Not now — take me to my grove</Link>
-                </div>
-              )}
-              {/* Understand-phase chips: fill the input as suggestions (not auto-submit) */}
-              {step === 'understand' && activeQuestion?.chips && !busy && (
-                <div className={styles.chips}>
-                  {activeQuestion.chips.map((chip) => (
-                    <button
-                      key={chip.id}
-                      type="button"
-                      className={styles.chip}
-                      onClick={() => { setDraft((d) => (d ? `${d}, ${chip.label}` : chip.label)); inputRef.current?.focus(); }}
-                    >
-                      {chip.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-              {/* Non-understand chips: existing multi/single select behavior */}
-              {step !== 'understand' && activeQuestion?.chips && !busy && (
-                <div className={styles.chips}>
-                  {activeQuestion.chips
-                    .filter((c) => c.id !== 'skip')
-                    .map((chip) =>
-                      multiQuestion ? (
-                        <button
-                          key={chip.id}
-                          type="button"
-                          className={styles.chip}
-                          aria-pressed={picked.includes(chip.id)}
-                          onClick={() => togglePick(chip.id)}
-                        >
-                          {chip.label}
-                        </button>
-                      ) : (
-                        <button
-                          key={chip.id}
-                          type="button"
-                          className={styles.chip}
-                          onClick={() => void advance(chip.label, { text: chip.label })}
-                        >
-                          {chip.label}
-                        </button>
-                      ),
-                    )}
-                  {multiQuestion && picked.length > 0 && (
-                    <button type="button" className={styles.chipConfirm} onClick={submitChannels}>
-                      That&apos;s where
-                    </button>
-                  )}
-                  {activeQuestion.skippable && (
-                    <button type="button" className={styles.chip} onClick={skip}>
-                      Skip this one
-                    </button>
-                  )}
-                </div>
-              )}
+          <div className={styles.main}>
+            <KeeperSprite
+              expression={expression}
+              hatched={hatched}
+              cracking={cracking}
+              burstKey={burstKey}
+              name={keeperName}
+            />
 
-              <form
-                className={styles.inputRow}
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  submitText();
-                }}
-              >
-                <label className={styles.srOnly} htmlFor="grove-say">
-                  {placeholder}
-                </label>
-                <input
-                  id="grove-say"
-                  ref={inputRef}
-                  className={styles.input}
-                  value={draft}
-                  placeholder={placeholder}
-                  autoComplete="off"
-                  maxLength={2000}
-                  disabled={busy || !hatched}
-                  onChange={(e) => setDraft(e.target.value)}
-                  onFocus={() => setExpression((x) => (x === 'idle' ? 'listening' : x))}
-                  onBlur={() => setExpression((x) => (x === 'listening' ? 'idle' : x))}
-                />
-                <button className={styles.send} type="submit" disabled={busy || !hatched || draft.trim() === ''}>
-                  Say it
-                </button>
-              </form>
-              {step === 'understand' && !busy && (
-                <Button
-                  variant="ghost"
-                  type="button"
-                  onClick={() =>
-                    void runTurn("Skip ahead — I'll set up in the app", async () => {
-                      const p = await skipUnderstandingAction();
-                      setStep(p.step);
-                      setKeeperName(p.keeperName);
-                      if (p.profile) setProfile(p.profile);
-                      return { messages: p.messages, expression: p.expression };
-                    })
-                  }
-                >
-                  Skip ahead — I&apos;ll set up in the app
-                </Button>
-              )}
+            <div className={styles.chat}>
+              {log}
+              {composer}
             </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* panel variant: compact single-column log + sticky composer */}
+      {isPanel && (
+        <div className={styles.panelBody}>
+          {log}
+          {composer}
+        </div>
+      )}
     </div>
   );
 }

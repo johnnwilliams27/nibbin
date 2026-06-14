@@ -10,6 +10,54 @@
   display: contents;
 }
 
+/* panel variant: fill the aside column, single flex column */
+.chatRootPanel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+/* panel body: log grows, composer sticks at bottom */
+.panelBody {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  /* Override the --g- tokens to match the shell's light surface */
+  --g-ink: var(--ink);
+  --g-ink-soft: var(--ink-soft);
+  --g-card: var(--canopy);
+  --g-line: var(--line);
+  --g-user-bubble: var(--understory);
+  --g-input-bg: var(--understory);
+  --g-accent-text: var(--moss-deep);
+  --g-focus: var(--moss);
+}
+
+/* In panel mode the log is more compact and the composer is sticky */
+.chatRootPanel .log {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 12px;
+  gap: 8px;
+}
+
+.chatRootPanel .keeperBubble,
+.chatRootPanel .userBubble,
+.chatRootPanel .celebrationCard {
+  font-size: 14px;
+  padding: 9px 12px;
+}
+
+.chatRootPanel .composer {
+  padding: 8px 12px 12px;
+  border-top: 1px solid var(--line);
+  background: var(--canopy);
+  flex-shrink: 0;
+}
+
 /* ── layout ──────────────────────────────────────────────────────────────── */
 
 .content {
