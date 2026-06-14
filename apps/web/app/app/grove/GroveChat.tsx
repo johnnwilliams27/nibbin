@@ -79,7 +79,6 @@ export function GroveChat({
   freshHatch,
   credits,
   initialProfile,
-  downloadUrl,
 }: {
   initialMessages: KeeperMessage[];
   initialExpression: KeeperExpression;
@@ -88,7 +87,6 @@ export function GroveChat({
   freshHatch: boolean;
   credits: number;
   initialProfile: UnderstandingProfile | null;
-  downloadUrl: string;
 }) {
   const [items, setItems] = useState<ChatItem[]>(() =>
     freshHatch ? [] : initialMessages.map(keeperItem),
@@ -97,6 +95,7 @@ export function GroveChat({
   const [step, setStep] = useState<OnboardingStep>(initialStep);
   const [keeperName, setKeeperName] = useState<string | null>(initialKeeperName);
   const [profile, setProfile] = useState<UnderstandingProfile | null>(initialProfile);
+  const [os, setOs] = useState<'mac' | 'windows' | 'other'>('other');
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState('');
   const [picked, setPicked] = useState<string[]>([]);
@@ -114,6 +113,13 @@ export function GroveChat({
   /* Time-of-day palette, set after mount so SSR markup stays stable. */
   useEffect(() => {
     setTheme(themeForHour(new Date().getHours()));
+  }, []);
+
+  /* Detect the platform so the handoff leads with the right installer. */
+  useEffect(() => {
+    const ua = navigator.userAgent.toLowerCase();
+    if (ua.includes('mac')) setOs('mac');
+    else if (ua.includes('win')) setOs('windows');
   }, []);
 
   useEffect(() => {
@@ -355,7 +361,22 @@ export function GroveChat({
                     </p>
                   )}
                   <p className={styles.handoffLead}>Your team is waiting in the desktop app — that&apos;s where we connect your accounts and start.</p>
-                  <a className={`${ui.btn} ${ui.btnPrimary}`} href={downloadUrl}>Download the desktop app</a>
+                  {os === 'windows' ? (
+                    <>
+                      <a className={`${ui.btn} ${ui.btnPrimary}`} href="/download/windows">Download for Windows</a>
+                      <a className={`${ui.btn} ${ui.btnGhost}`} href="/download/mac">Download for macOS instead</a>
+                    </>
+                  ) : os === 'mac' ? (
+                    <>
+                      <a className={`${ui.btn} ${ui.btnPrimary}`} href="/download/mac">Download for macOS</a>
+                      <a className={`${ui.btn} ${ui.btnGhost}`} href="/download/windows">Download for Windows instead</a>
+                    </>
+                  ) : (
+                    <>
+                      <a className={`${ui.btn} ${ui.btnPrimary}`} href="/download/mac">Download for macOS</a>
+                      <a className={`${ui.btn} ${ui.btnPrimary}`} href="/download/windows">Download for Windows</a>
+                    </>
+                  )}
                   <Link className={`${ui.btn} ${ui.btnGhost}`} href="/app">Not now — take me to my grove</Link>
                 </div>
               )}
