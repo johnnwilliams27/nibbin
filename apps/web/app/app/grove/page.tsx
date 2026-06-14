@@ -7,8 +7,6 @@ import { upsertOwnProfile } from '../../../lib/auth/profile';
 import { stateFromRow, type GroveRow } from '../../../lib/grove/state';
 import { GroveChat } from './GroveChat';
 
-const DOWNLOAD_URL = process.env.NEXT_PUBLIC_DESKTOP_DOWNLOAD_URL ?? '#';
-
 export const metadata: Metadata = { title: 'Your grove — Nibbin' };
 
 // Per-request session read — never statically cached.
@@ -70,7 +68,6 @@ export default async function GrovePage() {
       freshHatch={row == null && state.step === 'ask_user_name'}
       credits={balanceRow?.balance ?? 0}
       initialProfile={state.profile}
-      downloadUrl={DOWNLOAD_URL}
     />
   );
 }
