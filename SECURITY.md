@@ -4,7 +4,7 @@
 
 Please report security issues **privately** — do not open a public issue.
 
-- **Email:** security@nibbin.com (preferred)
+- **Email:** hello@nibbin.com (preferred)
 - Or use GitHub's **private vulnerability reporting** (repo → Security → Report a vulnerability).
 
 Include: affected component (web, desktop Observer, installer), a description, reproduction steps, and impact. We aim to acknowledge within 3 business days and to keep you updated through to a fix. Please give us a reasonable window to remediate before any public disclosure.
