@@ -23,6 +23,12 @@ export interface AppShellProps {
   children: ReactNode;
   /** Optional right-rail panel. Desktop: fixed ~380px column. Mobile: toggleable bottom sheet. */
   panel?: ReactNode;
+  /**
+   * Onboarding mode: renders full shell chrome (brand + topbar + Sign out) but
+   * nav items are non-interactive and de-emphasized — visible finish-line
+   * affordance without allowing navigation during required onboarding steps.
+   */
+  onboarding?: boolean;
 }
 
 /**
@@ -34,7 +40,7 @@ export interface AppShellProps {
  * a two-column layout (content | panel). On mobile it slides up as a bottom
  * sheet triggered by a floating toggle button.
  */
-export function AppShell({ active, title, email, children, panel }: AppShellProps) {
+export function AppShell({ active, title, email, children, panel, onboarding }: AppShellProps) {
   const [open, setOpen] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const close = () => setOpen(false);
@@ -51,17 +57,30 @@ export function AppShell({ active, title, email, children, panel }: AppShellProp
           Nibbin
         </Link>
         <nav className={styles.nav}>
-          {NAV.map((item) => (
-            <Link
-              key={item.key}
-              href={item.href}
-              onClick={close}
-              className={`${styles.navItem} ${item.key === active ? styles.navItemActive : ''}`}
-              aria-current={item.key === active ? 'page' : undefined}
-            >
-              {item.label}
-            </Link>
-          ))}
+          {NAV.map((item) =>
+            onboarding ? (
+              /* Onboarding mode: nav is visible but quiet and locked.
+                 Rendered as <span> (not <Link>) so it cannot be navigated to. */
+              <span
+                key={item.key}
+                className={`${styles.navItem} ${styles.navItemQuiet}`}
+                aria-disabled="true"
+                tabIndex={-1}
+              >
+                {item.label}
+              </span>
+            ) : (
+              <Link
+                key={item.key}
+                href={item.href}
+                onClick={close}
+                className={`${styles.navItem} ${item.key === active ? styles.navItemActive : ''}`}
+                aria-current={item.key === active ? 'page' : undefined}
+              >
+                {item.label}
+              </Link>
+            ),
+          )}
         </nav>
       </aside>
 

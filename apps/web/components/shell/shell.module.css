@@ -60,6 +60,19 @@
   border-left-color: var(--moss);
 }
 
+/* Onboarding mode: nav items are visible but locked — quiet opacity, no hover,
+   no pointer to signal non-interactivity. */
+.navItemQuiet {
+  opacity: 0.38;
+  cursor: default;
+  pointer-events: none;
+  user-select: none;
+}
+.navItemQuiet:hover {
+  background: none;
+  color: var(--ink-soft);
+}
+
 /* ---- Main column ---- */
 .main {
   margin-left: 220px;
