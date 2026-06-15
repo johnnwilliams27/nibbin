@@ -38,6 +38,17 @@ pub fn store_session(session: serde_json::Value) -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 
+/// Read the access + refresh tokens from the stored keychain session, for the
+/// Grove webview session handoff (`/desktop-auth#tokens`). None when signed out.
+pub fn session_tokens() -> Option<(String, String)> {
+    let entry = keyring::Entry::new(KEYRING_SERVICE, KEYRING_SESSION).ok()?;
+    let stored = entry.get_password().ok()?;
+    let session: serde_json::Value = serde_json::from_str(&stored).ok()?;
+    let access = session.get("access_token")?.as_str()?.to_string();
+    let refresh = session.get("refresh_token")?.as_str()?.to_string();
+    Some((access, refresh))
+}
+
 /// Current session for the account module. Refreshes silently when expired;
 /// a revoked refresh token (web "sign out everywhere") clears the session.
 #[tauri::command]

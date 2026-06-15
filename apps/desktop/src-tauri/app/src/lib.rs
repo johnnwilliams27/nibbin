@@ -41,6 +41,20 @@ fn grove_bounds(window: &tauri::Window) -> (tauri::LogicalPosition<f64>, tauri::
     )
 }
 
+/// The Grove webview's target URL. With NIBBIN_GROVE_HANDOFF set (a build-time
+/// flag — flip it on only once /desktop-auth is live on the embedded origin), a
+/// signed-in user is handed off via /desktop-auth#tokens so they skip the web
+/// login; otherwise (and whenever signed out) it loads /app directly.
+fn grove_target() -> String {
+    let base = web_url();
+    if option_env!("NIBBIN_GROVE_HANDOFF").is_some() {
+        if let Some((access, refresh)) = auth::session_tokens() {
+            return format!("{base}/desktop-auth#access_token={access}&refresh_token={refresh}");
+        }
+    }
+    format!("{base}/app")
+}
+
 /// Show the Grove tab's embedded web product, creating the child webview on
 /// first use (lazily — it only loads when the user opens Grove).
 #[tauri::command]
@@ -51,7 +65,7 @@ fn grove_show(window: tauri::Window) -> Result<(), String> {
         let _ = wv.set_size(size);
         return wv.show().map_err(|e| e.to_string());
     }
-    let target = format!("{}/app", web_url());
+    let target = grove_target();
     let parsed = target.parse().map_err(|e| format!("bad grove url: {e}"))?;
     window
         .add_child(
