@@ -281,13 +281,9 @@ export function KeeperChat({
           {keeperName ?? 'Your Grovekeeper'} is writing in the journal…
         </p>
       )}
-    </div>
-  );
-
-  const composer = (
-    <div className={styles.composer}>
-      {/* Handoff screen: shown at done, replaces the former scan/adopt chip block.
-          In panel mode the handoff is suppressed — the user is already on Grove Home. */}
+      {/* Handoff lives INSIDE the scrollable log (not the pinned composer) so a
+          tall handoff scrolls with the conversation and never pushes the input
+          below the fold. Suppressed in panel mode (the user is already home). */}
       {step === 'done' && !busy && !isPanel && (
         <div className={styles.handoff}>
           {profile?.jobTitle && (
@@ -316,6 +312,11 @@ export function KeeperChat({
           <Link className={`${ui.btn} ${ui.btnGhost}`} href="/app">Not now — take me to my grove</Link>
         </div>
       )}
+    </div>
+  );
+
+  const composer = (
+    <div className={styles.composer}>
       {/* Understand-phase chips: fill the input as suggestions (not auto-submit) */}
       {step === 'understand' && activeQuestion?.chips && !busy && (
         <div className={styles.chips}>

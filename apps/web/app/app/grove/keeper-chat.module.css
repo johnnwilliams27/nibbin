@@ -295,6 +295,8 @@
   flex-direction: column;
   gap: 10px;
   padding-top: 6px;
+  /* Pinned at the bottom of the chat; the log above scrolls. */
+  flex-shrink: 0;
 }
 
 .chips {

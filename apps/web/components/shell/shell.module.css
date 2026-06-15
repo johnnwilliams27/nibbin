@@ -113,9 +113,10 @@
   height: 100dvh;
   overflow: hidden;
   /* Smooth collapse, per Plate 06 (Motion): slide off via transform + fade —
-     never animate width. margin-right reclaims the layout space as it goes. */
-  transition: transform var(--dur-3) var(--ease-settle), opacity var(--dur-2) var(--ease-settle),
-    margin-right var(--dur-3) var(--ease-settle);
+     never animate width. margin-right reclaims the layout space as it goes.
+     --dur-4 (650ms) for a slow, deliberate glide. */
+  transition: transform var(--dur-4) var(--ease-settle), opacity var(--dur-3) var(--ease-settle),
+    margin-right var(--dur-4) var(--ease-settle);
 }
 
 /* The panel toggle button is desktop-hidden; only visible on mobile */
@@ -186,6 +187,16 @@
     opacity: 1;
     transform: translate(0, -50%);
   }
+}
+
+.keeperGlyph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+.keeperGlyph :global(svg) {
+  display: block;
 }
 
 .topbar {

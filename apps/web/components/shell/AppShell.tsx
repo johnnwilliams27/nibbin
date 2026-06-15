@@ -1,14 +1,26 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { buildCreature } from '@nibbin/creatures';
 import styles from './shell.module.css';
+
+/** The Grovekeeper creature as a small inline glyph (mount-gated — the engine
+ *  mints unique gradient ids per render, so SSR + hydration can't match). */
+function KeeperGlyph({ size }: { size: number }) {
+  const svg = useMemo(() => buildCreature({ species: 'Keeper', size }), [size]);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
+  return <span className={styles.keeperGlyph} aria-hidden="true" dangerouslySetInnerHTML={{ __html: svg }} />;
+}
 
 export type NavKey = 'grove' | 'diagnosis' | 'memory' | 'shop' | 'notifications' | 'billing' | 'settings';
 
 const NAV: { key: NavKey; label: string; href: string }[] = [
-  // 'Grove' is intentionally omitted from nav: the Keeper chat is always reachable
-  // via the docked panel, so there's no separate full-screen grove to navigate to.
+  // Grove Home (/app) is the hub — the Keeper rides along as the docked panel, so
+  // there's no separate full-screen grove route to navigate to.
+  { key: 'grove', label: 'Grove Home', href: '/app' },
   { key: 'diagnosis', label: 'Diagnosis', href: '/app/diagnosis' },
   { key: 'memory', label: 'Memory', href: '/app/memory' },
   { key: 'shop', label: 'Agent Shop', href: '/app/shop' },
@@ -140,7 +152,7 @@ export function AppShell({ active, title, email, children, panel, onboarding }: 
           aria-label="Open Keeper panel"
           onClick={() => setPanelCollapsed(false)}
         >
-          🌱
+          <KeeperGlyph size={26} />
         </button>
       )}
 
@@ -153,7 +165,7 @@ export function AppShell({ active, title, email, children, panel, onboarding }: 
           aria-expanded={panelOpen}
           onClick={() => setPanelOpen((v) => !v)}
         >
-          {panelOpen ? '✕' : '🌱'}
+          {panelOpen ? '✕' : <KeeperGlyph size={30} />}
         </button>
       )}
     </div>
