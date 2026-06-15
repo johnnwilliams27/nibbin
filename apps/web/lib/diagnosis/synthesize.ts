@@ -231,6 +231,25 @@ export function synthesizeDiagnosis(packet: SynthesisPacket): DiagnosisMap {
 
   const totalHoursPerWeek = round1(workflows.reduce((s, w) => s + w.hoursPerWeek, 0));
 
+  // Headline Group-A number: hours an adopted grove could lift off the plate
+  // each week = Σ per-workflow hours × that workflow's automatability fraction.
+  const timeSavedPerWeek = round1(
+    workflows.reduce((s, w) => s + w.hoursPerWeek * ((w.automatable ?? 0) / 100), 0),
+  );
+
+  // "Where your desktop time goes": sum each app's minutes across all days, to
+  // hours/week, sort desc, top 8. Empty when the device didn't send the aggregate.
+  const appTotals = new Map<string, number>();
+  for (const day of Object.values(packet.dailyAppMinutes ?? {})) {
+    for (const [app, min] of Object.entries(day)) {
+      appTotals.set(app, (appTotals.get(app) ?? 0) + (Number(min) || 0));
+    }
+  }
+  const appAllocation = [...appTotals.entries()]
+    .map(([app, totalMin]) => ({ app, hoursPerWeek: round1(((totalMin / days) * 7) / 60) }))
+    .sort((a, b) => b.hoursPerWeek - a.hoursPerWeek)
+    .slice(0, 8);
+
   const topRecommendations: string[] = [];
   for (const w of workflows) {
     if (w.recommendedNibbin && !topRecommendations.includes(w.recommendedNibbin)) {
@@ -239,5 +258,5 @@ export function synthesizeDiagnosis(packet: SynthesisPacket): DiagnosisMap {
     if (topRecommendations.length >= 3) break;
   }
 
-  return { workflows, totalHoursPerWeek, topRecommendations };
+  return { workflows, totalHoursPerWeek, topRecommendations, timeSavedPerWeek, appAllocation };
 }

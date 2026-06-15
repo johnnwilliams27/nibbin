@@ -94,4 +94,14 @@ export interface DiagnosisMap {
   totalHoursPerWeek: number;
   /** Top recommended shop-template keys, ranked by hours, deduped. */
   topRecommendations: string[];
+  /**
+   * Hours an adopted grove could take off your plate each week — the headline
+   * Group-A number. Σ workflow.hoursPerWeek × (automatable/100), rounded to 0.1.
+   */
+  timeSavedPerWeek: number;
+  /**
+   * Where desktop time goes: each app's hours/week derived from
+   * `packet.dailyAppMinutes`, sorted desc, top 8. `[]` when absent.
+   */
+  appAllocation: { app: string; hoursPerWeek: number }[];
 }

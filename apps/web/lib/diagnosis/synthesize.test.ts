@@ -206,3 +206,65 @@ describe('synthesizeDiagnosis finer re-mining (narrowness + regularity + frictio
     expect(m.workflows[0].friction).toBe('device note');
   });
 });
+
+describe('synthesizeDiagnosis timeSavedPerWeek', () => {
+  it('pins Σ hoursPerWeek × automatable/100 (one workflow 10h @ 50 → 5.0)', () => {
+    // 7-day study, 600 min observed → 10h/week; strength 24 → automatable 50.
+    const m = synthesizeDiagnosis({
+      version: 1, studyDays: 7, capturedFrom: 'a', capturedTo: 'b',
+      workflows: [{
+        key: 'email.general', label: 'Email', category: 'email', apps: ['Gmail'],
+        minutesObserved: 600, sessions: 7, sequences: [{ steps: ['a', 'b', 'c'], count: 8 }],
+      }],
+    });
+    expect(m.workflows[0].hoursPerWeek).toBe(10);
+    expect(m.workflows[0].automatable).toBe(50);
+    expect(m.timeSavedPerWeek).toBe(5);
+  });
+
+  it('is 0 when nothing is automatable', () => {
+    const m = synthesizeDiagnosis({
+      version: 1, studyDays: 7, capturedFrom: 'a', capturedTo: 'b',
+      workflows: [{ key: 'email.general', label: 'Email', category: 'email', apps: [], minutesObserved: 600, sessions: 7 }],
+    });
+    expect(m.timeSavedPerWeek).toBe(0);
+  });
+});
+
+describe('synthesizeDiagnosis appAllocation', () => {
+  it('sums each app across days, converts to hours/week, ranks desc', () => {
+    const m = synthesizeDiagnosis({
+      version: 1, studyDays: 7, capturedFrom: 'a', capturedTo: 'b',
+      workflows: [{ key: 'email.general', label: 'Email', category: 'email', apps: ['Gmail'], minutesObserved: 60, sessions: 5 }],
+      dailyAppMinutes: {
+        '2026-06-10': { Gmail: 60, Stripe: 30 },
+        '2026-06-11': { Gmail: 60 },
+      },
+    });
+    // Gmail 120 min / 7 days * 7 / 60 = 2.0; Stripe 30/7*7/60 ≈ 0.5
+    expect(m.appAllocation).toEqual([
+      { app: 'Gmail', hoursPerWeek: 2 },
+      { app: 'Stripe', hoursPerWeek: 0.5 },
+    ]);
+  });
+
+  it('caps at the top 8 apps', () => {
+    const day: Record<string, number> = {};
+    for (let i = 0; i < 12; i += 1) day[`App${i}`] = (i + 1) * 60;
+    const m = synthesizeDiagnosis({
+      version: 1, studyDays: 7, capturedFrom: 'a', capturedTo: 'b',
+      workflows: [{ key: 'other.general', label: 'Other', category: 'other', apps: [], minutesObserved: 60, sessions: 5 }],
+      dailyAppMinutes: { '2026-06-10': day },
+    });
+    expect(m.appAllocation).toHaveLength(8);
+    expect(m.appAllocation[0].app).toBe('App11'); // largest
+  });
+
+  it('is [] when dailyAppMinutes is absent', () => {
+    const m = synthesizeDiagnosis({
+      version: 1, studyDays: 7, capturedFrom: 'a', capturedTo: 'b',
+      workflows: [{ key: 'email.general', label: 'Email', category: 'email', apps: [], minutesObserved: 60, sessions: 5 }],
+    });
+    expect(m.appAllocation).toEqual([]);
+  });
+});
