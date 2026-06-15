@@ -26,7 +26,6 @@ export function loginView(onSignedIn: () => void): HTMLElement {
       // Surface anything thrown (network/CSP fetch failure, keychain write
       // error) instead of failing silently.
       err.textContent = e instanceof Error ? e.message : `Sign-in failed: ${String(e)}`;
-      // eslint-disable-next-line no-console
       console.error('login error', e);
     } finally {
       submit.removeAttribute('disabled');

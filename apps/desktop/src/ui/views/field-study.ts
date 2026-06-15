@@ -286,7 +286,7 @@ function quickScanView(status: StudyStatus, onChanged: () => void): HTMLElement 
   return root;
 }
 
-export function fieldStudyView(rerender: () => void): HTMLElement {
+export function fieldStudyView(_rerender: () => void): HTMLElement {
   const root = el('div', {});
   let sub: Sub = 'home';
   const nav = el('nav', { class: 'nav subnav' });

@@ -39,9 +39,8 @@ export function NoteRefresher({
     return () => {
       cancelled = true;
     };
-    // staleIds is computed once per render from server data; we intentionally
-    // run this only on mount.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // staleIds is computed once per render from server data; intentionally
+    // mount-only. (react-hooks/exhaustive-deps is not enabled in this config.)
   }, []);
 
   return null;
