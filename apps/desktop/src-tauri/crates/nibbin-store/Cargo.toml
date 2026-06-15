@@ -21,7 +21,11 @@ anyhow = { workspace = true }
 thiserror = { workspace = true }
 rusqlite = { version = "0.32", features = ["bundled-sqlcipher-vendored-openssl"] }
 keyring = { version = "3", optional = true, features = ["apple-native", "windows-native"] }
-getrandom = { version = "0.2", optional = true }
+# `std` feature gates `impl std::error::Error for getrandom::Error`, which the
+# `?`-into-anyhow in key.rs needs. Off by default in getrandom 0.2; harmless on
+# desktop, where std is always present (this crate's os-keystore path is
+# desktop-only — Linux CI never builds it).
+getrandom = { version = "0.2", optional = true, features = ["std"] }
 
 [dev-dependencies]
 tempfile = "3"

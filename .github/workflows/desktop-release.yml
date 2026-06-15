@@ -4,22 +4,36 @@ name: desktop-release
 # publishes them to the PUBLIC repo johnnwilliams27/nibbin-desktop, where trial
 # users can download them anonymously (this source repo is private).
 #
-# Signing is CONDITIONAL: when the Apple / Windows signing secrets exist the
-# artifacts are signed + notarized; until then it produces working UNSIGNED
-# installers that download fine but warn (Gatekeeper / SmartScreen) on first
-# launch.
+# Signing is CONDITIONAL on both platforms: when the signing secrets exist the
+# artifacts are signed (+ notarized on macOS); until then it produces working
+# UNSIGNED installers that download fine but warn (Gatekeeper / SmartScreen) on
+# first launch. Adding the secrets later flips signing on with no code change.
 #
 # Required secrets (in this repo's settings):
 #   RELEASES_REPO_TOKEN  – fine-grained PAT with Contents:write on nibbin-desktop
 #   APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD, APPLE_SIGNING_IDENTITY,
 #   APPLE_ID, APPLE_PASSWORD, APPLE_TEAM_ID  – macOS signing/notarization
-#   (Windows signing wired in a follow-up once a cert exists.)
+# Windows signing via Azure Trusted Signing (all six required together; absent →
+# unsigned .msi):
+#   AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET  – Entra service
+#     principal with the "Artifact Signing Certificate Profile Signer" role
+#     (Azure renamed Trusted Signing → Artifact Signing; endpoint + provider
+#     Microsoft.CodeSigning unchanged, so trusted-signing-cli still works)
+#   AZURE_CODESIGN_ENDPOINT  – the account URI, e.g. https://wus2.codesigning.azure.net
+#   AZURE_CODESIGN_ACCOUNT   – Trusted Signing account name
+#   AZURE_CODESIGN_PROFILE   – certificate profile name
+# Signing keys on the presence of AZURE_CLIENT_ID; when set, the Windows job
+# installs trusted-signing-cli and generates a --config patch adding
+# bundle.windows.signCommand at build time (the real tauri.conf.json is never
+# mutated, so unsigned builds stay reproducible).
 #
 # Trigger: push a tag `desktop-v*`, or run manually (workflow_dispatch).
 #
 # NOTE (first cut — expect CI iteration): the Tauri shell lives in the nested
-# layout apps/desktop/src-tauri/app and the `app` crate has never been bundled
-# before; artifact paths / target tuning may need a pass after the first run.
+# layout apps/desktop/src-tauri/app (a Cargo workspace with the Tauri binary in
+# the `app` member). The CLI discovers the nested tauri.conf.json correctly
+# (verified via `tauri info`); artifact paths still want a sanity pass after the
+# first real bundle.
 
 on:
   workflow_dispatch:
@@ -43,10 +57,8 @@ jobs:
       matrix:
         include:
           - platform: macos-latest
-            args: '--target universal-apple-darwin'
             rust-targets: 'aarch64-apple-darwin,x86_64-apple-darwin'
           - platform: windows-latest
-            args: ''
             rust-targets: ''
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -73,6 +85,43 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Resolve the per-platform `tauri build` args, and — on Windows only —
+      # decide whether to sign. Signing keys on AZURE_CLIENT_ID being present:
+      # when it is, we write a throwaway --config patch that adds
+      # bundle.windows.signCommand (so the committed tauri.conf.json is never
+      # mutated and unsigned builds stay byte-reproducible). Runs in bash, which
+      # GitHub's windows-latest images ship (Git Bash).
+      - name: Resolve build args + Windows signing
+        id: cfg
+        shell: bash
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CODESIGN_ENDPOINT: ${{ secrets.AZURE_CODESIGN_ENDPOINT }}
+          AZURE_CODESIGN_ACCOUNT: ${{ secrets.AZURE_CODESIGN_ACCOUNT }}
+          AZURE_CODESIGN_PROFILE: ${{ secrets.AZURE_CODESIGN_PROFILE }}
+        run: |
+          set -euo pipefail
+          if [ "${{ matrix.platform }}" = "macos-latest" ]; then
+            echo "args=--target universal-apple-darwin" >> "$GITHUB_OUTPUT"
+          elif [ -n "${AZURE_CLIENT_ID:-}" ]; then
+            # Endpoint / account / profile carry no spaces, so the signCommand
+            # tokenizes cleanly (Tauri splits it on whitespace; %1 = the file).
+            patch="apps/desktop/src-tauri/app/tauri.signing.windows.json"
+            printf '{"bundle":{"windows":{"signCommand":"trusted-signing-cli -e %s -a %s -c %s %%1"}}}\n' \
+              "$AZURE_CODESIGN_ENDPOINT" "$AZURE_CODESIGN_ACCOUNT" "$AZURE_CODESIGN_PROFILE" > "$patch"
+            echo "generated signing patch:"; cat "$patch"
+            # --config path is resolved relative to projectPath (apps/desktop).
+            echo "args=--config src-tauri/app/tauri.signing.windows.json" >> "$GITHUB_OUTPUT"
+            echo "sign_windows=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Windows: AZURE_CLIENT_ID not set — building UNSIGNED .msi" >&2
+            echo "args=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install trusted-signing-cli (Windows, only when signing)
+        if: steps.cfg.outputs.sign_windows == 'true'
+        run: cargo install trusted-signing-cli --locked # TODO: pin --version
+
       - name: Build installers (tauri-action, build only)
         uses: tauri-apps/tauri-action@v0 # TODO: pin by SHA
         env:
@@ -83,12 +132,17 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # Windows: trusted-signing-cli authenticates via DefaultAzureCredential,
+          # which reads these. Empty when unconfigured → signCommand never runs.
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
         with:
           projectPath: apps/desktop
           tauriScript: npm run tauri
           # No tagName → tauri-action builds the bundles but does NOT create a
           # release here (publishing happens cross-repo in the publish job).
-          args: ${{ matrix.args }}
+          args: ${{ steps.cfg.outputs.args }}
 
       - name: Upload installer artifacts
         uses: actions/upload-artifact@v4 # TODO: pin by SHA
@@ -102,6 +156,12 @@ jobs:
   publish:
     name: publish-release
     needs: build
+    # Ship whatever built. `needs: build` defaults to "all legs succeeded", which
+    # would let one platform's failure (e.g. a bad signing cert) bury a perfectly
+    # good installer from the other. !cancelled() runs publish on partial success;
+    # download-artifact only pulls the legs that uploaded, and the steps below
+    # already key off whichever .dmg/.msi are actually present.
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -123,6 +183,10 @@ jobs:
           echo "--- SHA256SUMS.txt ---"; cat dist/SHA256SUMS.txt
 
       - name: Attest build provenance
+        # Supply-chain nice-to-have, not a release gate: if it trips on a partial
+        # artifact set (e.g. only .msi present, the .dmg glob empty), publish the
+        # installers anyway rather than burying a working download.
+        continue-on-error: true
         uses: actions/attest-build-provenance@v2 # TODO: pin by SHA
         with:
           subject-path: |
