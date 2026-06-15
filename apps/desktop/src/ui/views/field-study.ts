@@ -76,7 +76,27 @@ function stateView(status: StudyStatus, onOpenReview: () => void, rerender: () =
 export function fieldStudyView(rerender: () => void): HTMLElement {
   const root = el('div', {});
   let sub: Sub = 'home';
+  const nav = el('nav', { class: 'nav subnav' });
   const mount = el('div', {});
+
+  const subs: [Sub, string][] = [
+    ['home', 'Field study'],
+    ['review', 'Review'],
+    ['notes', 'Field notes'],
+    ['preferences', 'Preferences'],
+  ];
+
+  // Re-render the sub-nav each time the selection changes so the active item
+  // carries aria-current (styled by `.nav button[aria-current='true']`) — a
+  // clicked section stays highlighted, not just hovered.
+  function renderNav(): void {
+    nav.replaceChildren();
+    for (const [key, label] of subs) {
+      const b = button(label, () => { sub = key; renderNav(); void paint(); });
+      if (key === sub) b.setAttribute('aria-current', 'true');
+      nav.append(b);
+    }
+  }
 
   async function paint(): Promise<void> {
     const status: StudyStatus = await bridge.studyStatus();
@@ -98,16 +118,7 @@ export function fieldStudyView(rerender: () => void): HTMLElement {
     }
   }
 
-  const nav = el('nav', { class: 'subnav' });
-  const subs: [Sub, string][] = [
-    ['home', 'Field study'],
-    ['review', 'Review'],
-    ['notes', 'Field notes'],
-    ['preferences', 'Preferences'],
-  ];
-  for (const [key, label] of subs) {
-    nav.append(button(label, () => { sub = key; void paint(); }));
-  }
+  renderNav();
   root.append(nav, mount);
   void paint();
   return root;
