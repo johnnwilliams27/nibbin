@@ -114,6 +114,13 @@
     `adoptTemplate` path, caps enforced); **rich Today feed** (`/app` — time-saved chipline [estimated
     from step counts, marked `~` + footnoted], draft cards on the real `decide_run` path, "Done while
     you were working", honest "Coming up"). All typecheck + build green; none merged.
+  - **Quality refinements — SHIPPED 2026-06-15:** Opus labeling may now REFINE a coarse workflow key
+    to an allowed finer key (`email.general`→`email.inquiries`, re-deriving the rec; cross-category
+    rejected); a confirm dialog gates per-diagnosis delete (client island); per-Nibbin **"learned about
+    you"** note on the roster — Opus-generated but GROUNDED in real run/approval evidence (no
+    fabrication), cached on `nibbins` (migration `20260615140000`, DEV only), generated off the render
+    path; router gained an Opus-pinned `nibbin_note` task. **Prod-apply checklist now THREE migrations:
+    `20260615120000`, `20260615130000`, `20260615140000`.**
   - **Deliberately deferred (not v1):** **concurrent studies** (kept sequential — a quick scan during a
     live field study is largely redundant); **scan scheduling** (ad-hoc quick scan already covers
     on-demand scanning — recurring reminders are marginal v1 value for heavy daemon work); **packet
