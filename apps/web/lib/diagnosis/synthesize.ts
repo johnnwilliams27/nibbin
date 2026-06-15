@@ -81,6 +81,7 @@ export function validateSynthesisPacket(input: unknown): SynthesisPacket | null 
 
   return {
     version: 1,
+    studyId: clampStr(p.studyId, 64) || undefined,
     studyDays,
     capturedFrom: clampStr(p.capturedFrom, 40),
     capturedTo: clampStr(p.capturedTo, 40),

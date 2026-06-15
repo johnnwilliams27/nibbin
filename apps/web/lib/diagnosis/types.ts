@@ -39,6 +39,8 @@ export interface PacketWorkflow {
 /** The redacted, structured artifact uploaded from the device (C7). */
 export interface SynthesisPacket {
   version: 1;
+  /** Stable id of the study this packet came from (idempotent upsert key). */
+  studyId?: string;
   /** Study window length in days (1–14). */
   studyDays: number;
   capturedFrom: string; // ISO
