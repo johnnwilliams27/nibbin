@@ -1,0 +1,186 @@
+/* Grove Home "Today" feed — adapted from the Maya-demo demo.css, token-only.
+   Mirrors the marketing showcase (chipline, draft cards, done feed, coming up)
+   but every value traces to the shared design tokens. */
+
+/* ---- Time-saved chipline ---- */
+.chipline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  background: var(--canopy);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-1);
+  padding: 14px 18px;
+  margin-bottom: 22px;
+  align-items: center;
+}
+.chipItem {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.chipItem b {
+  display: block;
+  font-family: var(--display);
+  font-size: 17px;
+  color: var(--ink);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  margin-top: 3px;
+  text-transform: none;
+}
+.chipMoss {
+  color: var(--moss-deep);
+}
+.chipCoral {
+  color: var(--coral);
+}
+.chipFootnote {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-soft);
+  margin: -10px 0 22px;
+  cursor: help;
+}
+
+/* ---- Two-column Today layout ---- */
+.todayGrid {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 18px;
+  margin-bottom: 8px;
+}
+@media (max-width: 860px) {
+  .todayGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tcard {
+  background: var(--canopy);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-1);
+  padding: 18px;
+}
+.tcard + .tcard {
+  margin-top: 18px;
+}
+.tcardHead {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+
+/* ---- Feed rows (done / coming up) ---- */
+.feedItem {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 0;
+  border-bottom: 1px dashed var(--line);
+}
+.feedItem:last-child {
+  border-bottom: none;
+}
+.who {
+  flex-shrink: 0;
+  display: inline-flex;
+  line-height: 0;
+}
+.what {
+  font-size: 13.5px;
+  color: var(--ink);
+}
+.what b {
+  font-weight: 700;
+}
+.meta {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-soft);
+  margin-top: 3px;
+}
+.meta b {
+  color: var(--moss-deep);
+  font-weight: 600;
+}
+
+/* ---- Draft cards (the awaiting_approval queue) ---- */
+.draftStack {
+  display: grid;
+  gap: 10px;
+}
+.draftCard {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  background: var(--canopy);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  padding: 12px;
+}
+.draftBody {
+  flex: 1;
+  min-width: 0;
+}
+.qbtns {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.qbtnForm {
+  display: contents;
+}
+.qbtn {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 7px 13px;
+  border-radius: var(--r-input);
+  cursor: pointer;
+  border: 1px solid transparent;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  transition: transform 0.15s ease, background 0.2s ease;
+}
+.qbtn:active {
+  transform: scale(0.97);
+}
+.qbtnOk {
+  background: var(--moss);
+  color: #fff;
+}
+.qbtnOk:hover {
+  background: var(--moss-deep);
+}
+.qbtnEdit {
+  background: transparent;
+  color: var(--ink-soft);
+  border-color: var(--line);
+}
+.qbtnEdit:hover {
+  border-color: var(--moss);
+  color: var(--ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .qbtn {
+    transition: none;
+  }
+}
+
+/* ---- Empty Today state ---- */
+.emptyToday {
+  color: var(--ink-soft);
+  font-size: 13.5px;
+}
