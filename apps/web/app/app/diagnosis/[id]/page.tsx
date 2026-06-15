@@ -20,6 +20,7 @@ interface DiagnosisDetailRow {
   letter: string | null;
   kind: DiagnosisKind | null;
   label: string | null;
+  packet: { capturedFrom?: string; capturedTo?: string } | null;
 }
 
 export default async function DiagnosisDetailPage({
@@ -49,7 +50,7 @@ export default async function DiagnosisDetailPage({
   // double-scopes so a foreign id can never resolve.
   const { data: row } = await supabase
     .from('diagnoses')
-    .select('map, letter, kind, label')
+    .select('map, letter, kind, label, packet')
     .eq('id', id)
     .eq('account_id', accountId)
     .maybeSingle<DiagnosisDetailRow>();
@@ -74,7 +75,15 @@ export default async function DiagnosisDetailPage({
         <p className={styles.subtitle}>Grown from your Field Study — only the map ever left your device.</p>
       </header>
 
-      <DiagnosisReveal map={map} letter={row.letter} />
+      <DiagnosisReveal
+        map={map}
+        letter={row.letter}
+        window={
+          row.packet?.capturedFrom && row.packet?.capturedTo
+            ? { from: row.packet.capturedFrom, to: row.packet.capturedTo }
+            : undefined
+        }
+      />
     </AppShell>
   );
 }

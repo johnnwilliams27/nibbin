@@ -22,6 +22,7 @@ interface DiagnosisRow {
   kind: DiagnosisKind | null;
   label: string | null;
   created_at: string;
+  packet: { capturedFrom?: string; capturedTo?: string } | null;
 }
 
 const DATE_FMT = new Intl.DateTimeFormat('en-US', {
@@ -59,7 +60,7 @@ export default async function DiagnosisPage({
 
   const { data: rows } = await supabase
     .from('diagnoses')
-    .select('id, map, letter, kind, label, created_at')
+    .select('id, map, letter, kind, label, created_at, packet')
     .eq('account_id', accountId)
     .order('created_at', { ascending: false })
     .limit(50)
@@ -96,7 +97,15 @@ export default async function DiagnosisPage({
         </Card>
       ) : (
         <>
-          <DiagnosisReveal map={newestMap} letter={newest.letter} />
+          <DiagnosisReveal
+            map={newestMap}
+            letter={newest.letter}
+            window={
+              newest.packet?.capturedFrom && newest.packet?.capturedTo
+                ? { from: newest.packet.capturedFrom, to: newest.packet.capturedTo }
+                : undefined
+            }
+          />
 
           {older.length > 0 && (
             <>

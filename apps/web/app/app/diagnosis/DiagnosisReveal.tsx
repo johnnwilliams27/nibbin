@@ -1,7 +1,19 @@
 import { Badge, Button, Card } from '../../../components/ui';
 import type { DiagnosisMap, Frequency } from '../../../lib/diagnosis/types';
 import { adoptRecommendation } from './actions';
+import { WorkflowMap } from './WorkflowMap';
 import styles from './diagnosis.module.css';
+
+const MONTH_DAY = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
+
+/** "Mar 2 – Mar 15" from an ISO window, or null if either bound is unparseable. */
+function formatWindow(window?: { from: string; to: string }): string | null {
+  if (!window) return null;
+  const from = new Date(window.from);
+  const to = new Date(window.to);
+  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return null;
+  return `${MONTH_DAY.format(from)} – ${MONTH_DAY.format(to)}`;
+}
 
 /** Shop-template display names + frequency tone/label maps. Shared by the
  *  diagnosis page (newest reveal) and the per-diagnosis detail route. */
@@ -27,7 +39,26 @@ export const FREQ_LABEL: Record<Frequency, string> = {
 /** The hero reveal: the Grovekeeper's letter, the weekly total, the workflow
  *  map ("Where the hours go"), and the adoptable recommendations. Extracted
  *  verbatim from the diagnosis page so the detail route can reuse it. */
-export function DiagnosisReveal({ map, letter }: { map: DiagnosisMap; letter: string | null }) {
+export function DiagnosisReveal({
+  map,
+  letter,
+  window,
+}: {
+  map: DiagnosisMap;
+  letter: string | null;
+  window?: { from: string; to: string };
+}) {
+  const timeSaved = Math.round(map.timeSavedPerWeek ?? 0);
+  const studyWindow = formatWindow(window);
+
+  // Biggest friction = the highest-hours workflow that carries a friction note.
+  const frictionWorkflow = [...map.workflows]
+    .sort((a, b) => b.hoursPerWeek - a.hoursPerWeek)
+    .find((w) => w.friction);
+
+  const appAllocation = map.appAllocation ?? [];
+  const maxAppHours = appAllocation.reduce((m, a) => Math.max(m, a.hoursPerWeek), 0);
+
   return (
     <>
       {letter && (
@@ -44,6 +75,59 @@ export function DiagnosisReveal({ map, letter }: { map: DiagnosisMap; letter: st
           {map.workflows.length === 1 ? 'workflow' : 'workflows'}
         </span>
       </div>
+
+      {timeSaved > 0 && (
+        <p className={styles.timeSaved}>
+          ~<span className={styles.timeSavedValue}>{timeSaved}h</span>/week could move to your grove
+        </p>
+      )}
+
+      <div className={styles.chipline}>
+        {studyWindow && (
+          <div className={styles.chip}>
+            STUDY WINDOW
+            <b>{studyWindow}</b>
+          </div>
+        )}
+        <div className={styles.chip}>
+          WORKFLOWS FOUND
+          <b>{map.workflows.length}</b>
+        </div>
+        <div className={styles.chip}>
+          OBSERVED
+          <b>{map.totalHoursPerWeek}h/wk</b>
+        </div>
+        <div className={styles.chip}>
+          AUTOMATABLE
+          <b className={styles.chipMoss}>{timeSaved}h/wk</b>
+        </div>
+        <div className={styles.chip}>
+          BIGGEST FRICTION
+          <b className={styles.chipCoral}>{frictionWorkflow?.label ?? '—'}</b>
+        </div>
+      </div>
+
+      <WorkflowMap workflows={map.workflows} />
+
+      {appAllocation.length > 0 && (
+        <>
+          <h2 className={styles.sectionTitle}>Where your desktop time goes</h2>
+          <div className={styles.allocList}>
+            {appAllocation.map((a) => (
+              <div key={a.app} className={styles.allocRow}>
+                <span className={styles.allocApp}>{a.app}</span>
+                <div className={styles.allocTrack}>
+                  <span
+                    className={styles.allocBar}
+                    style={{ width: `${maxAppHours > 0 ? (a.hoursPerWeek / maxAppHours) * 100 : 0}%` }}
+                  />
+                </div>
+                <span className={styles.allocHours}>{a.hoursPerWeek}h</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       <h2 className={styles.sectionTitle}>Where the hours go</h2>
       <div className={styles.wfList}>
