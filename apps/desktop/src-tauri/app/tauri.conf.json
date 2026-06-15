@@ -28,7 +28,7 @@
       "tooltip": "Nibbin"
     },
     "security": {
-      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' ipc: http://ipc.localhost https://*.supabase.co https://nibbin.com"
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' ipc: http://ipc.localhost https://oaymttudfazqaqequrke.supabase.co https://nibbin.com"
     }
   },
   "plugins": {

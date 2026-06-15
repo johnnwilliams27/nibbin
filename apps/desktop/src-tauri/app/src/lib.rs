@@ -73,8 +73,23 @@ fn grove_show(window: tauri::Window) -> Result<(), String> {
     }
     let (target, script) = grove_setup();
     let parsed = target.parse().map_err(|e| format!("bad grove url: {e}"))?;
+    // Lock the Grove webview to the configured web origin's host. The tab only
+    // ever loads web_url() and stays there, so same-host navigations (and their
+    // subpaths) must keep working — but a redirect to attacker content is
+    // rejected (defense-in-depth for the injected handoff token + containment).
+    let allowed_host = web_url()
+        .parse::<url::Url>()
+        .ok()
+        .and_then(|u| u.host_str().map(str::to_string));
     let mut builder =
-        tauri::webview::WebviewBuilder::new("grove", tauri::WebviewUrl::External(parsed));
+        tauri::webview::WebviewBuilder::new("grove", tauri::WebviewUrl::External(parsed))
+            .on_navigation(move |url| match &allowed_host {
+                // Allow only navigations whose host matches the build-configured
+                // web origin; reject (return false) any cross-origin navigation.
+                Some(host) => url.host_str() == Some(host.as_str()),
+                // No parseable configured host: fail closed rather than open.
+                None => false,
+            });
     if let Some(s) = script {
         builder = builder.initialization_script(&s);
     }

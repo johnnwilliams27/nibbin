@@ -213,6 +213,7 @@ function entryView(onChanged: () => void): HTMLElement {
 
     const scanInput = el('input', {
       type: 'text',
+      maxlength: '80',
       placeholder: 'e.g. Sending this month’s invoices',
     }) as HTMLInputElement;
     const scanCard = el('div', { class: 'card' }, [
@@ -226,7 +227,7 @@ function entryView(onChanged: () => void): HTMLElement {
         button(
           'Start quick scan',
           () => {
-            const label = scanInput.value.trim();
+            const label = scanInput.value.trim().slice(0, 80);
             if (!label) { scanInput.focus(); return; }
             begin('quick_scan', label);
           },
