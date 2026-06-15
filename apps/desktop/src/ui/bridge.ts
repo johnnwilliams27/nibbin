@@ -54,8 +54,8 @@ export const bridge = {
       { host: exclusion.host ?? null, bundleId: exclusion.bundleId ?? null, appName: exclusion.appName ?? null },
       undefined,
     ),
-  authStart: (provider: 'password', email?: string) =>
-    call<void>('auth_start', { provider, email: email ?? null }, undefined),
+  storeSession: (session: Record<string, unknown>) =>
+    call<void>('store_session', { session }, undefined),
   authSession: () => call<Record<string, unknown> | null>('auth_session', undefined, null),
   signOut: () => call<void>('sign_out', undefined, undefined),
   onEvent: async (event: string, handler: (payload: unknown) => void): Promise<() => void> => {
