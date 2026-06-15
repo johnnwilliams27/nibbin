@@ -2,6 +2,7 @@
    The grove ceremony (/app/grove) deliberately does NOT use this shell. */
 
 .shell {
+  --topbar-h: 60px;
   min-height: 100dvh;
   background: var(--paper);
 }
@@ -107,10 +108,12 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  /* Sticky alongside scrolling content column */
+  /* Sticky alongside the scrolling content column, BELOW the topbar. Using
+     100dvh here (the aside sits under the ~60px topbar) pushed its bottom — and
+     the composer — below the viewport; offset by the topbar height instead. */
   position: sticky;
-  top: 0;
-  height: 100dvh;
+  top: var(--topbar-h, 60px);
+  height: calc(100dvh - var(--topbar-h, 60px));
   overflow: hidden;
   /* Smooth collapse, per Plate 06 (Motion): slide off via transform + fade —
      never animate width. margin-right reclaims the layout space as it goes.
