@@ -7,7 +7,8 @@ import styles from './shell.module.css';
 export type NavKey = 'grove' | 'diagnosis' | 'memory' | 'shop' | 'notifications' | 'billing' | 'settings';
 
 const NAV: { key: NavKey; label: string; href: string }[] = [
-  { key: 'grove', label: 'Grove', href: '/app/grove' },
+  // 'Grove' is intentionally omitted from nav: the Keeper chat is always reachable
+  // via the docked panel, so there's no separate full-screen grove to navigate to.
   { key: 'diagnosis', label: 'Diagnosis', href: '/app/diagnosis' },
   { key: 'memory', label: 'Memory', href: '/app/memory' },
   { key: 'shop', label: 'Agent Shop', href: '/app/shop' },

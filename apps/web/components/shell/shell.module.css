@@ -111,7 +111,11 @@
   position: sticky;
   top: 0;
   height: 100dvh;
-  overflow-y: auto;
+  overflow: hidden;
+  /* Smooth collapse, per Plate 06 (Motion): slide off via transform + fade —
+     never animate width. margin-right reclaims the layout space as it goes. */
+  transition: transform var(--dur-3) var(--ease-settle), opacity var(--dur-2) var(--ease-settle),
+    margin-right var(--dur-3) var(--ease-settle);
 }
 
 /* The panel toggle button is desktop-hidden; only visible on mobile */
@@ -143,9 +147,10 @@
   color: var(--ink);
 }
 .panelCollapsed {
-  width: 0;
-  border-left: none;
-  overflow: hidden;
+  transform: translateX(100%);
+  opacity: 0;
+  margin-right: -380px;
+  pointer-events: none;
 }
 .panelExpand {
   position: fixed;
@@ -168,6 +173,19 @@
 }
 .panelExpand:hover {
   background: var(--understory);
+}
+.panelExpand {
+  animation: panelTabIn var(--dur-2) var(--ease-settle);
+}
+@keyframes panelTabIn {
+  from {
+    opacity: 0;
+    transform: translate(10px, -50%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(0, -50%);
+  }
 }
 
 .topbar {
@@ -352,7 +370,8 @@
   .panelToggle {
     transition: none;
   }
-  .content {
+  .content,
+  .panelExpand {
     animation: none;
   }
 }

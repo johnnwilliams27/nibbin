@@ -654,6 +654,7 @@ td code{white-space:nowrap}
     <tr><td>Eyebrow → H1 → lede → CTAs → note</td><td>50/140/240/340/440ms</td><td>rise 18px · <code>--t-grow</code> · <code>--e-settle</code></td></tr>
     <tr><td>Lifecycle stops (egg→graduate)</td><td>550/720/890/1060ms</td><td>popin scale .9 · <code>--e-pop</code> — the brand story told in motion</td></tr>
     <tr><td>Scroll reveals</td><td>stagger 70–90ms/child</td><td>rise 16px, fire once, threshold .12</td></tr>
+    <tr><td>Docked panel / rail collapse</td><td>—</td><td>slide off via <code>transform: translateX(100%)</code> + fade; layout reclaims with margin · <code>--t-pane</code> · <code>--e-settle</code> — <b>never</b> animate width</td></tr>
   </table>
   <div class="stage">
     <div class="row"><div class="demo-grow card-x" id="growCard"><span class="eyebrow-demo">Scroll reveal</span><h3 style="margin:8px 0 4px">Grows into place</h3><p style="font-size:12.5px">16px rise, settle easing, once only.</p></div>

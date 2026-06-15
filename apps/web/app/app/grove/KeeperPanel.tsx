@@ -12,6 +12,8 @@
  * Keeper is already known; the header avatar is a small static placeholder.
  */
 
+import { useEffect, useMemo, useState } from 'react';
+import { buildCreature } from '@nibbin/creatures';
 import type { KeeperExpression, KeeperMessage, OnboardingStep, UnderstandingProfile } from '@nibbin/keeper';
 import { KeeperChat } from './KeeperChat';
 import styles from './keeper-panel.module.css';
@@ -33,10 +35,20 @@ export function KeeperPanel({
   credits,
   initialProfile,
 }: KeeperPanelProps) {
+  // The creature engine mints unique gradient ids per render, so SSR + hydration
+  // can't match — mount-gate it (same pattern as KeeperSprite).
+  const keeperSvg = useMemo(() => buildCreature({ species: 'Keeper', size: 30 }), []);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   return (
     <div className={styles.panel}>
       <header className={styles.header}>
-        <span className={styles.avatar} aria-hidden="true">🌱</span>
+        <span className={styles.avatar} aria-hidden="true">
+          {mounted ? (
+            <span className={styles.avatarCreature} dangerouslySetInnerHTML={{ __html: keeperSvg }} />
+          ) : null}
+        </span>
         <div className={styles.headerText}>
           <p className={styles.eyebrow}>Your Keeper</p>
           <p className={styles.name}>{keeperName ?? 'Your Grovekeeper'}</p>

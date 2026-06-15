@@ -134,6 +134,10 @@
   min-height: 0;
   display: grid;
   grid-template-columns: 168px 1fr;
+  /* Definite row height (fills the flex parent) so the chat column is bounded —
+     without this the implicit row is content-sized, `height: 100%` on .chat is a
+     no-op, and the composer spills below the fold. */
+  grid-template-rows: minmax(0, 1fr);
   gap: 20px;
   align-items: end;
 }
