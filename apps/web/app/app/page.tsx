@@ -197,7 +197,7 @@ export default async function AppPage() {
   );
 
   return (
-    <AppShell title="Your grove" email={user.email} panel={keeperPanel}>
+    <AppShell active="grove" title="Your grove" email={user.email} panel={keeperPanel}>
       <header className={dash.header}>
         <p className={dash.eyebrow}>Your grove</p>
         <h1 className={dash.title}>{account?.name ?? 'Your grove'}</h1>
