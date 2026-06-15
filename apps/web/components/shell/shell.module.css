@@ -115,7 +115,7 @@
   /* Smooth collapse, per Plate 06 (Motion): slide off via transform + fade —
      never animate width. margin-right reclaims the layout space as it goes.
      --dur-4 (650ms) for a slow, deliberate glide. */
-  transition: transform var(--dur-4) var(--ease-settle), opacity var(--dur-3) var(--ease-settle),
+  transition: transform var(--dur-4) var(--ease-settle), opacity var(--dur-4) var(--ease-settle),
     margin-right var(--dur-4) var(--ease-settle);
 }
 

@@ -23,7 +23,6 @@ import { advanceGroveAction, keeperChatAction, skipUnderstandingAction, understa
 import { CardView } from './cards';
 import { KeeperSprite } from './KeeperSprite';
 import { Button } from '../../../components/ui';
-import ui from '../../../components/ui/ui.module.css';
 import styles from './keeper-chat.module.css';
 
 interface ChatItem {
@@ -80,8 +79,9 @@ export function KeeperChat({
     onStepRef.current?.(s);
   }, []);
   const [keeperName, setKeeperName] = useState<string | null>(initialKeeperName);
-  const [profile, setProfile] = useState<UnderstandingProfile | null>(initialProfile);
-  const [os, setOs] = useState<'mac' | 'windows' | 'other'>('other');
+  // profile is captured (for the handoff/Grove Home reflection) but not read in
+  // the chat itself right now — keep the setter so the data still flows.
+  const [, setProfile] = useState<UnderstandingProfile | null>(initialProfile);
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState('');
   const [picked, setPicked] = useState<string[]>([]);
@@ -93,13 +93,6 @@ export function KeeperChat({
   const logRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const timersRef = useRef<number[]>([]);
-
-  /* Detect the platform so the handoff leads with the right installer. */
-  useEffect(() => {
-    const ua = navigator.userAgent.toLowerCase();
-    if (ua.includes('mac')) setOs('mac');
-    else if (ua.includes('win')) setOs('windows');
-  }, []);
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -281,37 +274,8 @@ export function KeeperChat({
           {keeperName ?? 'Your Grovekeeper'} is writing in the journal…
         </p>
       )}
-      {/* Handoff lives INSIDE the scrollable log (not the pinned composer) so a
-          tall handoff scrolls with the conversation and never pushes the input
-          below the fold. Suppressed in panel mode (the user is already home). */}
-      {step === 'done' && !busy && !isPanel && (
-        <div className={styles.handoff}>
-          {profile?.jobTitle && (
-            <p className={styles.handoffReflect}>
-              Here&apos;s what I picked up — you do <strong>{profile.jobTitle}</strong>
-              {profile.channels.length > 0 && <> and most of your work comes through <strong>{profile.channels.join(', ')}</strong></>}.
-            </p>
-          )}
-          <p className={styles.handoffLead}>Your team is waiting in the desktop app — that&apos;s where we connect your accounts and start.</p>
-          {os === 'windows' ? (
-            <>
-              <a className={`${ui.btn} ${ui.btnPrimary}`} href="/download/windows">Download for Windows</a>
-              <a className={`${ui.btn} ${ui.btnGhost}`} href="/download/mac">Download for macOS instead</a>
-            </>
-          ) : os === 'mac' ? (
-            <>
-              <a className={`${ui.btn} ${ui.btnPrimary}`} href="/download/mac">Download for macOS</a>
-              <a className={`${ui.btn} ${ui.btnGhost}`} href="/download/windows">Download for Windows instead</a>
-            </>
-          ) : (
-            <>
-              <a className={`${ui.btn} ${ui.btnPrimary}`} href="/download/mac">Download for macOS</a>
-              <a className={`${ui.btn} ${ui.btnPrimary}`} href="/download/windows">Download for Windows</a>
-            </>
-          )}
-          <Link className={`${ui.btn} ${ui.btnGhost}`} href="/app">Not now — take me to my grove</Link>
-        </div>
-      )}
+      {/* Handoff (download CTAs) temporarily removed from the chat so it can't
+          disrupt the bottom anchoring — the download links live on Grove Home. */}
     </div>
   );
 
