@@ -17,7 +17,7 @@ function describe(event: ObserverEvent): string {
 export function reviewView(): HTMLElement {
   const root = el('div', {}, [
     el('p', { class: 'eyebrow' }, ['Review']),
-    el('h1', {}, ['What the Observer kept today']),
+    el('h1', {}, ['What the field study kept today']),
     el('p', { class: 'muted' }, [
       'Everything below is already redacted — names, emails, and numbers became placeholders before anything was saved. Delete whatever you like; deleted blocks never reach your diagnosis.',
     ]),
@@ -27,7 +27,7 @@ export function reviewView(): HTMLElement {
 
   const exclusionCard = el('div', { class: 'card' }, [
     el('h2', {}, ['Never record this again']),
-    el('p', { class: 'muted' }, ['Add a site or app and the Observer drops it before anything is saved — same as banking and health sites.']),
+    el('p', { class: 'muted' }, ['Add a site or app and the field study drops it before anything is saved — same as banking and health sites.']),
   ]);
   const input = el('input', { type: 'text', placeholder: 'app name or site, e.g. journal.example.com' });
   exclusionCard.append(

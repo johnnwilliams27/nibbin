@@ -24,7 +24,7 @@ export function notesView(): HTMLElement {
     clear(body);
     const days = studyDaysWithActivity(events);
     if (days.length === 0) {
-      body.append(el('div', { class: 'card' }, [el('p', { class: 'muted' }, ['No activity captured yet — notes appear after the Observer’s first day of watching.'])]));
+      body.append(el('div', { class: 'card' }, [el('p', { class: 'muted' }, ['No activity captured yet — notes appear after the field study’s first day of watching.'])]));
       return;
     }
     const today = days[days.length - 1]!;

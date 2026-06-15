@@ -29,7 +29,7 @@ function stateView(status: StudyStatus, onOpenReview: () => void, rerender: () =
       el('p', { class: 'eyebrow' }, ['Field study']),
       el('h1', {}, ['The field study ended. Really.']),
       el('p', { class: 'muted' }, [
-        `Day 14 came and the Observer stopped itself — that switch lives in the background process, not this window. Look through what it kept, delete anything, then build your map when you're ready. Synthesis builds your workflow map, and the raw data on this machine is deleted and verified right after.`,
+        `Day 14 came and the field study stopped itself — that switch lives in the background process, not this window. Look through what it kept, delete anything, then build your map when you're ready. Synthesis builds your workflow map, and the raw data on this machine is deleted and verified right after.`,
       ]),
       el('div', { class: 'card row' }, [
         button('Open review', onOpenReview, 'primary'),
@@ -63,8 +63,8 @@ function stateView(status: StudyStatus, onOpenReview: () => void, rerender: () =
     );
   } else if (state === 'DAEMON_OFFLINE') {
     root.append(
-      el('p', { class: 'eyebrow' }, ['Observer']),
-      el('h1', {}, [`The Observer isn't running`]),
+      el('p', { class: 'eyebrow' }, ['Field study']),
+      el('h1', {}, [`Field study isn't running`]),
       el('p', { class: 'muted' }, [
         `The background process that does the watching (and the stopping, and the deleting) is offline. Nothing records while it's down. Start it from the menu bar, or reinstall if this keeps happening.`,
       ]),

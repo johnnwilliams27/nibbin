@@ -12,7 +12,7 @@ export function consentView(onChanged: () => void): HTMLElement {
     el('p', { class: 'eyebrow' }, ['Field study']),
     el('h1', {}, ['Two weeks of watching how you work — on your terms']),
     el('p', { class: 'muted' }, [
-      'The Observer studies how you work so your diagnosis can show where the busywork hides. ',
+      'The field study watches how you work so your diagnosis can show where the busywork hides. ',
       'Here is the whole deal, before anything records:',
     ]),
     el('ul', { class: 'claims' }, [
