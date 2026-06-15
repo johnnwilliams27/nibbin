@@ -17,12 +17,14 @@ of clients and afraid of surveillance. Both answers are architectural and we say
 *nothing sends without your approval until it has earned it* (Agent School), and *screen
 captures never leave your device* (Observer). Privacy is a growth asset, not fine print.
 **One-liner:** "Little creatures that grow up working for you."
-**Category line:** "AI agents for freelancers" — used in SEO titles, meta,
-Product Hunt tagline, directories, and the landing eyebrow. Human-voice copy keeps
+**Category line:** "AI Agents. Simplified." — used in SEO titles, meta,
+Product Hunt tagline, directories, and the landing eyebrow. Deliberately
+audience-agnostic: the public label names *what* we do, not *who* it's for, so solo
+owners and entrepreneurs beyond freelancers self-ID. Human-voice copy keeps
 "people who work for themselves" (photographers and tattoo artists self-ID as business
-owners, not freelancers; the warmer phrase covers both). Graduate the category line to
-"AI agents for freelancers" only when case studies span ≥3 verticals — claim earned,
-not asserted.
+owners, not freelancers; the warmer phrase covers both). (Founder decision 2026-06-15:
+widened the public label from "AI agents for freelancers" so the copy no longer
+prescribes the target audience; the wedge sequence below still governs who we serve first.)
 **Proof number:** first agent in 10 minutes (TTFAD is a marketing SLO, per SPEC §6.12).
 
 **Wedge:** solo photographers (weddings/portraits/events). Why: acute admin pain (inquiries,
@@ -47,7 +49,7 @@ comparison pages (Sintra/HoneyBook alternatives); anti-Sintra positioning line.
 | Tattoo | Studioflo "Athena" ($138–197/mo solo), Inky Studio/Inky AI, AI SmartTalk, Telegate, Anolla | Inbound-DM booking slice crowded; whole-loop + trust model open. Price signal validates premium vertical tiers. A3 stands, annotated |
 | Beauty | GlossGenius (100K+ biz; AI Analyst, auto-texting), Fresha, Mangomint | Incumbent-dense salon suites; freelance/bridal artists underserved. B4 confirmed |
 | Audio | EngineEars (VC-backed vertical OS: marketplace, escrow, CRM, ads) | Don't fight — future [H] connector; agents ride their rails + off-platform work. B2 confirmed |
-| Freelancer suites | Bonsai (NO AI as of 4/2026), Moxie (drafting AI), Dubsado, 17hats, Bloom | "AI agents for freelancers" unclaimed by every incumbent suite |
+| Freelancer suites | Bonsai (NO AI as of 4/2026), Moxie (drafting AI), Dubsado, 17hats, Bloom | Agentic, whole-loop automation unclaimed by every incumbent suite |
 | Video/post, VO | None agent-grade found (Frame.io = review infra; VO = marketplaces) | Open lanes |
 Market structure: front-desk bots (vertical, inbound-only) vs drafting suites (horizontal,
 no hands). The middle — trusted whole-loop autonomy, vertical-aware — is unoccupied.
@@ -213,4 +215,4 @@ enrichment + small search test). Affiliates are CAC paid on results — turn the
 | Marketing run by agents under Agent School rules | One-man scale + the meta-story is the content | Hire #1 (likely community) when approval queue >20 min/day for 30 days |
 | No paid acquisition before Phase 2 | $19 ACV can't carry cold CAC; trust channels compound | If a paid test hits <3-month payback organically |
 | Community posting never automated | Authenticity is the moat in trust-graph channels | Never |
-| Category = "AI agents for freelancers"; human copy = "people who work for themselves" | Broad, clean, self-ID across verticals | Founder decision 2026-06-12: widened from "creative freelancers" now; wedge sequence still governs who we serve first |
+| Public category line = "AI Agents. Simplified." (audience-agnostic); human copy = "people who work for themselves" | Names what we do, not who it's for; entrepreneurs + solo owners beyond freelancers self-ID; wedge sequence still governs who we serve first | Founder decision 2026-06-15: widened from "AI agents for freelancers" (itself widened from "creative freelancers" on 2026-06-12) so the copy doesn't prescribe the target |
