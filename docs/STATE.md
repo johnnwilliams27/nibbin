@@ -55,6 +55,11 @@
   Grovekeeper's no-hands guarantee. Held back from the polish pass on purpose: the claims must be
   VERIFIED against the implementation (not written blind) and any toggles wired to real settings —
   so it belongs with M7's deletion/data work, not a cosmetic sweep.
+- **Maya-demo parity backlog** (`docs/tasks/maya-demo-parity.md`): the landing's interactive
+  "Maya's grove" demo portrays features not yet built — time-saved metrics + the visual workflow
+  map + automatable%/friction (Group A, overlaps M7's diagnosis synthesis); a "Your Nibbins" roster
+  with Agent School progress / what-it-learned / streaks / badges (Group B); the "Hatch Your Own"
+  builder wizard (Group C); and a richer Today approval feed (Group D). Tracked, not yet scheduled.
 
 ## Previous gate (M2+M3+M6)
 
