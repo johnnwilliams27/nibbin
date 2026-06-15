@@ -38,8 +38,12 @@ const CATEGORY_TEMPLATE: Record<WorkflowCategory, string | null> = {
   other: null,
 };
 
-/** Finer key-level mapping (mirrors §4.4 scan-module → template intent). */
-const KEY_TEMPLATE: Record<string, string> = {
+/**
+ * Finer key-level mapping (mirrors §4.4 scan-module → template intent).
+ * Exported so the Opus labeling pass (label.ts) can recompute a workflow's
+ * `recommendedNibbin` when it refines a coarse key to a finer allowed one.
+ */
+export const KEY_TEMPLATE: Record<string, string> = {
   'email.inquiries': 'scribe',
   'email.overdue': 'echo',
   'email.newsletter': 'sweep',
