@@ -23,6 +23,7 @@ import 'server-only';
  */
 import { groveRouter } from '../grove/router';
 import { anthropicGenerate, recordModelCall } from '../llm/client';
+import { sanitizeProse } from '../diagnosis/label';
 import { serviceClient } from '../supabase/service';
 
 /** Below this many completed runs we never spend a model call — too little
@@ -30,11 +31,19 @@ import { serviceClient } from '../supabase/service';
 const MIN_COMPLETED = 3;
 /** Cap the stored note well under the column's 240-char ceiling. */
 const MAX_NOTE = 200;
+/** Internal cooldown: if the cached note is younger than this we never call
+ *  Opus, regardless of how often the refresh action is hit. The staleness gate
+ *  lives in the PAGE, but this task is exempt from the per-user frontier budget
+ *  (nibbin_note ∈ UNBUDGETED_T2_TASKS), so an authenticated caller could loop
+ *  the server action and bill an Opus call each time. This bounds it to ~1 call
+ *  per nibbin per window. */
+const COOLDOWN_MS = 6 * 60 * 60 * 1000; // 6 hours
 
 interface NibbinRow {
   id: string;
   name: string;
   stage: string;
+  learned_note_at: string | null;
   agent_specs: { display_name: string | null; template_key: string | null } | { display_name: string | null; template_key: string | null }[] | null;
 }
 
@@ -72,7 +81,8 @@ function parseNote(text: string): string | null {
   if (!m) return null;
   try {
     const o = JSON.parse(m[0]) as Record<string, unknown>;
-    const note = typeof o.note === 'string' ? o.note.trim() : '';
+    // Model prose: strip any injected HTML / phishing URLs before it's stored.
+    const note = typeof o.note === 'string' ? sanitizeProse(o.note) : '';
     if (!note) return null;
     return note.slice(0, MAX_NOTE);
   } catch {
@@ -113,13 +123,22 @@ export async function refreshLearnedNote(accountId: string, nibbinId: string): P
     // so the account_id filter IS the authz guard).
     const { data: nibbin } = await svc
       .from('nibbins')
-      .select('id, name, stage, agent_specs(display_name, template_key)')
+      .select('id, name, stage, learned_note_at, agent_specs(display_name, template_key)')
       .eq('id', nibbinId)
       .eq('account_id', accountId)
       .eq('kind', 'specialist')
       .maybeSingle();
     if (!nibbin) return;
     const n = nibbin as unknown as NibbinRow;
+
+    // Cost gate: if we refreshed within the cooldown window the note is already
+    // fresh enough — return WITHOUT calling Opus. This task is exempt from the
+    // per-user frontier budget and the page-level staleness gate is advisory, so
+    // this is the only thing bounding cost when the action is hit in a loop.
+    if (n.learned_note_at) {
+      const age = Date.now() - new Date(n.learned_note_at).getTime();
+      if (age >= 0 && age < COOLDOWN_MS) return;
+    }
 
     // Its runs (account-scoped) — run count + completed count.
     const { data: runsData } = await svc

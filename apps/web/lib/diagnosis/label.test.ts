@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { applyLabeling, type ParsedLabeling } from './label';
+import { applyLabeling, sanitizeProse, type ParsedLabeling } from './label';
 import type { DiagnosisMap, DiagnosisWorkflow } from './types';
 
 function wf(over: Partial<DiagnosisWorkflow> & Pick<DiagnosisWorkflow, 'key' | 'category'>): DiagnosisWorkflow {
@@ -76,6 +76,33 @@ describe('applyLabeling — finer-key refinement', () => {
     expect(out.workflows[0].recommendedNibbin).toBe('scribe');
     expect(out.workflows[0].label).toBe('Answering clients');
     expect(out.workflows[0].description).toBe('Inbox triage.');
+  });
+});
+
+describe('sanitizeProse — strips injected HTML + URLs from stored LLM prose', () => {
+  it('strips an HTML/script tag and an http link', () => {
+    const dirty = 'Your account is at risk! <script>steal()</script> Verify at http://evil.example/login now.';
+    const clean = sanitizeProse(dirty);
+    expect(clean).not.toContain('<script>');
+    expect(clean).not.toContain('</script>');
+    expect(clean).not.toContain('http://evil.example');
+    expect(clean).not.toMatch(/<[^>]*>/);
+    // The benign prose around it survives.
+    expect(clean).toContain('Your account is at risk');
+    expect(clean).toContain('Verify at');
+  });
+
+  it('strips an anchor tag and a bare www. link', () => {
+    const clean = sanitizeProse('Click <a href="http://evil.example">here</a> or visit www.evil.example/x for more.');
+    expect(clean).not.toMatch(/<[^>]*>/);
+    expect(clean).not.toContain('http://');
+    expect(clean).not.toContain('www.evil.example');
+    expect(clean).toContain('here');
+  });
+
+  it('leaves clean prose untouched', () => {
+    const s = "Here's what I learned about how you work: most of your week goes to email.";
+    expect(sanitizeProse(s)).toBe(s);
   });
 });
 

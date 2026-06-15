@@ -52,7 +52,26 @@ const SYSTEM = [
   'The letter opens roughly "Here\'s what I learned about how you work," names where the hours really go, and is encouraging about handing the routine to the grove. Under ~900 characters.',
 ].join('\n');
 
+/**
+ * Neutralize model-generated prose before it's stored + shown as the
+ * Grovekeeper's letter / a workflow label. It renders as React TEXT (no XSS),
+ * but a successful prompt-injection could plant alarming HTML or phishing URLs;
+ * strip both. Pure + minimal — only ever runs on model output, never on the
+ * trusted deterministic fallbacks.
+ */
+export function sanitizeProse(s: string): string {
+  return s
+    .replace(/<[^>]*>/g, '') // strip HTML/XML-ish tags
+    .replace(/\bhttps?:\/\/\S+/gi, '') // strip http(s):// URLs
+    .replace(/\bwww\.\S+/gi, '') // strip bare www. links
+    .replace(/[ \t]{2,}/g, ' ') // tidy whitespace left behind
+    .trim();
+}
+
 const clampStr = (v: unknown, max: number): string => (typeof v === 'string' ? v.slice(0, max).trim() : '');
+/** As clampStr, but for model-generated PROSE — strips HTML + URLs before storing. */
+const clampProse = (v: unknown, max: number): string =>
+  typeof v === 'string' ? sanitizeProse(v.slice(0, max)).slice(0, max) : '';
 
 interface ParsedWorkflow {
   /** Stable join id (the workflow's original mined key, echoed back). */
@@ -81,13 +100,13 @@ function parseLabeling(text: string): ParsedLabeling | null {
             const refined = clampStr(w.key, 64);
             return {
               id: clampStr(w.id, 64),
-              label: clampStr(w.label, 80),
-              description: clampStr(w.description, 200),
+              label: clampProse(w.label, 80),
+              description: clampProse(w.description, 200),
               ...(refined ? { key: refined } : {}),
             };
           })
       : [];
-    const letter = clampStr(o.letter, 4000);
+    const letter = clampProse(o.letter, 4000);
     if (!letter && workflows.length === 0) return null;
     return { workflows, letter };
   } catch {
