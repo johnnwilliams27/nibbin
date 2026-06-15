@@ -48,6 +48,13 @@
   carrying the router origin-enforcement + top-up pricing criteria; all latent — zero frontier/
   free/local models are wired on main), #26 (C8 grant writer before IG/QB), #28 (webhook
   seen≠processed before side-effecting handlers).
+- **M7 — Data & Privacy settings surface (deferred here from the 2026-06-15 Wispr polish pass):**
+  a Settings → Data & Privacy page (web + desktop) surfacing Nibbin's actual privacy posture —
+  training opt-out, local-only Field Study capture (SQLCipher), what's never captured (secure
+  fields / banking / health, C4/C5), the Day-14 hard stop + verified deletion receipt (C3), and the
+  Grovekeeper's no-hands guarantee. Held back from the polish pass on purpose: the claims must be
+  VERIFIED against the implementation (not written blind) and any toggles wired to real settings —
+  so it belongs with M7's deletion/data work, not a cosmetic sweep.
 
 ## Previous gate (M2+M3+M6)
 
