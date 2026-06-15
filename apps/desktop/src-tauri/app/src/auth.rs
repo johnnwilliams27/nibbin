@@ -4,12 +4,15 @@
 //! Sign-out-everywhere on the web side revokes the refresh token; the next
 //! silent refresh here fails and the UI drops to signed-out.
 
-/// Pinned Supabase origin — baked at build time per environment.
+/// Pinned Supabase origin — baked at build time per environment. Defaults to
+/// PRODUCTION (nibbin-prod), where real user accounts live; override via
+/// NIBBIN_SUPABASE_URL / NIBBIN_SUPABASE_PUBLISHABLE_KEY for dev/staging.
 fn supabase_url() -> &'static str {
-    option_env!("NIBBIN_SUPABASE_URL").unwrap_or("https://oqnqzytctwlptfdvyagl.supabase.co")
+    option_env!("NIBBIN_SUPABASE_URL").unwrap_or("https://oaymttudfazqaqequrke.supabase.co")
 }
 fn supabase_publishable_key() -> &'static str {
-    option_env!("NIBBIN_SUPABASE_PUBLISHABLE_KEY").unwrap_or("")
+    option_env!("NIBBIN_SUPABASE_PUBLISHABLE_KEY")
+        .unwrap_or("sb_publishable_37WSmktUe1J5783qoGGKZA_oSaCgDTV")
 }
 
 const KEYRING_SERVICE: &str = "com.nibbin.observer";

@@ -1,14 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Publishable key and URL sourced from apps/web/.env.local
-// (NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY).
+// Points at the PRODUCTION project (nibbin-prod) — that's where real user
+// accounts live (the same backend nibbin.com uses). The dev "Nibbin" project
+// has no real accounts, so a distributed desktop build must target prod.
 // The publishable key is public — safe to embed; RLS protects data.
-// Override at build time via VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY.
+// Override per-environment via VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY.
 const url =
-  import.meta.env.VITE_SUPABASE_URL ?? 'https://oqnqzytctwlptfdvyagl.supabase.co';
+  import.meta.env.VITE_SUPABASE_URL ?? 'https://oaymttudfazqaqequrke.supabase.co';
 const key =
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
-  'sb_publishable_13ONvOzQzo-iNavN0drawA_2YS0RXBw';
+  'sb_publishable_37WSmktUe1J5783qoGGKZA_oSaCgDTV';
 
 // The OS keychain (via Rust/Tauri) is the store of record — not webview
 // localStorage. persistSession: false keeps supabase-js from writing tokens
