@@ -93,7 +93,7 @@ describe('POST /api/study/packet', () => {
     expect(res.status).toBe(200);
     expect(upsert).toHaveBeenCalledTimes(1);
     const [row, opts] = upsert.mock.calls[0];
-    expect(row).toMatchObject({ account_id: 'acct_1', study_id: 'study_1' });
+    expect(row).toMatchObject({ account_id: 'acct_1', study_id: 'study_1', kind: 'full_study' });
     expect(opts).toMatchObject({ onConflict: 'account_id,study_id' });
   });
 

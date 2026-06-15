@@ -97,6 +97,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     packet,
     map,
     letter,
+    kind: packet.kind ?? 'full_study',
+    ...(packet.label ? { label: packet.label } : {}),
     ...(packet.studyId ? { study_id: packet.studyId } : {}),
   };
   const writer = packet.studyId
