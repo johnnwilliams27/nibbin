@@ -15,7 +15,15 @@ function KeeperGlyph({ size }: { size: number }) {
   return <span className={styles.keeperGlyph} aria-hidden="true" dangerouslySetInnerHTML={{ __html: svg }} />;
 }
 
-export type NavKey = 'grove' | 'diagnosis' | 'memory' | 'shop' | 'notifications' | 'billing' | 'settings';
+export type NavKey =
+  | 'grove'
+  | 'nibbins'
+  | 'diagnosis'
+  | 'memory'
+  | 'shop'
+  | 'notifications'
+  | 'billing'
+  | 'settings';
 
 /** Minimal line icons (Lucide-style) per nav item — inherit currentColor so they
  *  pick up the active/hover tint from `.navItem`. */
@@ -27,6 +35,14 @@ function NavIcon({ k }: { k: NavKey }) {
         <path d="M10 20c5.5-2.5.8-6.4 3-10" />
         <path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z" />
         <path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z" />
+      </>
+    ),
+    nibbins: (
+      <>
+        <circle cx="9" cy="7" r="4" />
+        <path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        <path d="M21 21v-2a4 4 0 0 0-3-3.87" />
       </>
     ),
     diagnosis: <path d="M22 12h-4l-3 9L9 3l-3 9H2" />,
@@ -86,6 +102,7 @@ const NAV: { key: NavKey; label: string; href: string }[] = [
   // Grove Home (/app) is the hub — the Keeper rides along as the docked panel, so
   // there's no separate full-screen grove route to navigate to.
   { key: 'grove', label: 'Grove Home', href: '/app' },
+  { key: 'nibbins', label: 'Your Nibbins', href: '/app/nibbins' },
   { key: 'diagnosis', label: 'Diagnosis', href: '/app/diagnosis' },
   { key: 'memory', label: 'Memory', href: '/app/memory' },
   { key: 'shop', label: 'Agent Shop', href: '/app/shop' },

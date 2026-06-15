@@ -1,0 +1,249 @@
+/* "Your Nibbins" roster — Agent School ladder, derived streaks/badges.
+   Adapted from the marketing demo's .agent/.school/.ladder language into a
+   scoped CSS module. Token-only (canonical sheet + globals.css landing aliases:
+   --paper-deep, --sun, --card). */
+
+.intro {
+  color: var(--ink-soft);
+  font-size: 14px;
+  margin-bottom: 20px;
+  max-width: 60ch;
+}
+
+.roster {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 860px) {
+  .roster {
+    grid-template-columns: 1fr;
+  }
+}
+
+.agent {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 18px;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.agent:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 30px -22px rgba(35, 41, 26, 0.4);
+}
+
+.top {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+.sprite {
+  flex: 0 0 auto;
+  line-height: 0;
+}
+.id h4 {
+  font-size: 17px;
+  font-family: var(--display);
+  font-weight: 700;
+  color: var(--ink);
+}
+.id .job {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-soft);
+  margin-top: 2px;
+}
+
+.stagepill {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 20px;
+  display: inline-block;
+  white-space: nowrap;
+  margin-left: auto;
+  align-self: flex-start;
+}
+.stEgg {
+  background: #f4efe0;
+  color: #8a7b43;
+  border: 1px solid #e2d8b8;
+}
+.stStudent {
+  background: #ecf2e0;
+  color: #44601f;
+  border: 1px solid #cdddae;
+}
+.stSenior {
+  background: #fcf1e3;
+  color: #8a5f0c;
+  border: 1px solid #efd9ae;
+}
+.stGrad {
+  background: var(--moss);
+  color: #fff;
+  border: 1px solid var(--moss);
+}
+
+.school {
+  margin: 14px 0 4px;
+}
+.schoolLbl {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  font-weight: 600;
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.schoolLbl b {
+  color: var(--moss-deep);
+  font-weight: 600;
+}
+
+.ladder {
+  display: flex;
+  gap: 4px;
+}
+.rung {
+  flex: 1;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--paper-deep);
+}
+.rungDone {
+  background: linear-gradient(90deg, var(--moss), var(--leaf));
+}
+.rungCur {
+  background: repeating-linear-gradient(45deg, var(--leaf), var(--leaf) 4px, #fff 4px, #fff 7px);
+  border: 1px solid var(--leaf);
+}
+.ladderNames {
+  display: flex;
+  gap: 4px;
+  margin-top: 5px;
+}
+.ladderNames span {
+  flex: 1;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  text-align: center;
+}
+
+.desc {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  margin-top: 12px;
+}
+
+.badgeRow {
+  display: flex;
+  gap: 6px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.badge {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: #fff;
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  border-radius: 20px;
+  padding: 4px 10px;
+  cursor: default;
+}
+.badgeEarned {
+  border-color: var(--sun);
+  color: #8a5f0c;
+  background: #fcf6e8;
+}
+.streak {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: #fbede6;
+  border: 1px solid #f0c9b6;
+  color: #b14a22;
+  border-radius: 20px;
+  padding: 4px 10px;
+}
+
+.foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 14px;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.footM {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-soft);
+}
+.footM b {
+  color: var(--ink);
+  font-weight: 600;
+}
+.abtn {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 8px 13px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink-soft);
+  text-decoration: none;
+  display: inline-block;
+  transition: transform 0.15s ease, background 0.2s ease;
+}
+.abtn:hover {
+  background: var(--paper-deep);
+}
+.abtnGo {
+  background: var(--moss);
+  border-color: var(--moss);
+  color: #fff;
+}
+.abtnGo:hover {
+  background: var(--moss-deep);
+}
+
+/* Empty state */
+.empty {
+  text-align: center;
+  padding: 40px 24px;
+}
+.emptyTitle {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 20px;
+  color: var(--ink);
+  margin: 12px 0 8px;
+}
+.emptyBody {
+  color: var(--ink-soft);
+  font-size: 14px;
+  max-width: 46ch;
+  margin: 0 auto 18px;
+}
