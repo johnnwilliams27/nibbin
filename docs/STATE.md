@@ -60,6 +60,27 @@
   map + automatable%/friction (Group A, overlaps M7's diagnosis synthesis); a "Your Nibbins" roster
   with Agent School progress / what-it-learned / streaks / badges (Group B); the "Hatch Your Own"
   builder wizard (Group C); and a richer Today approval feed (Group D). Tracked, not yet scheduled.
+- **Field Study cloud sync (Phase 2) — BUILT 2026-06-15** on `feature/nibbin-desktop-unified-app`
+  (spec/plan under `docs/superpowers/`). Closes the loop: at study end the desktop segments its
+  redacted events into the cloud's diagnosis-packet shape ON-DEVICE (new
+  `packages/redaction/src/segment.ts` `segmentStudy` — only categorized workflow summaries leave,
+  never the event stream; C1/C7), uploads Bearer-authed to `/api/study/packet` (endpoint gained a
+  Bearer path + idempotent upsert on a new `diagnoses.study_id`, migration `20260615120000` applied
+  to DEV only), and advances the study (`synthesis_complete`) ONLY after a 200 — so raw deletion
+  never precedes the packet leaving the device (C3). A root drift-guard test pins the segmenter
+  output to the cloud validator. NOT yet merged; prod migration + web-origin/handoff wiring pending
+  branch-land with explicit OK.
+  - **Retention decided (2026-06-15):** keep auto-deleting raw (events + frames) at study end — the
+    trust anchor. The redacted packet *becomes* the diagnosis and persists until account close (#29),
+    so findings survive; only the raw substrate is deleted. To preserve future re-analysis as models
+    improve, **enrich the retained packet** (chosen over user-controlled raw retention).
+  - **Follow-ups:** (a) **packet enrichment** — v0 packet is coarse per-category aggregates; enrich
+    with re-minable redacted structure (sequences, daily app-duration aggregates, role_path patterns)
+    within the 256KB `diagnoses.packet` cap, so better models re-mine without raw (needs its own
+    mini-design; highest-value next step). (b) **Ad-hoc / incremental analysis (Phase 3)** —
+    partial/early-stopped studies ALREADY yield a (noisier) diagnosis via window-aware `studyDays`;
+    net-new is an ad-hoc single-workflow "quick scan" entry point on the same substrate. (c) finer
+    workflow mining (split `email.general`); (d) packet compression for >256KB studies.
 
 ## Previous gate (M2+M3+M6)
 

@@ -100,7 +100,7 @@ describe('segmentStudy', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `npm run test -w packages/redaction -- segment`
+Run: `npm test -- segment`
 Expected: FAIL — `Cannot find module '../src/segment.js'`.
 
 - [ ] **Step 3: Write the segmenter**
@@ -241,7 +241,7 @@ export async function segmentStudy(
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `npm run test -w packages/redaction -- segment`
+Run: `npm test -- segment`
 Expected: PASS (3 tests).
 
 Note: if `Date.parse`/`Date.now` is disallowed in the package's lint config, `now` is passed in by
@@ -309,7 +309,7 @@ describe('validateSynthesisPacket studyId', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `npm run test -w apps/web -- diagnosis/synthesize`
+Run: `npm test -- diagnosis/synthesize`
 Expected: FAIL — `studyId` is not on the returned object (type error or undefined).
 
 - [ ] **Step 3: Add `studyId` to the type**
@@ -343,14 +343,62 @@ export interface SynthesisPacket {
 
 - [ ] **Step 5: Run test to verify it passes**
 
-Run: `npm run test -w apps/web -- diagnosis/synthesize`
+Run from repo root `C:\Nibbin`: `npm test -- diagnosis/synthesize`
+(There is no `-w apps/web` test script — a single ROOT vitest config globs
+`apps/*/lib/**/*.test.ts`, `apps/*/test/**/*.test.ts`, `packages/*/test/**`, and `tests/**`. Always
+run tests from root with `npm test -- <path-substring>`.)
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 6: Drift guard — segmenter output must satisfy the cloud validator**
+
+This is the guard the spec calls for. It must import BOTH the segmenter (`packages/redaction`) and the
+validator (`apps/web`), so it lives in the root `tests/` dir (globbed; can use relative imports across
+both — `apps/web/lib/diagnosis/synthesize.ts` imports only `./types`, no `server-only`, so it's safe to
+import from a root test). `apps/web` does NOT depend on `@nibbin/redaction` and the package is not
+aliased in vitest, so relative imports are required (not the `@nibbin/redaction` specifier).
+
+```typescript
+// tests/diagnosis-packet-contract.test.ts
+import { describe, it, expect } from 'vitest';
+import { segmentStudy } from '../packages/redaction/src/segment';
+import { validateSynthesisPacket } from '../apps/web/lib/diagnosis/synthesize';
+import type { ObserverEvent } from '../packages/redaction/src/types';
+
+function ev(ts: string, session: string, host: string, app: string): ObserverEvent {
+  return {
+    v: 1, id: `${ts}-${session}`, ts, session, kind: 'ax_delta',
+    app: { bundle_id: 'b', name: app }, window: { title_redacted: 'x', id: 'w' },
+    url: { host, path_template: '/' },
+    ax: { role_path: 'button', action: 'press', label_redacted: 'OK', value_class: 'none' },
+    input: { keys: 0, clicks: 1, duration_ms: 60000 }, frame_ref: null,
+    redaction: { rules_hit: [], review_state: 'auto' },
+  };
+}
+
+describe('diagnosis packet contract (segmenter ↔ validator drift guard)', () => {
+  it('segmentStudy output passes validateSynthesisPacket with workflows intact', async () => {
+    const events = [
+      ev('2026-06-10T09:00:00.000Z', 's1', 'mail.google.com', 'Gmail'),
+      ev('2026-06-11T10:00:00.000Z', 's2', 'stripe.com', 'Stripe'),
+    ];
+    const packet = await segmentStudy('study_1', events, '2026-06-20T00:00:00.000Z');
+    const validated = validateSynthesisPacket(packet);
+    expect(validated).not.toBeNull();
+    expect(validated!.studyId).toBe('study_1');
+    expect(validated!.workflows.length).toBe(packet.workflows.length);
+    expect(validated!.workflows.length).toBeGreaterThan(0);
+  });
+});
+```
+
+Run from root: `npm test -- diagnosis-packet-contract`
+Expected: PASS. (Depends on Task 1's segmenter AND this task's `studyId` validator change.)
+
+- [ ] **Step 7: Commit**
 
 ```bash
-git add apps/web/lib/diagnosis/types.ts apps/web/lib/diagnosis/synthesize.ts apps/web/lib/diagnosis/synthesize.test.ts
-git commit -m "feat(diagnosis): carry studyId on the synthesis packet contract"
+git add apps/web/lib/diagnosis/types.ts apps/web/lib/diagnosis/synthesize.ts apps/web/lib/diagnosis/synthesize.test.ts tests/diagnosis-packet-contract.test.ts
+git commit -m "feat(diagnosis): carry studyId on the synthesis packet contract + drift guard"
 ```
 
 ---
@@ -358,17 +406,16 @@ git commit -m "feat(diagnosis): carry studyId on the synthesis packet contract"
 ## Task 3: Migration — `study_id` column + unique index
 
 **Files:**
-- Create: `supabase/migrations/<timestamp>_diagnoses_study_id.sql`
+- Create: `supabase/migrations/20260615120000_diagnoses_study_id.sql`
 
-Context: pick the timestamp as the current UTC time in `YYYYMMDDHHMMSS` form, strictly greater than
-the highest existing filename in `supabase/migrations/`. Confirm the latest with
-`ls supabase/migrations | sort | tail -3` before naming. The `diagnoses` table is defined in
+Context: the latest existing migration is `20260614121000_desktop_auth_codes.sql`, so
+`20260615120000` sorts strictly after it. The `diagnoses` table is defined in
 `20260613150000_m7_diagnoses.sql`.
 
 - [ ] **Step 1: Write the migration**
 
 ```sql
--- <timestamp>_diagnoses_study_id.sql
+-- 20260615120000_diagnoses_study_id.sql
 -- Phase 2 (field-study cloud sync): make packet upload idempotent. The desktop
 -- may retry an upload (200 returned but the app died before advancing the study),
 -- so key the diagnosis to its study and upsert instead of duplicating. Nullable +
@@ -398,7 +445,12 @@ git commit -m "feat(db): study_id on diagnoses for idempotent packet upload"
 
 **Files:**
 - Modify: `apps/web/app/api/study/packet/route.ts`
-- Test: `apps/web/app/api/study/packet/route.test.ts` (create)
+- Test: `apps/web/test/study-packet-route.test.ts` (create)
+
+NOTE: the test goes under `apps/web/test/` (NOT next to the route under `apps/web/app/...`) because the
+root vitest config only globs `apps/*/lib/**`, `apps/*/test/**`, `packages/*/test/**`, and `tests/**`.
+A test under `app/` would never run. Import the route via relative path
+`../app/api/study/packet/route`. Run from root: `npm test -- study-packet-route`.
 
 Context: the handler currently does `const supabase = await createClient(); supabase.auth.getUser()`
 (cookie path). `createServerClient` comes from `@supabase/ssr`; URL/key from
@@ -408,12 +460,15 @@ in `apps/web/lib/supabase/service.ts`. The insert is at the `.from('diagnoses').
 - [ ] **Step 1: Write the failing test (Bearer resolves user; upsert is idempotent)**
 
 ```typescript
-// apps/web/app/api/study/packet/route.test.ts
+// apps/web/test/study-packet-route.test.ts
+// Mock specifiers are resolved relative to THIS file (apps/web/test/). They match
+// the route's imports by resolved module id, so `../lib/...` here and the route's
+// `../../../../lib/...` both point at apps/web/lib/... and the mock applies.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock the supabase layers so the route is testable without a live DB.
 const upsert = vi.fn();
-vi.mock('../../../../lib/supabase/service', () => ({
+vi.mock('../lib/supabase/service', () => ({
   serviceClient: () => ({
     from: () => ({ upsert: (...a: unknown[]) => { upsert(...a); return {
       select: () => ({ single: () => ({ data: { id: 'diag_1' }, error: null }) }) }; },
@@ -427,16 +482,16 @@ vi.mock('@supabase/ssr', () => ({
     rpc: async () => ({ data: 'acct_1', error: null }),
   }),
 }));
-vi.mock('../../../../lib/supabase/server', () => ({
+vi.mock('../lib/supabase/server', () => ({
   createClient: async () => ({ auth: { getUser: async () => ({ data: { user: null } }) } }),
 }));
-vi.mock('../../../../lib/auth/bootstrap', () => ({ ensureAccount: async () => 'acct_1' }));
-vi.mock('../../../../lib/auth/profile', () => ({ upsertOwnProfile: async () => {} }));
-vi.mock('../../../../lib/diagnosis/label', () => ({
+vi.mock('../lib/auth/bootstrap', () => ({ ensureAccount: async () => 'acct_1' }));
+vi.mock('../lib/auth/profile', () => ({ upsertOwnProfile: async () => {} }));
+vi.mock('../lib/diagnosis/label', () => ({
   labelDiagnosis: async () => ({ map: { workflows: [], totalHoursPerWeek: 0, topRecommendations: [] }, letter: null }),
 }));
 
-import { POST } from './route';
+import { POST } from '../app/api/study/packet/route';
 
 function reqWith(body: unknown, headers: Record<string, string> = {}) {
   return new Request('http://localhost/api/study/packet', {
@@ -471,7 +526,7 @@ describe('POST /api/study/packet', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `npm run test -w apps/web -- study/packet`
+Run: `npm test -- study-packet-route`
 Expected: FAIL — route still cookie-only (401 on the Bearer case) and uses `insert` not `upsert`.
 
 - [ ] **Step 3: Add the Bearer client + upsert to the route**
@@ -524,7 +579,7 @@ Replace the insert with an idempotent upsert keyed on `study_id` (fall back to i
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `npm run test -w apps/web -- study/packet`
+Run: `npm test -- study-packet-route`
 Expected: PASS (3 tests). Also run `npx tsc -p apps/web --noEmit` (or the repo's typecheck) to confirm types.
 
 - [ ] **Step 5: Commit**
@@ -663,7 +718,7 @@ describe('syncStudy (C3 ordering)', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `npm run test -w apps/desktop -- sync-study`
+Run: `npm test -- sync-study`
 Expected: FAIL — `Cannot find module '../src/ui/sync-study.js'`.
 
 - [ ] **Step 3: Write the orchestration**
@@ -724,7 +779,7 @@ export async function syncStudy(opts: {
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `npm run test -w apps/desktop -- sync-study`
+Run: `npm test -- sync-study`
 Expected: PASS (2 tests), including the C3 guard.
 
 - [ ] **Step 5: Wire it into the Synthesizing view + styles**
@@ -759,10 +814,28 @@ git commit -m "feat(desktop): field-study cloud sync — segment, upload, advanc
 - [ ] **Step 1: Record Phase 2 + the deferred items**
 
 Add under M7 in `docs/STATE.md`: field-study cloud sync shipped (on-device segmenter v0 → Bearer
-upload → idempotent diagnosis). Note the deferred follow-ups: (a) finer workflow mining (split
-`email.general` into inquiries/overdue/newsletter); (b) packet compression/chunking for studies that
-exceed the 256KB `diagnoses.packet` cap; (c) prod migration apply + `NIBBIN_GROVE_HANDOFF`/web-origin
-wiring at branch-land time.
+upload → idempotent diagnosis).
+
+**Retention model (decided 2026-06-15):** keep the existing auto-delete of raw (events + on-device
+frames) at study end — that is the product's trust anchor ("we watch, learn, delete"). The redacted
+synthesis packet *becomes* the diagnosis and is retained durably until account close (#29), so the
+*findings* persist; only the raw substrate is deleted. To preserve future re-analysis value as models
+improve, **enrich the retained packet** rather than retain raw (chosen over a user-controlled raw
+retention model).
+
+Note the deferred follow-ups:
+- (a) **Packet enrichment (committed direction)** — the v0 packet retains only coarse per-category
+  aggregates. Enrich it with re-minable redacted structure (e.g. the sequence candidates + daily
+  app-duration aggregates `buildSynthesisPacket` already computes, per-workflow role_path patterns)
+  within the 256KB `diagnoses.packet` cap, so future/better models can re-mine without raw. Needs its
+  own mini-design (fields + size budget + re-mining schema). Highest-value next step after Phase 2.
+- (b) **Ad-hoc / incremental analysis (Phase 3)** — partial studies ALREADY work (early-stop →
+  window-aware `studyDays` → diagnosis, just noisier). Net-new is an *ad-hoc single-workflow capture*
+  ("quick scan") entry point + a session-type study, built on the same segmenter/packet/endpoint. Its
+  own spec.
+- (c) finer workflow mining (split `email.general` into inquiries/overdue/newsletter).
+- (d) packet compression/chunking for studies that exceed the 256KB `diagnoses.packet` cap.
+- (e) prod migration apply + `NIBBIN_GROVE_HANDOFF`/web-origin wiring at branch-land time.
 
 - [ ] **Step 2: Commit**
 
@@ -773,5 +846,5 @@ git commit -m "docs(state): record field-study cloud sync + Phase 2 follow-ups"
 
 - [ ] **Step 3: Final full-suite check**
 
-Run: `npm run test -w packages/redaction && npm run test -w apps/web -- diagnosis study/packet`
+Run: `npm test -- segment diagnosis-packet-contract study-packet-route`
 Expected: all green. Then dispatch the final code-reviewer over the whole Phase 2 diff.
