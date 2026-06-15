@@ -102,6 +102,53 @@ describe('segmentStudy', () => {
     await expect(segmentStudy('study_1', events, NOW)).rejects.toBeInstanceOf(PacketLeakError);
   });
 
+  it('splits a payments workflow into payments.invoices via path signal', async () => {
+    const events: ObserverEvent[] = [
+      ev({ ts: '2026-06-10T09:00:00.000Z', session: 's1', app: { bundle_id: 's', name: 'Stripe' },
+           url: { host: 'stripe.com', path_template: '/invoices/new' } }),
+    ];
+    const packet = await segmentStudy('study_1', events, NOW);
+    const w = packet.workflows.find((x) => x.key === 'payments.invoices');
+    expect(w).toBeDefined();
+    expect(w!.label).toBe('Sending invoices');
+    expect(w!.category).toBe('payments');
+  });
+
+  it('splits an email workflow into email.newsletter via newsletter host', async () => {
+    const events: ObserverEvent[] = [
+      ev({ ts: '2026-06-10T09:00:00.000Z', session: 's1', app: { bundle_id: 'm', name: 'Mailchimp' },
+           url: { host: 'us1.admin.mailchimp.com', path_template: '/campaigns' } }),
+    ];
+    const packet = await segmentStudy('study_1', events, NOW);
+    const w = packet.workflows.find((x) => x.key === 'email.newsletter');
+    expect(w).toBeDefined();
+    expect(w!.label).toBe('Newsletters & campaigns');
+    expect(w!.category).toBe('email');
+  });
+
+  it('keeps events without a finer signal on the .general key', async () => {
+    const events: ObserverEvent[] = [
+      ev({ ts: '2026-06-10T09:00:00.000Z', session: 's1', app: { bundle_id: 'g', name: 'Gmail' },
+           url: { host: 'mail.google.com', path_template: '/mail/u/0' } }),
+    ];
+    const packet = await segmentStudy('study_1', events, NOW);
+    expect(packet.workflows.find((x) => x.key === 'email.general')).toBeDefined();
+    expect(packet.workflows.find((x) => x.key === 'email.newsletter')).toBeUndefined();
+  });
+
+  it('yields two workflows when one category has two subkeys', async () => {
+    const events: ObserverEvent[] = [
+      ev({ ts: '2026-06-10T09:00:00.000Z', session: 's1', app: { bundle_id: 's', name: 'Stripe' },
+           url: { host: 'stripe.com', path_template: '/invoices/new' } }),
+      ev({ ts: '2026-06-11T09:00:00.000Z', session: 's2', app: { bundle_id: 's', name: 'Stripe' },
+           url: { host: 'stripe.com', path_template: '/reminders/overdue' } }),
+    ];
+    const packet = await segmentStudy('study_1', events, NOW);
+    const payments = packet.workflows.filter((x) => x.category === 'payments');
+    expect(payments.map((w) => w.key).sort()).toEqual(['payments.invoices', 'payments.overdue']);
+    expect(payments.find((w) => w.key === 'payments.overdue')!.label).toBe('Chasing overdue payments');
+  });
+
   it('stays under the 256KB packet cap for a large study', async () => {
     const hosts = ['mail.google.com', 'stripe.com', 'salesforce.com', 'docs.google.com', 'x.com'];
     const events: ObserverEvent[] = [];

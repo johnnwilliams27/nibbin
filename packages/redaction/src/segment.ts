@@ -57,9 +57,56 @@ const CATEGORY_LABEL: Record<WorkflowCategory, string> = {
   crm: 'Client records', docs: 'Documents', social: 'Social', other: 'Other work',
 };
 
+/**
+ * Labels for the finer `${category}.${subkey}` workflow keys. `.general` keys
+ * fall back to CATEGORY_LABEL[category] (see `labelForKey`), so only the split
+ * subkeys need an entry here.
+ */
+const KEY_LABEL: Record<string, string> = {
+  'payments.invoices': 'Sending invoices',
+  'payments.overdue': 'Chasing overdue payments',
+  'email.newsletter': 'Newsletters & campaigns',
+  'email.overdue': 'Follow-up nudges',
+  'calendar.confirmations': 'Booking confirmations',
+};
+
+function labelForKey(key: string, category: WorkflowCategory): string {
+  return KEY_LABEL[key] ?? CATEGORY_LABEL[category];
+}
+
+/**
+ * A finer subkey within a category, derived from ONLY the already-redacted url
+ * fields (path_template, host). Conservative: only strong signals split a
+ * category; everything else stays `general` (behavior unchanged for those).
+ */
+function subkeyOf(e: ObserverEvent, category: WorkflowCategory): string {
+  const path = e.url?.path_template?.toLowerCase() ?? '';
+  const host = e.url?.host?.toLowerCase() ?? '';
+  switch (category) {
+    case 'payments':
+      if (path.includes('invoice')) return 'invoices';
+      if (path.includes('overdue') || path.includes('past-due') || path.includes('reminder')) return 'overdue';
+      return 'general';
+    case 'email':
+      if (
+        host.includes('mailchimp') || host.includes('substack') || host.includes('beehiiv') ||
+        path.includes('newsletter') || path.includes('campaign')
+      ) return 'newsletter';
+      if (path.includes('overdue') || path.includes('reminder')) return 'overdue';
+      return 'general';
+    case 'calendar':
+      if (path.includes('confirm') || path.includes('booking') || host.includes('confirm') || host.includes('booking'))
+        return 'confirmations';
+      return 'general';
+    default:
+      return 'general';
+  }
+}
+
 /** host substring → category (checked first), then app-name substring. */
 const HOST_RULES: Array<[string, WorkflowCategory]> = [
   ['mail.google.com', 'email'], ['outlook.', 'email'], ['mail.yahoo.', 'email'],
+  ['mailchimp', 'email'], ['substack.com', 'email'], ['beehiiv.com', 'email'],
   ['calendar.google.com', 'calendar'], ['cal.com', 'calendar'],
   ['stripe.com', 'payments'], ['paypal.com', 'payments'], ['squareup.com', 'payments'],
   ['quickbooks.', 'payments'], ['intuit.com', 'payments'],
@@ -99,14 +146,21 @@ export async function segmentStudy(
 ): Promise<SynthesisPacket> {
   const exportable = events.filter((e) => e.redaction.review_state !== 'user_deleted');
 
-  const byCat = new Map<WorkflowCategory, ObserverEvent[]>();
+  // Group by `${category}.${subkey}` so a category can yield finer workflows
+  // (e.g. payments.invoices vs payments.overdue). `groupCat` records which
+  // category each group key belongs to for label + category lookup.
+  const byGroup = new Map<string, ObserverEvent[]>();
+  const groupCat = new Map<string, WorkflowCategory>();
   for (const e of exportable) {
-    const cat = categorize(e);
-    (byCat.get(cat) ?? byCat.set(cat, []).get(cat)!).push(e);
+    const category = categorize(e);
+    const key = `${category}.${subkeyOf(e, category)}`;
+    (byGroup.get(key) ?? byGroup.set(key, []).get(key)!).push(e);
+    groupCat.set(key, category);
   }
 
   const workflows: PacketWorkflow[] = [];
-  for (const [category, evs] of byCat) {
+  for (const [key, evs] of byGroup) {
+    const category = groupCat.get(key)!;
     const ms = evs.reduce((s, e) => s + (e.input?.duration_ms ?? 0), 0);
     const sessions = new Set(evs.map((e) => e.session)).size;
     const apps = [...new Set(evs.map((e) => e.app.name))].sort();
@@ -128,8 +182,8 @@ export async function segmentStudy(
     for (const [d, dms] of Object.entries(dayMs).slice(0, 31)) dailyMinutes[d] = Math.round((dms / 60000) * 10) / 10;
 
     workflows.push({
-      key: `${category}.general`,
-      label: CATEGORY_LABEL[category],
+      key,
+      label: labelForKey(key, category),
       category,
       apps,
       minutesObserved: Math.round((ms / 60000) * 10) / 10,
