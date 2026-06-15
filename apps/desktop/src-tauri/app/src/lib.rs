@@ -46,7 +46,9 @@ pub fn run() {
             auth::sign_out,
         ])
         .setup(|app| {
-            app.global_shortcut().register(PAUSE_SHORTCUT)?;
+            if let Err(e) = app.global_shortcut().register(PAUSE_SHORTCUT) {
+                eprintln!("pause hotkey unavailable (continuing without it): {e}");
+            }
 
             // nibbin://auth deep-link callback from the system browser (§6.1)
             let handle = app.handle().clone();
