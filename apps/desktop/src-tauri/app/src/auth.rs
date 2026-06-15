@@ -19,10 +19,22 @@ const KEYRING_SERVICE: &str = "com.nibbin.observer";
 const KEYRING_SESSION: &str = "supabase-session";
 
 /// Persist a Supabase session obtained from the in-app login into the keychain.
+///
+/// The Windows Credential Manager caps a credential blob at 2560 chars, and a
+/// full Supabase session (the `user` object + a long access-token JWT) exceeds
+/// that. We only need the tokens + expiry — for silent refresh here and the
+/// Grove session handoff — so store just those, not the whole blob.
 #[tauri::command]
 pub fn store_session(session: serde_json::Value) -> Result<(), String> {
+    let mut minimal = serde_json::Map::new();
+    for k in ["access_token", "refresh_token", "expires_at", "expires_in", "token_type"] {
+        if let Some(v) = session.get(k) {
+            minimal.insert(k.to_string(), v.clone());
+        }
+    }
+    let value = serde_json::Value::Object(minimal);
     keyring::Entry::new(KEYRING_SERVICE, KEYRING_SESSION)
-        .and_then(|e| e.set_password(&session.to_string()))
+        .and_then(|e| e.set_password(&value.to_string()))
         .map_err(|e| e.to_string())
 }
 
