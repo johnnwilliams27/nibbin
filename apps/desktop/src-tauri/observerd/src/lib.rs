@@ -23,8 +23,7 @@ use nibbin_redaction::{
 };
 use nibbin_store::{KeyProvider, ObserverStore, StaticTestKey};
 use nibbin_study::{
-    capture_allowed, deadline_passed, new_study, transition, StudyCommand, StudyKind,
-    StudySnapshot,
+    capture_allowed, deadline_passed, new_study, transition, StudyCommand, StudyKind, StudySnapshot,
 };
 use serde::Deserialize;
 use std::path::{Path, PathBuf};

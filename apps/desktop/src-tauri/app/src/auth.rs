@@ -27,7 +27,13 @@ const KEYRING_SESSION: &str = "supabase-session";
 #[tauri::command]
 pub fn store_session(session: serde_json::Value) -> Result<(), String> {
     let mut minimal = serde_json::Map::new();
-    for k in ["access_token", "refresh_token", "expires_at", "expires_in", "token_type"] {
+    for k in [
+        "access_token",
+        "refresh_token",
+        "expires_at",
+        "expires_in",
+        "token_type",
+    ] {
         if let Some(v) = session.get(k) {
             minimal.insert(k.to_string(), v.clone());
         }

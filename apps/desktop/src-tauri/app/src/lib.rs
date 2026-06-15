@@ -54,7 +54,8 @@ fn grove_setup() -> (String, Option<String>) {
             // JSON-encode the values so they embed safely in JS (no injection).
             let a = serde_json::to_string(&access).unwrap_or_else(|_| "\"\"".into());
             let r = serde_json::to_string(&refresh).unwrap_or_else(|_| "\"\"".into());
-            let script = format!("window.__NIBBIN_HANDOFF__={{access_token:{a},refresh_token:{r}}};");
+            let script =
+                format!("window.__NIBBIN_HANDOFF__={{access_token:{a},refresh_token:{r}}};");
             return (format!("{base}/desktop-auth"), Some(script));
         }
     }
