@@ -15,3 +15,7 @@ Thumbs.db
 .vercel
 
 .vercel
+
+# Generated at CI build time by desktop-release.yml when Windows signing is
+# configured (adds bundle.windows.signCommand via --config); never committed.
+apps/desktop/src-tauri/app/tauri.signing.windows.json
