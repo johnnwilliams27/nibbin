@@ -110,6 +110,57 @@
   display: none;
 }
 
+/* Desktop: collapse the right-rail panel toward the right edge. */
+.panelCollapse {
+  position: absolute;
+  top: 10px;
+  left: 8px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: var(--r-button);
+  background: var(--canopy);
+  color: var(--ink-soft);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  z-index: 2;
+}
+.panelCollapse:hover {
+  background: var(--understory);
+  color: var(--ink);
+}
+.panelCollapsed {
+  width: 0;
+  border-left: none;
+  overflow: hidden;
+}
+.panelExpand {
+  position: fixed;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  width: 30px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-right: none;
+  border-radius: var(--r-button) 0 0 var(--r-button);
+  background: var(--canopy);
+  cursor: pointer;
+  font-size: 18px;
+  z-index: 22;
+  box-shadow: var(--shadow-2);
+}
+.panelExpand:hover {
+  background: var(--understory);
+}
+
 .topbar {
   position: sticky;
   top: 0;
@@ -179,6 +230,19 @@
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* Onboarding focal mode: the content area is flush + bounded so the
+   OnboardingCanvas fills it and the chat composer anchors to the bottom of the
+   visible area (instead of overflowing below the fold). */
+.contentFocal {
+  padding: 0;
+  max-width: none;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  animation: none;
 }
 
 /* ---- Mobile ---- */
@@ -262,6 +326,12 @@
   .panelToggle:hover {
     background: var(--moss-deep);
     transform: scale(1.05);
+  }
+
+  /* Collapse-to-right is a desktop affordance; mobile uses the bottom sheet. */
+  .panelCollapse,
+  .panelExpand {
+    display: none;
   }
 }
 

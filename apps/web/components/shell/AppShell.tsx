@@ -43,6 +43,7 @@ export interface AppShellProps {
 export function AppShell({ active, title, email, children, panel, onboarding }: AppShellProps) {
   const [open, setOpen] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [panelCollapsed, setPanelCollapsed] = useState(false);
   const close = () => setOpen(false);
 
   return (
@@ -107,19 +108,42 @@ export function AppShell({ active, title, email, children, panel, onboarding }: 
         </header>
 
         <div className={styles.mainBody}>
-          <main className={styles.content}>{children}</main>
+          <main className={`${styles.content} ${onboarding ? styles.contentFocal : ''}`}>{children}</main>
 
           {panel && (
             <aside
-              className={`${styles.panel} ${panelOpen ? styles.panelOpen : ''}`}
+              className={`${styles.panel} ${panelOpen ? styles.panelOpen : ''} ${
+                panelCollapsed ? styles.panelCollapsed : ''
+              }`}
               aria-label="Keeper panel"
             >
+              <button
+                className={styles.panelCollapse}
+                type="button"
+                aria-label="Collapse Keeper panel"
+                onClick={() => setPanelCollapsed(true)}
+              >
+                ›
+              </button>
               {panel}
             </aside>
           )}
         </div>
       </div>
 
+      {/* Desktop: reopen tab on the right edge when collapsed. */}
+      {panel && panelCollapsed && (
+        <button
+          className={styles.panelExpand}
+          type="button"
+          aria-label="Open Keeper panel"
+          onClick={() => setPanelCollapsed(false)}
+        >
+          🌱
+        </button>
+      )}
+
+      {/* Mobile: floating toggle for the bottom-sheet. */}
       {panel && (
         <button
           className={styles.panelToggle}

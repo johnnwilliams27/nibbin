@@ -69,7 +69,10 @@
   padding: 20px 24px 24px;
   display: flex;
   flex-direction: column;
-  height: 100dvh;
+  /* Fill the bounded parent (the full-bleed .scene at 100dvh, or the in-shell
+     OnboardingCanvas which is sized to the shell content area). Forcing 100dvh
+     here used to overflow inside the shell, pushing the composer below the fold. */
+  flex: 1 1 auto;
   min-height: 0;
 }
 
