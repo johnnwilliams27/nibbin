@@ -56,7 +56,7 @@ export default async function DiagnosisDetailPage({
 
   const map = row?.map;
   const hasDiagnosis = !!map && Array.isArray(map.workflows) && map.workflows.length > 0;
-  if (!hasDiagnosis) redirect('/app/diagnosis');
+  if (!row || !hasDiagnosis) redirect('/app/diagnosis');
 
   const kindLabel = row.kind === 'quick_scan' ? 'Quick scan' : '14-day study';
 

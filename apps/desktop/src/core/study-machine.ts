@@ -196,6 +196,6 @@ export function deadlinePassed(snap: StudySnapshot, nowIso: string): boolean {
 /** Countdown for the always-visible tray display. Never negative; never counts
  * back up if the clock is wound backward. */
 export function remainingMs(snap: StudySnapshot, nowIso: string): number {
-  if (snap.endsAt === null) return STUDY_DURATION_MS;
+  if (snap.endsAt === null) return snap.kind === 'quick_scan' ? QUICK_SCAN_DURATION_MS : STUDY_DURATION_MS;
   return Math.max(0, new Date(snap.endsAt).getTime() - new Date(effectiveNow(snap, nowIso)).getTime());
 }

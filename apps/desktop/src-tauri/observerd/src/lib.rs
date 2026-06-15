@@ -130,6 +130,11 @@ impl Daemon {
     pub fn open(store_root: &Path, source: Box<dyn CaptureSource>) -> anyhow::Result<Self> {
         std::fs::create_dir_all(store_root)?;
         let study = nibbin_study::load(store_root)?.unwrap_or_else(|| {
+            // First-boot fallback id only: the timestamp-ms id is used solely
+            // when no study.json exists yet. Every subsequent study is minted by
+            // the UI via create_study with a crypto.randomUUID(); the per-account
+            // unique index makes a same-ms collision harmless (an idempotent
+            // retry resolves to the same row).
             new_study(
                 &format!("full_{}", chrono::Utc::now().timestamp_millis()),
                 StudyKind::FullStudy,
@@ -298,6 +303,10 @@ impl Daemon {
                 // the post-deletion destroy path — drop the in-memory handle
                 // and remove the SQLCipher db files. The next capture pass
                 // lazily reopens an empty store. Scoped to create_study only.
+                // Safe to destroy the store here: create_study is only reachable
+                // from NOT_STARTED/COMPLETE/DELETED (transition guards it), where
+                // capture_allowed is false, so capture_pass cannot be holding an
+                // open store handle concurrently.
                 self.clear_store()?;
             }
             ControlCommand::FinishReview => self.apply(StudyCommand::FinishReview)?,

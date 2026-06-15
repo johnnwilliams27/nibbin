@@ -18,7 +18,6 @@ const ALLOWED_CONTROL: &[&str] = &[
     "finish_review",
     "synthesis_complete",
     "delete_everything",
-    "create_study",
 ];
 
 pub fn store_root<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, anyhow::Error> {

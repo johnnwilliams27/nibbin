@@ -269,7 +269,7 @@ pub fn deadline_passed(snap: &StudySnapshot, now: DateTime<Utc>) -> bool {
 pub fn remaining_ms(snap: &StudySnapshot, now: DateTime<Utc>) -> i64 {
     match snap.ends_at {
         Some(ends) => (ends - effective_now(snap, now)).num_milliseconds().max(0),
-        None => Duration::days(STUDY_DAYS).num_milliseconds(),
+        None => window(snap.kind).num_milliseconds(),
     }
 }
 
@@ -420,6 +420,21 @@ mod tests {
         assert_eq!(q.label.as_deref(), Some("Invoices"));
         // full study still +14 days
         assert_eq!(started().ends_at.unwrap(), t("2026-06-24T08:00:00Z"));
+    }
+
+    #[test]
+    fn remaining_ms_pre_start_is_kind_aware() {
+        // A quick scan with no ends_at (pre-start) reports its own 6h window,
+        // not the 14-day full-study duration. Mirrors the TS twin.
+        let q = new_study("q", StudyKind::QuickScan, None);
+        assert_eq!(q.ends_at, None);
+        assert_eq!(remaining_ms(&q, t("2026-06-10T08:00:00Z")), 21_600_000);
+        // full study still reports 14 days pre-start
+        let f = new_study("f", StudyKind::FullStudy, None);
+        assert_eq!(
+            remaining_ms(&f, t("2026-06-10T08:00:00Z")),
+            Duration::days(STUDY_DAYS).num_milliseconds()
+        );
     }
 
     #[test]

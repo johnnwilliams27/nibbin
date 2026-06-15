@@ -115,6 +115,15 @@ describe('study lifecycle state machine', () => {
     expect(started().endsAt).toBe(at(14));
   });
 
+  it('remainingMs pre-start is kind-aware (quick scan reports 6h, not 14 days)', () => {
+    // A quick scan with no endsAt (pre-start) reports its own 6h window.
+    const q = newStudy('q', 'quick_scan');
+    expect(q.endsAt).toBeNull();
+    expect(remainingMs(q, T0)).toBe(6 * 60 * 60 * 1000); // 21_600_000
+    // full study still reports 14 days pre-start
+    expect(remainingMs(newStudy('f'), T0)).toBe(STUDY_DURATION_MS);
+  });
+
   it('create_study is valid only from NOT_STARTED or a terminal state', () => {
     const complete = transition(
       transition(

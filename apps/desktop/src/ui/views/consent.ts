@@ -57,7 +57,7 @@ export function consentView(onChanged: () => void, kind: StudyKind = 'full_study
   const actions = el('div', { class: 'row' });
   actions.append(
     button(
-      'I understand — start my field study',
+      kind === 'quick_scan' ? 'I understand — start my scan' : 'I understand — start my field study',
       () => {
         void (async () => {
           await bridge.sendControl('consent');

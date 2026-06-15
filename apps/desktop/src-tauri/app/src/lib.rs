@@ -177,9 +177,19 @@ pub fn run() {
                             .unwrap_or(0);
                         let days = remaining_ms / 86_400_000;
                         let hours = (remaining_ms % 86_400_000) / 3_600_000;
-                        let _ = tray.set_tooltip(Some(format!(
-                            "Nibbin — field study: {days}d {hours}h left"
-                        )));
+                        // Kind-aware copy: a quick scan never says "field study"
+                        // and omits the days field (its window is hours-scale).
+                        let is_quick_scan = status
+                            .get("study")
+                            .and_then(|s| s.get("kind"))
+                            .and_then(|k| k.as_str())
+                            == Some("quick_scan");
+                        let tooltip = if is_quick_scan {
+                            format!("Nibbin — quick scan: {hours}h left")
+                        } else {
+                            format!("Nibbin — field study: {days}d {hours}h left")
+                        };
+                        let _ = tray.set_tooltip(Some(tooltip));
                     }
                 }
                 std::thread::sleep(std::time::Duration::from_secs(1));
