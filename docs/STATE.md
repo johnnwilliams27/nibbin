@@ -75,6 +75,10 @@
   canonical engine Keeper, onboarding §4.1 steps 1–3 playable end-to-end, reduced-motion parity.
   Server-authoritative state machine; persistence via membership-checked `save_grove_state` RPC
   (forward-only steps, Keeper name immutable); RLS attack suite in tests/rls/grove-state.test.ts.
+  SUPERSEDED (onboarding-chat-integration): the full-bleed `/app/grove` route was retired — the
+  Keeper now lives in the docked panel on Grove Home (`/app`) for daily chat and in the focal
+  `OnboardingCanvas` during first run. The chat core was extracted to `KeeperChat` (variant
+  `focal`|`panel`); `/app/grove` now 307-redirects to `/app`. State machine + RPC unchanged.
 - packages/router: T0/T1/T2 router per §6.3 — deterministic zero-token classifier, per-user
   per-local-day frontier budget with transparent degradation, hot-reloadable models. Interface
   published for M4. KNOWN: in-memory budget store is not a real cap on serverless (#24); scripted

@@ -121,7 +121,7 @@ export default async function ShopPage({
                     <>
                       <span className={`${styles.pill} ${styles[pill.className]}`}>{pill.label}</span>
                       <p className={styles.adoptedNote}>
-                        {adopted.name} is in your grove — <a href="/app/grove">say hello</a>.
+                        {adopted.name} is in your grove — <a href="/app">say hello</a>.
                       </p>
                     </>
                   ) : (

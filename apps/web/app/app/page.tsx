@@ -148,6 +148,11 @@ export default async function AppPage() {
     );
   }
 
+  // §6.2: a top-up since last visit should quietly unblock cap-queued runs.
+  // (Moved here from the retired /app/grove route — Grove Home is now the landing.)
+  const { resumeQueuedRuns } = await import('../../lib/runtime/engine');
+  await resumeQueuedRuns(accountId).catch(() => 0);
+
   const [{ data: nibbinsData }, { count: waitingCount }, { count: queuedCount }, { data: runsData }] =
     await Promise.all([
       supabase
@@ -222,9 +227,9 @@ export default async function AppPage() {
                 </li>
               ))}
             </ul>
-            <a className={dash.cta} href="/app/grove">
-              Review in your grove →
-            </a>
+            <p className={dash.heroEmpty}>
+              Say your yes or no with {grove.keeperName ?? 'your Grovekeeper'} in the panel.
+            </p>
           </>
         ) : (
           <>

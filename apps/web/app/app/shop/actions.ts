@@ -27,6 +27,7 @@ export async function adoptFromShopAction(formData: FormData): Promise<void> {
   if (result.missingConnectors.length > 0) {
     redirect(`/app/shop?missing=${encodeURIComponent(result.missingConnectors.join(','))}`);
   }
-  // the hatch ceremony and the first draft live in the grove
-  redirect('/app/grove');
+  // the hatch ceremony and the first draft live in the grove (the Keeper rides
+  // along as the docked panel on Grove Home)
+  redirect('/app');
 }
