@@ -80,8 +80,13 @@
     validator (untrusted input) and kept under the 256KB `diagnoses.packet` cap (size-bound test). And
     it CONSUMES `sequences` now: a v0 `automatable` score per workflow (computed server-side in
     `synthesizeDiagnosis`, shown as a `~X% automatable` badge in the reveal) — advances Maya-demo
-    Group A. Remaining enrichment follow-up: re-mine `dailyMinutes`/`urlTemplates` for finer
-    automatability + friction (this pass consumes only `sequences`).
+    Group A.
+  - **Finer re-mining — SHIPPED 2026-06-15** (`2026-06-15-finer-remining-design.md`): `automatable`
+    now also consumes `urlTemplates` (narrowness) + `dailyMinutes` (regularity) to sharpen the score
+    (repetition stays the gate; absent enrichment collapses to the prior formula — backward
+    compatible), and `friction` is mined into a factual line (steps × repeats × views × days). Opus
+    pass still warms it. Remaining: split coarse keys (`email.general` → inquiries/overdue/…) and
+    consume top-level `dailyAppMinutes` — separate finer-mining follow-ups.
   - **Follow-ups:** (a) **Ad-hoc / incremental analysis (Phase 3)** —
     partial/early-stopped studies ALREADY yield a (noisier) diagnosis via window-aware `studyDays`;
     net-new is an ad-hoc single-workflow "quick scan" entry point on the same substrate. (b) finer

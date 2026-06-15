@@ -159,13 +159,45 @@ export function validateSynthesisPacket(input: unknown): SynthesisPacket | null 
   return candidate;
 }
 
-/** v0 automatability heuristic: saturating in the dominant repeated step-chain. */
-function automatableScore(w: PacketWorkflow): number {
+/**
+ * v0 automatability heuristic. Repetition (the dominant repeated step-chain) is
+ * the GATE — no repeated chain ⇒ 0. Within that, two enrichment-derived factors
+ * sharpen the score: narrowness (concentrated in few url-templates ⇒ cleaner to
+ * automate) and regularity (active across more of the study window ⇒ a routine).
+ * Absent enrichment ⇒ both factors are 1 and the expression collapses to the
+ * prior `round(100 × repetition)` (so old behavior + tests are preserved).
+ */
+function automatableScore(w: PacketWorkflow, days: number): number {
   const top = w.sequences?.[0];
   if (!top) return 0;
   const strength = (top.count || 0) * (top.steps?.length || 0);
   if (strength <= 0) return 0;
-  return Math.max(0, Math.min(100, Math.round((100 * strength) / (strength + 24))));
+  const repetition = strength / (strength + 24); // 0..1 (the prior saturating curve)
+
+  const templates = w.urlTemplates?.length ?? 0;
+  const narrowness = templates > 0 ? 1 / (1 + Math.max(0, templates - 1) / 4) : 1;
+
+  const activeDays = w.dailyMinutes ? Object.keys(w.dailyMinutes).length : 0;
+  const regularity = activeDays > 0 ? Math.min(1, activeDays / Math.max(1, days)) : 1;
+
+  const score = repetition * (0.6 + 0.25 * narrowness + 0.15 * regularity);
+  return Math.max(0, Math.min(100, Math.round(100 * score)));
+}
+
+/**
+ * A factual friction line mined from the dominant sequence + enrichment. The
+ * Opus labeling pass warms it into prose later; here it stays deterministic.
+ * Falls back to the on-device note when there's no repeated chain.
+ */
+function frictionLine(w: PacketWorkflow): string | null {
+  const top = w.sequences?.[0];
+  if (!top) return w.friction ?? null;
+  const templates = w.urlTemplates?.length ?? 0;
+  const activeDays = w.dailyMinutes ? Object.keys(w.dailyMinutes).length : 0;
+  const bits = [`a ${top.steps.length}-step pattern repeated ${top.count}×`];
+  if (templates > 0) bits.push(`across ${templates} ${templates === 1 ? 'view' : 'views'}`);
+  if (activeDays > 0) bits.push(`on ${activeDays} ${activeDays === 1 ? 'day' : 'days'}`);
+  return bits.join(', ');
 }
 
 function synthOne(w: PacketWorkflow, days: number): DiagnosisWorkflow {
@@ -179,9 +211,9 @@ function synthOne(w: PacketWorkflow, days: number): DiagnosisWorkflow {
     category: w.category,
     hoursPerWeek,
     frequency,
-    friction: w.friction ?? null,
+    friction: frictionLine(w),
     recommendedNibbin,
-    automatable: automatableScore(w),
+    automatable: automatableScore(w, days),
   };
 }
 

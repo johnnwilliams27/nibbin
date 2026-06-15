@@ -141,3 +141,50 @@ describe('synthesizeDiagnosis automatable', () => {
     expect(m.workflows[0].automatable).toBe(100);
   });
 });
+
+describe('synthesizeDiagnosis finer re-mining (narrowness + regularity + friction)', () => {
+  const seq = [{ steps: ['a', 'b', 'c'], count: 8 }]; // strength 24 → repetition 0.5
+  const base3 = (over: object) => ({
+    version: 1 as const, studyDays: 7, capturedFrom: 'a', capturedTo: 'b',
+    workflows: [{ key: 'email.general', label: 'Email', category: 'email' as const, apps: ['Gmail'], minutesObserved: 70, sessions: 7, sequences: seq, ...over }],
+  });
+
+  it('broad workflow (many url templates) scores below the repetition ceiling', () => {
+    const m = synthesizeDiagnosis(base3({ urlTemplates: Array.from({ length: 21 }, (_, i) => `/p/${i}`) }));
+    expect(m.workflows[0].automatable).toBe(40); // 0.5 * (0.6 + 0.25*(1/6) + 0.15) ≈ 0.396
+    expect(m.workflows[0].automatable).toBeLessThan(50);
+  });
+
+  it('sporadic workflow (active 1 of 7 days) scores below the ceiling', () => {
+    const m = synthesizeDiagnosis(base3({ dailyMinutes: { '2026-06-10': 70 } }));
+    expect(m.workflows[0].automatable).toBe(44); // 0.5 * (0.6 + 0.25 + 0.15*(1/7)) ≈ 0.436
+    expect(m.workflows[0].automatable).toBeLessThan(50);
+  });
+
+  it('narrow + regular + repetitive stays at the repetition ceiling', () => {
+    const m = synthesizeDiagnosis(base3({
+      urlTemplates: ['/inbox'],
+      dailyMinutes: Object.fromEntries(Array.from({ length: 7 }, (_, i) => [`2026-06-1${i}`, 10])),
+    }));
+    expect(m.workflows[0].automatable).toBe(50);
+  });
+
+  it('friction composes a factual line from sequences + templates + days', () => {
+    const m = synthesizeDiagnosis(base3({
+      urlTemplates: ['/x', '/y'],
+      dailyMinutes: { d1: 10, d2: 10, d3: 10 },
+    }));
+    const f = m.workflows[0].friction!;
+    expect(f).toContain('repeated 8×');
+    expect(f).toContain('across 2 views');
+    expect(f).toContain('on 3 days');
+  });
+
+  it('friction falls back to the on-device note when no sequences', () => {
+    const m = synthesizeDiagnosis({
+      version: 1, studyDays: 7, capturedFrom: 'a', capturedTo: 'b',
+      workflows: [{ key: 'email.general', label: 'Email', category: 'email', apps: [], minutesObserved: 10, sessions: 2, friction: 'device note' }],
+    });
+    expect(m.workflows[0].friction).toBe('device note');
+  });
+});
