@@ -1,10 +1,25 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
 import { createClient } from '../../../../lib/supabase/server';
+import { getSupabaseUrl, getSupabasePublishableKey } from '../../../../lib/supabase/env';
 import { serviceClient } from '../../../../lib/supabase/service';
 import { ensureAccount } from '../../../../lib/auth/bootstrap';
 import { upsertOwnProfile } from '../../../../lib/auth/profile';
 import { synthesizeDiagnosis, validateSynthesisPacket } from '../../../../lib/diagnosis/synthesize';
 import { labelDiagnosis } from '../../../../lib/diagnosis/label';
+
+// Desktop callers have no cookies — authenticate via Authorization: Bearer <jwt>.
+// The token-bound client runs RPCs (bootstrap_account) under the user's auth.uid().
+async function clientForRequest(req: NextRequest) {
+  const bearer = req.headers.get('authorization')?.match(/^Bearer (.+)$/)?.[1];
+  if (bearer) {
+    return createServerClient(getSupabaseUrl(), getSupabasePublishableKey(), {
+      global: { headers: { Authorization: `Bearer ${bearer}` } },
+      cookies: { getAll: () => [], setAll: () => {} },
+    });
+  }
+  return createClient();
+}
 
 /**
  * Study-packet ingest (SPEC §5, §8 M7). The Observer uploads the redacted,
@@ -15,7 +30,7 @@ import { labelDiagnosis } from '../../../../lib/diagnosis/label';
  * resolved account.
  */
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  const supabase = await createClient();
+  const supabase = await clientForRequest(req);
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -51,11 +66,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const { map, letter } = await labelDiagnosis(accountId, mined);
 
   const svc = serviceClient();
-  const { data, error } = await svc
-    .from('diagnoses')
-    .insert({ account_id: accountId, status: 'ready', packet, map, letter })
-    .select('id')
-    .single();
+  const row = {
+    account_id: accountId,
+    status: 'ready' as const,
+    packet,
+    map,
+    letter,
+    ...(packet.studyId ? { study_id: packet.studyId } : {}),
+  };
+  const writer = packet.studyId
+    ? svc.from('diagnoses').upsert(row, { onConflict: 'account_id,study_id' })
+    : svc.from('diagnoses').insert(row);
+  const { data, error } = await writer.select('id').single();
   if (error) return NextResponse.json({ error: 'store_failed' }, { status: 502 });
 
   // §6.12: the study produced a diagnosis. Service-role emit (auth.uid() is null
