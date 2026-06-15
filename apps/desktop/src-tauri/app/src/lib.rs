@@ -70,7 +70,7 @@ pub fn run() {
             // tray: the study countdown is ALWAYS visible while a study runs
             // (SPEC §5); the value is daemon-derived (daemon.status), the
             // tray only displays it.
-            let open = MenuItemBuilder::with_id("open", "Open Observer").build(app)?;
+            let open = MenuItemBuilder::with_id("open", "Open Nibbin").build(app)?;
             let pause = MenuItemBuilder::with_id("pause", "Pause capture").build(app)?;
             let menu = MenuBuilder::new(app).items(&[&open, &pause]).build()?;
             TrayIconBuilder::with_id("observer-tray")
@@ -103,7 +103,7 @@ pub fn run() {
                         let days = remaining_ms / 86_400_000;
                         let hours = (remaining_ms % 86_400_000) / 3_600_000;
                         let _ = tray.set_tooltip(Some(format!(
-                            "Nibbin Observer — field study: {days}d {hours}h left"
+                            "Nibbin — field study: {days}d {hours}h left"
                         )));
                     }
                 }

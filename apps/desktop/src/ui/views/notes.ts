@@ -36,7 +36,7 @@ export function notesView(): HTMLElement {
           el('div', { class: 'stat' }, [el('div', { class: 'value' }, [String(notes.eventCount)]), el('div', { class: 'label' }, ['Moments noticed'])]),
           el('div', { class: 'stat' }, [el('div', { class: 'value' }, [minutes(notes.activeMs)]), el('div', { class: 'label' }, ['Hands-on time'])]),
           el('div', { class: 'stat' }, [el('div', { class: 'value' }, [String(notes.gapCount)]), el('div', { class: 'label' }, ['Pauses (your call)'])]),
-          el('div', { class: 'stat' }, [el('div', { class: 'value' }, [String(days.length)]), el('div', { class: 'label' }, ['Study days so far'])]),
+          el('div', { class: 'stat' }, [el('div', { class: 'value' }, [String(days.length)]), el('div', { class: 'label' }, ['Field study days so far'])]),
         ]),
       ]),
     );

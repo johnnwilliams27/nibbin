@@ -25,7 +25,7 @@ function reviewStateView(status: StudyStatus): HTMLElement {
   if (state === 'REVIEW') {
     root.append(
       el('p', { class: 'eyebrow' }, ['Field study']),
-      el('h1', {}, ['The study ended. Really.']),
+      el('h1', {}, ['The field study ended. Really.']),
       el('p', { class: 'muted' }, [
         'Day 14 came and the Observer stopped itself — that switch lives in the background process, not this window. Look through what it kept, delete anything, then build your map when you’re ready. Synthesis builds your workflow map, and the raw data on this machine is deleted and verified right after.',
       ]),
@@ -48,13 +48,13 @@ function reviewStateView(status: StudyStatus): HTMLElement {
     const receipt = study?.deletionReceipt;
     root.append(
       el('p', { class: 'eyebrow' }, ['Field study']),
-      el('h1', {}, [state === 'COMPLETE' ? 'Study complete' : 'Everything deleted']),
+      el('h1', {}, [state === 'COMPLETE' ? 'Field study complete' : 'Everything deleted']),
       el('div', { class: 'card' }, [
         el('h2', {}, ['Deletion receipt']),
         receipt
           ? el('p', {}, [
               `Store verified empty on ${receipt.verified_at.slice(0, 10)} — checked independently, not assumed. `,
-              state === 'COMPLETE' ? 'Your map lives in your grove at nibbin.com.' : 'Nothing of the study remains on this machine.',
+              state === 'COMPLETE' ? 'Your map lives in your grove at nibbin.com.' : 'Nothing of the field study remains on this machine.',
             ])
           : el('p', { class: 'muted' }, ['Receipt pending.']),
       ]),
@@ -82,7 +82,7 @@ async function render(): Promise<void> {
 
   const nav = el('nav', { class: 'nav' });
   const tabs: [Tab, string][] = [
-    ['study', 'Study'],
+    ['study', 'Field study'],
     ['review', 'Review'],
     ['notes', 'Field notes'],
     ['preferences', 'Preferences'],

@@ -34,7 +34,7 @@ export function consentView(onChanged: () => void): HTMLElement {
       ]),
       el('li', {}, [
         el('strong', {}, ['When it ends']),
-        'The study ends. Really. Capture stops itself on day 14 — the off switch lives in the background process, not in this window. Raw data auto-deletes after your map is built, and you can watch it verify.',
+        'The field study ends. Really. Capture stops itself on day 14 — the off switch lives in the background process, not in this window. Raw data auto-deletes after your map is built, and you can watch it verify.',
       ]),
       el('li', {}, [
         el('strong', {}, ['Your controls']),
