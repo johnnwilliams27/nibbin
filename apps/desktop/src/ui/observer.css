@@ -121,7 +121,8 @@ button.danger:hover {
 }
 
 input[type='email'],
-input[type='text'] {
+input[type='text'],
+input[type='password'] {
   font-family: var(--sans);
   font-size: 15px;
   padding: 10px 12px;
@@ -238,6 +239,54 @@ input:focus-visible {
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--ink-soft);
+}
+
+/* Login gate — the app's front door (Stage B). A centered card. */
+.login-gate {
+  max-width: 360px;
+  margin: 7vh auto 0;
+  padding: 32px 28px;
+  display: grid;
+  gap: 16px;
+  background: var(--canopy);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-1);
+}
+
+.login-gate h1 {
+  margin: 0;
+}
+
+.login-gate > .muted {
+  margin: 0 0 4px;
+}
+
+.login-gate label {
+  display: grid;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.login-gate input {
+  width: 100%;
+  min-width: 0;
+}
+
+.login-gate button.primary {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.error {
+  margin: 0;
+  min-height: 1.2em;
+  font-size: 13px;
+  color: var(--coral-deep);
 }
 
 @media (prefers-reduced-motion: reduce) {
