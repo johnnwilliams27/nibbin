@@ -341,3 +341,15 @@
   font-size: 13.5px;
   margin: 6px 0 0;
 }
+
+/* Danger zone — subordinate, bottom of the detail page */
+.dangerZone {
+  margin-top: 32px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+.dangerNote {
+  color: var(--ink-soft);
+  font-size: 13px;
+  margin: 0 0 10px;
+}
