@@ -48,6 +48,7 @@ pub fn run() {
         .setup(|app| {
             if let Err(e) = app.global_shortcut().register(PAUSE_SHORTCUT) {
                 eprintln!("pause hotkey unavailable (continuing without it): {e}");
+                let _ = app.handle().emit("study:hotkey-unavailable", e.to_string());
             }
 
             // nibbin://auth deep-link callback from the system browser (§6.1)
