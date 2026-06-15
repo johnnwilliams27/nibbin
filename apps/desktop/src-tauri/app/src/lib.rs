@@ -110,6 +110,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::study_status,
             commands::send_control,
+            commands::create_study,
             commands::review_events,
             commands::review_delete,
             commands::review_keep,

@@ -23,7 +23,8 @@ use nibbin_redaction::{
 };
 use nibbin_store::{KeyProvider, ObserverStore, StaticTestKey};
 use nibbin_study::{
-    capture_allowed, deadline_passed, new_study, transition, StudyCommand, StudySnapshot,
+    capture_allowed, deadline_passed, new_study, transition, StudyCommand, StudyKind,
+    StudySnapshot,
 };
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
@@ -93,6 +94,16 @@ pub enum ControlCommand {
     FinishReview,
     SynthesisComplete,
     DeleteEverything,
+    /// Ad-hoc quick scan / fresh study: mint a new study (unique id + kind +
+    /// optional label) from a terminal/not-started state, then clear the store
+    /// so the fresh study starts empty.
+    CreateStudy {
+        study_id: String,
+        #[serde(default)]
+        kind: Option<String>,
+        #[serde(default)]
+        label: Option<String>,
+    },
     /// Review's "never record this again" (layer 4 → layer 2).
     AddExclusion {
         #[serde(default)]
@@ -118,7 +129,13 @@ pub struct Daemon {
 impl Daemon {
     pub fn open(store_root: &Path, source: Box<dyn CaptureSource>) -> anyhow::Result<Self> {
         std::fs::create_dir_all(store_root)?;
-        let study = nibbin_study::load(store_root)?.unwrap_or_else(|| new_study("study_local"));
+        let study = nibbin_study::load(store_root)?.unwrap_or_else(|| {
+            new_study(
+                &format!("full_{}", chrono::Utc::now().timestamp_millis()),
+                StudyKind::FullStudy,
+                None,
+            )
+        });
         nibbin_study::save(store_root, &study)?;
         // Resume the control cursor where we left off (persisted), so a daemon
         // restart does not re-apply already-consumed commands (P2-2).
@@ -263,6 +280,26 @@ impl Daemon {
                 self.apply(StudyCommand::StopEarly)?;
                 self.source.stop();
             }
+            ControlCommand::CreateStudy {
+                study_id,
+                kind,
+                label,
+            } => {
+                let kind = match kind.as_deref() {
+                    Some("quick_scan") => StudyKind::QuickScan,
+                    _ => StudyKind::FullStudy,
+                };
+                self.apply(StudyCommand::CreateStudy {
+                    id: study_id,
+                    kind,
+                    label,
+                })?;
+                // A fresh study starts empty: clear the observer-store. Reuse
+                // the post-deletion destroy path — drop the in-memory handle
+                // and remove the SQLCipher db files. The next capture pass
+                // lazily reopens an empty store. Scoped to create_study only.
+                self.clear_store()?;
+            }
             ControlCommand::FinishReview => self.apply(StudyCommand::FinishReview)?,
             ControlCommand::SynthesisComplete => {
                 self.apply(StudyCommand::SynthesisComplete)?;
@@ -337,6 +374,23 @@ impl Daemon {
             },
         };
         self.store_mut()?.append(&gap)?;
+        Ok(())
+    }
+
+    /// Clear the observer-store so a freshly-created study starts empty. Reuses
+    /// the post-deletion destroy path: drop the in-memory handle (if any) and
+    /// remove the SQLCipher db files. No verification/receipt — this is not a
+    /// C3 deletion, just a reset for the next study; the next capture pass
+    /// reopens an empty store lazily.
+    fn clear_store(&mut self) -> anyhow::Result<()> {
+        // Consume the in-memory handle first so the db connection is closed
+        // before the files are removed.
+        if let Some(store) = self.store.take() {
+            store.destroy_raw_data()?;
+        } else if self.store_root.join("observer.db").exists() {
+            let store = ObserverStore::open(&self.store_root, key_provider().as_ref())?;
+            store.destroy_raw_data()?;
+        }
         Ok(())
     }
 

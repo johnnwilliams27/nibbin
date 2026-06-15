@@ -18,6 +18,7 @@ const ALLOWED_CONTROL: &[&str] = &[
     "finish_review",
     "synthesis_complete",
     "delete_everything",
+    "create_study",
 ];
 
 pub fn store_root<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, anyhow::Error> {
@@ -102,6 +103,29 @@ pub fn review_keep(app: AppHandle, ids: Vec<String>) -> Result<(), String> {
     store
         .set_review_state(&ids, ReviewState::UserKept)
         .map_err(|e| e.to_string())
+}
+
+/// Mint a fresh study (full study or ad-hoc quick scan). Forwarded to the
+/// daemon, which applies CreateStudy + clears the store so the new study starts
+/// empty. The id is caller-supplied (unique); kind ∈ {full_study, quick_scan}.
+#[tauri::command]
+pub fn create_study(
+    app: AppHandle,
+    id: String,
+    kind: String,
+    label: Option<String>,
+) -> Result<(), String> {
+    if kind != "full_study" && kind != "quick_scan" {
+        return Err(format!("bad study kind: {kind}"));
+    }
+    let line = serde_json::json!({
+        "cmd": "create_study",
+        "study_id": id,
+        "kind": kind,
+        "label": label,
+    })
+    .to_string();
+    write_control(&app, &line).map_err(|e| e.to_string())
 }
 
 /// Review's "never record this again": forwarded to the daemon, which feeds
