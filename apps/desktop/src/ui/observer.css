@@ -301,6 +301,40 @@ input:focus-visible {
   color: var(--coral-deep);
 }
 
+/* Field-study cloud sync states (SYNTHESIZING): building → uploading → done /
+   error. Mirrors the .card state-card pattern; the left rail colour tracks
+   progress so the C3 hold (error) reads as a held, recoverable state. */
+.sync-card {
+  border-left: 3px solid var(--line);
+}
+
+.sync-card .sync-status {
+  margin: 0;
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.sync-card.sync-building,
+.sync-card.sync-uploading {
+  border-left-color: var(--moss);
+}
+
+.sync-card.sync-done {
+  border-left-color: var(--moss-deep);
+}
+
+.sync-card.sync-error {
+  border-left-color: var(--coral-deep);
+}
+
+.sync-card.sync-error .sync-status {
+  color: var(--coral-deep);
+}
+
+.sync-card .row {
+  margin-top: 12px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     transition-duration: 0.01ms !important;
