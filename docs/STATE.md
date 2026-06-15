@@ -100,10 +100,25 @@
     states. Web: unified diagnoses **history** (newest-first, `Quick scan`/`14-day study` badges) +
     per-diagnosis detail route (`/app/diagnosis/[id]`, RLS + account-scoped); the reveal extracted to
     a shared `DiagnosisReveal`. NOT merged; prod migrations (`…120000`, `…130000`) pending land.
-  - **Follow-ups:** (a) finer workflow mining (split `email.general` → inquiries/overdue/…);
-    (b) consume top-level `dailyAppMinutes`; (c) packet compression for >256KB studies; (d) concurrent
-    studies (a quick scan while a full study runs — currently sequential); (e) per-diagnosis delete
-    from the web history.
+  - **Backlog pass — SHIPPED 2026-06-15** (the "everything" sweep): **Richer diagnosis** — split
+    coarse workflow keys by `(category, subkey)` so e.g. payments→`payments.invoices` (better
+    `recommendedNibbin`); `synthesizeDiagnosis` now consumes `dailyAppMinutes` → `appAllocation` and
+    derives `timeSavedPerWeek` (Σ hours×automatable%) on `DiagnosisMap`
+    (`2026-06-15-richer-diagnosis-design.md`). **Group A reveal** — server-rendered SVG workflow map
+    (deterministic radial layout, hours-sized, automatability-colored, friction hotspot) + time-saved
+    headline + stats chipline + app-allocation bars in `DiagnosisReveal`. **Per-diagnosis delete**
+    (account-scoped server action, danger zone on the detail page). **Maya parity surfaces** (real data,
+    demo as pixel spec): **Your Nibbins roster** (`/app/nibbins` — Agent School ladder + streaks/badges
+    derived from real `runs`/`approvals`, no fabrication; "learned" narrative omitted honestly);
+    **Hatch Your Own** (`/app/hatch` — 3-step wizard creating a custom-named egg via the real
+    `adoptTemplate` path, caps enforced); **rich Today feed** (`/app` — time-saved chipline [estimated
+    from step counts, marked `~` + footnoted], draft cards on the real `decide_run` path, "Done while
+    you were working", honest "Coming up"). All typecheck + build green; none merged.
+  - **Deliberately deferred (not v1):** **concurrent studies** (kept sequential — a quick scan during a
+    live field study is largely redundant); **scan scheduling** (ad-hoc quick scan already covers
+    on-demand scanning — recurring reminders are marginal v1 value for heavy daemon work); **packet
+    compression** (the field caps already keep a 14-day study under the 256KB cap — a non-problem until
+    a pathological study appears). Open finer-mining follow-up: Opus-driven finer keys in `label.ts`.
 
 ## Previous gate (M2+M3+M6)
 

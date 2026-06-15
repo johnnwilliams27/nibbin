@@ -5,7 +5,18 @@ portrays an aspirational 5-tab product dashboard. Several of its elements are **
 in the real authenticated app (`apps/web/app/app`). This doc inventories real-vs-aspirational and
 groups the gaps so they can be tracked against milestones rather than living only in the demo.
 
-Captured 2026-06-15 (after the desktop unified-app work). Build order TBD — nothing here is built yet.
+Captured 2026-06-15 (after the desktop unified-app work).
+
+> **STATUS UPDATE 2026-06-15 — most of this is now BUILT** (on `feature/nibbin-desktop-unified-app`,
+> unmerged). **Group A** (time-saved metric, visual workflow map, automatable %, friction, chipline) —
+> shipped via the richer-diagnosis backend + the Group-A reveal (`DiagnosisReveal` + `WorkflowMap.tsx`).
+> **Group B** (Your Nibbins roster, Agent School ladder, streaks/badges) — shipped at `/app/nibbins`
+> over real `runs`/`approvals` data (streaks/badges derived, not fabricated; the "what it learned about
+> you" narrative is omitted — no data source). **Group C** (Hatch Your Own builder) — shipped at
+> `/app/hatch` (custom-named egg via the real adoption path). **Group D** (rich Today feed) — shipped at
+> `/app` (time-saved chipline [estimated, marked `~`], draft cards, "Done while you were working",
+> "Coming up"). Remaining demo flourishes not yet built are noted inline below where they lack a data
+> source (esp. the per-agent "learned about you" narrative, which needs an Opus pass).
 
 ## Built (demo ≈ reality)
 - **Agent Shop** — `/app/shop`, adoptable ready-made Nibbins. ✅
