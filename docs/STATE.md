@@ -119,8 +119,19 @@
     rejected); a confirm dialog gates per-diagnosis delete (client island); per-Nibbin **"learned about
     you"** note on the roster — Opus-generated but GROUNDED in real run/approval evidence (no
     fabrication), cached on `nibbins` (migration `20260615140000`, DEV only), generated off the render
-    path; router gained an Opus-pinned `nibbin_note` task. **Prod-apply checklist now THREE migrations:
-    `20260615120000`, `20260615130000`, `20260615140000`.**
+    path; router gained an Opus-pinned `nibbin_note` task.
+  - **Security pass — DONE 2026-06-15** (`docs/security/2026-06-15-security-pass-findings.md` +
+    installer/desktop threat model). 5 analyses over the 72-commit diff. Web authz/RLS/migrations
+    STRONG (every service-role write account-scoped; no IDOR; LLM output renders as text, no XSS). The
+    headline desktop "HIGH" (Grove webview calls `access_token`) was a **false positive** — Tauri 2
+    denies remote origins access to custom commands by default (verified against framework source), so
+    no `remote` capability = no exploit. Fixed: `refreshLearnedNote` cooldown (caps the Opus cost-loop
+    — the scaled-abuse concern), URL/HTML stripping on stored LLM prose, handoff-token hardening,
+    desktop CSP pin + `script-src`, `create_study` bounds, Grove navigation lock, and dropped the
+    orphaned `desktop_auth_codes` credential table (migration `20260615150000`). Pre-signing follow-up:
+    **pin CI actions by SHA before enabling Windows code-signing** (signing currently dormant). Cost
+    answer: signing is build-time, downloads are free GitHub serving → **mass downloads cost $0**.
+    **Prod-apply checklist now FOUR migrations: `20260615120000`, `…130000`, `…140000`, `…150000`.**
   - **Deliberately deferred (not v1):** **concurrent studies** (kept sequential — a quick scan during a
     live field study is largely redundant); **scan scheduling** (ad-hoc quick scan already covers
     on-demand scanning — recurring reminders are marginal v1 value for heavy daemon work); **packet
