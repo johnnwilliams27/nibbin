@@ -168,16 +168,16 @@ git commit -m "feat(desktop): Field Study view wrapper + Start-a-field-study ent
 
 **Files:**
 - Modify: `apps/desktop/src/ui/main.ts`
-- Create: `apps/desktop/src/ui/views/grove.ts` (placeholder for Stage A; real webview in Stage C)
+- Create: `apps/desktop/src/ui/views/grove.ts` (interim Grove view in Stage A; Stage C wires the embedded web product into this same view)
 
-- [ ] **Step 1: Create `grove.ts` placeholder**:
+- [ ] **Step 1: Create the `grove.ts` interim view** — the tab is **Grove** from day one (capitalized, branded); Stage C swaps the body for the embedded child webview without renaming anything:
 ```ts
 import { el } from '../dom.js';
-// Stage C replaces this with the embedded web child-webview.
+// Stage C replaces the body with the embedded web child-webview — the tab stays "Grove".
 export function groveView(): HTMLElement {
-  return el('div', { class: 'grove-pending' }, [
+  return el('div', { class: 'grove-tab' }, [
     el('h1', {}, ['Grove']),
-    el('p', { class: 'muted' }, ['Your grove loads here once the embedded web view is wired (Stage C).']),
+    el('p', { class: 'muted' }, ['Connecting your grove…']),
   ]);
 }
 ```
