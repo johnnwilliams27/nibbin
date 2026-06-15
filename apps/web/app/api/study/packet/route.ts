@@ -11,7 +11,7 @@ import { labelDiagnosis } from '../../../../lib/diagnosis/label';
 // Desktop callers have no cookies — authenticate via Authorization: Bearer <jwt>.
 // The token-bound client runs RPCs (bootstrap_account) under the user's auth.uid().
 async function clientForRequest(req: NextRequest) {
-  const bearer = req.headers.get('authorization')?.match(/^Bearer (.+)$/)?.[1];
+  const bearer = req.headers.get('authorization')?.match(/^Bearer ([A-Za-z0-9._-]+)$/)?.[1];
   if (bearer) {
     return createServerClient(getSupabaseUrl(), getSupabasePublishableKey(), {
       global: { headers: { Authorization: `Bearer ${bearer}` } },
@@ -60,12 +60,34 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const packet = validateSynthesisPacket(body);
   if (!packet) return NextResponse.json({ error: 'invalid_packet' }, { status: 422 });
 
+  const svc = serviceClient();
+
+  // First-write-wins: a retry of the same study must NOT re-run the
+  // non-deterministic Opus labeling or overwrite the existing map/letter. If a
+  // diagnosis already exists for this (account, study), return it unchanged and
+  // skip synthesis + labeling + write entirely.
+  if (packet.studyId) {
+    const { data: existing } = await svc
+      .from('diagnoses')
+      .select('id, map')
+      .eq('account_id', accountId)
+      .eq('study_id', packet.studyId)
+      .maybeSingle();
+    if (existing) {
+      const existingMap = existing.map as { totalHoursPerWeek?: number } | null;
+      return NextResponse.json({
+        ok: true,
+        diagnosisId: existing.id,
+        totalHoursPerWeek: existingMap?.totalHoursPerWeek ?? 0,
+      });
+    }
+  }
+
   // Deterministic mining, then the Opus labeling pass (warm labels + the
   // Grovekeeper's letter); labeling degrades to deterministic labels on failure.
   const mined = synthesizeDiagnosis(packet);
   const { map, letter } = await labelDiagnosis(accountId, mined);
 
-  const svc = serviceClient();
   const row = {
     account_id: accountId,
     status: 'ready' as const,

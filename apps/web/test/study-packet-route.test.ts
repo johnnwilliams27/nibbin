@@ -13,17 +13,29 @@ process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||= 'test-publishable-key';
 
 // Mock the supabase layers so the route is testable without a live DB.
 const upsert = vi.fn();
+// Controls the first-write-wins existence check: when set, the route's
+// `select(...).eq(...).eq(...).maybeSingle()` returns this row and the route
+// short-circuits (no synth, no label, no upsert). Reset per test.
+let existingRow: { id: string; map: { totalHoursPerWeek?: number } } | null = null;
 vi.mock('../lib/supabase/service', () => ({
   serviceClient: () => ({
-    from: () => ({ upsert: (...a: unknown[]) => { upsert(...a); return {
-      select: () => ({ single: () => ({ data: { id: 'diag_1' }, error: null }) }) }; },
-      insert: () => ({ select: () => ({ single: () => ({ data: { id: 'diag_1' }, error: null }) }) }) }),
+    from: () => ({
+      // existence-check chain: select().eq().eq().maybeSingle()
+      select: () => ({
+        eq: () => ({
+          eq: () => ({ maybeSingle: async () => ({ data: existingRow, error: null }) }),
+        }),
+      }),
+      upsert: (...a: unknown[]) => { upsert(...a); return {
+        select: () => ({ single: () => ({ data: { id: 'diag_1' }, error: null }) }) }; },
+      insert: () => ({ select: () => ({ single: () => ({ data: { id: 'diag_1' }, error: null }) }) }),
+    }),
     rpc: async () => ({ data: null, error: null }),
   }),
 }));
 vi.mock('@supabase/ssr', () => ({
   createServerClient: () => ({
-    auth: { getUser: async () => ({ data: { user: { id: 'u1', email: 'u@x.com' } } }) },
+    auth: { getUser: async () => ({ data: { user: getUserResult } }) },
     rpc: async () => ({ data: 'acct_1', error: null }),
   }),
 }));
@@ -32,9 +44,16 @@ vi.mock('../lib/supabase/server', () => ({
 }));
 vi.mock('../lib/auth/bootstrap', () => ({ ensureAccount: async () => 'acct_1' }));
 vi.mock('../lib/auth/profile', () => ({ upsertOwnProfile: async () => {} }));
-vi.mock('../lib/diagnosis/label', () => ({
-  labelDiagnosis: async () => ({ map: { workflows: [], totalHoursPerWeek: 0, topRecommendations: [] }, letter: null }),
+// labelDiagnosis is the expensive non-deterministic Opus pass; a retry must NOT
+// call it again. Spy so tests can assert call counts.
+const labelDiagnosis = vi.fn(async (..._a: unknown[]) => ({
+  map: { workflows: [], totalHoursPerWeek: 0, topRecommendations: [] }, letter: null,
 }));
+vi.mock('../lib/diagnosis/label', () => ({ labelDiagnosis: (...a: unknown[]) => labelDiagnosis(...a) }));
+
+// Controls the Bearer-client getUser() result so a test can simulate a
+// present-but-invalid token (verified server-side → user: null).
+let getUserResult: { id: string; email: string } | null = { id: 'u1', email: 'u@x.com' };
 
 import { POST } from '../app/api/study/packet/route';
 
@@ -51,10 +70,21 @@ const packet = {
 };
 
 describe('POST /api/study/packet', () => {
-  beforeEach(() => upsert.mockClear());
+  beforeEach(() => {
+    upsert.mockClear();
+    labelDiagnosis.mockClear();
+    existingRow = null;
+    getUserResult = { id: 'u1', email: 'u@x.com' };
+  });
 
   it('401s without a Bearer token or cookie session', async () => {
     const res = await POST(reqWith(packet));
+    expect(res.status).toBe(401);
+  });
+
+  it('401s when a present Bearer token fails verification (getUser → null)', async () => {
+    getUserResult = null;
+    const res = await POST(reqWith(packet, { authorization: 'Bearer abc.def.ghi' }));
     expect(res.status).toBe(401);
   });
 
@@ -65,5 +95,17 @@ describe('POST /api/study/packet', () => {
     const [row, opts] = upsert.mock.calls[0];
     expect(row).toMatchObject({ account_id: 'acct_1', study_id: 'study_1' });
     expect(opts).toMatchObject({ onConflict: 'account_id,study_id' });
+  });
+
+  it('first-write-wins: a retry for an existing study_id skips labeling and returns the existing row', async () => {
+    // Simulate a diagnosis already on file for this (account, study).
+    existingRow = { id: 'diag_existing', map: { totalHoursPerWeek: 12 } };
+    const res = await POST(reqWith(packet, { authorization: 'Bearer abc.def.ghi' }));
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json).toMatchObject({ ok: true, diagnosisId: 'diag_existing', totalHoursPerWeek: 12 });
+    // The expensive Opus pass must NOT re-run, and nothing is overwritten.
+    expect(labelDiagnosis).not.toHaveBeenCalled();
+    expect(upsert).not.toHaveBeenCalled();
   });
 });

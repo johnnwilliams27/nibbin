@@ -16,13 +16,14 @@ import { deleteEverythingCard, studyView } from './study.js';
 type Sub = 'home' | 'review' | 'notes' | 'preferences';
 
 /**
- * One-shot guard: which studies have already had their cloud sync kicked off
- * this session. Re-rendering the SYNTHESIZING view (sub-nav clicks, status
- * polls) must NOT re-fire the upload — the build→upload→advance flow runs once
- * per study and then holds on its own state. A Retry button explicitly re-arms
- * a failed study (handled inside `synthesizingView`).
+ * Per-study sync state that survives re-mounts of the SYNTHESIZING view (sub-nav
+ * clicks, status polls). The upload's build→upload→advance flow runs ONCE per
+ * study (kicked off the first time we see it); thereafter a re-mount seeds its
+ * displayed state from this map instead of re-firing the upload. The presence of
+ * a key means "already started" — so a re-mount whose original onState closure is
+ * gone must still offer a Retry rather than strand on a non-interactive spinner.
  */
-const syncStarted = new Set<string>();
+const syncStates = new Map<string, SyncState>();
 
 const SYNC_COPY: Record<SyncState, string> = {
   building: 'Building your diagnosis…',
@@ -39,15 +40,31 @@ const SYNC_COPY: Record<SyncState, string> = {
  */
 function synthesizingView(studyId: string, rerender: () => void): HTMLElement {
   const root = el('div', {});
-  let syncState: SyncState = 'building';
+  // First mount: start at 'building'. Re-mount of an already-started study:
+  // seed from the persisted state so we never reset a live upload back to a
+  // dead spinner. `resumed` flags a re-mount whose original onState closure is
+  // gone — those must always offer Retry even outside the 'error' state.
+  const persisted = syncStates.get(studyId);
+  const resumed = persisted !== undefined;
+  let syncState: SyncState = persisted ?? 'building';
+
+  function setState(s: SyncState): void {
+    syncState = s;
+    syncStates.set(studyId, s);
+    render();
+  }
 
   function render(): void {
+    // Retry is reachable on any non-'done' state of a re-mounted (resumed)
+    // study, and on 'error' for the live first mount. Never strand on a
+    // non-interactive spinner.
+    const showRetry = syncState === 'error' || (resumed && syncState !== 'done');
     root.replaceChildren(
       el('p', { class: 'eyebrow' }, ['Field study']),
       el('h1', {}, ['Building your map…']),
       el('div', { class: `card sync-card sync-${syncState}` }, [
         el('p', { class: 'sync-status' }, [SYNC_COPY[syncState]]),
-        ...(syncState === 'error'
+        ...(showRetry
           ? [el('div', { class: 'row' }, [button('Retry', () => { kickoff(); }, 'primary')])]
           : []),
       ]),
@@ -59,7 +76,7 @@ function synthesizingView(studyId: string, rerender: () => void): HTMLElement {
       studyId,
       bridge,
       now: new Date().toISOString(),
-      onState: (s) => { syncState = s; render(); },
+      onState: (s) => { setState(s); },
     }).then((res) => {
       // On success the daemon advances past SYNTHESIZING; reflect that promptly.
       if (res.ok) rerender();
@@ -67,8 +84,9 @@ function synthesizingView(studyId: string, rerender: () => void): HTMLElement {
   }
 
   render();
-  if (!syncStarted.has(studyId)) {
-    syncStarted.add(studyId);
+  if (!resumed) {
+    // First time we've seen this study this session — arm the one-shot upload.
+    syncStates.set(studyId, syncState);
     kickoff();
   }
   return root;
@@ -99,7 +117,21 @@ function stateView(status: StudyStatus, onOpenReview: () => void, rerender: () =
     );
   } else if (state === 'SYNTHESIZING') {
     const study = status.study as { studyId?: string } | null;
-    const studyId = study?.studyId ?? 'study';
+    const studyId = study?.studyId?.trim();
+    if (!studyId) {
+      // A placeholder id would become the DB upsert key and could silently
+      // overwrite another study's diagnosis. Refuse to sync without a real id.
+      root.append(
+        el('p', { class: 'eyebrow' }, ['Field study']),
+        el('h1', {}, ['Building your map…']),
+        el('div', { class: 'card sync-card sync-error' }, [
+          el('p', { class: 'sync-status' }, [
+            `Couldn't read this study's id — nothing was sent. Your raw data is still here, untouched. Restart the app and try again.`,
+          ]),
+        ]),
+      );
+      return root;
+    }
     root.append(synthesizingView(studyId, rerender));
   } else if (state === 'RAW_DELETING') {
     root.append(

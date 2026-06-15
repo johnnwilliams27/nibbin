@@ -54,7 +54,10 @@ pub fn session_tokens() -> Option<(String, String)> {
 /// is ever placed in a URL.
 #[tauri::command]
 pub fn access_token() -> Option<String> {
-    session_tokens().map(|(access, _refresh)| access)
+    // Reuse auth_session_inner so an expired JWT is silently refreshed before
+    // we hand it to a Bearer upload (a study can end hours/days after sign-in).
+    let session = auth_session_inner().ok()??;
+    session.get("access_token")?.as_str().map(str::to_string)
 }
 
 /// Current session for the account module. Refreshes silently when expired;

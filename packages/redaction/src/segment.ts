@@ -49,7 +49,7 @@ const CATEGORY_LABEL: Record<WorkflowCategory, string> = {
 /** host substring → category (checked first), then app-name substring. */
 const HOST_RULES: Array<[string, WorkflowCategory]> = [
   ['mail.google.com', 'email'], ['outlook.', 'email'], ['mail.yahoo.', 'email'],
-  ['calendar.google.com', 'calendar'], ['cal.', 'calendar'],
+  ['calendar.google.com', 'calendar'], ['cal.com', 'calendar'],
   ['stripe.com', 'payments'], ['paypal.com', 'payments'], ['squareup.com', 'payments'],
   ['quickbooks.', 'payments'], ['intuit.com', 'payments'],
   ['salesforce.com', 'crm'], ['hubspot.com', 'crm'], ['pipedrive.com', 'crm'], ['honeybook.com', 'crm'],
@@ -59,7 +59,7 @@ const HOST_RULES: Array<[string, WorkflowCategory]> = [
 ];
 
 const APP_RULES: Array<[string, WorkflowCategory]> = [
-  ['gmail', 'email'], ['outlook', 'email'], ['mail', 'email'], ['spark', 'email'], ['superhuman', 'email'],
+  ['gmail', 'email'], ['outlook', 'email'], [' mail', 'email'], ['spark', 'email'], ['superhuman', 'email'],
   ['calendar', 'calendar'], ['fantastical', 'calendar'],
   ['stripe', 'payments'], ['quickbooks', 'payments'], ['quicken', 'payments'],
   ['salesforce', 'crm'], ['hubspot', 'crm'], ['honeybook', 'crm'],
@@ -76,8 +76,8 @@ function categorize(e: ObserverEvent): WorkflowCategory {
 }
 
 function isoFloorToDays(fromMs: number, toMs: number): number {
-  const days = Math.ceil((toMs - fromMs) / 86_400_000);
-  return Math.max(1, Math.min(14, days || 1));
+  const days = fromMs === toMs ? 1 : Math.ceil((toMs - fromMs) / 86_400_000);
+  return Math.max(1, Math.min(14, days));
 }
 
 export async function segmentStudy(
