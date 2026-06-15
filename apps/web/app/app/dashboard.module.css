@@ -192,3 +192,59 @@
   color: var(--ink-soft);
   white-space: nowrap;
 }
+
+/* ---- Get the desktop app ---- */
+.download {
+  margin-top: 22px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+.downloadCopy {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+.downloadTitle {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 18px;
+  color: var(--ink);
+  margin: 4px 0 6px;
+}
+.downloadRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.dlBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-button);
+  background: var(--canopy);
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 14px;
+  text-decoration: none;
+  transition: border-color var(--dur-1) var(--ease-settle), transform var(--dur-1) var(--ease-settle),
+    background var(--dur-1) var(--ease-settle);
+}
+.dlBtn:hover {
+  border-color: var(--moss);
+  background: var(--understory);
+  transform: translateY(-1px);
+}
+.dlIcon {
+  display: inline-flex;
+  color: var(--moss-deep);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dlBtn {
+    transition: none;
+  }
+}

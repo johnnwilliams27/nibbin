@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '../../../../lib/supabase/server';
 import { AppShell } from '../../../../components/shell/AppShell';
 import { SettingsNav } from '../../../../components/settings/SettingsNav';
-import { Card, Button, InlineFeedback } from '../../../../components/ui';
+import { Card, Button, InlineFeedback, Select } from '../../../../components/ui';
 import { saveProfile } from './actions';
 import { COMMON_TIMEZONES, COMMON_LOCALES, withCurrent } from '../../../../lib/i18n/zones';
 import styles from '../../../../components/settings/settings.module.css';
@@ -78,14 +78,12 @@ export default async function ProfileSettingsPage({
               <label className={styles.label} htmlFor="tz">
                 Timezone
               </label>
-              <select className={styles.select} id="tz" name="tz" defaultValue={me?.tz ?? ''}>
-                <option value="">Not set</option>
-                {withCurrent(COMMON_TIMEZONES, me?.tz ?? null).map((z) => (
-                  <option key={z.value} value={z.value}>
-                    {z.label}
-                  </option>
-                ))}
-              </select>
+              <Select
+                id="tz"
+                name="tz"
+                defaultValue={me?.tz ?? ''}
+                options={[{ value: '', label: 'Not set' }, ...withCurrent(COMMON_TIMEZONES, me?.tz ?? null)]}
+              />
               <span className={styles.fieldHint}>
                 Keeps your grove’s timing and Field Notes lined up with your day.
               </span>
@@ -95,14 +93,12 @@ export default async function ProfileSettingsPage({
               <label className={styles.label} htmlFor="locale">
                 Locale
               </label>
-              <select className={styles.select} id="locale" name="locale" defaultValue={me?.locale ?? ''}>
-                <option value="">Not set</option>
-                {withCurrent(COMMON_LOCALES, me?.locale ?? null).map((l) => (
-                  <option key={l.value} value={l.value}>
-                    {l.label}
-                  </option>
-                ))}
-              </select>
+              <Select
+                id="locale"
+                name="locale"
+                defaultValue={me?.locale ?? ''}
+                options={[{ value: '', label: 'Not set' }, ...withCurrent(COMMON_LOCALES, me?.locale ?? null)]}
+              />
               <span className={styles.fieldHint}>How dates, times, and numbers are formatted for you.</span>
             </div>
 

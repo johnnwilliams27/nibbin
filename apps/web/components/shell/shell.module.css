@@ -155,6 +155,13 @@
   opacity: 0;
   margin-right: -380px;
   pointer-events: none;
+  /* Close uses an ease-in-out (not the base --ease-settle out-expo). Out-expo
+     front-loads the motion, so on collapse the panel faded to 0 in the first
+     ~150ms and looked like it snapped away; an even in-out spreads the fade +
+     slide across the full --dur-4 so the close glides like the open. */
+  transition: transform var(--dur-4) cubic-bezier(0.65, 0, 0.35, 1),
+    opacity var(--dur-4) cubic-bezier(0.65, 0, 0.35, 1),
+    margin-right var(--dur-4) cubic-bezier(0.65, 0, 0.35, 1);
 }
 .panelExpand {
   position: fixed;

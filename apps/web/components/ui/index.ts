@@ -3,3 +3,5 @@ export { Card } from './Card';
 export { Badge } from './Badge';
 export { Spinner } from './Spinner';
 export { InlineFeedback } from './InlineFeedback';
+export { Select } from './Select';
+export type { SelectOption } from './Select';

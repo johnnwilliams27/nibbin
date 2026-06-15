@@ -354,7 +354,11 @@ export function KeeperChat({
           placeholder={placeholder}
           autoComplete="off"
           maxLength={2000}
-          disabled={busy || !hatched}
+          /* Stay enabled during a turn so the input keeps focus on Enter —
+             `runTurn` already guards against double-submit (`if (busy) return`).
+             Disabling on `busy` blurs it, and the post-turn focus() then fires
+             against a still-disabled node (no-op), losing focus. */
+          disabled={!hatched}
           onChange={(e) => setDraft(e.target.value)}
           onFocus={() => setExpression((x) => (x === 'idle' ? 'listening' : x))}
           onBlur={() => setExpression((x) => (x === 'listening' ? 'idle' : x))}
