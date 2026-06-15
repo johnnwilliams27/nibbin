@@ -63,7 +63,7 @@ down June 2026).
 | Threat class | Players | Their axis | Our exploit |
 |---|---|---|---|
 | Personality consumer "AI employees" | Sintra ($97–197/mo, TikTok GTM, named helpers) | Brand + consumer reach | Drafting-only; no autonomy, trust system, or verticals. Line: "drafts that send themselves — after they've earned it" |
-| Vertical incumbents + assistive AI | HoneyBook (photo), GlossGenius (beauty, 100K+), EngineEars (audio), Bonsai/Moxie (suites — Bonsai has NO AI as of 4/2026) | Distribution | Doctrinally/structurally copilot; connect TO them (ride rails), out-position on autonomy. "AI agents for freelancers" unclaimed by every incumbent suite |
+| Vertical incumbents + assistive AI | HoneyBook (photo), GlossGenius (beauty, 100K+), EngineEars (audio), Bonsai/Moxie (suites — Bonsai has NO AI as of 4/2026) | Distribution | Doctrinally/structurally copilot; connect TO them (ride rails), out-position on autonomy. Agentic, whole-loop automation unclaimed by every incumbent suite |
 | Front-desk bots | Studioflo "Athena" ($138–197/mo solo), Inky, AI SmartTalk, Telegate | Inbound-DM slice, vertical | Single-channel, full-autonomy-by-hope, no loop. Line: "Receptionist bots book the job. Nibbins run the business." Their pricing validates our premium tiers |
 | Horizontal gravity | Claude Cowork (GA, scheduled tasks, connectors), OpenAI screen control, Read "Ada" | Generic task execution | Enterprise vector (admin, FactSet, DocuSign) — moving AWAY from our ICP. Static scope-grant trust. Blank-canvas problem: their user needs delegation literacy; ours needs to say yes. NOTE: Anthropic is supplier AND gravity — no public comparison fights with the model vendor; FAQ-only handling |
 | Enterprise agent trainers | Sierra ($15.8B, 40% of F50, $150M ARR), Decagon ($4.5B), Notch | Account-level agent training, team-supervised | **Category validation, not competition**: they prove trained agents are worth ~$20B combined — at the account level with CX teams supervising. The individual, zero-effort, autonomy-earning version is unbuilt. "Decagon for a Fortune 500's ticket queue; Nibbin for the photographer who IS the company" |
@@ -92,11 +92,12 @@ down June 2026).
 
 ## 6. Targets
 
-**Category line:** "AI agents for freelancers" (SEO/meta/PH/eyebrow). Human copy:
-"people who work for themselves." (Founder decision 2026-06-12: lead with the broader
-"freelancers" line now rather than waiting for the ≥3-vertical trigger — cleaner and
-more inclusive at this stage. The wedge sequence below still governs *who we serve
-first*; only the public category label widened.)
+**Category line:** "AI Agents. Simplified." (SEO/meta/PH/eyebrow) — deliberately
+audience-agnostic; the public label names *what* we do, not *who* it's for. Human copy:
+"people who work for themselves." (Founder decision 2026-06-15: widened the public label
+from "AI agents for freelancers" so the copy no longer prescribes the target audience —
+entrepreneurs and solo owners beyond freelancers self-ID. The wedge sequence below still
+governs *who we serve first*; only the public label changed, not the targeting.)
 
 **ICP filter (every vertical must pass):** solo or ≤2 people; client-services revenue loop
 (inquiry→quote→deposit→schedule→deliver→revise→invoice→review); ≥5 hrs/week admin; lives in

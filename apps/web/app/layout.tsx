@@ -8,7 +8,7 @@ const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://nibbin.com';
 export const metadata: Metadata = {
   metadataBase: new URL(SITE),
   title: {
-    default: 'Nibbin — AI agents for freelancers',
+    default: 'Nibbin — AI Agents. Simplified.',
     template: '%s · Nibbin',
   },
   description:
@@ -20,13 +20,13 @@ export const metadata: Metadata = {
     type: 'website',
     url: SITE,
     siteName: 'Nibbin',
-    title: 'Nibbin — AI agents for freelancers',
+    title: 'Nibbin — AI Agents. Simplified.',
     description: 'Little helpers that grow up working for you.',
     images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'Nibbin' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Nibbin — AI agents for freelancers',
+    title: 'Nibbin — AI Agents. Simplified.',
     description: 'Little helpers that grow up working for you.',
     images: ['/og-image.png'],
   },

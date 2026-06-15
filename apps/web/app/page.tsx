@@ -96,9 +96,14 @@ export default function Home() {
             <a href="/about">About</a>
             <a href="/login">Login</a>
           </div>
-          <a className="nav-cta" href="#join">
-            Join the grove
-          </a>
+          <div className="nav-right">
+            <a className="nav-login" href="/login">
+              Login
+            </a>
+            <a className="nav-cta" href="#join">
+              Join the grove
+            </a>
+          </div>
         </div>
       </nav>
 
@@ -110,7 +115,7 @@ export default function Home() {
         </div>
         <div className="wrap hero-grid">
           <div>
-            <span className="eyebrow">AI agents for freelancers</span>
+            <span className="eyebrow">AI Agents. Simplified.</span>
             <h1>
               Little helpers that <em>grow up</em> working for you.
             </h1>
@@ -208,7 +213,7 @@ export default function Home() {
           <div className="keeper-grid reveal">
             <div className="keeper-art">
               <Creature species="Keeper" size={190} />
-              <span className="keeper-tag">THE GROVEKEEPER · same in every grove</span>
+              <span className="keeper-tag">THE GROVEKEEPER</span>
             </div>
             <div>
               <span className="eyebrow">Your guide</span>
@@ -229,8 +234,8 @@ export default function Home() {
                   introduces the Nibbin for each job.
                 </div>
                 <div className="kp">
-                  <b>Has no hands — by design.</b> The Keeper can never send, post, pay, or delete. It explains and
-                  delegates; only Nibbins you’ve approved do work, at the trust level they’ve earned.
+                  <b>Orchestrates and delegates.</b> The Keeper can never send, post, pay, or delete. It explains each
+                  recommendation; only Nibbins you’ve approved do the work, at the trust level they’ve earned.
                 </div>
               </div>
             </div>
