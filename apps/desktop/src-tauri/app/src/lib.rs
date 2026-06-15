@@ -11,7 +11,6 @@ use tauri::{
     tray::TrayIconBuilder,
     Emitter, Manager,
 };
-use tauri_plugin_deep_link::DeepLinkExt;
 use tauri_plugin_global_shortcut::GlobalShortcutExt;
 
 /// C6 — the global pause hotkey. The handler appends a pause command to the
@@ -41,7 +40,7 @@ pub fn run() {
             commands::review_delete,
             commands::review_keep,
             commands::add_exclusion,
-            auth::auth_start,
+            auth::store_session,
             auth::auth_session,
             auth::sign_out,
         ])
@@ -50,23 +49,6 @@ pub fn run() {
                 eprintln!("pause hotkey unavailable (continuing without it): {e}");
                 let _ = app.handle().emit("study:hotkey-unavailable", e.to_string());
             }
-
-            // nibbin://auth deep-link callback from the system browser (§6.1)
-            let handle = app.handle().clone();
-            app.deep_link().on_open_url(move |event| {
-                for url in event.urls() {
-                    if url.scheme() == "nibbin" && url.host_str() == Some("auth") {
-                        match auth::complete_from_url(&handle, url.as_str()) {
-                            Ok(()) => {
-                                let _ = handle.emit("auth:changed", ());
-                            }
-                            Err(e) => {
-                                let _ = handle.emit("auth:error", e.to_string());
-                            }
-                        }
-                    }
-                }
-            });
 
             // tray: the study countdown is ALWAYS visible while a study runs
             // (SPEC §5); the value is daemon-derived (daemon.status), the

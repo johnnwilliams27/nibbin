@@ -1,141 +1,26 @@
-//! Desktop sign-in (§6.1): system-browser OAuth/magic-link with a
-//! `nibbin://auth` deep-link callback, PKCE end to end. Tokens live in the
-//! OS keychain — never on disk, never in the local DB (the SQLCipher store
-//! is study data only). Sign-out-everywhere on the web side revokes the
-//! refresh token; the next silent refresh here fails and the UI drops to
-//! signed-out.
+//! Desktop sign-in (Stage B): native email/password login whose session is
+//! persisted to the OS keychain. Tokens live in the OS keychain — never on
+//! disk, never in the local DB (the SQLCipher store is study data only).
+//! Sign-out-everywhere on the web side revokes the refresh token; the next
+//! silent refresh here fails and the UI drops to signed-out.
 
-use base64::Engine;
-use sha2::{Digest, Sha256};
-use std::sync::Mutex;
-use tauri::AppHandle;
-use tauri_plugin_opener::OpenerExt;
-
-/// Pinned origins — like the web app, the desktop NEVER derives auth origins
-/// from anything attacker-controllable (GOTCHAS: pinned redirect origins).
-/// Baked at build time per environment.
+/// Pinned Supabase origin — baked at build time per environment.
 fn supabase_url() -> &'static str {
     option_env!("NIBBIN_SUPABASE_URL").unwrap_or("https://oqnqzytctwlptfdvyagl.supabase.co")
 }
 fn supabase_publishable_key() -> &'static str {
     option_env!("NIBBIN_SUPABASE_PUBLISHABLE_KEY").unwrap_or("")
 }
-/// The web origin hosting the desktop sign-in bridge (§6.1). Pinned at build
-/// time per environment — never derived from anything attacker-controllable.
-fn web_url() -> &'static str {
-    option_env!("NIBBIN_WEB_URL").unwrap_or("https://nibbin.com")
-}
 
 const KEYRING_SERVICE: &str = "com.nibbin.observer";
 const KEYRING_SESSION: &str = "supabase-session";
 
-/// A sign-in we started and are waiting on. The `state` nonce binds the
-/// deep-link callback to THIS request: the custom `nibbin://` scheme is not
-/// exclusive, so any local app can deliver a callback — without a matching
-/// state we would exchange an attacker-supplied auth code against our pending
-/// verifier and log the user into the attacker's account (login-CSRF). The
-/// callback must echo the exact state we generated, or we reject it.
-struct PendingSignIn {
-    verifier: String,
-    state: String,
-}
-
-static PENDING: Mutex<Option<PendingSignIn>> = Mutex::new(None);
-
-fn b64url(bytes: &[u8]) -> String {
-    base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(bytes)
-}
-
-fn random_token() -> Result<String, anyhow::Error> {
-    let mut random = [0u8; 48];
-    getrandom::getrandom(&mut random)?;
-    Ok(b64url(&random))
-}
-
-/// Start sign-in: open the SYSTEM browser (never an embedded webview) at the
-/// provider authorize URL with our PKCE challenge and the deep-link redirect.
+/// Persist a Supabase session obtained from the in-app login into the keychain.
 #[tauri::command]
-pub fn auth_start(app: AppHandle, provider: String, email: Option<String>) -> Result<(), String> {
-    auth_start_inner(&app, &provider, email.as_deref()).map_err(|e| e.to_string())
-}
-
-fn auth_start_inner(
-    app: &AppHandle,
-    _provider: &str,
-    _email: Option<&str>,
-) -> Result<(), anyhow::Error> {
-    let verifier = random_token()?;
-    let state = random_token()?;
-    let challenge = b64url(&Sha256::digest(verifier.as_bytes()));
-
-    // Open the SYSTEM browser at the web sign-in bridge — never an embedded
-    // webview, and the password never touches the native app. `challenge` and
-    // `state` are URL-safe base64 (no chars needing escaping). Arm the pending
-    // request only AFTER the browser opens, so a failed start never leaves a
-    // verifier armed for an injected callback.
-    let url = format!(
-        "{}/auth/desktop?challenge={}&state={}",
-        web_url(),
-        challenge,
-        state,
-    );
-    match app.opener().open_url(url, None::<&str>) {
-        Ok(()) => {
-            *PENDING.lock().expect("pending lock") = Some(PendingSignIn { verifier, state });
-            Ok(())
-        }
-        Err(e) => {
-            *PENDING.lock().expect("pending lock") = None;
-            Err(e.into())
-        }
-    }
-}
-
-/// Deep-link callback: nibbin://auth?code=...&state=... → PKCE token exchange
-/// → keychain. The callback is rejected unless a sign-in is pending AND its
-/// `state` matches exactly (anti-CSRF / code-injection, P1-2).
-pub fn complete_from_url(_app: &AppHandle, url: &str) -> Result<(), anyhow::Error> {
-    let parsed = url::Url::parse(url)?;
-    // Only accept our exact callback shape.
-    anyhow::ensure!(
-        parsed.scheme() == "nibbin" && parsed.host_str() == Some("auth"),
-        "unexpected auth callback target"
-    );
-    let code = parsed
-        .query_pairs()
-        .find(|(k, _)| k == "code")
-        .map(|(_, v)| v.into_owned())
-        .ok_or_else(|| anyhow::anyhow!("auth callback had no code"))?;
-    let callback_state = parsed
-        .query_pairs()
-        .find(|(k, _)| k == "state")
-        .map(|(_, v)| v.into_owned());
-
-    // Take the pending request: a callback consumes it whether or not it
-    // matches, so a bad callback can't be replayed against a future request.
-    let pending = PENDING
-        .lock()
-        .expect("pending lock")
-        .take()
-        .ok_or_else(|| anyhow::anyhow!("no sign-in in progress"))?;
-
-    // Constant-ish equality is unnecessary here (state is a 384-bit random
-    // nonce), but the match MUST be exact and present.
-    anyhow::ensure!(
-        callback_state.as_deref() == Some(pending.state.as_str()),
-        "auth callback state mismatch — rejecting (possible injected callback)"
-    );
-
-    // Redeem the one-time code at the web bridge by proving the PKCE verifier.
-    // The bridge returns the Supabase session (same shape as a direct token
-    // exchange), which we persist to the keychain below.
-    let response = ureq::post(&format!("{}/api/auth/desktop/token", web_url()))
-        .send_json(serde_json::json!({ "code": code, "code_verifier": pending.verifier }))?;
-    anyhow::ensure!(response.status() < 300, "token exchange failed");
-    let session: serde_json::Value = response.into_json()?;
-
-    keyring::Entry::new(KEYRING_SERVICE, KEYRING_SESSION)?.set_password(&session.to_string())?;
-    Ok(())
+pub fn store_session(session: serde_json::Value) -> Result<(), String> {
+    keyring::Entry::new(KEYRING_SERVICE, KEYRING_SESSION)
+        .and_then(|e| e.set_password(&session.to_string()))
+        .map_err(|e| e.to_string())
 }
 
 /// Current session for the account module. Refreshes silently when expired;
