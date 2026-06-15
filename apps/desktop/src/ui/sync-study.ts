@@ -20,14 +20,18 @@ export async function syncStudy(opts: {
   studyId: string;
   bridge: SyncBridge;
   now: string;
+  /** Study kind + task label, read off the study snapshot, ride the packet to
+   * the diagnosis so the web history can badge + name it. */
+  kind?: 'full_study' | 'quick_scan';
+  label?: string | null;
   fetchFn?: typeof fetch;
   onState?: (s: SyncState) => void;
 }): Promise<{ ok: boolean; error?: string }> {
-  const { studyId, bridge, now, fetchFn = fetch, onState = () => {} } = opts;
+  const { studyId, bridge, now, kind, label, fetchFn = fetch, onState = () => {} } = opts;
   try {
     onState('building');
     const events = (await bridge.reviewEvents()) as Parameters<typeof segmentStudy>[1];
-    const packet = await segmentStudy(studyId, events, now);
+    const packet = await segmentStudy(studyId, events, now, { kind, label });
     const token = await bridge.accessToken();
     if (!token) { onState('error'); return { ok: false, error: 'not_signed_in' }; }
 

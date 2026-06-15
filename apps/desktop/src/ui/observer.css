@@ -335,6 +335,17 @@ input:focus-visible {
   margin-top: 12px;
 }
 
+/* Quick-scan entry: the "What are you about to do?" label sits as a block above
+   the input row, and the row wraps so the input + Start button stack cleanly in
+   the narrow Field Study pane. */
+.scan-label {
+  display: block;
+}
+
+.scan-row {
+  flex-wrap: wrap;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     transition-duration: 0.01ms !important;
