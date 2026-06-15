@@ -74,8 +74,12 @@ export interface DiagnosisWorkflow {
   friction: string | null;
   /** Shop template key the user can adopt to take this on, or null. */
   recommendedNibbin: string | null;
-  /** v0 automatability score 0–100, derived from mined sequences. */
-  automatable: number;
+  /**
+   * v0 automatability score 0–100, derived from mined sequences. Optional:
+   * diagnoses written before this field shipped lack it (it lives in JSONB
+   * `map`); `synthOne` always sets it for new rows.
+   */
+  automatable?: number;
   /** One-line human description from the Opus labeling pass (optional). */
   description?: string;
 }

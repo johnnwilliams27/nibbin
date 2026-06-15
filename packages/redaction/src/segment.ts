@@ -111,7 +111,10 @@ export async function segmentStudy(
     const top = seqs[0];
     const friction =
       top && top.count >= 3 ? `Repeated ${top.steps.length}-step sequence observed ${top.count}×` : undefined;
-    const sequences = seqs.slice(0, 10);
+    // Cap each step to 80 chars at the source so the device-emitted packet
+    // matches what the server validator stores (it truncates steps to 80) — the
+    // on-device battery re-scan must check the exact bytes that get uploaded.
+    const sequences = seqs.slice(0, 10).map((s) => ({ steps: s.steps.map((x) => x.slice(0, 80)), count: s.count }));
     const urlTemplates = [...new Set(evs.map((e) => e.url?.path_template).filter((u): u is string => !!u))].slice(0, 20);
     const dayMs: Record<string, number> = {};
     for (const e of evs) {

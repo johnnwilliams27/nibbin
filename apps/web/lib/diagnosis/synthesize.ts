@@ -56,9 +56,17 @@ const clampNum = (v: unknown, max: number) => Math.max(0, Math.min(max, Number(v
 
 function clampDayMap(v: unknown, maxDays: number): Record<string, number> | undefined {
   if (typeof v !== 'object' || v === null) return undefined;
-  const out: Record<string, number> = {};
-  for (const [k, val] of Object.entries(v as Record<string, unknown>).slice(0, maxDays)) {
-    out[clampStr(k, 10)] = Math.round(clampNum(val, 1_000_000) * 10) / 10;
+  const src = v as Record<string, unknown>;
+  // `Object.create(null)` so a "__proto__" key becomes a normal own property
+  // instead of mutating the accumulator's prototype.
+  const out = Object.create(null) as Record<string, number>;
+  // Early-break over keys rather than materializing the full entries array
+  // before slicing — a body of tiny keys must not allocate the whole map.
+  let taken = 0;
+  for (const k of Object.keys(src)) {
+    if (taken >= maxDays) break;
+    out[clampStr(k, 10)] = Math.round(clampNum(src[k], 1_000_000) * 10) / 10;
+    taken += 1;
   }
   return Object.keys(out).length ? out : undefined;
 }
@@ -121,15 +129,21 @@ export function validateSynthesisPacket(input: unknown): SynthesisPacket | null 
 
   const dailyAppMinutes = (() => {
     if (typeof p.dailyAppMinutes !== 'object' || p.dailyAppMinutes === null) return undefined;
-    const out: Record<string, Record<string, number>> = {};
-    for (const [day, apps] of Object.entries(p.dailyAppMinutes as Record<string, unknown>).slice(0, 31)) {
-      const inner = clampDayMap(apps, 20);
+    const src = p.dailyAppMinutes as Record<string, unknown>;
+    const out = Object.create(null) as Record<string, Record<string, number>>;
+    // Early-break over keys (bounded work) + null-proto accumulator (no
+    // "__proto__"-key prototype mutation), mirroring clampDayMap.
+    let taken = 0;
+    for (const day of Object.keys(src)) {
+      if (taken >= 31) break;
+      taken += 1;
+      const inner = clampDayMap(src[day], 20);
       if (inner) out[clampStr(day, 10)] = inner;
     }
     return Object.keys(out).length ? out : undefined;
   })();
 
-  return {
+  const candidate: SynthesisPacket = {
     version: 1,
     studyId: clampStr(p.studyId, 64) || undefined,
     studyDays,
@@ -138,6 +152,11 @@ export function validateSynthesisPacket(input: unknown): SynthesisPacket | null 
     workflows,
     ...(dailyAppMinutes ? { dailyAppMinutes } : {}),
   };
+
+  // A validated packet that serializes past the diagnoses.packet 256KB column
+  // cap would 502 at write time; reject it here so the route 422s instead.
+  if (JSON.stringify(candidate).length > 262144) return null;
+  return candidate;
 }
 
 /** v0 automatability heuristic: saturating in the dominant repeated step-chain. */

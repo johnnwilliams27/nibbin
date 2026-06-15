@@ -53,6 +53,77 @@ describe('validateSynthesisPacket enrichment clamping', () => {
   });
 });
 
+describe('validateSynthesisPacket size cap (HIGH-1)', () => {
+  it('returns null when a validated packet exceeds the 256KB column cap', () => {
+    // 60 maxed-out workflows: 10 sequences × 12 steps × 80-char strings, 20
+    // urlTemplates, full dailyMinutes. With enrichment this serializes to
+    // ~870KB — well past 262144.
+    const big = validateSynthesisPacket({
+      version: 1,
+      studyDays: 5,
+      capturedFrom: '2026-06-10',
+      capturedTo: '2026-06-15',
+      workflows: Array.from({ length: 60 }, (_, wi) => ({
+        key: `email.k${wi}`,
+        label: 'L'.repeat(80),
+        category: 'email',
+        apps: Array.from({ length: 12 }, (_, i) => `app-${i}`),
+        minutesObserved: 600,
+        sessions: 60,
+        friction: 'f'.repeat(280),
+        sequences: Array.from({ length: 10 }, () => ({
+          steps: Array.from({ length: 12 }, () => 'x'.repeat(80)),
+          count: 9,
+        })),
+        urlTemplates: Array.from({ length: 20 }, (_, i) => `/p/${'u'.repeat(100)}/${i}`),
+        dailyMinutes: Object.fromEntries(
+          Array.from({ length: 31 }, (_, d) => [`2026-06-${String(d + 1).padStart(2, '0')}`, 30]),
+        ),
+      })),
+    });
+    expect(big).toBeNull();
+  });
+
+  it('still validates a normal small packet', () => {
+    const p = validateSynthesisPacket(base);
+    expect(p).not.toBeNull();
+    expect(p!.workflows.length).toBe(1);
+  });
+});
+
+describe('validateSynthesisPacket prototype-key hazard (MEDIUM-3)', () => {
+  it('does not throw or corrupt the result for a "__proto__" day-key', () => {
+    // Parse from JSON so "__proto__" is a real own enumerable key (object
+    // literals / bracket assignment special-case it via the setter and would
+    // not create one). This is exactly the untrusted shape the route feeds in.
+    const input = JSON.parse(
+      JSON.stringify({
+        version: 1,
+        studyDays: 5,
+        capturedFrom: 'a',
+        capturedTo: 'b',
+        dailyAppMinutes: { '2026-06-10': { Gmail: 12 } },
+        workflows: [{
+          key: 'email.general', label: 'Email', category: 'email', apps: ['Gmail'],
+          minutesObserved: 60, sessions: 5,
+          dailyMinutes: { '2026-06-10': 30 },
+        }],
+      }).replace('"2026-06-10":30', '"2026-06-10":30,"__proto__":99')
+        .replace('"2026-06-10":{"Gmail":12}', '"2026-06-10":{"Gmail":12},"__proto__":{"Gmail":5}'),
+    );
+    const p = validateSynthesisPacket(input);
+    expect(p).not.toBeNull();
+    const dm = p!.workflows[0].dailyMinutes!;
+    // "__proto__" landed as a normal own data key, not a prototype mutation.
+    expect(Object.prototype.hasOwnProperty.call(dm, '__proto__')).toBe(true);
+    expect(dm['2026-06-10']).toBe(30);
+    // The accumulator's prototype was never replaced (null/uncorrupted).
+    expect(Object.getPrototypeOf(p!.dailyAppMinutes!['2026-06-10'])).toBeNull();
+    // Object.prototype itself is untouched.
+    expect(({} as Record<string, unknown>).Gmail).toBeUndefined();
+  });
+});
+
 describe('synthesizeDiagnosis automatable', () => {
   const base2 = (over: object) => ({
     version: 1 as const, studyDays: 7, capturedFrom: 'a', capturedTo: 'b',

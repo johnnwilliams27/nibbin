@@ -51,6 +51,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'account' }, { status: 500 });
   }
 
+  const len = Number(req.headers.get('content-length') ?? 0);
+  if (len > 512_000) return NextResponse.json({ error: 'too_large' }, { status: 413 });
+
   let body: unknown;
   try {
     body = await req.json();
