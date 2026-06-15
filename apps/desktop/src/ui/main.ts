@@ -24,12 +24,20 @@ function render(): void {
     nav.append(b);
   }
   app.append(nav);
-  app.append(tab === 'grove' ? groveView() : fieldStudyView(render));
+  if (tab === 'grove') {
+    // groveView is the native fallback (loading / offline); the embedded web
+    // product is a child webview shown over the content area.
+    app.append(groveView());
+    void bridge.groveShow();
+  } else {
+    void bridge.groveHide();
+    app.append(fieldStudyView(render));
+  }
 }
 
 async function boot(): Promise<void> {
   const session = await bridge.authSession();
-  if (!session) { clear(app); app.append(loginView(() => void boot())); return; }
+  if (!session) { void bridge.groveHide(); clear(app); app.append(loginView(() => void boot())); return; }
   render();
 }
 

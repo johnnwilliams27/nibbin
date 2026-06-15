@@ -19,6 +19,59 @@ use tauri_plugin_global_shortcut::GlobalShortcutExt;
 /// the gate itself is wait-free, see nibbin-capture::gate).
 const PAUSE_SHORTCUT: &str = "CmdOrCtrl+Shift+.";
 
+/// The hosted web origin embedded in the Grove tab. Pinned at build time;
+/// override with NIBBIN_WEB_URL for dev/staging. Defaults to production.
+fn web_url() -> &'static str {
+    option_env!("NIBBIN_WEB_URL").unwrap_or("https://nibbin.com")
+}
+
+/// Vertical offset where the Grove child webview starts, leaving the native
+/// tab bar (rendered by the main webview) visible above it.
+const GROVE_TOP_PX: f64 = 96.0;
+
+fn grove_bounds(window: &tauri::Window) -> (tauri::LogicalPosition<f64>, tauri::LogicalSize<f64>) {
+    let scale = window.scale_factor().unwrap_or(1.0);
+    let phys = window
+        .inner_size()
+        .unwrap_or(tauri::PhysicalSize::new(1040, 720));
+    let (w, h) = (phys.width as f64 / scale, phys.height as f64 / scale);
+    (
+        tauri::LogicalPosition::new(0.0, GROVE_TOP_PX),
+        tauri::LogicalSize::new(w, (h - GROVE_TOP_PX).max(0.0)),
+    )
+}
+
+/// Show the Grove tab's embedded web product, creating the child webview on
+/// first use (lazily — it only loads when the user opens Grove).
+#[tauri::command]
+fn grove_show(window: tauri::Window) -> Result<(), String> {
+    let (pos, size) = grove_bounds(&window);
+    if let Some(wv) = window.app_handle().get_webview("grove") {
+        let _ = wv.set_position(pos);
+        let _ = wv.set_size(size);
+        return wv.show().map_err(|e| e.to_string());
+    }
+    let target = format!("{}/app", web_url());
+    let parsed = target.parse().map_err(|e| format!("bad grove url: {e}"))?;
+    window
+        .add_child(
+            tauri::webview::WebviewBuilder::new("grove", tauri::WebviewUrl::External(parsed)),
+            pos,
+            size,
+        )
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+/// Hide the Grove webview (switching to Field Study, or signing out).
+#[tauri::command]
+fn grove_hide(window: tauri::Window) -> Result<(), String> {
+    if let Some(wv) = window.app_handle().get_webview("grove") {
+        wv.hide().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
@@ -43,8 +96,24 @@ pub fn run() {
             auth::store_session,
             auth::auth_session,
             auth::sign_out,
+            grove_show,
+            grove_hide,
         ])
         .setup(|app| {
+            // Keep the Grove child webview fitted to the window as it resizes.
+            if let Some(win) = app.get_window("main") {
+                let win_for_resize = win.clone();
+                win.on_window_event(move |event| {
+                    if matches!(event, tauri::WindowEvent::Resized(_)) {
+                        if let Some(wv) = win_for_resize.app_handle().get_webview("grove") {
+                            let (pos, size) = grove_bounds(&win_for_resize);
+                            let _ = wv.set_position(pos);
+                            let _ = wv.set_size(size);
+                        }
+                    }
+                });
+            }
+
             if let Err(e) = app.global_shortcut().register(PAUSE_SHORTCUT) {
                 eprintln!("pause hotkey unavailable (continuing without it): {e}");
                 let _ = app.handle().emit("study:hotkey-unavailable", e.to_string());

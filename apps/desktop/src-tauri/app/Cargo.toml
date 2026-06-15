@@ -31,7 +31,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 anyhow = { workspace = true }
 chrono = { version = "0.4", default-features = false, features = ["clock", "serde", "std"] }
-tauri = { version = "2", features = ["tray-icon"] }
+tauri = { version = "2", features = ["tray-icon", "unstable"] }
 tauri-plugin-opener = "2"
 keyring = { version = "3", features = ["apple-native", "windows-native"] }
 ureq = { version = "2", default-features = false, features = ["tls", "json"] }
