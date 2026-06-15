@@ -87,10 +87,23 @@
     compatible), and `friction` is mined into a factual line (steps × repeats × views × days). Opus
     pass still warms it. Remaining: split coarse keys (`email.general` → inquiries/overdue/…) and
     consume top-level `dailyAppMinutes` — separate finer-mining follow-ups.
-  - **Follow-ups:** (a) **Ad-hoc / incremental analysis (Phase 3)** —
-    partial/early-stopped studies ALREADY yield a (noisier) diagnosis via window-aware `studyDays`;
-    net-new is an ad-hoc single-workflow "quick scan" entry point on the same substrate. (b) finer
-    workflow mining (split `email.general`); (c) packet compression for >256KB studies.
+  - **Ad-hoc Quick Scan (Phase 3) — SHIPPED 2026-06-15** (`2026-06-15-adhoc-quick-scan-design.md`):
+    capture + diagnose ONE workflow on demand, reusing the whole pipeline. Studies are now SEQUENTIAL
+    with **unique ids** (fixes a latent overwrite bug — every study previously upserted the same
+    `study_local` diagnosis row); each carries `kind` (`full_study`/`quick_scan`) + optional `label`.
+    Study machine (Rust `nibbin-study` + its TS twin, kept identical) gained `StudyKind`, `label`,
+    `CreateStudy` (valid only from terminal/NotStarted), and a per-kind auto-stop window (14d full /
+    6h quick — full study byte-identical). Daemon mints unique boot ids + handles `create_study`
+    (clears the store via `destroy_raw_data`). `kind`/`label` ride the packet → diagnosis
+    (migration `20260615130000`, DEV only). Desktop: a "Quick scan a task" entry (label input → short
+    consent variant → start → "Stop scan", no 14-day countdown) + "start another" from terminal
+    states. Web: unified diagnoses **history** (newest-first, `Quick scan`/`14-day study` badges) +
+    per-diagnosis detail route (`/app/diagnosis/[id]`, RLS + account-scoped); the reveal extracted to
+    a shared `DiagnosisReveal`. NOT merged; prod migrations (`…120000`, `…130000`) pending land.
+  - **Follow-ups:** (a) finer workflow mining (split `email.general` → inquiries/overdue/…);
+    (b) consume top-level `dailyAppMinutes`; (c) packet compression for >256KB studies; (d) concurrent
+    studies (a quick scan while a full study runs — currently sequential); (e) per-diagnosis delete
+    from the web history.
 
 ## Previous gate (M2+M3+M6)
 
