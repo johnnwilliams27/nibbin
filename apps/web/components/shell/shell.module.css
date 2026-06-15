@@ -81,6 +81,15 @@
   flex-direction: column;
 }
 
+/* Onboarding: hard-bound the column to the viewport so the focal chat fills
+   exactly the visible area and its composer anchors to the bottom (the log
+   scrolls internally instead of the whole page growing past the fold). */
+.mainOnboarding {
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
 /* When a right-rail panel is present, the main column becomes a flex column
    containing the topbar + a mainBody row that splits content | panel. */
 .mainBody {
@@ -113,8 +122,8 @@
 /* Desktop: collapse the right-rail panel toward the right edge. */
 .panelCollapse {
   position: absolute;
-  top: 10px;
-  left: 8px;
+  top: 16px;
+  right: 10px;
   width: 28px;
   height: 28px;
   display: flex;

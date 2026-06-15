@@ -85,7 +85,7 @@ export function AppShell({ active, title, email, children, panel, onboarding }: 
         </nav>
       </aside>
 
-      <div className={`${styles.main} ${panel ? styles.mainWithPanel : ''}`}>
+      <div className={`${styles.main} ${panel ? styles.mainWithPanel : ''} ${onboarding ? styles.mainOnboarding : ''}`}>
         <header className={styles.topbar}>
           <button
             className={styles.hamburger}
