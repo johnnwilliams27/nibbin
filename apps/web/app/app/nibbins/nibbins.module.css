@@ -186,6 +186,31 @@
   padding: 4px 10px;
 }
 
+/* "What {name} has learned about you" — the honest learned-note block (demo's
+   .learned/.ll, token-only). Cached Opus line when present, else a grounded
+   deterministic fallback. */
+.learned {
+  background: var(--card);
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-top: 12px;
+}
+.ll {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--moss-deep);
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+.learned p {
+  font-size: 12px;
+  color: var(--ink-soft);
+  font-style: italic;
+}
+
 .foot {
   display: flex;
   justify-content: space-between;

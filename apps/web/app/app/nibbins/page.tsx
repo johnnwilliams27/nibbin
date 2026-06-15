@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation';
 import { buildCreature, type Accessory, type Marking, type SpeciesName, type Stage } from '@nibbin/creatures';
 import { appSession } from '../../../lib/auth/app-session';
 import { AppShell } from '../../../components/shell/AppShell';
+import { NoteRefresher } from './NoteRefresher';
+import { refreshNibbinNote } from './actions';
 import styles from './nibbins.module.css';
 
 export const metadata: Metadata = { title: 'Your Nibbins — Nibbin' };
@@ -17,6 +19,14 @@ const PROMOTION_WINDOW = 25;
 const PROMOTION_PCT = 0.95;
 // ceil(0.95 * 25) = 24 approved-unedited decisions needed in a full window.
 const PROMOTION_NEEDED = Math.ceil(PROMOTION_PCT * PROMOTION_WINDOW);
+
+// A Nibbin's learned-note is regenerated in the background once it has at least
+// this many completed runs (enough signal for an honest line) AND either has no
+// cached note yet, or has accumulated this many more runs since the note was
+// last written (materially more history to learn from). Mirrors the generation
+// module's MIN_COMPLETED gate.
+const NOTE_MIN_COMPLETED = 3;
+const NOTE_STALE_RUN_DELTA = 5;
 
 const STAGE_RUNG: Record<Stage, number> = { egg: 1, student: 2, senior: 3, grad: 4 };
 const STAGE_LABEL: Record<Stage, string> = {
@@ -47,6 +57,8 @@ interface NibbinRow {
   marking: string | null;
   stage_changed_at: string;
   hatched_at: string;
+  learned_note: string | null;
+  learned_note_runs: number;
   agent_specs: SpecRow | SpecRow[] | null;
 }
 interface RunRow {
@@ -159,6 +171,28 @@ function gradLine(d: Derived): string {
   return `${d.windowDecided}/${PROMOTION_WINDOW} in the graduation window`;
 }
 
+/**
+ * The honest fallback for the "what {name} has learned about you" block when no
+ * Opus note is cached yet. Every branch is grounded in real derived signals —
+ * eggs / no history get the watching line; some history gets a matchPct- or
+ * streak-grounded line. Never fabricates a preference the data doesn't show.
+ */
+function learnedFallback(name: string, job: string, d: Derived): string {
+  if (d.completedCount < NOTE_MIN_COMPLETED) {
+    return 'Still watching how you work — first drafts are coming.';
+  }
+  if (d.matchPct !== null && d.matchPct >= 85) {
+    return `You approve ${name}'s drafts almost untouched — it's matched how you ${job}.`;
+  }
+  if (d.cleanStreak >= 3) {
+    return `${name} is on a ${d.cleanStreak}-run clean streak — it's getting your ${job} right.`;
+  }
+  if (d.matchPct !== null) {
+    return `${name} is still learning your voice — you approve about ${d.matchPct}% of its drafts as written.`;
+  }
+  return `${name} is settling into ${job} — still learning what you'd change.`;
+}
+
 export default async function NibbinsPage() {
   let session;
   try {
@@ -176,7 +210,7 @@ export default async function NibbinsPage() {
     supabase
       .from('nibbins')
       .select(
-        'id, name, species, stage, status, palette, accessory, marking, stage_changed_at, hatched_at, agent_specs(display_name, template_key)',
+        'id, name, species, stage, status, palette, accessory, marking, stage_changed_at, hatched_at, learned_note, learned_note_runs, agent_specs(display_name, template_key)',
       )
       .eq('account_id', accountId)
       .eq('kind', 'specialist')
@@ -232,8 +266,29 @@ export default async function NibbinsPage() {
     );
   }
 
+  // Derive once per Nibbin; reused for the staleId pass and the render below.
+  const derivedById = new Map<string, Derived>();
+  for (const n of nibbins) {
+    derivedById.set(
+      n.id,
+      derive(runsByNibbin.get(n.id) ?? [], approvalsByNibbin.get(n.id) ?? [], n.stage_changed_at),
+    );
+  }
+
+  // Nibbins whose learned-note should be (re)generated in the background: enough
+  // history for an honest line (≥ NOTE_MIN_COMPLETED completed runs) AND either
+  // no cached note yet, or materially more run history since it was last written.
+  const staleIds = nibbins
+    .filter((n) => {
+      const d = derivedById.get(n.id)!;
+      if (d.completedCount < NOTE_MIN_COMPLETED) return false;
+      return n.learned_note === null || d.runCount > n.learned_note_runs + NOTE_STALE_RUN_DELTA;
+    })
+    .map((n) => n.id);
+
   return (
     <AppShell active="nibbins" title="Your Nibbins" email={user.email}>
+      <NoteRefresher staleIds={staleIds} action={refreshNibbinNote} />
       <p className={styles.intro}>
         Every Nibbin climbs Agent School the same way — egg, student, senior, graduate — and trust is
         earned through verified accuracy, never time served. Streaks and badges below are read
@@ -242,11 +297,7 @@ export default async function NibbinsPage() {
 
       <div className={styles.roster}>
         {nibbins.map((n) => {
-          const d = derive(
-            runsByNibbin.get(n.id) ?? [],
-            approvalsByNibbin.get(n.id) ?? [],
-            n.stage_changed_at,
-          );
+          const d = derivedById.get(n.id)!;
           const rung = STAGE_RUNG[n.stage];
           const sprite = buildCreature({
             species: n.species as SpeciesName,
@@ -270,6 +321,12 @@ export default async function NibbinsPage() {
             ['Zero-Miss Month', d.zeroMissMonth],
             ['100 Runs', d.hundredRuns],
           ];
+
+          // "What {name} has learned about you" — the cached Opus note when
+          // present, else an honest deterministic line grounded in real signals.
+          // Stale/missing notes are regenerated in the background (NoteRefresher).
+          const jobLower = jobOf(n).toLowerCase();
+          const learnedText = n.learned_note ?? learnedFallback(n.name, jobLower, d);
 
           return (
             <div className={styles.agent} key={n.id}>
@@ -324,6 +381,11 @@ export default async function NibbinsPage() {
                     {label}
                   </span>
                 ))}
+              </div>
+
+              <div className={styles.learned}>
+                <div className={styles.ll}>What {n.name} has learned about you</div>
+                <p>{learnedText}</p>
               </div>
 
               <div className={styles.foot}>
