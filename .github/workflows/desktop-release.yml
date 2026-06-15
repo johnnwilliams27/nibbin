@@ -16,7 +16,9 @@ name: desktop-release
 # Windows signing via Azure Trusted Signing (all six required together; absent →
 # unsigned .msi):
 #   AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET  – Entra service
-#     principal with the "Trusted Signing Certificate Profile Signer" role
+#     principal with the "Artifact Signing Certificate Profile Signer" role
+#     (Azure renamed Trusted Signing → Artifact Signing; endpoint + provider
+#     Microsoft.CodeSigning unchanged, so trusted-signing-cli still works)
 #   AZURE_CODESIGN_ENDPOINT  – the account URI, e.g. https://wus2.codesigning.azure.net
 #   AZURE_CODESIGN_ACCOUNT   – Trusted Signing account name
 #   AZURE_CODESIGN_PROFILE   – certificate profile name
