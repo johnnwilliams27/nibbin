@@ -25,6 +25,54 @@ interface StateRow {
   answers: Record<string, unknown> | null;
 }
 
+/** One "Label: value" line from a string or string[]; null if there's nothing. */
+function answerLine(label: string, v: unknown): string | null {
+  if (typeof v === 'string' && v.trim() !== '') return `${label}: ${v.trim()}`;
+  if (Array.isArray(v)) {
+    const xs = v.filter((x): x is string => typeof x === 'string' && x.trim() !== '');
+    if (xs.length) return `${label}: ${xs.join(', ')}`;
+  }
+  return null;
+}
+
+/**
+ * Seed the "facts" section from the onboarding answers blob. Post-#73 that blob
+ * also carries the model's `_understanding`/`_profile` OBJECTS, so we must never
+ * blindly stringify it (that yields "[object Object]"). Prefer the model's
+ * profile; fall back to the legacy interview scalars. Returns {} when empty.
+ */
+function seedSectionsFromAnswers(answers: Record<string, unknown>): Record<string, string> {
+  const lines: string[] = [];
+  const profile = answers._profile;
+  if (profile && typeof profile === 'object' && !Array.isArray(profile)) {
+    const p = profile as Record<string, unknown>;
+    for (const [label, key] of [
+      ['What I do', 'jobTitle'],
+      ['Business model', 'businessModel'],
+      ['Main work', 'workShape'],
+      ['Channels', 'channels'],
+      ['Tools', 'tools'],
+      ['Frustrations', 'pains'],
+    ] as const) {
+      if (key === 'businessModel' && p[key] === 'unknown') continue;
+      const line = answerLine(label, p[key]);
+      if (line) lines.push(line);
+    }
+  }
+  if (lines.length === 0) {
+    // legacy interview scalars only — never the `_`-prefixed state objects
+    for (const [label, key] of [
+      ['What I do', 'craft'],
+      ['Time sinks', 'timeSinks'],
+      ['Channels', 'channels'],
+    ] as const) {
+      const line = answerLine(label, answers[key]);
+      if (line) lines.push(line);
+    }
+  }
+  return lines.length ? { facts: lines.join('\n') } : {};
+}
+
 export default async function MemoryPage({
   searchParams,
 }: {
@@ -39,8 +87,8 @@ export default async function MemoryPage({
     .eq('account_id', accountId)
     .maybeSingle<MemoryRow>();
 
-  // Min population: an empty brain seeds "facts" from the Keeper-interview answers
-  // so the first visit isn't a blank page (the user then curates from there).
+  // Min population: an empty brain seeds "facts" from onboarding so the first
+  // visit isn't a blank page (the user then curates from there).
   let sections = mem?.sections ?? {};
   if (!mem) {
     const { data: st } = await supabase
@@ -48,11 +96,7 @@ export default async function MemoryPage({
       .select('answers')
       .eq('account_id', accountId)
       .maybeSingle<StateRow>();
-    const seed = Object.values(st?.answers ?? {})
-      .map((v) => String(v ?? '').trim())
-      .filter(Boolean)
-      .join('\n');
-    if (seed) sections = { facts: seed };
+    if (st?.answers) sections = seedSectionsFromAnswers(st.answers);
   }
   const rules = (mem?.hard_rules ?? []).join('\n');
   const notes = mem?.notes ?? '';
