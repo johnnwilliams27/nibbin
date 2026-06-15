@@ -156,6 +156,12 @@ jobs:
   publish:
     name: publish-release
     needs: build
+    # Ship whatever built. `needs: build` defaults to "all legs succeeded", which
+    # would let one platform's failure (e.g. a bad signing cert) bury a perfectly
+    # good installer from the other. !cancelled() runs publish on partial success;
+    # download-artifact only pulls the legs that uploaded, and the steps below
+    # already key off whichever .dmg/.msi are actually present.
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -177,6 +183,10 @@ jobs:
           echo "--- SHA256SUMS.txt ---"; cat dist/SHA256SUMS.txt
 
       - name: Attest build provenance
+        # Supply-chain nice-to-have, not a release gate: if it trips on a partial
+        # artifact set (e.g. only .msi present, the .dmg glob empty), publish the
+        # installers anyway rather than burying a working download.
+        continue-on-error: true
         uses: actions/attest-build-provenance@v2 # TODO: pin by SHA
         with:
           subject-path: |
