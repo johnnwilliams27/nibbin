@@ -9,13 +9,27 @@ The meta-lesson that produced this file: two implicit workstreams (model bring-u
 page port) were never named in any DoD and therefore never got built. Rule going forward:
 **anything not named in a DoD does not exist.**
 
+> **Reconciliation 2026-06-15.** Most entry items shipped between when this file was written
+> (2026-06-13) and now — and M7 *build* work (diagnosis pipeline #69/#70/#72, Grove Memory #67,
+> §6.12 #68) has already landed, so M7 is underway, not merely pending. Boxes below are ticked
+> only where verified against merged PRs or the code on `main`; items that are infra/calendar/
+> process (mail warm-up, OAuth/CASA filing, dress rehearsal, founder posts, separate Scout/Scribe
+> repos) can't be verified from this repo and are left unchecked with a **confirm** flag rather than
+> asserted. Two stale facts corrected throughout: auth is **email + password** (magic links removed,
+> #65), and the public category line is now **"AI Agents. Simplified."** (#86).
+
 ---
 
-## 0. The landing page gap (why production shows a placeholder)
+## 0. The landing page gap (why production showed a placeholder)
+
+> **✅ RESOLVED 2026-06-15.** `/` is the real ported page now — #54 (port + waitlist + SEO),
+> then #56 (Maya demo), #57/#59 (copy), #74 (nav), #86 (tagline/mobile-login/pill polish).
+> nibbin.com serves the production page over HTTPS; Vercel prod deploys green. The prompt below
+> is kept as the historical DoD artifact.
 
 `reference/nibbin-demo.html` is the design source-of-truth, not deployed code. M0's DoD was
-"web shell" — `/` is a scaffold placeholder because no milestone owned the port. Fix with
-the task below (runs fine in parallel with M6.5 — different surfaces).
+"web shell" — `/` was a scaffold placeholder because no milestone owned the port. Fixed with
+the task below (ran in parallel with M6.5 — different surfaces).
 
 ### Landing port prompt (paste into Claude Code)
 
@@ -37,8 +51,8 @@ the task below (runs fine in parallel with M6.5 — different surfaces).
 >    corrections landing first (the gate ruled those become P0 the moment these pages route).
 >    If those aren't merged yet, ship the landing with footer links marked "available at
 >    launch" and open an issue.
-> 5. SEO/meta: title + description using the category line ("AI agents for
->    freelancers"), OG image from the brand suite, sitemap.xml, robots.txt, favicons.
+> 5. SEO/meta: title + description using the category line ("AI Agents. Simplified." —
+>    audience-agnostic, per #86), OG image from the brand suite, sitemap.xml, robots.txt, favicons.
 > 6. Cookieless analytics (Plausible-class) + the §6.12 web events. No consent banner needed
 >    — verify nothing sets tracking cookies.
 > 7. Verify on the Vercel production deploy: nibbin.com serves the real page, Lighthouse
@@ -50,79 +64,82 @@ the task below (runs fine in parallel with M6.5 — different surfaces).
 
 ## 1. BLOCKERS — M7 does not start without these
 
-- [ ] **M6.5 gated and signed** (models live, budgets durable, eval suite green, pricing fixed)
-- [ ] **Landing page port live on nibbin.com** (task above) — the GTM motion points people
-      somewhere; a placeholder torches credibility with design partners
-- [ ] **#29 pair landed:** account-deletion clock + scan-results purge on disconnect.
-      M7's immutable exit half (C1–C7 + deletion verified) depends on them, and legal pages
-      can't route without them
+- [x] **M6.5 gated and signed** (models live, budgets durable, eval suite green, pricing fixed)
+      — ✅ PR #51, signed 2026-06-12 (STATE.md). Pricing later revised Grove $29 / Canopy $79 (#66).
+- [x] **Landing page port live on nibbin.com** — ✅ #54 → polished through #86; production page live.
+- [x] **#29 pair landed:** account-deletion clock + scan-results purge on disconnect.
+      — ✅ #75 (revoke purges scan_results) + #76 (deletion clock); plus #78 (irreversible purge
+      carve-out) and #80 (nightly runner, gated off). Issue **#29 is CLOSED**.
 - [ ] **#46 claims-wording corrections** in privacy/terms/data-ai (incl. the C8 client-layer
-      reality for QuickBooks/Instagram) — then attorney review of the corrected pages
-- [ ] **§6.12 instrumentation live, TTFAD measurable** — "John's TTFAD published" is an M7
-      exit criterion; if the stopwatch isn't running, the milestone can't exit
-- [ ] **mail.nibbin.com warm-up STARTED** — calendar-critical: the 2–4 week low-volume ramp
-      (with DMARC p=none→quarantine progression and bounce/complaint webhooks live) must
-      begin NOW so deliverability exists when M7's drip beats and waitlist confirmations send.
-      This is the longest non-engineering pole besides CASA
-- [ ] **Google OAuth test-mode allowlist populated** — John + the first design partners'
-      emails added (the 100-user cap path), so onboarding doesn't dead-end at consent
+      reality for QuickBooks/Instagram) — then attorney review of the corrected pages.
+      **PARTIAL:** journal/suppression/C8 wording was corrected on reference/data-ai.html +
+      reference/privacy.html at the M4+M5 gate, but issue **#46 is still OPEN** and the attorney
+      review isn't recorded. Still gates routing the legal pages.
+- [x] **§6.12 instrumentation live, TTFAD measurable** — ✅ #68 (`account_created` + TTFAD readout).
+- [ ] **mail.nibbin.com warm-up STARTED** — the 2–4 week low-volume ramp (DMARC p=none→quarantine,
+      bounce/complaint webhooks). **Confirm (infra/calendar):** Resend on nibbin.com is verified and
+      transactional/waitlist mail sends (#61), but the warm-up ramp itself can't be verified from the
+      repo. Longest non-engineering pole besides CASA.
+- [ ] **Google OAuth test-mode allowlist populated** — John + first design partners' emails.
+      **Open:** STATE.md M1 tracking shows Google OAuth verification/CASA NOT YET FILED (needs the
+      Google Cloud project). Confirm the test-mode allowlist before partners onboard.
 - [ ] **End-to-end dress rehearsal** (separate from M7's synthetic study): fresh account →
-      magic link → connector OAuth → scan → adopt → first draft → approve → TTFAD recorded.
-      Run it twice: once on the dev env, once on production with a throwaway account
+      **invite → set password** (auth is email+password now, #65) → connector OAuth → scan → adopt →
+      first draft → approve → TTFAD recorded. Run it twice: once on dev, once on production with a
+      throwaway account. **Process — confirm when run.**
 
 ## 2. STRONGLY-SHOULD — M7 is materially worse without these
 
 - [ ] **Push approvals (PWA + web push), minimum version** — during a 14-day study John is
       living his life; if drafts wait for laptop time, Agent School velocity (and the GTM
-      proof's "≥1 agent to Senior") suffers. The full Grove Home polish can follow; the
-      notification→one-tap-approve path should not (PRODUCT-FOUNDATION §2.2)
-- [ ] **Grove Memory, minimum version** — the Marketing Grove agents drafting outreach need
-      business facts/voice/rules to draft from; without it, M6.5's drafts are generic and
-      the study tests the wrong thing (PRODUCT-FOUNDATION §2.3)
-- [ ] **Windows code-signing cert ORDERED** (EV has multi-week lead time) — user-zero can run
-      a dev build, but design partners onboard right after M7 and SmartScreen will eat
-      unsigned installers
+      proof's "≥1 agent to Senior") suffers (PRODUCT-FOUNDATION §2.2). **Not built:** no
+      web-push / service-worker / PWA manifest in apps/web as of 2026-06-15. Highest-value
+      STRONGLY-SHOULD still open.
+- [x] **Grove Memory, minimum version** — ✅ #67 (per-account business brain + router injection);
+      seed-serialization fix #83. The Marketing Grove agents now have business facts/voice/rules.
+- [ ] **Windows code-signing — approach changed, not yet active.** Signing is wired via **Azure
+      Trusted Signing** (#85), not an EV-cert order; the first signed Windows run is gated on Azure
+      identity validation (dormant until the secrets land). Unsigned installers still hit SmartScreen.
 - [ ] **Founder post + outreach templates drafted** and the 20-warm list ready to fire the
-      day the waitlist is live (the standing offer: I draft these on request)
+      day the waitlist is live (standing offer: I draft these on request). **Process.**
 - [ ] **Scout + Scribe stood up** (separate repos per GTM §6) so Phase-0 listening and
-      content are running before the study generates material
-- [ ] **Support path live:** hello@ receiving, Concierge triage at Student stage
+      content run before the study generates material. **Separate repos — confirm; not verifiable here.**
+- [ ] **Support path live:** hello@ receiving, Concierge triage at Student stage. **PARTIAL:**
+      hello@nibbin.com is in the landing footer; mailbox-receiving + the Concierge triage surface
+      aren't verified in-repo.
 
 ## 2.5 Tester onboarding & access — named 2026-06-13 (founder)
 
-The meta-lesson in action: these were implicit and therefore unbuilt. Named now so a
+The meta-lesson in action: these were implicit and therefore unbuilt. Named then so a
 design partner can be invited, get in, install the app, and act from the website
-without hand-holding.
+without hand-holding. **Most of this shipped 2026-06-13 (#60/#61/#64/#65/#77).**
 
-- [ ] **Public Login + passwordless flow** — a "Login" entry on nibbin.com → the
-      existing magic-link page. Identifier is the email (no usernames); there is no
-      password (passwordless), so "forgot password" is just "send another link."
-      Sign-up stays invite-only via `signInWithOtp({ shouldCreateUser: false })`, so an
-      unknown email can't self-mint an account. *(Login button + gating: shipped on
-      `feature/tester-access`.)*
-- [ ] **Waitlist → admin invite → account creation** — an "Invite" action on the admin
-      waitlist view that provisions the account and sends the account-creation link.
-      The view shipped read-only (#58); the invite action + invite email are the
-      missing half.
-- [ ] **Branded transactional & auth emails** — route the sign-in link, the invite, and
-      a welcome email through the branded template (Resend), and migrate the hand-rolled
-      waitlist-confirmation onto it. Today the auth emails are Supabase's unbranded
-      defaults — the first thing a tester sees. Full set + previews in
-      `reference/email-previews.html`. *(Supabase custom-SMTP + template is a dashboard
-      step; the generate-link-and-send-ourselves path is buildable in-repo.)*
-- [ ] **App download + distribution** — a `/download` surface, signed installer
-      artifacts, and an update channel. Today there's a Windows dev build and a cert on
-      order, but nowhere for a tester to actually get the app.
-- [ ] **macOS build** (promoted from §3) — testers include photographers, who skew
-      macOS, so the deferral trigger has fired. Needs a Mac + Apple Developer signing;
-      an infra/hardware task, not a code change.
+- [x] **Public Login — email + password (not passwordless).** ✅ #60 (public invite-gated Login
+      + tester-access scope), #64 (invite links via token_hash + verifyOtp), #65 (email+password
+      across the shared identity; **magic links removed**), #86 (compact Login in the mobile header).
+      **Corrected model:** identifier is the email with a **password**; sign-up stays invite-only
+      (an unknown email can't self-mint — admin-minted invite links only); "forgot password" sends a
+      **recovery link** (`forgot-password/actions.ts`), not "another magic link."
+- [x] **Waitlist → admin invite → account creation** — ✅ #58 (waitlist view, read-only) +
+      #61 (invite action + account-creation/invite email). The "missing half" the original note
+      flagged shipped in #61.
+- [x] **Branded transactional & auth emails** — ✅ #61 (branded transactional + generate-link-and-
+      send path); recovery/invite links sent via our own branded path (`forgot-password/actions.ts`,
+      `api/internal/invite`). **Confirm:** that Supabase's *default* auth emails are fully superseded
+      (custom-SMTP/template is a dashboard step) so a tester never sees an unbranded default.
+- [ ] **App download + distribution** — **PARTIAL:** `/download` (+ `/download/[platform]`) surface
+      and the Windows download handoff shipped (#77, first cut). Still open: signed installers (gated
+      on Azure identity validation, #85), an update channel, and the macOS artifact.
+- [ ] **macOS build** (promoted from §3) — testers skew macOS, so the deferral trigger fired.
+      Needs a Mac + Apple Developer signing; infra/hardware, not a code change. **Open.**
 
 ## 3. DEFERRABLE — explicitly fine to skip for M7, with triggers
 
 - **macOS bring-up** — PROMOTED to §2.5 (2026-06-13): the design-partner trigger has fired
   (testers skew macOS). M6 caveat still applies (budgets + <100ms pause unverified); needs a
   Mac mini (or MacStadium/GitHub macOS runners) + an Apple Developer cert
-- **Stripe live mode** — user-zero on test mode is fine. TRIGGER: first paying design partner
+- **Stripe live mode** — user-zero on test mode is fine (STATE.md confirms prod still runs test-mode
+  Stripe). TRIGGER: first paying design partner
 - **Status page + uptime monitoring** — TRIGGER: first external user
 - **Business Pulse, template marketplace, everything in the anti-feature register** — per
   PRODUCT-FOUNDATION, unchanged
@@ -140,3 +157,9 @@ without hand-holding.
    Block A scope trimmed to "minimum")
 5. Dress rehearsal ×2 → fix what it finds
 6. M7 per the amended WORKTREES finale prompt. Founder post fires the same week.
+
+> **Status 2026-06-15.** Steps 1–4 are largely executed in code: M6.5 signed (#51), landing live
+> (#54→#86), #29 pair closed (#75/#76/#78/#80), #46 wording corrected on the reference pages
+> (issue still open), Grove Memory min shipped (#67). The remaining real poles are **not code**:
+> mail.nibbin.com warm-up, Google OAuth/CASA filing, the #46 attorney review, the ×2 dress
+> rehearsal, **push approvals** (the one unbuilt STRONGLY-SHOULD), and the **macOS build/signing**.
