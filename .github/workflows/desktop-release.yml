@@ -152,6 +152,7 @@ jobs:
           path: |
             apps/desktop/src-tauri/target/**/release/bundle/dmg/*.dmg
             apps/desktop/src-tauri/target/**/release/bundle/msi/*.msi
+            apps/desktop/src-tauri/target/**/release/bundle/nsis/*.exe
 
   publish:
     name: publish-release
@@ -178,7 +179,7 @@ jobs:
       - name: Generate SHA-256 checksums
         run: |
           set -euo pipefail
-          ( cd dist && find . -type f \( -name '*.dmg' -o -name '*.msi' \) -print0 \
+          ( cd dist && find . -type f \( -name '*.dmg' -o -name '*.msi' -o -name '*.exe' \) -print0 \
               | xargs -0 sha256sum | sed 's# \./# #' > SHA256SUMS.txt )
           echo "--- SHA256SUMS.txt ---"; cat dist/SHA256SUMS.txt
 
@@ -192,6 +193,7 @@ jobs:
           subject-path: |
             dist/**/*.dmg
             dist/**/*.msi
+            dist/**/*.exe
 
       - name: Publish to public releases repo
         env:
@@ -204,7 +206,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ "$REF_TYPE" = "tag" ]; then TAG="$REF_NAME"; else TAG="desktop-v0.1.0-$RUN_NUMBER"; fi
-          mapfile -t FILES < <(find dist -type f \( -name '*.dmg' -o -name '*.msi' \))
+          mapfile -t FILES < <(find dist -type f \( -name '*.dmg' -o -name '*.msi' -o -name '*.exe' \))
           if [ ${#FILES[@]} -eq 0 ]; then echo "no installers found in dist/"; exit 1; fi
           echo "Publishing ${FILES[*]} to $RELEASES_REPO @ $TAG"
           gh release create "$TAG" \

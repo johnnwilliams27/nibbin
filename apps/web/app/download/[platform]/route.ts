@@ -11,7 +11,8 @@
 import { NextResponse } from 'next/server';
 
 const RELEASES_REPO = 'johnnwilliams27/nibbin-desktop';
-const EXT: Record<string, string> = { mac: '.dmg', windows: '.msi' };
+// Windows prefers the modern NSIS installer (.exe), falling back to the .msi.
+const EXTS: Record<string, string[]> = { mac: ['.dmg'], windows: ['.exe', '.msi'] };
 const RELEASES_PAGE = `https://github.com/${RELEASES_REPO}/releases`;
 
 // Cache the GitHub lookup so we don't hit the unauthenticated rate limit under load.
@@ -23,8 +24,8 @@ interface Release {
 
 export async function GET(_req: Request, { params }: { params: Promise<{ platform: string }> }) {
   const { platform } = await params;
-  const ext = EXT[platform];
-  if (!ext) return NextResponse.redirect(RELEASES_PAGE, 302);
+  const exts = EXTS[platform];
+  if (!exts) return NextResponse.redirect(RELEASES_PAGE, 302);
 
   try {
     // /releases (not /releases/latest) so prereleases are included.
@@ -35,8 +36,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ platfor
     if (res.ok) {
       const releases = (await res.json()) as Release[];
       for (const rel of releases) {
-        const asset = rel.assets?.find((a) => a.name.toLowerCase().endsWith(ext));
-        if (asset) return NextResponse.redirect(asset.browser_download_url, 302);
+        for (const ext of exts) {
+          const asset = rel.assets?.find((a) => a.name.toLowerCase().endsWith(ext));
+          if (asset) return NextResponse.redirect(asset.browser_download_url, 302);
+        }
       }
     }
   } catch {
