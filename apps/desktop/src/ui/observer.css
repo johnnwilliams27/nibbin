@@ -241,21 +241,33 @@ input:focus-visible {
   color: var(--ink-soft);
 }
 
-/* Login gate — the app's front door (Stage B). A centered card. */
-.login-gate {
-  max-width: 360px;
-  margin: 7vh auto 0;
-  padding: 32px 28px;
+/* Login gate — the app's front door. Centered card on the warm canvas. */
+.login-wrap {
+  min-height: 78vh;
   display: grid;
-  gap: 16px;
+  place-items: center;
+}
+
+.login-gate {
+  width: 100%;
+  max-width: 380px;
+  padding: 36px 32px 32px;
+  display: grid;
+  gap: 14px;
   background: var(--canopy);
   border: 1px solid var(--line);
   border-radius: var(--r-card);
-  box-shadow: var(--shadow-1);
+  box-shadow: var(--shadow-2);
+}
+
+.login-gate .eyebrow {
+  margin: 0;
 }
 
 .login-gate h1 {
   margin: 0;
+  font-size: 34px;
+  letter-spacing: -0.01em;
 }
 
 .login-gate > .muted {

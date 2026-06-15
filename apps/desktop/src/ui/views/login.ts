@@ -11,25 +11,37 @@ export function loginView(onSignedIn: () => void): HTMLElement {
   async function go(): Promise<void> {
     err.textContent = '';
     submit.setAttribute('disabled', 'true');
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: email.value.trim(),
-      password: pass.value,
-    });
-    submit.removeAttribute('disabled');
-    if (error || !data.session) {
-      err.textContent = error?.message ?? 'Sign-in failed.';
-      return;
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.value.trim(),
+        password: pass.value,
+      });
+      if (error || !data.session) {
+        err.textContent = error?.message ?? 'Sign-in failed.';
+        return;
+      }
+      await bridge.storeSession(data.session as unknown as Record<string, unknown>);
+      onSignedIn();
+    } catch (e) {
+      // Surface anything thrown (network/CSP fetch failure, keychain write
+      // error) instead of failing silently.
+      err.textContent = e instanceof Error ? e.message : `Sign-in failed: ${String(e)}`;
+      // eslint-disable-next-line no-console
+      console.error('login error', e);
+    } finally {
+      submit.removeAttribute('disabled');
     }
-    await bridge.storeSession(data.session as unknown as Record<string, unknown>);
-    onSignedIn();
   }
 
-  return el('div', { class: 'login-gate' }, [
-    el('h1', {}, ['Nibbin']),
-    el('p', { class: 'muted' }, ['Sign in to your grove.']),
-    el('label', {}, ['Email', email]),
-    el('label', {}, ['Password', pass]),
-    err,
-    submit,
+  return el('div', { class: 'login-wrap' }, [
+    el('div', { class: 'login-gate' }, [
+      el('p', { class: 'eyebrow' }, ['Welcome back']),
+      el('h1', {}, ['Nibbin']),
+      el('p', { class: 'muted' }, ['Sign in to your grove.']),
+      el('label', {}, ['Email', email]),
+      el('label', {}, ['Password', pass]),
+      err,
+      submit,
+    ]),
   ]);
 }
