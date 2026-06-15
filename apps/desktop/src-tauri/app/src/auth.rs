@@ -49,6 +49,14 @@ pub fn session_tokens() -> Option<(String, String)> {
     Some((access, refresh))
 }
 
+/// The keychain access token, for Bearer-authing desktop→web API calls
+/// (e.g. the study-packet upload). Refresh token stays in the keychain; neither
+/// is ever placed in a URL.
+#[tauri::command]
+pub fn access_token() -> Option<String> {
+    session_tokens().map(|(access, _refresh)| access)
+}
+
 /// Current session for the account module. Refreshes silently when expired;
 /// a revoked refresh token (web "sign out everywhere") clears the session.
 #[tauri::command]

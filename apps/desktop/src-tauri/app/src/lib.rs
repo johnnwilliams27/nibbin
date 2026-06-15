@@ -116,6 +116,7 @@ pub fn run() {
             commands::add_exclusion,
             auth::store_session,
             auth::auth_session,
+            auth::access_token,
             auth::sign_out,
             grove_show,
             grove_hide,

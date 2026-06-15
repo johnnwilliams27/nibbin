@@ -57,6 +57,7 @@ export const bridge = {
   storeSession: (session: Record<string, unknown>) =>
     call<void>('store_session', { session }, undefined),
   authSession: () => call<Record<string, unknown> | null>('auth_session', undefined, null),
+  accessToken: () => call<string | null>('access_token', undefined, null),
   signOut: () => call<void>('sign_out', undefined, undefined),
   groveShow: () => call<void>('grove_show', undefined, undefined),
   groveHide: () => call<void>('grove_hide', undefined, undefined),
