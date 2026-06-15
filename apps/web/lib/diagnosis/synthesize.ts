@@ -52,6 +52,30 @@ const MAX_WORKFLOWS = 60;
 const round1 = (n: number) => Math.round(n * 10) / 10;
 const clampStr = (v: unknown, max: number) => (typeof v === 'string' ? v.slice(0, max) : '');
 
+const clampNum = (v: unknown, max: number) => Math.max(0, Math.min(max, Number(v) || 0));
+
+function clampDayMap(v: unknown, maxDays: number): Record<string, number> | undefined {
+  if (typeof v !== 'object' || v === null) return undefined;
+  const out: Record<string, number> = {};
+  for (const [k, val] of Object.entries(v as Record<string, unknown>).slice(0, maxDays)) {
+    out[clampStr(k, 10)] = Math.round(clampNum(val, 1_000_000) * 10) / 10;
+  }
+  return Object.keys(out).length ? out : undefined;
+}
+
+function clampSequences(v: unknown): { steps: string[]; count: number }[] | undefined {
+  if (!Array.isArray(v)) return undefined;
+  const out = v
+    .slice(0, 10)
+    .map((raw) => {
+      const s = (raw ?? {}) as Record<string, unknown>;
+      const steps = Array.isArray(s.steps) ? s.steps.slice(0, 12).map((x) => clampStr(x, 80)).filter(Boolean) : [];
+      return { steps, count: clampNum(s.count, 1_000_000) };
+    })
+    .filter((s) => s.steps.length > 0);
+  return out.length ? out : undefined;
+}
+
 /**
  * Validate + sanitize an uploaded packet (untrusted external input). Returns a
  * clean SynthesisPacket or null if it isn't shaped like one.
@@ -76,8 +100,34 @@ export function validateSynthesisPacket(input: unknown): SynthesisPacket | null 
     const sessions = Math.max(0, Math.min(100_000, Number(w.sessions) || 0));
     const apps = Array.isArray(w.apps) ? w.apps.slice(0, 12).map((a) => clampStr(a, 60)).filter(Boolean) : [];
     const friction = clampStr(w.friction, 280).trim();
-    workflows.push({ key, label, category, apps, minutesObserved, sessions, ...(friction ? { friction } : {}) });
+    const sequences = clampSequences(w.sequences);
+    const urlTemplates = Array.isArray(w.urlTemplates)
+      ? w.urlTemplates.slice(0, 20).map((u) => clampStr(u, 120)).filter(Boolean)
+      : undefined;
+    const dailyMinutes = clampDayMap(w.dailyMinutes, 31);
+    workflows.push({
+      key,
+      label,
+      category,
+      apps,
+      minutesObserved,
+      sessions,
+      ...(friction ? { friction } : {}),
+      ...(sequences ? { sequences } : {}),
+      ...(urlTemplates && urlTemplates.length ? { urlTemplates } : {}),
+      ...(dailyMinutes ? { dailyMinutes } : {}),
+    });
   }
+
+  const dailyAppMinutes = (() => {
+    if (typeof p.dailyAppMinutes !== 'object' || p.dailyAppMinutes === null) return undefined;
+    const out: Record<string, Record<string, number>> = {};
+    for (const [day, apps] of Object.entries(p.dailyAppMinutes as Record<string, unknown>).slice(0, 31)) {
+      const inner = clampDayMap(apps, 20);
+      if (inner) out[clampStr(day, 10)] = inner;
+    }
+    return Object.keys(out).length ? out : undefined;
+  })();
 
   return {
     version: 1,
@@ -86,7 +136,17 @@ export function validateSynthesisPacket(input: unknown): SynthesisPacket | null 
     capturedFrom: clampStr(p.capturedFrom, 40),
     capturedTo: clampStr(p.capturedTo, 40),
     workflows,
+    ...(dailyAppMinutes ? { dailyAppMinutes } : {}),
   };
+}
+
+/** v0 automatability heuristic: saturating in the dominant repeated step-chain. */
+function automatableScore(w: PacketWorkflow): number {
+  const top = w.sequences?.[0];
+  if (!top) return 0;
+  const strength = (top.count || 0) * (top.steps?.length || 0);
+  if (strength <= 0) return 0;
+  return Math.max(0, Math.min(100, Math.round((100 * strength) / (strength + 24))));
 }
 
 function synthOne(w: PacketWorkflow, days: number): DiagnosisWorkflow {
@@ -102,6 +162,7 @@ function synthOne(w: PacketWorkflow, days: number): DiagnosisWorkflow {
     frequency,
     friction: w.friction ?? null,
     recommendedNibbin,
+    automatable: automatableScore(w),
   };
 }
 

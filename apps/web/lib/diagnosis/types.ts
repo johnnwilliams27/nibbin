@@ -19,6 +19,12 @@ export type WorkflowCategory =
   | 'social'
   | 'other';
 
+/** A bounded, redacted repeated step-chain mined on-device (re-minable). */
+export interface SequenceCandidate {
+  steps: string[];
+  count: number;
+}
+
 /** One workflow the Observer segmented on-device (already redacted). */
 export interface PacketWorkflow {
   /** Stable id, e.g. 'email.inquiries' — may match a §4.4 scan-module key. */
@@ -34,6 +40,12 @@ export interface PacketWorkflow {
   sessions: number;
   /** Redacted friction note, if any. */
   friction?: string;
+  /** Re-minable redacted repeated step-chains, dominant first. */
+  sequences?: SequenceCandidate[];
+  /** Distinct redacted URL path templates observed. */
+  urlTemplates?: string[];
+  /** Minutes per ISO day for this workflow. */
+  dailyMinutes?: Record<string, number>;
 }
 
 /** The redacted, structured artifact uploaded from the device (C7). */
@@ -46,6 +58,8 @@ export interface SynthesisPacket {
   capturedFrom: string; // ISO
   capturedTo: string; // ISO
   workflows: PacketWorkflow[];
+  /** Per-ISO-day, per-app minutes across the study (top-level aggregate). */
+  dailyAppMinutes?: Record<string, Record<string, number>>;
 }
 
 export type Frequency = 'daily' | 'weekly' | 'occasional';
@@ -60,6 +74,8 @@ export interface DiagnosisWorkflow {
   friction: string | null;
   /** Shop template key the user can adopt to take this on, or null. */
   recommendedNibbin: string | null;
+  /** v0 automatability score 0–100, derived from mined sequences. */
+  automatable: number;
   /** One-line human description from the Opus labeling pass (optional). */
   description?: string;
 }
