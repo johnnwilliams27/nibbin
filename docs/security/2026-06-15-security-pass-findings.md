@@ -35,8 +35,15 @@ The desktop review flagged HIGH×2 "the Grove webview can call `access_token` an
 ## Accepted for beta / pre-GA follow-ups (NOT fixed now, with rationale)
 
 **Before enabling Windows code-signing:**
-- **Pin CI actions by SHA** — `tauri-apps/tauri-action@v0` (runs with signing secrets) + `rust-toolchain@stable`, `cache@v4`, `upload/download-artifact@v4`, `attest-build-provenance@v2`, and `cargo install trusted-signing-cli --version`. Not done now because (a) signing is dormant (no Azure secrets present), so the secret-exposure risk is latent, and (b) pinning to a guessed SHA could break CI. Do this as the gate to turning signing on.
-- Keep the Windows build **beta-gated** until Azure Trusted Signing validates (workflow auto-enables on secret presence — no code change needed).
+- **Pin CI actions by SHA — DONE 2026-06-15.** All 8 `uses:` in `desktop-release.yml` now pin
+  immutable commit SHAs (resolved from each tag via the GitHub API, annotated with the version):
+  `tauri-action@84b9d35…` (v0/action-v0.6.2, the one that runs with signing secrets),
+  `rust-toolchain@29eef33…` (+ explicit `toolchain: stable` since a SHA-pinned ref can't infer the
+  channel), `cache@0057852…`, `upload-artifact@ea165f8…`, `download-artifact@d3f86a1…`,
+  `attest-build-provenance@e8998f9…`; `cargo install trusted-signing-cli` pinned to `--version 0.11.0`.
+  Majors preserved (no version bumps — pure tag→SHA freeze).
+- Keep the Windows build **beta-gated** until Azure Trusted Signing validates (workflow auto-enables on
+  secret presence — no code change needed).
 
 **Distribution hardening:**
 - `/download` trusts the newest GitHub release with no version/checksum pinning — a single poisoned release reaches all users. Add release-tag pinning or checksum verification; surface SHA256SUMS + verify instructions in the download UI (currently invisible).

@@ -69,12 +69,14 @@ jobs:
           cache: npm
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable # TODO: pin by SHA to match repo policy
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable @ 2026-06-15
         with:
+          # When pinned by SHA the action can't infer the channel from the ref, so name it.
+          toolchain: stable
           targets: ${{ matrix.rust-targets }}
 
       - name: Cache cargo
-        uses: actions/cache@v4 # TODO: pin by SHA
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: |
             ~/.cargo/registry
@@ -120,10 +122,10 @@ jobs:
 
       - name: Install trusted-signing-cli (Windows, only when signing)
         if: steps.cfg.outputs.sign_windows == 'true'
-        run: cargo install trusted-signing-cli --locked # TODO: pin --version
+        run: cargo install trusted-signing-cli --version 0.11.0 --locked
 
       - name: Build installers (tauri-action, build only)
-        uses: tauri-apps/tauri-action@v0 # TODO: pin by SHA
+        uses: tauri-apps/tauri-action@84b9d35b5fc46c1e45415bdb6144030364f7ebc5 # v0 (action-v0.6.2)
         env:
           # macOS signing + notarization (no-ops until the secrets are set)
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
@@ -145,7 +147,7 @@ jobs:
           args: ${{ steps.cfg.outputs.args }}
 
       - name: Upload installer artifacts
-        uses: actions/upload-artifact@v4 # TODO: pin by SHA
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: installer-${{ matrix.platform }}
           if-no-files-found: error
@@ -171,7 +173,7 @@ jobs:
       id-token: write
       attestations: write
     steps:
-      - uses: actions/download-artifact@v4 # TODO: pin by SHA
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           path: dist
           merge-multiple: true
@@ -188,7 +190,7 @@ jobs:
         # artifact set (e.g. only .msi present, the .dmg glob empty), publish the
         # installers anyway rather than burying a working download.
         continue-on-error: true
-        uses: actions/attest-build-provenance@v2 # TODO: pin by SHA
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
         with:
           subject-path: |
             dist/**/*.dmg
