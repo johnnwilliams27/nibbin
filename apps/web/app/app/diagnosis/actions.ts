@@ -17,7 +17,7 @@ export async function adoptRecommendation(formData: FormData) {
 
   // redirect() throws NEXT_REDIRECT, so resolve the target first, then redirect
   // OUTSIDE the try — otherwise the catch would swallow the redirect.
-  let target = '/app/grove';
+  let target = '/app';
   try {
     const result = await adoptTemplate(accountId, user.id, templateKey);
     if (result.missingConnectors && result.missingConnectors.length > 0) {

@@ -1,13 +1,26 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { buildCreature } from '@nibbin/creatures';
 import styles from './shell.module.css';
+
+/** The Grovekeeper creature as a small inline glyph (mount-gated — the engine
+ *  mints unique gradient ids per render, so SSR + hydration can't match). */
+function KeeperGlyph({ size }: { size: number }) {
+  const svg = useMemo(() => buildCreature({ species: 'Keeper', size }), [size]);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
+  return <span className={styles.keeperGlyph} aria-hidden="true" dangerouslySetInnerHTML={{ __html: svg }} />;
+}
 
 export type NavKey = 'grove' | 'diagnosis' | 'memory' | 'shop' | 'notifications' | 'billing' | 'settings';
 
 const NAV: { key: NavKey; label: string; href: string }[] = [
-  { key: 'grove', label: 'Grove', href: '/app/grove' },
+  // Grove Home (/app) is the hub — the Keeper rides along as the docked panel, so
+  // there's no separate full-screen grove route to navigate to.
+  { key: 'grove', label: 'Grove Home', href: '/app' },
   { key: 'diagnosis', label: 'Diagnosis', href: '/app/diagnosis' },
   { key: 'memory', label: 'Memory', href: '/app/memory' },
   { key: 'shop', label: 'Agent Shop', href: '/app/shop' },
@@ -21,41 +34,71 @@ export interface AppShellProps {
   title: string;
   email?: string | null;
   children: ReactNode;
+  /** Optional right-rail panel. Desktop: fixed ~380px column. Mobile: toggleable bottom sheet. */
+  panel?: ReactNode;
+  /**
+   * Onboarding mode: renders full shell chrome (brand + topbar + Sign out) but
+   * nav items are non-interactive and de-emphasized — visible finish-line
+   * affordance without allowing navigation during required onboarding steps.
+   */
+  onboarding?: boolean;
 }
 
 /**
  * Persistent authenticated shell: fixed sidebar + sticky topbar, with a mobile
  * hamburger overlay. Pages stay server components and pass their content as
  * children. The grove ceremony renders without this shell by design.
+ *
+ * When `panel` is provided a right-rail aside is rendered. On desktop it forms
+ * a two-column layout (content | panel). On mobile it slides up as a bottom
+ * sheet triggered by a floating toggle button.
  */
-export function AppShell({ active, title, email, children }: AppShellProps) {
+export function AppShell({ active, title, email, children, panel, onboarding }: AppShellProps) {
   const [open, setOpen] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [panelCollapsed, setPanelCollapsed] = useState(false);
   const close = () => setOpen(false);
 
   return (
     <div className={styles.shell}>
       {open && <div className={styles.backdrop} onClick={close} aria-hidden="true" />}
+      {panel && panelOpen && (
+        <div className={styles.backdrop} onClick={() => setPanelOpen(false)} aria-hidden="true" />
+      )}
 
       <aside className={`${styles.sidebar} ${open ? styles.sidebarOpen : ''}`}>
         <Link href="/app" className={styles.brand} onClick={close}>
           Nibbin
         </Link>
         <nav className={styles.nav}>
-          {NAV.map((item) => (
-            <Link
-              key={item.key}
-              href={item.href}
-              onClick={close}
-              className={`${styles.navItem} ${item.key === active ? styles.navItemActive : ''}`}
-              aria-current={item.key === active ? 'page' : undefined}
-            >
-              {item.label}
-            </Link>
-          ))}
+          {NAV.map((item) =>
+            onboarding ? (
+              /* Onboarding mode: nav is visible but quiet and locked.
+                 Rendered as <span> (not <Link>) so it cannot be navigated to. */
+              <span
+                key={item.key}
+                className={`${styles.navItem} ${styles.navItemQuiet}`}
+                aria-disabled="true"
+                tabIndex={-1}
+              >
+                {item.label}
+              </span>
+            ) : (
+              <Link
+                key={item.key}
+                href={item.href}
+                onClick={close}
+                className={`${styles.navItem} ${item.key === active ? styles.navItemActive : ''}`}
+                aria-current={item.key === active ? 'page' : undefined}
+              >
+                {item.label}
+              </Link>
+            ),
+          )}
         </nav>
       </aside>
 
-      <div className={styles.main}>
+      <div className={`${styles.main} ${panel ? styles.mainWithPanel : ''} ${onboarding ? styles.mainOnboarding : ''}`}>
         <header className={styles.topbar}>
           <button
             className={styles.hamburger}
@@ -77,8 +120,54 @@ export function AppShell({ active, title, email, children }: AppShellProps) {
           </div>
         </header>
 
-        <main className={styles.content}>{children}</main>
+        <div className={styles.mainBody}>
+          <main className={`${styles.content} ${onboarding ? styles.contentFocal : ''}`}>{children}</main>
+
+          {panel && (
+            <aside
+              className={`${styles.panel} ${panelOpen ? styles.panelOpen : ''} ${
+                panelCollapsed ? styles.panelCollapsed : ''
+              }`}
+              aria-label="Keeper panel"
+            >
+              <button
+                className={styles.panelCollapse}
+                type="button"
+                aria-label="Collapse Keeper panel"
+                onClick={() => setPanelCollapsed(true)}
+              >
+                ›
+              </button>
+              {panel}
+            </aside>
+          )}
+        </div>
       </div>
+
+      {/* Desktop: reopen tab on the right edge when collapsed. */}
+      {panel && panelCollapsed && (
+        <button
+          className={styles.panelExpand}
+          type="button"
+          aria-label="Open Keeper panel"
+          onClick={() => setPanelCollapsed(false)}
+        >
+          <KeeperGlyph size={26} />
+        </button>
+      )}
+
+      {/* Mobile: floating toggle for the bottom-sheet. */}
+      {panel && (
+        <button
+          className={styles.panelToggle}
+          type="button"
+          aria-label={panelOpen ? 'Close Keeper' : 'Open Keeper'}
+          aria-expanded={panelOpen}
+          onClick={() => setPanelOpen((v) => !v)}
+        >
+          {panelOpen ? '✕' : <KeeperGlyph size={30} />}
+        </button>
+      )}
     </div>
   );
 }

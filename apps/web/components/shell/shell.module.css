@@ -2,6 +2,7 @@
    The grove ceremony (/app/grove) deliberately does NOT use this shell. */
 
 .shell {
+  --topbar-h: 60px;
   min-height: 100dvh;
   background: var(--paper);
 }
@@ -60,12 +61,152 @@
   border-left-color: var(--moss);
 }
 
+/* Onboarding mode: nav items are visible but locked — quiet opacity, no hover,
+   no pointer to signal non-interactivity. */
+.navItemQuiet {
+  opacity: 0.38;
+  cursor: default;
+  pointer-events: none;
+  user-select: none;
+}
+.navItemQuiet:hover {
+  background: none;
+  color: var(--ink-soft);
+}
+
 /* ---- Main column ---- */
 .main {
   margin-left: 220px;
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
+}
+
+/* Onboarding: hard-bound the column to the viewport so the focal chat fills
+   exactly the visible area and its composer anchors to the bottom (the log
+   scrolls internally instead of the whole page growing past the fold). */
+.mainOnboarding {
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* When a right-rail panel is present, the main column becomes a flex column
+   containing the topbar + a mainBody row that splits content | panel. */
+.mainBody {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+/* ---- Right-rail panel ---- */
+.panel {
+  width: 380px;
+  flex-shrink: 0;
+  border-left: 1px solid var(--line);
+  background: var(--canopy);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  /* Sticky alongside the scrolling content column, BELOW the topbar. Using
+     100dvh here (the aside sits under the ~60px topbar) pushed its bottom — and
+     the composer — below the viewport; offset by the topbar height instead. */
+  position: sticky;
+  top: var(--topbar-h, 60px);
+  height: calc(100dvh - var(--topbar-h, 60px));
+  overflow: hidden;
+  /* Smooth collapse, per Plate 06 (Motion): slide off via transform + fade —
+     never animate width. margin-right reclaims the layout space as it goes.
+     --dur-4 (650ms) for a slow, deliberate glide. */
+  transition: transform var(--dur-4) var(--ease-settle), opacity var(--dur-4) var(--ease-settle),
+    margin-right var(--dur-4) var(--ease-settle);
+}
+
+/* The panel toggle button is desktop-hidden; only visible on mobile */
+.panelToggle {
+  display: none;
+}
+
+/* Desktop: collapse the right-rail panel toward the right edge. */
+.panelCollapse {
+  position: absolute;
+  top: 16px;
+  right: 10px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: var(--r-button);
+  background: var(--canopy);
+  color: var(--ink-soft);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  z-index: 2;
+}
+.panelCollapse:hover {
+  background: var(--understory);
+  color: var(--ink);
+}
+.panelCollapsed {
+  transform: translateX(100%);
+  opacity: 0;
+  margin-right: -380px;
+  pointer-events: none;
+  /* Close uses an ease-in-out (not the base --ease-settle out-expo). Out-expo
+     front-loads the motion, so on collapse the panel faded to 0 in the first
+     ~150ms and looked like it snapped away; an even in-out spreads the fade +
+     slide across the full --dur-4 so the close glides like the open. */
+  transition: transform var(--dur-4) cubic-bezier(0.65, 0, 0.35, 1),
+    opacity var(--dur-4) cubic-bezier(0.65, 0, 0.35, 1),
+    margin-right var(--dur-4) cubic-bezier(0.65, 0, 0.35, 1);
+}
+.panelExpand {
+  position: fixed;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  width: 30px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-right: none;
+  border-radius: var(--r-button) 0 0 var(--r-button);
+  background: var(--canopy);
+  cursor: pointer;
+  font-size: 18px;
+  z-index: 22;
+  box-shadow: var(--shadow-2);
+}
+.panelExpand:hover {
+  background: var(--understory);
+}
+.panelExpand {
+  animation: panelTabIn var(--dur-2) var(--ease-settle);
+}
+@keyframes panelTabIn {
+  from {
+    opacity: 0;
+    transform: translate(10px, -50%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(0, -50%);
+  }
+}
+
+.keeperGlyph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+.keeperGlyph :global(svg) {
+  display: block;
 }
 
 .topbar {
@@ -139,6 +280,19 @@
   }
 }
 
+/* Onboarding focal mode: the content area is flush + bounded so the
+   OnboardingCanvas fills it and the chat composer anchors to the bottom of the
+   visible area (instead of overflowing below the fold). */
+.contentFocal {
+  padding: 0;
+  max-width: none;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  animation: none;
+}
+
 /* ---- Mobile ---- */
 .hamburger {
   display: none;
@@ -176,15 +330,69 @@
     background: rgba(35, 41, 26, 0.32);
     z-index: 25;
   }
+
+  /* Panel becomes a bottom sheet on mobile */
+  .panel {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    width: 100%;
+    height: 72dvh;
+    border-left: none;
+    border-top: 1px solid var(--line);
+    border-radius: var(--r-shell) var(--r-shell) 0 0;
+    box-shadow: var(--shadow-3);
+    z-index: 28;
+    transform: translateY(100%);
+    transition: transform var(--dur-3) var(--ease-settle);
+    overflow-y: auto;
+  }
+  .panelOpen {
+    transform: translateY(0);
+  }
+  .panelToggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--moss);
+    color: var(--canopy);
+    border: none;
+    font-size: 22px;
+    cursor: pointer;
+    box-shadow: var(--shadow-3);
+    z-index: 29;
+    transition: background var(--dur-1) var(--ease-settle), transform var(--dur-1) var(--ease-settle);
+  }
+  .panelToggle:hover {
+    background: var(--moss-deep);
+    transform: scale(1.05);
+  }
+
+  /* Collapse-to-right is a desktop affordance; mobile uses the bottom sheet. */
+  .panelCollapse,
+  .panelExpand {
+    display: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .sidebar,
   .signout,
-  .navItem {
+  .navItem,
+  .panel,
+  .panelToggle {
     transition: none;
   }
-  .content {
+  .content,
+  .panelExpand {
     animation: none;
   }
 }
