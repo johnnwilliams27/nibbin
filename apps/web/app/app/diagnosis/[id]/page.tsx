@@ -5,9 +5,10 @@ import { createClient } from '../../../../lib/supabase/server';
 import { ensureAccount } from '../../../../lib/auth/bootstrap';
 import { upsertOwnProfile } from '../../../../lib/auth/profile';
 import { AppShell } from '../../../../components/shell/AppShell';
-import { Badge, Button } from '../../../../components/ui';
+import { Badge } from '../../../../components/ui';
 import type { DiagnosisMap } from '../../../../lib/diagnosis/types';
 import { DiagnosisReveal } from '../DiagnosisReveal';
+import { DeleteDiagnosisButton } from '../DeleteDiagnosisButton';
 import { deleteDiagnosis } from '../actions';
 import styles from '../diagnosis.module.css';
 
@@ -90,12 +91,7 @@ export default async function DiagnosisDetailPage({
         <p className={styles.dangerNote}>
           This permanently removes this diagnosis and its packet.
         </p>
-        <form action={deleteDiagnosis}>
-          <input type="hidden" name="id" value={id} />
-          <Button type="submit" variant="danger">
-            Delete this diagnosis
-          </Button>
-        </form>
+        <DeleteDiagnosisButton id={id} action={deleteDiagnosis} />
       </section>
     </AppShell>
   );
