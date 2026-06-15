@@ -74,13 +74,18 @@
     trust anchor. The redacted packet *becomes* the diagnosis and persists until account close (#29),
     so findings survive; only the raw substrate is deleted. To preserve future re-analysis as models
     improve, **enrich the retained packet** (chosen over user-controlled raw retention).
-  - **Follow-ups:** (a) **packet enrichment** — v0 packet is coarse per-category aggregates; enrich
-    with re-minable redacted structure (sequences, daily app-duration aggregates, role_path patterns)
-    within the 256KB `diagnoses.packet` cap, so better models re-mine without raw (needs its own
-    mini-design; highest-value next step). (b) **Ad-hoc / incremental analysis (Phase 3)** —
+  - **Packet enrichment — SHIPPED 2026-06-15** (spec/plan under `docs/superpowers/`): the packet now
+    retains bounded re-minable structure — per-workflow `sequences` (top repeated role_path#action
+    chains), `urlTemplates`, `dailyMinutes`, plus top-level `dailyAppMinutes` — all clamped by the
+    validator (untrusted input) and kept under the 256KB `diagnoses.packet` cap (size-bound test). And
+    it CONSUMES `sequences` now: a v0 `automatable` score per workflow (computed server-side in
+    `synthesizeDiagnosis`, shown as a `~X% automatable` badge in the reveal) — advances Maya-demo
+    Group A. Remaining enrichment follow-up: re-mine `dailyMinutes`/`urlTemplates` for finer
+    automatability + friction (this pass consumes only `sequences`).
+  - **Follow-ups:** (a) **Ad-hoc / incremental analysis (Phase 3)** —
     partial/early-stopped studies ALREADY yield a (noisier) diagnosis via window-aware `studyDays`;
-    net-new is an ad-hoc single-workflow "quick scan" entry point on the same substrate. (c) finer
-    workflow mining (split `email.general`); (d) packet compression for >256KB studies.
+    net-new is an ad-hoc single-workflow "quick scan" entry point on the same substrate. (b) finer
+    workflow mining (split `email.general`); (c) packet compression for >256KB studies.
 
 ## Previous gate (M2+M3+M6)
 

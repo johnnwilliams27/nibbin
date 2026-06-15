@@ -87,4 +87,21 @@ describe('segmentStudy', () => {
     ];
     await expect(segmentStudy('study_1', events, NOW)).rejects.toBeInstanceOf(PacketLeakError);
   });
+
+  it('stays under the 256KB packet cap for a large study', async () => {
+    const hosts = ['mail.google.com', 'stripe.com', 'salesforce.com', 'docs.google.com', 'x.com'];
+    const events: ObserverEvent[] = [];
+    for (let d = 10; d <= 23; d += 1) {
+      for (let i = 0; i < 200; i += 1) {
+        const h = hosts[i % hosts.length];
+        events.push(ev({
+          ts: `2026-06-${d}T${String(8 + (i % 10)).padStart(2, '0')}:00:00.000Z`, session: `s${d}-${i % 12}`,
+          app: { bundle_id: 'b', name: `App${i % 5}` }, url: { host: h, path_template: `/p/${i % 25}` },
+          ax: { role_path: `r${i % 7}>c${i % 3}`, action: 'press', label_redacted: 'x', value_class: 'none' },
+        }));
+      }
+    }
+    const packet = await segmentStudy('big', events, '2026-06-24T00:00:00.000Z');
+    expect(JSON.stringify(packet).length).toBeLessThan(262144);
+  });
 });
