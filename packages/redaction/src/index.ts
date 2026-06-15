@@ -13,3 +13,8 @@ export {
   type SequenceCandidate,
 } from './packet.js';
 export { deleteBlock, keepBlock, type ReviewableStore, type BlockSelector } from './review.js';
+// segment.ts re-defines PacketLeakError and SynthesisPacket locally (its packet
+// shape is the cloud diagnosis contract, distinct from packet.ts's upload
+// envelope); export only the non-colliding surface here.
+export { segmentStudy } from './segment.js';
+export type { PacketWorkflow, WorkflowCategory } from './segment.js';
