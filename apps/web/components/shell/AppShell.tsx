@@ -18,6 +18,7 @@ function KeeperGlyph({ size }: { size: number }) {
 export type NavKey =
   | 'grove'
   | 'nibbins'
+  | 'hatch'
   | 'diagnosis'
   | 'memory'
   | 'shop'
@@ -43,6 +44,13 @@ function NavIcon({ k }: { k: NavKey }) {
         <path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" />
         <path d="M16 3.13a4 4 0 0 1 0 7.75" />
         <path d="M21 21v-2a4 4 0 0 0-3-3.87" />
+      </>
+    ),
+    // an egg with a crack — "hatch your own"
+    hatch: (
+      <>
+        <path d="M12 3c3.3 0 6 4 6 8a6 6 0 0 1-12 0c0-4 2.7-8 6-8Z" />
+        <path d="m10.5 10 1.5 1.5-1 1.5 1.5 1" />
       </>
     ),
     diagnosis: <path d="M22 12h-4l-3 9L9 3l-3 9H2" />,
@@ -103,6 +111,7 @@ const NAV: { key: NavKey; label: string; href: string }[] = [
   // there's no separate full-screen grove route to navigate to.
   { key: 'grove', label: 'Grove Home', href: '/app' },
   { key: 'nibbins', label: 'Your Nibbins', href: '/app/nibbins' },
+  { key: 'hatch', label: 'Hatch your own', href: '/app/hatch' },
   { key: 'diagnosis', label: 'Diagnosis', href: '/app/diagnosis' },
   { key: 'memory', label: 'Memory', href: '/app/memory' },
   { key: 'shop', label: 'Agent Shop', href: '/app/shop' },

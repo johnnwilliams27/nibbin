@@ -1,0 +1,240 @@
+/*
+ * Hatch Your Own — the 3-step builder wizard (§4.6 custom-named egg).
+ * Adapted from the marketing demo's wizard styles (apps/web/app/(marketing)/
+ * demo.css) into a token-only CSS module: same visual language (step indicator,
+ * chore cards, app toggles, egg/name step), no hardcoded brand hex — every
+ * surface reads a design token so the wizard stays in step with the rest of the
+ * authenticated shell.
+ */
+
+.inner {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.header {
+  margin-bottom: 28px;
+}
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-bottom: 6px;
+}
+.title {
+  font-family: var(--display);
+  font-size: 26px;
+  line-height: 1.15;
+  color: var(--ink);
+}
+.lede {
+  font-size: 14px;
+  color: var(--ink-soft);
+  margin-top: 8px;
+  max-width: 56ch;
+}
+
+.wiz {
+  max-width: 640px;
+  margin: 24px auto 0;
+}
+
+.steps {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+.stepInd {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--paper-deep);
+}
+.stepIndOn {
+  background: var(--moss);
+}
+
+.pane h2 {
+  font-family: var(--display);
+  font-size: 21px;
+  margin-bottom: 6px;
+  color: var(--ink);
+}
+.sub {
+  font-size: 13.5px;
+  color: var(--ink-soft);
+  margin-bottom: 20px;
+  max-width: 56ch;
+}
+
+/* Step 1 — chore cards */
+.choreGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+@media (max-width: 560px) {
+  .choreGrid {
+    grid-template-columns: 1fr;
+  }
+}
+.chore {
+  background: var(--card);
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  padding: 14px;
+  cursor: pointer;
+  font-size: 13.5px;
+  text-align: left;
+  font-family: var(--sans);
+  color: var(--ink);
+  transition: transform 0.15s ease, border-color 0.2s ease, background 0.2s ease;
+}
+.chore:hover {
+  transform: translateY(-2px);
+}
+.chore small {
+  display: block;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-soft);
+  margin-top: 4px;
+}
+.choreSel {
+  border-color: var(--moss);
+  background: var(--paper-soft, #eff4e4);
+}
+
+/* Step 2 — app toggles */
+.appsel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.apptag {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  border: 1.5px solid var(--line);
+  background: var(--card);
+  border-radius: 20px;
+  padding: 8px 16px;
+  cursor: pointer;
+  color: var(--ink-soft);
+  transition: transform 0.15s ease, border-color 0.2s ease, background 0.2s ease;
+}
+.apptag:hover {
+  transform: translateY(-2px);
+}
+.apptagSel {
+  border-color: var(--moss);
+  background: var(--paper-soft, #eff4e4);
+  color: var(--moss-deep);
+  font-weight: 600;
+}
+
+/* Step 3 — egg + name */
+.hatch {
+  text-align: center;
+  padding: 10px 0;
+}
+.egg {
+  margin: 6px 0 4px;
+  display: flex;
+  justify-content: center;
+  min-height: 92px;
+  align-items: center;
+}
+.nameline {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin: 18px 0;
+  flex-wrap: wrap;
+}
+.nameline input {
+  font-family: var(--mono);
+  font-size: 14px;
+  padding: 11px 14px;
+  border: 1.5px solid var(--line);
+  border-radius: 6px;
+  width: 220px;
+  background: var(--card);
+  color: var(--ink);
+}
+.nameline input:focus {
+  outline: none;
+  border-color: var(--moss);
+}
+.note {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-soft);
+  max-width: 46ch;
+  margin: 0 auto;
+}
+
+.enrolled {
+  background: var(--paper-soft, #eff4e4);
+  border: 1px solid var(--leaf);
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 18px;
+  font-size: 13.5px;
+  color: var(--moss-deep);
+  font-weight: 500;
+}
+.error {
+  background: #fbeae6;
+  border: 1px solid #e0a99a;
+  border-radius: 8px;
+  padding: 14px;
+  margin-top: 18px;
+  font-size: 13px;
+  color: #7a2d18;
+}
+.error a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+/* Nav buttons */
+.nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 26px;
+}
+.btn {
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: opacity 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+.btnSolid {
+  background: var(--moss);
+  color: #fff;
+  border-color: var(--moss);
+}
+.btnSolid:hover:not(:disabled) {
+  background: var(--moss-deep);
+  border-color: var(--moss-deep);
+}
+.btnGhost {
+  background: transparent;
+  color: var(--ink-soft);
+  border-color: var(--line);
+}
+.btnGhost:hover {
+  border-color: var(--moss);
+  color: var(--moss-deep);
+}
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
