@@ -17,6 +17,71 @@ function KeeperGlyph({ size }: { size: number }) {
 
 export type NavKey = 'grove' | 'diagnosis' | 'memory' | 'shop' | 'notifications' | 'billing' | 'settings';
 
+/** Minimal line icons (Lucide-style) per nav item — inherit currentColor so they
+ *  pick up the active/hover tint from `.navItem`. */
+function NavIcon({ k }: { k: NavKey }) {
+  const paths: Record<NavKey, ReactNode> = {
+    grove: (
+      <>
+        <path d="M7 20h10" />
+        <path d="M10 20c5.5-2.5.8-6.4 3-10" />
+        <path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z" />
+        <path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z" />
+      </>
+    ),
+    diagnosis: <path d="M22 12h-4l-3 9L9 3l-3 9H2" />,
+    memory: (
+      <>
+        <path d="M12 7v14" />
+        <path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z" />
+      </>
+    ),
+    shop: (
+      <>
+        <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+        <path d="M3 6h18" />
+        <path d="M16 10a4 4 0 0 1-8 0" />
+      </>
+    ),
+    notifications: (
+      <>
+        <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z" />
+        <path d="M2 21c0-3 1.85-5.36 5.08-6" />
+      </>
+    ),
+    billing: (
+      <>
+        <rect width="20" height="14" x="2" y="5" rx="2" />
+        <path d="M2 10h20" />
+      </>
+    ),
+    settings: (
+      <>
+        <path d="M20 7h-9" />
+        <path d="M14 17H5" />
+        <circle cx="17" cy="17" r="3" />
+        <circle cx="7" cy="7" r="3" />
+      </>
+    ),
+  };
+  return (
+    <svg
+      className={styles.navIcon}
+      viewBox="0 0 24 24"
+      width="18"
+      height="18"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {paths[k]}
+    </svg>
+  );
+}
+
 const NAV: { key: NavKey; label: string; href: string }[] = [
   // Grove Home (/app) is the hub — the Keeper rides along as the docked panel, so
   // there's no separate full-screen grove route to navigate to.
@@ -81,6 +146,7 @@ export function AppShell({ active, title, email, children, panel, onboarding }: 
                 aria-disabled="true"
                 tabIndex={-1}
               >
+                <NavIcon k={item.key} />
                 {item.label}
               </span>
             ) : (
@@ -91,6 +157,7 @@ export function AppShell({ active, title, email, children, panel, onboarding }: 
                 className={`${styles.navItem} ${item.key === active ? styles.navItemActive : ''}`}
                 aria-current={item.key === active ? 'page' : undefined}
               >
+                <NavIcon k={item.key} />
                 {item.label}
               </Link>
             ),
