@@ -78,6 +78,20 @@ describe('segmentStudy', () => {
     expect(packet.dailyAppMinutes!['2026-06-10'].Gmail).toBeGreaterThan(0);
   });
 
+  it('carries study kind + label when meta is supplied, omits both otherwise', async () => {
+    const events: ObserverEvent[] = [
+      ev({ ts: '2026-06-10T09:00:00.000Z', session: 's1', app: { bundle_id: 'g', name: 'Gmail' },
+           url: { host: 'mail.google.com', path_template: '/mail/u/0' } }),
+    ];
+    const withMeta = await segmentStudy('q', events, NOW, { kind: 'quick_scan', label: 'Invoices' });
+    expect(withMeta.kind).toBe('quick_scan');
+    expect(withMeta.label).toBe('Invoices');
+
+    const without = await segmentStudy('q', events, NOW);
+    expect(without.kind).toBeUndefined();
+    expect(without.label).toBeUndefined();
+  });
+
   it('throws PacketLeakError when a residual PII shape survives into the packet', async () => {
     // An app name that looks like an email address trips the battery re-scan.
     const events: ObserverEvent[] = [

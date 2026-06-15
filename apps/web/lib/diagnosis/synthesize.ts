@@ -143,6 +143,9 @@ export function validateSynthesisPacket(input: unknown): SynthesisPacket | null 
     return Object.keys(out).length ? out : undefined;
   })();
 
+  const kind = p.kind === 'quick_scan' ? 'quick_scan' : 'full_study';
+  const label = clampStr(p.label, 120).trim();
+
   const candidate: SynthesisPacket = {
     version: 1,
     studyId: clampStr(p.studyId, 64) || undefined,
@@ -151,6 +154,8 @@ export function validateSynthesisPacket(input: unknown): SynthesisPacket | null 
     capturedTo: clampStr(p.capturedTo, 40),
     workflows,
     ...(dailyAppMinutes ? { dailyAppMinutes } : {}),
+    kind,
+    ...(label ? { label } : {}),
   };
 
   // A validated packet that serializes past the diagnoses.packet 256KB column

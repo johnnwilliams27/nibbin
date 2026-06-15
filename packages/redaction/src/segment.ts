@@ -48,6 +48,8 @@ export interface SynthesisPacket {
   capturedTo: string;
   workflows: PacketWorkflow[];
   dailyAppMinutes?: Record<string, Record<string, number>>;
+  kind?: 'full_study' | 'quick_scan';
+  label?: string;
 }
 
 const CATEGORY_LABEL: Record<WorkflowCategory, string> = {
@@ -93,6 +95,7 @@ export async function segmentStudy(
   studyId: string,
   events: ObserverEvent[],
   now: string,
+  meta?: { kind?: 'full_study' | 'quick_scan'; label?: string | null },
 ): Promise<SynthesisPacket> {
   const exportable = events.filter((e) => e.redaction.review_state !== 'user_deleted');
 
@@ -160,6 +163,8 @@ export async function segmentStudy(
   const packet: SynthesisPacket = {
     version: 1, studyId, studyDays, capturedFrom, capturedTo, workflows,
     ...(Object.keys(dailyAppMinutes).length ? { dailyAppMinutes } : {}),
+    ...(meta?.kind ? { kind: meta.kind } : {}),
+    ...(meta?.label ? { label: meta.label.slice(0, 120) } : {}),
   };
 
   const residual = batteryStillMatches(JSON.stringify(packet));

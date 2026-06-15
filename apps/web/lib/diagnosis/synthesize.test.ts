@@ -19,6 +19,24 @@ describe('validateSynthesisPacket studyId', () => {
   });
 });
 
+describe('validateSynthesisPacket kind + label', () => {
+  it('defaults a garbage or absent kind to full_study', () => {
+    expect(validateSynthesisPacket(base)?.kind).toBe('full_study');
+    expect(validateSynthesisPacket({ ...base, kind: 'nonsense' })?.kind).toBe('full_study');
+    expect(validateSynthesisPacket({ ...base, kind: 42 })?.kind).toBe('full_study');
+  });
+
+  it('passes quick_scan through', () => {
+    expect(validateSynthesisPacket({ ...base, kind: 'quick_scan' })?.kind).toBe('quick_scan');
+  });
+
+  it('clamps an over-long label to 120 chars', () => {
+    const p = validateSynthesisPacket({ ...base, label: 'L'.repeat(500) })!;
+    expect(p.label!.length).toBeLessThanOrEqual(120);
+    expect(p.label).toBe('L'.repeat(120));
+  });
+});
+
 describe('validateSynthesisPacket enrichment clamping', () => {
   it('passes through + clamps oversized enrichment', () => {
     const p = validateSynthesisPacket({

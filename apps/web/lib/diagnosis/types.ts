@@ -60,6 +60,10 @@ export interface SynthesisPacket {
   workflows: PacketWorkflow[];
   /** Per-ISO-day, per-app minutes across the study (top-level aggregate). */
   dailyAppMinutes?: Record<string, Record<string, number>>;
+  /** Study kind — full 14-day study or an ad-hoc quick scan. */
+  kind?: 'full_study' | 'quick_scan';
+  /** Optional user-supplied task label for a quick scan. */
+  label?: string;
 }
 
 export type Frequency = 'daily' | 'weekly' | 'occasional';
