@@ -1,6 +1,6 @@
 /**
  * Observer shell UI — two-tab shell: Grove (web product, Stage C) and
- * Field Study (native Observer views). Auth gate arrives in Stage B.
+ * Field Study (native Observer views). Auth gate (Stage B) boots first.
  */
 import '@nibbin/shared/tokens.css';
 import './observer.css';
@@ -8,6 +8,7 @@ import { bridge } from './bridge.js';
 import { button, clear, el } from './dom.js';
 import { fieldStudyView } from './views/field-study.js';
 import { groveView } from './views/grove.js';
+import { loginView } from './views/login.js';
 
 type Tab = 'grove' | 'field-study';
 const app = document.getElementById('app')!;
@@ -26,5 +27,11 @@ function render(): void {
   app.append(tab === 'grove' ? groveView() : fieldStudyView(render));
 }
 
-render();
+async function boot(): Promise<void> {
+  const session = await bridge.authSession();
+  if (!session) { clear(app); app.append(loginView(() => void boot())); return; }
+  render();
+}
+
+void boot();
 void bridge.onEvent('study:paused-by-hotkey', () => render());
