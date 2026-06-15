@@ -41,18 +41,24 @@ fn grove_bounds(window: &tauri::Window) -> (tauri::LogicalPosition<f64>, tauri::
     )
 }
 
-/// The Grove webview's target URL. With NIBBIN_GROVE_HANDOFF set (a build-time
-/// flag — flip it on only once /desktop-auth is live on the embedded origin), a
-/// signed-in user is handed off via /desktop-auth#tokens so they skip the web
-/// login; otherwise (and whenever signed out) it loads /app directly.
-fn grove_target() -> String {
+/// The Grove webview's target URL + an optional init script. With
+/// NIBBIN_GROVE_HANDOFF set (a build-time flag — flip on only once /desktop-auth
+/// is live on the embedded origin), a signed-in user is handed off to
+/// /desktop-auth with the session injected OUT-OF-BAND via an init script —
+/// NEVER in the URL (security: secrets-in-URLs leak via history / script access).
+/// Otherwise (and whenever signed out) it loads /app directly.
+fn grove_setup() -> (String, Option<String>) {
     let base = web_url();
     if option_env!("NIBBIN_GROVE_HANDOFF").is_some() {
         if let Some((access, refresh)) = auth::session_tokens() {
-            return format!("{base}/desktop-auth#access_token={access}&refresh_token={refresh}");
+            // JSON-encode the values so they embed safely in JS (no injection).
+            let a = serde_json::to_string(&access).unwrap_or_else(|_| "\"\"".into());
+            let r = serde_json::to_string(&refresh).unwrap_or_else(|_| "\"\"".into());
+            let script = format!("window.__NIBBIN_HANDOFF__={{access_token:{a},refresh_token:{r}}};");
+            return (format!("{base}/desktop-auth"), Some(script));
         }
     }
-    format!("{base}/app")
+    (format!("{base}/app"), None)
 }
 
 /// Show the Grove tab's embedded web product, creating the child webview on
@@ -65,14 +71,15 @@ fn grove_show(window: tauri::Window) -> Result<(), String> {
         let _ = wv.set_size(size);
         return wv.show().map_err(|e| e.to_string());
     }
-    let target = grove_target();
+    let (target, script) = grove_setup();
     let parsed = target.parse().map_err(|e| format!("bad grove url: {e}"))?;
+    let mut builder =
+        tauri::webview::WebviewBuilder::new("grove", tauri::WebviewUrl::External(parsed));
+    if let Some(s) = script {
+        builder = builder.initialization_script(&s);
+    }
     window
-        .add_child(
-            tauri::webview::WebviewBuilder::new("grove", tauri::WebviewUrl::External(parsed)),
-            pos,
-            size,
-        )
+        .add_child(builder, pos, size)
         .map(|_| ())
         .map_err(|e| e.to_string())
 }

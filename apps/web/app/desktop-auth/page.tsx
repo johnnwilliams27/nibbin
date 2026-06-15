@@ -16,12 +16,24 @@ export default function DesktopAuth() {
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    const tokens = parseTokens(window.location.hash);
+    // Preferred path: the desktop app injects the session out-of-band via a
+    // webview init script (no tokens in any URL). Fallback: the URL fragment.
+    const w = window as unknown as {
+      __NIBBIN_HANDOFF__?: { access_token?: string; refresh_token?: string };
+    };
+    const injected = w.__NIBBIN_HANDOFF__;
+    let tokens: { access_token: string; refresh_token: string } | null = null;
+    if (injected?.access_token && injected?.refresh_token) {
+      tokens = { access_token: injected.access_token, refresh_token: injected.refresh_token };
+      delete w.__NIBBIN_HANDOFF__;
+    } else {
+      tokens = parseTokens(window.location.hash);
+    }
     if (!tokens) {
       router.replace('/login');
       return;
     }
-    // Strip the tokens from the address bar before doing anything else.
+    // Strip any tokens from the address bar before doing anything else.
     history.replaceState(null, '', '/desktop-auth');
     createClient()
       .auth.setSession(tokens)
