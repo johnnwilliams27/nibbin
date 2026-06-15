@@ -55,6 +55,29 @@ describe('segmentStudy', () => {
     expect(packet.workflows).toHaveLength(0);
   });
 
+  it('emits bounded enrichment: sequences, urlTemplates, dailyMinutes, dailyAppMinutes', async () => {
+    // 4 identical-shaped email events across 2 days to create a repeated sequence.
+    const events: ObserverEvent[] = [];
+    for (let i = 0; i < 6; i += 1) {
+      events.push(ev({
+        ts: `2026-06-${10 + (i % 2)}T09:0${i}:00.000Z`, session: `s${i % 2}`,
+        app: { bundle_id: 'g', name: 'Gmail' },
+        url: { host: 'mail.google.com', path_template: `/mail/u/${i % 3}` },
+        ax: { role_path: 'list>row', action: 'press', label_redacted: 'Open', value_class: 'none' },
+      }));
+    }
+    const packet = await segmentStudy('study_1', events, NOW);
+    const email = packet.workflows.find((w) => w.category === 'email')!;
+    expect(Array.isArray(email.sequences)).toBe(true);
+    expect(email.sequences!.length).toBeLessThanOrEqual(10);
+    expect(email.urlTemplates!.length).toBeLessThanOrEqual(20);
+    expect(new Set(email.urlTemplates)).toEqual(new Set(['/mail/u/0', '/mail/u/1', '/mail/u/2']));
+    // dailyMinutes summed per ISO day (each event 60000ms = 1 min)
+    expect(Object.keys(email.dailyMinutes!).sort()).toEqual(['2026-06-10', '2026-06-11']);
+    // top-level daily app minutes present
+    expect(packet.dailyAppMinutes!['2026-06-10'].Gmail).toBeGreaterThan(0);
+  });
+
   it('throws PacketLeakError when a residual PII shape survives into the packet', async () => {
     // An app name that looks like an email address trips the battery re-scan.
     const events: ObserverEvent[] = [

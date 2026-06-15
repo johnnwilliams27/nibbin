@@ -22,6 +22,11 @@ export class PacketLeakError extends Error {
 export type WorkflowCategory =
   | 'email' | 'calendar' | 'payments' | 'crm' | 'docs' | 'social' | 'other';
 
+export interface SequenceCandidateLite {
+  steps: string[];
+  count: number;
+}
+
 export interface PacketWorkflow {
   key: string;
   label: string;
@@ -30,6 +35,9 @@ export interface PacketWorkflow {
   minutesObserved: number;
   sessions: number;
   friction?: string;
+  sequences?: SequenceCandidateLite[];
+  urlTemplates?: string[];
+  dailyMinutes?: Record<string, number>;
 }
 
 export interface SynthesisPacket {
@@ -39,6 +47,7 @@ export interface SynthesisPacket {
   capturedFrom: string;
   capturedTo: string;
   workflows: PacketWorkflow[];
+  dailyAppMinutes?: Record<string, Record<string, number>>;
 }
 
 const CATEGORY_LABEL: Record<WorkflowCategory, string> = {
@@ -102,6 +111,16 @@ export async function segmentStudy(
     const top = seqs[0];
     const friction =
       top && top.count >= 3 ? `Repeated ${top.steps.length}-step sequence observed ${top.count}×` : undefined;
+    const sequences = seqs.slice(0, 10);
+    const urlTemplates = [...new Set(evs.map((e) => e.url?.path_template).filter((u): u is string => !!u))].slice(0, 20);
+    const dayMs: Record<string, number> = {};
+    for (const e of evs) {
+      const d = e.ts.slice(0, 10);
+      dayMs[d] = (dayMs[d] ?? 0) + (e.input?.duration_ms ?? 0);
+    }
+    const dailyMinutes: Record<string, number> = {};
+    for (const [d, dms] of Object.entries(dayMs).slice(0, 31)) dailyMinutes[d] = Math.round((dms / 60000) * 10) / 10;
+
     workflows.push({
       key: `${category}.general`,
       label: CATEGORY_LABEL[category],
@@ -110,6 +129,9 @@ export async function segmentStudy(
       minutesObserved: Math.round((ms / 60000) * 10) / 10,
       sessions,
       ...(friction ? { friction } : {}),
+      ...(sequences.length ? { sequences } : {}),
+      ...(urlTemplates.length ? { urlTemplates } : {}),
+      ...(Object.keys(dailyMinutes).length ? { dailyMinutes } : {}),
     });
   }
   workflows.sort((a, b) => b.minutesObserved - a.minutesObserved);
@@ -119,8 +141,22 @@ export async function segmentStudy(
   const capturedTo = tss[tss.length - 1] ?? now;
   const studyDays = isoFloorToDays(Date.parse(capturedFrom), Date.parse(capturedTo));
 
+  const dayAppMs: Record<string, Record<string, number>> = {};
+  for (const e of exportable) {
+    const d = e.ts.slice(0, 10);
+    const bucket = (dayAppMs[d] ??= {});
+    bucket[e.app.name] = (bucket[e.app.name] ?? 0) + (e.input?.duration_ms ?? 0);
+  }
+  const dailyAppMinutes: Record<string, Record<string, number>> = {};
+  for (const [d, apps] of Object.entries(dayAppMs).slice(0, 31)) {
+    const inner: Record<string, number> = {};
+    for (const [app, appMs] of Object.entries(apps).slice(0, 20)) inner[app] = Math.round((appMs / 60000) * 10) / 10;
+    dailyAppMinutes[d] = inner;
+  }
+
   const packet: SynthesisPacket = {
     version: 1, studyId, studyDays, capturedFrom, capturedTo, workflows,
+    ...(Object.keys(dailyAppMinutes).length ? { dailyAppMinutes } : {}),
   };
 
   const residual = batteryStillMatches(JSON.stringify(packet));
