@@ -16,7 +16,17 @@ The dominant residual risk is that **the Windows build currently ships UNSIGNED*
 
 The user's explicit billing question has a **definitive answer: no.** Code-signing happens once per release at CI build time, not per download. GitHub Releases serves the downloads for free. Mass downloads cannot incur per-certificate charges. The real cost lever is *CI build frequency* and the Azure Trusted Signing tier/quota — and the workflow's `workflow_dispatch` trigger is the thing to lock down so a stray actor can't burn signing operations or CI minutes.
 
-**There is no auto-updater.** No `tauri-plugin-updater` in any `Cargo.toml`, no `updater`/`endpoints`/`pubkey` in `tauri.conf.json`. Updates are 100% manual (user re-downloads). That eliminates a whole class of update-channel-hijack risk, at the cost of slow patch propagation.
+**No *auto*-updater; an update *notification* shipped 2026-06-16 (Option A).** There is still no
+`tauri-plugin-updater` (no in-app download/install, no signed-update manifest), so the update-channel-
+hijack surface remains nil. But the app now has **real versioning** (`tauri.conf.json` `0.2.0`, release
+tag derived from it) and a **best-effort update notification**: a Rust `check_for_update` command
+(ureq → the public `nibbin-desktop` releases API, semver-compared to the running version; CSP
+unchanged — the call is native, not in the webview) drives a dismissable "a new version is available →
+Update" banner that opens `/download`. This closes the "users stuck on stale builds with no idea" gap.
+**Full auto-update (Option B — `tauri-plugin-updater`) is deliberately TIED TO Windows code-signing:**
+the updater needs its own update-signing keypair + a hosted `latest.json` manifest, natural to set up
+alongside the (currently dormant) Azure code-signing work — do them together at that point. Until then,
+the notification + manual re-download is the update path.
 
 ---
 
