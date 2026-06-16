@@ -5,6 +5,7 @@
 
 mod auth;
 mod commands;
+mod update;
 
 use tauri::{
     menu::{MenuBuilder, MenuItemBuilder},
@@ -135,6 +136,8 @@ pub fn run() {
             auth::auth_session,
             auth::access_token,
             auth::sign_out,
+            update::check_for_update,
+            update::open_external,
             grove_show,
             grove_hide,
         ])
