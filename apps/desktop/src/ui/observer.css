@@ -346,6 +346,44 @@ input:focus-visible {
   flex-wrap: wrap;
 }
 
+/* Update-available banner — pinned to the very top of the window, warm and
+   unobtrusive (honey tint, the same palette the .chip.warn uses). It lives
+   outside #app so tab re-renders never touch it; dismissable for the session. */
+.update-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: rgba(217, 162, 27, 0.14);
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.update-banner-text {
+  flex: 1;
+  font-weight: 600;
+}
+
+.update-banner button {
+  min-height: 34px;
+  padding: 6px 14px;
+}
+
+.update-banner button.update-banner-dismiss {
+  background: transparent;
+  border-color: transparent;
+  color: var(--ink-soft);
+  font-size: 18px;
+  line-height: 1;
+  padding: 4px 10px;
+  min-width: 34px;
+}
+
+.update-banner button.update-banner-dismiss:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     transition-duration: 0.01ms !important;

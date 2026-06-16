@@ -14,6 +14,13 @@ export interface StudyStatus {
   study: unknown;
 }
 
+export interface UpdateInfo {
+  current_version: string;
+  latest_version: string | null;
+  update_available: boolean;
+  download_url: string;
+}
+
 type InvokeFn = (cmd: string, args?: Record<string, unknown>) => Promise<unknown>;
 
 let invokeFn: InvokeFn | null | undefined;
@@ -63,6 +70,17 @@ export const bridge = {
   signOut: () => call<void>('sign_out', undefined, undefined),
   groveShow: () => call<void>('grove_show', undefined, undefined),
   groveHide: () => call<void>('grove_hide', undefined, undefined),
+  // Best-effort update check. The GitHub call runs natively in Rust (CSP-safe);
+  // outside the shell (browser dev) it resolves to "no update".
+  checkForUpdate: () =>
+    call<UpdateInfo>('check_for_update', undefined, {
+      current_version: '',
+      latest_version: null,
+      update_available: false,
+      download_url: '',
+    }),
+  // Open a URL in the system browser via the opener plugin's Rust API.
+  openExternal: (url: string) => call<void>('open_external', { url }, undefined),
   onEvent: async (event: string, handler: (payload: unknown) => void): Promise<() => void> => {
     if (!('__TAURI_INTERNALS__' in window)) return () => {};
     const { listen } = await import('@tauri-apps/api/event');
