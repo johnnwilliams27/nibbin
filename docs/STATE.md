@@ -131,7 +131,13 @@
     orphaned `desktop_auth_codes` credential table (migration `20260615150000`). Pre-signing follow-up:
     **pin CI actions by SHA before enabling Windows code-signing** (signing currently dormant). Cost
     answer: signing is build-time, downloads are free GitHub serving → **mass downloads cost $0**.
-    **Prod-apply checklist now FOUR migrations: `20260615120000`, `…130000`, `…140000`, `…150000`.**
+  - **Landed via PR #88 (2026-06-15):** all CI green (incl. semgrep SAST). At-merge ops done — the four
+    migrations (`20260615120000/130000/140000/150000`) **APPLIED to PROD** (`oaymttudfazqaqequrke`) +
+    verified (diagnoses +study_id/kind/label, nibbins +learned_note*, desktop_auth_codes dropped); the
+    **Grove handoff activated** (`NIBBIN_GROVE_HANDOFF=1` wired into the desktop release build;
+    `/desktop-auth` ships to prod with the merge). **Windows build left beta-gated/unsigned** (deferred
+    per request — Azure dormant). CI fixes en route: cargo fmt, a stale `new_study` call in the daemon
+    integration test, and three eslint issues (subagents ran tsc but not fmt/eslint).
   - **Deliberately deferred (not v1):** **concurrent studies** (kept sequential — a quick scan during a
     live field study is largely redundant); **scan scheduling** (ad-hoc quick scan already covers
     on-demand scanning — recurring reminders are marginal v1 value for heavy daemon work); **packet

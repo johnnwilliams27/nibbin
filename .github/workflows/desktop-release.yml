@@ -139,6 +139,12 @@ jobs:
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          # Stage C: activate the Grove session handoff. Read at Rust compile time via
+          # option_env!("NIBBIN_GROVE_HANDOFF") — when set, the embedded Grove webview
+          # receives the keychain session (injected, never in a URL) and consumes it at
+          # /desktop-auth (live on prod once this branch ships). web_url() defaults to
+          # https://nibbin.com so no NIBBIN_WEB_URL override is needed for prod builds.
+          NIBBIN_GROVE_HANDOFF: "1"
         with:
           projectPath: apps/desktop
           tauriScript: npm run tauri
