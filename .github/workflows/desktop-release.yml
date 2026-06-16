@@ -213,7 +213,17 @@ jobs:
           RUN_NUMBER: ${{ github.run_number }}
         run: |
           set -euo pipefail
-          if [ "$REF_TYPE" = "tag" ]; then TAG="$REF_NAME"; else TAG="desktop-v0.1.0-$RUN_NUMBER"; fi
+          # Version is the single source of truth in tauri.conf.json — BUMP IT
+          # PER RELEASE (the desktop update check reads the same field via
+          # app.package_info().version, so a stale value here would mislead it).
+          # Tag-push builds honor the pushed tag; manual (dispatch) builds derive
+          # `desktop-v<version>-<run#>` from that file rather than a hardcode.
+          if [ "$REF_TYPE" = "tag" ]; then
+            TAG="$REF_NAME"
+          else
+            VERSION=$(jq -r .version apps/desktop/src-tauri/app/tauri.conf.json)
+            TAG="desktop-v${VERSION}-${RUN_NUMBER}"
+          fi
           mapfile -t FILES < <(find dist -type f \( -name '*.dmg' -o -name '*.msi' -o -name '*.exe' \))
           if [ ${#FILES[@]} -eq 0 ]; then echo "no installers found in dist/"; exit 1; fi
           echo "Publishing ${FILES[*]} to $RELEASES_REPO @ $TAG"

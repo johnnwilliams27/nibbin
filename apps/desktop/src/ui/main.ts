@@ -6,6 +6,7 @@ import '@nibbin/shared/tokens.css';
 import './observer.css';
 import { bridge } from './bridge.js';
 import { button, clear, el } from './dom.js';
+import { mountUpdateBanner } from './update-banner.js';
 import { fieldStudyView } from './views/field-study.js';
 import { groveView } from './views/grove.js';
 import { loginView } from './views/login.js';
@@ -42,4 +43,8 @@ async function boot(): Promise<void> {
 }
 
 void boot();
+// Account-agnostic, non-blocking: check once on boot whether a newer build
+// exists and, if so, show a dismissable banner. The network call is native
+// (Rust); a failure is silent (no banner).
+void mountUpdateBanner();
 void bridge.onEvent('study:paused-by-hotkey', () => render());

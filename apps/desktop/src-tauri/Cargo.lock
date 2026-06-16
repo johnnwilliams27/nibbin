@@ -2228,6 +2228,7 @@ dependencies = [
  "nibbin-redaction",
  "nibbin-store",
  "nibbin-study",
+ "semver",
  "serde",
  "serde_json",
  "sha2",

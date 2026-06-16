@@ -36,6 +36,7 @@ tauri-plugin-opener = "2"
 keyring = { version = "3", features = ["apple-native", "windows-native"] }
 ureq = { version = "2", default-features = false, features = ["tls", "json"] }
 url = "2"
+semver = "1"
 sha2 = "0.10"
 base64 = "0.22"
 getrandom = { version = "0.2", features = ["std"] } # std → Error: std::error::Error, for ?-into-anyhow in auth.rs
