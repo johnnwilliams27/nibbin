@@ -13,6 +13,7 @@
   "dependencies": {
     "@nibbin/redaction": "*",
     "@nibbin/shared": "*",
+    "@supabase/supabase-js": "^2.108.1",
     "@tauri-apps/api": "^2.9.0"
   },
   "devDependencies": {

@@ -2,7 +2,7 @@
 //! (C2) fires in a REAL observerd OS process with no UI anywhere — the
 //! binary is spawned headless against a store whose study is 15 days old.
 
-use nibbin_study::{new_study, transition, StoppedBy, StudyCommand, StudyState};
+use nibbin_study::{new_study, transition, StoppedBy, StudyCommand, StudyKind, StudyState};
 use std::process::Command;
 
 fn run_observerd(store: &std::path::Path, fake_now: &str) -> std::process::Output {
@@ -22,7 +22,11 @@ fn day14_stop_fires_in_a_headless_daemon_process() {
     // a study that started 15 days before "now", persisted as ACTIVE
     let t0 = "2026-06-10T08:00:00Z".parse().unwrap();
     let study = transition(
-        &transition(&new_study("study_proc"), StudyCommand::Consent { at: t0 }).unwrap(),
+        &transition(
+            &new_study("study_proc", StudyKind::FullStudy, None),
+            StudyCommand::Consent { at: t0 },
+        )
+        .unwrap(),
         StudyCommand::Start { at: t0 },
     )
     .unwrap();
@@ -53,7 +57,11 @@ fn before_the_deadline_the_daemon_leaves_the_study_running() {
     let dir = tempfile::tempdir().unwrap();
     let t0 = "2026-06-10T08:00:00Z".parse().unwrap();
     let study = transition(
-        &transition(&new_study("study_proc"), StudyCommand::Consent { at: t0 }).unwrap(),
+        &transition(
+            &new_study("study_proc", StudyKind::FullStudy, None),
+            StudyCommand::Consent { at: t0 },
+        )
+        .unwrap(),
         StudyCommand::Start { at: t0 },
     )
     .unwrap();
@@ -107,7 +115,11 @@ fn delete_everything_via_control_file_destroys_and_verifies() {
     let dir = tempfile::tempdir().unwrap();
     let t0 = "2026-06-10T08:00:00Z".parse().unwrap();
     let study = transition(
-        &transition(&new_study("study_proc"), StudyCommand::Consent { at: t0 }).unwrap(),
+        &transition(
+            &new_study("study_proc", StudyKind::FullStudy, None),
+            StudyCommand::Consent { at: t0 },
+        )
+        .unwrap(),
         StudyCommand::Start { at: t0 },
     )
     .unwrap();

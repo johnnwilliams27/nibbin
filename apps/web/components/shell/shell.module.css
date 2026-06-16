@@ -41,7 +41,9 @@
 }
 
 .navItem {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 11px;
   padding: 9px 12px;
   border-radius: var(--r-input);
   color: var(--ink-soft);
@@ -50,6 +52,10 @@
   font-size: 14.5px;
   border-left: 2px solid transparent;
   transition: background var(--dur-1) var(--ease-settle), color var(--dur-1) var(--ease-settle);
+}
+.navIcon {
+  flex-shrink: 0;
+  opacity: 0.9;
 }
 .navItem:hover {
   background: var(--understory);

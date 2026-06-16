@@ -104,6 +104,44 @@ pub fn review_keep(app: AppHandle, ids: Vec<String>) -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 
+/// Mint a fresh study (full study or ad-hoc quick scan). Forwarded to the
+/// daemon, which applies CreateStudy + clears the store so the new study starts
+/// empty. The id is caller-supplied (unique); kind ∈ {full_study, quick_scan}.
+#[tauri::command]
+pub fn create_study(
+    app: AppHandle,
+    id: String,
+    kind: String,
+    label: Option<String>,
+) -> Result<(), String> {
+    if kind != "full_study" && kind != "quick_scan" {
+        return Err(format!("bad study kind: {kind}"));
+    }
+    // Bound the caller-supplied fields so an over-long value can't balloon
+    // control.jsonl / study.json (and ride the packet to the server). The id is
+    // a crypto.randomUUID() from the UI — well under 64; reject anything longer.
+    if id.len() > 64 {
+        return Err(format!("study id too long: {} chars (max 64)", id.len()));
+    }
+    // Truncate (don't reject) the human label — friendlier than erroring; we cap
+    // at 256 chars by character boundary so we never split a multi-byte char.
+    let label = label.map(|l| {
+        if l.chars().count() > 256 {
+            l.chars().take(256).collect::<String>()
+        } else {
+            l
+        }
+    });
+    let line = serde_json::json!({
+        "cmd": "create_study",
+        "study_id": id,
+        "kind": kind,
+        "label": label,
+    })
+    .to_string();
+    write_control(&app, &line).map_err(|e| e.to_string())
+}
+
 /// Review's "never record this again": forwarded to the daemon, which feeds
 /// it into layer 2 for the rest of the study and persists it locally.
 #[tauri::command]

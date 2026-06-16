@@ -25,6 +25,9 @@
   margin-bottom: 22px;
 }
 .tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   padding: 10px 14px;
   color: var(--ink-soft);
   text-decoration: none;
@@ -33,6 +36,10 @@
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
   transition: color var(--dur-1) var(--ease-settle);
+}
+.tabIcon {
+  flex-shrink: 0;
+  opacity: 0.85;
 }
 .tab:hover {
   color: var(--ink);

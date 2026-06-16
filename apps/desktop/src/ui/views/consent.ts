@@ -5,14 +5,22 @@
  * supports is a claims-auditor finding.
  */
 import { bridge } from '../bridge.js';
+import type { StudyKind } from '../../core/study-machine.js';
 import { button, el } from '../dom.js';
 
-export function consentView(onChanged: () => void): HTMLElement {
+export function consentView(onChanged: () => void, kind: StudyKind = 'full_study'): HTMLElement {
+  // The "When it ends" claim is the only line that differs by kind: a quick
+  // scan is user-stopped with a short backstop, not the 14-day C2 hard stop.
+  const whenItEnds =
+    kind === 'quick_scan'
+      ? 'This scan stops the moment you tell it to — or after a few hours if you forget. Raw data auto-deletes after your map is built.'
+      : 'The field study ends. Really. Capture stops itself on day 14 — the off switch lives in the background process, not in this window. Raw data auto-deletes after your map is built, and you can watch it verify.';
+
   const root = el('div', {}, [
     el('p', { class: 'eyebrow' }, ['Field study']),
     el('h1', {}, ['Two weeks of watching how you work — on your terms']),
     el('p', { class: 'muted' }, [
-      'The Observer studies how you work so your diagnosis can show where the busywork hides. ',
+      'The field study watches how you work so your diagnosis can show where the busywork hides. ',
       'Here is the whole deal, before anything records:',
     ]),
     el('ul', { class: 'claims' }, [
@@ -34,7 +42,7 @@ export function consentView(onChanged: () => void): HTMLElement {
       ]),
       el('li', {}, [
         el('strong', {}, ['When it ends']),
-        'The study ends. Really. Capture stops itself on day 14 — the off switch lives in the background process, not in this window. Raw data auto-deletes after your map is built, and you can watch it verify.',
+        whenItEnds,
       ]),
       el('li', {}, [
         el('strong', {}, ['Your controls']),
@@ -49,7 +57,7 @@ export function consentView(onChanged: () => void): HTMLElement {
   const actions = el('div', { class: 'row' });
   actions.append(
     button(
-      'I understand — start my field study',
+      kind === 'quick_scan' ? 'I understand — start my scan' : 'I understand — start my field study',
       () => {
         void (async () => {
           await bridge.sendControl('consent');

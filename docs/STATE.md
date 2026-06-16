@@ -48,6 +48,101 @@
   carrying the router origin-enforcement + top-up pricing criteria; all latent — zero frontier/
   free/local models are wired on main), #26 (C8 grant writer before IG/QB), #28 (webhook
   seen≠processed before side-effecting handlers).
+- **M7 — Data & Privacy settings surface (deferred here from the 2026-06-15 Wispr polish pass):**
+  a Settings → Data & Privacy page (web + desktop) surfacing Nibbin's actual privacy posture —
+  training opt-out, local-only Field Study capture (SQLCipher), what's never captured (secure
+  fields / banking / health, C4/C5), the Day-14 hard stop + verified deletion receipt (C3), and the
+  Grovekeeper's no-hands guarantee. Held back from the polish pass on purpose: the claims must be
+  VERIFIED against the implementation (not written blind) and any toggles wired to real settings —
+  so it belongs with M7's deletion/data work, not a cosmetic sweep.
+- **Maya-demo parity backlog** (`docs/tasks/maya-demo-parity.md`): the landing's interactive
+  "Maya's grove" demo portrays features not yet built — time-saved metrics + the visual workflow
+  map + automatable%/friction (Group A, overlaps M7's diagnosis synthesis); a "Your Nibbins" roster
+  with Agent School progress / what-it-learned / streaks / badges (Group B); the "Hatch Your Own"
+  builder wizard (Group C); and a richer Today approval feed (Group D). Tracked, not yet scheduled.
+- **Field Study cloud sync (Phase 2) — BUILT 2026-06-15** on `feature/nibbin-desktop-unified-app`
+  (spec/plan under `docs/superpowers/`). Closes the loop: at study end the desktop segments its
+  redacted events into the cloud's diagnosis-packet shape ON-DEVICE (new
+  `packages/redaction/src/segment.ts` `segmentStudy` — only categorized workflow summaries leave,
+  never the event stream; C1/C7), uploads Bearer-authed to `/api/study/packet` (endpoint gained a
+  Bearer path + idempotent upsert on a new `diagnoses.study_id`, migration `20260615120000` applied
+  to DEV only), and advances the study (`synthesis_complete`) ONLY after a 200 — so raw deletion
+  never precedes the packet leaving the device (C3). A root drift-guard test pins the segmenter
+  output to the cloud validator. NOT yet merged; prod migration + web-origin/handoff wiring pending
+  branch-land with explicit OK.
+  - **Retention decided (2026-06-15):** keep auto-deleting raw (events + frames) at study end — the
+    trust anchor. The redacted packet *becomes* the diagnosis and persists until account close (#29),
+    so findings survive; only the raw substrate is deleted. To preserve future re-analysis as models
+    improve, **enrich the retained packet** (chosen over user-controlled raw retention).
+  - **Packet enrichment — SHIPPED 2026-06-15** (spec/plan under `docs/superpowers/`): the packet now
+    retains bounded re-minable structure — per-workflow `sequences` (top repeated role_path#action
+    chains), `urlTemplates`, `dailyMinutes`, plus top-level `dailyAppMinutes` — all clamped by the
+    validator (untrusted input) and kept under the 256KB `diagnoses.packet` cap (size-bound test). And
+    it CONSUMES `sequences` now: a v0 `automatable` score per workflow (computed server-side in
+    `synthesizeDiagnosis`, shown as a `~X% automatable` badge in the reveal) — advances Maya-demo
+    Group A.
+  - **Finer re-mining — SHIPPED 2026-06-15** (`2026-06-15-finer-remining-design.md`): `automatable`
+    now also consumes `urlTemplates` (narrowness) + `dailyMinutes` (regularity) to sharpen the score
+    (repetition stays the gate; absent enrichment collapses to the prior formula — backward
+    compatible), and `friction` is mined into a factual line (steps × repeats × views × days). Opus
+    pass still warms it. Remaining: split coarse keys (`email.general` → inquiries/overdue/…) and
+    consume top-level `dailyAppMinutes` — separate finer-mining follow-ups.
+  - **Ad-hoc Quick Scan (Phase 3) — SHIPPED 2026-06-15** (`2026-06-15-adhoc-quick-scan-design.md`):
+    capture + diagnose ONE workflow on demand, reusing the whole pipeline. Studies are now SEQUENTIAL
+    with **unique ids** (fixes a latent overwrite bug — every study previously upserted the same
+    `study_local` diagnosis row); each carries `kind` (`full_study`/`quick_scan`) + optional `label`.
+    Study machine (Rust `nibbin-study` + its TS twin, kept identical) gained `StudyKind`, `label`,
+    `CreateStudy` (valid only from terminal/NotStarted), and a per-kind auto-stop window (14d full /
+    6h quick — full study byte-identical). Daemon mints unique boot ids + handles `create_study`
+    (clears the store via `destroy_raw_data`). `kind`/`label` ride the packet → diagnosis
+    (migration `20260615130000`, DEV only). Desktop: a "Quick scan a task" entry (label input → short
+    consent variant → start → "Stop scan", no 14-day countdown) + "start another" from terminal
+    states. Web: unified diagnoses **history** (newest-first, `Quick scan`/`14-day study` badges) +
+    per-diagnosis detail route (`/app/diagnosis/[id]`, RLS + account-scoped); the reveal extracted to
+    a shared `DiagnosisReveal`. NOT merged; prod migrations (`…120000`, `…130000`) pending land.
+  - **Backlog pass — SHIPPED 2026-06-15** (the "everything" sweep): **Richer diagnosis** — split
+    coarse workflow keys by `(category, subkey)` so e.g. payments→`payments.invoices` (better
+    `recommendedNibbin`); `synthesizeDiagnosis` now consumes `dailyAppMinutes` → `appAllocation` and
+    derives `timeSavedPerWeek` (Σ hours×automatable%) on `DiagnosisMap`
+    (`2026-06-15-richer-diagnosis-design.md`). **Group A reveal** — server-rendered SVG workflow map
+    (deterministic radial layout, hours-sized, automatability-colored, friction hotspot) + time-saved
+    headline + stats chipline + app-allocation bars in `DiagnosisReveal`. **Per-diagnosis delete**
+    (account-scoped server action, danger zone on the detail page). **Maya parity surfaces** (real data,
+    demo as pixel spec): **Your Nibbins roster** (`/app/nibbins` — Agent School ladder + streaks/badges
+    derived from real `runs`/`approvals`, no fabrication; "learned" narrative omitted honestly);
+    **Hatch Your Own** (`/app/hatch` — 3-step wizard creating a custom-named egg via the real
+    `adoptTemplate` path, caps enforced); **rich Today feed** (`/app` — time-saved chipline [estimated
+    from step counts, marked `~` + footnoted], draft cards on the real `decide_run` path, "Done while
+    you were working", honest "Coming up"). All typecheck + build green; none merged.
+  - **Quality refinements — SHIPPED 2026-06-15:** Opus labeling may now REFINE a coarse workflow key
+    to an allowed finer key (`email.general`→`email.inquiries`, re-deriving the rec; cross-category
+    rejected); a confirm dialog gates per-diagnosis delete (client island); per-Nibbin **"learned about
+    you"** note on the roster — Opus-generated but GROUNDED in real run/approval evidence (no
+    fabrication), cached on `nibbins` (migration `20260615140000`, DEV only), generated off the render
+    path; router gained an Opus-pinned `nibbin_note` task.
+  - **Security pass — DONE 2026-06-15** (`docs/security/2026-06-15-security-pass-findings.md` +
+    installer/desktop threat model). 5 analyses over the 72-commit diff. Web authz/RLS/migrations
+    STRONG (every service-role write account-scoped; no IDOR; LLM output renders as text, no XSS). The
+    headline desktop "HIGH" (Grove webview calls `access_token`) was a **false positive** — Tauri 2
+    denies remote origins access to custom commands by default (verified against framework source), so
+    no `remote` capability = no exploit. Fixed: `refreshLearnedNote` cooldown (caps the Opus cost-loop
+    — the scaled-abuse concern), URL/HTML stripping on stored LLM prose, handoff-token hardening,
+    desktop CSP pin + `script-src`, `create_study` bounds, Grove navigation lock, and dropped the
+    orphaned `desktop_auth_codes` credential table (migration `20260615150000`). Pre-signing follow-up:
+    **pin CI actions by SHA before enabling Windows code-signing** (signing currently dormant). Cost
+    answer: signing is build-time, downloads are free GitHub serving → **mass downloads cost $0**.
+  - **Landed via PR #88 (2026-06-15):** all CI green (incl. semgrep SAST). At-merge ops done — the four
+    migrations (`20260615120000/130000/140000/150000`) **APPLIED to PROD** (`oaymttudfazqaqequrke`) +
+    verified (diagnoses +study_id/kind/label, nibbins +learned_note*, desktop_auth_codes dropped); the
+    **Grove handoff activated** (`NIBBIN_GROVE_HANDOFF=1` wired into the desktop release build;
+    `/desktop-auth` ships to prod with the merge). **Windows build left beta-gated/unsigned** (deferred
+    per request — Azure dormant). CI fixes en route: cargo fmt, a stale `new_study` call in the daemon
+    integration test, and three eslint issues (subagents ran tsc but not fmt/eslint).
+  - **Deliberately deferred (not v1):** **concurrent studies** (kept sequential — a quick scan during a
+    live field study is largely redundant); **scan scheduling** (ad-hoc quick scan already covers
+    on-demand scanning — recurring reminders are marginal v1 value for heavy daemon work); **packet
+    compression** (the field caps already keep a 14-day study under the 256KB cap — a non-problem until
+    a pathological study appears). Open finer-mining follow-up: Opus-driven finer keys in `label.ts`.
 
 ## Previous gate (M2+M3+M6)
 

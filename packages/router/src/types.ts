@@ -29,6 +29,7 @@ export type RoutedTask =
   // T2 — frontier (Opus/Fable-class)
   | 'diagnosis_synthesis'
   | 'custom_spec_draft'
+  | 'nibbin_note'
   | 'complex_plan';
 
 /**

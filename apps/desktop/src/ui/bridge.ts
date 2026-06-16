@@ -45,6 +45,8 @@ export const bridge = {
       study: null,
     }),
   sendControl: (cmd: string) => call<void>('send_control', { cmd }, undefined),
+  createStudy: (id: string, kind: 'full_study' | 'quick_scan', label: string | null) =>
+    call<void>('create_study', { id, kind, label }, undefined),
   reviewEvents: () => call<ObserverEvent[]>('review_events', undefined, []),
   reviewDelete: (ids: string[]) => call<void>('review_delete', { ids }, undefined),
   reviewKeep: (ids: string[]) => call<void>('review_keep', { ids }, undefined),
@@ -54,10 +56,13 @@ export const bridge = {
       { host: exclusion.host ?? null, bundleId: exclusion.bundleId ?? null, appName: exclusion.appName ?? null },
       undefined,
     ),
-  authStart: (provider: 'password', email?: string) =>
-    call<void>('auth_start', { provider, email: email ?? null }, undefined),
+  storeSession: (session: Record<string, unknown>) =>
+    call<void>('store_session', { session }, undefined),
   authSession: () => call<Record<string, unknown> | null>('auth_session', undefined, null),
+  accessToken: () => call<string | null>('access_token', undefined, null),
   signOut: () => call<void>('sign_out', undefined, undefined),
+  groveShow: () => call<void>('grove_show', undefined, undefined),
+  groveHide: () => call<void>('grove_hide', undefined, undefined),
   onEvent: async (event: string, handler: (payload: unknown) => void): Promise<() => void> => {
     if (!('__TAURI_INTERNALS__' in window)) return () => {};
     const { listen } = await import('@tauri-apps/api/event');

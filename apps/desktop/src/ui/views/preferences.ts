@@ -14,7 +14,7 @@ export function preferencesView(onChanged: () => void): HTMLElement {
     el('p', { class: 'eyebrow' }, ['Preferences']),
     el('h1', {}, ['Preferences']),
     el('p', { class: 'muted' }, [
-      'Everything here stays on this machine. It changes what the Observer keeps — never what has already left your device, because nothing leaves until you build your map.',
+      'Everything here stays on this machine. It changes what the field study keeps — never what has already left your device, because nothing leaves until you build your map.',
     ]),
   ]);
 
@@ -38,7 +38,7 @@ export function preferencesView(onChanged: () => void): HTMLElement {
     el('div', { class: 'card' }, [
       el('h2', {}, ['Never record this']),
       el('p', { class: 'muted' }, [
-        'Add an app or website the Observer should always skip. You can also exclude things as you spot them on the Review screen.',
+        'Add an app or website the field study should always skip. You can also exclude things as you spot them on the Review screen.',
       ]),
       el('div', { class: 'row' }, [input, addBtn]),
       note,
@@ -50,7 +50,7 @@ export function preferencesView(onChanged: () => void): HTMLElement {
     el('div', { class: 'card' }, [
       el('h2', {}, ['Your captured data']),
       el('p', { class: 'muted' }, [
-        'Review everything the Observer has kept — and delete any of it — on the Review screen. Pauses show up there as visible gaps, never hidden.',
+        'Review everything the field study has kept — and delete any of it — on the Review screen. Pauses show up there as visible gaps, never hidden.',
       ]),
     ]),
   );

@@ -1,10 +1,25 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
 import { createClient } from '../../../../lib/supabase/server';
+import { getSupabaseUrl, getSupabasePublishableKey } from '../../../../lib/supabase/env';
 import { serviceClient } from '../../../../lib/supabase/service';
 import { ensureAccount } from '../../../../lib/auth/bootstrap';
 import { upsertOwnProfile } from '../../../../lib/auth/profile';
 import { synthesizeDiagnosis, validateSynthesisPacket } from '../../../../lib/diagnosis/synthesize';
 import { labelDiagnosis } from '../../../../lib/diagnosis/label';
+
+// Desktop callers have no cookies — authenticate via Authorization: Bearer <jwt>.
+// The token-bound client runs RPCs (bootstrap_account) under the user's auth.uid().
+async function clientForRequest(req: NextRequest) {
+  const bearer = req.headers.get('authorization')?.match(/^Bearer ([A-Za-z0-9._-]+)$/)?.[1];
+  if (bearer) {
+    return createServerClient(getSupabaseUrl(), getSupabasePublishableKey(), {
+      global: { headers: { Authorization: `Bearer ${bearer}` } },
+      cookies: { getAll: () => [], setAll: () => {} },
+    });
+  }
+  return createClient();
+}
 
 /**
  * Study-packet ingest (SPEC §5, §8 M7). The Observer uploads the redacted,
@@ -15,7 +30,7 @@ import { labelDiagnosis } from '../../../../lib/diagnosis/label';
  * resolved account.
  */
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  const supabase = await createClient();
+  const supabase = await clientForRequest(req);
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -36,6 +51,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'account' }, { status: 500 });
   }
 
+  const len = Number(req.headers.get('content-length') ?? 0);
+  if (len > 512_000) return NextResponse.json({ error: 'too_large' }, { status: 413 });
+
   let body: unknown;
   try {
     body = await req.json();
@@ -45,17 +63,48 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const packet = validateSynthesisPacket(body);
   if (!packet) return NextResponse.json({ error: 'invalid_packet' }, { status: 422 });
 
+  const svc = serviceClient();
+
+  // First-write-wins: a retry of the same study must NOT re-run the
+  // non-deterministic Opus labeling or overwrite the existing map/letter. If a
+  // diagnosis already exists for this (account, study), return it unchanged and
+  // skip synthesis + labeling + write entirely.
+  if (packet.studyId) {
+    const { data: existing } = await svc
+      .from('diagnoses')
+      .select('id, map')
+      .eq('account_id', accountId)
+      .eq('study_id', packet.studyId)
+      .maybeSingle();
+    if (existing) {
+      const existingMap = existing.map as { totalHoursPerWeek?: number } | null;
+      return NextResponse.json({
+        ok: true,
+        diagnosisId: existing.id,
+        totalHoursPerWeek: existingMap?.totalHoursPerWeek ?? 0,
+      });
+    }
+  }
+
   // Deterministic mining, then the Opus labeling pass (warm labels + the
   // Grovekeeper's letter); labeling degrades to deterministic labels on failure.
   const mined = synthesizeDiagnosis(packet);
   const { map, letter } = await labelDiagnosis(accountId, mined);
 
-  const svc = serviceClient();
-  const { data, error } = await svc
-    .from('diagnoses')
-    .insert({ account_id: accountId, status: 'ready', packet, map, letter })
-    .select('id')
-    .single();
+  const row = {
+    account_id: accountId,
+    status: 'ready' as const,
+    packet,
+    map,
+    letter,
+    kind: packet.kind ?? 'full_study',
+    ...(packet.label ? { label: packet.label } : {}),
+    ...(packet.studyId ? { study_id: packet.studyId } : {}),
+  };
+  const writer = packet.studyId
+    ? svc.from('diagnoses').upsert(row, { onConflict: 'account_id,study_id' })
+    : svc.from('diagnoses').insert(row);
+  const { data, error } = await writer.select('id').single();
   if (error) return NextResponse.json({ error: 'store_failed' }, { status: 502 });
 
   // §6.12: the study produced a diagnosis. Service-role emit (auth.uid() is null

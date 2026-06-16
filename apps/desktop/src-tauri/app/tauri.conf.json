@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Nibbin Observer",
+  "productName": "Nibbin",
   "version": "0.1.0",
   "identifier": "app.nibbin.observer",
   "build": {
@@ -12,23 +12,23 @@
   "app": {
     "windows": [
       {
-        "title": "Nibbin Observer",
+        "title": "Nibbin",
         "label": "main",
         "width": 1040,
         "height": 720,
         "minWidth": 880,
         "minHeight": 600,
-        "visible": false
+        "visible": true
       }
     ],
     "trayIcon": {
       "id": "observer-tray",
       "iconPath": "icons/tray.png",
       "iconAsTemplate": true,
-      "tooltip": "Nibbin Observer"
+      "tooltip": "Nibbin"
     },
     "security": {
-      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' ipc: http://ipc.localhost https://*.supabase.co https://nibbin.com"
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' ipc: http://ipc.localhost https://oaymttudfazqaqequrke.supabase.co https://nibbin.com"
     }
   },
   "plugins": {
@@ -40,7 +40,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["dmg", "app", "msi"],
+    "targets": ["dmg", "app", "msi", "nsis"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -54,7 +54,14 @@
     },
     "windows": {
       "certificateThumbprint": null,
-      "digestAlgorithm": "sha256"
+      "digestAlgorithm": "sha256",
+      "nsis": {
+        "installerIcon": "icons/icon.ico",
+        "headerImage": "installer/header.bmp",
+        "sidebarImage": "installer/sidebar.bmp",
+        "installMode": "currentUser",
+        "displayLanguageSelector": false
+      }
     }
   }
 }

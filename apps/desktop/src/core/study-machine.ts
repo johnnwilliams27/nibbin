@@ -15,6 +15,16 @@
 export const STUDY_DAYS = 14;
 export const STUDY_DURATION_MS = STUDY_DAYS * 24 * 60 * 60 * 1000;
 
+export type StudyKind = 'full_study' | 'quick_scan';
+const QUICK_SCAN_DURATION_MS = 6 * 60 * 60 * 1000;
+
+/** Auto-stop backstop per kind: the full study is the 14-day C2 hard stop; a
+ * quick scan is normally user-stopped, with a short safety net so an abandoned
+ * scan cannot capture indefinitely. Mirrors the Rust `window` twin. */
+function windowMs(kind: StudyKind): number {
+  return kind === 'quick_scan' ? QUICK_SCAN_DURATION_MS : STUDY_DURATION_MS;
+}
+
 export type StudyState =
   | 'NOT_STARTED'
   | 'CONSENTED'
@@ -36,6 +46,8 @@ export interface DeletionReceipt {
 export interface StudySnapshot {
   v: 1;
   studyId: string;
+  kind: StudyKind;
+  label: string | null;
   state: StudyState;
   consentedAt: string | null;
   startedAt: string | null;
@@ -64,7 +76,8 @@ export type StudyCommand =
   | { type: 'finish_review' }
   | { type: 'synthesis_complete' }
   | { type: 'deletion_verified'; receipt: DeletionReceipt }
-  | { type: 'delete_everything' };
+  | { type: 'delete_everything' }
+  | { type: 'create_study'; id: string; kind: StudyKind; label: string | null };
 
 export class InvalidTransitionError extends Error {
   constructor(state: StudyState, command: StudyCommand['type']) {
@@ -73,10 +86,16 @@ export class InvalidTransitionError extends Error {
   }
 }
 
-export function newStudy(studyId: string): StudySnapshot {
+export function newStudy(
+  studyId: string,
+  kind: StudyKind = 'full_study',
+  label: string | null = null,
+): StudySnapshot {
   return {
     v: 1,
     studyId,
+    kind,
+    label,
     state: 'NOT_STARTED',
     consentedAt: null,
     startedAt: null,
@@ -109,13 +128,22 @@ export function transition(snap: StudySnapshot, cmd: StudyCommand): StudySnapsho
     return { ...snap, state: 'RAW_DELETING', aborted: true };
   }
 
+  // Start a fresh study — valid only from NOT_STARTED or a terminal state,
+  // never mid-capture. Mirrors the Rust `CreateStudy` twin.
+  if (cmd.type === 'create_study') {
+    if (snap.state !== 'NOT_STARTED' && !TERMINAL.has(snap.state)) {
+      throw new InvalidTransitionError(snap.state, cmd.type);
+    }
+    return newStudy(cmd.id, cmd.kind, cmd.label);
+  }
+
   switch (cmd.type) {
     case 'consent':
       if (snap.state !== 'NOT_STARTED') throw new InvalidTransitionError(snap.state, cmd.type);
       return { ...snap, state: 'CONSENTED', consentedAt: cmd.at };
     case 'start': {
       if (snap.state !== 'CONSENTED') throw new InvalidTransitionError(snap.state, cmd.type);
-      const endsAt = new Date(new Date(cmd.at).getTime() + STUDY_DURATION_MS).toISOString();
+      const endsAt = new Date(new Date(cmd.at).getTime() + windowMs(snap.kind)).toISOString();
       return { ...snap, state: 'ACTIVE', startedAt: cmd.at, endsAt };
     }
     case 'pause':
@@ -168,6 +196,6 @@ export function deadlinePassed(snap: StudySnapshot, nowIso: string): boolean {
 /** Countdown for the always-visible tray display. Never negative; never counts
  * back up if the clock is wound backward. */
 export function remainingMs(snap: StudySnapshot, nowIso: string): number {
-  if (snap.endsAt === null) return STUDY_DURATION_MS;
+  if (snap.endsAt === null) return snap.kind === 'quick_scan' ? QUICK_SCAN_DURATION_MS : STUDY_DURATION_MS;
   return Math.max(0, new Date(snap.endsAt).getTime() - new Date(effectiveNow(snap, nowIso)).getTime());
 }

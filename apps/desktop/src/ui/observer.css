@@ -121,7 +121,8 @@ button.danger:hover {
 }
 
 input[type='email'],
-input[type='text'] {
+input[type='text'],
+input[type='password'] {
   font-family: var(--sans);
   font-size: 15px;
   padding: 10px 12px;
@@ -238,6 +239,111 @@ input:focus-visible {
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--ink-soft);
+}
+
+/* Login gate — the app's front door. Centered card on the warm canvas. */
+.login-wrap {
+  min-height: 78vh;
+  display: grid;
+  place-items: center;
+}
+
+.login-gate {
+  width: 100%;
+  max-width: 380px;
+  padding: 36px 32px 32px;
+  display: grid;
+  gap: 14px;
+  background: var(--canopy);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-2);
+}
+
+.login-gate .eyebrow {
+  margin: 0;
+}
+
+.login-gate h1 {
+  margin: 0;
+  font-size: 34px;
+  letter-spacing: -0.01em;
+}
+
+.login-gate > .muted {
+  margin: 0 0 4px;
+}
+
+.login-gate label {
+  display: grid;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.login-gate input {
+  width: 100%;
+  min-width: 0;
+}
+
+.login-gate button.primary {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.error {
+  margin: 0;
+  min-height: 1.2em;
+  font-size: 13px;
+  color: var(--coral-deep);
+}
+
+/* Field-study cloud sync states (SYNTHESIZING): building → uploading → done /
+   error. Mirrors the .card state-card pattern; the left rail colour tracks
+   progress so the C3 hold (error) reads as a held, recoverable state. */
+.sync-card {
+  border-left: 3px solid var(--line);
+}
+
+.sync-card .sync-status {
+  margin: 0;
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.sync-card.sync-building,
+.sync-card.sync-uploading {
+  border-left-color: var(--moss);
+}
+
+.sync-card.sync-done {
+  border-left-color: var(--moss-deep);
+}
+
+.sync-card.sync-error {
+  border-left-color: var(--coral-deep);
+}
+
+.sync-card.sync-error .sync-status {
+  color: var(--coral-deep);
+}
+
+.sync-card .row {
+  margin-top: 12px;
+}
+
+/* Quick-scan entry: the "What are you about to do?" label sits as a block above
+   the input row, and the row wraps so the input + Start button stack cleanly in
+   the narrow Field Study pane. */
+.scan-label {
+  display: block;
+}
+
+.scan-row {
+  flex-wrap: wrap;
 }
 
 @media (prefers-reduced-motion: reduce) {

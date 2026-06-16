@@ -33,6 +33,7 @@ describe('tier table (§6.3)', () => {
     ['map_labeling', 't1'],
     ['diagnosis_synthesis', 't2'],
     ['custom_spec_draft', 't2'],
+    ['nibbin_note', 't2'],
     ['complex_plan', 't2'],
   ];
 
@@ -47,16 +48,27 @@ describe('tier table (§6.3)', () => {
     expect(decision.notice).toBeNull();
   });
 
-  it('the diagnosis alone rides the Opus pin; plain t2 rides the tier default', async () => {
+  it('the diagnosis + nibbin note ride the Opus pin; plain t2 rides the tier default', async () => {
     const router = createRouter({ dailyFrontierBudget: 100 });
     const diagnosis = await router.route({ userId: 'u', task: 'diagnosis_synthesis', origin: 'pipeline' });
     expect(diagnosis.model).toBe('claude-opus-4-8');
+    const note = await router.route({ userId: 'u', task: 'nibbin_note', origin: 'pipeline' });
+    expect(note.model).toBe('claude-opus-4-8');
     const plan = await router.route({ userId: 'u', task: 'complex_plan', origin: 'pipeline' });
     expect(plan.model).toBe(router.config.models.t2);
   });
 
+  it('the nibbin note runs unbudgeted from pipeline origin (its own staleness gate)', async () => {
+    // dailyFrontierBudget 0 would degrade any budgeted t2; the note must still
+    // serve t2 because it's a named pipeline splurge.
+    const router = createRouter({ dailyFrontierBudget: 0 });
+    const note = await router.route({ userId: 'u', task: 'nibbin_note', origin: 'pipeline' });
+    expect(note.tier).toBe('t2');
+    expect(note.degraded).toBe(false);
+  });
+
   it('the table covers every task except chat', () => {
-    expect(Object.keys(TIER_FOR_TASK)).toHaveLength(14);
+    expect(Object.keys(TIER_FOR_TASK)).toHaveLength(15);
   });
 });
 

@@ -10,6 +10,24 @@ use thiserror::Error;
 
 pub const STUDY_DAYS: i64 = 14;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum StudyKind {
+    #[default]
+    FullStudy,
+    QuickScan,
+}
+
+/// Auto-stop backstop per kind: the full study is the 14-day C2 hard stop; a
+/// quick scan is normally user-stopped, with a short safety net so an abandoned
+/// scan cannot capture indefinitely.
+fn window(kind: StudyKind) -> Duration {
+    match kind {
+        StudyKind::FullStudy => Duration::days(STUDY_DAYS),
+        StudyKind::QuickScan => Duration::hours(6),
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum StudyState {
@@ -44,6 +62,10 @@ pub struct DeletionReceipt {
 pub struct StudySnapshot {
     pub v: u8,
     pub study_id: String,
+    #[serde(default)]
+    pub kind: StudyKind,
+    #[serde(default)]
+    pub label: Option<String>,
     pub state: StudyState,
     pub consented_at: Option<DateTime<Utc>>,
     pub started_at: Option<DateTime<Utc>>,
@@ -79,6 +101,11 @@ pub enum StudyCommand {
         receipt: DeletionReceipt,
     },
     DeleteEverything,
+    CreateStudy {
+        id: String,
+        kind: StudyKind,
+        label: Option<String>,
+    },
 }
 
 #[derive(Debug, Error)]
@@ -92,10 +119,12 @@ pub enum StudyError {
     UnverifiedReceipt,
 }
 
-pub fn new_study(study_id: &str) -> StudySnapshot {
+pub fn new_study(study_id: &str, kind: StudyKind, label: Option<String>) -> StudySnapshot {
     StudySnapshot {
         v: 1,
         study_id: study_id.to_string(),
+        kind,
+        label,
         state: StudyState::NotStarted,
         consented_at: None,
         started_at: None,
@@ -148,6 +177,12 @@ pub fn transition(snap: &StudySnapshot, cmd: StudyCommand) -> Result<StudySnapsh
             next.state = RawDeleting;
             next.aborted = true;
         }
+        StudyCommand::CreateStudy { id, kind, label } => {
+            if !matches!(snap.state, NotStarted | Complete | Deleted) {
+                return Err(invalid(snap.state, "create_study"));
+            }
+            return Ok(new_study(&id, kind, label));
+        }
         StudyCommand::Consent { at } => {
             if snap.state != NotStarted {
                 return Err(invalid(snap.state, "consent"));
@@ -161,7 +196,7 @@ pub fn transition(snap: &StudySnapshot, cmd: StudyCommand) -> Result<StudySnapsh
             }
             next.state = Active;
             next.started_at = Some(at);
-            next.ends_at = Some(at + Duration::days(STUDY_DAYS));
+            next.ends_at = Some(at + window(snap.kind));
         }
         StudyCommand::Pause => {
             if snap.state != Active {
@@ -234,7 +269,7 @@ pub fn deadline_passed(snap: &StudySnapshot, now: DateTime<Utc>) -> bool {
 pub fn remaining_ms(snap: &StudySnapshot, now: DateTime<Utc>) -> i64 {
     match snap.ends_at {
         Some(ends) => (ends - effective_now(snap, now)).num_milliseconds().max(0),
-        None => Duration::days(STUDY_DAYS).num_milliseconds(),
+        None => window(snap.kind).num_milliseconds(),
     }
 }
 
@@ -264,7 +299,7 @@ mod tests {
 
     fn started() -> StudySnapshot {
         let s = transition(
-            &new_study("s1"),
+            &new_study("s1", StudyKind::FullStudy, None),
             StudyCommand::Consent {
                 at: t("2026-06-10T08:00:00Z"),
             },
@@ -330,7 +365,7 @@ mod tests {
     #[test]
     fn delete_everything_from_any_nonterminal_state_ends_deleted() {
         for snap in [
-            new_study("s1"),
+            new_study("s1", StudyKind::FullStudy, None),
             started(),
             transition(&started(), StudyCommand::StopDay14).unwrap(),
         ] {
@@ -366,11 +401,81 @@ mod tests {
     }
 
     #[test]
+    fn quick_scan_window_is_six_hours_full_is_fourteen_days() {
+        let q = transition(
+            &new_study("q", StudyKind::QuickScan, Some("Invoices".into())),
+            StudyCommand::Consent {
+                at: t("2026-06-10T08:00:00Z"),
+            },
+        )
+        .unwrap();
+        let q = transition(
+            &q,
+            StudyCommand::Start {
+                at: t("2026-06-10T08:00:00Z"),
+            },
+        )
+        .unwrap();
+        assert_eq!(q.ends_at.unwrap(), t("2026-06-10T14:00:00Z")); // +6h
+        assert_eq!(q.label.as_deref(), Some("Invoices"));
+        // full study still +14 days
+        assert_eq!(started().ends_at.unwrap(), t("2026-06-24T08:00:00Z"));
+    }
+
+    #[test]
+    fn remaining_ms_pre_start_is_kind_aware() {
+        // A quick scan with no ends_at (pre-start) reports its own 6h window,
+        // not the 14-day full-study duration. Mirrors the TS twin.
+        let q = new_study("q", StudyKind::QuickScan, None);
+        assert_eq!(q.ends_at, None);
+        assert_eq!(remaining_ms(&q, t("2026-06-10T08:00:00Z")), 21_600_000);
+        // full study still reports 14 days pre-start
+        let f = new_study("f", StudyKind::FullStudy, None);
+        assert_eq!(
+            remaining_ms(&f, t("2026-06-10T08:00:00Z")),
+            Duration::days(STUDY_DAYS).num_milliseconds()
+        );
+    }
+
+    #[test]
+    fn create_study_only_from_terminal_or_not_started() {
+        let complete = {
+            let mut s = transition(&started(), StudyCommand::StopDay14).unwrap();
+            s = transition(&s, StudyCommand::FinishReview).unwrap();
+            s = transition(&s, StudyCommand::SynthesisComplete).unwrap();
+            transition(&s, StudyCommand::DeletionVerified { receipt: receipt() }).unwrap()
+        };
+        let fresh = transition(
+            &complete,
+            StudyCommand::CreateStudy {
+                id: "q2".into(),
+                kind: StudyKind::QuickScan,
+                label: None,
+            },
+        )
+        .unwrap();
+        assert_eq!(fresh.state, StudyState::NotStarted);
+        assert_eq!(fresh.study_id, "q2");
+        assert_eq!(fresh.kind, StudyKind::QuickScan);
+        // not allowed mid-capture
+        assert!(transition(
+            &started(),
+            StudyCommand::CreateStudy {
+                id: "x".into(),
+                kind: StudyKind::FullStudy,
+                label: None,
+            },
+        )
+        .is_err());
+    }
+
+    #[test]
     fn json_shape_matches_the_ts_twin() {
         let s = started();
         let json = serde_json::to_value(&s).unwrap();
         assert_eq!(json["state"], "ACTIVE");
         assert_eq!(json["studyId"], "s1");
+        assert_eq!(json["kind"], "full_study");
         assert!(json["endsAt"].is_string());
         assert_eq!(json["aborted"], false);
         // round-trips a TS-simulator-written snapshot
@@ -391,6 +496,8 @@ mod tests {
             "consentedAt": null, "startedAt": null, "endsAt": null,
             "stoppedBy": null, "aborted": false, "deletionReceipt": null
         }"#;
-        assert!(serde_json::from_str::<StudySnapshot>(legacy).is_ok());
+        let legacy_parsed: StudySnapshot = serde_json::from_str(legacy).unwrap();
+        assert_eq!(legacy_parsed.kind, StudyKind::FullStudy);
+        assert_eq!(legacy_parsed.label, None);
     }
 }

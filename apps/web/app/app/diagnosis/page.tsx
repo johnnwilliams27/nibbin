@@ -1,41 +1,38 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '../../../lib/supabase/server';
 import { ensureAccount } from '../../../lib/auth/bootstrap';
 import { upsertOwnProfile } from '../../../lib/auth/profile';
 import { AppShell } from '../../../components/shell/AppShell';
-import { Badge, Button, Card, InlineFeedback } from '../../../components/ui';
-import type { DiagnosisMap, Frequency } from '../../../lib/diagnosis/types';
-import { adoptRecommendation } from './actions';
+import { Badge, Card, InlineFeedback } from '../../../components/ui';
+import type { DiagnosisMap } from '../../../lib/diagnosis/types';
+import { DiagnosisReveal } from './DiagnosisReveal';
 import styles from './diagnosis.module.css';
 
 export const metadata: Metadata = { title: 'Your diagnosis — Nibbin' };
 export const dynamic = 'force-dynamic';
 
-const NIBBIN_NAME: Record<string, string> = {
-  sweep: 'Sweep',
-  echo: 'Echo',
-  brief: 'Brief',
-  tally: 'Tally',
-  hopper: 'Hopper',
-  scribe: 'Scribe',
-};
-const FREQ_TONE: Record<Frequency, 'honey' | 'sky' | 'neutral'> = {
-  daily: 'honey',
-  weekly: 'sky',
-  occasional: 'neutral',
-};
-const FREQ_LABEL: Record<Frequency, string> = {
-  daily: 'Daily',
-  weekly: 'Weekly',
-  occasional: 'Now and then',
-};
+type DiagnosisKind = 'full_study' | 'quick_scan';
 
 interface DiagnosisRow {
+  id: string;
   map: DiagnosisMap;
   letter: string | null;
-  status: string;
+  kind: DiagnosisKind | null;
+  label: string | null;
   created_at: string;
+  packet: { capturedFrom?: string; capturedTo?: string } | null;
+}
+
+const DATE_FMT = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+});
+
+function kindLabel(kind: DiagnosisKind | null): string {
+  return kind === 'quick_scan' ? 'Quick scan' : '14-day study';
 }
 
 export default async function DiagnosisPage({
@@ -61,16 +58,20 @@ export default async function DiagnosisPage({
     },
   });
 
-  const { data: row } = await supabase
+  const { data: rows } = await supabase
     .from('diagnoses')
-    .select('map, letter, status, created_at')
+    .select('id, map, letter, kind, label, created_at, packet')
     .eq('account_id', accountId)
     .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle<DiagnosisRow>();
+    .limit(50)
+    .returns<DiagnosisRow[]>();
 
-  const map = row?.map;
-  const hasDiagnosis = !!map && Array.isArray(map.workflows) && map.workflows.length > 0;
+  const all = rows ?? [];
+  const newest = all[0];
+  const newestMap = newest?.map;
+  const hasDiagnosis =
+    !!newestMap && Array.isArray(newestMap.workflows) && newestMap.workflows.length > 0;
+  const older = all.slice(1);
 
   return (
     <AppShell active="diagnosis" title="Your diagnosis" email={user.email}>
@@ -96,62 +97,42 @@ export default async function DiagnosisPage({
         </Card>
       ) : (
         <>
-          {row?.letter && (
-            <Card className={styles.letterCard}>
-              <p className={styles.letterEyebrow}>A letter from the Grovekeeper</p>
-              <p className={styles.letter}>{row.letter}</p>
-            </Card>
-          )}
+          <DiagnosisReveal
+            map={newestMap}
+            letter={newest.letter}
+            window={
+              newest.packet?.capturedFrom && newest.packet?.capturedTo
+                ? { from: newest.packet.capturedFrom, to: newest.packet.capturedTo }
+                : undefined
+            }
+          />
 
-          <div className={styles.total}>
-            <span className={styles.totalValue}>{map.totalHoursPerWeek}h</span>
-            <span className={styles.totalLabel}>
-              of routine a week, mapped across {map.workflows.length}{' '}
-              {map.workflows.length === 1 ? 'workflow' : 'workflows'}
-            </span>
-          </div>
-
-          <h2 className={styles.sectionTitle}>Where the hours go</h2>
-          <div className={styles.wfList}>
-            {map.workflows.map((w) => (
-              <Card key={w.key} className={styles.wfCard}>
-                <div className={styles.wfHead}>
-                  <span className={styles.wfName}>{w.label}</span>
-                  <span className={styles.wfHours}>~{w.hoursPerWeek}h / week</span>
-                </div>
-                <div className={styles.wfMeta}>
-                  <Badge tone={FREQ_TONE[w.frequency]}>{FREQ_LABEL[w.frequency]}</Badge>
-                  <Badge tone="neutral">{w.category}</Badge>
-                  {w.recommendedNibbin && (
-                    <Badge tone="moss">{NIBBIN_NAME[w.recommendedNibbin] ?? w.recommendedNibbin} can help</Badge>
-                  )}
-                </div>
-                {w.description && <p className={styles.wfDesc}>{w.description}</p>}
-                {w.friction && <p className={styles.wfFriction}>{w.friction}</p>}
-              </Card>
-            ))}
-          </div>
-
-          {map.topRecommendations.length > 0 && (
+          {older.length > 0 && (
             <>
-              <h2 className={styles.sectionTitle}>Ready to take the first slices</h2>
-              <div className={styles.wfList}>
-                {map.topRecommendations.map((key) => (
-                  <Card key={key} className={styles.wfCard}>
-                    <div className={styles.recRow}>
-                      <span className={styles.recText}>
-                        Adopt <strong>{NIBBIN_NAME[key] ?? key}</strong> to start handling this — drafts
-                        only, for your approval, until it earns more.
-                      </span>
-                      <form className={styles.recForm} action={adoptRecommendation}>
-                        <input type="hidden" name="templateKey" value={key} />
-                        <Button type="submit" variant="primary">
-                          Adopt {NIBBIN_NAME[key] ?? key}
-                        </Button>
-                      </form>
-                    </div>
-                  </Card>
-                ))}
+              <h2 className={styles.sectionTitle}>Earlier maps</h2>
+              <p className={styles.muted}>Every study and quick scan you’ve grown, newest first.</p>
+              <div className={styles.historyList}>
+                {older.map((d) => {
+                  const m = d.map;
+                  const wfCount = Array.isArray(m?.workflows) ? m.workflows.length : 0;
+                  return (
+                    <Link key={d.id} href={`/app/diagnosis/${d.id}`} className={styles.historyLink}>
+                      <Card className={styles.historyCard}>
+                        <div className={styles.historyHead}>
+                          <Badge tone={d.kind === 'quick_scan' ? 'sky' : 'moss'}>
+                            {kindLabel(d.kind)}
+                          </Badge>
+                          {d.label && <span className={styles.historyTitle}>{d.label}</span>}
+                          <span className={styles.historyDate}>{DATE_FMT.format(new Date(d.created_at))}</span>
+                        </div>
+                        <p className={styles.historyMeta}>
+                          {m?.totalHoursPerWeek ?? 0}h a week across {wfCount}{' '}
+                          {wfCount === 1 ? 'workflow' : 'workflows'}
+                        </p>
+                      </Card>
+                    </Link>
+                  );
+                })}
               </div>
             </>
           )}

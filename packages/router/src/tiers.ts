@@ -18,6 +18,7 @@ export const TIER_FOR_TASK: Record<Exclude<RoutedTask, 'chat'>, Tier> = {
   map_labeling: 't1',
   diagnosis_synthesis: 't2',
   custom_spec_draft: 't2',
+  nibbin_note: 't2',
   complex_plan: 't2',
 };
 
@@ -43,6 +44,11 @@ export const DEFAULT_MODELS: Record<Tier, string> = {
  */
 export const DEFAULT_TASK_MODELS: Partial<Record<RoutedTask, string>> = {
   diagnosis_synthesis: 'claude-opus-4-8',
+  // The roster's "what {name} has learned about you" note rides Opus too — it's
+  // a small, infrequent, grounded line the keeper writes about the relationship,
+  // generated off the render path and gated by run history + a staleness check,
+  // so its cost is bounded by the same caller-side controls as the diagnosis.
+  nibbin_note: 'claude-opus-4-8',
 };
 
 /**
@@ -57,6 +63,10 @@ export const DEFAULT_TASK_MODELS: Partial<Record<RoutedTask, string>> = {
 export const UNBUDGETED_T2_TASKS: ReadonlySet<RoutedTask> = new Set<RoutedTask>([
   'diagnosis_synthesis',
   'custom_spec_draft',
+  // nibbin_note is a pipeline-origin background refresh, throttled by the
+  // roster's staleness gate (only regenerated when run history materially
+  // grows) rather than the per-user chat frontier budget.
+  'nibbin_note',
 ]);
 
 /** Default T2-from-chat grants per user per day. */

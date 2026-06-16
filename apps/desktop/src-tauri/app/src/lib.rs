@@ -11,7 +11,6 @@ use tauri::{
     tray::TrayIconBuilder,
     Emitter, Manager,
 };
-use tauri_plugin_deep_link::DeepLinkExt;
 use tauri_plugin_global_shortcut::GlobalShortcutExt;
 
 /// C6 — the global pause hotkey. The handler appends a pause command to the
@@ -19,6 +18,96 @@ use tauri_plugin_global_shortcut::GlobalShortcutExt;
 /// hotkey→file→gate path is timed in the bring-up checklist (<100ms budget;
 /// the gate itself is wait-free, see nibbin-capture::gate).
 const PAUSE_SHORTCUT: &str = "CmdOrCtrl+Shift+.";
+
+/// The hosted web origin embedded in the Grove tab. Pinned at build time;
+/// override with NIBBIN_WEB_URL for dev/staging. Defaults to production.
+fn web_url() -> &'static str {
+    option_env!("NIBBIN_WEB_URL").unwrap_or("https://nibbin.com")
+}
+
+/// Vertical offset where the Grove child webview starts, leaving the native
+/// tab bar (rendered by the main webview) visible above it.
+const GROVE_TOP_PX: f64 = 96.0;
+
+fn grove_bounds(window: &tauri::Window) -> (tauri::LogicalPosition<f64>, tauri::LogicalSize<f64>) {
+    let scale = window.scale_factor().unwrap_or(1.0);
+    let phys = window
+        .inner_size()
+        .unwrap_or(tauri::PhysicalSize::new(1040, 720));
+    let (w, h) = (phys.width as f64 / scale, phys.height as f64 / scale);
+    (
+        tauri::LogicalPosition::new(0.0, GROVE_TOP_PX),
+        tauri::LogicalSize::new(w, (h - GROVE_TOP_PX).max(0.0)),
+    )
+}
+
+/// The Grove webview's target URL + an optional init script. With
+/// NIBBIN_GROVE_HANDOFF set (a build-time flag — flip on only once /desktop-auth
+/// is live on the embedded origin), a signed-in user is handed off to
+/// /desktop-auth with the session injected OUT-OF-BAND via an init script —
+/// NEVER in the URL (security: secrets-in-URLs leak via history / script access).
+/// Otherwise (and whenever signed out) it loads /app directly.
+fn grove_setup() -> (String, Option<String>) {
+    let base = web_url();
+    if option_env!("NIBBIN_GROVE_HANDOFF").is_some() {
+        if let Some((access, refresh)) = auth::session_tokens() {
+            // JSON-encode the values so they embed safely in JS (no injection).
+            let a = serde_json::to_string(&access).unwrap_or_else(|_| "\"\"".into());
+            let r = serde_json::to_string(&refresh).unwrap_or_else(|_| "\"\"".into());
+            let script =
+                format!("window.__NIBBIN_HANDOFF__={{access_token:{a},refresh_token:{r}}};");
+            return (format!("{base}/desktop-auth"), Some(script));
+        }
+    }
+    (format!("{base}/app"), None)
+}
+
+/// Show the Grove tab's embedded web product, creating the child webview on
+/// first use (lazily — it only loads when the user opens Grove).
+#[tauri::command]
+fn grove_show(window: tauri::Window) -> Result<(), String> {
+    let (pos, size) = grove_bounds(&window);
+    if let Some(wv) = window.app_handle().get_webview("grove") {
+        let _ = wv.set_position(pos);
+        let _ = wv.set_size(size);
+        return wv.show().map_err(|e| e.to_string());
+    }
+    let (target, script) = grove_setup();
+    let parsed = target.parse().map_err(|e| format!("bad grove url: {e}"))?;
+    // Lock the Grove webview to the configured web origin's host. The tab only
+    // ever loads web_url() and stays there, so same-host navigations (and their
+    // subpaths) must keep working — but a redirect to attacker content is
+    // rejected (defense-in-depth for the injected handoff token + containment).
+    let allowed_host = web_url()
+        .parse::<url::Url>()
+        .ok()
+        .and_then(|u| u.host_str().map(str::to_string));
+    let mut builder =
+        tauri::webview::WebviewBuilder::new("grove", tauri::WebviewUrl::External(parsed))
+            .on_navigation(move |url| match &allowed_host {
+                // Allow only navigations whose host matches the build-configured
+                // web origin; reject (return false) any cross-origin navigation.
+                Some(host) => url.host_str() == Some(host.as_str()),
+                // No parseable configured host: fail closed rather than open.
+                None => false,
+            });
+    if let Some(s) = script {
+        builder = builder.initialization_script(&s);
+    }
+    window
+        .add_child(builder, pos, size)
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+/// Hide the Grove webview (switching to Field Study, or signing out).
+#[tauri::command]
+fn grove_hide(window: tauri::Window) -> Result<(), String> {
+    if let Some(wv) = window.app_handle().get_webview("grove") {
+        wv.hide().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
 
 pub fn run() {
     tauri::Builder::default()
@@ -37,38 +126,42 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::study_status,
             commands::send_control,
+            commands::create_study,
             commands::review_events,
             commands::review_delete,
             commands::review_keep,
             commands::add_exclusion,
-            auth::auth_start,
+            auth::store_session,
             auth::auth_session,
+            auth::access_token,
             auth::sign_out,
+            grove_show,
+            grove_hide,
         ])
         .setup(|app| {
-            app.global_shortcut().register(PAUSE_SHORTCUT)?;
-
-            // nibbin://auth deep-link callback from the system browser (§6.1)
-            let handle = app.handle().clone();
-            app.deep_link().on_open_url(move |event| {
-                for url in event.urls() {
-                    if url.scheme() == "nibbin" && url.host_str() == Some("auth") {
-                        match auth::complete_from_url(&handle, url.as_str()) {
-                            Ok(()) => {
-                                let _ = handle.emit("auth:changed", ());
-                            }
-                            Err(e) => {
-                                let _ = handle.emit("auth:error", e.to_string());
-                            }
+            // Keep the Grove child webview fitted to the window as it resizes.
+            if let Some(win) = app.get_window("main") {
+                let win_for_resize = win.clone();
+                win.on_window_event(move |event| {
+                    if matches!(event, tauri::WindowEvent::Resized(_)) {
+                        if let Some(wv) = win_for_resize.app_handle().get_webview("grove") {
+                            let (pos, size) = grove_bounds(&win_for_resize);
+                            let _ = wv.set_position(pos);
+                            let _ = wv.set_size(size);
                         }
                     }
-                }
-            });
+                });
+            }
+
+            if let Err(e) = app.global_shortcut().register(PAUSE_SHORTCUT) {
+                eprintln!("pause hotkey unavailable (continuing without it): {e}");
+                let _ = app.handle().emit("study:hotkey-unavailable", e.to_string());
+            }
 
             // tray: the study countdown is ALWAYS visible while a study runs
             // (SPEC §5); the value is daemon-derived (daemon.status), the
             // tray only displays it.
-            let open = MenuItemBuilder::with_id("open", "Open Observer").build(app)?;
+            let open = MenuItemBuilder::with_id("open", "Open Nibbin").build(app)?;
             let pause = MenuItemBuilder::with_id("pause", "Pause capture").build(app)?;
             let menu = MenuBuilder::new(app).items(&[&open, &pause]).build()?;
             TrayIconBuilder::with_id("observer-tray")
@@ -100,9 +193,19 @@ pub fn run() {
                             .unwrap_or(0);
                         let days = remaining_ms / 86_400_000;
                         let hours = (remaining_ms % 86_400_000) / 3_600_000;
-                        let _ = tray.set_tooltip(Some(format!(
-                            "Nibbin Observer — field study: {days}d {hours}h left"
-                        )));
+                        // Kind-aware copy: a quick scan never says "field study"
+                        // and omits the days field (its window is hours-scale).
+                        let is_quick_scan = status
+                            .get("study")
+                            .and_then(|s| s.get("kind"))
+                            .and_then(|k| k.as_str())
+                            == Some("quick_scan");
+                        let tooltip = if is_quick_scan {
+                            format!("Nibbin — quick scan: {hours}h left")
+                        } else {
+                            format!("Nibbin — field study: {days}d {hours}h left")
+                        };
+                        let _ = tray.set_tooltip(Some(tooltip));
                     }
                 }
                 std::thread::sleep(std::time::Duration::from_secs(1));

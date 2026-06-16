@@ -19,6 +19,12 @@ export type WorkflowCategory =
   | 'social'
   | 'other';
 
+/** A bounded, redacted repeated step-chain mined on-device (re-minable). */
+export interface SequenceCandidate {
+  steps: string[];
+  count: number;
+}
+
 /** One workflow the Observer segmented on-device (already redacted). */
 export interface PacketWorkflow {
   /** Stable id, e.g. 'email.inquiries' — may match a §4.4 scan-module key. */
@@ -34,16 +40,30 @@ export interface PacketWorkflow {
   sessions: number;
   /** Redacted friction note, if any. */
   friction?: string;
+  /** Re-minable redacted repeated step-chains, dominant first. */
+  sequences?: SequenceCandidate[];
+  /** Distinct redacted URL path templates observed. */
+  urlTemplates?: string[];
+  /** Minutes per ISO day for this workflow. */
+  dailyMinutes?: Record<string, number>;
 }
 
 /** The redacted, structured artifact uploaded from the device (C7). */
 export interface SynthesisPacket {
   version: 1;
+  /** Stable id of the study this packet came from (idempotent upsert key). */
+  studyId?: string;
   /** Study window length in days (1–14). */
   studyDays: number;
   capturedFrom: string; // ISO
   capturedTo: string; // ISO
   workflows: PacketWorkflow[];
+  /** Per-ISO-day, per-app minutes across the study (top-level aggregate). */
+  dailyAppMinutes?: Record<string, Record<string, number>>;
+  /** Study kind — full 14-day study or an ad-hoc quick scan. */
+  kind?: 'full_study' | 'quick_scan';
+  /** Optional user-supplied task label for a quick scan. */
+  label?: string;
 }
 
 export type Frequency = 'daily' | 'weekly' | 'occasional';
@@ -58,6 +78,12 @@ export interface DiagnosisWorkflow {
   friction: string | null;
   /** Shop template key the user can adopt to take this on, or null. */
   recommendedNibbin: string | null;
+  /**
+   * v0 automatability score 0–100, derived from mined sequences. Optional:
+   * diagnoses written before this field shipped lack it (it lives in JSONB
+   * `map`); `synthOne` always sets it for new rows.
+   */
+  automatable?: number;
   /** One-line human description from the Opus labeling pass (optional). */
   description?: string;
 }
@@ -68,4 +94,14 @@ export interface DiagnosisMap {
   totalHoursPerWeek: number;
   /** Top recommended shop-template keys, ranked by hours, deduped. */
   topRecommendations: string[];
+  /**
+   * Hours an adopted grove could take off your plate each week — the headline
+   * Group-A number. Σ workflow.hoursPerWeek × (automatable/100), rounded to 0.1.
+   */
+  timeSavedPerWeek: number;
+  /**
+   * Where desktop time goes: each app's hours/week derived from
+   * `packet.dailyAppMinutes`, sorted desc, top 8. `[]` when absent.
+   */
+  appAllocation: { app: string; hoursPerWeek: number }[];
 }
