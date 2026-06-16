@@ -127,8 +127,28 @@ pub fn check_for_update(app: AppHandle) -> UpdateInfo {
 /// never inside the pinned webview). Thin wrapper over the opener plugin's
 /// Rust API; used because `@tauri-apps/plugin-opener`'s JS binding isn't a
 /// dependency of the frontend.
+/// Allowlist of hosts the update banner is permitted to open. The command takes
+/// a URL from the webview, so validate it (https + known host) before handing it
+/// to the OS opener — a bare `open_url(arbitrary)` is a confused-deputy hole
+/// (file://, custom schemes, arbitrary sites) even from the trusted local UI.
+fn open_allowed(url: &str) -> bool {
+    match url::Url::parse(url) {
+        Ok(u) => {
+            u.scheme() == "https"
+                && matches!(
+                    u.host_str(),
+                    Some("nibbin.com") | Some("www.nibbin.com") | Some("github.com")
+                )
+        }
+        Err(_) => false,
+    }
+}
+
 #[tauri::command]
 pub fn open_external(app: AppHandle, url: String) -> Result<(), String> {
+    if !open_allowed(&url) {
+        return Err("refused to open: only https nibbin.com / github.com URLs are allowed".into());
+    }
     use tauri_plugin_opener::OpenerExt;
     app.opener()
         .open_url(url, None::<&str>)
@@ -143,6 +163,21 @@ mod tests {
     fn newer_release_triggers_update() {
         // A published 0.3.0 is newer than the running 0.2.0.
         assert!(newer_available("0.2.0", "desktop-v0.3.0"));
+    }
+
+    #[test]
+    fn open_external_only_allows_https_known_hosts() {
+        assert!(open_allowed("https://nibbin.com/download/windows"));
+        assert!(open_allowed("https://www.nibbin.com/download/mac"));
+        assert!(open_allowed(
+            "https://github.com/johnnwilliams27/nibbin-desktop/releases"
+        ));
+        // rejected: wrong scheme, file://, other hosts, garbage
+        assert!(!open_allowed("http://nibbin.com/x"));
+        assert!(!open_allowed("file:///etc/passwd"));
+        assert!(!open_allowed("https://evil.example.com/"));
+        assert!(!open_allowed("javascript:alert(1)"));
+        assert!(!open_allowed("not a url"));
     }
 
     #[test]
