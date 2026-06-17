@@ -83,7 +83,14 @@ export const bridge = {
   openExternal: (url: string) => call<void>('open_external', { url }, undefined),
   onEvent: async (event: string, handler: (payload: unknown) => void): Promise<() => void> => {
     if (!('__TAURI_INTERNALS__' in window)) return () => {};
-    const { listen } = await import('@tauri-apps/api/event');
-    return listen(event, (e) => handler(e.payload));
+    try {
+      const { listen } = await import('@tauri-apps/api/event');
+      return await listen(event, (e) => handler(e.payload));
+    } catch {
+      // Event listening can be denied by the capability ACL. Degrade to a no-op
+      // unsubscribe rather than throw an unhandled rejection at boot — the
+      // dependent feature (live hotkey-pause re-render) just won't update.
+      return () => {};
+    }
   },
 };

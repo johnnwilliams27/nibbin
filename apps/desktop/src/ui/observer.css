@@ -390,3 +390,70 @@ input:focus-visible {
     animation-duration: 0.01ms !important;
   }
 }
+
+/* Grove tab loading state — shown until the embedded web webview paints. Three
+   moss dots rise and settle in sequence (sprouting), so the wait reads as
+   "growing", not "stalled". Reduced-motion users get the static dots via the
+   global rule above. */
+.grove-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  min-height: 340px;
+  text-align: center;
+}
+
+.sprout-loader {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 9px;
+  height: 30px;
+}
+
+.sprout-loader .sprout-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--moss);
+  animation: sprout-rise 1.25s ease-in-out infinite;
+}
+
+.sprout-loader .sprout-dot:nth-child(2) {
+  animation-delay: 0.16s;
+  background: var(--leaf);
+}
+
+.sprout-loader .sprout-dot:nth-child(3) {
+  animation-delay: 0.32s;
+}
+
+.grove-loading .loading-label {
+  margin: 0;
+  font-size: 14px;
+  letter-spacing: 0.01em;
+  animation: label-breathe 2.4s ease-in-out infinite;
+}
+
+@keyframes sprout-rise {
+  0%,
+  100% {
+    transform: translateY(5px) scale(0.7);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translateY(-5px) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes label-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
