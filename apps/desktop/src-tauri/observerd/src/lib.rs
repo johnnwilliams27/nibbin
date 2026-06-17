@@ -28,6 +28,8 @@ use nibbin_study::{
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
 
+mod exclusions;
+
 /// Daemon clock. Tests pin it via NIBBIN_FAKE_NOW (ISO-8601); production is
 /// wall clock. The fake is read once per call so long-running tests can move
 /// time by rewriting the env of a child they relaunch.
