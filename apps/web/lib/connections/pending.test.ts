@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { storePending, consumePending } from './pending';
+import { storePending, consumePending, type StorePendingInput } from './pending';
 
 interface FakeRow {
   state: string;
@@ -77,4 +77,50 @@ it('returns null when expired', async () => {
     scopes: ['x'], returnTo: null, resumeTemplate: null, expiresAtMs: 1_000,
   }, svc);
   expect(await consumePending('s2', 9_999, svc)).toBeNull();
+});
+
+it('StorePendingInput accepts nibbinId (compile-time check)', () => {
+  const input: StorePendingInput = {
+    state: 's', provider: 'gmail', accountId: 'a', userId: 'u',
+    nonce: 'n', codeVerifier: 'v', scopes: [],
+    returnTo: null, resumeTemplate: null, expiresAtMs: 9999,
+    nibbinId: 'nb-uuid-1234',
+  };
+  expect(input.nibbinId).toBe('nb-uuid-1234');
+});
+
+it('consumePending maps nibbin_id column to nibbinId field', async () => {
+  const row = {
+    state: 'st1', provider: 'gmail', account_id: 'a1', user_id: 'u1',
+    code_verifier: null, scopes: ['https://www.googleapis.com/auth/gmail.readonly'],
+    return_to: null, resume_template: null,
+    expires_at: new Date(Date.now() + 60000).toISOString(),
+    consumed_at: new Date().toISOString(),
+    nibbin_id: 'nb-0000-1234',
+  };
+  const svc = {
+    from: () => ({
+      update: () => ({ eq: () => ({ is: () => ({ gt: () => ({ select: () => ({ maybeSingle: async () => ({ data: row, error: null }) }) }) }) }) }),
+    }),
+  } as unknown as import('@supabase/supabase-js').SupabaseClient;
+  const result = await consumePending('st1', Date.now(), svc);
+  expect(result?.nibbinId).toBe('nb-0000-1234');
+});
+
+it('consumePending maps nibbin_id = null to nibbinId = null', async () => {
+  const row = {
+    state: 'st2', provider: 'gmail', account_id: 'a2', user_id: 'u2',
+    code_verifier: null, scopes: [],
+    return_to: null, resume_template: null,
+    expires_at: new Date(Date.now() + 60000).toISOString(),
+    consumed_at: new Date().toISOString(),
+    nibbin_id: null,
+  };
+  const svc = {
+    from: () => ({
+      update: () => ({ eq: () => ({ is: () => ({ gt: () => ({ select: () => ({ maybeSingle: async () => ({ data: row, error: null }) }) }) }) }) }),
+    }),
+  } as unknown as import('@supabase/supabase-js').SupabaseClient;
+  const result = await consumePending('st2', Date.now(), svc);
+  expect(result?.nibbinId).toBeNull();
 });
