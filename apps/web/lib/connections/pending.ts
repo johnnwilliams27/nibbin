@@ -45,19 +45,17 @@ export async function consumePending(
   nowMs: number,
   svc: SupabaseClient = serviceClient(),
 ): Promise<PendingAuth | null> {
+  const nowIso = new Date(nowMs).toISOString();
   const { data, error } = await svc
     .from('oauth_pending_authorizations')
-    .select('*')
+    .update({ consumed_at: nowIso })
     .eq('state', state)
+    .is('consumed_at', null)
+    .gt('expires_at', nowIso)
+    .select('*')
     .maybeSingle();
-  if (error) throw new Error(`pending read failed: ${error.message}`);
+  if (error) throw new Error(`pending consume failed: ${error.message}`);
   if (!data) return null;
-  if (data.consumed_at) return null;
-  if (new Date(data.expires_at).getTime() < nowMs) return null;
-  await svc
-    .from('oauth_pending_authorizations')
-    .update({ consumed_at: new Date(nowMs).toISOString() })
-    .eq('state', state);
   return {
     state: data.state,
     provider: data.provider,

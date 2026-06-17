@@ -89,6 +89,10 @@ describe('connector registry (SPEC §4.3)', () => {
     expect(gmail.scopes.read).toEqual(['https://www.googleapis.com/auth/gmail.readonly']);
   });
 
+  it('gmail scanModules does not include email.repeated-replies (regression guard)', () => {
+    expect(getConnector('gmail').scanModules).not.toContain('email.repeated-replies');
+  });
+
   it('Instagram is gated behind Meta app review', () => {
     const ig = getConnector('instagram-dm');
     expect(ig.platform?.verification).toBe('pending');

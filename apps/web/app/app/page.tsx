@@ -12,7 +12,7 @@ import { ensureAccount } from '../../lib/auth/bootstrap';
 import { upsertOwnProfile } from '../../lib/auth/profile';
 import { loadGroveState } from '../../lib/grove/load';
 import { AppShell } from '../../components/shell/AppShell';
-import { Card, Badge } from '../../components/ui';
+import { Card, Badge, InlineFeedback } from '../../components/ui';
 import { KeeperPanel } from './grove/KeeperPanel';
 import { OnboardingCanvas } from './grove/OnboardingCanvas';
 import { decideRunAction } from './actions';
@@ -154,7 +154,8 @@ function creatureFor(n: NibbinRow, size: number): string {
 const PROMOTION_WINDOW = 25;
 const PROMOTION_NEEDED = Math.ceil(0.95 * PROMOTION_WINDOW); // 24 clean of 25
 
-export default async function AppPage() {
+export default async function AppPage({ searchParams }: { searchParams: Promise<{ adopted?: string }> }) {
+  const { adopted } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -383,6 +384,9 @@ export default async function AppPage() {
 
   return (
     <AppShell active="grove" title="Your grove" email={user.email} panel={keeperPanel}>
+      {adopted && (
+        <InlineFeedback tone="success">Adopted — your new Nibbin is in the grove.</InlineFeedback>
+      )}
       <header className={dash.header}>
         <p className={dash.eyebrow}>Your grove · Today</p>
         <h1 className={dash.title}>{account?.name ?? 'Your grove'}</h1>

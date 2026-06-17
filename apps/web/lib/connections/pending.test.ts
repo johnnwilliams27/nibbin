@@ -1,43 +1,80 @@
-import { describe, expect, it } from 'vitest';
-import { storePending, consumePending, type PendingAuth } from './pending';
+import { expect, it } from 'vitest';
+import { storePending, consumePending } from './pending';
 
-function fakeSvc(rows: Record<string, any>) {
-  return {
-    from() {
-      return {
-        insert: async (r: any) => { rows[r.state] = { ...r, consumed_at: null }; return { error: null }; },
-        select() { return this; },
-        eq(_c: string, v: string) { this._k = v; return this; },
-        async maybeSingle() { return { data: rows[(this as any)._k] ?? null, error: null }; },
-        update(patch: any) { this._patch = patch; return this; },
-      } as any;
-    },
-  } as any;
+interface FakeRow {
+  state: string;
+  provider: string;
+  account_id: string;
+  user_id: string;
+  nonce: string;
+  code_verifier: string | null;
+  scopes: string[];
+  return_to: string | null;
+  resume_template: string | null;
+  expires_at: string;
+  consumed_at: string | null;
 }
 
-describe('pending store/consume', () => {
-  it('stores then consumes once; second consume returns null', async () => {
-    const rows: Record<string, any> = {};
-    const svc = fakeSvc(rows);
-    await storePending({
-      state: 's1', provider: 'gmail', accountId: 'a', userId: 'u', nonce: 'n',
-      codeVerifier: 'v', scopes: ['x'], returnTo: '/app/connections', resumeTemplate: null,
-      expiresAtMs: 10_000,
-    }, svc);
-    const first = await consumePending('s1', 5_000, svc);
-    expect(first?.provider).toBe('gmail');
-    rows['s1'].consumed_at = '2026-06-17T00:00:00Z'; // simulate the consume write
-    const second = await consumePending('s1', 5_000, svc);
-    expect(second).toBeNull();
-  });
+/** Fake SupabaseClient that models the atomic conditional-update chain used by consumePending:
+ *  .update(patch).eq('state', state).is('consumed_at', null).gt('expires_at', nowIso).select('*').maybeSingle()
+ *  Applies the update ONLY when the row exists, is not already consumed, and has not expired.
+ */
+function fakeSvc(rows: Record<string, FakeRow>) {
+  return {
+    from() {
+      // Closure state accumulated through the chain
+      let _patch: Partial<FakeRow> = {};
+      let _state: string = '';
+      let _isNull = false;
+      let _gtIso: string = '';
 
-  it('returns null when expired', async () => {
-    const rows: Record<string, any> = {};
-    const svc = fakeSvc(rows);
-    await storePending({
-      state: 's2', provider: 'gmail', accountId: 'a', userId: 'u', nonce: 'n',
-      scopes: ['x'], returnTo: null, resumeTemplate: null, expiresAtMs: 1_000,
-    }, svc);
-    expect(await consumePending('s2', 9_999, svc)).toBeNull();
-  });
+      const chain = {
+        insert: async (r: FakeRow) => {
+          rows[r.state] = { ...r, consumed_at: null };
+          return { error: null };
+        },
+        update(patch: Partial<FakeRow>) { _patch = patch; return chain; },
+        select() { return chain; },
+        eq(_col: string, v: string) { _state = v; return chain; },
+        is(_col: string, _val: null) { _isNull = true; return chain; },
+        gt(_col: string, v: string) { _gtIso = v; return chain; },
+        async maybeSingle() {
+          const row = rows[_state] ?? null;
+          if (!row) return { data: null, error: null };
+          // is('consumed_at', null) — reject if already consumed
+          if (_isNull && row.consumed_at !== null) return { data: null, error: null };
+          // gt('expires_at', nowIso) — reject if expired
+          if (_gtIso && row.expires_at <= _gtIso) return { data: null, error: null };
+          // Apply the update
+          Object.assign(row, _patch);
+          return { data: { ...row }, error: null };
+        },
+      };
+      return chain;
+    },
+  } as unknown as import('@supabase/supabase-js').SupabaseClient;
+}
+
+it('stores then consumes once; second consume returns null', async () => {
+  const rows: Record<string, FakeRow> = {};
+  const svc = fakeSvc(rows);
+  await storePending({
+    state: 's1', provider: 'gmail', accountId: 'a', userId: 'u', nonce: 'n',
+    codeVerifier: 'v', scopes: ['x'], returnTo: '/app/connections', resumeTemplate: null,
+    expiresAtMs: 10_000,
+  }, svc);
+  const first = await consumePending('s1', 5_000, svc);
+  expect(first?.provider).toBe('gmail');
+  const second = await consumePending('s1', 5_000, svc);
+  expect(second).toBeNull();
+});
+
+it('returns null when expired', async () => {
+  const rows: Record<string, FakeRow> = {};
+  const svc = fakeSvc(rows);
+  await storePending({
+    state: 's2', provider: 'gmail', accountId: 'a', userId: 'u', nonce: 'n',
+    scopes: ['x'], returnTo: null, resumeTemplate: null, expiresAtMs: 1_000,
+  }, svc);
+  expect(await consumePending('s2', 9_999, svc)).toBeNull();
 });

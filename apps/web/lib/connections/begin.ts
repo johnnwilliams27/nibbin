@@ -5,6 +5,15 @@ import type { StorePendingInput } from './pending';
 
 const PENDING_TTL_MS = 10 * 60 * 1000;
 
+function safeReturnTo(rt: string | undefined): string | undefined {
+  if (!rt) return undefined;
+  // same-origin app path only: leading single slash, no protocol-relative, no scheme
+  if (rt.startsWith('/') && !rt.startsWith('//') && !rt.includes('://') && rt.startsWith('/app/')) {
+    return rt;
+  }
+  return undefined; // fall back to the callback's default ('/app/connections')
+}
+
 export interface BeginConnectArgs {
   provider: string;
   accountId: string;
@@ -45,7 +54,7 @@ export async function beginConnect(args: BeginConnectArgs, deps: BeginConnectDep
     nonce: pending.nonce,
     codeVerifier: pending.codeVerifier,
     scopes: pending.scopes,
-    returnTo: args.returnTo ?? null,
+    returnTo: safeReturnTo(args.returnTo) ?? null,
     resumeTemplate: args.resumeTemplate ?? null,
     expiresAtMs: deps.nowMs + (deps.pendingTtlMs ?? PENDING_TTL_MS),
   });

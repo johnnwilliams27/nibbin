@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { expect, it } from 'vitest';
 import { CONNECTABLE_PROVIDERS } from './providers';
 
 it('lists Gmail as the only wired provider for v1', () => {
