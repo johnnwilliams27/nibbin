@@ -22,6 +22,7 @@ import {
 import { advanceGroveAction, keeperChatAction, skipUnderstandingAction, understandStepAction } from './actions';
 import { CardView } from './cards';
 import { KeeperSprite } from './KeeperSprite';
+import { OnboardingNextStep } from './OnboardingNextStep';
 import { Button } from '../../../components/ui';
 import styles from './keeper-chat.module.css';
 
@@ -53,6 +54,7 @@ export function KeeperChat({
   credits,
   initialProfile,
   variant,
+  hasConnection = false,
   onStep,
 }: {
   initialMessages: KeeperMessage[];
@@ -63,6 +65,9 @@ export function KeeperChat({
   credits: number;
   initialProfile: UnderstandingProfile | null;
   variant: 'focal' | 'panel';
+  /** Server-derived: account has ≥1 `active` connection (drives the NIB-4
+   *  next-step affordance shown at step === 'done'). */
+  hasConnection?: boolean;
   /** Optional callback fired whenever the onboarding step changes. */
   onStep?: (step: OnboardingStep) => void;
 }) {
@@ -387,6 +392,11 @@ export function KeeperChat({
     </div>
   );
 
+  // NIB-4: the persistent next-step affordance. Rendered below the composer,
+  // OUTSIDE the role="log" region, only once onboarding is done. The component
+  // returns null when there's nothing left to nudge.
+  const nextStep = step === 'done' ? <OnboardingNextStep hasConnection={hasConnection} /> : null;
+
   return (
     <div className={`${styles.chatRoot} ${isPanel ? styles.chatRootPanel : ''}`}>
       {/* Engine idle/blink animation rules — included once per surface. */}
@@ -422,6 +432,7 @@ export function KeeperChat({
             <div className={styles.chat}>
               {log}
               {composer}
+              {nextStep}
             </div>
           </div>
         </div>
@@ -432,6 +443,7 @@ export function KeeperChat({
         <div className={styles.panelBody}>
           {log}
           {composer}
+          {nextStep}
         </div>
       )}
     </div>
