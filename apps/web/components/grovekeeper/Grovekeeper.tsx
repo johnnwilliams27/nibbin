@@ -112,6 +112,8 @@ const SVG = `<svg viewBox="0 0 420 500" role="img" aria-label="The Grovekeeper" 
 <path d="M315 405 C313 332 319 250 318 186" fill="none" stroke="#F0D7A8" stroke-width="2" stroke-linecap="round" opacity=".35"/>
 <path d="M324 400 C322 330 327 250 325 188" fill="none" stroke="#4A2F18" stroke-width="2" stroke-linecap="round" opacity=".4"/>
 </g>
+<path d="M299 351 C296 345 299 338 306 337 C312 337 314 345 311 349 C308 354 302 355 299 351 Z" fill="#5F8A2E" stroke="#3C541C" stroke-width="2.2"/>
+<ellipse cx="304" cy="343" rx="3" ry="2.2" fill="#9CC25B" opacity=".4"/>
 <g class="gk-lantern">
 <circle class="gk-glow" cx="338" cy="214" r="42" fill="url(#gkGlow)"/>
 <path d="M338 168 a7 7 0 0 1 0 14" fill="none" stroke="#8A5F0C" stroke-width="2.6"/>
