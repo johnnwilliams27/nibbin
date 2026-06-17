@@ -400,7 +400,11 @@ export default async function AppPage({ searchParams }: { searchParams: Promise<
       )}
       <header className={dash.header}>
         <p className={dash.eyebrow}>Your grove · Today</p>
-        <h1 className={dash.title}>{account?.name ?? 'Your grove'}</h1>
+        {/* Greet by the user's display first name (captured in onboarding, stored
+            in users.name); fall back to the grove/account name, then a generic. */}
+        <h1 className={dash.title}>
+          {grove.userName?.trim().split(/\s+/)[0] || account?.name || 'Your grove'}
+        </h1>
         {grove.keeperName && (
           <p className={dash.subtitle}>{grove.keeperName} is keeping things tidy.</p>
         )}

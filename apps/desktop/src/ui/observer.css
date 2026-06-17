@@ -209,9 +209,60 @@ input:focus-visible {
   flex-wrap: wrap;
 }
 
+/* Top tabbar active state — kept subtle (understory + ink-soft border). */
 .nav button[aria-current='true'] {
   background: var(--understory);
   border-color: var(--ink-soft);
+}
+
+/* Field Study sub-nav — scoped to .subnav so the top tabbar is unaffected.
+   Active pill reuses chip.active token values: rgba(91,124,46,0.14) bg +
+   moss-deep text, matching Grove's .navItemActive clarity. */
+.subnav button[aria-current='true'] {
+  background: rgba(91, 124, 46, 0.14);
+  border-color: transparent;
+  color: var(--moss-deep);
+}
+
+/* Icon + label layout for subnav buttons. */
+.subnav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Section header band — consistent eyebrow+h1 treatment across all sub-views. */
+.section-header {
+  margin: 0 0 20px;
+}
+
+.section-header .eyebrow {
+  margin: 0 0 4px;
+}
+
+.section-header h1 {
+  margin: 0;
+}
+
+/* Field Study section loading state — reuses the sprout-loader idiom so
+   "loading" reads as "growing", not "stalled" (mirrors Grove's polish). */
+.section-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 20px 0;
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+
+/* Empty-state card — a quiet, honest "nothing here yet" rather than a blank. */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 20px;
+  color: var(--ink-soft);
 }
 
 .stat-grid {
@@ -456,4 +507,36 @@ input:focus-visible {
   50% {
     opacity: 1;
   }
+}
+
+/* NIB-2: tab-level needs-action dot — shown on the Field Study tab when no
+   study is currently running. Disappears once the user opens the tab. */
+.tab-label-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.tab-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--moss);
+  margin-left: 5px;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+/* NIB-2: Grove native fallback CTA — subtle secondary button to reach Field
+   Study from the Grove loading screen without clicking the second tab. */
+.grove-study-cta {
+  margin-top: 8px;
+}
+
+/* NIB-2: daemon-health note — shown beneath entry cards when the daemon is
+   offline. Styled as a muted informational card, not an error. */
+.daemon-health-note {
+  opacity: 0.85;
+  border-style: dashed;
 }

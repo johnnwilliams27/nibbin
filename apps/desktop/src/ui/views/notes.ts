@@ -1,10 +1,11 @@
 /**
- * Local Field Notes — computed on this machine from already-redacted events,
+ * Local Field Notes - computed on this machine from already-redacted events,
  * rendered here, uploaded nowhere (C1/C7).
  */
 import { computeFieldNotes, studyDaysWithActivity } from '../../core/field-notes.js';
 import { bridge } from '../bridge.js';
 import { clear, el } from '../dom.js';
+import { sectionLoader } from '../section-loader.js';
 
 function minutes(ms: number): string {
   return `${Math.round(ms / 60_000)}m`;
@@ -12,11 +13,13 @@ function minutes(ms: number): string {
 
 export function notesView(): HTMLElement {
   const root = el('div', {}, [
-    el('p', { class: 'eyebrow' }, ['Field notes']),
-    el('h1', {}, ['Today’s field notes']),
+    el('div', { class: 'section-header' }, [
+      el('p', { class: 'eyebrow' }, ['Field notes']),
+      el('h1', {}, ["Today's field notes"]),
+    ]),
     el('p', { class: 'muted' }, ['Counted on this machine, shown on this machine. Nothing here is uploaded.']),
   ]);
-  const body = el('div', {}, [el('p', { class: 'muted' }, ['Counting…'])]);
+  const body = el('div', {}, [sectionLoader('Counting events…')]);
   root.append(body);
 
   void (async () => {
@@ -24,7 +27,12 @@ export function notesView(): HTMLElement {
     clear(body);
     const days = studyDaysWithActivity(events);
     if (days.length === 0) {
-      body.append(el('div', { class: 'card' }, [el('p', { class: 'muted' }, ['No activity captured yet — notes appear after the field study’s first day of watching.'])]));
+      body.append(
+        el('div', { class: 'card empty-state' }, [
+          el('p', { class: 'muted' }, ['No events kept yet — your review fills up as the study runs.']),
+          el('p', { class: 'muted' }, ["Field notes appear after the study's first day of watching."]),
+        ]),
+      );
       return;
     }
     const today = days[days.length - 1]!;
