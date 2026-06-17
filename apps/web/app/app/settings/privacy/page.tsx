@@ -4,8 +4,9 @@ import { redirect } from 'next/navigation';
 import { appSession } from '../../../../lib/auth/app-session';
 import { AppShell } from '../../../../components/shell/AppShell';
 import { SettingsNav } from '../../../../components/settings/SettingsNav';
-import { Card, Button, Badge, InlineFeedback } from '../../../../components/ui';
-import { setContribution } from './actions';
+import { Card, Button, Badge, InlineFeedback, Select } from '../../../../components/ui';
+import { setContribution, setNotificationPrefs } from './actions';
+import { HOUR_OPTIONS } from '../../../../lib/privacy/notifications';
 import { connectionSummary, deletionState, type ConnectionRow } from '../../../../lib/privacy/panel';
 import styles from '../../../../components/settings/settings.module.css';
 
@@ -45,6 +46,15 @@ export default async function PrivacySettingsPage({
     .eq('account_id', accountId)
     .neq('status', 'revoked');
   const summary = connectionSummary((conns ?? []) as ConnectionRow[]);
+
+  const { data: drip } = await supabase
+    .from('drip_arcs')
+    .select('email_enabled, quiet_start, quiet_end')
+    .eq('account_id', accountId)
+    .maybeSingle<{ email_enabled: boolean; quiet_start: number; quiet_end: number }>();
+  const emailEnabled = drip?.email_enabled ?? true;
+  const quietStart = drip?.quiet_start ?? 21;
+  const quietEnd = drip?.quiet_end ?? 9;
 
   return (
     <AppShell active="settings" title="Settings" email={user.email}>
@@ -121,6 +131,55 @@ export default async function PrivacySettingsPage({
               <Button variant="secondary">Manage connections</Button>
             </Link>
           </div>
+        </Card>
+
+        <Card>
+          <h2 className={styles.sectionTitle}>Notifications</h2>
+          <p className={styles.sectionHint}>
+            During your field study, your grove sends a few gentle email nudges — Field Notes,
+            milestones, your map when it’s ready. Turn them off or set quiet hours here. (Text and
+            chat channels arrive when your Nibbins start doing real work.)
+          </p>
+          {state === 'notify_saved' && (
+            <InlineFeedback tone="success">Saved — your notification choices are recorded.</InlineFeedback>
+          )}
+          {error === 'notify' && (
+            <InlineFeedback tone="error">That didn’t save — give it another go.</InlineFeedback>
+          )}
+          <form action={setNotificationPrefs} className={styles.form}>
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="email_enabled">
+                Companion emails
+              </label>
+              <label className={styles.fieldHint}>
+                <input
+                  id="email_enabled"
+                  name="email_enabled"
+                  type="checkbox"
+                  defaultChecked={emailEnabled}
+                />{' '}
+                Email me the field-study nudges
+              </label>
+            </div>
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="quiet_start">
+                Quiet hours start
+              </label>
+              <Select id="quiet_start" name="quiet_start" defaultValue={String(quietStart)} options={HOUR_OPTIONS} />
+            </div>
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="quiet_end">
+                Quiet hours end
+              </label>
+              <Select id="quiet_end" name="quiet_end" defaultValue={String(quietEnd)} options={HOUR_OPTIONS} />
+              <span className={styles.fieldHint}>No emails are sent during your quiet hours.</span>
+            </div>
+            <div className={styles.actions}>
+              <Button type="submit" variant="primary">
+                Save notifications
+              </Button>
+            </div>
+          </form>
         </Card>
 
         <Card>
