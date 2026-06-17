@@ -43,6 +43,7 @@ export interface SafeFetchInit {
   method?: string;
   headers?: Record<string, string>;
   body?: string | Uint8Array;
+  signal?: AbortSignal;
 }
 
 export interface SafeResponse {
@@ -115,6 +116,7 @@ export async function safeFetch(
   policy: EgressPolicy = {},
   unsafeTestOverrides?: UnsafeTestOverrides,
 ): Promise<SafeResponse> {
+  if (init.signal?.aborted) throw init.signal.reason as Error;
   const lookup = unsafeTestOverrides?.lookup ?? defaultLookup;
   const ipIsPublic = unsafeTestOverrides?.isPublicIp ?? isPublicIp;
   const maxBytes = policy.maxResponseBytes ?? DEFAULT_MAX_BYTES;
@@ -188,7 +190,7 @@ export async function safeFetch(
     const timeLeft = deadline - Date.now();
     if (timeLeft <= 0) throw new EgressDeniedError('timeout', 'egress deadline exhausted');
 
-    const res = await pinnedRequest(current, pinned, method, headers, body, timeLeft, maxBytes);
+    const res = await pinnedRequest(current, pinned, method, headers, body, timeLeft, maxBytes, init.signal);
 
     const status = res.status;
     const location = res.headers['location'];
@@ -219,8 +221,13 @@ function pinnedRequest(
   body: string | Uint8Array | undefined,
   timeoutMs: number,
   maxBytes: number,
+  signal?: AbortSignal,
 ): Promise<SafeResponse> {
   return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(signal.reason as Error);
+      return;
+    }
     const isHttps = target.protocol === 'https:';
     const port = target.port ? Number(target.port) : isHttps ? 443 : 80;
     const hostname = target.hostname.replace(/^\[|\]$/g, '');
@@ -236,6 +243,7 @@ function pinnedRequest(
       servername: isHttps ? hostname : undefined,
       headers: { ...headers, host: hostname },
       timeout: timeoutMs,
+      signal,
     };
 
     const mod = isHttps ? https : http;

@@ -44,7 +44,10 @@ export class HttpConnectorClient implements ConnectorClient {
     return this.connection.provider;
   }
 
-  protected async request(path: string, init: { method?: string; body?: string; headers?: Record<string, string> } = {}): Promise<SafeResponse> {
+  protected async request(
+    path: string,
+    init: { method?: string; body?: string; headers?: Record<string, string>; signal?: AbortSignal } = {},
+  ): Promise<SafeResponse> {
     if (this.connection.status !== 'active') {
       // revoked/paused connections are unusable everywhere, not just in the UI
       throw new ConnectorRequestError(this.provider, 0, 'connection-state');
@@ -60,6 +63,7 @@ export class HttpConnectorClient implements ConnectorClient {
           ...init.headers,
         },
         body: init.body,
+        signal: init.signal,
       },
       { allowedHosts: this.descriptor.egressAllowlist },
       this.unsafeTestOverrides,
@@ -77,8 +81,8 @@ export class HttpConnectorClient implements ConnectorClient {
   }
 
   /** JSON convenience over read() for structured deterministic scans. */
-  protected async readJson<T>(path: string): Promise<{ data: T; quarantined: QuarantinedContent }> {
-    const res = await this.request(path);
+  protected async readJson<T>(path: string, signal?: AbortSignal): Promise<{ data: T; quarantined: QuarantinedContent }> {
+    const res = await this.request(path, { signal });
     const text = res.text();
     return {
       data: JSON.parse(text) as T,

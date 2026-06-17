@@ -246,6 +246,26 @@ export function buildEffectsExecutor(
   };
 }
 
+export async function activeNibbinsForAccount(svc: SupabaseClient, accountId: string): Promise<NibbinRef[]> {
+  const { data, error } = await svc
+    .from('nibbins')
+    .select('id, account_id, name, stage, status, agent_specs!inner(*)')
+    .eq('account_id', accountId)
+    .in('status', ['active', 'paused', 'sleeping']);
+  if (error) throw new Error(`nibbins load failed: ${error.message}`);
+  return (data ?? []).map((row) => {
+    const specRow = (Array.isArray(row.agent_specs) ? row.agent_specs[0] : row.agent_specs) as Parameters<typeof specFromRow>[0];
+    return {
+      id: row.id as string,
+      accountId: row.account_id as string,
+      name: row.name as string,
+      stage: row.stage as NibbinRef['stage'],
+      status: row.status as NibbinRef['status'],
+      spec: specFromRow(specRow),
+    };
+  });
+}
+
 /**
  * Trigger one Nibbin run end to end. Used by the grove (user dispatches) and
  * later by schedules/webhooks — every path goes through the same runner.

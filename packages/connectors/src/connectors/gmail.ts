@@ -67,6 +67,40 @@ export class GmailClient extends HttpConnectorClient {
     return data;
   }
 
+  /** Fetch history since `startHistoryId`. historyTypes defaults to ['messageAdded']. */
+  async historyList(
+    opts: {
+      startHistoryId: string;
+      historyTypes?: string[];
+      maxResults?: number;
+    },
+    signal?: AbortSignal,
+  ): Promise<{
+    history?: Array<{ id: string; messages?: Array<{ id: string; threadId: string }> }>;
+    historyId?: string;
+  }> {
+    const params = new URLSearchParams({
+      startHistoryId: opts.startHistoryId,
+      maxResults: String(opts.maxResults ?? 100),
+    });
+    for (const ht of opts.historyTypes ?? ['messageAdded']) {
+      params.append('historyTypes', ht);
+    }
+    const { data } = await this.readJson<{
+      history?: Array<{ id: string; messages?: Array<{ id: string; threadId: string }> }>;
+      historyId?: string;
+    }>(`/gmail/v1/users/me/history?${params}`, signal);
+    return data;
+  }
+
+  /** Returns the authenticated user's email address and current historyId. */
+  async getProfile(): Promise<{ emailAddress: string; historyId: string }> {
+    const { data } = await this.readJson<{ emailAddress: string; historyId: string }>(
+      '/gmail/v1/users/me/profile',
+    );
+    return data;
+  }
+
   /** Register the Pub/Sub watch that powers the webhook path. */
   async watch(topicName: string): Promise<{ historyId?: string; expiration?: string }> {
     const res = await this.request('/gmail/v1/users/me/watch', {
