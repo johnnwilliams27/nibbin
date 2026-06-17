@@ -16,6 +16,8 @@ export const TIER_FOR_TASK: Record<Exclude<RoutedTask, 'chat'>, Tier> = {
   onboarding_understanding: 't1',
   training_feedback: 't1',
   map_labeling: 't1',
+  sweep_pass1: 't1',
+  sweep_pass2: 't1',
   diagnosis_synthesis: 't2',
   custom_spec_draft: 't2',
   nibbin_note: 't2',

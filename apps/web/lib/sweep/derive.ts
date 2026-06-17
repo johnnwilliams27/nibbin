@@ -2,7 +2,7 @@ import 'server-only';
 
 import { sanitizeProse } from '../diagnosis/label';
 import { groveRouter } from '../grove/router';
-import { anthropicGenerate, recordModelCall } from '../llm/client';
+import { recordModelCall } from '../llm/client';
 import type { Generate } from '@nibbin/router';
 import { emptySweepDerived, type SweepDerived } from './types';
 

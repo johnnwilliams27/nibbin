@@ -5,7 +5,7 @@ import { serviceClient } from '../supabase/service';
 import { anthropicGenerate } from '../llm/client';
 import type { UnderstandingProfile } from '@nibbin/keeper';
 import { runPass1, runPass2, mergeSweepDerived, type SentBatch, type ThreadBatch } from './derive';
-import { emptySweepDerived, type SweepDerived, type SweepStatus } from './types';
+import type { SweepDerived, SweepStatus } from './types';
 
 export const SWEEP_WINDOW_DAYS = 90;
 export const MAX_SENT_MESSAGES = 200;
