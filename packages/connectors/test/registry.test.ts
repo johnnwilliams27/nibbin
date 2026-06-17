@@ -144,4 +144,11 @@ describe('connector registry (SPEC §4.3)', () => {
   it('getConnector throws on unknown ids', () => {
     expect(() => getConnector('myspace')).toThrow(/unknown connector/);
   });
+
+  it('gmail descriptor declares both compose and send in scopes.write', () => {
+    const gmail = getConnector('gmail');
+    const write = gmail.scopes.write;
+    expect(write).toContain('https://www.googleapis.com/auth/gmail.compose');
+    expect(write).toContain('https://www.googleapis.com/auth/gmail.send');
+  });
 });
