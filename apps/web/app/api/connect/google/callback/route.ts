@@ -7,6 +7,7 @@ import { getGoogleOAuthConfig } from '../../../../../lib/connections/google-oaut
 import { consumePending, type PendingAuth } from '../../../../../lib/connections/pending';
 import { completeConnection } from '../../../../../lib/connections/complete';
 import { adoptTemplate } from '../../../../../lib/runtime/adopt';
+import { createWriteGrant } from '../../../../../lib/connections/grants';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,9 +34,36 @@ export async function exchangeViaEngine(
   );
 }
 
-/** Insert an active connection (service role) and seal the token in the vault. */
+/** Insert an active connection (service role) and seal the token in the vault.
+ * For write upgrades (nibbinId set), updates the existing connection's scopes
+ * in-place (design §9.1 — one connection per account per provider).
+ */
 export function makeCreateActiveConnection(svc: SupabaseClient) {
   return async (pending: PendingAuth, token: StoredToken): Promise<string> => {
+    if (pending.nibbinId) {
+      // Write-scope upgrade: find existing active connection and update scopes in-place
+      const { data: existing } = await svc
+        .from('connections')
+        .select('id')
+        .eq('account_id', pending.accountId)
+        .eq('provider', pending.provider)
+        .eq('status', 'active')
+        .maybeSingle();
+      if (existing) {
+        const { error: upErr } = await svc
+          .from('connections')
+          .update({ scopes: token.scopes })
+          .eq('id', existing.id as string);
+        if (upErr) throw new Error(`connection scopes update failed: ${upErr.message}`);
+        const { error: vErr } = await svc.rpc('connection_token_store', {
+          p_connection: existing.id,
+          p_token: JSON.stringify(token),
+        });
+        if (vErr) throw new Error(`token store failed: ${vErr.message}`);
+        return existing.id as string;
+      }
+    }
+    // First connect — insert new row
     const { data, error } = await svc
       .from('connections')
       .insert({
@@ -78,6 +106,20 @@ export async function GET(request: NextRequest): Promise<Response> {
       resumeAdopt: async (pending, templateKey) => {
         const r = await adoptTemplate(pending.accountId, pending.userId, templateKey);
         return { ok: r.missingConnectors.length === 0, missing: r.missingConnectors };
+      },
+      createWriteGrant: async (pending, connectionId) => {
+        if (!pending.nibbinId) return;
+        await createWriteGrant(
+          {
+            accountId: pending.accountId,
+            nibbinId: pending.nibbinId,
+            connectionId,
+            capability: 'email.draft',
+            grantedBy: pending.userId,
+            plainLanguageReason: 'Maya will create a Gmail draft for your review.',
+          },
+          svc,
+        );
       },
     },
   );
