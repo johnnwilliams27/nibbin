@@ -176,6 +176,20 @@ export function HatchWizard({ chores, apps }: { chores: ChoreOption[]; apps: str
                 {enrolled ? '✓ Enrolled' : submitting ? 'Enrolling…' : 'Enroll in Agent School'}
               </button>
             </div>
+            {/* Surface the failure right under the action that triggered it
+                (the Enroll button) so the "connect Gmail first" message is in
+                view — it used to render below the long note, off-screen. */}
+            {result && !result.ok && (
+              <div className={styles.error} role="alert">
+                {result.error}
+                {result.capped && (
+                  <>
+                    {' '}
+                    <a href="/billing">Move up a plan</a>.
+                  </>
+                )}
+              </div>
+            )}
             <p className={styles.note}>
               It starts as an egg: watching only. In a few days it hatches into a student and drafts
               its first work for your approval. Nothing is ever sent without you until it graduates.
@@ -186,17 +200,6 @@ export function HatchWizard({ chores, apps }: { chores: ChoreOption[]; apps: str
                 🎒 <b>{result?.name ?? name.trim()}</b> is enrolled in Agent School. It&rsquo;s
                 watching how you handle this chore now — expect its first drafts in your Today feed
                 within a few days.
-              </div>
-            )}
-            {result && !result.ok && (
-              <div className={styles.error} role="alert">
-                {result.error}
-                {result.capped && (
-                  <>
-                    {' '}
-                    <a href="/billing">Move up a plan</a>.
-                  </>
-                )}
               </div>
             )}
           </div>

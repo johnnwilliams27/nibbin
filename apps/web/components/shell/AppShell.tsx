@@ -208,7 +208,7 @@ export function AppShell({ active, title, email, children, panel, onboarding }: 
             aria-expanded={open}
             onClick={() => setOpen((v) => !v)}
           >
-            ☰
+            {open ? '✕' : '☰'}
           </button>
           <h1 className={styles.title}>{title}</h1>
           <div className={styles.account}>
