@@ -10,7 +10,16 @@
  * cards, app toggles, egg/name step) via hatch.module.css — token-only.
  */
 import { useEffect, useMemo, useState } from 'react';
-import { buildCreature } from '@nibbin/creatures';
+import {
+  buildCreature,
+  USER_SPECIES,
+  ACCS,
+  MARKS,
+  PALETTES,
+  type Accessory,
+  type Marking,
+  type SpeciesName,
+} from '@nibbin/creatures';
 import { hatchNibbin, type HatchResult } from './actions';
 import styles from './hatch.module.css';
 
@@ -19,13 +28,22 @@ interface ChoreOption {
   small: string;
 }
 
+const ACC_LABEL: Record<string, string> = {
+  none: 'None', glasses: 'Glasses', bow: 'Bow', pencil: 'Pencil',
+  broom: 'Broom', quill: 'Quill', coin: 'Coin',
+};
+const MARK_LABEL: Record<string, string> = {
+  none: 'None', spots: 'Spots', stripe: 'Stripe', star: 'Star',
+};
+
 /** Mount-gated egg sprite — the engine mints unique gradient ids per render, so
  *  rendering during SSR would mismatch on hydration (same guard as the shell's
- *  KeeperGlyph). The egg only appears on step 3, after mount, so this is free. */
-function EggCreature() {
+ *  KeeperGlyph). The egg only appears on step 3, after mount, so this is free.
+ *  Reflects the chosen color/species when the user customizes; else the playful default. */
+function EggCreature({ species, color }: { species: SpeciesName; color: string }) {
   const svg = useMemo(
-    () => buildCreature({ species: 'Wisp', stage: 'egg', color: '#7B5BD6', size: 84 }),
-    [],
+    () => buildCreature({ species, stage: 'egg', color, size: 84 }),
+    [species, color],
   );
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -43,6 +61,14 @@ export function HatchWizard({ chores, apps }: { chores: ChoreOption[]; apps: str
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<HatchResult | null>(null);
 
+  // Optional hatch-time appearance. Defaults match the playful egg; only sent
+  // when the user opts in to customize — otherwise the template's look stands.
+  const [customizing, setCustomizing] = useState(false);
+  const [species, setSpecies] = useState<SpeciesName>('Wisp');
+  const [palette, setPalette] = useState<string>('#7B5BD6');
+  const [accessory, setAccessory] = useState<Accessory>('none');
+  const [marking, setMarking] = useState<Marking>('none');
+
   const enrolled = result?.ok === true;
 
   async function onEnroll() {
@@ -50,7 +76,12 @@ export function HatchWizard({ chores, apps }: { chores: ChoreOption[]; apps: str
     setSubmitting(true);
     setResult(null);
     try {
-      const res = await hatchNibbin({ chore, apps: [...selApps], name });
+      const res = await hatchNibbin({
+        chore,
+        apps: [...selApps],
+        name,
+        appearance: customizing ? { species, palette, accessory, marking } : undefined,
+      });
       setResult(res);
     } catch {
       setResult({ ok: false, error: 'Something went wrong hatching your egg. Try again.' });
@@ -156,7 +187,106 @@ export function HatchWizard({ chores, apps }: { chores: ChoreOption[]; apps: str
             <p className={styles.sub} style={{ marginLeft: 'auto', marginRight: 'auto' }}>
               It already knows the chore and the apps. Give it a name — that&rsquo;s the whole setup.
             </p>
-            <EggCreature />
+            <EggCreature species={species} color={palette} />
+
+            {!enrolled && (
+              <button
+                type="button"
+                className={styles.customToggle}
+                aria-expanded={customizing}
+                onClick={() => setCustomizing((v) => !v)}
+              >
+                {customizing ? '▾ Hide look' : '✨ Customize its look (optional)'}
+              </button>
+            )}
+
+            {customizing && !enrolled && (
+              <div className={styles.customBox}>
+                <div className={styles.customRow}>
+                  <div>
+                    <span
+                      className={styles.grownPrev}
+                      aria-hidden="true"
+                      dangerouslySetInnerHTML={{
+                        __html: buildCreature({
+                          species,
+                          stage: 'senior',
+                          color: palette,
+                          acc: accessory,
+                          mark: marking,
+                          size: 72,
+                        }),
+                      }}
+                    />
+                    <div className={styles.grownCap}>Shown grown — hatches as an egg first.</div>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div className={styles.fld}>
+                      <span className={styles.fldLabel}>Color</span>
+                      <div className={styles.sw}>
+                        {PALETTES.map((p) => (
+                          <button
+                            key={p.c}
+                            type="button"
+                            title={p.n}
+                            aria-label={p.n}
+                            className={`${styles.swatchH} ${palette === p.c ? styles.swatchHOn : ''}`}
+                            style={{ background: p.c }}
+                            onClick={() => setPalette(p.c)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <div className={styles.fld}>
+                      <span className={styles.fldLabel}>Species</span>
+                      <div className={styles.chips}>
+                        {USER_SPECIES.map((s) => (
+                          <button
+                            key={s}
+                            type="button"
+                            className={`${styles.chip} ${species === s ? styles.chipOn : ''}`}
+                            onClick={() => setSpecies(s)}
+                          >
+                            {s}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className={styles.fld}>
+                  <span className={styles.fldLabel}>Accessory</span>
+                  <div className={styles.chips}>
+                    {ACCS.map((a) => (
+                      <button
+                        key={a}
+                        type="button"
+                        className={`${styles.chip} ${accessory === a ? styles.chipOn : ''}`}
+                        onClick={() => setAccessory(a)}
+                      >
+                        {ACC_LABEL[a] ?? a}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className={styles.fld}>
+                  <span className={styles.fldLabel}>Marking</span>
+                  <div className={styles.chips}>
+                    {MARKS.map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        className={`${styles.chip} ${marking === m ? styles.chipOn : ''}`}
+                        onClick={() => setMarking(m)}
+                      >
+                        {MARK_LABEL[m] ?? m}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className={styles.nameline}>
               <input
                 type="text"

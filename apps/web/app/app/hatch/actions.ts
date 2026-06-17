@@ -16,9 +16,21 @@
  * field), so they shape the chore→template choice and nothing more for now.
  */
 import { revalidatePath } from 'next/cache';
+import { USER_SPECIES, ACCS, MARKS } from '@nibbin/creatures';
 import { appSession } from '../../../lib/auth/app-session';
-import { adoptTemplate } from '../../../lib/runtime/adopt';
+import { adoptTemplate, type AppearanceOverride } from '../../../lib/runtime/adopt';
 import { CHORE_TEMPLATE } from './options';
+
+/** Keep only the appearance fields that are valid engine inputs; drop the rest so the template's default stands. */
+function cleanAppearance(a?: AppearanceOverride): AppearanceOverride | undefined {
+  if (!a) return undefined;
+  const out: AppearanceOverride = {};
+  if (a.species && (USER_SPECIES as readonly string[]).includes(a.species)) out.species = a.species;
+  if (a.palette && /^#[0-9a-fA-F]{6}$/.test(a.palette)) out.palette = a.palette;
+  if (a.accessory && (ACCS as readonly string[]).includes(a.accessory)) out.accessory = a.accessory;
+  if (a.marking && (MARKS as readonly string[]).includes(a.marking)) out.marking = a.marking;
+  return Object.keys(out).length > 0 ? out : undefined;
+}
 
 export interface HatchResult {
   ok: boolean;
@@ -36,6 +48,7 @@ export async function hatchNibbin(input: {
   chore: number;
   apps: string[];
   name: string;
+  appearance?: AppearanceOverride;
 }): Promise<HatchResult> {
   const templateKey = CHORE_TEMPLATE[input.chore];
   if (!templateKey) return { ok: false, error: 'Pick a chore to start.' };
@@ -44,10 +57,11 @@ export async function hatchNibbin(input: {
   if (name.length === 0) return { ok: false, error: 'Give your egg a name.' };
 
   const { user, accountId } = await appSession();
+  const appearance = cleanAppearance(input.appearance);
 
   let result;
   try {
-    result = await adoptTemplate(accountId, user.id, templateKey, name);
+    result = await adoptTemplate(accountId, user.id, templateKey, name, appearance);
   } catch (e) {
     if (e instanceof Error && e.message === 'nibbin_limit') {
       return {
