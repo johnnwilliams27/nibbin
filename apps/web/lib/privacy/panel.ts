@@ -1,0 +1,41 @@
+/**
+ * Pure view-model helpers for the Data & Privacy settings panel (T&C spec §6.1).
+ * Kept framework-free so the panel's only real logic is unit-tested in node;
+ * the page itself stays a thin server component.
+ */
+
+export interface ConnectionRow {
+  provider: string;
+  scopes: string[] | null;
+  status: string;
+}
+
+export interface ConnectionSummary {
+  total: number;
+  items: { provider: string; access: string; status: string }[];
+}
+
+/** Summarize non-revoked connections for display. Mirrors the connections
+ * page's rule: no scopes → "Read-only access" (read-only is the default until
+ * a Nibbin requests writes, C8). */
+export function connectionSummary(rows: ConnectionRow[]): ConnectionSummary {
+  const items = rows.map((r) => {
+    const n = r.scopes?.length ?? 0;
+    return {
+      provider: r.provider,
+      access: n > 0 ? `${n} scope${n === 1 ? '' : 's'}` : 'Read-only access',
+      status: r.status,
+    };
+  });
+  return { total: items.length, items };
+}
+
+export interface DeletionState {
+  pending: boolean;
+  date: string | null;
+}
+
+/** Derive the account-deletion clock state from accounts.purge_after. */
+export function deletionState(purgeAfter: string | null | undefined): DeletionState {
+  return { pending: !!purgeAfter, date: purgeAfter ?? null };
+}
