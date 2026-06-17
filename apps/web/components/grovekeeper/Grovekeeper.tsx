@@ -47,11 +47,6 @@ const SVG = `<svg viewBox="0 0 420 500" role="img" aria-label="The Grovekeeper" 
 </defs>
 <ellipse cx="210" cy="458" rx="104" ry="15" fill="#23291A" opacity=".16" filter="url(#gkBlurMd)"/>
 <g class="gk-bob">
-<g transform="translate(-12,0)">
-<path d="M320 410 C318 332 324 250 322 184 C321 163 335 150 349 154 C362 158 366 172 357 182" fill="none" stroke="url(#gkWood)" stroke-width="10" stroke-linecap="round"/>
-<path d="M315 405 C313 332 319 250 318 186" fill="none" stroke="#F0D7A8" stroke-width="2" stroke-linecap="round" opacity=".35"/>
-<path d="M324 400 C322 330 327 250 325 188" fill="none" stroke="#4A2F18" stroke-width="2" stroke-linecap="round" opacity=".4"/>
-</g>
 <ellipse cx="178" cy="405" rx="22" ry="14" fill="#415A1A"/>
 <ellipse cx="236" cy="405" rx="22" ry="14" fill="#415A1A"/>
 <ellipse cx="174" cy="401" rx="14" ry="7" fill="#5E8330" opacity=".7"/>
@@ -112,6 +107,11 @@ const SVG = `<svg viewBox="0 0 420 500" role="img" aria-label="The Grovekeeper" 
 <path d="M288 303 C302 304 314 321 308 341" fill="none" stroke="#5F8A2E" stroke-width="17" stroke-linecap="round"/>
 <ellipse cx="308" cy="343" rx="15" ry="13" fill="#5F8A2E" stroke="#3C541C" stroke-width="2.4" transform="rotate(14 308 343)"/>
 <ellipse cx="303" cy="339" rx="6" ry="5" fill="#9CC25B" opacity=".4"/>
+<g transform="translate(-12,0)">
+<path d="M320 410 C318 332 324 250 322 184 C321 163 335 150 349 154 C362 158 366 172 357 182" fill="none" stroke="url(#gkWood)" stroke-width="10" stroke-linecap="round"/>
+<path d="M315 405 C313 332 319 250 318 186" fill="none" stroke="#F0D7A8" stroke-width="2" stroke-linecap="round" opacity=".35"/>
+<path d="M324 400 C322 330 327 250 325 188" fill="none" stroke="#4A2F18" stroke-width="2" stroke-linecap="round" opacity=".4"/>
+</g>
 <g class="gk-lantern">
 <circle class="gk-glow" cx="338" cy="214" r="42" fill="url(#gkGlow)"/>
 <path d="M338 168 a7 7 0 0 1 0 14" fill="none" stroke="#8A5F0C" stroke-width="2.6"/>
