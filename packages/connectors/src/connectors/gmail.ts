@@ -68,11 +68,14 @@ export class GmailClient extends HttpConnectorClient {
   }
 
   /** Fetch history since `startHistoryId`. historyTypes defaults to ['messageAdded']. */
-  async historyList(opts: {
-    startHistoryId: string;
-    historyTypes?: string[];
-    maxResults?: number;
-  }): Promise<{
+  async historyList(
+    opts: {
+      startHistoryId: string;
+      historyTypes?: string[];
+      maxResults?: number;
+    },
+    signal?: AbortSignal,
+  ): Promise<{
     history?: Array<{ id: string; messages?: Array<{ id: string; threadId: string }> }>;
     historyId?: string;
   }> {
@@ -86,7 +89,7 @@ export class GmailClient extends HttpConnectorClient {
     const { data } = await this.readJson<{
       history?: Array<{ id: string; messages?: Array<{ id: string; threadId: string }> }>;
       historyId?: string;
-    }>(`/gmail/v1/users/me/history?${params}`);
+    }>(`/gmail/v1/users/me/history?${params}`, signal);
     return data;
   }
 

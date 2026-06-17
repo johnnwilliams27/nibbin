@@ -308,10 +308,11 @@ describe('GmailClient.historyList + getProfile', () => {
     const client = new GmailClient(conn, vault, overrides);
 
     let capturedPath = '';
-    // readJson is protected but accessible at runtime
+    // readJson is protected but accessible at runtime; use unknown[] to satisfy
+    // vi.spyOn's mockImplementation constraint while still reading the first arg.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    vi.spyOn(client as any, 'readJson').mockImplementation(async (path: string) => {
-      capturedPath = path;
+    vi.spyOn(client as any, 'readJson').mockImplementation(async (...args: unknown[]) => {
+      capturedPath = args[0] as string;
       return { data: { history: [], historyId: '9999' }, quarantined: {} };
     });
 
@@ -327,8 +328,8 @@ describe('GmailClient.historyList + getProfile', () => {
 
     let capturedPath = '';
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    vi.spyOn(client as any, 'readJson').mockImplementation(async (path: string) => {
-      capturedPath = path;
+    vi.spyOn(client as any, 'readJson').mockImplementation(async (...args: unknown[]) => {
+      capturedPath = args[0] as string;
       return { data: { history: [], historyId: '1' }, quarantined: {} };
     });
 

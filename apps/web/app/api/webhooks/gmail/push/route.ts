@@ -79,9 +79,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       connection.webhookState,
       {
         historyList: async (startHistoryId, signal) => {
-          const res = await client.historyList({ startHistoryId });
-          // Pass signal separately; historyList signature doesn't accept it yet
-          void signal; // acknowledged — abort handled at the outer level
+          const res = await client.historyList({ startHistoryId }, signal);
           const messages = (res.history ?? []).flatMap((h) => h.messages ?? []);
           return { messages, historyId: res.historyId ?? startHistoryId };
         },
@@ -93,16 +91,31 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       ctrl.signal,
     );
 
+    let anyCapped = false;
     for (const event of events) {
-      const first = await eventStore.recordOnce('gmail', event.dedupeKey, connection.id);
-      if (!first) continue;
-      await dispatchForConnection(event, {
+      const result = await dispatchForConnection(event, {
         activeNibbinsForAccount: (accountId) => activeNibbinsForAccount(svc, accountId),
         triggerRun: (nibbinId, trigger) => triggerNibbinRun(nibbinId, trigger),
+        // Per-(message, Nibbin) deduplication so already-dispatched Nibbins are
+        // skipped on the re-poll after a capped cycle; excess Nibbins fire.
+        recordOnce: (key) => eventStore.recordOnce('gmail', key, connection.id),
       });
+      if (result.capped) {
+        anyCapped = true;
+        console.warn(
+          `[gmail-push] fan-out ceiling hit for account ${connection.accountId}: ${result.deferred} Nibbin(s) deferred to next cycle`,
+        );
+      }
     }
 
-    await advanceGmailCursor(svc, connection.id, newHistoryId);
+    // FIX 2: only advance the cursor when no event hit the ceiling.
+    // Deferred Nibbins re-fire on the next poll; the per-(message, Nibbin)
+    // recordOnce inside dispatchForConnection dedupes already-fired ones so
+    // only the excess Nibbins trigger. Once a cycle completes uncapped, the
+    // cursor advances and the delta moves forward (convergence guaranteed).
+    if (!anyCapped) {
+      await advanceGmailCursor(svc, connection.id, newHistoryId);
+    }
   } catch (e) {
     if ((e as Error).name !== 'AbortError') {
       console.error('[gmail-push] dispatch error:', (e as Error).message);
