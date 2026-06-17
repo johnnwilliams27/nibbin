@@ -149,10 +149,12 @@ impl Daemon {
             .ok()
             .and_then(|s| s.trim().parse().ok())
             .unwrap_or(0);
+        let mut pipeline = RedactionPipeline::new(ner_from_env());
+        pipeline.add_exclusions(exclusions::load_exclusions(store_root)?);
         Ok(Self {
             store_root: store_root.to_path_buf(),
             study,
-            pipeline: RedactionPipeline::new(ner_from_env()),
+            pipeline,
             store: None,
             gate: CaptureGate::new(),
             source,
@@ -332,6 +334,9 @@ impl Daemon {
                         bundle_ids: bundle_id.into_iter().collect(),
                         app_names: app_name.into_iter().collect(),
                     });
+                // The file is the source of truth (T2): persist the merged set
+                // so the exclusion survives a daemon restart (T1).
+                exclusions::save_exclusions(&self.store_root, self.pipeline.exclusions())?;
             }
         }
         Ok(())
@@ -401,6 +406,10 @@ impl Daemon {
             let store = ObserverStore::open(&self.store_root, key_provider().as_ref())?;
             store.destroy_raw_data()?;
         }
+        let ex = self.store_root.join("exclusions.json");
+        if ex.exists() {
+            std::fs::remove_file(ex)?;
+        }
         Ok(())
     }
 
@@ -418,7 +427,7 @@ impl Daemon {
         }
         // residual control/status bookkeeping files hold no raw data but are
         // removed anyway so the verifier's bar stays "nothing but study.json"
-        for extra in ["control.jsonl", "control.offset", "daemon.status"] {
+        for extra in ["control.jsonl", "control.offset", "daemon.status", "exclusions.json"] {
             let p = self.store_root.join(extra);
             if p.exists() {
                 std::fs::remove_file(p)?;
