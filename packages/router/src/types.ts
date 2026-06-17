@@ -26,6 +26,8 @@ export type RoutedTask =
   | 'training_feedback'
   | 'map_labeling'
   | 'onboarding_understanding'
+  | 'sweep_pass1'
+  | 'sweep_pass2'
   // T2 — frontier (Opus/Fable-class)
   | 'diagnosis_synthesis'
   | 'custom_spec_draft'

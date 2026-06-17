@@ -153,3 +153,12 @@ describe('applyLabeling — join semantics', () => {
     expect(out.workflows[0].recommendedNibbin).toBe('hopper');
   });
 });
+
+describe('sanitizeProse — sweep output gate', () => {
+  it('strips HTML injected via a voice sample', () => {
+    expect(sanitizeProse('<img src=x onerror=alert(1)> genuine voice')).toBe('genuine voice');
+  });
+  it('strips bare www. links', () => {
+    expect(sanitizeProse('contact me at www.evil.com for details')).toBe('contact me at for details');
+  });
+});

@@ -16,6 +16,7 @@ import 'server-only';
  */
 import { groveRouter } from '../grove/router';
 import { anthropicGenerate, recordModelCall } from '../llm/client';
+import { loadGroveMemoryBlock } from '../grove/memory';
 import { KEY_TEMPLATE } from './synthesize';
 import type { DiagnosisMap } from './types';
 
@@ -179,9 +180,22 @@ export async function labelDiagnosis(accountId: string, map: DiagnosisMap): Prom
         friction: w.friction,
       })),
     });
+    // Optional: enrich the Opus pass with sweep-derived voice + FAQ context.
+    // loadGroveMemoryBlock returns null gracefully if the table is missing or empty.
+    const groveContext = await loadGroveMemoryBlock(accountId).catch(() => null);
+
+    const systemLines = [SYSTEM];
+    if (groveContext) {
+      systemLines.push(
+        '',
+        'Additional context about this person from their grove memory (use to make labels sound like them, not generic):',
+        groveContext,
+      );
+    }
+
     const result = await llm({
       model: decision.model,
-      system: [{ text: SYSTEM, cache: true }],
+      system: [{ text: systemLines.join('\n'), cache: true }],
       messages: [{ role: 'user', content: input }],
       maxTokens: 1500,
       temperature: 0.5,
