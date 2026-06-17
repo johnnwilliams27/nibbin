@@ -15,6 +15,8 @@ import {
   PixiesetClient,
   StripeConnectorClient,
   SupabaseTokenVault,
+  SendVelocityLimiter,
+  getConnector,
   type Connection,
   type ConnectorClient,
   type ScanResourceReader,
@@ -40,6 +42,7 @@ import {
   SupabaseIdempotencyStore,
   SupabaseRoutineStore,
   SupabaseRunStore,
+  SupabaseSendRecordStore,
 } from './stores';
 
 /** Fixture readers stand in ONLY on explicitly seeded dev/staging accounts. */
@@ -153,6 +156,97 @@ export async function activeConnections(svc: SupabaseClient, accountId: string):
   return (data ?? []).map(connectionFromRow);
 }
 
+export interface EffectsExecutorTestDeps {
+  createDraft: (rfc822: string) => Promise<{ id?: string }>;
+  sendMessage: (rfc822: string) => Promise<{ id?: string }>;
+  sendVelocityConsume: (args: {
+    accountId: string; provider: string; hourCap: number; dayCap: number;
+  }) => Promise<{ allowed: boolean; reason?: string; retryAfterMs?: number }>;
+}
+
+/**
+ * Build the effects executor (email.draft + email.send).
+ * In production (no testDeps): calls GmailClient directly + send_velocity_consume RPC atomically.
+ * In tests (testDeps injected): calls the provided stubs.
+ */
+export function buildEffectsExecutor(
+  byId: Map<string, Connection>,
+  accountId: string,
+  accountCreatedAtMs: number,
+  testDeps?: EffectsExecutorTestDeps,
+) {
+  return async (args: {
+    connectionId: string;
+    capability: string;
+    args: Record<string, unknown>;
+    idempotencyKey: string;
+  }): Promise<void> => {
+    const connection = byId.get(args.connectionId);
+    if (!connection) throw new Error(`connection ${args.connectionId} not found`);
+    const rfc822 = String(args.args.rfc822 ?? '');
+
+    switch (args.capability) {
+      case 'email.draft': {
+        if (testDeps) {
+          await testDeps.createDraft(rfc822);
+        } else {
+          const vault = new SupabaseTokenVault({
+            supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
+            serviceKey: process.env.SUPABASE_SECRET_KEY ?? '',
+          });
+          await new GmailClient(connection, vault).createDraft(rfc822);
+        }
+        break;
+      }
+      case 'email.send': {
+        // Use the atomic RPC rather than the two-step MemorySendRecordStore to avoid TOCTOU
+        const descriptor = getConnector(connection.provider);
+        const caps = descriptor.send?.velocity;
+        if (!caps) throw new Error(`${connection.provider} has no velocity caps declared`);
+        let decision: { allowed: boolean; reason?: string; retryAfterMs?: number };
+        if (testDeps) {
+          decision = await testDeps.sendVelocityConsume({
+            accountId, provider: connection.provider,
+            hourCap: caps.perAccountPerHour, dayCap: caps.perAccountPerDay,
+          });
+        } else {
+          const svc = serviceClient();
+          const { data } = await svc.rpc('send_velocity_consume', {
+            p_account: accountId,
+            p_provider: connection.provider,
+            p_hour_cap: caps.perAccountPerHour,
+            p_day_cap: caps.perAccountPerDay,
+          });
+          const row = (Array.isArray(data) ? data[0] : data) as {
+            allowed: boolean; reason: string | null; retry_after_ms: number;
+          };
+          decision = { allowed: row.allowed, reason: row.reason ?? undefined, retryAfterMs: row.retry_after_ms };
+        }
+        if (!decision.allowed) {
+          throw new Error(
+            `send blocked by velocity cap (${decision.reason}); retry in ${decision.retryAfterMs}ms`,
+          );
+        }
+        if (testDeps) {
+          await testDeps.sendMessage(rfc822);
+        } else {
+          const vault = new SupabaseTokenVault({
+            supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
+            serviceKey: process.env.SUPABASE_SECRET_KEY ?? '',
+          });
+          // GmailClient.sendMessage also calls requireGrantedScope(SCOPE_SEND) — second gate
+          const store = new SupabaseSendRecordStore(serviceClient());
+          const limiter = new SendVelocityLimiter(store);
+          await new GmailClient(connection, vault).sendMessage(rfc822, limiter, accountCreatedAtMs);
+        }
+        break;
+      }
+      default:
+        throw new Error(`no executor for capability ${args.capability}`);
+    }
+  };
+}
+
 /**
  * Trigger one Nibbin run end to end. Used by the grove (user dispatches) and
  * later by schedules/webhooks — every path goes through the same runner.
@@ -169,6 +263,10 @@ export async function triggerNibbinRun(nibbinId: string, trigger: RunTrigger): P
 
   const program = buildProgram(nibbin.spec.templateKey ?? '', connMap, nowMs);
 
+  // Load account created_at for new-account velocity budget
+  const { data: accRow } = await svc.from('accounts').select('created_at').eq('id', nibbin.accountId).single();
+  const accountCreatedAtMs = accRow ? new Date(accRow.created_at as string).getTime() : 0;
+
   return executeRun(nibbin, trigger, program, {
     runs: new SupabaseRunStore(svc),
     routines: new SupabaseRoutineStore(svc),
@@ -183,13 +281,7 @@ export async function triggerNibbinRun(nibbinId: string, trigger: RunTrigger): P
       },
     },
     effects: {
-      async execute() {
-        // v0 ships no write grants, so the runner can never reach this path
-        // (grant check precedes execution). When write adoption lands, this
-        // dispatches through the connector clients' granted-scope send paths
-        // + the AtomicSendVelocityLimiter. Fail loud until then.
-        throw new Error('write execution is not wired yet — no write grants exist in v0');
-      },
+      execute: buildEffectsExecutor(byId, nibbin.accountId, accountCreatedAtMs),
     },
     // M6.5: the model seam. Absent ANTHROPIC_API_KEY this is undefined and
     // every compose stays deterministic — same honest no-model behavior the
