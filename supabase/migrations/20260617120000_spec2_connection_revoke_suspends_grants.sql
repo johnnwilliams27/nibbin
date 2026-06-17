@@ -6,10 +6,12 @@
 -- account purge, direct RPC invocations, etc.) left nibbin_write_grants active.
 -- hasGrant() would then still return true after a connection was gone.
 --
--- This migration replaces connection_revoke with an identical body plus one
--- additional UPDATE that sets revoked_at = now() on all active grants for the
--- revoked connection. Suspension is now guaranteed at the DB layer regardless
--- of which code path triggers the revoke.
+-- This migration replaces connection_revoke with the CURRENT (M7) body —
+-- preserving M7's scan_results purge (#29 privacy guarantee) — plus one
+-- additional UPDATE that suspends all active grants for the revoked connection.
+-- Suspension is now guaranteed at the DB layer regardless of which code path
+-- triggers the revoke. (CREATE OR REPLACE overwrites the live function, so the
+-- M7 purge line MUST be carried forward here or it silently regresses.)
 
 create or replace function public.connection_revoke(p_connection uuid, p_actor_user uuid default null)
 returns void
@@ -48,6 +50,11 @@ begin
     set revoked_at = now()
     where connection_id = p_connection
       and revoked_at is null;
+
+  -- Carry forward M7 (#29): purge findings derived from this connection on
+  -- revoke. CREATE OR REPLACE overwrites the live M7 body, so this line MUST be
+  -- preserved here or the scan-purge privacy guarantee silently regresses.
+  delete from public.scan_results where connection_id = p_connection;
 end;
 $$;
 
