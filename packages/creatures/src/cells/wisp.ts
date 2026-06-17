@@ -105,23 +105,24 @@ export function wispFull(o: { stage?: Stage; color?: string; acc?: Accessory; ma
     : `M100 80 C76 80 60 100 60 126 C60 142 64 156 72 168 L77 160 L83 170 L89 159 L95 170 L100 161 L105 170 L111 159 L117 170 L123 160 L128 168 C136 156 140 142 140 126 C140 100 124 80 100 80 Z`;
 
   // Flame: present at student + senior (signature), bigger at senior. NONE at grad.
+  // Scaled to 70% about its base (where it meets the head) so it stays attached.
   const flameSvg = isGrad
     ? ''
     : sr
-      ? flame(
+      ? `<g transform="translate(100 94) scale(0.7) translate(-100 -94)">${flame(
           u,
           color,
           `M100 94 C91 84 96 80 93 70 C91 65 96 61 100 56 C104 61 109 65 107 70 C106 80 109 84 100 94 Z`,
           `M100 90 C95 83 98 79 96 72 C100 76 101 82 100 88 Z`,
           100, 74, 16,
-        )
-      : flame(
+        )}</g>`
+      : `<g transform="translate(100 84) scale(0.7) translate(-100 -84)">${flame(
           u,
           color,
           `M100 84 C86 68 94 60 89 46 C86 38 94 32 100 24 C106 32 114 38 111 46 C106 60 114 68 100 84 Z`,
           `M100 78 C92 68 96 60 94 50 C100 58 102 68 100 74 Z`,
           100, 54, 24,
-        );
+        )}</g>`;
 
   const ey = sr ? 110 : isGrad ? 134 : 132;
   const ckY = sr ? 128 : isGrad ? 152 : 150;
