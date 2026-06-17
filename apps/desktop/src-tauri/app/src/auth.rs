@@ -18,14 +18,13 @@ fn supabase_publishable_key() -> &'static str {
 const KEYRING_SERVICE: &str = "com.nibbin.observer";
 const KEYRING_SESSION: &str = "supabase-session";
 
-/// Persist a Supabase session obtained from the in-app login into the keychain.
-///
-/// The Windows Credential Manager caps a credential blob at 2560 chars, and a
-/// full Supabase session (the `user` object + a long access-token JWT) exceeds
-/// that. We only need the tokens + expiry — for silent refresh here and the
-/// Grove session handoff — so store just those, not the whole blob.
-#[tauri::command]
-pub fn store_session(session: serde_json::Value) -> Result<(), String> {
+/// Project a Supabase session down to only the fields we persist: the tokens +
+/// expiry. The raw login/refresh response also carries the full `user` object,
+/// identities, and metadata; the Windows Credential Manager caps a credential
+/// blob at 2560 chars and the full payload overflows it. Every keychain write
+/// (the login store AND the silent-refresh writeback) must go through this, or
+/// `set_password` errors and the caller boots to a blank window.
+fn minimal_session(session: &serde_json::Value) -> serde_json::Value {
     let mut minimal = serde_json::Map::new();
     for k in [
         "access_token",
@@ -38,7 +37,15 @@ pub fn store_session(session: serde_json::Value) -> Result<(), String> {
             minimal.insert(k.to_string(), v.clone());
         }
     }
-    let value = serde_json::Value::Object(minimal);
+    serde_json::Value::Object(minimal)
+}
+
+/// Persist a Supabase session obtained from the in-app login into the keychain,
+/// minimized to fit the Windows Credential Manager blob limit (see
+/// [`minimal_session`]).
+#[tauri::command]
+pub fn store_session(session: serde_json::Value) -> Result<(), String> {
+    let value = minimal_session(&session);
     keyring::Entry::new(KEYRING_SERVICE, KEYRING_SESSION)
         .and_then(|e| e.set_password(&value.to_string()))
         .map_err(|e| e.to_string())
@@ -103,7 +110,10 @@ fn auth_session_inner() -> Result<Option<serde_json::Value>, anyhow::Error> {
     .send_json(serde_json::json!({ "refresh_token": refresh_token }));
     match response {
         Ok(r) if r.status() < 300 => {
-            let fresh: serde_json::Value = r.into_json()?;
+            // Minimize before persisting — the raw refresh response carries the
+            // full user object and overflows the Windows Credential Manager
+            // 2560-char limit, which would error the whole boot (blank window).
+            let fresh = minimal_session(&r.into_json()?);
             entry.set_password(&fresh.to_string())?;
             Ok(Some(fresh))
         }
@@ -112,6 +122,52 @@ fn auth_session_inner() -> Result<Option<serde_json::Value>, anyhow::Error> {
             entry.delete_credential()?;
             Ok(None)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::minimal_session;
+    use serde_json::json;
+
+    /// Mirrors a real Supabase refresh response (long JWT + heavy user object)
+    /// and proves the projection both keeps the tokens and stays under the
+    /// Windows Credential Manager 2560-char blob limit that the raw payload
+    /// overflows. Regression guard for the silent-refresh writeback going blank.
+    #[test]
+    fn minimal_session_keeps_tokens_and_fits_credential_manager_limit() {
+        let access = "a".repeat(1300);
+        let full = json!({
+            "access_token": access.clone(),
+            "refresh_token": "refresh-token-value",
+            "expires_at": 2_000_000_000_i64,
+            "expires_in": 3600,
+            "token_type": "bearer",
+            "user": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "email": "person@example.com",
+                "user_metadata": { "blob": "x".repeat(5000) },
+                "identities": [ { "data": "y".repeat(3000) } ]
+            }
+        });
+
+        // The unminimized response would blow the limit…
+        assert!(full.to_string().len() > 2560);
+
+        let min = minimal_session(&full);
+
+        // …tokens + expiry survive…
+        assert_eq!(min["access_token"], json!(access));
+        assert_eq!(min["refresh_token"], json!("refresh-token-value"));
+        assert_eq!(min["expires_at"], json!(2_000_000_000_i64));
+        // …the heavyweight fields are dropped…
+        assert!(min.get("user").is_none());
+        // …and the stored blob fits.
+        assert!(
+            min.to_string().len() < 2560,
+            "minimal blob = {} chars",
+            min.to_string().len()
+        );
     }
 }
 
