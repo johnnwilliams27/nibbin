@@ -1,4 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
+
+vi.mock('@nibbin/redaction', () => ({
+  segmentStudy: vi.fn(async (studyId: string) => ({
+    version: 1, studyId, studyDays: 1, capturedFrom: '2026-06-19', capturedTo: '2026-06-20', workflows: [],
+  })),
+}));
+
 import { syncStudy, filterPacket, type DiagnosisPacket, type ReviewDecision } from '../src/ui/sync-study.js';
 
 function packet(keys: string[] = ['email.general', 'payments.invoices']): DiagnosisPacket {
@@ -86,5 +93,27 @@ describe('syncStudy review gate', () => {
   it('filterPacket drops workflows by key', () => {
     const filtered = filterPacket(packet(['a', 'b']), new Set(['a']));
     expect(filtered.workflows.map((w) => w.key)).toEqual(['b']);
+  });
+});
+
+describe('syncStudy (C3 ordering)', () => {
+  it('advances the study only after a 200', async () => {
+    const b = bridge();
+    const fetchFn = vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    const onState = vi.fn();
+    const res = await syncStudy({ studyId: 's1', bridge: b, fetchFn, now: '2026-06-20T00:00:00Z', onState });
+    expect(res.ok).toBe(true);
+    expect(b.sendControl).toHaveBeenCalledWith('synthesis_complete');
+    expect(onState).toHaveBeenCalledWith('done');
+  });
+
+  it('does NOT advance the study when upload fails (raw data preserved)', async () => {
+    const b = bridge();
+    const fetchFn = vi.fn(async () => new Response('err', { status: 502 }));
+    const onState = vi.fn();
+    const res = await syncStudy({ studyId: 's1', bridge: b, fetchFn, now: '2026-06-20T00:00:00Z', onState });
+    expect(res.ok).toBe(false);
+    expect(b.sendControl).not.toHaveBeenCalled(); // C3: no deletion before packet is off-device
+    expect(onState).toHaveBeenCalledWith('error');
   });
 });
