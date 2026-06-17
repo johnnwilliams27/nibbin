@@ -70,10 +70,22 @@ export interface EggParts {
   floaty?: boolean;
 }
 
+/** A fully self-contained render in the species' own viewBox (used by the
+ *  high-fidelity "ported cell" species — they own their defs, grad cap, and
+ *  accessory/marking overlays rather than going through the 72-space composer). */
+export interface FullRender {
+  art: string;
+  viewBox: string;
+  /** idle class on the <svg>: 'cr' (bob), 'cr eggy' (egg float), 'cr floaty' (hover). */
+  cls?: string;
+}
+
 export interface SpeciesDef {
   trait: string;
   tilt: number;
   canonical?: boolean;
   egg(color: string): EggParts | BodyParts;
   body(stage?: Stage, color?: string): BodyParts;
+  /** When present, the engine renders this verbatim and skips 72-space composition. */
+  full?(o: Required<Pick<BuildOptions, 'species' | 'size'>> & BuildOptions): FullRender;
 }

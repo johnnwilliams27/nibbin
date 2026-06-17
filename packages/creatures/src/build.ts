@@ -36,6 +36,12 @@ export function buildCreature(o: BuildOptions): string {
   const sp = SPECIES[o.species];
   const size = safeSize(o.size);
   if (!sp) throw new Error(`Unknown species: ${String(o.species)}`);
+  // High-fidelity ported species own their full render (their own viewBox, defs,
+  // grad cap, and accessory/marking overlays in their own coordinate space).
+  if (sp.full) {
+    const f = sp.full({ ...o, species: o.species, size, color: safeColor(o.color) });
+    return `<svg class="${f.cls ?? 'cr'}" style="animation-delay:${(nextUid() % 6) * 0.35}s" width="${size}" height="${size}" viewBox="${f.viewBox}" role="img" aria-label="${o.species}${o.stage === 'egg' ? ' egg' : ''}">${f.art}</svg>`;
+  }
   if (sp.canonical) {
     const b = sp.body();
     b.anchors.face = b.face;

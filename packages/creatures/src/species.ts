@@ -1,6 +1,7 @@
 import { shade } from './color';
 import { mass, pear, bean } from './mass';
 import { eyesRound, eyesOval, eyesBead, blush, smileOpen, smileTiny, feet } from './parts';
+import { caplingFull } from './cells';
 import type { BodyParts, EggParts, SpeciesDef, SpeciesName, Stage } from './types';
 
 function i0(stage?: Stage): 'student' | 'senior' | 'grad' {
@@ -92,8 +93,9 @@ export const SPECIES: Record<SpeciesName, SpeciesDef> = {
   },
 
   Capling: {
-    trait: 'shell gains rings',
+    trait: 'cap spreads & spots bloom',
     tilt: 0,
+    full: (o) => caplingFull(o),
     egg(color: string): EggParts {
       return {
         art: `<ellipse cx="36" cy="61" rx="16" ry="3" fill="#23291A" opacity=".08"/>
