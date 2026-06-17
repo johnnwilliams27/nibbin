@@ -99,12 +99,10 @@ const SVG = `<svg viewBox="0 0 420 500" role="img" aria-label="The Grovekeeper" 
 <path d="M144 360 C144 356 208 356 208 360" stroke="#5E3C20" stroke-width="1.2" stroke-dasharray="3 3" opacity=".4" fill="none"/>
 <rect x="171" y="362" width="10" height="8" rx="2" fill="#5E3C20"/>
 <path d="M176 347 l3.2 6.5 7.2 .5 -5.4 4.8 1.7 7 -6.7 -3.8 -6.7 3.8 1.7 -7 -5.4 -4.8 7.2 -.5 Z" fill="#F6D45F" stroke="#B98F1F" stroke-width="1.1"/>
-<path d="M122 303 C110 318 108 335 119 344 C129 351 144 350 154 345" fill="none" stroke="#3C541C" stroke-width="21" stroke-linecap="round"/>
-<path d="M122 303 C110 318 108 335 119 344 C129 351 144 350 154 345" fill="none" stroke="#6A9636" stroke-width="17" stroke-linecap="round"/>
-<path d="M119 312 C111 324 110 335 117 342" fill="none" stroke="#A6CD6C" stroke-width="3" stroke-linecap="round" opacity=".4"/>
-<ellipse cx="155" cy="346" rx="14" ry="12.5" fill="#6A9636" stroke="#3C541C" stroke-width="2.4"/>
-<path d="M288 303 C302 304 314 321 308 341" fill="none" stroke="#3C541C" stroke-width="21" stroke-linecap="round"/>
-<path d="M288 303 C302 304 314 321 308 341" fill="none" stroke="#5F8A2E" stroke-width="17" stroke-linecap="round"/>
+<path d="M119 290 C103 300 98 326 112 342 C121 351 135 351 145 346 C140 336 132 330 128 320 C123 309 122 299 124 291 Z" fill="#6A9636" stroke="#3C541C" stroke-width="2.4"/>
+<path d="M117 300 C109 312 108 327 115 339" fill="none" stroke="#A6CD6C" stroke-width="2.6" stroke-linecap="round" opacity=".4"/>
+<ellipse cx="153" cy="347" rx="13" ry="11.5" fill="#6A9636" stroke="#3C541C" stroke-width="2.4"/>
+<path d="M291 290 C307 299 316 320 311 339 C307 348 297 347 295 338 C295 323 291 309 287 299 Z" fill="#5F8A2E" stroke="#3C541C" stroke-width="2.4"/>
 <ellipse cx="308" cy="343" rx="15" ry="13" fill="#5F8A2E" stroke="#3C541C" stroke-width="2.4" transform="rotate(14 308 343)"/>
 <ellipse cx="303" cy="339" rx="6" ry="5" fill="#9CC25B" opacity=".4"/>
 <g transform="translate(-12,0)">
@@ -112,8 +110,8 @@ const SVG = `<svg viewBox="0 0 420 500" role="img" aria-label="The Grovekeeper" 
 <path d="M315 405 C313 332 319 250 318 186" fill="none" stroke="#F0D7A8" stroke-width="2" stroke-linecap="round" opacity=".35"/>
 <path d="M324 400 C322 330 327 250 325 188" fill="none" stroke="#4A2F18" stroke-width="2" stroke-linecap="round" opacity=".4"/>
 </g>
-<path d="M299 351 C296 345 299 338 306 337 C312 337 314 345 311 349 C308 354 302 355 299 351 Z" fill="#5F8A2E" stroke="#3C541C" stroke-width="2.2"/>
-<ellipse cx="304" cy="343" rx="3" ry="2.2" fill="#9CC25B" opacity=".4"/>
+<path d="M297 353 C294 346 295 337 300 331 C305 328 309 332 308 339 C307 346 305 350 303 353 C302 355 298 355 297 353 Z" fill="#5F8A2E" stroke="#3C541C" stroke-width="2.2"/>
+<ellipse cx="301" cy="339" rx="2.4" ry="4.5" fill="#9CC25B" opacity=".4"/>
 <g class="gk-lantern">
 <circle class="gk-glow" cx="338" cy="214" r="42" fill="url(#gkGlow)"/>
 <path d="M338 168 a7 7 0 0 1 0 14" fill="none" stroke="#8A5F0C" stroke-width="2.6"/>
