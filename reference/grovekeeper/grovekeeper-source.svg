@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!--
+    Grovekeeper — import source for Rive (Route A).
+    512x512 artboard. Top-level named groups map to the rig:
+      staff · feet · body · leaves(leaf-left/center/right) · acorn ·
+      face(eyes/cheeks/mouth) · satchel · arm-left · arm-right · lantern(lantern-glow)
+    No filters/clip-paths/animation — flat fills + a few gradients that import cleanly.
+    See reference/grovekeeper-asset-brief.md for the state-machine contract.
+  -->
+  <defs>
+    <radialGradient id="g-body" cx="40%" cy="30%" r="78%">
+      <stop offset="0%" stop-color="#82AD4D"/><stop offset="100%" stop-color="#5B7C2E"/>
+    </radialGradient>
+    <radialGradient id="g-belly" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#C7E08F" stop-opacity=".55"/><stop offset="100%" stop-color="#C7E08F" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="g-glass" cx="50%" cy="40%" r="62%">
+      <stop offset="0%" stop-color="#FFF7CE"/><stop offset="55%" stop-color="#F4C84A"/><stop offset="100%" stop-color="#DFA61D"/>
+    </radialGradient>
+    <radialGradient id="g-glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#F4C84A" stop-opacity=".85"/><stop offset="100%" stop-color="#F4C84A" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <g id="grovekeeper" transform="translate(16,24)">
+
+    <g id="staff">
+      <path d="M320 410 C318 332 324 250 322 184 C321 163 335 150 349 154 C362 158 366 172 357 182" fill="none" stroke="#845231" stroke-width="10" stroke-linecap="round"/>
+      <path d="M320 410 C318 332 324 250 322 184" fill="none" stroke="#5C3A20" stroke-width="2.4" stroke-linecap="round" opacity=".45"/>
+    </g>
+
+    <g id="feet">
+      <ellipse cx="178" cy="404" rx="22" ry="14" fill="#4C691F"/>
+      <ellipse cx="236" cy="404" rx="22" ry="14" fill="#4C691F"/>
+    </g>
+
+    <g id="body">
+      <path d="M205 150 C156 150 120 190 118 246 C116 298 122 354 150 386 C176 410 234 410 260 386 C288 354 294 298 292 246 C290 190 254 150 205 150 Z" fill="url(#g-body)" stroke="#3F5A1F" stroke-width="3.2"/>
+      <ellipse cx="196" cy="322" rx="70" ry="76" fill="url(#g-belly)"/>
+    </g>
+
+    <g id="leaves">
+      <g id="leaf-left" transform="rotate(-33 205 120)">
+        <path d="M205 120 C189 100 189 66 205 50 C221 66 221 100 205 120 Z" fill="#7FAF45" stroke="#4E6B26" stroke-width="2"/>
+        <path d="M205 113 L205 60" stroke="#4E6B26" stroke-width="1.4" opacity=".5"/>
+      </g>
+      <g id="leaf-right" transform="rotate(33 205 120)">
+        <path d="M205 120 C189 100 189 66 205 50 C221 66 221 100 205 120 Z" fill="#7FAF45" stroke="#4E6B26" stroke-width="2"/>
+        <path d="M205 113 L205 60" stroke="#4E6B26" stroke-width="1.4" opacity=".5"/>
+      </g>
+      <g id="leaf-center">
+        <path d="M205 122 C187 100 187 62 205 44 C223 62 223 100 205 122 Z" fill="#9CC25B" stroke="#4E6B26" stroke-width="2"/>
+        <path d="M205 114 L205 54" stroke="#4E6B26" stroke-width="1.4" opacity=".5"/>
+      </g>
+    </g>
+
+    <g id="acorn">
+      <path d="M186 126 C186 120 224 120 224 126 C224 146 214 164 205 164 C196 164 186 146 186 126 Z" fill="#CE9152" stroke="#8A5A30" stroke-width="2.4"/>
+      <path d="M181 127 C181 115 229 115 229 127 C229 134 219 138 205 138 C191 138 181 134 181 127 Z" fill="#8A5A30" stroke="#6B4423" stroke-width="1.6"/>
+      <path d="M190 122 l4 8 M205 120 l0 9 M220 122 l-4 8" fill="none" stroke="#6B4423" stroke-width="1.2" opacity=".55"/>
+      <rect x="201" y="106" width="8" height="11" rx="4" fill="#6B4423"/>
+    </g>
+
+    <g id="face">
+      <g id="eyes">
+        <ellipse cx="174" cy="236" rx="30" ry="33" fill="#fff" stroke="#3F5A1F" stroke-width="2.4"/>
+        <ellipse cx="240" cy="236" rx="30" ry="33" fill="#fff" stroke="#3F5A1F" stroke-width="2.4"/>
+        <circle cx="181" cy="242" r="18.5" fill="#2C2A22"/>
+        <circle cx="233" cy="242" r="18.5" fill="#2C2A22"/>
+        <circle cx="174" cy="234" r="6.5" fill="#fff"/>
+        <circle cx="226" cy="234" r="6.5" fill="#fff"/>
+        <circle cx="188" cy="250" r="3" fill="#fff" opacity=".85"/>
+        <circle cx="240" cy="250" r="3" fill="#fff" opacity=".85"/>
+      </g>
+      <g id="cheeks">
+        <ellipse cx="138" cy="272" rx="14" ry="9" fill="#E8917A" opacity=".4"/>
+        <ellipse cx="276" cy="272" rx="14" ry="9" fill="#E8917A" opacity=".4"/>
+      </g>
+      <path id="mouth" d="M192 276 Q207 292 222 276" fill="none" stroke="#34301E" stroke-width="5" stroke-linecap="round"/>
+    </g>
+
+    <g id="satchel">
+      <path d="M172 354 C158 320 202 292 290 268" fill="none" stroke="#7A4E2B" stroke-width="10" stroke-linecap="round"/>
+      <path d="M172 354 C158 320 202 292 290 268" fill="none" stroke="#5E3C20" stroke-width="2" stroke-linecap="round" opacity=".4"/>
+      <rect x="160" y="344" width="64" height="46" rx="11" fill="#9C6B3B" stroke="#5E3C20" stroke-width="2.4"/>
+      <rect x="166" y="370" width="52" height="3.5" rx="1.75" fill="#5E3C20" opacity=".3"/>
+      <path d="M156 346 C156 341 228 341 228 346 L228 364 C228 371 156 371 156 364 Z" fill="#B5824A" stroke="#5E3C20" stroke-width="2.2"/>
+      <path d="M160 348 C160 344 224 344 224 348" fill="none" stroke="#E9C893" stroke-width="1.4" stroke-dasharray="3 3" opacity=".7"/>
+      <rect x="187" y="363" width="10" height="8" rx="2" fill="#5E3C20"/>
+      <path d="M192 347 l3.2 6.5 7.2 .5 -5.4 4.8 1.7 7 -6.7 -3.8 -6.7 3.8 1.7 -7 -5.4 -4.8 7.2 -.5 Z" fill="#F2CE55" stroke="#B98F1F" stroke-width="1.2"/>
+    </g>
+
+    <g id="arm-left">
+      <path d="M120 278 C107 292 109 320 128 340 C140 352 160 348 160 333 C152 316 138 294 138 282 Z" fill="#6B9637" stroke="#3F5A1F" stroke-width="3"/>
+      <ellipse cx="151" cy="344" rx="15" ry="13" fill="#6B9637" stroke="#3F5A1F" stroke-width="3"/>
+    </g>
+
+    <g id="arm-right">
+      <path d="M286 254 C310 250 328 270 328 292 C328 308 312 314 304 304 C306 286 300 266 282 264 Z" fill="#6B9637" stroke="#3F5A1F" stroke-width="3"/>
+      <ellipse cx="320" cy="300" rx="16" ry="14" fill="#6B9637" stroke="#3F5A1F" stroke-width="3"/>
+    </g>
+
+    <g id="lantern">
+      <circle id="lantern-glow" cx="350" cy="214" r="40" fill="url(#g-glow)"/>
+      <path d="M350 168 a7 7 0 0 1 0 14" fill="none" stroke="#8A5F0C" stroke-width="2.6"/>
+      <line x1="350" y1="182" x2="350" y2="190" stroke="#8A5F0C" stroke-width="2.4"/>
+      <path d="M338 190 L362 190 L358 197 L342 197 Z" fill="#C8941F" stroke="#8A5F0C" stroke-width="1.8"/>
+      <rect x="333" y="197" width="34" height="40" rx="6" fill="url(#g-glass)" stroke="#8A5F0C" stroke-width="2.6"/>
+      <line x1="350" y1="197" x2="350" y2="237" stroke="#8A5F0C" stroke-width="1.4" opacity=".5"/>
+      <line x1="333" y1="216" x2="367" y2="216" stroke="#8A5F0C" stroke-width="1.2" opacity=".45"/>
+      <circle cx="350" cy="216" r="6.5" fill="#FFF6C8"/>
+      <path d="M340 237 L360 237 L356 244 L344 244 Z" fill="#C8941F" stroke="#8A5F0C" stroke-width="1.8"/>
+      <rect x="346" y="244" width="8" height="5" rx="2" fill="#8A5F0C"/>
+    </g>
+
+  </g>
+</svg>
