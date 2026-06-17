@@ -9,6 +9,7 @@ import { storePending } from '../../../lib/connections/pending';
 import { beginConnect } from '../../../lib/connections/begin';
 import { beginWriteConnect } from '../../../lib/connections/begin-write';
 import { grantWriteCapability } from '../../../lib/connections/grants';
+import { revokeAndSuspend } from '../../../lib/connections/revoke-connection';
 
 export async function beginConnectAction(formData: FormData): Promise<void> {
   const provider = String(formData.get('provider') ?? '');
@@ -70,4 +71,15 @@ export async function beginWriteConnectAction(formData: FormData): Promise<void>
     },
   );
   redirect(url);
+}
+
+/**
+ * Disconnect a connection: revoke the OAuth token (vault secret destroyed),
+ * set status → revoked, then suspend all nibbin_write_grants for this
+ * connection_id. Design §4.4, §8.
+ */
+export async function revokeConnectionAction(connectionId: string): Promise<void> {
+  const { user } = await appSession();
+  const svc = serviceClient();
+  await revokeAndSuspend(connectionId, user.id, svc);
 }
