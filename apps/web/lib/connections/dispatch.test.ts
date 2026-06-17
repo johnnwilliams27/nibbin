@@ -17,7 +17,7 @@ function makeNibbin(overrides: Partial<NibbinRef> = {}): NibbinRef {
       requiredConnectors: ['gmail'],
       triggers: [{ kind: 'event', source: 'connector:gmail:message.received', debounceSecs: 300 }],
       curriculum: { measures: '', promotion: { windowRuns: 25, minApprovedUneditedPct: 0.95 }, routineMinApprovals: 5 },
-      creditProfile: { weightClass: 'light', ceilings: { maxSteps: 20, maxTokens: 4000, maxWallClockMs: 30000 } },
+      creditProfile: { weightClass: 'standard', ceilings: { maxSteps: 20, maxTokens: 4000, maxWallClockMs: 30000 } },
     },
     ...overrides,
   };
