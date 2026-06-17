@@ -8,6 +8,7 @@ import { bridge, type StudyStatus } from '../bridge.js';
 import type { StudyKind } from '../../core/study-machine.js';
 import { button, el } from '../dom.js';
 import { syncStudy, type SyncState } from '../sync-study.js';
+import { EVER_COMPLETED_KEY } from '../tab-dot.js';
 import { consentView } from './consent.js';
 import { notesView } from './notes.js';
 import { preferencesView } from './preferences.js';
@@ -152,6 +153,9 @@ function stateView(status: StudyStatus, onOpenReview: () => void, rerender: () =
       ]),
     );
   } else if (state === 'COMPLETE' || state === 'DELETED') {
+    // Persist the "ever completed a study" flag so the tab dot is permanently
+    // suppressed for returning users (C — persisted first-timer nudge, Task C).
+    try { localStorage.setItem(EVER_COMPLETED_KEY, '1'); } catch { /* storage unavailable */ }
     const study = status.study as { deletionReceipt?: { verified: boolean; verified_at: string } } | null;
     const receipt = study?.deletionReceipt;
     root.append(
@@ -174,8 +178,8 @@ function stateView(status: StudyStatus, onOpenReview: () => void, rerender: () =
 /**
  * Small daemon-health note shown beneath entry cards when the daemon is
  * (still) offline. Keeps guidance accessible without blocking the start flow.
- * The Retry button re-polls studyStatus(); onRetry resolves to the latest
- * status string so the caller can decide whether to hide this note.
+ * The Retry button calls `onRetry`, which should run the same 3× cold-start
+ * poll as mount (`paint(true)`) so a real cold-start resolves on retry.
  */
 function daemonHealthNote(onRetry: () => void): HTMLElement {
   return el('div', { class: 'card daemon-health-note' }, [
@@ -199,9 +203,11 @@ function daemonHealthNote(onRetry: () => void): HTMLElement {
  * consent→start flow — so the chosen kind/label rides through to the diagnosis.
  *
  * When `showDaemonNote` is true a secondary health note appears beneath the
- * entry cards to give honest daemon status without hiding the start actions.
+ * entry cards. `onRetry` is the callback for the health note's Retry button —
+ * defaults to `onChanged` but callers can pass `() => void paint(true)` to run
+ * the 3× cold-start poll (NIB-7 fold-in fix B).
  */
-function entryView(onChanged: () => void, showDaemonNote = false): HTMLElement {
+function entryView(onChanged: () => void, showDaemonNote = false, onRetry?: () => void): HTMLElement {
   const root = el('div', {});
   const mount = el('div', {});
 
@@ -254,7 +260,8 @@ function entryView(onChanged: () => void, showDaemonNote = false): HTMLElement {
 
     const children: HTMLElement[] = [fullCard, scanCard];
     if (showDaemonNote) {
-      children.push(daemonHealthNote(onChanged));
+      // Use onRetry (paint(true)) if provided, else fall back to onChanged.
+      children.push(daemonHealthNote(onRetry ?? onChanged));
     }
     mount.replaceChildren(...children);
   }
@@ -325,6 +332,71 @@ async function pollUntilOnline(
   return status;
 }
 
+/**
+ * Inline SVG icon — stroke=currentColor, 18px, viewBox 0 0 24 24.
+ * Follows the same convention as the web shell's NavIcon: inherits tint from
+ * the button's color so it reacts to the active-state token automatically.
+ * No icon-library dependency; all elements are created via createElementNS so
+ * there is no innerHTML and no XSS surface.
+ */
+function navIcon(sub: Sub): SVGSVGElement {
+  const ns = 'http://www.w3.org/2000/svg';
+
+  function svgEl(tag: string, attrs: Record<string, string>): SVGElement {
+    const el = document.createElementNS(ns, tag);
+    for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+    return el;
+  }
+
+  // Shape definitions: each sub has an array of [tag, attrs] tuples.
+  // All paths/shapes are compile-time literals — no user data.
+  const shapes: Record<Sub, Array<[string, Record<string, string>]>> = {
+    // Binoculars / field-glass — "Field study"
+    home: [
+      ['circle', { cx: '7', cy: '14', r: '4' }],
+      ['circle', { cx: '17', cy: '14', r: '4' }],
+      ['path', { d: 'M3 14V9l4-5h2m6 0h2l4 5v5' }],
+      ['line', { x1: '11', y1: '14', x2: '13', y2: '14' }],
+    ],
+    // Checklist — "Review"
+    review: [
+      ['rect', { x: '5', y: '3', width: '14', height: '18', rx: '2' }],
+      ['line', { x1: '9', y1: '8', x2: '15', y2: '8' }],
+      ['line', { x1: '9', y1: '12', x2: '15', y2: '12' }],
+      ['polyline', { points: '9 16 11 18 15 14' }],
+    ],
+    // Notebook with pencil — "Field notes"
+    notes: [
+      ['rect', { x: '4', y: '3', width: '13', height: '18', rx: '2' }],
+      ['line', { x1: '8', y1: '8', x2: '13', y2: '8' }],
+      ['line', { x1: '8', y1: '12', x2: '13', y2: '12' }],
+      ['path', { d: 'M17 17l4-4-2-2-4 4v2h2z' }],
+    ],
+    // Sliders — "Preferences"
+    preferences: [
+      ['line', { x1: '4', y1: '6', x2: '20', y2: '6' }],
+      ['line', { x1: '4', y1: '12', x2: '20', y2: '12' }],
+      ['line', { x1: '4', y1: '18', x2: '20', y2: '18' }],
+      ['circle', { cx: '9', cy: '6', r: '2', fill: 'none' }],
+      ['circle', { cx: '16', cy: '12', r: '2', fill: 'none' }],
+      ['circle', { cx: '9', cy: '18', r: '2', fill: 'none' }],
+    ],
+  };
+
+  const svg = document.createElementNS(ns, 'svg') as SVGSVGElement;
+  svg.setAttribute('width', '18');
+  svg.setAttribute('height', '18');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('fill', 'none');
+  svg.setAttribute('stroke', 'currentColor');
+  svg.setAttribute('stroke-width', '2');
+  svg.setAttribute('stroke-linecap', 'round');
+  svg.setAttribute('stroke-linejoin', 'round');
+  svg.setAttribute('aria-hidden', 'true');
+  for (const [tag, attrs] of shapes[sub]) svg.append(svgEl(tag, attrs));
+  return svg;
+}
+
 export function fieldStudyView(_rerender: () => void): HTMLElement {
   const root = el('div', {});
   let sub: Sub = 'home';
@@ -339,12 +411,17 @@ export function fieldStudyView(_rerender: () => void): HTMLElement {
   ];
 
   // Re-render the sub-nav each time the selection changes so the active item
-  // carries aria-current (styled by `.nav button[aria-current='true']`) — a
-  // clicked section stays highlighted, not just hovered.
+  // carries aria-current styled by `.subnav button[aria-current='true']` — a
+  // moss-tinted pill matching the `chip.active` treatment. Each button also
+  // shows an inline SVG icon to match Grove's icon+label nav idiom.
   function renderNav(): void {
     nav.replaceChildren();
     for (const [key, label] of subs) {
-      const b = button(label, () => { sub = key; renderNav(); void paint(); });
+      const icon = navIcon(key);
+      const labelSpan = el('span', {}, [label]);
+      const b = el('button', { class: 'subnav-btn' });
+      b.append(icon, labelSpan);
+      b.addEventListener('click', () => { sub = key; renderNav(); void paint(); });
       if (key === sub) b.setAttribute('aria-current', 'true');
       nav.append(b);
     }
@@ -392,7 +469,7 @@ export function fieldStudyView(_rerender: () => void): HTMLElement {
           );
         } else {
           const showDaemonNote = status.state !== 'NOT_STARTED';
-          mount.append(entryView(() => void paint(), showDaemonNote));
+          mount.append(entryView(() => void paint(), showDaemonNote, () => void paint(true)));
         }
         break;
       }

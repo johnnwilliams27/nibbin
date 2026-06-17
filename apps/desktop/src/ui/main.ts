@@ -5,43 +5,33 @@
 import '@nibbin/shared/tokens.css';
 import './observer.css';
 import { bridge } from './bridge.js';
-import { button, clear, el } from './dom.js';
+import { clear, el } from './dom.js';
 import { mountUpdateBanner } from './update-banner.js';
 import { fieldStudyView } from './views/field-study.js';
 import { groveView } from './views/grove.js';
 import { loginView } from './views/login.js';
+import { shouldShowDot, EVER_COMPLETED_KEY } from './tab-dot.js';
 
 type Tab = 'grove' | 'field-study';
 const app = document.getElementById('app')!;
 let tab: Tab = 'grove';
 
-/**
- * States where a study is actively in-progress — no nudge dot in this case.
- * The dot shows only when no study is running (NOT_STARTED, COMPLETE, DELETED,
- * DAEMON_OFFLINE, or any unrecognized state).
- *
- * Signal gap: no local "has ever completed ≥1 study" flag exists without a
- * persistent store or IPC call that doesn't yet exist. We use "no study
- * currently running" as the safest available signal — it correctly nudges
- * first-timers and is honest for returning users between studies. A future
- * improvement could suppress the dot after the first COMPLETE/DELETED is seen
- * in this session.
- */
-const RUNNING_STATES = new Set([
-  'CONSENTED', 'ACTIVE', 'PAUSED', 'REVIEW', 'SYNTHESIZING', 'RAW_DELETING',
-]);
-
 let fieldStudyDotVisible = false;
 
 /**
- * Check the daemon status once and update `fieldStudyDotVisible`. Called on
- * boot and after a study completes (via the render cycle). Fire-and-forget;
- * a failure leaves the dot hidden (fail-safe over fail-open nudge).
+ * Check the daemon status once and update `fieldStudyDotVisible`.
+ *
+ * The dot is a first-timer nudge: shown only when the user has never completed
+ * a field study (no `nibbin.fieldStudyEverCompleted` flag in localStorage) AND
+ * no study is currently running. Veterans between studies are not nudged.
+ *
+ * Fail-closed: any error hides the dot.
  */
 async function refreshTabDot(): Promise<void> {
   try {
+    const everCompleted = localStorage.getItem(EVER_COMPLETED_KEY) !== null;
     const status = await bridge.studyStatus();
-    fieldStudyDotVisible = !RUNNING_STATES.has(status.state);
+    fieldStudyDotVisible = shouldShowDot(everCompleted, status.state);
   } catch {
     fieldStudyDotVisible = false;
   }
