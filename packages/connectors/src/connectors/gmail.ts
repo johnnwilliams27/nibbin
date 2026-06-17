@@ -20,6 +20,38 @@ const BASE = 'https://gmail.googleapis.com';
 const SCOPE_COMPOSE = 'https://www.googleapis.com/auth/gmail.compose';
 const SCOPE_SEND = 'https://www.googleapis.com/auth/gmail.send';
 
+// ── Body helpers (exported for unit-testing without a live client) ──────────
+
+const BODY_LIMIT = 8 * 1024; // 8 KB of plain text max
+
+interface GmailFullMessage {
+  id: string;
+  snippet?: string;
+  payload?: GmailPart;
+}
+interface GmailPart {
+  mimeType?: string;
+  body?: { data?: string };
+  parts?: GmailPart[];
+  headers?: Array<{ name: string; value: string }>;
+}
+
+export function decodeBase64Url(encoded: string): string {
+  const base64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
+  return Buffer.from(base64, 'base64').toString('utf-8');
+}
+
+export function findPlainText(part: GmailPart): string | null {
+  if (part.mimeType === 'text/plain' && part.body?.data) {
+    return decodeBase64Url(part.body.data);
+  }
+  for (const child of part.parts ?? []) {
+    const found = findPlainText(child);
+    if (found) return found;
+  }
+  return null;
+}
+
 export interface GmailMessageMeta {
   id: string;
   threadId: string;
@@ -99,6 +131,29 @@ export class GmailClient extends HttpConnectorClient {
       '/gmail/v1/users/me/profile',
     );
     return data;
+  }
+
+  /**
+   * Fetch the plain-text body of a single message (Spec 4 sweep).
+   * Uses format=full; walks the MIME tree to find text/plain; decodes base64url.
+   * Truncates to 8 KB. Returns '' on any failure — the sweep must tolerate
+   * individual message failures without aborting.
+   */
+  async getMessageBody(id: string): Promise<string> {
+    try {
+      const { data } = await this.readJson<GmailFullMessage>(
+        `/gmail/v1/users/me/messages/${encodeURIComponent(id)}?format=full`,
+      );
+      const plain = data.payload ? findPlainText(data.payload) : null;
+      if (plain) return plain.slice(0, BODY_LIMIT);
+      // Fallback: subject + snippet
+      const subject =
+        data.payload?.headers?.find((h) => h.name.toLowerCase() === 'subject')?.value ?? '';
+      const snippet = data.snippet ?? '';
+      return `${subject}\n${snippet}`.trim().slice(0, BODY_LIMIT);
+    } catch {
+      return '';
+    }
   }
 
   /** Register the Pub/Sub watch that powers the webhook path. */

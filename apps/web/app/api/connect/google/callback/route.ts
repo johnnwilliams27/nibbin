@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { createHmac } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { exchangeCode, type StoredToken } from '@nibbin/connectors';
 import type { UnsafeTestOverrides } from '@nibbin/connectors';
@@ -10,6 +11,33 @@ import { adoptTemplate } from '../../../../../lib/runtime/adopt';
 import { createWriteGrant } from '../../../../../lib/connections/grants';
 
 export const dynamic = 'force-dynamic';
+
+function makeSweepHmac(accountId: string, connectionId: string): string | null {
+  const secret = process.env.SWEEP_HMAC_SECRET;
+  if (!secret) return null;
+  return createHmac('sha256', secret).update(`${accountId}:${connectionId}`).digest('hex');
+}
+
+function dispatchSweepFireAndForget(
+  request: NextRequest,
+  accountId: string,
+  connectionId: string,
+  provider: string,
+): void {
+  if (provider !== 'gmail') return;
+  const hmac = makeSweepHmac(accountId, connectionId);
+  if (!hmac) return; // no secret configured — skip silently
+  const sweepUrl = new URL('/api/sweep/gmail/onboarding', request.url).href;
+  // Fire-and-forget: 5 s timeout so the callback is never blocked
+  fetch(sweepUrl, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ accountId, connectionId, hmac }),
+    signal: AbortSignal.timeout(5_000),
+  }).catch(() => {
+    // ignore — sweep failure is non-fatal for the connection flow
+  });
+}
 
 /** Redeem the callback code via the OAuth engine (test override injects a mock token endpoint). */
 export async function exchangeViaEngine(
@@ -97,12 +125,20 @@ export async function GET(request: NextRequest): Promise<Response> {
   }
 
   const svc = serviceClient();
+  let createdConnectionId: string | null = null;
+
+  const createAndCapture = async (pending: PendingAuth, token: StoredToken): Promise<string> => {
+    const id = await makeCreateActiveConnection(svc)(pending, token);
+    createdConnectionId = id;
+    return id;
+  };
+
   const { redirectTo } = await completeConnection(
     { code, returnedState: state, nowMs: Date.now() },
     {
       consume: (s, now) => consumePending(s, now, svc),
       exchange: (pending, c) => exchangeViaEngine(pending, c),
-      createActiveConnection: makeCreateActiveConnection(svc),
+      createActiveConnection: createAndCapture,
       resumeAdopt: async (pending, templateKey) => {
         const r = await adoptTemplate(pending.accountId, pending.userId, templateKey);
         return { ok: r.missingConnectors.length === 0, missing: r.missingConnectors };
@@ -123,5 +159,18 @@ export async function GET(request: NextRequest): Promise<Response> {
       },
     },
   );
+
+  // Dispatch sweep (fire-and-forget) if we got a connection id
+  if (createdConnectionId) {
+    const { data: conn } = await svc
+      .from('connections')
+      .select('account_id, provider')
+      .eq('id', createdConnectionId)
+      .maybeSingle();
+    if (conn?.provider === 'gmail') {
+      dispatchSweepFireAndForget(request, conn.account_id as string, createdConnectionId, 'gmail');
+    }
+  }
+
   return NextResponse.redirect(new URL(redirectTo, request.url));
 }
