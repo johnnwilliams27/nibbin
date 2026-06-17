@@ -13,6 +13,7 @@ export interface CompleteConnectionDeps {
   exchange: (pending: PendingAuth, code: string) => Promise<StoredToken>;
   createActiveConnection: (pending: PendingAuth, token: StoredToken) => Promise<string>;
   resumeAdopt?: (pending: PendingAuth, templateKey: string) => Promise<{ ok: boolean; missing: string[] }>;
+  createWriteGrant?: (pending: PendingAuth, connectionId: string) => Promise<void>;
 }
 
 export async function completeConnection(
@@ -30,7 +31,11 @@ export async function completeConnection(
     return { redirectTo: appendQuery(back, { error: 'exchange_failed' }) };
   }
 
-  await deps.createActiveConnection(pending, token);
+  const connectionId = await deps.createActiveConnection(pending, token);
+
+  if (pending.nibbinId && deps.createWriteGrant) {
+    await deps.createWriteGrant(pending, connectionId);
+  }
 
   if (pending.resumeTemplate && deps.resumeAdopt) {
     const r = await deps.resumeAdopt(pending, pending.resumeTemplate);
@@ -41,6 +46,11 @@ export async function completeConnection(
         resume: pending.resumeTemplate,
       }),
     };
+  }
+
+  // Write-scope upgrade: use returnTo (set to /app/nibbins/[id]?writeGranted=provider)
+  if (pending.nibbinId && pending.returnTo) {
+    return { redirectTo: pending.returnTo };
   }
 
   return { redirectTo: `/app/connections?connected=${encodeURIComponent(pending.provider)}` };

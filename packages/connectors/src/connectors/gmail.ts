@@ -110,6 +110,22 @@ export class GmailClient extends HttpConnectorClient {
     return res.json() as { id?: string };
   }
 
+  /**
+   * Send without an in-process velocity limiter — velocity MUST already have
+   * been consumed atomically (e.g. via the send_velocity_consume SQL RPC)
+   * before calling this method. Callers that pre-consume via the RPC use this
+   * to avoid the double-consume bug (FIX 1, Spec 2 review).
+   */
+  async sendMessageDirect(rawRfc822Base64Url: string): Promise<{ id?: string }> {
+    this.requireGrantedScope(SCOPE_SEND);
+    const res = await this.request('/gmail/v1/users/me/messages/send', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ raw: rawRfc822Base64Url }),
+    });
+    return res.json() as { id?: string };
+  }
+
   private requireGrantedScope(scope: string): void {
     if (!this.connection.scopes.includes(scope)) {
       throw new Error(`connection lacks ${scope} — write scopes are granted per-Nibbin at adoption (C8)`);
