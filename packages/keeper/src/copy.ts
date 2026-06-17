@@ -68,6 +68,24 @@ export const DONE = {
     'Connecting your accounts comes next — that is when the real nibbling starts. Until then this grove is yours, and so am I. Ask me anything.',
 };
 
+/* ── Next-step affordance (NIB-4) ────────────────────────────────────────────
+   Shown at step === 'done'. Two stages, switched on whether an account has an
+   active connection yet. Stage 1 nudges toward connecting; stage 2 nudges
+   toward running a field study in the desktop app. */
+export const NEXT_STEP = {
+  connect: {
+    title: 'Ready when you are.',
+    detail: "Connect an account and I'll start finding the busywork worth nibbling.",
+    cta: 'Connect an account',
+  },
+  fieldStudy: {
+    title: 'Now I can really watch.',
+    detail: "Run a field study in the desktop app and I'll learn where your time actually goes.",
+    cta: 'Start a field study',
+    dismiss: 'Not now',
+  },
+} as const;
+
 /* ── Freeform chat (post-onboarding, M2 scope) ───────────────────────────── */
 
 export const CHAT = {

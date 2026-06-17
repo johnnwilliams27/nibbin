@@ -11,9 +11,12 @@ export {
   advanceOnboarding,
   initialOnboardingState,
   isOnboardingComplete,
+  nextStepStage,
   ONBOARDING_STEPS,
   turnForState,
 } from './onboarding';
+export type { NextStepStage } from './onboarding';
+export { NEXT_STEP } from './copy';
 export { CHAT_INPUT_MAX, keeperChat } from './chat';
 export type { KeeperChatContext, KeeperChatDeps, KeeperChatReply } from './chat';
 export { buildKeeperContext, KEEPER_SYSTEM_PROMPT } from './prompt';

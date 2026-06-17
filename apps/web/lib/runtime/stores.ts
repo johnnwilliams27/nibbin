@@ -21,6 +21,7 @@ import type {
   RunStore,
   StepRecord,
 } from '@nibbin/runtime';
+import type { SendRecordStore } from '@nibbin/connectors';
 import { isProductEventName } from '@nibbin/runtime';
 
 type Service = SupabaseClient;
@@ -187,6 +188,30 @@ export class SupabaseIdempotencyStore implements IdempotencyStore {
       .eq('account_id', accountId)
       .eq('idempotency_key', idempotencyKey);
     if (error) throw new Error(`idempotency mark failed: ${error.message}`);
+  }
+}
+
+export class SupabaseSendRecordStore implements SendRecordStore {
+  constructor(private readonly svc: Service) {}
+
+  async recentSends(accountId: string, provider: string, sinceMs: number): Promise<number[]> {
+    const { data, error } = await this.svc
+      .from('send_records')
+      .select('sent_at')
+      .eq('account_id', accountId)
+      .eq('provider', provider)
+      .gt('sent_at', new Date(sinceMs).toISOString());
+    if (error) throw new Error(`recentSends failed: ${error.message}`);
+    return (data ?? []).map((r) => new Date(r.sent_at as string).getTime());
+  }
+
+  async recordSend(accountId: string, provider: string, atMs: number): Promise<void> {
+    const { error } = await this.svc.from('send_records').insert({
+      account_id: accountId,
+      provider,
+      sent_at: new Date(atMs).toISOString(),
+    });
+    if (error) throw new Error(`recordSend failed: ${error.message}`);
   }
 }
 

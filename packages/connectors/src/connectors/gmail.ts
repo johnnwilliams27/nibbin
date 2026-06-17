@@ -67,6 +67,40 @@ export class GmailClient extends HttpConnectorClient {
     return data;
   }
 
+  /** Fetch history since `startHistoryId`. historyTypes defaults to ['messageAdded']. */
+  async historyList(
+    opts: {
+      startHistoryId: string;
+      historyTypes?: string[];
+      maxResults?: number;
+    },
+    signal?: AbortSignal,
+  ): Promise<{
+    history?: Array<{ id: string; messages?: Array<{ id: string; threadId: string }> }>;
+    historyId?: string;
+  }> {
+    const params = new URLSearchParams({
+      startHistoryId: opts.startHistoryId,
+      maxResults: String(opts.maxResults ?? 100),
+    });
+    for (const ht of opts.historyTypes ?? ['messageAdded']) {
+      params.append('historyTypes', ht);
+    }
+    const { data } = await this.readJson<{
+      history?: Array<{ id: string; messages?: Array<{ id: string; threadId: string }> }>;
+      historyId?: string;
+    }>(`/gmail/v1/users/me/history?${params}`, signal);
+    return data;
+  }
+
+  /** Returns the authenticated user's email address and current historyId. */
+  async getProfile(): Promise<{ emailAddress: string; historyId: string }> {
+    const { data } = await this.readJson<{ emailAddress: string; historyId: string }>(
+      '/gmail/v1/users/me/profile',
+    );
+    return data;
+  }
+
   /** Register the Pub/Sub watch that powers the webhook path. */
   async watch(topicName: string): Promise<{ historyId?: string; expiration?: string }> {
     const res = await this.request('/gmail/v1/users/me/watch', {
@@ -102,6 +136,22 @@ export class GmailClient extends HttpConnectorClient {
     if (!decision.allowed) {
       throw new Error(`send blocked by velocity cap (${decision.reason}); retry in ${decision.retryAfterMs}ms`);
     }
+    const res = await this.request('/gmail/v1/users/me/messages/send', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ raw: rawRfc822Base64Url }),
+    });
+    return res.json() as { id?: string };
+  }
+
+  /**
+   * Send without an in-process velocity limiter — velocity MUST already have
+   * been consumed atomically (e.g. via the send_velocity_consume SQL RPC)
+   * before calling this method. Callers that pre-consume via the RPC use this
+   * to avoid the double-consume bug (FIX 1, Spec 2 review).
+   */
+  async sendMessageDirect(rawRfc822Base64Url: string): Promise<{ id?: string }> {
+    this.requireGrantedScope(SCOPE_SEND);
     const res = await this.request('/gmail/v1/users/me/messages/send', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
