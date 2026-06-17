@@ -1,43 +1,14 @@
 /**
- * High-fidelity "ported cell" renders — the signed-off lifecycle art
- * (reference/nibbin-lifecycle.html, 200×230) brought into the engine, one
- * species at a time. Each builder owns its own namespaced <defs>, palette
- * tinting, baked grad cap, and accessory/marking overlays in its own space.
- *
- * Shared neutrals (eyes/cheeks/blur/egg/shell/board) come from cellDefs();
- * the body/cap accent is tinted from the palette `color` so a nibbin's chosen
- * colour drives its look. Gradient/filter ids are suffixed with an m-prefixed
- * uid so determinism holds and many creatures can share one page.
+ * Capling — the high-fidelity "ported cell" pilot (mushroom). Signed off
+ * 2026-06-17; the worked example every other species copies. It owns its own
+ * palette-tinted cap, shaded eyes, baked grad mortarboard, and
+ * accessory/marking overlays in 200-space; shared neutrals come from
+ * `cellDefs`/`star`.
  */
-import { shade } from './color';
-import { nextUid } from './mass';
-import type { Accessory, FullRender, Marking, Stage } from './types';
-
-/** Neutral, palette-independent defs shared by every ported cell. */
-function cellDefs(u: string): string {
-  return `<defs>
-    <filter id="bSm${u}" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="2"/></filter>
-    <filter id="bMd${u}" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="4"/></filter>
-    <radialGradient id="eW${u}" cx="50%" cy="34%" r="72%"><stop offset="0%" stop-color="#fff"/><stop offset="100%" stop-color="#E7EEDC"/></radialGradient>
-    <radialGradient id="eP${u}" cx="42%" cy="35%" r="75%"><stop offset="0%" stop-color="#3B3930"/><stop offset="100%" stop-color="#191711"/></radialGradient>
-    <radialGradient id="ck${u}" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#E2603A" stop-opacity=".5"/><stop offset="100%" stop-color="#E2603A" stop-opacity="0"/></radialGradient>
-    <radialGradient id="eggG${u}" cx="42%" cy="32%" r="80%"><stop offset="0%" stop-color="#FDF8EA"/><stop offset="100%" stop-color="#E2D4AF"/></radialGradient>
-    <radialGradient id="shellG${u}" cx="42%" cy="34%" r="75%"><stop offset="0%" stop-color="#FDF8EA"/><stop offset="100%" stop-color="#EADCBA"/></radialGradient>
-    <radialGradient id="stemG${u}" cx="42%" cy="34%" r="80%"><stop offset="0%" stop-color="#FCF3E1"/><stop offset="100%" stop-color="#E4CFAA"/></radialGradient>
-    <linearGradient id="boardG${u}" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0%" stop-color="#3A4458"/><stop offset="100%" stop-color="#222A3A"/></linearGradient>
-  </defs>`;
-}
-
-/** Star path centred at (cx,cy), radius r. */
-function star(cx: number, cy: number, r: number, fill: string): string {
-  const pts: string[] = [];
-  for (let k = 0; k < 10; k++) {
-    const rr = k % 2 ? r * 0.45 : r;
-    const a = (Math.PI / 5) * k - Math.PI / 2;
-    pts.push(`${(cx + Math.cos(a) * rr).toFixed(1)} ${(cy + Math.sin(a) * rr).toFixed(1)}`);
-  }
-  return `<path d="M${pts.join(' L')} Z" fill="${fill}" stroke="#B98F1F" stroke-width="1.2" stroke-linejoin="round"/>`;
-}
+import { shade } from '../color';
+import { nextUid } from '../mass';
+import type { Accessory, FullRender, Marking, Stage } from '../types';
+import { cellDefs, star } from './shared';
 
 /** Marking overlay on the cream stem (face area kept clear). */
 function caplingMark(mark: Marking, color: string): string {
