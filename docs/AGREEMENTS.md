@@ -4,8 +4,17 @@
   adversarial gate pass and John signs the gate in LEARNINGS.md.
 - Every PR reviewed before merge. Human approval required for changes touching SPEC §2
   claims, auth, billing, or the agent runtime. No direct pushes to main.
+- **The adversarial gate is not milestone-only.** ANY PR touching a security-sensitive
+  surface — `supabase/migrations/` (incl. RPCs), `packages/runtime`, `packages/connectors`,
+  `packages/keeper`, `packages/router`, `apps/web/app/api/`, `apps/desktop/src-tauri/`, or
+  anything auth/vault/capture — must run the four adversarial reviewers (`red-team`,
+  `claims-auditor`, `logic-skeptic`, `cost-auditor`; see `/gate` and `.claude/agents/*`)
+  against the PR diff and commit the report under `docs/gates/<date>-<slug>.md`. P0/P1
+  findings block merge. The `adversarial-gate` CI check enforces that the report exists.
+  Rebase onto the merge target FIRST — reviewing a stale diff conflates your work with
+  changes already on main.
 - CI gates: typecheck, tests, lint, dependency audit, SAST, redaction corpus,
-  trigger-graph validation. GitHub Actions pinned by commit SHA.
+  trigger-graph validation, adversarial-gate report. GitHub Actions pinned by commit SHA.
 - Conventional commits. Migrations as in-repo files (Supabase CLI); never dashboard-only.
 - Locked vocabulary in all user-facing copy: Nibbin(s), grove, hatch, adopt, Agent
   School (Egg -> Student -> Senior -> Graduate), Grovekeeper, Field Notes, diagnosis,

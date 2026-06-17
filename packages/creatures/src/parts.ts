@@ -1,24 +1,50 @@
 import { shade } from './color';
+import { nextUid } from './mass';
 
 export interface EyeOpts {
   happy?: boolean;
   lidPct?: number;
 }
 
+/**
+ * Shared eye-shading defs (house style): a graded white (bright top-left →
+ * cool off-white) and a graded near-black pupil, minted once per eye-pair so
+ * the gradient ids stay unique across many creatures on one page. Returns the
+ * <defs> plus the id refs to fill with.
+ */
+function eyeShade(): { defs: string; white: string; pupil: string } {
+  const u = 'm' + nextUid();
+  return {
+    defs: `<defs>
+      <radialGradient id="w${u}" cx="50%" cy="34%" r="72%"><stop offset="0%" stop-color="#FFFFFF"/><stop offset="100%" stop-color="#E7EEDC"/></radialGradient>
+      <radialGradient id="p${u}" cx="42%" cy="35%" r="78%"><stop offset="0%" stop-color="#3B3930"/><stop offset="100%" stop-color="#191711"/></radialGradient>
+    </defs>`,
+    white: `url(#w${u})`,
+    pupil: `url(#p${u})`,
+  };
+}
+
 export function eyesRound(exL: number, exR: number, ey: number, r: number, color: string, opts?: EyeOpts): string {
   const o = opts ?? {};
   const dk = shade(color, -32);
+  const lt = shade(color, 30);
+  const sh = eyeShade();
   const happy = o.happy
     ? `<path d="M${exL - r} ${ey + r + 1.5} Q${exL} ${ey + r - 1} ${exL + r} ${ey + r + 1.5}" stroke="${dk}" stroke-width="1.2" fill="none" opacity=".45"/><path d="M${exR - r} ${ey + r + 1.5} Q${exR} ${ey + r - 1} ${exR + r} ${ey + r + 1.5}" stroke="${dk}" stroke-width="1.2" fill="none" opacity=".45"/>`
     : '';
-  return `<circle cx="${exL}" cy="${ey}" r="${r}" fill="#fff" stroke="${dk}" stroke-width="1"/>
-  <circle cx="${exR}" cy="${ey}" r="${r}" fill="#fff" stroke="${dk}" stroke-width="1"/>
-  <circle cx="${exL + r * 0.16}" cy="${ey + r * 0.14}" r="${r * 0.52}" fill="#23291A"/>
-  <circle cx="${exR + r * 0.16}" cy="${ey + r * 0.14}" r="${r * 0.52}" fill="#23291A"/>
+  return `${sh.defs}
+  <circle cx="${exL}" cy="${ey}" r="${r}" fill="${sh.white}" stroke="${dk}" stroke-width="1"/>
+  <circle cx="${exR}" cy="${ey}" r="${r}" fill="${sh.white}" stroke="${dk}" stroke-width="1"/>
+  <path d="M${exL - r * 0.7} ${ey - r * 0.55} Q${exL - r * 0.2} ${ey - r * 0.95} ${exL + r * 0.4} ${ey - r * 0.7}" stroke="${lt}" stroke-width="${r * 0.16}" fill="none" opacity=".5" stroke-linecap="round"/>
+  <path d="M${exR - r * 0.7} ${ey - r * 0.55} Q${exR - r * 0.2} ${ey - r * 0.95} ${exR + r * 0.4} ${ey - r * 0.7}" stroke="${lt}" stroke-width="${r * 0.16}" fill="none" opacity=".5" stroke-linecap="round"/>
+  <circle cx="${exL + r * 0.16}" cy="${ey + r * 0.14}" r="${r * 0.52}" fill="${sh.pupil}"/>
+  <circle cx="${exR + r * 0.16}" cy="${ey + r * 0.14}" r="${r * 0.52}" fill="${sh.pupil}"/>
   <circle cx="${exL + r * 0.34}" cy="${ey - r * 0.18}" r="${r * 0.22}" fill="#fff"/>
   <circle cx="${exR + r * 0.34}" cy="${ey - r * 0.18}" r="${r * 0.22}" fill="#fff"/>
   <circle cx="${exL - r * 0.1}" cy="${ey + r * 0.34}" r="${r * 0.1}" fill="#fff" opacity=".8"/>
   <circle cx="${exR - r * 0.1}" cy="${ey + r * 0.34}" r="${r * 0.1}" fill="#fff" opacity=".8"/>
+  <circle cx="${exL - r * 0.34}" cy="${ey + r * 0.42}" r="${r * 0.14}" fill="${lt}" opacity=".45"/>
+  <circle cx="${exR - r * 0.34}" cy="${ey + r * 0.42}" r="${r * 0.14}" fill="${lt}" opacity=".45"/>
   ${o.lidPct ? `<path d="M${exL - r} ${ey} A${r} ${r} 0 0 1 ${exL + r} ${ey} L${exL + r} ${ey - r * o.lidPct} A${r} ${r * o.lidPct} 0 0 0 ${exL - r} ${ey - r * o.lidPct} Z" fill="${color}" stroke="${dk}" stroke-width="1" transform="translate(0 ${-r * (1 - o.lidPct)})"/><path d="M${exR - r} ${ey} A${r} ${r} 0 0 1 ${exR + r} ${ey} L${exR + r} ${ey - r * o.lidPct} A${r} ${r * o.lidPct} 0 0 0 ${exR - r} ${ey - r * o.lidPct} Z" fill="${color}" stroke="${dk}" stroke-width="1" transform="translate(0 ${-r * (1 - o.lidPct)})"/>` : ''}
   ${happy}
   <ellipse class="lid" cx="${exL}" cy="${ey}" rx="${r + 0.5}" ry="${r + 0.5}" fill="${color}"/>
@@ -27,14 +53,19 @@ export function eyesRound(exL: number, exR: number, ey: number, r: number, color
 
 export function eyesOval(exL: number, exR: number, ey: number, r: number, color: string, tall?: number): string {
   const dk = shade(color, -32);
+  const lt = shade(color, 30);
   const rx = r * 0.74;
   const ry = r * (tall ?? 1.16);
-  return `<ellipse cx="${exL}" cy="${ey}" rx="${rx}" ry="${ry}" fill="#fff" stroke="${dk}" stroke-width="1"/>
-  <ellipse cx="${exR}" cy="${ey}" rx="${rx}" ry="${ry}" fill="#fff" stroke="${dk}" stroke-width="1"/>
-  <ellipse cx="${exL + 0.6}" cy="${ey + 0.8}" rx="${rx * 0.55}" ry="${ry * 0.55}" fill="#23291A"/>
-  <ellipse cx="${exR + 0.6}" cy="${ey + 0.8}" rx="${rx * 0.55}" ry="${ry * 0.55}" fill="#23291A"/>
+  const sh = eyeShade();
+  return `${sh.defs}
+  <ellipse cx="${exL}" cy="${ey}" rx="${rx}" ry="${ry}" fill="${sh.white}" stroke="${dk}" stroke-width="1"/>
+  <ellipse cx="${exR}" cy="${ey}" rx="${rx}" ry="${ry}" fill="${sh.white}" stroke="${dk}" stroke-width="1"/>
+  <ellipse cx="${exL + 0.6}" cy="${ey + 0.8}" rx="${rx * 0.55}" ry="${ry * 0.55}" fill="${sh.pupil}"/>
+  <ellipse cx="${exR + 0.6}" cy="${ey + 0.8}" rx="${rx * 0.55}" ry="${ry * 0.55}" fill="${sh.pupil}"/>
   <circle cx="${exL + rx * 0.34}" cy="${ey - ry * 0.25}" r="${rx * 0.26}" fill="#fff"/>
   <circle cx="${exR + rx * 0.34}" cy="${ey - ry * 0.25}" r="${rx * 0.26}" fill="#fff"/>
+  <circle cx="${exL - rx * 0.2}" cy="${ey + ry * 0.32}" r="${rx * 0.16}" fill="${lt}" opacity=".45"/>
+  <circle cx="${exR - rx * 0.2}" cy="${ey + ry * 0.32}" r="${rx * 0.16}" fill="${lt}" opacity=".45"/>
   <ellipse class="lid" cx="${exL}" cy="${ey}" rx="${rx + 0.5}" ry="${ry + 0.5}" fill="${color}"/>
   <ellipse class="lid" cx="${exR}" cy="${ey}" rx="${rx + 0.5}" ry="${ry + 0.5}" fill="${color}"/>`;
 }

@@ -98,6 +98,17 @@ describe('renderBeatEmail', () => {
     expect(() => renderBeatEmail(content(), 'c@example.com', { ...CONFIG, postalAddress: '  ' })).toThrow();
   });
 
+  it('renders the header creature as a hosted PNG, never inline SVG', () => {
+    // Keeper beat → root PNG.
+    const keeperBeat = renderBeatEmail(content({ key: 'half_time' }), 'c@example.com', CONFIG);
+    expect(keeperBeat.html).toContain('https://nibbin.com/keeper-email.png');
+    expect(keeperBeat.html).not.toContain('<svg');
+    // Species beat → per-creature PNG under /creatures/, still no inline SVG.
+    const speciesBeat = renderBeatEmail(content({ key: 'species', celebration: null, cards: [] }), 'c@example.com', CONFIG);
+    expect(speciesBeat.html).toContain('https://nibbin.com/creatures/sprout-student.png');
+    expect(speciesBeat.html).not.toContain('<svg');
+  });
+
   it('diagnosis reveal subject follows the variant title', () => {
     const reveal = content({ key: 'diagnosis_reveal', title: 'Your grove, one fortnight in', celebration: null, cards: [] });
     expect(templateFor(reveal).subject).toBe('Your grove, one fortnight in');

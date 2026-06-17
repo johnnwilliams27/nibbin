@@ -37,15 +37,28 @@ async function accountSpecs(svc: SupabaseClient, accountId: string): Promise<Age
   return (data ?? []).map((row) => specFromRow(row as Parameters<typeof specFromRow>[0]));
 }
 
+/** Optional appearance chosen at hatch time; any field omitted falls back to the template's. */
+export interface AppearanceOverride {
+  species?: string;
+  palette?: string;
+  accessory?: string;
+  marking?: string;
+}
+
 export async function adoptTemplate(
   accountId: string,
   userId: string,
   templateKey: string,
   chosenName?: string,
+  appearance?: AppearanceOverride,
 ): Promise<AdoptResult> {
   const svc = serviceClient();
   const template = getTemplate(templateKey);
   const name = (chosenName ?? template.spec.displayName).trim().slice(0, 40) || template.spec.displayName;
+  const species = appearance?.species ?? template.species;
+  const palette = appearance?.palette ?? template.color;
+  const accessory = appearance?.accessory ?? template.accessory;
+  const marking = appearance?.marking ?? template.marking;
 
   // §6.2: cycle-checked trigger graphs at spec-validation time, across the
   // account's whole spec set — custom or shop, same validation.
@@ -81,10 +94,10 @@ export async function adoptTemplate(
     p_curriculum: template.spec.curriculum,
     p_credit_profile: template.spec.creditProfile,
     p_name: name,
-    p_species: template.species,
-    p_palette: template.color,
-    p_accessory: template.accessory,
-    p_marking: template.marking,
+    p_species: species,
+    p_palette: palette,
+    p_accessory: accessory,
+    p_marking: marking,
     p_seed: Math.abs(hashCode(`${accountId}:${templateKey}:${name}`)) % 100_000,
   });
   if (error) {

@@ -197,7 +197,7 @@ describe('creatureCss', () => {
 
 describe('exports', () => {
   it('exposes the full taxonomy', () => {
-    expect(SPECIES_NAMES).toEqual(['Sprout', 'Wisp', 'Shellback', 'Longear', 'Puff', 'Glim', 'Keeper']);
+    expect(SPECIES_NAMES).toEqual(['Sprout', 'Wisp', 'Capling', 'Longear', 'Puff', 'Glim', 'Keeper']);
     expect(USER_SPECIES).toHaveLength(6);
     expect(STAGES).toHaveLength(4);
     expect(ACCS).toHaveLength(7);

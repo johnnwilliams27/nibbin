@@ -26,3 +26,52 @@ export async function refreshNibbinNote(nibbinId: string): Promise<void> {
   await refreshLearnedNote(accountId, id);
   revalidatePath('/app/nibbins');
 }
+
+export interface NibbinAppearance {
+  name: string;
+  species: string;
+  palette: string;
+  accessory: string;
+  marking: string;
+}
+
+export interface UpdateResult {
+  ok: boolean;
+  error?: string;
+}
+
+/**
+ * Rename + restyle one of the account's own nibbins. Calls the
+ * update_nibbin_appearance security-definer RPC under the caller's RLS session
+ * (authenticated has execute; the function re-checks account membership and
+ * refuses the canonical Grovekeeper). Validation is enforced in SQL against the
+ * creatures engine's accepted inputs; we surface its message on failure.
+ */
+export async function updateNibbinAppearance(
+  nibbinId: string,
+  appearance: NibbinAppearance,
+): Promise<UpdateResult> {
+  const id = nibbinId?.trim();
+  if (!id) return { ok: false, error: 'Missing nibbin.' };
+
+  let supabase;
+  try {
+    ({ supabase } = await appSession());
+  } catch {
+    return { ok: false, error: 'You need to be signed in.' };
+  }
+
+  const { error } = await supabase.rpc('update_nibbin_appearance', {
+    p_nibbin: id,
+    p_name: appearance.name,
+    p_species: appearance.species,
+    p_palette: appearance.palette,
+    p_accessory: appearance.accessory,
+    p_marking: appearance.marking,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath('/app/nibbins');
+  revalidatePath('/app');
+  return { ok: true };
+}

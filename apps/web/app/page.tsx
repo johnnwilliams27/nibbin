@@ -1,5 +1,6 @@
 import './(marketing)/landing.css';
 import { Creature } from './(marketing)/Creature';
+import { Grovekeeper } from '../components/grovekeeper/Grovekeeper';
 import { Enhancers } from './(marketing)/Enhancers';
 import { MayaDemo } from './(marketing)/MayaDemo';
 import { WaitlistForm } from './(marketing)/WaitlistForm';
@@ -212,7 +213,7 @@ export default function Home() {
         <div className="wrap">
           <div className="keeper-grid reveal">
             <div className="keeper-art">
-              <Creature species="Keeper" size={190} />
+              <Grovekeeper size={200} />
               <span className="keeper-tag">THE GROVEKEEPER</span>
             </div>
             <div>
