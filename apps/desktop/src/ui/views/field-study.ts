@@ -13,6 +13,7 @@ import { notesView } from './notes.js';
 import { preferencesView } from './preferences.js';
 import { reviewView } from './review.js';
 import { deleteEverythingCard, studyView } from './study.js';
+import { viewForState } from './field-study-state.js';
 
 type Sub = 'home' | 'review' | 'notes' | 'preferences';
 
@@ -166,26 +167,41 @@ function stateView(status: StudyStatus, onOpenReview: () => void, rerender: () =
           : el('p', { class: 'muted' }, ['Receipt pending.']),
       ]),
     );
-  } else if (state === 'DAEMON_OFFLINE') {
-    root.append(
-      el('p', { class: 'eyebrow' }, ['Field study']),
-      el('h1', {}, [`Field study isn't running`]),
-      el('p', { class: 'muted' }, [
-        `The background process that does the watching (and the stopping, and the deleting) is offline. Nothing records while it's down. Start it from the menu bar, or reinstall if this keeps happening.`,
-      ]),
-    );
   }
   return root;
 }
 
 /**
+ * Small daemon-health note shown beneath entry cards when the daemon is
+ * (still) offline. Keeps guidance accessible without blocking the start flow.
+ * The Retry button re-polls studyStatus(); onRetry resolves to the latest
+ * status string so the caller can decide whether to hide this note.
+ */
+function daemonHealthNote(onRetry: () => void): HTMLElement {
+  return el('div', { class: 'card daemon-health-note' }, [
+    el('p', { class: 'eyebrow' }, ['Background watcher']),
+    el('p', { class: 'muted' }, [
+      `The background process isn't reporting yet — it may still be starting up. You can start a study now; it will run when the watcher comes online.`,
+    ]),
+    el('p', { class: 'muted' }, [
+      `If this keeps showing, start it from the menu bar or reinstall.`,
+    ]),
+    el('div', { class: 'row' }, [button('Retry', onRetry)]),
+  ]);
+}
+
+/**
  * Entry choices, shown when no study is capturing (NOT_STARTED) or the last one
- * reached a terminal state (COMPLETE/DELETED): begin a fresh 14-day field study,
- * or quick-scan a single task right now. Both mint a fresh study id+kind+label
+ * reached a terminal state (COMPLETE/DELETED), AND now also when the daemon is
+ * offline or in an unrecognized state (NIB-2 fix): begin a fresh 14-day field
+ * study, or quick-scan a single task right now. Both mint a fresh study id+kind+label
  * via `createStudy` (valid from NOT_STARTED and terminal states), THEN run the
  * consent→start flow — so the chosen kind/label rides through to the diagnosis.
+ *
+ * When `showDaemonNote` is true a secondary health note appears beneath the
+ * entry cards to give honest daemon status without hiding the start actions.
  */
-function entryView(onChanged: () => void): HTMLElement {
+function entryView(onChanged: () => void, showDaemonNote = false): HTMLElement {
   const root = el('div', {});
   const mount = el('div', {});
 
@@ -236,7 +252,11 @@ function entryView(onChanged: () => void): HTMLElement {
       ]),
     ]);
 
-    mount.replaceChildren(fullCard, scanCard);
+    const children: HTMLElement[] = [fullCard, scanCard];
+    if (showDaemonNote) {
+      children.push(daemonHealthNote(onChanged));
+    }
+    mount.replaceChildren(...children);
   }
 
   renderChoices();
@@ -286,6 +306,25 @@ function quickScanView(status: StudyStatus, onChanged: () => void): HTMLElement 
   return root;
 }
 
+/**
+ * Poll `studyStatus()` up to `maxAttempts` times with `delayMs` between each
+ * attempt. Stops early and returns the first non-DAEMON_OFFLINE status, or
+ * returns the last (still DAEMON_OFFLINE) status after all attempts. This
+ * distinguishes a cold-starting daemon (first-paint race) from one that is
+ * genuinely offline — without changing any Rust code.
+ */
+async function pollUntilOnline(
+  maxAttempts: number,
+  delayMs: number,
+): Promise<StudyStatus> {
+  let status = await bridge.studyStatus();
+  for (let i = 1; i < maxAttempts && status.state === 'DAEMON_OFFLINE'; i++) {
+    await new Promise<void>((r) => setTimeout(r, delayMs));
+    status = await bridge.studyStatus();
+  }
+  return status;
+}
+
 export function fieldStudyView(_rerender: () => void): HTMLElement {
   const root = el('div', {});
   let sub: Sub = 'home';
@@ -311,46 +350,72 @@ export function fieldStudyView(_rerender: () => void): HTMLElement {
     }
   }
 
-  async function paint(): Promise<void> {
-    const status: StudyStatus = await bridge.studyStatus();
+  /**
+   * Dispatches to the correct sub-view based on daemon state.
+   *
+   * NIB-2 fix: DAEMON_OFFLINE and unknown states now route to the entry
+   * surface (via viewForState) rather than a dead-end stateView. On first
+   * mount we poll briefly to distinguish "daemon starting" from "daemon
+   * genuinely offline" before deciding whether to show the health note.
+   *
+   * @param usePolling - true on mount; false on subsequent paint() calls
+   *   (sub-nav clicks, control actions) to avoid poll latency mid-session.
+   */
+  async function paint(usePolling = false): Promise<void> {
+    // On mount: poll a few times to give a cold-starting daemon a chance
+    // to write its status file (eliminates the first-paint race without
+    // any Rust changes). Subsequent calls skip polling to stay responsive.
+    const status: StudyStatus = usePolling
+      ? await pollUntilOnline(3, 800)
+      : await bridge.studyStatus();
+
     mount.replaceChildren();
     if (sub === 'review') { mount.append(reviewView()); return; }
     if (sub === 'notes') { mount.append(notesView()); return; }
     if (sub === 'preferences') { mount.append(preferencesView(() => void paint())); return; }
+
+    const surface = viewForState(status.state);
     const study = status.study as { kind?: StudyKind } | null;
-    switch (status.state) {
-      case 'NOT_STARTED':
-        // No study capturing yet — offer both entry points (full study / scan).
-        mount.append(entryView(() => void paint()));
+
+    switch (surface) {
+      case 'entry': {
+        // NIB-2: entry is now shown for NOT_STARTED, COMPLETE, DELETED,
+        // DAEMON_OFFLINE, and any unknown/future state.
+        //
+        // - COMPLETE/DELETED: prepend the receipt card before the entry choices.
+        // - NOT_STARTED: plain entry (daemon is up, just no study yet).
+        // - DAEMON_OFFLINE or unknown: entry cards + daemon health note below.
+        if (status.state === 'COMPLETE' || status.state === 'DELETED') {
+          mount.append(
+            stateView(status, () => { sub = 'review'; void paint(); }, () => void paint()),
+            entryView(() => void paint()),
+          );
+        } else {
+          const showDaemonNote = status.state !== 'NOT_STARTED';
+          mount.append(entryView(() => void paint(), showDaemonNote));
+        }
         break;
-      case 'CONSENTED':
-        // Already consented to a chosen kind; hold on the consent screen for it.
+      }
+      case 'consent':
         mount.append(consentView(() => void paint(), study?.kind ?? 'full_study'));
         break;
-      case 'ACTIVE':
-      case 'PAUSED':
-        // A quick scan has no 14-day countdown — branch on the study kind.
+      case 'studyOrScan':
         mount.append(
           study?.kind === 'quick_scan'
             ? quickScanView(status, () => void paint())
             : studyView(status, () => void paint()),
         );
         break;
-      case 'COMPLETE':
-      case 'DELETED':
-        // The last study finished — show its receipt AND offer a fresh start.
-        mount.append(
-          stateView(status, () => { sub = 'review'; void paint(); }, () => void paint()),
-          entryView(() => void paint()),
-        );
-        break;
-      default:
+      case 'state':
         mount.append(stateView(status, () => { sub = 'review'; void paint(); }, () => void paint()));
+        break;
     }
   }
 
   renderNav();
   root.append(nav, mount);
-  void paint();
+  // Use polling on first mount to distinguish a cold-starting daemon
+  // (first-paint race) from one that is genuinely offline.
+  void paint(true);
   return root;
 }

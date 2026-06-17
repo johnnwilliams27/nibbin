@@ -457,3 +457,35 @@ input:focus-visible {
     opacity: 1;
   }
 }
+
+/* NIB-2: tab-level needs-action dot — shown on the Field Study tab when no
+   study is currently running. Disappears once the user opens the tab. */
+.tab-label-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.tab-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--moss);
+  margin-left: 5px;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+/* NIB-2: Grove native fallback CTA — subtle secondary button to reach Field
+   Study from the Grove loading screen without clicking the second tab. */
+.grove-study-cta {
+  margin-top: 8px;
+}
+
+/* NIB-2: daemon-health note — shown beneath entry cards when the daemon is
+   offline. Styled as a muted informational card, not an error. */
+.daemon-health-note {
+  opacity: 0.85;
+  border-style: dashed;
+}
