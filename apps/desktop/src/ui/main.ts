@@ -5,34 +5,75 @@
 import '@nibbin/shared/tokens.css';
 import './observer.css';
 import { bridge } from './bridge.js';
-import { button, clear, el } from './dom.js';
+import { clear, el } from './dom.js';
 import { mountUpdateBanner } from './update-banner.js';
 import { fieldStudyView } from './views/field-study.js';
 import { groveView } from './views/grove.js';
 import { loginView } from './views/login.js';
+import { shouldShowDot, EVER_COMPLETED_KEY } from './tab-dot.js';
 
 type Tab = 'grove' | 'field-study';
 const app = document.getElementById('app')!;
 let tab: Tab = 'grove';
+
+let fieldStudyDotVisible = false;
+
+/**
+ * Check the daemon status once and update `fieldStudyDotVisible`.
+ *
+ * The dot is a first-timer nudge: shown only when the user has never completed
+ * a field study (no `nibbin.fieldStudyEverCompleted` flag in localStorage) AND
+ * no study is currently running. Veterans between studies are not nudged.
+ *
+ * Fail-closed: any error hides the dot.
+ */
+async function refreshTabDot(): Promise<void> {
+  try {
+    const everCompleted = localStorage.getItem(EVER_COMPLETED_KEY) !== null;
+    const status = await bridge.studyStatus();
+    fieldStudyDotVisible = shouldShowDot(everCompleted, status.state);
+  } catch {
+    fieldStudyDotVisible = false;
+  }
+}
 
 function render(): void {
   clear(app);
   const nav = el('nav', { class: 'nav tabbar' });
   const tabs: [Tab, string][] = [['grove', 'Grove'], ['field-study', 'Field Study']];
   for (const [key, label] of tabs) {
-    const b = button(label, () => { tab = key; render(); });
+    const isFieldStudy = key === 'field-study';
+    // Build the tab label: for Field Study, wrap in a relative container so
+    // we can overlay the dot without affecting layout.
+    let tabContent: HTMLElement;
+    if (isFieldStudy && fieldStudyDotVisible && tab !== 'field-study') {
+      // Show a small needs-action dot when no study is running and the user
+      // is not already on the Field Study tab (don't dot the active tab).
+      const labelSpan = el('span', {}, [label]);
+      const dot = el('span', { class: 'tab-dot', 'aria-label': 'Field study available' });
+      tabContent = el('span', { class: 'tab-label-wrap' }, [labelSpan, dot]);
+    } else {
+      tabContent = el('span', {}, [label]);
+    }
+    const b = el('button', {});
+    b.append(tabContent);
+    b.addEventListener('click', () => { tab = key; render(); });
     if (key === tab) b.setAttribute('aria-current', 'true');
     nav.append(b);
   }
   app.append(nav);
   if (tab === 'grove') {
     // groveView is the native fallback (loading / offline); the embedded web
-    // product is a child webview shown over the content area.
-    app.append(groveView());
+    // product is a child webview shown over the content area. Pass a callback
+    // so the native fallback can offer a "Start a field study" CTA — the
+    // Grove→Field Study deep-link discovery affordance (NIB-2).
+    app.append(groveView(() => { tab = 'field-study'; render(); }));
     void bridge.groveShow();
   } else {
     void bridge.groveHide();
     app.append(fieldStudyView(render));
+    // Once the user opens the Field Study tab, hide the dot immediately.
+    fieldStudyDotVisible = false;
   }
 }
 
@@ -47,6 +88,8 @@ async function boot(): Promise<void> {
     console.error('authSession failed; showing login', e);
   }
   if (!session) { void bridge.groveHide(); clear(app); app.append(loginView(() => void boot())); return; }
+  // Warm the tab dot before painting the tabbar so first render is correct.
+  await refreshTabDot();
   render();
 }
 

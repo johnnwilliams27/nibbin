@@ -7,6 +7,7 @@
 import type { ObserverEvent } from '@nibbin/redaction';
 import { bridge } from '../bridge.js';
 import { button, clear, el } from '../dom.js';
+import { sectionLoader } from '../section-loader.js';
 
 function describe(event: ObserverEvent): string {
   const ax = event.ax ? ` · ${event.ax.label_redacted || event.ax.role_path}` : '';
@@ -16,13 +17,15 @@ function describe(event: ObserverEvent): string {
 
 export function reviewView(): HTMLElement {
   const root = el('div', {}, [
-    el('p', { class: 'eyebrow' }, ['Review']),
-    el('h1', {}, ['What the field study kept today']),
+    el('div', { class: 'section-header' }, [
+      el('p', { class: 'eyebrow' }, ['Review']),
+      el('h1', {}, ['What the field study kept today']),
+    ]),
     el('p', { class: 'muted' }, [
       'Everything below is already redacted — names, emails, and numbers became placeholders before anything was saved. Delete whatever you like; deleted blocks never reach your diagnosis.',
     ]),
   ]);
-  const list = el('div', { class: 'card' }, [el('p', { class: 'muted' }, ['Loading…'])]);
+  const list = el('div', { class: 'card' }, [sectionLoader('Loading events…')]);
   root.append(list);
 
   const exclusionCard = el('div', { class: 'card' }, [
@@ -49,7 +52,12 @@ export function reviewView(): HTMLElement {
     const events = await bridge.reviewEvents();
     clear(list);
     if (events.length === 0) {
-      list.append(el('p', { class: 'muted' }, ['Nothing captured yet today.']));
+      list.append(
+        el('div', { class: 'empty-state' }, [
+          el('p', { class: 'muted' }, ['No events kept yet — your review fills up as the study runs.']),
+          el('p', { class: 'muted' }, ['Come back after a few minutes of activity and this list will populate.']),
+        ]),
+      );
       return;
     }
 
