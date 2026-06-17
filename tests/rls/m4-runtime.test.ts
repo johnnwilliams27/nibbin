@@ -432,4 +432,49 @@ describe.skipIf(!dbAvailable)('M4: agent runtime at the DB layer', () => {
       ),
     ).rejects.toThrow(/unknown nibbin/);
   });
+
+  it('write-grant audit attributes a null granted_by as actor=system, a human grant as actor=user', async () => {
+    const connId = await h.as(service, async (c) =>
+      (
+        await c.query(`insert into public.connections (account_id, provider, method) values ($1, 'gmail', 'H') returning id`, [accountId])
+      ).rows[0].id,
+    );
+    // system-initiated grant (e.g. the auto email.send at Senior promotion): no
+    // human actor, granted_by null → the trail must mark it actor='system'.
+    await h.as(service, (c) =>
+      c.query(
+        `insert into public.nibbin_write_grants (account_id, nibbin_id, connection_id, capability, granted_by, plain_language_reason)
+         values ($1, $2, $3, 'email.send', null, 'auto at senior')`,
+        [accountId, nibbinId, connId],
+      ),
+    );
+    const sys = await h.as(service, async (c) =>
+      (
+        await c.query(
+          `select actor, actor_id from public.audit_log
+           where action = 'nibbin.write_granted' and meta->>'capability' = 'email.send' order by at desc limit 1`,
+        )
+      ).rows[0],
+    );
+    expect(sys.actor).toBe('system');
+    expect(sys.actor_id).toBe('service');
+    // a human-initiated grant (granted_by set) still logs actor='user' with the id
+    await h.as(service, (c) =>
+      c.query(
+        `insert into public.nibbin_write_grants (account_id, nibbin_id, connection_id, capability, granted_by, plain_language_reason)
+         values ($1, $2, $3, 'email.draft', $4, 'human grant')`,
+        [accountId, nibbinId, connId, OWNER],
+      ),
+    );
+    const human = await h.as(service, async (c) =>
+      (
+        await c.query(
+          `select actor, actor_id from public.audit_log
+           where action = 'nibbin.write_granted' and meta->>'capability' = 'email.draft' order by at desc limit 1`,
+        )
+      ).rows[0],
+    );
+    expect(human.actor).toBe('user');
+    expect(human.actor_id).toBe(OWNER);
+  });
 });

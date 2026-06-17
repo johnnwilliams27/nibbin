@@ -343,8 +343,9 @@ export async function maybeInsertSendGrant(
       capability: 'email.send',
       // System-initiated grant: promotion to Senior happens during a run with no
       // human actor in scope, so granted_by is intentionally null. The write-grant
-      // audit trigger renders a null actor as 'service' in audit_log, so the audit
-      // trail still attributes it rather than showing a blank actor.
+      // audit trigger attributes a null granted_by as actor='system' in audit_log
+      // (a human-initiated grant logs actor='user' with the id), so the trail
+      // honestly marks this as system-initiated rather than a user action.
       granted_by: null,
       plain_language_reason: 'Promoted to Senior — one-click human-approved send enabled.',
       revoked_at: null,
