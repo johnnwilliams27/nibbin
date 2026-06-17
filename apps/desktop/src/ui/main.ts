@@ -37,7 +37,15 @@ function render(): void {
 }
 
 async function boot(): Promise<void> {
-  const session = await bridge.authSession();
+  // A keychain/IPC failure must never blank the whole window: fall back to the
+  // signed-out screen so the user can re-authenticate. (Regression guard — an
+  // oversized session writeback once threw here and left the window blank.)
+  let session: Awaited<ReturnType<typeof bridge.authSession>> = null;
+  try {
+    session = await bridge.authSession();
+  } catch (e) {
+    console.error('authSession failed; showing login', e);
+  }
   if (!session) { void bridge.groveHide(); clear(app); app.append(loginView(() => void boot())); return; }
   render();
 }
