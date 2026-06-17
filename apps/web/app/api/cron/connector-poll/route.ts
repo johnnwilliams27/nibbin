@@ -14,6 +14,13 @@ const WEBHOOK_SUPPORTED_PROVIDERS = [...CONNECTOR_REGISTRY.values()]
   .filter((d) => d.webhooks.supported)
   .map((d) => d.id);
 
+// P3.5: bound how many connections one 60s invocation processes so coverage is
+// fair and a large backlog can't blow the function budget. Ordered by created_at
+// for a deterministic, stable batch. FOLLOW-UP: a last_polled_at column would let
+// us rotate oldest-polled-first instead of always favouring the earliest-created
+// connections; deferred to avoid a migration here.
+const CONNECTION_BATCH_LIMIT = 25;
+
 export async function GET(req: NextRequest): Promise<NextResponse> {
   if (!isAuthorizedCronRequest(req)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
@@ -33,7 +40,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     .from('connections')
     .select('*')
     .eq('status', 'active')
-    .in('provider', WEBHOOK_SUPPORTED_PROVIDERS);
+    .in('provider', WEBHOOK_SUPPORTED_PROVIDERS)
+    .order('created_at', { ascending: true })
+    .limit(CONNECTION_BATCH_LIMIT);
 
   if (error) {
     return NextResponse.json({ error: 'query_failed' }, { status: 500 });
@@ -68,10 +77,23 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         },
       );
 
+      // P3.4: every event for a connection resolves the same account, so fetch
+      // the active Nibbins ONCE per connection per cycle and reuse the result
+      // across all of this connection's events instead of re-joining the DB
+      // inside the per-message loop (which was O(messages) identical queries,
+      // re-run in full every 5 min while a capped cursor stays parked).
+      let nibbinsForAccount: Awaited<ReturnType<typeof activeNibbinsForAccount>> | undefined;
+      const resolveNibbins = async (accountId: string) => {
+        if (nibbinsForAccount === undefined) {
+          nibbinsForAccount = await activeNibbinsForAccount(svc, accountId);
+        }
+        return nibbinsForAccount;
+      };
+
       let anyCapped = false;
       for (const event of events) {
         const result = await dispatchForConnection(event, {
-          activeNibbinsForAccount: (accountId) => activeNibbinsForAccount(svc, accountId),
+          activeNibbinsForAccount: (accountId) => resolveNibbins(accountId),
           triggerRun: (nibbinId, trigger) => triggerNibbinRun(nibbinId, trigger),
           // Per-(message, Nibbin) deduplication: already-dispatched Nibbins are
           // skipped on the re-poll after a capped cycle; excess Nibbins fire.

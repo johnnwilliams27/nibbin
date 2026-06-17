@@ -6,7 +6,6 @@ interface FakeRow {
   provider: string;
   account_id: string;
   user_id: string;
-  nonce: string;
   code_verifier: string | null;
   scopes: string[];
   return_to: string | null;
@@ -59,7 +58,7 @@ it('stores then consumes once; second consume returns null', async () => {
   const rows: Record<string, FakeRow> = {};
   const svc = fakeSvc(rows);
   await storePending({
-    state: 's1', provider: 'gmail', accountId: 'a', userId: 'u', nonce: 'n',
+    state: 's1', provider: 'gmail', accountId: 'a', userId: 'u',
     codeVerifier: 'v', scopes: ['x'], returnTo: '/app/connections', resumeTemplate: null,
     expiresAtMs: 10_000,
   }, svc);
@@ -73,7 +72,7 @@ it('returns null when expired', async () => {
   const rows: Record<string, FakeRow> = {};
   const svc = fakeSvc(rows);
   await storePending({
-    state: 's2', provider: 'gmail', accountId: 'a', userId: 'u', nonce: 'n',
+    state: 's2', provider: 'gmail', accountId: 'a', userId: 'u',
     scopes: ['x'], returnTo: null, resumeTemplate: null, expiresAtMs: 1_000,
   }, svc);
   expect(await consumePending('s2', 9_999, svc)).toBeNull();
@@ -82,7 +81,7 @@ it('returns null when expired', async () => {
 it('StorePendingInput accepts nibbinId (compile-time check)', () => {
   const input: StorePendingInput = {
     state: 's', provider: 'gmail', accountId: 'a', userId: 'u',
-    nonce: 'n', codeVerifier: 'v', scopes: [],
+    codeVerifier: 'v', scopes: [],
     returnTo: null, resumeTemplate: null, expiresAtMs: 9999,
     nibbinId: 'nb-uuid-1234',
   };

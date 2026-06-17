@@ -29,6 +29,7 @@ vi.mock('../../../../lib/supabase/service', () => ({
 vi.mock('@nibbin/connectors', () => ({
   GmailClient: vi.fn(function () {
     return {
+      getProfile: vi.fn().mockResolvedValue({ emailAddress: 'tester@gmail.com', historyId: '1' }),
       watch: vi.fn().mockResolvedValue({ historyId: '999', expiration: String(Date.now() + 7 * 86400000) }),
     };
   }),

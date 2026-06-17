@@ -62,6 +62,16 @@ export async function beginWriteConnectAction(formData: FormData): Promise<void>
   const { user, accountId } = await appSession();
   const svc = serviceClient();
 
+  // Verify the Nibbin belongs to the caller's account before attaching a write
+  // grant to it — nibbinId is client-supplied, so without this a request could
+  // pollute the grant table against another account's Nibbin.
+  const { count: owns } = await svc
+    .from('nibbins')
+    .select('id', { count: 'exact', head: true })
+    .eq('id', nibbinId)
+    .eq('account_id', accountId);
+  if (!owns) throw new Error(`nibbin ${nibbinId} not found for this account`);
+
   // Check if compose is already held — if so, grant directly without OAuth
   const { data: conn } = await svc
     .from('connections')
@@ -95,15 +105,4 @@ export async function beginWriteConnectAction(formData: FormData): Promise<void>
     },
   );
   redirect(url);
-}
-
-/**
- * Disconnect a connection: revoke the OAuth token (vault secret destroyed),
- * set status → revoked, then suspend all nibbin_write_grants for this
- * connection_id. Design §4.4, §8.
- */
-export async function revokeConnectionAction(connectionId: string): Promise<void> {
-  const { user } = await appSession();
-  const svc = serviceClient();
-  await revokeAndSuspend(connectionId, user.id, svc);
 }

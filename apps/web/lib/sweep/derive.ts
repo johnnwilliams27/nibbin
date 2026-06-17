@@ -27,6 +27,23 @@ export const PASS2_SYSTEM = [
 const clampProse = (v: unknown, max: number): string =>
   typeof v === 'string' ? sanitizeProse(v.slice(0, max * 2)).slice(0, max) : '';
 
+/**
+ * Conservative output guard (P3.9): drop a sample if it carries an obvious
+ * account-number / sensitive secret. Low false-positive — only long digit runs
+ * (≥9), card-like 13–16 digit groups, SSN, IBAN, or explicit secret labels.
+ */
+const SENSITIVE_OUTPUT_PATTERNS: RegExp[] = [
+  /\b(?:\d[ -]?){13,16}\b/, // card-like number groups
+  /\b\d{9,}\b/, // long digit run (account/routing)
+  /\b\d{3}-\d{2}-\d{4}\b/, // US SSN
+  /\b[A-Z]{2}\d{2}[A-Z0-9]{10,30}\b/, // IBAN
+  /\b(?:account|routing|card|ssn|pin|password|cvv|otp)\b[:#\s]*[\w-]{4,}/i, // labelled secrets
+];
+
+export function isSensitiveSample(s: string): boolean {
+  return SENSITIVE_OUTPUT_PATTERNS.some((re) => re.test(s));
+}
+
 function extractJson(text: string): unknown {
   const m = text.match(/\{[\s\S]*\}/);
   if (!m) return null;
@@ -45,7 +62,8 @@ export function parsePass1(
       ? (r[key] as unknown[]).slice(0, arrMax).map((x) => clampProse(x, itemMax)).filter(Boolean)
       : [];
   return {
-    voiceSamples: clampArr('voiceSamples', 280, 3),
+    // P3.9: drop any voice sample carrying an obvious account-number / secret.
+    voiceSamples: clampArr('voiceSamples', 280, 3).filter((s) => !isSensitiveSample(s)),
     inferredFacts: clampArr('inferredFacts', 120, 6),
     extraChannels: clampArr('extraChannels', 40, 5),
     extraTools: clampArr('extraTools', 40, 5),

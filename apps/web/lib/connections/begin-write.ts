@@ -56,7 +56,6 @@ export async function beginWriteConnect(
     provider: args.provider,
     accountId: args.accountId,
     userId: args.userId,
-    nonce: pending.nonce,
     codeVerifier: pending.codeVerifier,
     scopes: pending.scopes,
     returnTo: args.returnTo ?? defaultReturnTo,

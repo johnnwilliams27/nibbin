@@ -27,6 +27,7 @@ export function buildInboxQuery(cutoff: Date): string {
 type MessageMetaLike = {
   id: string;
   threadId: string;
+  snippet?: string;
   payload?: { headers?: Array<{ name: string; value: string }> };
 };
 
@@ -34,6 +35,37 @@ export function isNewsletter(meta: MessageMetaLike): boolean {
   return (
     meta.payload?.headers?.some((h) => h.name.toLowerCase() === 'list-unsubscribe') ?? false
   );
+}
+
+/**
+ * Conservative sensitive-category pre-filter (P3.9). Skips obviously sensitive
+ * threads (banking, health, legal, password/2FA) by sender/subject keyword
+ * BEFORE any body fetch reaches the LLM. Kept low-false-positive: whole-word
+ * matches only, on the short From/Subject metadata we already hold.
+ */
+const SENSITIVE_KEYWORDS = [
+  // banking / finance
+  'bank', 'banking', 'account number', 'routing number', 'wire transfer',
+  'statement', 'overdraft', 'credit card', 'debit card', 'irs', 'tax',
+  // health / medical
+  'medical', 'health', 'diagnosis', 'prescription', 'patient', 'lab results',
+  'insurance claim', 'pharmacy',
+  // legal
+  'legal', 'attorney', 'lawsuit', 'subpoena', 'settlement', 'litigation',
+  // password / auth / 2FA
+  'password', 'verification code', 'security code', 'one-time', 'one time code',
+  '2fa', 'two-factor', 'two factor', 'reset your password', 'login code',
+];
+
+export function isSensitiveThread(meta: MessageMetaLike): boolean {
+  const headers = meta.payload?.headers ?? [];
+  const get = (name: string): string =>
+    headers.find((h) => h.name.toLowerCase() === name)?.value?.toLowerCase() ?? '';
+  const haystack = `${get('from')} ${get('subject')}`;
+  return SENSITIVE_KEYWORDS.some((kw) => {
+    const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(`\\b${escaped}\\b`).test(haystack);
+  });
 }
 
 /** Merge new sections into existing grove_memory.sections — only fill empty slots. */
@@ -145,9 +177,12 @@ export async function gmailOnboardingSweep(
       try {
         const meta = await client.getMessageMetadata(id);
         if (isNewsletter(meta)) continue;
+        if (isSensitiveThread(meta)) continue; // P3.9: never send sensitive bodies to the LLM
         const subject =
           meta.payload?.headers?.find((h) => h.name.toLowerCase() === 'subject')?.value ?? '';
-        const snippet = (await client.getMessageBody(id)).split('\n').find((l) => l.trim()) ?? '';
+        // P3.8: use the server-side snippet (returned by format=metadata) instead of
+        // fetching the full message body just to keep a short preview line.
+        const snippet = (meta.snippet ?? '').split('\n').find((l) => l.trim()) ?? '';
         batchItems.push({ subject, firstLine: snippet.slice(0, 200) });
         threadsFetched++;
       } catch { continue; }

@@ -45,6 +45,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     serviceKey: process.env.SUPABASE_SECRET_KEY ?? '',
   });
 
+  const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
   let registered = 0;
   const errors: string[] = [];
 
@@ -52,11 +53,22 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     try {
       const connection = connectionFromRow(row as Record<string, unknown>);
       const client = new GmailClient(connection, vault);
+      // Seed the mailbox address: a Pub/Sub push notification carries only the
+      // emailAddress, and the push webhook maps it back to this connection via
+      // webhook_state.email. Without this the push handler never matches a
+      // connection and push delivery is silently inert.
+      const profile = await client.getProfile();
       const { historyId, expiration } = await client.watch(topicName);
 
       const patch: Record<string, string> = {};
+      if (profile.emailAddress) patch.email = profile.emailAddress;
       if (historyId) patch.historyId = historyId;
-      if (expiration) patch.watchExpiry = new Date(Number(expiration)).toISOString();
+      // Gmail watches last ~7 days. If the API omits expiration, set a 7-day
+      // floor so a watch that returned no expiration is not re-registered on
+      // every single cron run.
+      patch.watchExpiry = expiration
+        ? new Date(Number(expiration)).toISOString()
+        : new Date(Date.now() + SEVEN_DAYS_MS).toISOString();
 
       await svc.rpc('jsonb_merge_connection_state', {
         p_connection: connection.id,

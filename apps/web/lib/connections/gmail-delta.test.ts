@@ -51,6 +51,27 @@ describe('fetchGmailDelta', () => {
     expect(historyList).toHaveBeenCalledWith('0', ctrl.signal);
   });
 
+  it('resyncs from the current historyId when history.list 404s on an expired cursor', async () => {
+    const err = Object.assign(new Error('Requested entity was not found.'), { status: 404 });
+    const historyList = vi.fn().mockRejectedValue(err);
+    const getProfileHistoryId = vi.fn().mockResolvedValue('7000');
+    const deps: GmailDeltaDeps = { historyList, getProfileHistoryId };
+    const result = await fetchGmailDelta(connectionId, accountId, { historyId: '1234' }, deps);
+    expect(historyList).toHaveBeenCalledWith('1234', undefined);
+    expect(getProfileHistoryId).toHaveBeenCalledOnce();
+    expect(result.events).toHaveLength(0);
+    expect(result.newHistoryId).toBe('7000');
+  });
+
+  it('rethrows non-404 errors from history.list', async () => {
+    const err = Object.assign(new Error('rate limited'), { status: 429 });
+    const historyList = vi.fn().mockRejectedValue(err);
+    const deps: GmailDeltaDeps = { historyList, getProfileHistoryId: vi.fn() };
+    await expect(
+      fetchGmailDelta(connectionId, accountId, { historyId: '1234' }, deps),
+    ).rejects.toThrow('rate limited');
+  });
+
   it('deduplicates messageIds that appear more than once in the history delta', async () => {
     const historyList = vi.fn().mockResolvedValue({
       messages: [

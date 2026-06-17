@@ -15,7 +15,11 @@ vi.mock('../../../../lib/supabase/service', () => ({
     from: vi.fn(() => ({
       select: vi.fn(() => ({
         eq: vi.fn(() => ({
-          in: vi.fn(() => Promise.resolve({ data: [], error: null })),
+          in: vi.fn(() => ({
+            order: vi.fn(() => ({
+              limit: vi.fn(() => Promise.resolve({ data: [], error: null })),
+            })),
+          })),
         })),
       })),
     })),
@@ -68,6 +72,34 @@ vi.mock('../../../../lib/connections/gmail-delta', () => ({
   advanceGmailCursor: vi.fn().mockResolvedValue(undefined),
 }));
 
+// Builds a serviceClient stub whose connections query resolves to `rows` and
+// records the `.order(...)` / `.limit(...)` args so tests can assert the
+// deterministic order + per-cycle batch cap (P3.5).
+function makeServiceClient(rows: Record<string, unknown>[]) {
+  const order = vi.fn();
+  const limit = vi.fn();
+  const client = {
+    from: vi.fn(() => ({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          in: vi.fn(() => ({
+            order: order.mockReturnValue({
+              limit: limit.mockReturnValue(Promise.resolve({ data: rows, error: null })),
+            }),
+          })),
+        })),
+      })),
+    })),
+    rpc: vi.fn().mockResolvedValue({ error: null }),
+    __order: order,
+    __limit: limit,
+  };
+  return client as unknown as ReturnType<typeof import('../../../../lib/supabase/service').serviceClient> & {
+    __order: typeof order;
+    __limit: typeof limit;
+  };
+}
+
 describe('GET /api/cron/connector-poll', () => {
   beforeEach(() => {
     process.env.CRON_SECRET = SECRET;
@@ -107,21 +139,9 @@ describe('GET /api/cron/connector-poll', () => {
     const { dispatchForConnection } = await import('../../../../lib/connections/dispatch');
     const { serviceClient } = await import('../../../../lib/supabase/service');
 
-    vi.mocked(serviceClient).mockReturnValueOnce({
-      from: vi.fn(() => ({
-        select: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            in: vi.fn(() =>
-              Promise.resolve({
-                data: [{ id: 'conn-1', account_id: 'acct-1', provider: 'gmail', status: 'active' }],
-                error: null,
-              }),
-            ),
-          })),
-        })),
-      })),
-      rpc: vi.fn().mockResolvedValue({ error: null }),
-    } as unknown as ReturnType<typeof serviceClient>);
+    vi.mocked(serviceClient).mockReturnValueOnce(
+      makeServiceClient([{ id: 'conn-1', account_id: 'acct-1', provider: 'gmail', status: 'active' }]),
+    );
 
     vi.mocked(fetchGmailDelta).mockResolvedValueOnce({
       events: [{ provider: 'gmail', connectionId: 'conn-1', accountId: 'acct-1', kind: 'message.received', dedupeKey: 'gmail:conn-1:msg-1' }],
@@ -140,21 +160,9 @@ describe('GET /api/cron/connector-poll', () => {
     const { dispatchForConnection } = await import('../../../../lib/connections/dispatch');
     const { serviceClient } = await import('../../../../lib/supabase/service');
 
-    vi.mocked(serviceClient).mockReturnValueOnce({
-      from: vi.fn(() => ({
-        select: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            in: vi.fn(() =>
-              Promise.resolve({
-                data: [{ id: 'conn-1', account_id: 'acct-1', provider: 'gmail', status: 'active' }],
-                error: null,
-              }),
-            ),
-          })),
-        })),
-      })),
-      rpc: vi.fn().mockResolvedValue({ error: null }),
-    } as unknown as ReturnType<typeof serviceClient>);
+    vi.mocked(serviceClient).mockReturnValueOnce(
+      makeServiceClient([{ id: 'conn-1', account_id: 'acct-1', provider: 'gmail', status: 'active' }]),
+    );
 
     vi.mocked(fetchGmailDelta).mockResolvedValueOnce({
       events: [{ provider: 'gmail', connectionId: 'conn-1', accountId: 'acct-1', kind: 'message.received', dedupeKey: 'gmail:conn-1:msg-1' }],
@@ -166,5 +174,52 @@ describe('GET /api/cron/connector-poll', () => {
     await GET(makeReq(`Bearer ${SECRET}`));
 
     expect(advanceGmailCursor).toHaveBeenCalledWith(expect.anything(), 'conn-1', '201');
+  });
+
+  it('fetches activeNibbinsForAccount ONCE per connection, not per event (P3.4)', async () => {
+    const { fetchGmailDelta } = await import('../../../../lib/connections/gmail-delta');
+    const { dispatchForConnection } = await import('../../../../lib/connections/dispatch');
+    const { activeNibbinsForAccount } = await import('../../../../lib/runtime/engine');
+    const { serviceClient } = await import('../../../../lib/supabase/service');
+
+    vi.mocked(serviceClient).mockReturnValueOnce(
+      makeServiceClient([{ id: 'conn-1', account_id: 'acct-1', provider: 'gmail', status: 'active' }]),
+    );
+
+    // Three events for the same connection — the hoisted resolver must collapse
+    // these into a single activeNibbinsForAccount join.
+    vi.mocked(fetchGmailDelta).mockResolvedValueOnce({
+      events: [
+        { provider: 'gmail', connectionId: 'conn-1', accountId: 'acct-1', kind: 'message.received', dedupeKey: 'gmail:conn-1:msg-1' },
+        { provider: 'gmail', connectionId: 'conn-1', accountId: 'acct-1', kind: 'message.received', dedupeKey: 'gmail:conn-1:msg-2' },
+        { provider: 'gmail', connectionId: 'conn-1', accountId: 'acct-1', kind: 'message.received', dedupeKey: 'gmail:conn-1:msg-3' },
+      ],
+      newHistoryId: '300',
+    });
+
+    // The dispatch mock exercises the route's injected resolver once per event,
+    // mirroring real dispatchForConnection (which resolves Nibbins per call).
+    vi.mocked(dispatchForConnection).mockImplementation(async (_event, deps) => {
+      await deps.activeNibbinsForAccount('acct-1');
+      return { triggered: 0, capped: false, deferred: 0 };
+    });
+
+    const { GET } = await import('./route');
+    await GET(makeReq(`Bearer ${SECRET}`));
+
+    expect(activeNibbinsForAccount).toHaveBeenCalledTimes(1);
+  });
+
+  it('caps the connections query to a per-cycle batch in a deterministic order (P3.5)', async () => {
+    const { serviceClient } = await import('../../../../lib/supabase/service');
+
+    const client = makeServiceClient([]);
+    vi.mocked(serviceClient).mockReturnValueOnce(client);
+
+    const { GET } = await import('./route');
+    await GET(makeReq(`Bearer ${SECRET}`));
+
+    expect(client.__order).toHaveBeenCalledWith('created_at', { ascending: true });
+    expect(client.__limit).toHaveBeenCalledWith(25);
   });
 });

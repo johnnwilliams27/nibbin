@@ -59,7 +59,7 @@ These sentences appear in Nibbin marketing. The code must keep them true. Any PR
 | C8 | "Your connections are read-only until you say otherwise" | Day One OAuth scopes are minimal and read-only; write scopes requested incrementally, per Nibbin, at adoption time, with plain-language explanation. |
 | C9 | "Connection tokens are encrypted and revocable" | OAuth tokens live in a KMS-backed vault, never plaintext in the app DB; one-click revoke per connection; revocation cascades to dependent Nibbins (they pause politely). |
 | C10 | "The Grovekeeper has no hands" | The orchestrator holds zero side-effect tools. Only specialist Nibbins act, each with a narrow allowlisted toolset. |
-| C11 | "We never sell your data, and you can opt out of model training anytime" | No third-party data sharing; model-improvement contribution is on by default with a single user opt-out, honored everywhere. |
+| C11 | "We never sell your data, and model training is opt-in — off until you turn it on" | No third-party data sharing; model-improvement contribution is off by default (`accounts.training_opt_in` defaults false) with a single user opt-in, honored everywhere. |
 
 No audio capture. No camera capture. These are exclusions, not roadmap.
 

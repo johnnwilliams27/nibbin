@@ -101,20 +101,96 @@ describe('dispatchForConnection', () => {
     expect(result.deferred).toBe(0);
   });
 
-  it('skips Nibbins whose per-(event,nibbin) key recordOnce returns false', async () => {
+  it('does not double-count a Nibbin whose per-(event,nibbin) recordOnce returns false', async () => {
     const triggerRun = vi.fn().mockResolvedValue(runOutcome);
     const nibbins = Array.from({ length: 3 }, (_, i) => makeNibbin({ id: `nib-${i}` }));
-    // Simulate nib-0 already dispatched in a prior cycle
+    // Simulate nib-0 already dispatched in a prior cycle. recordOnce is committed
+    // AFTER triggerRun (claim-then-commit), and triggerRun is idempotent on
+    // dedupeKey — so nib-0's re-fire is absorbed at the run layer and is simply
+    // not counted toward `triggered`.
     const recordOnce = vi.fn().mockImplementation(async (key: string) => !key.endsWith(':nib-0'));
     const result = await dispatchForConnection(gmailEvent, {
       activeNibbinsForAccount: async () => nibbins,
       triggerRun,
       recordOnce,
     });
-    expect(triggerRun).toHaveBeenCalledTimes(2); // nib-1 and nib-2 only
-    expect(triggerRun).not.toHaveBeenCalledWith('nib-0', expect.anything());
+    // nib-1 and nib-2 are first-fires; nib-0 only counts as a deduped re-fire.
     expect(result.triggered).toBe(2);
     expect(result.capped).toBe(false);
+  });
+
+  it('does not consume recordOnce for deferred Nibbins, so they fire on the next cycle (P2.4)', async () => {
+    const nibbins = Array.from({ length: 7 }, (_, i) => makeNibbin({ id: `nib-${i}` }));
+    // A real-ish recordOnce: a key is "first" exactly once, then sticks.
+    const recorded = new Set<string>();
+    const recordOnce = vi.fn().mockImplementation(async (key: string) => {
+      if (recorded.has(key)) return false;
+      recorded.add(key);
+      return true;
+    });
+
+    // Cycle 1: 7 eligible, ceiling 5 → 5 fire, 2 deferred. The 2 deferred must
+    // NOT have had their recordOnce key consumed.
+    const triggerRun1 = vi.fn().mockResolvedValue(runOutcome);
+    const r1 = await dispatchForConnection(gmailEvent, {
+      activeNibbinsForAccount: async () => nibbins,
+      triggerRun: triggerRun1,
+      recordOnce,
+      fanOutCeiling: 5,
+    });
+    expect(r1.triggered).toBe(5);
+    expect(r1.capped).toBe(true);
+    expect(r1.deferred).toBe(2);
+    // Only 5 keys were recorded; the 2 deferred Nibbins were never claimed.
+    expect(recorded.size).toBe(5);
+
+    // Cycle 2 (cursor not advanced → same event): the 5 already-fired Nibbins are
+    // skipped (recordOnce false, deduped re-fire), and the 2 previously deferred
+    // ones now fire as first-timers.
+    const triggerRun2 = vi.fn().mockResolvedValue(runOutcome);
+    const r2 = await dispatchForConnection(gmailEvent, {
+      activeNibbinsForAccount: async () => nibbins,
+      triggerRun: triggerRun2,
+      recordOnce,
+      fanOutCeiling: 5,
+    });
+    expect(r2.triggered).toBe(2); // the two previously deferred Nibbins
+    expect(r2.capped).toBe(false);
+    expect(r2.deferred).toBe(0);
+    expect(recorded.size).toBe(7); // all seven now claimed
+  });
+
+  it('does not permanently swallow a trigger when triggerRun fails (P2.5)', async () => {
+    const nibbin = makeNibbin({ id: 'nib-0' });
+    const recorded = new Set<string>();
+    const recordOnce = vi.fn().mockImplementation(async (key: string) => {
+      if (recorded.has(key)) return false;
+      recorded.add(key);
+      return true;
+    });
+
+    // Cycle 1: triggerRun throws. The key must NOT be recorded (claim-then-commit).
+    const failingTrigger = vi.fn().mockRejectedValue(new Error('runner down'));
+    await expect(
+      dispatchForConnection(gmailEvent, {
+        activeNibbinsForAccount: async () => [nibbin],
+        triggerRun: failingTrigger,
+        recordOnce,
+      }),
+    ).rejects.toThrow('runner down');
+    expect(recordOnce).not.toHaveBeenCalled(); // recordOnce only runs after success
+    expect(recorded.size).toBe(0);
+
+    // Cycle 2 (retry): triggerRun now succeeds and the trigger fires — not swallowed.
+    const okTrigger = vi.fn().mockResolvedValue(runOutcome);
+    const result = await dispatchForConnection(gmailEvent, {
+      activeNibbinsForAccount: async () => [nibbin],
+      triggerRun: okTrigger,
+      recordOnce,
+    });
+    expect(okTrigger).toHaveBeenCalledOnce();
+    expect(result.triggered).toBe(1);
+    expect(recorded.size).toBe(1);
   });
 
   it('does not trigger Nibbins with kind=schedule or kind=user triggers only', async () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parsePass1, parsePass2, mergeSweepDerived } from './derive';
+import { parsePass1, parsePass2, mergeSweepDerived, isSensitiveSample } from './derive';
 
 // ── parsePass1 ──────────────────────────────────────────────────────────────
 
@@ -53,6 +53,41 @@ describe('parsePass1', () => {
     const raw = `Here is my analysis:\n\n${inner}\n\nHope that helps.`;
     const out = parsePass1(raw);
     expect(out.voiceSamples).toEqual(['Sure!']);
+  });
+
+  it('drops voiceSamples that carry an account number / secret (P3.9 guard)', () => {
+    const raw = JSON.stringify({
+      voiceSamples: [
+        'My account number is 1234567890 just so you have it.',
+        'Looking forward to working together!',
+      ],
+      inferredFacts: [],
+      extraChannels: [],
+      extraTools: [],
+    });
+    const out = parsePass1(raw);
+    expect(out.voiceSamples).toEqual(['Looking forward to working together!']);
+  });
+});
+
+// ── isSensitiveSample (P3.9 output guard) ─────────────────────────────────────
+
+describe('isSensitiveSample', () => {
+  it('flags long digit runs (account/routing numbers)', () => {
+    expect(isSensitiveSample('routing 021000021 here')).toBe(true);
+  });
+  it('flags card-like number groups', () => {
+    expect(isSensitiveSample('card 4111 1111 1111 1111')).toBe(true);
+  });
+  it('flags US SSNs', () => {
+    expect(isSensitiveSample('ssn 123-45-6789')).toBe(true);
+  });
+  it('flags labelled secrets', () => {
+    expect(isSensitiveSample('password: hunter2xyz')).toBe(true);
+  });
+  it('does not flag ordinary prose with short numbers (low false positive)', () => {
+    expect(isSensitiveSample('See you on the 15th at 3pm, room 204.')).toBe(false);
+    expect(isSensitiveSample('Thanks so much, talk soon!')).toBe(false);
   });
 });
 
