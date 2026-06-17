@@ -57,7 +57,13 @@ export function buildCreature(o: BuildOptions): string {
     o.stage === 'grad' ? gradCap(b.anchors.capX, b.anchors.capY, b.anchors.capRot ?? -8, o.species === 'Sprout' ? 'bloom' : '', b.anchors.capS ?? 1) : '',
     accessory(o.acc ?? 'none', b.anchors),
   ].join('');
+  // Soft contact shadow grounds non-floating creatures (the house style's
+  // feGaussianBlur shadow). Floaty species (Wisp/Glim) skip it — they hover.
+  const su = 'm' + nextUid();
+  const shadow = b.floaty
+    ? ''
+    : `<defs><filter id="sh${su}" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="1.7"/></filter></defs><ellipse cx="36" cy="67.5" rx="17" ry="3" fill="#23291A" opacity=".16" filter="url(#sh${su})"/>`;
   const parts = `<g transform="rotate(${sp.tilt || 0} 36 44)">${inner}</g>`;
   const cls = b.floaty ? 'cr floaty' : 'cr';
-  return `<svg class="${cls}" style="animation-delay:${(nextUid() % 6) * 0.35}s" width="${size}" height="${size}" viewBox="0 0 72 72" role="img" aria-label="${o.species}">${parts}</svg>`;
+  return `<svg class="${cls}" style="animation-delay:${(nextUid() % 6) * 0.35}s" width="${size}" height="${size}" viewBox="0 0 72 72" role="img" aria-label="${o.species}">${shadow}${parts}</svg>`;
 }
