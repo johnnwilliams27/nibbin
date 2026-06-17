@@ -72,3 +72,26 @@ it('missing connection throws', async () => {
     executor({ connectionId: 'conn-missing', capability: 'email.draft', args: { rfc822: '' }, idempotencyKey: 'ik5' }),
   ).rejects.toThrow(/not found/);
 });
+
+/**
+ * FIX 1 (Spec 2) — ONE send_records row per send, not two.
+ *
+ * The production path calls the atomic send_velocity_consume RPC (which
+ * inserts the send_records row) and then must NOT re-consume velocity via the
+ * in-process SendVelocityLimiter. This test verifies that sendVelocityConsume
+ * is called exactly once per email.send invocation, so the 100/day cap is not
+ * silently halved to ~50/day.
+ */
+it('email.send calls sendVelocityConsume exactly once per send (no double-consume)', async () => {
+  const velocityCalls: number[] = [];
+  const sends: string[] = [];
+  const byId = new Map([['conn1', makeGmailConn([COMPOSE, SEND])]]);
+  const executor = buildEffectsExecutor(byId, 'acc1', Date.now() - 86400000 * 30, {
+    createDraft: async () => ({ id: '' }),
+    sendMessage: async (rfc822: string) => { sends.push(rfc822); return { id: 'sx' }; },
+    sendVelocityConsume: async () => { velocityCalls.push(Date.now()); return { allowed: true }; },
+  });
+  await executor({ connectionId: 'conn1', capability: 'email.send', args: { rfc822: 'Y29udGVudA==' }, idempotencyKey: 'ik-dedup-test' });
+  expect(velocityCalls).toHaveLength(1);
+  expect(sends).toHaveLength(1);
+});

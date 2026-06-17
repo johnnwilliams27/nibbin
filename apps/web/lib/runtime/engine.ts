@@ -15,7 +15,6 @@ import {
   PixiesetClient,
   StripeConnectorClient,
   SupabaseTokenVault,
-  SendVelocityLimiter,
   getConnector,
   type Connection,
   type ConnectorClient,
@@ -42,7 +41,6 @@ import {
   SupabaseIdempotencyStore,
   SupabaseRoutineStore,
   SupabaseRunStore,
-  SupabaseSendRecordStore,
 } from './stores';
 
 /** Fixture readers stand in ONLY on explicitly seeded dev/staging accounts. */
@@ -234,10 +232,11 @@ export function buildEffectsExecutor(
             supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
             serviceKey: process.env.SUPABASE_SECRET_KEY ?? '',
           });
-          // GmailClient.sendMessage also calls requireGrantedScope(SCOPE_SEND) — second gate
-          const store = new SupabaseSendRecordStore(serviceClient());
-          const limiter = new SendVelocityLimiter(store);
-          await new GmailClient(connection, vault).sendMessage(rfc822, limiter, accountCreatedAtMs);
+          // Velocity already atomically consumed above via send_velocity_consume RPC
+          // (which INSERTs the send_records row). Use sendMessageDirect so the
+          // in-process limiter does NOT insert a second send_records row — that
+          // double-consume would halve the effective cap (FIX 1, Spec 2 review).
+          await new GmailClient(connection, vault).sendMessageDirect(rfc822);
         }
         break;
       }
