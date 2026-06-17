@@ -61,11 +61,13 @@ export function isSensitiveThread(meta: MessageMetaLike): boolean {
   const headers = meta.payload?.headers ?? [];
   const get = (name: string): string =>
     headers.find((h) => h.name.toLowerCase() === name)?.value?.toLowerCase() ?? '';
-  const haystack = `${get('from')} ${get('subject')}`;
-  return SENSITIVE_KEYWORDS.some((kw) => {
-    const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    return new RegExp(`\\b${escaped}\\b`).test(haystack);
-  });
+  // Normalize From/Subject to single-space-delimited tokens, padded with spaces,
+  // so we get whole-word matching via plain includes() — no dynamic RegExp (SAST
+  // detect-non-literal-regexp) and no ReDoS surface. Keywords are normalized the
+  // same way, so multi-word / hyphenated terms (e.g. "two-factor") still match.
+  const norm = (s: string): string => ` ${s.replace(/[^a-z0-9]+/g, ' ').trim()} `;
+  const haystack = norm(`${get('from')} ${get('subject')}`);
+  return SENSITIVE_KEYWORDS.some((kw) => haystack.includes(norm(kw)));
 }
 
 /** Merge new sections into existing grove_memory.sections — only fill empty slots. */
