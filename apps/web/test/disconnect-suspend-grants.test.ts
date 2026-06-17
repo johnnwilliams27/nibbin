@@ -36,7 +36,7 @@ it('revoking a connection calls connection_revoke RPC and suspends all nibbin_wr
   expect(updates[0]).toHaveProperty('revoked_at');
 });
 
-it('revokeAndSuspend still suspends grants even if RPC errors', async () => {
+it('revokeAndSuspend suspends grants AND propagates error when RPC reports already-revoked (FIX 3 minor)', async () => {
   const updates: Record<string, unknown>[] = [];
   const svc = {
     rpc: async () => ({ data: null, error: { message: 'already revoked' } }),
@@ -53,7 +53,8 @@ it('revokeAndSuspend still suspends grants even if RPC errors', async () => {
     },
   } as unknown as SupabaseClient;
 
+  // FIX 3: grants must be suspended BEFORE the error is propagated, so a
+  // pre-revoked connection still has stale grants cleaned up.
   await expect(revokeAndSuspend('conn-abc', 'usr-xyz', svc)).rejects.toThrow('already revoked');
-  // grants suspension is called before error propagation is not guaranteed here —
-  // the important test is that the RPC error propagates
+  expect(updates[0]).toHaveProperty('revoked_at');
 });
