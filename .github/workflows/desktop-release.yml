@@ -201,6 +201,11 @@ jobs:
         # Supply-chain nice-to-have, not a release gate: if it trips on a partial
         # artifact set (e.g. only .msi present, the .dmg glob empty), publish the
         # installers anyway rather than burying a working download.
+        #
+        # Skipped on private repos: build-provenance attestation is unavailable for
+        # user-owned private repositories and otherwise logs a (non-fatal) red error
+        # on every release. Re-enables automatically if the repo is made public.
+        if: ${{ !github.event.repository.private }}
         continue-on-error: true
         uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
         with:
