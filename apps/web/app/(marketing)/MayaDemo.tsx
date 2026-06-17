@@ -73,7 +73,7 @@ interface Shop {
 }
 const SHOP: Shop[] = [
   { name: 'Sweep', job: 'Inbox tidier', sp: 'Wisp', color: '#5B8BD6', acc: 'broom', desc: 'Labels what matters, archives what doesn’t, drafts the easy replies, and unsubscribes you from the junk you never read.' },
-  { name: 'Tally', job: 'Receipt wrangler', sp: 'Shellback', color: '#C98A12', acc: 'coin', desc: 'Catches receipts from email and downloads, files them by client and category, and hands your bookkeeper a clean folder monthly.' },
+  { name: 'Tally', job: 'Receipt wrangler', sp: 'Capling', color: '#C98A12', acc: 'coin', desc: 'Catches receipts from email and downloads, files them by client and category, and hands your bookkeeper a clean folder monthly.' },
   { name: 'Echo', job: 'Follow-up', sp: 'Glim', color: '#3E7C74', acc: 'bow', desc: 'Watches for sent emails that never got a reply and drafts the polite bump at the right interval — your wording, your cadence.' },
   { name: 'Brief', job: 'Morning briefer', sp: 'Longear', color: '#7B5BD6', acc: 'glasses', desc: 'Reads your calendar and threads at dawn and leaves one short note: who you’re seeing, what’s open, what needs deciding today.' },
   { name: 'Hopper', job: 'Form filler', sp: 'Puff', color: '#E2603A', acc: 'none', desc: 'Fills the portals and forms you do on repeat — same fields, different day — and pauses for your check before anything submits.' },

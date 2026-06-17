@@ -91,7 +91,7 @@ export const SPECIES: Record<SpeciesName, SpeciesDef> = {
     },
   },
 
-  Shellback: {
+  Capling: {
     trait: 'shell gains rings',
     tilt: 0,
     egg(color: string): EggParts {

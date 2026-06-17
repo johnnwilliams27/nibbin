@@ -1,4 +1,4 @@
-export type SpeciesName = 'Sprout' | 'Wisp' | 'Shellback' | 'Longear' | 'Puff' | 'Glim' | 'Keeper';
+export type SpeciesName = 'Sprout' | 'Wisp' | 'Capling' | 'Longear' | 'Puff' | 'Glim' | 'Keeper';
 
 export type Stage = 'egg' | 'student' | 'senior' | 'grad';
 
