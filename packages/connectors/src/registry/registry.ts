@@ -40,13 +40,11 @@ const TIER1: ConnectorDescriptor[] = [
     tier: 1,
     method: 'H',
     scopes: {
-      // gmail.metadata is the narrowest scope the §4.4 email modules can run
-      // on (headers/labels — inquiry rate, overdue threads, newsletter ratio).
-      // It is still a Google *restricted* scope: verification + CASA required,
-      // 100-user cap + tester allowlist until then (RISKS §1). The
-      // repeated-replies module needs gmail.readonly and stays dark until
-      // verification lands.
-      read: ['https://www.googleapis.com/auth/gmail.metadata'],
+      // gmail.readonly gives full read access including message bodies,
+      // required by the diagnosis data dump for rich context. Still a Google
+      // *restricted* scope: verification + CASA required, 100-user cap +
+      // tester allowlist until then (RISKS §1).
+      read: ['https://www.googleapis.com/auth/gmail.readonly'],
       write: [
         'https://www.googleapis.com/auth/gmail.compose',
         'https://www.googleapis.com/auth/gmail.send',

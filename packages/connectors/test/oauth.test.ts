@@ -52,7 +52,7 @@ describe('first connect is read-only (C8)', () => {
     const pending = beginAuthorization(GMAIL_BASE);
     const url = new URL(pending.url);
     const scope = url.searchParams.get('scope')!;
-    expect(scope).toBe('https://www.googleapis.com/auth/gmail.metadata');
+    expect(scope).toBe('https://www.googleapis.com/auth/gmail.readonly');
     expect(scope).not.toContain('gmail.send');
     expect(scope).not.toContain('gmail.compose');
     expect(pending.scopes).toEqual(getConnector('gmail').scopes.read);
@@ -110,7 +110,7 @@ describe('per-Nibbin write-scope upgrade (C8 incremental consent)', () => {
     const pending = beginWriteScopeUpgrade(upgrade);
     const url = new URL(pending.url);
     const scopes = url.searchParams.get('scope')!.split(' ');
-    expect(scopes).toContain('https://www.googleapis.com/auth/gmail.metadata');
+    expect(scopes).toContain('https://www.googleapis.com/auth/gmail.readonly');
     expect(scopes).toContain('https://www.googleapis.com/auth/gmail.compose');
     expect(scopes).not.toContain('https://www.googleapis.com/auth/gmail.send');
     expect(url.searchParams.get('include_granted_scopes')).toBe('true');
