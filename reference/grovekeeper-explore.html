@@ -57,6 +57,10 @@
           <stop offset="0%" stop-color="#E6B271"/><stop offset="100%" stop-color="#B3753A"/></linearGradient>
         <linearGradient id="gCap" x1="0" y1="0" x2="0.3" y2="1">
           <stop offset="0%" stop-color="#A2703B"/><stop offset="100%" stop-color="#674222"/></linearGradient>
+        <linearGradient id="gPetal" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#F9BAD0"/><stop offset="46%" stop-color="#F4906F"/><stop offset="100%" stop-color="#ED7A2C"/></linearGradient>
+        <radialGradient id="gBloom" cx="45%" cy="36%" r="72%">
+          <stop offset="0%" stop-color="#FBD06A"/><stop offset="100%" stop-color="#E8663A"/></radialGradient>
         <linearGradient id="gWood" x1="0" y1="0" x2="1" y2="0.2">
           <stop offset="0%" stop-color="#A06840"/><stop offset="45%" stop-color="#7A5230"/><stop offset="100%" stop-color="#5C3D22"/></linearGradient>
         <linearGradient id="gLeather" x1="0" y1="0" x2="0" y2="1">
@@ -112,31 +116,50 @@
           <rect x="110" y="140" width="200" height="280" filter="url(#grain)" opacity=".05" style="mix-blend-mode:multiply"/>
         </g>
 
-        <!-- CROWN: leaves (with drop shadow) + acorn -->
+        <!-- CROWN: upward-blooming flower wreathed by leaves (scaled to .9 about the crown base) -->
+        <g transform="translate(205 150) scale(.9) translate(-205 -150)">
+        <ellipse cx="206" cy="151" rx="27" ry="9" fill="#2C4413" opacity=".2" filter="url(#blurMd)"/>
         <g class="leaves">
-          <g opacity=".25" filter="url(#blurSm)"><path d="M205 122 C187 100 187 62 207 46 C223 64 223 102 207 124 Z" fill="#2C4413" transform="translate(3 4)"/></g>
-          <g transform="rotate(-33 205 120)">
-            <path d="M205 120 C189 100 189 66 205 50 C221 66 221 100 205 120 Z" fill="url(#gLeafB)" stroke="#46651F" stroke-width="1.6"/>
-            <path d="M205 113 L205 60" stroke="#3F5C1C" stroke-width="1.4" opacity=".45"/>
-            <path d="M201 96 C199 86 200 74 204 64" stroke="#D6E9AC" stroke-width="1.6" opacity=".5" fill="none"/>
-          </g>
-          <g transform="rotate(33 205 120)">
-            <path d="M205 120 C189 100 189 66 205 50 C221 66 221 100 205 120 Z" fill="url(#gLeafB)" stroke="#46651F" stroke-width="1.6"/>
-            <path d="M205 113 L205 60" stroke="#3F5C1C" stroke-width="1.4" opacity=".45"/>
-          </g>
-          <g>
-            <path d="M205 122 C187 100 187 62 205 44 C223 62 223 100 205 122 Z" fill="url(#gLeafA)" stroke="#46651F" stroke-width="1.6"/>
-            <path d="M205 114 L205 54" stroke="#3F5C1C" stroke-width="1.4" opacity=".45"/>
-            <path d="M200 98 C198 84 199 70 204 56" stroke="#E2F0C2" stroke-width="2" opacity=".55" fill="none"/>
-          </g>
+          <path d="M203 153 C173 145 149 131 143 116 C165 128 188 146 206 158 Z" fill="url(#gLeafA)" stroke="#46651F" stroke-width="1.4"/>
+          <path d="M200 154 C177 148 158 138 148 122" fill="none" stroke="#3F5C1C" stroke-width="1.2" opacity=".4"/>
+          <path d="M207 153 C237 145 261 131 267 116 C245 128 222 146 204 158 Z" fill="url(#gLeafA)" stroke="#46651F" stroke-width="1.4"/>
+          <path d="M210 154 C233 148 252 138 262 122" fill="none" stroke="#3F5C1C" stroke-width="1.2" opacity=".4"/>
+          <path d="M204 156 C180 145 154 145 129 150 C150 169 182 168 205 162 Z" fill="url(#gLeafB)" stroke="#46651F" stroke-width="1.4"/>
+          <path d="M202 157 C180 152 157 152 137 153" fill="none" stroke="#3F5C1C" stroke-width="1.2" opacity=".4"/>
+          <path d="M206 156 C230 145 256 145 281 150 C260 169 228 168 205 162 Z" fill="url(#gLeafB)" stroke="#46651F" stroke-width="1.4"/>
+          <path d="M208 157 C230 152 253 152 273 153" fill="none" stroke="#3F5C1C" stroke-width="1.2" opacity=".4"/>
+          <path d="M206 159 C187 159 164 166 147 179 C167 172 189 168 207 163 Z" fill="url(#gLeafB)" stroke="#46651F" stroke-width="1.4"/>
+          <path d="M204 161 C187 163 167 168 152 177" fill="none" stroke="#3F5C1C" stroke-width="1.2" opacity=".4"/>
+          <path d="M204 159 C223 159 246 166 263 179 C243 172 221 168 203 163 Z" fill="url(#gLeafB)" stroke="#46651F" stroke-width="1.4"/>
+          <path d="M206 161 C223 163 243 168 258 177" fill="none" stroke="#3F5C1C" stroke-width="1.2" opacity=".4"/>
         </g>
-        <!-- acorn -->
-        <path d="M186 126 C186 120 224 120 224 126 C224 146 214 164 205 164 C196 164 186 146 186 126 Z" fill="url(#gNut)" stroke="#7E5329" stroke-width="2"/>
-        <ellipse cx="197" cy="138" rx="6" ry="9" fill="#F4D2A0" opacity=".5" filter="url(#blurSm)"/>
-        <path d="M181 127 C181 115 229 115 229 127 C229 134 219 138 205 138 C191 138 181 134 181 127 Z" fill="url(#gCap)" stroke="#5E3D20" stroke-width="1.4"/>
-        <path d="M190 122 l4 8 M205 120 l0 9 M220 122 l-4 8" fill="none" stroke="#5E3D20" stroke-width="1.2" opacity=".5"/>
-        <path d="M184 120 C195 116 215 116 226 120" stroke="#C79A5E" stroke-width="1.4" opacity=".5" fill="none"/>
-        <rect x="201" y="106" width="8" height="11" rx="4" fill="#5E3D20"/>
+        <g class="leaves">
+          <g transform="rotate(-65 205 150)"><path d="M205 150 C198 124 198 104 205 96 C212 104 212 124 205 150 Z" fill="url(#gPetal)" stroke="#D2704A" stroke-width=".9"/></g>
+          <g transform="rotate(-52 205 150)"><path d="M205 150 C198 124 198 104 205 96 C212 104 212 124 205 150 Z" fill="url(#gPetal)" stroke="#D2704A" stroke-width=".9"/></g>
+          <g transform="rotate(-39 205 150)"><path d="M205 150 C198 124 198 104 205 96 C212 104 212 124 205 150 Z" fill="url(#gPetal)" stroke="#D2704A" stroke-width=".9"/></g>
+          <g transform="rotate(-26 205 150)"><path d="M205 150 C198 124 198 104 205 96 C212 104 212 124 205 150 Z" fill="url(#gPetal)" stroke="#D2704A" stroke-width=".9"/></g>
+          <g transform="rotate(-13 205 150)"><path d="M205 150 C198 124 198 104 205 96 C212 104 212 124 205 150 Z" fill="url(#gPetal)" stroke="#D2704A" stroke-width=".9"/></g>
+          <g transform="rotate(0 205 150)"><path d="M205 150 C198 124 198 104 205 96 C212 104 212 124 205 150 Z" fill="url(#gPetal)" stroke="#D2704A" stroke-width=".9"/></g>
+          <g transform="rotate(13 205 150)"><path d="M205 150 C198 124 198 104 205 96 C212 104 212 124 205 150 Z" fill="url(#gPetal)" stroke="#D2704A" stroke-width=".9"/></g>
+          <g transform="rotate(26 205 150)"><path d="M205 150 C198 124 198 104 205 96 C212 104 212 124 205 150 Z" fill="url(#gPetal)" stroke="#D2704A" stroke-width=".9"/></g>
+          <g transform="rotate(39 205 150)"><path d="M205 150 C198 124 198 104 205 96 C212 104 212 124 205 150 Z" fill="url(#gPetal)" stroke="#D2704A" stroke-width=".9"/></g>
+          <g transform="rotate(52 205 150)"><path d="M205 150 C198 124 198 104 205 96 C212 104 212 124 205 150 Z" fill="url(#gPetal)" stroke="#D2704A" stroke-width=".9"/></g>
+          <g transform="rotate(65 205 150)"><path d="M205 150 C198 124 198 104 205 96 C212 104 212 124 205 150 Z" fill="url(#gPetal)" stroke="#D2704A" stroke-width=".9"/></g>
+          <g transform="rotate(-57 205 150)"><path d="M205 150 C199 130 199 116 205 110 C211 116 211 130 205 150 Z" fill="url(#gPetal)" stroke="#D2704A" stroke-width=".8"/></g>
+          <g transform="rotate(-43 205 150)"><path d="M205 150 C199 130 199 116 205 110 C211 116 211 130 205 150 Z" fill="url(#gPetal)" stroke="#D2704A" stroke-width=".8"/></g>
+          <g transform="rotate(-29 205 150)"><path d="M205 150 C199 130 199 116 205 110 C211 116 211 130 205 150 Z" fill="url(#gPetal)" stroke="#D2704A" stroke-width=".8"/></g>
+          <g transform="rotate(-15 205 150)"><path d="M205 150 C199 130 199 116 205 110 C211 116 211 130 205 150 Z" fill="url(#gPetal)" stroke="#D2704A" stroke-width=".8"/></g>
+          <g transform="rotate(0 205 150)"><path d="M205 150 C199 132 199 118 205 112 C211 118 211 132 205 150 Z" fill="url(#gPetal)" stroke="#D2704A" stroke-width=".8"/></g>
+          <g transform="rotate(15 205 150)"><path d="M205 150 C199 130 199 116 205 110 C211 116 211 130 205 150 Z" fill="url(#gPetal)" stroke="#D2704A" stroke-width=".8"/></g>
+          <g transform="rotate(29 205 150)"><path d="M205 150 C199 130 199 116 205 110 C211 116 211 130 205 150 Z" fill="url(#gPetal)" stroke="#D2704A" stroke-width=".8"/></g>
+          <g transform="rotate(43 205 150)"><path d="M205 150 C199 130 199 116 205 110 C211 116 211 130 205 150 Z" fill="url(#gPetal)" stroke="#D2704A" stroke-width=".8"/></g>
+          <g transform="rotate(57 205 150)"><path d="M205 150 C199 130 199 116 205 110 C211 116 211 130 205 150 Z" fill="url(#gPetal)" stroke="#D2704A" stroke-width=".8"/></g>
+          <path d="M193 156 C193 145 217 145 217 156 C217 164 193 164 193 156 Z" fill="#5E8330" stroke="#3C541C" stroke-width="1.4"/>
+          <ellipse cx="205" cy="140" rx="11" ry="8" fill="url(#gBloom)" stroke="#C85A2E" stroke-width="1.1"/>
+          <path d="M205 142 C204 130 203 122 202 114 M205 142 C205 129 205 121 205 112 M205 142 C206 130 208 123 210 115 M205 142 C201 131 199 124 197 117 M205 142 C209 132 212 126 215 120 M205 142 C200 132 197 128 195 123 M205 142 C210 133 214 129 217 125" stroke="#DE7A2A" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+          <circle cx="202" cy="114" r="1.7" fill="#FBE08A"/><circle cx="205" cy="112" r="1.7" fill="#D8552A"/><circle cx="210" cy="115" r="1.7" fill="#FBE08A"/><circle cx="197" cy="117" r="1.7" fill="#D8552A"/><circle cx="215" cy="120" r="1.6" fill="#FBE08A"/><circle cx="195" cy="123" r="1.6" fill="#D8552A"/><circle cx="217" cy="125" r="1.5" fill="#FBE08A"/>
+        </g>
+        </g>
 
         <!-- FACE -->
         <g class="eyes">
@@ -173,7 +196,7 @@
         <path d="M176 347 l3.2 6.5 7.2 .5 -5.4 4.8 1.7 7 -6.7 -3.8 -6.7 3.8 1.7 -7 -5.4 -4.8 7.2 -.5 Z" fill="#F6D45F" stroke="#B98F1F" stroke-width="1.1"/>
 
         <!-- LEFT arm (brought down, shoulder width matches the right) -->
-        <path d="M120 305 C104 316 99 340 113 356 C122 365 137 364 146 357 C141 348 134 342 130 332 C126 322 124 314 128 306 Z" fill="#6A9636" stroke="#3C541C" stroke-width="2.4"/>
+        <path d="M118 308 C104 316 99 340 113 356 C122 365 137 364 146 357 C141 348 134 342 130 332 C127 322 124 314 118 308 Z" fill="#6A9636" stroke="#3C541C" stroke-width="2.4"/>
         <path d="M117 314 C109 326 108 341 115 353" fill="none" stroke="#A6CD6C" stroke-width="2.6" stroke-linecap="round" opacity=".4"/>
         <ellipse cx="150" cy="356" rx="13" ry="11.5" fill="#6A9636" stroke="#3C541C" stroke-width="2.4"/>
 
