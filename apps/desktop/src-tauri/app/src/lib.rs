@@ -66,7 +66,7 @@ fn grove_setup() -> (String, Option<String>) {
 /// Show the Grove tab's embedded web product, creating the child webview on
 /// first use (lazily — it only loads when the user opens Grove).
 #[tauri::command]
-fn grove_show(window: tauri::Window) -> Result<(), String> {
+async fn grove_show(window: tauri::Window) -> Result<(), String> {
     let (pos, size) = grove_bounds(&window);
     if let Some(wv) = window.app_handle().get_webview("grove") {
         let _ = wv.set_position(pos);
@@ -74,7 +74,7 @@ fn grove_show(window: tauri::Window) -> Result<(), String> {
         return wv.show().map_err(|e| e.to_string());
     }
     let (target, script) = grove_setup();
-    let parsed = target.parse().map_err(|e| format!("bad grove url: {e}"))?;
+    let parsed: url::Url = target.parse().map_err(|e| format!("bad grove url: {e}"))?;
     // Lock the Grove webview to the configured web origin's host. The tab only
     // ever loads web_url() and stays there, so same-host navigations (and their
     // subpaths) must keep working — but a redirect to attacker content is
@@ -85,16 +85,27 @@ fn grove_show(window: tauri::Window) -> Result<(), String> {
         .and_then(|u| u.host_str().map(str::to_string));
     let mut builder =
         tauri::webview::WebviewBuilder::new("grove", tauri::WebviewUrl::External(parsed))
-            .on_navigation(move |url| match &allowed_host {
-                // Allow only navigations whose host matches the build-configured
-                // web origin; reject (return false) any cross-origin navigation.
-                Some(host) => url.host_str() == Some(host.as_str()),
-                // No parseable configured host: fail closed rather than open.
-                None => false,
+            .on_navigation(move |url| {
+                // Never cancel the webview's own initial blank document or
+                // non-web schemes; returning false for about:blank would abort
+                // the load of the real URL. Only gate real http(s) cross-origin
+                // navigation (the actual security boundary).
+                if !matches!(url.scheme(), "http" | "https") {
+                    return true;
+                }
+                match &allowed_host {
+                    Some(host) => url.host_str() == Some(host.as_str()),
+                    None => false,
+                }
             });
     if let Some(s) = script {
         builder = builder.initialization_script(&s);
     }
+    // `grove_show` is an ASYNC command, so it runs on a worker thread, not the
+    // main/UI thread. `add_child` internally hops to the main thread to create
+    // the WebView2 child and blocks until it's done — which works from a worker
+    // thread but DEADLOCKS if called on the main thread (a sync command), where
+    // the webview was left stranded on about:blank ("Connecting your grove…").
     window
         .add_child(builder, pos, size)
         .map(|_| ())

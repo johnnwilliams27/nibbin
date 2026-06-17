@@ -59,8 +59,37 @@ export default function DesktopAuth() {
   }, [router]);
 
   return (
-    <main style={{ padding: 24, fontFamily: 'var(--sans, sans-serif)', color: 'var(--ink, #23291a)' }}>
-      {err ? `Sign-in failed: ${err}` : 'Signing you in…'}
+    <main className="da-wrap">
+      <style>{`
+        .da-wrap { display:flex; flex-direction:column; align-items:center; justify-content:center;
+          min-height:100dvh; gap:18px; padding:24px; text-align:center;
+          font-family: var(--sans, ui-sans-serif, system-ui, sans-serif);
+          color: var(--ink, #23291A); background: var(--paper, #F5F6F2); }
+        .da-loader { display:inline-flex; align-items:flex-end; gap:9px; height:30px; }
+        .da-loader span { width:11px; height:11px; border-radius:50%;
+          background: var(--moss, #5B7C2E); animation: da-rise 1.25s ease-in-out infinite; }
+        .da-loader span:nth-child(2) { animation-delay:.16s; background: var(--leaf, #9CC25B); }
+        .da-loader span:nth-child(3) { animation-delay:.32s; }
+        .da-label { margin:0; font-size:14px; color: var(--ink-soft, #5A6248);
+          animation: da-breathe 2.4s ease-in-out infinite; }
+        .da-error { margin:0; font-size:14px; color:#B4452F; max-width:340px; }
+        @keyframes da-rise { 0%,100% { transform:translateY(5px) scale(.7); opacity:.4 }
+          50% { transform:translateY(-5px) scale(1); opacity:1 } }
+        @keyframes da-breathe { 0%,100% { opacity:.55 } 50% { opacity:1 } }
+        @media (prefers-reduced-motion: reduce) { .da-loader span, .da-label { animation:none } }
+      `}</style>
+      {err ? (
+        <p className="da-error">Sign-in failed: {err}</p>
+      ) : (
+        <>
+          <div className="da-loader" role="status" aria-label="Signing you in">
+            <span />
+            <span />
+            <span />
+          </div>
+          <p className="da-label">Signing you in…</p>
+        </>
+      )}
     </main>
   );
 }
