@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { createHmac } from 'node:crypto';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import { gmailOnboardingSweep } from '../../../../../lib/sweep/gmail-onboarding';
 
 export const dynamic = 'force-dynamic';
@@ -11,8 +11,9 @@ function verifyHmac(accountId: string, connectionId: string, hmac: string): bool
   const expected = createHmac('sha256', secret)
     .update(`${accountId}:${connectionId}`)
     .digest('hex');
-  // constant-time comparison
-  return hmac.length === expected.length && hmac === expected;
+  // constant-time comparison (timingSafeEqual requires equal-length buffers)
+  if (hmac.length !== expected.length) return false;
+  return timingSafeEqual(Buffer.from(hmac), Buffer.from(expected));
 }
 
 export async function POST(request: NextRequest): Promise<Response> {
