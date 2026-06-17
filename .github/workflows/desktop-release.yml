@@ -241,7 +241,7 @@ jobs:
           gh release create "$TAG" \
             --repo "$RELEASES_REPO" \
             --title "Nibbin Observer $TAG" \
-            --notes "macOS .dmg (universal — Apple Silicon + Intel) and Windows .msi. Verify with SHA256SUMS.txt; artifacts carry signed build-provenance (gh attestation verify <file> --repo johnnwilliams27/nibbin). Unsigned builds warn (Gatekeeper / SmartScreen) on first launch until code-signing is configured." \
+            --notes "macOS .dmg (universal — Apple Silicon + Intel) and Windows .msi + .exe, code-signed (macOS notarized; Windows via Azure Trusted Signing). Verify integrity with SHA256SUMS.txt. Windows SmartScreen may still prompt on first launch until the app accrues download reputation." \
             --prerelease \
             "${FILES[@]}" \
             dist/SHA256SUMS.txt
