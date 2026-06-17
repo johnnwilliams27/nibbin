@@ -4,6 +4,7 @@ import { buildCreature, type Accessory, type Marking, type SpeciesName, type Sta
 import { appSession } from '../../../lib/auth/app-session';
 import { AppShell } from '../../../components/shell/AppShell';
 import { NoteRefresher } from './NoteRefresher';
+import { NibbinEditor } from './NibbinEditor';
 import { refreshNibbinNote } from './actions';
 import styles from './nibbins.module.css';
 
@@ -396,9 +397,22 @@ export default async function NibbinsPage() {
                     <>Access: <b>draft-only until graduation</b></>
                   )}
                 </span>
-                <a className={styles.abtn} href="/app/shop">
-                  Adopt more →
-                </a>
+                <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <NibbinEditor
+                    nibbin={{
+                      id: n.id,
+                      name: n.name,
+                      species: n.species,
+                      stage: n.stage,
+                      palette: n.palette,
+                      accessory: n.accessory,
+                      marking: n.marking,
+                    }}
+                  />
+                  <a className={styles.abtn} href="/app/shop">
+                    Adopt more →
+                  </a>
+                </span>
               </div>
             </div>
           );

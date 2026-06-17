@@ -8,14 +8,14 @@ Reference implementation: `reference/nibbin-creature-lab.html`. Production home:
 
 ## Character-design principles (why v2 looks designed)
 - **Silhouette first:** every species must pass the solid-black test. Bodies are bezier masses (pear/bean/two-mass), never bare ellipses.
-- **Shape language:** Sprout=pear (grounded, cheerful) · Wisp=teardrop w/ asymmetric trailing hem (serene, floats) · Shellback=loaf shell + head poking out front (wise, steady) · Longear=upright bean (plucky) · Puff=round w/ cheek-fluff outline breaks (chick) · Glim=two masses, head + glowing abdomen (gentle glowbug).
+- **Shape language:** Sprout=pear (grounded, cheerful) · Wisp=teardrop w/ asymmetric trailing hem (serene, floats) · Capling=loaf shell + head poking out front (wise, steady) · Longear=upright bean (plucky) · Puff=round w/ cheek-fluff outline breaks (chick) · Glim=two masses, head + glowing abdomen (gentle glowbug).
 - **Asymmetry & gesture:** every species has a baked tilt (−3°..+3°), a leading foot, and one asymmetric signature (Longear's bent ear, Wisp's trailing hem curl, uneven Glim antennae, Puff cowlick).
-- **Eye systems differ per species:** round (Sprout/Glim/Keeper), oval-calm (Wisp), tall-alert (Longear), bead+brow (Puff), small+wise brows (Shellback). Never reuse one eye kit across species.
+- **Eye systems differ per species:** round (Sprout/Glim/Keeper), oval-calm (Wisp), tall-alert (Longear), bead+brow (Puff), small+wise brows (Capling). Never reuse one eye kit across species.
 - **Cel shading:** `mass(pathD,color,opts)` = gradient base + clipped offset shadow + highlight + outline (2px body / ~1.3px details). All new masses go through `mass()` — no flat-gradient-only shapes.
 - Blush is always coral #E2603A by design, on every species. Unique gradient/clip IDs per render (engine handles via _uid).
 
 ## Growth traits (the trust UI — anatomy changes per stage)
-Sprout: 1 leaf → 2 leaves → bloom. Wisp: calm hem/no arms → wavy hem + asymmetric arms; flame 1→3 tongues + grad aura. Shellback: smooth low shell → ring + scute plates + tail → second ring. Longear: one ear flopped → one up one half → both perked (always asymmetric angles). Puff: wing nub → folded wing w/ feather lines → open fingered wing; crest 1→3. Glim: ONE curled antenna → two uneven → glowing pair + abdomen aura.
+Sprout: 1 leaf → 2 leaves → bloom. Wisp: calm hem/no arms → wavy hem + asymmetric arms; flame 1→3 tongues + grad aura. Capling: smooth low shell → ring + scute plates + tail → second ring. Longear: one ear flopped → one up one half → both perked (always asymmetric angles). Puff: wing nub → folded wing w/ feather lines → open fingered wing; crest 1→3. Glim: ONE curled antenna → two uneven → glowing pair + abdomen aura.
 
 ## The Keeper (canonical brand mascot)
 - One form, every account: fixed moss body, leaf mantle collar, head branch with honey bloom, moss chin tuft, staff with glowing honey lantern, seed satchel with star.

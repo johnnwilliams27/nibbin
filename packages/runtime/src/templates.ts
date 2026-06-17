@@ -132,7 +132,7 @@ export const SHOP_TEMPLATES: readonly ShopTemplate[] = [
     tagline: 'Minds the money you already earned',
     description:
       'Tally keeps an eye on invoices: which went out late, which are overdue, where fees are nibbling at you. It drafts the polite payment nudge you keep meaning to send.',
-    species: 'Shellback',
+    species: 'Capling',
     accessory: 'coin',
     marking: 'none',
     color: '#44601F',

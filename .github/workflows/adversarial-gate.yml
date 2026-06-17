@@ -1,0 +1,50 @@
+name: adversarial-gate
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: adversarial-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+# Enforces docs/AGREEMENTS.md: any PR touching a security-sensitive surface must
+# carry a committed adversarial-gate report under docs/gates/ — evidence that the
+# four reviewers (red-team, claims-auditor, logic-skeptic, cost-auditor) ran
+# against the diff. LLM reviewers can't run inside CI, so this makes SKIPPING the
+# gate a visible, merge-blocking failure rather than a silent omission. It does
+# not (cannot) verify the review's quality — that's the human gate sign-off.
+jobs:
+  require-gate-report:
+    name: Adversarial gate report (sensitive surfaces)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0
+      - name: Require a gate report when sensitive paths change
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          changed=$(git diff --name-only "$BASE" "$HEAD")
+          sensitive=$(printf '%s\n' "$changed" | grep -E '^(supabase/migrations/|packages/runtime/|packages/connectors/|packages/keeper/|packages/router/|apps/web/app/api/|apps/desktop/src-tauri/)' || true)
+          if [ -z "$sensitive" ]; then
+            echo "No security-sensitive paths changed — adversarial gate report not required."
+            exit 0
+          fi
+          echo "Security-sensitive paths changed in this PR:"
+          printf '  %s\n' "$sensitive"
+          report=$(printf '%s\n' "$changed" | grep -E '^docs/gates/[0-9]{4}-[0-9]{2}-[0-9]{2}-.+\.md$' || true)
+          if [ -z "$report" ]; then
+            echo "::error::This PR changes security-sensitive surfaces but adds no adversarial-gate report."
+            echo "Run the four reviewers (see /gate and .claude/agents/*) against this diff and commit"
+            echo "the findings to docs/gates/<date>-<slug>.md (template: docs/gates/TEMPLATE.md)."
+            echo "P0/P1 findings must be resolved before merge. See docs/AGREEMENTS.md."
+            exit 1
+          fi
+          echo "Adversarial-gate report present:"
+          printf '  %s\n' "$report"

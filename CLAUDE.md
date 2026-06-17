@@ -20,7 +20,7 @@ orchestrates but has no hands. Two surfaces: Day One web app + desktop Observer.
 | Redaction/privacy tests | skill: `.claude/skills/redaction-corpus` |
 | User-facing copy | skill: `.claude/skills/brand-voice` |
 | UI, CSS, visual output | skill: `.claude/skills/design-system` + `reference/nibbin-style-guide.html` |
-| Milestone gate | `/gate` command + `.claude/agents/*` reviewers |
+| Milestone gate, or any PR touching a sensitive surface | `/gate` (4 `.claude/agents/*` reviewers) → report in `docs/gates/`; see `docs/AGREEMENTS.md` |
 | Codebase orientation | run `node tools/grovemap/grovemap.mjs` and open the map |
 | Marketing, growth, GTM, the Marketing Grove agents | `docs/GTM.md` |
 | Competitive framing, moat mechanics, positioning | `docs/MOAT.md` |

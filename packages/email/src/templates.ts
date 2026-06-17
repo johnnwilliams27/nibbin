@@ -77,3 +77,10 @@ export function templateFor(content: BeatContent): BeatTemplate {
   const t = TEMPLATES[content.key];
   return { subject: t.subject ?? content.title, preheader: t.preheader, creature: t.creature };
 }
+
+/**
+ * Every creature any beat template can show — the source of truth for which
+ * email rasters must exist. The raster script bakes a PNG for each; a test
+ * asserts coverage so a new beat creature can't ship without its asset.
+ */
+export const BEAT_CREATURES: readonly BuildOptions[] = Object.values(TEMPLATES).map((t) => t.creature);

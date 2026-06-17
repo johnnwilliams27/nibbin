@@ -9,7 +9,8 @@
  * one celebration. Plain-text parity is structural — the same blocks build both
  * bodies. Creatures render through the engine, never hand-drawn SVG.
  */
-import { buildCreature, creatureCss, type BuildOptions } from '@nibbin/creatures';
+import type { BuildOptions } from '@nibbin/creatures';
+import { creatureImgTag } from './creature-image';
 import type { OutboundEmail } from './types';
 
 const FONT_DISPLAY = "'Bricolage Grotesque','Trebuchet MS',Arial,sans-serif";
@@ -25,7 +26,13 @@ const MOSS_DEEP = '#44601F';
 const HONEY_DEEP = '#8A5F0C';
 const HONEY_TINT = '#F7EDD6';
 
-const KEEPER: BuildOptions = { species: 'Keeper', size: 88 };
+/**
+ * Every header creature is a hosted PNG, not inline SVG: Gmail strips SVG
+ * entirely and the engine's feGaussianBlur/gradients don't survive most
+ * clients. The rasters live in the web app's public dir (root keeper-email.png,
+ * creatures/<slug>.png), baked by tools/raster-email-creatures.mts.
+ */
+const DEFAULT_KEEPER_IMG = 'https://nibbin.com/keeper-email.png';
 
 export function esc(s: string): string {
   return s
@@ -63,10 +70,15 @@ export interface TransactionalRenderOptions {
   postalAddress?: string;
   /** Extra headers (e.g. List-Unsubscribe for the one marketing-ish case). */
   headers?: Record<string, string>;
+  /** Absolute URL of the Grovekeeper header PNG. Defaults to the prod asset. */
+  keeperImageUrl?: string;
 }
 
-function renderHtml(email: TransactionalEmail, postalAddress?: string): string {
-  const creature = buildCreature(email.creature ?? KEEPER);
+function renderHtml(email: TransactionalEmail, postalAddress: string | undefined, keeperUrl: string): string {
+  // Every header creature is a hosted PNG. `keeperUrl` points at the Keeper
+  // asset; its parent dir is the asset root for the other creatures' rasters.
+  const base = keeperUrl.replace(/\/keeper-email\.png$/i, '');
+  const header = creatureImgTag(base, email.creature, esc);
 
   // Pre-escape every dynamic value into its own fragment, so the returned
   // document template interpolates only already-built strings — no unescaped
@@ -127,7 +139,7 @@ function renderHtml(email: TransactionalEmail, postalAddress?: string): string {
   // HTML. raw-html-format is a false positive here (same convention as
   // packages/redaction/src/battery.ts).
   // nosemgrep: javascript.express.security.injection.raw-html-format.raw-html-format
-  const doc = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>${creatureCss}</style></head><body style="margin:0;padding:0;background:${SHELL};"><div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${preheaderTxt}</div><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${SHELL};"><tr><td align="center" style="padding:32px 16px;"><table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;max-width:560px;"><tr><td align="center" style="padding:0 0 16px;">${creature}</td></tr><tr><td style="background:${CANOPY};border:1px solid ${UNDERSTORY};border-radius:12px;padding:28px;">${cardInner}</td></tr>${address ? `<tr><td style="padding:20px 8px 0;">${address}</td></tr>` : ''}</table></td></tr></table></body></html>`;
+  const doc = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body style="margin:0;padding:0;background:${SHELL};"><div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${preheaderTxt}</div><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${SHELL};"><tr><td align="center" style="padding:32px 16px;"><table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;max-width:560px;"><tr><td align="center" style="padding:0 0 16px;">${header}</td></tr><tr><td style="background:${CANOPY};border:1px solid ${UNDERSTORY};border-radius:12px;padding:28px;">${cardInner}</td></tr>${address ? `<tr><td style="padding:20px 8px 0;">${address}</td></tr>` : ''}</table></td></tr></table></body></html>`;
   return doc;
 }
 
@@ -166,7 +178,7 @@ export function renderTransactional(email: TransactionalEmail, opts: Transaction
     from: opts.from,
     to: opts.to,
     subject: email.subject,
-    html: renderHtml(email, opts.postalAddress),
+    html: renderHtml(email, opts.postalAddress, opts.keeperImageUrl ?? DEFAULT_KEEPER_IMG),
     text: renderText(email, opts.postalAddress),
     headers: opts.headers ?? {},
   };

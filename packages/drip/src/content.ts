@@ -11,7 +11,7 @@ import type { ArcDataPort, ArcFlags, BeatContent, BeatKey } from './types';
 const SPECIES_TEMPERAMENTS = [
   { title: 'Sprout', body: 'Patient and steady — happiest with chores that come back every week.' },
   { title: 'Wisp', body: 'Quick and light. First to notice something new in the inbox.' },
-  { title: 'Shellback', body: 'Careful to a fault. The one you want near anything involving money.' },
+  { title: 'Capling', body: 'Careful to a fault. The one you want near anything involving money.' },
   { title: 'Longear', body: 'A listener. Picks up the way your clients phrase things and keeps it.' },
   { title: 'Puff', body: 'Cheerfully tireless with the small, fiddly stuff nobody else wants.' },
   { title: 'Glim', body: 'Sees patterns early. Good at spotting the same chore wearing different clothes.' },

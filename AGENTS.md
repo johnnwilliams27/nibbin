@@ -20,7 +20,7 @@ orchestrates but has no hands. Two surfaces: Day One web app + desktop Observer.
 | Redaction/privacy tests | skill: `.agents/skills/redaction-corpus` |
 | User-facing copy | skill: `.agents/skills/brand-voice` |
 | UI, CSS, visual output | skill: `.agents/skills/design-system` + `reference/nibbin-style-guide.html` |
-| Milestone gate | `/gate` command + `.codex/agents/*` reviewers |
+| Milestone gate, or any PR touching a sensitive surface | `/gate` (4 `.codex/agents/*` reviewers) → report in `docs/gates/`; see `docs/AGREEMENTS.md` |
 | Codebase orientation | run `node tools/grovemap/grovemap.mjs` and open the map |
 
 Brand reference: `reference/nibbin-demo.html`. Engine reference: `reference/nibbin-creature-lab.html`.
