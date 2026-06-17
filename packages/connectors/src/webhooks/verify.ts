@@ -184,7 +184,12 @@ export async function verifyGooglePubSubOidc(
 
   const now = opts.nowSecs ?? Math.floor(Date.now() / 1000);
   if (!GOOGLE_ISSUERS.has(claims.iss)) return { valid: false, reason: 'bad issuer' };
-  if (claims.aud !== opts.expectedAudience) return { valid: false, reason: 'bad audience' };
+  // Fail closed when no audience is configured: an empty/blank expectedAudience
+  // (e.g. an unset PUBSUB_PUSH_AUDIENCE env) must never satisfy the check, even
+  // if a token happened to carry an empty `aud`.
+  if (!opts.expectedAudience.trim() || claims.aud !== opts.expectedAudience) {
+    return { valid: false, reason: 'bad audience' };
+  }
   if (claims.exp <= now) return { valid: false, reason: 'expired' };
   if (claims.iat > now + 60) return { valid: false, reason: 'issued in the future' };
   if (opts.expectedEmail && (claims.email !== opts.expectedEmail || claims.email_verified !== true)) {

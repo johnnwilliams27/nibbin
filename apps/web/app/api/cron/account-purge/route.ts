@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { timingSafeEqual } from 'node:crypto';
 import { accountDeletedEmail, renderTransactional, resendProvider } from '@nibbin/email';
 import { serviceClient } from '../../../../lib/supabase/service';
+import { isAuthorizedCronRequest } from '../../../../lib/connections/cron-auth';
 
 /**
  * Stage 2b of issue #29: the nightly runner that enforces the deletion clock.
@@ -17,23 +17,13 @@ import { serviceClient } from '../../../../lib/supabase/service';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-function authorized(req: NextRequest): boolean {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
-  const header = req.headers.get('authorization') ?? '';
-  const token = header.startsWith('Bearer ') ? header.slice(7) : '';
-  const a = Buffer.from(token);
-  const b = Buffer.from(secret);
-  return a.length === b.length && timingSafeEqual(a, b);
-}
-
 interface MemberRow {
   user_id: string;
   role: string;
 }
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
-  if (!authorized(req)) {
+  if (!isAuthorizedCronRequest(req)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
   if (process.env.ACCOUNT_PURGE_ENABLED !== 'true') {

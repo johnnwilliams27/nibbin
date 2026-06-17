@@ -251,7 +251,10 @@ export async function activeNibbinsForAccount(svc: SupabaseClient, accountId: st
     .from('nibbins')
     .select('id, account_id, name, stage, status, agent_specs!inner(*)')
     .eq('account_id', accountId)
-    .in('status', ['active', 'paused', 'sleeping']);
+    // Only truly active Nibbins can dispatch — paused/sleeping ones are filtered
+    // here at the source. dispatchForConnection still guards independently, so
+    // this narrowing only avoids fetching rows it would discard anyway.
+    .eq('status', 'active');
   if (error) throw new Error(`nibbins load failed: ${error.message}`);
   return (data ?? []).map((row) => {
     const specRow = (Array.isArray(row.agent_specs) ? row.agent_specs[0] : row.agent_specs) as Parameters<typeof specFromRow>[0];
@@ -338,6 +341,10 @@ export async function maybeInsertSendGrant(
       nibbin_id: nibbinId,
       connection_id: conn.id,
       capability: 'email.send',
+      // System-initiated grant: promotion to Senior happens during a run with no
+      // human actor in scope, so granted_by is intentionally null. The write-grant
+      // audit trigger renders a null actor as 'service' in audit_log, so the audit
+      // trail still attributes it rather than showing a blank actor.
       granted_by: null,
       plain_language_reason: 'Promoted to Senior — one-click human-approved send enabled.',
       revoked_at: null,
