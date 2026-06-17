@@ -150,7 +150,7 @@ export function puffFull(o: { stage?: Stage; color?: string; acc?: Accessory; ma
   // crest present at student + senior; DROPPED at grad (mortarboard takes headspace)
   const crestArt = stage === 'grad' ? '' : crest(100, crestBase, color, !sr);
   // mortarboard ONLY at grad
-  const board = stage === 'grad' ? mortarboard(u, 100, 78) : '';
+  const board = stage === 'grad' ? mortarboard(u, 100, 96) : '';
 
   const art = `${defs}${shadow}<g>
     ${wing}${foot}

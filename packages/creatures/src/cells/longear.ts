@@ -130,7 +130,7 @@ export function longearFull(o: { stage?: Stage; color?: string; acc?: Accessory;
 
   const eyes = cellEyes(u, 86, 114, ey, stroke, { rx: 12.5, ry: 14, pr: 7.5 });
   const blush = cellBlush(u, sr ? 70 : 66, sr ? 130 : 134, ckY);
-  const board = stage === 'grad' ? mortarboard(u, 100, 86, { rot: -6 }) : '';
+  const board = stage === 'grad' ? mortarboard(u, 100, 100, { rot: -6 }) : '';
 
   const art = `${defs}${shadow}<g>${feet}
     ${ears}
