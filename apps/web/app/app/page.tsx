@@ -195,12 +195,21 @@ export default async function AppPage({ searchParams }: { searchParams: Promise<
 
   // Every read below is gated by RLS on the user's own session — this is the
   // live demonstration that membership scoping holds at the database layer.
-  const [groveLoad, { data: account }] = await Promise.all([
+  const [groveLoad, { data: account }, { count: activeConnectionCount }] = await Promise.all([
     loadGroveState(supabase, accountId, user.id),
     supabase.from('accounts').select('name').eq('id', accountId).single(),
+    // NIB-4: does the account have a working (active) connection yet? Drives the
+    // first-connection next-step affordance. RLS-scoped to the user's session;
+    // `pending` rows (half-finished OAuth) deliberately don't count.
+    supabase
+      .from('connections')
+      .select('id', { count: 'exact', head: true })
+      .eq('account_id', accountId)
+      .eq('status', 'active'),
   ]);
 
   const { state: grove, initialMessages, expression, credits } = groveLoad;
+  const hasConnection = (activeConnectionCount ?? 0) > 0;
 
   // Onboarding not yet complete: render the focal OnboardingCanvas inside the
   // shell (nav quiet + locked). The canvas handles the chat engine + hatch
@@ -218,6 +227,7 @@ export default async function AppPage({ searchParams }: { searchParams: Promise<
           freshHatch={!groveLoad.rowExists}
           credits={credits}
           initialProfile={grove.profile}
+          hasConnection={hasConnection}
         />
       </AppShell>
     );
@@ -379,6 +389,7 @@ export default async function AppPage({ searchParams }: { searchParams: Promise<
       keeperName={grove.keeperName}
       credits={credits}
       initialProfile={grove.profile}
+      hasConnection={hasConnection}
     />
   );
 
@@ -561,7 +572,7 @@ export default async function AppPage({ searchParams }: { searchParams: Promise<
         </div>
       </div>
 
-      <Card className={dash.download}>
+      <Card id="download" className={dash.download}>
         <div className={dash.downloadCopy}>
           <p className={dash.heroEyebrow}>Get the desktop app</p>
           <h2 className={dash.downloadTitle}>Your grove runs in the desktop app</h2>

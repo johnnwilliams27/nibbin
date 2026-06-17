@@ -25,6 +25,8 @@ export interface KeeperPanelProps {
   keeperName: string | null;
   credits: number;
   initialProfile: UnderstandingProfile | null;
+  /** Server-derived: account has ≥1 `active` connection (NIB-4 next step). */
+  hasConnection: boolean;
 }
 
 export function KeeperPanel({
@@ -34,6 +36,7 @@ export function KeeperPanel({
   keeperName,
   credits,
   initialProfile,
+  hasConnection,
 }: KeeperPanelProps) {
   // The creature engine mints unique gradient ids per render, so SSR + hydration
   // can't match — mount-gate it (same pattern as KeeperSprite).
@@ -69,6 +72,7 @@ export function KeeperPanel({
           freshHatch={false}
           credits={credits}
           initialProfile={initialProfile}
+          hasConnection={hasConnection}
         />
       </div>
     </div>

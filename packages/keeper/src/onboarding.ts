@@ -143,3 +143,24 @@ export function advanceOnboarding(state: OnboardingState, input: OnboardingInput
       return { state, messages: [], expression: 'idle' };
   }
 }
+
+/**
+ * The first-connection next-step affordance (NIB-4) has three resting states,
+ * selected purely from two booleans the host surface supplies:
+ *
+ *   - `'connect'`     — no active connection yet → nudge toward /app/connections
+ *   - `'field-study'` — connected, but the field-study nudge isn't done yet
+ *   - `'none'`        — connected AND the field-study nudge has been satisfied
+ *                       (clicked through or dismissed) → retire the affordance
+ *
+ * `fieldStudyDone` is a client-side persisted flag (localStorage), per Decision C:
+ * stage 2 clears when the user clicks through to the field study OR dismisses it.
+ * Pure + side-effect free so it's unit-testable on its own.
+ */
+export type NextStepStage = 'connect' | 'field-study' | 'none';
+
+export function nextStepStage(hasConnection: boolean, fieldStudyDone: boolean): NextStepStage {
+  if (!hasConnection) return 'connect';
+  if (!fieldStudyDone) return 'field-study';
+  return 'none';
+}
