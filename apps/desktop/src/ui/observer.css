@@ -209,6 +209,15 @@ input:focus-visible {
   flex-wrap: wrap;
 }
 
+/* NIB-8: top tab bar anchored-chrome treatment. box-shadow draws the hairline
+   separator WITHOUT adding layout height (no border-bottom, no extra
+   padding/margin). The subtle background reads as chrome rather than content.
+   GROVE_TOP_PX=96 in lib.rs is not touched; this rule adds zero layout height. */
+.nav.tabbar {
+  background: var(--canopy);
+  box-shadow: 0 1px 0 var(--line);
+}
+
 /* Top tabbar active state — kept subtle (understory + ink-soft border). */
 .nav button[aria-current='true'] {
   background: var(--understory);
