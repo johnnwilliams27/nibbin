@@ -1,6 +1,7 @@
 {
   "crons": [
     { "path": "/api/cron/account-purge", "schedule": "0 4 * * *" },
-    { "path": "/api/cron/connector-poll", "schedule": "*/5 * * * *" }
+    { "path": "/api/cron/connector-poll", "schedule": "*/5 * * * *" },
+    { "path": "/api/cron/gmail-watch-renew", "schedule": "0 10 * * *" }
   ]
 }
