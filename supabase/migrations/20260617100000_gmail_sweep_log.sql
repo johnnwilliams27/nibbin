@@ -21,8 +21,9 @@ create policy "account members read own sweep log"
   on public.gmail_sweep_log for select
   using (
     account_id in (
-      select account_id from public.account_members
+      select account_id from public.memberships
       where user_id = auth.uid()
+        and status = 'active'
     )
   );
 
