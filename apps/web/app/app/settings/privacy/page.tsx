@@ -4,7 +4,8 @@ import { redirect } from 'next/navigation';
 import { appSession } from '../../../../lib/auth/app-session';
 import { AppShell } from '../../../../components/shell/AppShell';
 import { SettingsNav } from '../../../../components/settings/SettingsNav';
-import { Card, Button, Badge } from '../../../../components/ui';
+import { Card, Button, Badge, InlineFeedback } from '../../../../components/ui';
+import { setContribution } from './actions';
 import { connectionSummary, deletionState, type ConnectionRow } from '../../../../lib/privacy/panel';
 import styles from '../../../../components/settings/settings.module.css';
 
@@ -15,7 +16,13 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
-export default async function PrivacySettingsPage() {
+export default async function PrivacySettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ state?: string; error?: string }>;
+}) {
+  const { state, error } = await searchParams;
+
   let session;
   try {
     session = await appSession();
@@ -26,10 +33,11 @@ export default async function PrivacySettingsPage() {
 
   const { data: acct } = await supabase
     .from('accounts')
-    .select('purge_after')
+    .select('purge_after, model_contribution_enabled')
     .eq('id', accountId)
-    .single<{ purge_after: string | null }>();
+    .single<{ purge_after: string | null; model_contribution_enabled: boolean }>();
   const del = deletionState(acct?.purge_after);
+  const contributing = acct?.model_contribution_enabled ?? true;
 
   const { data: conns } = await supabase
     .from('connections')
@@ -118,10 +126,25 @@ export default async function PrivacySettingsPage() {
         <Card>
           <h2 className={styles.sectionTitle}>Model improvement</h2>
           <p className={styles.sectionHint}>
-            We never sell your data, and we don&apos;t share it for advertising. How your data helps
-            improve Nibbin — and your control over it — is covered in our privacy policy. The
-            in-app opt-out control is on its way as we finish building this panel.
+            Nibbin never trains on your content. When this is on, Nibbin learns from anonymized,
+            aggregate signals about how its capabilities and models perform — never your data,
+            never your content, and never sold. You can turn it off anytime.
           </p>
+          {state === 'saved' && (
+            <InlineFeedback tone="success">Saved — your choice is recorded.</InlineFeedback>
+          )}
+          {error === 'contribution' && (
+            <InlineFeedback tone="error">That didn’t save — give it another go.</InlineFeedback>
+          )}
+          <div className={styles.actions}>
+            <Badge tone={contributing ? 'moss' : 'neutral'}>{contributing ? 'On' : 'Off'}</Badge>
+            <form action={setContribution}>
+              <input type="hidden" name="enabled" value={contributing ? 'false' : 'true'} />
+              <Button type="submit" variant="secondary">
+                {contributing ? 'Turn off' : 'Turn on'}
+              </Button>
+            </form>
+          </div>
         </Card>
 
         <Card>
