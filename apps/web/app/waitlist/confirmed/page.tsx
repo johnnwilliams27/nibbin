@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Creature } from '../../(marketing)/Creature';
+import { Grovekeeper } from '../../../components/grovekeeper/Grovekeeper';
 import '../../(marketing)/landing.css';
 
 export const metadata: Metadata = {
@@ -15,7 +15,7 @@ export default async function Confirmed({ searchParams }: { searchParams: Promis
     <main className="landing">
       <section style={{ textAlign: 'center', minHeight: '72vh', display: 'grid', placeItems: 'center' }}>
         <div className="wrap" style={{ maxWidth: 560 }}>
-          <Creature species="Keeper" size={140} />
+          <Grovekeeper size={150} />
           <h1 style={{ fontFamily: 'var(--display)', fontSize: 30, fontWeight: 800, margin: '14px 0 10px' }}>
             {confirmed ? 'Your seat is saved.' : 'That link has expired or already been used.'}
           </h1>
