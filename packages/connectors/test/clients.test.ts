@@ -3,7 +3,7 @@
  * client over a fake PostgREST, and the aggregator adapter. Fake servers are
  * routed via Host headers; egress test seams only.
  */
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { HttpConnectorClient, ConnectorRequestError } from '../src/connectors/base';
@@ -294,5 +294,61 @@ describe('aggregator adapter (method A)', () => {
     const q = await client.read('/conversations.history');
     expect(isQuarantined(q.wrapped)).toBe(true);
     expect((await vault.read(conn.id)).accessToken).toBe('nango-conn-42');
+  });
+});
+
+describe('GmailClient.historyList + getProfile', () => {
+  function makeGmailConn() {
+    return connection({ provider: 'gmail', scopes: ['https://www.googleapis.com/auth/gmail.metadata'] });
+  }
+
+  it('historyList builds the correct query params', async () => {
+    const conn = makeGmailConn();
+    const vault = await vaultWith({}, conn.id);
+    const client = new GmailClient(conn, vault, overrides);
+
+    let capturedPath = '';
+    // readJson is protected but accessible at runtime
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.spyOn(client as any, 'readJson').mockImplementation(async (path: string) => {
+      capturedPath = path;
+      return { data: { history: [], historyId: '9999' }, quarantined: {} };
+    });
+
+    await client.historyList({ startHistoryId: '1234' });
+    expect(capturedPath).toContain('startHistoryId=1234');
+    expect(capturedPath).toContain('historyTypes=messageAdded');
+  });
+
+  it('historyList defaults maxResults to 100', async () => {
+    const conn = makeGmailConn();
+    const vault = await vaultWith({}, conn.id);
+    const client = new GmailClient(conn, vault, overrides);
+
+    let capturedPath = '';
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.spyOn(client as any, 'readJson').mockImplementation(async (path: string) => {
+      capturedPath = path;
+      return { data: { history: [], historyId: '1' }, quarantined: {} };
+    });
+
+    await client.historyList({ startHistoryId: '0' });
+    expect(capturedPath).toContain('maxResults=100');
+  });
+
+  it('getProfile returns emailAddress and historyId', async () => {
+    const conn = makeGmailConn();
+    const vault = await vaultWith({}, conn.id);
+    const client = new GmailClient(conn, vault, overrides);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.spyOn(client as any, 'readJson').mockResolvedValue({
+      data: { emailAddress: 'user@gmail.com', historyId: '5555' },
+      quarantined: {},
+    });
+
+    const profile = await client.getProfile();
+    expect(profile.emailAddress).toBe('user@gmail.com');
+    expect(profile.historyId).toBe('5555');
   });
 });
