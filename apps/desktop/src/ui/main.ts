@@ -50,6 +50,13 @@ async function boot(): Promise<void> {
   render();
 }
 
+// The native shell calls this (via webview.eval) when the embedded Grove web app
+// signs out — the native session has already been cleared, so re-booting drops
+// to the login gate (clearing the tab bar + hiding the Grove webview).
+(window as unknown as { __nibbinSignedOut__?: () => void }).__nibbinSignedOut__ = () => {
+  void boot();
+};
+
 void boot();
 // Account-agnostic, non-blocking: check once on boot whether a newer build
 // exists and, if so, show a dismissable banner. The network call is native
