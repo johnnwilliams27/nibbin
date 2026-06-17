@@ -23,7 +23,7 @@ const STAGE_PILL: Record<Stage, { label: string; className: string }> = {
 export default async function ShopPage({
   searchParams,
 }: {
-  searchParams: Promise<{ missing?: string; limit?: string }>;
+  searchParams: Promise<{ limit?: string }>;
 }) {
   let session;
   try {
@@ -83,13 +83,6 @@ export default async function ShopPage({
             grove means <a href="/billing">moving up a plan</a>.
           </p>
         )}
-        {params.missing && (
-          <p className={styles.adoptedNote} role="status">
-            That Nibbin needs {params.missing.split(',').join(' and ')} connected first — connecting
-            accounts lives in the grove for now.
-          </p>
-        )}
-
         <div className={styles.grid}>
           {SHOP_TEMPLATES.map((t) => {
             const adopted = adoptedByTemplate.get(t.key);

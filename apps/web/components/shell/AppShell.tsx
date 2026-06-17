@@ -18,6 +18,7 @@ function KeeperGlyph({ size }: { size: number }) {
 export type NavKey =
   | 'grove'
   | 'nibbins'
+  | 'connections'
   | 'hatch'
   | 'diagnosis'
   | 'memory'
@@ -30,6 +31,12 @@ export type NavKey =
  *  pick up the active/hover tint from `.navItem`. */
 function NavIcon({ k }: { k: NavKey }) {
   const paths: Record<NavKey, ReactNode> = {
+    connections: (
+      <>
+        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+      </>
+    ),
     grove: (
       <>
         <path d="M7 20h10" />
@@ -111,6 +118,7 @@ const NAV: { key: NavKey; label: string; href: string }[] = [
   // there's no separate full-screen grove route to navigate to.
   { key: 'grove', label: 'Grove Home', href: '/app' },
   { key: 'nibbins', label: 'Your Nibbins', href: '/app/nibbins' },
+  { key: 'connections', label: 'Connections', href: '/app/connections' },
   { key: 'hatch', label: 'Hatch your own', href: '/app/hatch' },
   { key: 'diagnosis', label: 'Diagnosis', href: '/app/diagnosis' },
   { key: 'memory', label: 'Memory', href: '/app/memory' },

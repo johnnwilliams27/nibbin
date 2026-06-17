@@ -84,11 +84,13 @@ describe('connector registry (SPEC §4.3)', () => {
     }
   });
 
-  it('gmail stays on metadata-minimal scopes while verification is pending (RISKS §1)', () => {
+  it('gmail first-connect read scope is gmail.readonly (rich diagnosis data dump)', () => {
     const gmail = getConnector('gmail');
-    expect(gmail.scopes.read).toEqual(['https://www.googleapis.com/auth/gmail.metadata']);
-    // repeated-replies needs gmail.readonly — must stay dark until CASA lands
-    expect(gmail.scanModules).not.toContain('email.repeated-replies');
+    expect(gmail.scopes.read).toEqual(['https://www.googleapis.com/auth/gmail.readonly']);
+  });
+
+  it('gmail scanModules does not include email.repeated-replies (regression guard)', () => {
+    expect(getConnector('gmail').scanModules).not.toContain('email.repeated-replies');
   });
 
   it('Instagram is gated behind Meta app review', () => {

@@ -1,0 +1,13 @@
+.header { margin-bottom: 18px; }
+.eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--moss-deep); font-weight: 600; }
+.title { font-family: var(--display); font-weight: 800; font-size: 30px; color: var(--ink); margin: 6px 0 0; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; margin-top: 16px; }
+.card { display: flex; flex-direction: column; gap: 10px; padding: 18px; }
+.cardTop { display: flex; align-items: center; gap: 10px; }
+.icon { color: var(--moss-deep); display: inline-flex; }
+.name { font-family: var(--display); font-weight: 700; font-size: 17px; color: var(--ink); flex: 1; }
+.scopes { font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; color: var(--ink-soft); margin: 0; }
+.soon { font-size: 13px; color: var(--ink-faint); margin: 0; }
+.connect { font-family: var(--sans); font-size: 14px; font-weight: 600; color: var(--canopy); background: var(--moss-deep); border: none; border-radius: var(--r-button); padding: 10px 16px; min-height: 44px; cursor: pointer; }
+.connect:hover { background: var(--moss); }
+.connect:focus-visible { outline: 2px solid var(--moss); outline-offset: 2px; }
