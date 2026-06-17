@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { gmailOnboardingSweep } from '../../../../../lib/sweep/gmail-onboarding';
+import { serviceClient } from '../../../../../lib/supabase/service';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60; // Vercel max; sweep uses internal 45 s budget
@@ -33,6 +34,18 @@ export async function POST(request: NextRequest): Promise<Response> {
     return NextResponse.json({ status: result.status, messagesRead: result.messagesRead });
   } catch (err) {
     console.error('[sweep/route] sweep failed', err instanceof Error ? err.message : err);
+    // Record the failure so gmail_sweep_log carries a 'failed' row with a real
+    // error_summary — without this, failures never reach the table (the success
+    // path is the only writer) and the status/error_summary columns stay dead.
+    const errorSummary = (err instanceof Error ? err.message : String(err)).slice(0, 500);
+    const { error: logErr } = await serviceClient().from('gmail_sweep_log').insert({
+      account_id: accountId,
+      connection_id: connectionId,
+      status: 'failed',
+      messages_read: 0,
+      error_summary: errorSummary,
+    });
+    if (logErr) console.error('[sweep/route] failed to write sweep failure log', logErr.message);
     return NextResponse.json({ error: 'sweep_failed' }, { status: 500 });
   }
 }

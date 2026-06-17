@@ -1,11 +1,11 @@
 import 'server-only';
 import { NextResponse, type NextRequest } from 'next/server';
-import { timingSafeEqual } from 'node:crypto';
 import { serviceClient } from '../../../../lib/supabase/service';
 import { GmailClient, SupabaseTokenVault, SupabaseWebhookEventStore, CONNECTOR_REGISTRY } from '@nibbin/connectors';
 import { activeNibbinsForAccount, triggerNibbinRun, connectionFromRow } from '../../../../lib/runtime/engine';
 import { dispatchForConnection } from '../../../../lib/connections/dispatch';
 import { fetchGmailDelta, advanceGmailCursor } from '../../../../lib/connections/gmail-delta';
+import { isAuthorizedCronRequest } from '../../../../lib/connections/cron-auth';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -14,20 +14,8 @@ const WEBHOOK_SUPPORTED_PROVIDERS = [...CONNECTOR_REGISTRY.values()]
   .filter((d) => d.webhooks.supported)
   .map((d) => d.id);
 
-function authorized(req: NextRequest): boolean {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
-  const header = req.headers.get('authorization') ?? '';
-  const token = header.startsWith('Bearer ') ? header.slice(7) : '';
-  // Always compare same-length buffers to avoid timing leak
-  const padded = token.padEnd(secret.length, '\0').slice(0, secret.length);
-  const a = Buffer.from(padded);
-  const b = Buffer.from(secret);
-  return a.length === b.length && timingSafeEqual(a, b) && token.length === secret.length;
-}
-
 export async function GET(req: NextRequest): Promise<NextResponse> {
-  if (!authorized(req)) {
+  if (!isAuthorizedCronRequest(req)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 

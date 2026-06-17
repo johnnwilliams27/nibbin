@@ -127,6 +127,17 @@ describe('Google Pub/Sub OIDC (Gmail watch)', () => {
     ).toBe(false);
   });
 
+  it('fails closed when expectedAudience is empty, even if the token aud is also empty', async () => {
+    // An unset PUBSUB_PUSH_AUDIENCE reaches the verifier as '' — it must never
+    // satisfy the audience check, even against a token carrying an empty aud.
+    const r = await verifyGooglePubSubOidc(`Bearer ${makeJwt({ ...baseClaims, aud: '' })}`, {
+      ...opts,
+      expectedAudience: '',
+    });
+    expect(r.valid).toBe(false);
+    if (!r.valid) expect(r.reason).toBe('bad audience');
+  });
+
   it('rejects alg confusion and tampered signatures', async () => {
     expect(
       (await verifyGooglePubSubOidc(`Bearer ${makeJwt(baseClaims, { alg: 'none', kid: 'test-key' })}`, opts)).valid,

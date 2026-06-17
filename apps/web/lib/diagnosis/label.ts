@@ -186,11 +186,18 @@ export async function labelDiagnosis(accountId: string, map: DiagnosisMap): Prom
 
     const systemLines = [SYSTEM];
     if (groveContext) {
-      systemLines.push(
-        '',
-        'Additional context about this person from their grove memory (use to make labels sound like them, not generic):',
-        groveContext,
-      );
+      // grove_memory is partly user-authored and partly sweep-derived from email
+      // bodies, so it is untrusted at the point it enters a model system prompt.
+      // sanitizeProse strips tags/URLs before it joins the instructions, closing
+      // the prompt-injection seam (a sanitized stub may be empty — skip if so).
+      const safeContext = sanitizeProse(groveContext);
+      if (safeContext) {
+        systemLines.push(
+          '',
+          'Additional context about this person from their grove memory (use to make labels sound like them, not generic):',
+          safeContext,
+        );
+      }
     }
 
     const result = await llm({
