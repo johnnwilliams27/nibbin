@@ -101,4 +101,70 @@ describe('GET /api/cron/connector-poll', () => {
     const res = await GET(makeReq('Bearer short'));
     expect(res.status).toBe(401);
   });
+
+  it('does NOT advance the cursor when dispatchForConnection is capped', async () => {
+    const { advanceGmailCursor, fetchGmailDelta } = await import('../../../../lib/connections/gmail-delta');
+    const { dispatchForConnection } = await import('../../../../lib/connections/dispatch');
+    const { serviceClient } = await import('../../../../lib/supabase/service');
+
+    vi.mocked(serviceClient).mockReturnValueOnce({
+      from: vi.fn(() => ({
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            in: vi.fn(() =>
+              Promise.resolve({
+                data: [{ id: 'conn-1', account_id: 'acct-1', provider: 'gmail', status: 'active' }],
+                error: null,
+              }),
+            ),
+          })),
+        })),
+      })),
+      rpc: vi.fn().mockResolvedValue({ error: null }),
+    } as unknown as ReturnType<typeof serviceClient>);
+
+    vi.mocked(fetchGmailDelta).mockResolvedValueOnce({
+      events: [{ provider: 'gmail', connectionId: 'conn-1', accountId: 'acct-1', kind: 'message.received', dedupeKey: 'gmail:conn-1:msg-1' }],
+      newHistoryId: '200',
+    });
+    vi.mocked(dispatchForConnection).mockResolvedValueOnce({ triggered: 5, capped: true, deferred: 3 });
+
+    const { GET } = await import('./route');
+    await GET(makeReq(`Bearer ${SECRET}`));
+
+    expect(advanceGmailCursor).not.toHaveBeenCalled();
+  });
+
+  it('advances the cursor when dispatch is not capped', async () => {
+    const { advanceGmailCursor, fetchGmailDelta } = await import('../../../../lib/connections/gmail-delta');
+    const { dispatchForConnection } = await import('../../../../lib/connections/dispatch');
+    const { serviceClient } = await import('../../../../lib/supabase/service');
+
+    vi.mocked(serviceClient).mockReturnValueOnce({
+      from: vi.fn(() => ({
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            in: vi.fn(() =>
+              Promise.resolve({
+                data: [{ id: 'conn-1', account_id: 'acct-1', provider: 'gmail', status: 'active' }],
+                error: null,
+              }),
+            ),
+          })),
+        })),
+      })),
+      rpc: vi.fn().mockResolvedValue({ error: null }),
+    } as unknown as ReturnType<typeof serviceClient>);
+
+    vi.mocked(fetchGmailDelta).mockResolvedValueOnce({
+      events: [{ provider: 'gmail', connectionId: 'conn-1', accountId: 'acct-1', kind: 'message.received', dedupeKey: 'gmail:conn-1:msg-1' }],
+      newHistoryId: '201',
+    });
+    vi.mocked(dispatchForConnection).mockResolvedValueOnce({ triggered: 2, capped: false, deferred: 0 });
+
+    const { GET } = await import('./route');
+    await GET(makeReq(`Bearer ${SECRET}`));
+
+    expect(advanceGmailCursor).toHaveBeenCalledWith(expect.anything(), 'conn-1', '201');
+  });
 });

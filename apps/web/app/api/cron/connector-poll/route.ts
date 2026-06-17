@@ -80,20 +80,32 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         },
       );
 
+      let anyCapped = false;
       for (const event of events) {
-        const isFirst = await eventStore.recordOnce('gmail', event.dedupeKey, connection.id);
-        if (!isFirst) continue;
         const result = await dispatchForConnection(event, {
           activeNibbinsForAccount: (accountId) => activeNibbinsForAccount(svc, accountId),
           triggerRun: (nibbinId, trigger) => triggerNibbinRun(nibbinId, trigger),
+          // Per-(message, Nibbin) deduplication: already-dispatched Nibbins are
+          // skipped on the re-poll after a capped cycle; excess Nibbins fire.
+          recordOnce: (key) => eventStore.recordOnce('gmail', key, connection.id),
         });
         triggered += result.triggered;
         if (result.capped) {
-          console.warn(`[connector-poll] fan-out ceiling hit for account ${connection.accountId}`);
+          anyCapped = true;
+          console.warn(
+            `[connector-poll] fan-out ceiling hit for account ${connection.accountId}: ${result.deferred} Nibbin(s) deferred to next cycle`,
+          );
         }
       }
 
-      await advanceGmailCursor(svc, connection.id, newHistoryId);
+      // FIX 2: only advance the cursor when no event hit the ceiling.
+      // Deferred Nibbins re-fire on the next poll; the per-(message, Nibbin)
+      // recordOnce inside dispatchForConnection dedupes already-fired ones so
+      // only the excess Nibbins trigger. Once a cycle completes uncapped, the
+      // cursor advances and the delta moves forward (convergence guaranteed).
+      if (!anyCapped) {
+        await advanceGmailCursor(svc, connection.id, newHistoryId);
+      }
       processed++;
     } catch (e) {
       errors.push(`${connection.id}: ${(e as Error).message}`);

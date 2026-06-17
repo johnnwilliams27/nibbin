@@ -88,6 +88,33 @@ describe('dispatchForConnection', () => {
     expect(triggerRun).toHaveBeenCalledTimes(5);
     expect(result.capped).toBe(true);
     expect(result.triggered).toBe(5);
+    expect(result.deferred).toBe(3); // 8 eligible − 5 ceiling
+  });
+
+  it('returns deferred=0 when not capped', async () => {
+    const triggerRun = vi.fn().mockResolvedValue(runOutcome);
+    const result = await dispatchForConnection(gmailEvent, {
+      activeNibbinsForAccount: async () => [makeNibbin()],
+      triggerRun,
+    });
+    expect(result.capped).toBe(false);
+    expect(result.deferred).toBe(0);
+  });
+
+  it('skips Nibbins whose per-(event,nibbin) key recordOnce returns false', async () => {
+    const triggerRun = vi.fn().mockResolvedValue(runOutcome);
+    const nibbins = Array.from({ length: 3 }, (_, i) => makeNibbin({ id: `nib-${i}` }));
+    // Simulate nib-0 already dispatched in a prior cycle
+    const recordOnce = vi.fn().mockImplementation(async (key: string) => !key.endsWith(':nib-0'));
+    const result = await dispatchForConnection(gmailEvent, {
+      activeNibbinsForAccount: async () => nibbins,
+      triggerRun,
+      recordOnce,
+    });
+    expect(triggerRun).toHaveBeenCalledTimes(2); // nib-1 and nib-2 only
+    expect(triggerRun).not.toHaveBeenCalledWith('nib-0', expect.anything());
+    expect(result.triggered).toBe(2);
+    expect(result.capped).toBe(false);
   });
 
   it('does not trigger Nibbins with kind=schedule or kind=user triggers only', async () => {
