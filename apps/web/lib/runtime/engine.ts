@@ -200,6 +200,43 @@ export async function triggerNibbinRun(nibbinId: string, trigger: RunTrigger): P
 }
 
 /**
+ * After promotion to 'senior', insert email.send grant if the account has an
+ * active gmail connection with compose already held. No new OAuth — compose
+ * already permits send (design §6.2, §7.2). Exported for testability.
+ */
+export async function maybeInsertSendGrant(
+  newStage: string,
+  nibbinId: string,
+  accountId: string,
+  svc: SupabaseClient,
+): Promise<void> {
+  if (newStage !== 'senior') return;
+  const COMPOSE = 'https://www.googleapis.com/auth/gmail.compose';
+  const { data: conn } = await svc
+    .from('connections')
+    .select('id, scopes')
+    .eq('account_id', accountId)
+    .eq('provider', 'gmail')
+    .eq('status', 'active')
+    .maybeSingle();
+  if (!conn) return;
+  if (!(conn.scopes as string[]).includes(COMPOSE)) return;
+  const { error } = await svc.from('nibbin_write_grants').upsert(
+    {
+      account_id: accountId,
+      nibbin_id: nibbinId,
+      connection_id: conn.id,
+      capability: 'email.send',
+      granted_by: null,
+      plain_language_reason: 'Promoted to Senior — one-click human-approved send enabled.',
+      revoked_at: null,
+    },
+    { onConflict: 'nibbin_id,connection_id,capability' },
+  );
+  if (error) throw new Error(`email.send grant insert at Senior failed: ${error.message}`);
+}
+
+/**
  * After a user decision, try promotion when the rolling window has earned it
  * (the nibbin_promote RPC re-verifies in SQL — this pre-check only avoids
  * noisy failed calls). Returns the new stage when promoted.
@@ -235,7 +272,19 @@ export async function maybePromote(nibbinId: string): Promise<StageName | null> 
 
   const { data, error } = await svc.rpc('nibbin_promote', { p_nibbin: nibbinId });
   if (error) return null; // SQL is the authority; a refusal here is final
-  return data as StageName;
+  const newStage = data as StageName;
+
+  // Spec 2: insert email.send grant at Senior (no new OAuth needed)
+  if (newStage) {
+    const { data: nrow } = await svc.from('nibbins').select('account_id').eq('id', nibbinId).single();
+    if (nrow) {
+      await maybeInsertSendGrant(newStage, nibbinId, nrow.account_id as string, svc).catch(() => {
+        // Non-fatal: promotion succeeded; grant insert failure is logged but does not undo the stage
+      });
+    }
+  }
+
+  return newStage;
 }
 
 /**
