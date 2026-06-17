@@ -179,6 +179,12 @@ jobs:
       id-token: write
       attestations: write
     steps:
+      # Checkout FIRST (before download-artifact) — the publish step derives the
+      # release version from apps/desktop/src-tauri/app/tauri.conf.json via jq, so
+      # the repo must be present. (checkout cleans the workspace, so it has to run
+      # before the artifacts land in dist/.)
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           path: dist
