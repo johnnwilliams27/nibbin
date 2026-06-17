@@ -8,6 +8,24 @@ import { revokeWriteGrant } from '../../../../lib/connections/grants';
 import { connectionFromRow } from '../../../../lib/runtime/engine';
 import { maybePromote } from '../../../../lib/runtime/engine';
 
+/**
+ * Guard: verifies that nibbinId belongs to the session accountId.
+ * Throws if the nibbin does not exist or belongs to a different account.
+ * Prevents IDOR: callers cannot act on another account's nibbin by supplying
+ * an arbitrary nibbinId (FIX 2, Spec 2 security review).
+ */
+async function assertNibbinOwnership(nibbinId: string, accountId: string): Promise<void> {
+  const svc = serviceClient();
+  const { count } = await svc
+    .from('nibbins')
+    .select('id', { count: 'exact', head: true })
+    .eq('id', nibbinId)
+    .eq('account_id', accountId);
+  if ((count ?? 0) === 0) {
+    throw new Error(`nibbin ${nibbinId} not found for this account`);
+  }
+}
+
 export interface PushDraftResult {
   gmailDraftId: string | undefined;
 }
@@ -23,6 +41,8 @@ export async function pushDraftToGmailAction(
   draftStepIdx: number,
 ): Promise<PushDraftResult> {
   const { accountId } = await appSession();
+  // FIX 2: verify nibbin belongs to session account before any privileged operation
+  await assertNibbinOwnership(nibbinId, accountId);
   const svc = serviceClient();
   const vault = new SupabaseTokenVault({
     supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
@@ -91,7 +111,9 @@ export async function revokeWriteGrantAction(
   connectionId: string,
   capability: 'email.draft' | 'email.send',
 ): Promise<void> {
-  await appSession(); // enforce authentication
+  const { accountId } = await appSession();
+  // FIX 2: verify nibbin belongs to session account before revoking grants
+  await assertNibbinOwnership(nibbinId, accountId);
   const svc = serviceClient();
   await revokeWriteGrant(nibbinId, connectionId, capability, svc);
 }
@@ -101,7 +123,9 @@ export async function revokeWriteGrantAction(
  * and wire the email.send grant at Senior.
  */
 export async function promoteNibbinAction(nibbinId: string): Promise<{ promotedTo: string | null }> {
-  await appSession();
+  const { accountId } = await appSession();
+  // FIX 2: verify nibbin belongs to session account before promoting
+  await assertNibbinOwnership(nibbinId, accountId);
   const promotedTo = await maybePromote(nibbinId);
   return { promotedTo };
 }
