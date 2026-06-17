@@ -63,8 +63,8 @@ function sprig(color: string, twin: boolean): string {
   const second = twin
     ? `<path d="M100 58 C93 52 86 54 82 48 C87 42 96 44 100 54 Z" fill="${leaf}" stroke="${leafStroke}" stroke-width="1"/>`
     : '';
-  return `<path d="M100 76 C101 64 104 58 104 50" stroke="${stemStroke}" stroke-width="2.8" fill="none" stroke-linecap="round"/>
-    <path d="M104 52 C112 46 119 48 122 42 C117 36 108 39 104 49 Z" fill="${leaf}" stroke="${leafStroke}" stroke-width="1"/>${second}`;
+  return `<g class="sway"><path d="M100 76 C101 64 104 58 104 50" stroke="${stemStroke}" stroke-width="2.8" fill="none" stroke-linecap="round"/>
+    <path d="M104 52 C112 46 119 48 122 42 C117 36 108 39 104 49 Z" fill="${leaf}" stroke="${leafStroke}" stroke-width="1"/>${second}</g>`;
 }
 
 /** The five-petal flower that the senior's head leaf opens into. */
@@ -72,13 +72,13 @@ function flower(color: string): string {
   const stemStroke = shade(color, -20);
   const petal = '#FBF3E8', petalStroke = '#E2B6CC';
   const bloom = '#F2C76B';
-  return `<path d="M100 78 C101 66 102 58 102 48" stroke="${stemStroke}" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+  return `<g class="sway"><path d="M100 78 C101 66 102 58 102 48" stroke="${stemStroke}" stroke-width="2.6" fill="none" stroke-linecap="round"/>
     <circle cx="102" cy="35" r="6" fill="${petal}" stroke="${petalStroke}" stroke-width="1"/>
     <circle cx="113" cy="42" r="6" fill="${petal}" stroke="${petalStroke}" stroke-width="1"/>
     <circle cx="109" cy="54" r="6" fill="${petal}" stroke="${petalStroke}" stroke-width="1"/>
     <circle cx="95" cy="54" r="6" fill="${petal}" stroke="${petalStroke}" stroke-width="1"/>
     <circle cx="91" cy="42" r="6" fill="${petal}" stroke="${petalStroke}" stroke-width="1"/>
-    <circle cx="102" cy="46" r="4.5" fill="${bloom}" stroke="#D9A21B" stroke-width="1"/>`;
+    <circle cx="102" cy="46" r="4.5" fill="${bloom}" stroke="#D9A21B" stroke-width="1"/></g>`;
 }
 
 export function sproutFull(o: { stage?: Stage; color?: string; acc?: Accessory; mark?: Marking }): FullRender {

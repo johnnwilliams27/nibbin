@@ -69,7 +69,9 @@ export function cellEyes(
 ): string {
   const rx = opts.rx ?? 12.5, ry = opts.ry ?? 14, pr = opts.pr ?? 7.5, hl = opts.hl ?? 2.7, sw = opts.sw ?? 1.7;
   const py = ey + 3;
-  return `<g><ellipse cx="${exL}" cy="${ey}" rx="${rx}" ry="${ry}" fill="url(#eW${u})" stroke="${stroke}" stroke-width="${sw}"/><ellipse cx="${exR}" cy="${ey}" rx="${rx}" ry="${ry}" fill="url(#eW${u})" stroke="${stroke}" stroke-width="${sw}"/>
+  // class="blink" — the engine's creatureCss squishes the eye group on a slow
+  // cycle (disabled under prefers-reduced-motion).
+  return `<g class="blink"><ellipse cx="${exL}" cy="${ey}" rx="${rx}" ry="${ry}" fill="url(#eW${u})" stroke="${stroke}" stroke-width="${sw}"/><ellipse cx="${exR}" cy="${ey}" rx="${rx}" ry="${ry}" fill="url(#eW${u})" stroke="${stroke}" stroke-width="${sw}"/>
     <circle cx="${exL + 3}" cy="${py}" r="${pr}" fill="url(#eP${u})"/><circle cx="${exR - 3}" cy="${py}" r="${pr}" fill="url(#eP${u})"/>
     <circle cx="${exL - 1}" cy="${ey - 2}" r="${hl}" fill="#fff"/><circle cx="${exR - 1}" cy="${ey - 2}" r="${hl}" fill="#fff"/></g>`;
 }

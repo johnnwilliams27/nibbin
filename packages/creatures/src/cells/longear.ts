@@ -133,7 +133,7 @@ export function longearFull(o: { stage?: Stage; color?: string; acc?: Accessory;
   const board = stage === 'grad' ? mortarboard(u, 100, 100, { rot: -6 }) : '';
 
   const art = `${defs}${shadow}<g>${feet}
-    ${ears}
+    <g class="sway">${ears}</g>
     ${tintedBody(u, 'body', bodyD, color)}${belly}
     ${longearMark(o.mark ?? 'none', color)}
     ${board}

@@ -69,9 +69,9 @@ function flame(u: string, color: string, flameD: string, coreD: string, gx: numb
   const core = shade(color, 22);
   const stroke = shade(color, -32);
   const glow = shade(color, 55);
-  return `<ellipse cx="${gx}" cy="${gy}" rx="${gr}" ry="${gr * 1.15}" fill="${glow}" opacity=".35" filter="url(#bMd${u})"/>
-    <path d="${flameD}" fill="${light}" stroke="${stroke}" stroke-width="2"/>
-    <path d="${coreD}" fill="${core}"/>`;
+  return `<ellipse class="glowpulse" cx="${gx}" cy="${gy}" rx="${gr}" ry="${gr * 1.15}" fill="${glow}" opacity=".35" filter="url(#bMd${u})"/>
+    <g class="flicker"><path d="${flameD}" fill="${light}" stroke="${stroke}" stroke-width="2"/>
+    <path d="${coreD}" fill="${core}"/></g>`;
 }
 
 export function wispFull(o: { stage?: Stage; color?: string; acc?: Accessory; mark?: Marking }): FullRender {

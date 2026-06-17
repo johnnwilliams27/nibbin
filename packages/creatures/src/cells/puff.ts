@@ -92,12 +92,12 @@ function wings(color: string, big: boolean): string {
   const stroke = shade(color, -45);
   if (big) {
     // big spread wings extend well beyond the body edges (body ~x58..142)
-    return `<path d="M66 124 C40 116 18 130 22 158 C26 178 48 178 62 162 C50 168 36 164 34 152 C44 160 58 158 60 146 C50 152 40 148 40 138 C50 144 62 140 66 130 Z" fill="${fill}" stroke="${stroke}" stroke-width="2" stroke-linejoin="round"/>
-      <path d="M134 124 C160 116 182 130 178 158 C174 178 152 178 138 162 C150 168 164 164 166 152 C156 160 142 158 140 146 C150 152 160 148 160 138 C150 144 138 140 134 130 Z" fill="${fill}" stroke="${stroke}" stroke-width="2" stroke-linejoin="round"/>`;
+    return `<g class="flutter"><path d="M66 124 C40 116 18 130 22 158 C26 178 48 178 62 162 C50 168 36 164 34 152 C44 160 58 158 60 146 C50 152 40 148 40 138 C50 144 62 140 66 130 Z" fill="${fill}" stroke="${stroke}" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M134 124 C160 116 182 130 178 158 C174 178 152 178 138 162 C150 168 164 164 166 152 C156 160 142 158 140 146 C150 152 160 148 160 138 C150 144 138 140 134 130 Z" fill="${fill}" stroke="${stroke}" stroke-width="2" stroke-linejoin="round"/></g>`;
   }
   // budding wings: small stubs peeking out from the body sides (body ~x64..136)
-  return `<path d="M68 138 C52 134 44 148 52 162 C60 170 70 164 70 152 C66 158 58 156 56 150 C62 154 70 150 68 142 Z" fill="${fill}" stroke="${stroke}" stroke-width="1.8" stroke-linejoin="round"/>
-      <path d="M132 138 C148 134 156 148 148 162 C140 170 130 164 130 152 C134 158 142 156 144 150 C138 154 130 150 132 142 Z" fill="${fill}" stroke="${stroke}" stroke-width="1.8" stroke-linejoin="round"/>`;
+  return `<g class="flutter"><path d="M68 138 C52 134 44 148 52 162 C60 170 70 164 70 152 C66 158 58 156 56 150 C62 154 70 150 68 142 Z" fill="${fill}" stroke="${stroke}" stroke-width="1.8" stroke-linejoin="round"/>
+      <path d="M132 138 C148 134 156 148 148 162 C140 170 130 164 130 152 C134 158 142 156 144 150 C138 154 130 150 132 142 Z" fill="${fill}" stroke="${stroke}" stroke-width="1.8" stroke-linejoin="round"/></g>`;
 }
 
 /** Bird feet (two pronged toes). */

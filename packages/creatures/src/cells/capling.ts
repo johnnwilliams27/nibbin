@@ -56,7 +56,7 @@ function cap(u: string, color: string, d: string, gill: string, spots: string): 
 function eyes(u: string, ey: number, big: boolean): string {
   const rx = big ? 13 : 11, ry = big ? 14.5 : 12.5, pr = big ? 7.8 : 6.7, hl = big ? 2.8 : 2.4;
   const py = ey + 3, hx = -1, hy = -2;
-  return `<g><ellipse cx="85" cy="${ey}" rx="${rx}" ry="${ry}" fill="url(#eW${u})" stroke="#A8895C" stroke-width="1.7"/><ellipse cx="115" cy="${ey}" rx="${rx}" ry="${ry}" fill="url(#eW${u})" stroke="#A8895C" stroke-width="1.7"/>
+  return `<g class="blink"><ellipse cx="85" cy="${ey}" rx="${rx}" ry="${ry}" fill="url(#eW${u})" stroke="#A8895C" stroke-width="1.7"/><ellipse cx="115" cy="${ey}" rx="${rx}" ry="${ry}" fill="url(#eW${u})" stroke="#A8895C" stroke-width="1.7"/>
     <circle cx="88" cy="${py}" r="${pr}" fill="url(#eP${u})"/><circle cx="112" cy="${py}" r="${pr}" fill="url(#eP${u})"/>
     <circle cx="${85 + hx}" cy="${ey + hy}" r="${hl}" fill="#fff"/><circle cx="${115 + hx}" cy="${ey + hy}" r="${hl}" fill="#fff"/></g>`;
 }

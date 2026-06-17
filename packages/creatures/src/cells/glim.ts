@@ -53,10 +53,10 @@ function glimAcc(acc: Accessory, ey: number): string {
 function wings(sr: boolean): string {
   if (sr) {
     // small upper wings for the hatching student
-    return `<g opacity=".92"><path d="M88 120 C66 108 50 116 52 134 C54 150 74 150 88 134 Z" fill="#EAF6FF" stroke="#9FC8E8" stroke-width="1.6"/><path d="M112 120 C134 108 150 116 148 134 C146 150 126 150 112 134 Z" fill="#E3F0FF" stroke="#9FC8E8" stroke-width="1.6"/></g>`;
+    return `<g class="flutter" opacity=".92"><path d="M88 120 C66 108 50 116 52 134 C54 150 74 150 88 134 Z" fill="#EAF6FF" stroke="#9FC8E8" stroke-width="1.6"/><path d="M112 120 C134 108 150 116 148 134 C146 150 126 150 112 134 Z" fill="#E3F0FF" stroke="#9FC8E8" stroke-width="1.6"/></g>`;
   }
   // full four-wing spread for senior/grad
-  return `<g opacity=".92">
+  return `<g class="flutter" opacity=".92">
     <path d="M82 150 C50 122 26 130 26 156 C26 180 54 184 82 166 Z" fill="#EAF6FF" stroke="#9FC8E8" stroke-width="1.8"/>
     <path d="M82 168 C56 168 38 184 40 204 C42 220 70 216 84 196 Z" fill="#E3F0FF" stroke="#9FC8E8" stroke-width="1.6"/>
     <path d="M118 150 C150 122 174 130 174 156 C174 180 146 184 118 166 Z" fill="#EAF6FF" stroke="#9FC8E8" stroke-width="1.8"/>
@@ -82,7 +82,7 @@ function abdomen(u: string, color: string): string {
   const light = shade(color, 52), glow = shade(color, 55), outline = shade(color, -30);
   return `<defs><radialGradient id="glimAbd${u}" cx="42%" cy="32%" r="82%"><stop offset="0%" stop-color="${light}"/><stop offset="100%" stop-color="${color}"/></radialGradient>
     <radialGradient id="glimGlow${u}" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="${glow}" stop-opacity=".75"/><stop offset="100%" stop-color="${glow}" stop-opacity="0"/></radialGradient></defs>
-    <circle cx="100" cy="178" r="34" fill="url(#glimGlow${u})" filter="url(#bMd${u})"/>
+    <circle class="glowpulse" cx="100" cy="178" r="34" fill="url(#glimGlow${u})" filter="url(#bMd${u})"/>
     <ellipse cx="100" cy="174" rx="30" ry="28" fill="url(#glimAbd${u})" stroke="${outline}" stroke-width="2.2"/>`;
 }
 
