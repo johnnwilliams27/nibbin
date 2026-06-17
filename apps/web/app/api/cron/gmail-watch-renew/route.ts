@@ -13,29 +13,42 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  const svc = serviceClient();
   const topicName = process.env.GMAIL_PUBSUB_TOPIC ?? '';
+  // No Pub/Sub topic configured → push isn't wired; nothing to register. Stay
+  // inert rather than calling watch('') and erroring per connection.
+  if (!topicName) return NextResponse.json({ skipped: 'no_topic', registered: 0 });
+
+  const svc = serviceClient();
   const renewalHorizon = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
-  // Connections whose watch expires within the next 24 hours
+  // Every active Gmail connection — we register a watch for any that either has
+  // NO watch yet (null watchExpiry → bootstrap the first watch) or whose watch
+  // expires within the next 24h (renew). The prior renew-only query filtered on
+  // `watchExpiry < horizon`, which silently excludes null watchExpiry, so a
+  // freshly connected inbox never got a first watch and push never started.
   const { data: rows, error } = await svc
     .from('connections')
     .select('*')
     .eq('provider', 'gmail')
-    .eq('status', 'active')
-    .lt('webhook_state->>watchExpiry', renewalHorizon);
+    .eq('status', 'active');
 
   if (error) return NextResponse.json({ error: 'query_failed' }, { status: 500 });
+
+  const due = (rows ?? []).filter((row) => {
+    const ws = (row as { webhook_state?: Record<string, unknown> | null }).webhook_state;
+    const expiry = ws && typeof ws.watchExpiry === 'string' ? ws.watchExpiry : null;
+    return expiry === null || expiry < renewalHorizon;
+  });
 
   const vault = new SupabaseTokenVault({
     supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
     serviceKey: process.env.SUPABASE_SECRET_KEY ?? '',
   });
 
-  let renewed = 0;
+  let registered = 0;
   const errors: string[] = [];
 
-  for (const row of rows ?? []) {
+  for (const row of due) {
     try {
       const connection = connectionFromRow(row as Record<string, unknown>);
       const client = new GmailClient(connection, vault);
@@ -50,11 +63,11 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         p_patch: patch,
       });
 
-      renewed++;
+      registered++;
     } catch (e) {
       errors.push(`${(row as { id: string }).id}: ${(e as Error).message}`);
     }
   }
 
-  return NextResponse.json({ renewed, errors });
+  return NextResponse.json({ registered, errors });
 }

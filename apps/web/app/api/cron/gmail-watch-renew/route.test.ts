@@ -3,6 +3,9 @@ import { NextRequest } from 'next/server';
 
 const SECRET = 'renew-secret';
 
+// Shared mutable state so each test can set the rows the query returns.
+const { mockState } = vi.hoisted(() => ({ mockState: { rows: [] as Record<string, unknown>[] } }));
+
 function makeReq(authorization?: string): NextRequest {
   return new NextRequest('http://localhost/api/cron/gmail-watch-renew', {
     method: 'GET',
@@ -15,9 +18,7 @@ vi.mock('../../../../lib/supabase/service', () => ({
     from: vi.fn(() => ({
       select: vi.fn(() => ({
         eq: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            lt: vi.fn(() => Promise.resolve({ data: [], error: null })),
-          })),
+          eq: vi.fn(() => Promise.resolve({ data: mockState.rows, error: null })),
         })),
       })),
     })),
@@ -28,7 +29,7 @@ vi.mock('../../../../lib/supabase/service', () => ({
 vi.mock('@nibbin/connectors', () => ({
   GmailClient: vi.fn(function () {
     return {
-      watch: vi.fn().mockResolvedValue({ historyId: '999', expiration: String(Date.now() + 86400000) }),
+      watch: vi.fn().mockResolvedValue({ historyId: '999', expiration: String(Date.now() + 7 * 86400000) }),
     };
   }),
   SupabaseTokenVault: vi.fn(function () { return {}; }),
@@ -55,6 +56,8 @@ describe('GET /api/cron/gmail-watch-renew', () => {
     process.env.CRON_SECRET = SECRET;
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
     process.env.SUPABASE_SECRET_KEY = 'test-key';
+    process.env.GMAIL_PUBSUB_TOPIC = 'projects/test/topics/gmail-events';
+    mockState.rows = [];
     vi.clearAllMocks();
   });
 
@@ -64,11 +67,44 @@ describe('GET /api/cron/gmail-watch-renew', () => {
     expect(res.status).toBe(401);
   });
 
-  it('returns { renewed, errors } with zero renewals when no connections are expiring', async () => {
+  it('stays inert when no Pub/Sub topic is configured', async () => {
+    process.env.GMAIL_PUBSUB_TOPIC = '';
     const { GET } = await import('./route');
     const res = await GET(makeReq(`Bearer ${SECRET}`));
     expect(res.status).toBe(200);
-    const body = await res.json() as { renewed: number; errors: string[] };
-    expect(body).toMatchObject({ renewed: 0, errors: [] });
+    expect(await res.json()).toMatchObject({ skipped: 'no_topic' });
+  });
+
+  it('registers nothing when there are no active Gmail connections', async () => {
+    mockState.rows = [];
+    const { GET } = await import('./route');
+    const res = await GET(makeReq(`Bearer ${SECRET}`));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ registered: 0, errors: [] });
+  });
+
+  it('bootstraps the FIRST watch for a connection with no watchExpiry', async () => {
+    // The bug this fixes: a freshly connected inbox has empty webhook_state, so
+    // watchExpiry is null and the old renew-only query skipped it forever.
+    mockState.rows = [{ id: 'c1', account_id: 'a1', webhook_state: {} }];
+    const { GET } = await import('./route');
+    const res = await GET(makeReq(`Bearer ${SECRET}`));
+    expect(await res.json()).toMatchObject({ registered: 1, errors: [] });
+  });
+
+  it('skips a connection whose watch is still well in the future', async () => {
+    const future = new Date(Date.now() + 7 * 86400000).toISOString();
+    mockState.rows = [{ id: 'c1', account_id: 'a1', webhook_state: { watchExpiry: future } }];
+    const { GET } = await import('./route');
+    const res = await GET(makeReq(`Bearer ${SECRET}`));
+    expect(await res.json()).toMatchObject({ registered: 0, errors: [] });
+  });
+
+  it('renews a connection whose watch expires within 24h', async () => {
+    const soon = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    mockState.rows = [{ id: 'c1', account_id: 'a1', webhook_state: { watchExpiry: soon } }];
+    const { GET } = await import('./route');
+    const res = await GET(makeReq(`Bearer ${SECRET}`));
+    expect(await res.json()).toMatchObject({ registered: 1, errors: [] });
   });
 });
