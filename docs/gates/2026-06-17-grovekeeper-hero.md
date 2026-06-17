@@ -54,9 +54,20 @@
 - Renumbered above main's latest (`…150000`): configurator `…160000`, capling `…170000`
   (order preserved; capling depends on the configurator RPC). Both made idempotent
   (`create or replace`, `drop constraint if exists`) for safe re-apply.
-- **Deploy note:** the pre-renumber `…120000`/`…130000` versions were already applied to
-  dev+prod; before deploying, inspect/reconcile the live `supabase_migrations` tracker for
-  the orphaned rows (the changes are already live; the renumbered files re-apply safely).
+- **Deploy note:** migrations are applied via the Management API (apply-time version
+  stamps), so tracker versions never matched the repo filenames — the renumber is repo/CI
+  hygiene, not the live-fix mechanism. Inspection (2026-06-17) found the OLD vulnerable RPC
+  was live on **dev + prod** (service_role grant, old audit actor, FOR UPDATE) and that
+  **staging** had neither migration (CHECK still `Shellback`).
+- **LIVE PATCH APPLIED + VERIFIED (2026-06-17):** the hardened `update_nibbin_appearance`
+  (create-or-replace + explicit `revoke … from public, anon, service_role`) applied to
+  dev (`oqnqz…`), staging (`swbby…`, full configurator + Shellback→Capling rename), and
+  prod (`oaymt…`). Post-apply on all three: `svc_can_exec=false`, `anon=false`,
+  `auth=true`, no old markers; CHECK = Capling. Security advisor: no new finding for this
+  function (it sets `search_path=''` and is not anon-executable; appears only under the
+  expected "authenticated can call a security-definer write RPC" lint, same as every other
+  Nibbin RPC). Pre-existing advisor items to triage separately: `jsonb_merge_connection_state`
+  is anon-executable (Connections/main); several `private.*` fns lack `search_path`.
 
 ## Disposition
 - Blocking (P0/P1) resolved: ☑  Non-blocking tracked: ☑
