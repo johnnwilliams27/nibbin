@@ -51,7 +51,14 @@ function eyebrowFor(content: BeatContent): string {
 
 function renderHtml(content: BeatContent, config: MailerConfig, unsubUrl: string, preheader: string): string {
   const tpl = templateFor(content);
-  const creature = buildCreature(tpl.creature);
+  // The Grovekeeper header is a hosted PNG (Gmail strips inline SVG; the engine's
+  // filters don't survive most clients). Species beats still draw inline for now
+  // — per-species rasterization is the dense-grid phase, tracked separately.
+  const base = config.siteUrl.replace(/\/$/, '');
+  const creature =
+    tpl.creature.species === 'Keeper'
+      ? `<img src="${esc(base)}/keeper-email.png" width="104" height="124" alt="The Grovekeeper" style="display:block;margin:0 auto;border:0;outline:none;text-decoration:none;">`
+      : buildCreature(tpl.creature);
   const url = ctaUrl(content, config);
 
   const cards = content.cards
