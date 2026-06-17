@@ -44,9 +44,7 @@ impl<N: NerClient> RedactionPipeline<N> {
 
     /// Layer-4 exclusions feed back into layer 2 for the rest of the study.
     pub fn add_exclusions(&mut self, more: UserExclusions) {
-        self.exclusions.hosts.extend(more.hosts);
-        self.exclusions.bundle_ids.extend(more.bundle_ids);
-        self.exclusions.app_names.extend(more.app_names);
+        self.exclusions.merge(more);
     }
 
     /// Re-arm after the sidecar supervisor reports healthy again.
