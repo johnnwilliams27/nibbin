@@ -8,12 +8,13 @@
  * #23291A / secondary #5A6248, deeps only for colored text (moss #44601F,
  * honey #8A5F0C), radius 12 shell / 10 cards / 4 buttons, mono uppercase
  * eyebrows, sentence case everywhere, at most ONE celebration per email
- * (enforced by the content model's single optional field). Creatures render
- * through the engine — never hand-drawn SVG.
+ * (enforced by the content model's single optional field). Creatures are
+ * hosted PNGs (see creature-image.ts) — never inline SVG, which email clients
+ * strip or mis-render.
  */
-import { buildCreature, creatureCss } from '@nibbin/creatures';
 import { beatDef } from '@nibbin/drip';
 import type { BeatContent } from '@nibbin/drip';
+import { creatureImgTag } from './creature-image';
 import { templateFor } from './templates';
 import { unsubscribeUrl } from './unsubscribe';
 import type { MailerConfig, OutboundEmail } from './types';
@@ -51,14 +52,10 @@ function eyebrowFor(content: BeatContent): string {
 
 function renderHtml(content: BeatContent, config: MailerConfig, unsubUrl: string, preheader: string): string {
   const tpl = templateFor(content);
-  // The Grovekeeper header is a hosted PNG (Gmail strips inline SVG; the engine's
-  // filters don't survive most clients). Species beats still draw inline for now
-  // — per-species rasterization is the dense-grid phase, tracked separately.
-  const base = config.siteUrl.replace(/\/$/, '');
-  const creature =
-    tpl.creature.species === 'Keeper'
-      ? `<img src="${esc(base)}/keeper-email.png" width="104" height="124" alt="The Grovekeeper" style="display:block;margin:0 auto;border:0;outline:none;text-decoration:none;">`
-      : buildCreature(tpl.creature);
+  // Every header creature is a hosted PNG — Gmail strips inline <svg> and the
+  // engine's filters/gradients don't survive most clients. The rasters are
+  // baked from these same templates by tools/raster-email-creatures.mts.
+  const creature = creatureImgTag(config.siteUrl, tpl.creature, esc);
   const url = ctaUrl(content, config);
 
   const cards = content.cards
@@ -89,7 +86,6 @@ function renderHtml(content: BeatContent, config: MailerConfig, unsubUrl: string
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<style>${creatureCss}</style>
 </head>
 <body style="margin:0;padding:0;background:${SHELL};">
   <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${esc(preheader)}</div>
