@@ -1,5 +1,5 @@
 import 'server-only';
-import type { NibbinRef, RunTrigger, AdmissionOutcome } from '@nibbin/runtime';
+import type { NibbinRef, RunTrigger, RunOutcome } from '@nibbin/runtime';
 
 export interface ConnectorEvent {
   provider: string;
@@ -12,7 +12,7 @@ export interface ConnectorEvent {
 
 export interface DispatchDeps {
   activeNibbinsForAccount: (accountId: string) => Promise<NibbinRef[]>;
-  triggerRun: (nibbinId: string, trigger: RunTrigger) => Promise<AdmissionOutcome>;
+  triggerRun: (nibbinId: string, trigger: RunTrigger) => Promise<RunOutcome>;
   fanOutCeiling?: number;
 }
 

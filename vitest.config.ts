@@ -21,6 +21,7 @@ export default defineConfig({
       'packages/*/test/**/*.test.ts',
       'apps/*/test/**/*.test.ts',
       'apps/*/lib/**/*.test.ts',
+      'apps/*/app/**/*.test.ts',
       'tests/**/*.test.ts',
     ],
     // The RLS test files share one Postgres and each drops/recreates the public
