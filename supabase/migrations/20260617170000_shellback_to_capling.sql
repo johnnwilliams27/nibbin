@@ -2,8 +2,11 @@
 -- engine's art for this species is restyled separately. Migrate any persisted
 -- rows, swap the nibbins.species CHECK, and update the configurator RPC's
 -- validation list to match the engine's USER_SPECIES.
+--
+-- Idempotent: drop-if-exists + a rename UPDATE that matches no rows on re-run,
+-- so this is safe to re-apply (e.g. after a version renumber).
 
-alter table public.nibbins drop constraint nibbins_species_check;
+alter table public.nibbins drop constraint if exists nibbins_species_check;
 
 update public.nibbins set species = 'Capling' where species = 'Shellback';
 
@@ -30,15 +33,20 @@ declare
   v_kind text;
   v_name text := btrim(coalesce(p_name, ''));
 begin
-  select n.account_id, n.kind into v_account, v_kind
-    from public.nibbins n where n.id = p_nibbin for update;
-  if not found or (uid is not null and not (select private.is_account_member(v_account))) then
-    raise exception 'unknown nibbin %', p_nibbin;
-  end if;
-  if uid is null and current_setting('role', true) <> 'service_role' then
+  -- Authenticate FIRST (no service/system path); reject a null uid before any read.
+  if uid is null then
     raise exception 'not authenticated';
   end if;
 
+  -- Resolve account without a row lock so the per-account advisory lock is taken
+  -- before any row lock (matching run_begin's order; the reverse deadlocks).
+  select n.account_id, n.kind into v_account, v_kind
+    from public.nibbins n where n.id = p_nibbin;
+  if not found or not (select private.is_account_member(v_account)) then
+    raise exception 'unknown nibbin %', p_nibbin;  -- do not disclose cross-account existence
+  end if;
+
+  -- Only specialist nibbins are editable; the Grovekeeper and any future kind are not.
   if v_kind <> 'specialist' then
     raise exception 'nibbin % is not editable', p_nibbin;
   end if;
@@ -70,7 +78,7 @@ begin
    where id = p_nibbin;
 
   insert into public.audit_log (account_id, actor, actor_id, action, subject, meta)
-  values (v_account, 'user', coalesce(uid::text, 'runtime'),
+  values (v_account, 'user', uid::text,
     'nibbin.appearance_updated', p_nibbin::text,
     jsonb_build_object('name', v_name, 'species', p_species, 'palette', p_palette,
       'accessory', p_accessory, 'marking', p_marking));
@@ -78,4 +86,5 @@ begin
   return p_nibbin;
 end;
 $$;
-grant execute on function public.update_nibbin_appearance(uuid, text, text, text, text, text) to authenticated, service_role;
+revoke execute on function public.update_nibbin_appearance(uuid, text, text, text, text, text) from public, anon;
+grant execute on function public.update_nibbin_appearance(uuid, text, text, text, text, text) to authenticated;

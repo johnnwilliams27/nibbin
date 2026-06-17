@@ -45,6 +45,9 @@ export function creatureImgTag(
   if (c.species === 'Keeper') {
     return `<img src="${esc(root)}/${KEEPER_IMG_FILE}" width="${KEEPER_IMG_W}" height="${KEEPER_IMG_H}" alt="The Grovekeeper" style="${IMG_STYLE}">`;
   }
+  // esc(slug) is defence-in-depth: slugs from BEAT_CREATURES are already
+  // [a-z0-9-], but escaping here means a future caller passing a user-customized
+  // creature can't break out of the src attribute.
   const slug = creatureSlug(c);
-  return `<img src="${esc(root)}/creatures/${slug}.png" width="${SPECIES_IMG_W}" height="${SPECIES_IMG_H}" alt="${esc(c.species)}" style="${IMG_STYLE}">`;
+  return `<img src="${esc(root)}/creatures/${esc(slug)}.png" width="${SPECIES_IMG_W}" height="${SPECIES_IMG_H}" alt="${esc(c.species)}" style="${IMG_STYLE}">`;
 }

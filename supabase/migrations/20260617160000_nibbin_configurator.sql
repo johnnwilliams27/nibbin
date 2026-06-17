@@ -3,11 +3,15 @@
 -- which are the buildCreature() inputs. authenticated has SELECT-only on nibbins (all
 -- writes go through security-definer RPCs), so this adds the one missing write path.
 --
--- Scope: any nibbin the caller's account owns EXCEPT the canonical Grovekeeper
--- (kind = 'keeper'), which is immutable. Stage and seed are never touched here —
--- stage is earned (nibbin_promote/_demote), seed is the visual-variation salt.
+-- Scope: only a 'specialist' nibbin the caller's account owns is editable; the
+-- canonical Grovekeeper (kind = 'keeper') and any future kind are immutable. Stage
+-- and seed are never touched here — stage is earned (nibbin_promote/_demote), seed
+-- is the visual-variation salt.
+--
+-- create-or-replace so this migration is idempotent if re-applied (e.g. after a
+-- version renumber against a DB where an earlier numbering already ran).
 
-create function public.update_nibbin_appearance(
+create or replace function public.update_nibbin_appearance(
   p_nibbin uuid,
   p_name text,
   p_species text,
@@ -26,16 +30,24 @@ declare
   v_kind text;
   v_name text := btrim(coalesce(p_name, ''));
 begin
-  select n.account_id, n.kind into v_account, v_kind
-    from public.nibbins n where n.id = p_nibbin for update;
-  if not found or (uid is not null and not (select private.is_account_member(v_account))) then
-    raise exception 'unknown nibbin %', p_nibbin;
-  end if;
-  if uid is null and current_setting('role', true) <> 'service_role' then
+  -- Authenticate FIRST. This RPC is for logged-in account members only; the sole
+  -- caller uses the user's RLS session, so there is no service/system path. A null
+  -- uid is always misuse — reject before reading or locking any row.
+  if uid is null then
     raise exception 'not authenticated';
   end if;
 
-  -- the Grovekeeper is the one system character; never editable
+  -- Resolve the nibbin's account WITHOUT a row lock, so the per-account advisory
+  -- lock is taken before any row lock (run_begin takes them in that order; the
+  -- reverse order deadlocks against it).
+  select n.account_id, n.kind into v_account, v_kind
+    from public.nibbins n where n.id = p_nibbin;
+  if not found or not (select private.is_account_member(v_account)) then
+    raise exception 'unknown nibbin %', p_nibbin;  -- do not disclose cross-account existence
+  end if;
+
+  -- Only specialist nibbins are editable; the Grovekeeper (kind='keeper') and any
+  -- future kind are immutable by this gate.
   if v_kind <> 'specialist' then
     raise exception 'nibbin % is not editable', p_nibbin;
   end if;
@@ -68,7 +80,7 @@ begin
    where id = p_nibbin;
 
   insert into public.audit_log (account_id, actor, actor_id, action, subject, meta)
-  values (v_account, 'user', coalesce(uid::text, 'runtime'),
+  values (v_account, 'user', uid::text,
     'nibbin.appearance_updated', p_nibbin::text,
     jsonb_build_object('name', v_name, 'species', p_species, 'palette', p_palette,
       'accessory', p_accessory, 'marking', p_marking));
@@ -77,4 +89,4 @@ begin
 end;
 $$;
 revoke execute on function public.update_nibbin_appearance(uuid, text, text, text, text, text) from public, anon;
-grant execute on function public.update_nibbin_appearance(uuid, text, text, text, text, text) to authenticated, service_role;
+grant execute on function public.update_nibbin_appearance(uuid, text, text, text, text, text) to authenticated;
