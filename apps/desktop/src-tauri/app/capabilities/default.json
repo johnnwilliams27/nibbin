@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Core permissions for the Nibbin desktop shell. Grants the main app webview the event plugin (listen/emit) so native→UI signals work — e.g. the C6 hotkey-pause re-render (study:paused-by-hotkey) and the sign-out re-boot. Scoped to the local main webview only; the embedded Grove webview loads remote content and is not listed (no `remote` field), so it gets no Tauri permissions.",
+  "windows": ["main"],
+  "permissions": ["core:event:default"]
+}
