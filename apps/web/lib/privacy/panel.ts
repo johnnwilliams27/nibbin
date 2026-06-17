@@ -15,9 +15,11 @@ export interface ConnectionSummary {
   items: { provider: string; access: string; status: string }[];
 }
 
-/** Summarize non-revoked connections for display. Mirrors the connections
- * page's rule: no scopes → "Read-only access" (read-only is the default until
- * a Nibbin requests writes, C8). */
+/** Summarize non-revoked connections for display. Shares the connections
+ * page's read-only-when-empty rule (no scopes → "Read-only access", since
+ * read-only is the default until a Nibbin requests writes, C8). It does NOT
+ * reproduce that page's scope display: this panel shows a scope *count*, never
+ * the raw scope strings — intentionally more conservative for a privacy home. */
 export function connectionSummary(rows: ConnectionRow[]): ConnectionSummary {
   const items = rows.map((r) => {
     const n = r.scopes?.length ?? 0;
