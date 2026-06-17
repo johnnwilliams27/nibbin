@@ -125,6 +125,11 @@ pub struct Daemon {
     source: Box<dyn CaptureSource>,
     control_offset: u64,
     paused_at: Option<DateTime<Utc>>,
+    /// Set when capture must be suspended for a surfaced reason (e.g. a failed
+    /// exclusion save or an unreadable exclusions file). Fail-closed: while
+    /// set, capture_pass returns early and the reason is published to
+    /// daemon.status. Cleared once the durable state is consistent again.
+    capture_blocked: Option<String>,
 }
 
 impl Daemon {
@@ -150,7 +155,16 @@ impl Daemon {
             .and_then(|s| s.trim().parse().ok())
             .unwrap_or(0);
         let mut pipeline = RedactionPipeline::new(ner_from_env());
-        pipeline.add_exclusions(exclusions::load_exclusions(store_root)?);
+        // FIX 2 (spec §5.1): a corrupt/unreadable exclusions file must NOT
+        // refuse to start — the daemon still needs to come up so it writes
+        // daemon.status for the tray. Instead, start with capture suspended and
+        // surface the reason; capture_pass stays gated until recovery (a
+        // delete-everything clears the block).
+        let mut capture_blocked = None;
+        match exclusions::load_exclusions(store_root) {
+            Ok(ex) => pipeline.add_exclusions(ex),
+            Err(e) => capture_blocked = Some(format!("exclusions unreadable: {e}")),
+        }
         Ok(Self {
             store_root: store_root.to_path_buf(),
             study,
@@ -160,6 +174,7 @@ impl Daemon {
             source,
             control_offset,
             paused_at: None,
+            capture_blocked,
         })
     }
 
@@ -200,7 +215,11 @@ impl Daemon {
     /// pipeline. Nothing persists unless every gate passes.
     pub fn capture_pass(&mut self) -> anyhow::Result<()> {
         self.tick()?;
-        if !capture_allowed(&self.study) || self.gate.is_paused() || self.pipeline.halted() {
+        if !capture_allowed(&self.study)
+            || self.gate.is_paused()
+            || self.pipeline.halted()
+            || self.capture_blocked.is_some()
+        {
             return Ok(());
         }
         let snapshots = self.source.poll()?;
@@ -328,15 +347,24 @@ impl Daemon {
                 bundle_id,
                 app_name,
             } => {
-                self.pipeline
-                    .add_exclusions(nibbin_redaction::UserExclusions {
-                        hosts: host.into_iter().collect(),
-                        bundle_ids: bundle_id.into_iter().collect(),
-                        app_names: app_name.into_iter().collect(),
-                    });
-                // The file is the source of truth (T2): persist the merged set
-                // so the exclusion survives a daemon restart (T1).
-                exclusions::save_exclusions(&self.store_root, self.pipeline.exclusions())?;
+                let add = nibbin_redaction::UserExclusions {
+                    hosts: host.into_iter().collect(),
+                    bundle_ids: bundle_id.into_iter().collect(),
+                    app_names: app_name.into_iter().collect(),
+                };
+                // Save-first (T2/TC-P3): persist the merged set BEFORE enforcing it in
+                // memory, so we never enforce an exclusion that won't survive a restart.
+                let mut merged = self.pipeline.exclusions().clone();
+                merged.merge(add.clone());
+                if let Err(e) = exclusions::save_exclusions(&self.store_root, &merged) {
+                    // Fail closed: do not silently enforce-then-lose. Block capture and
+                    // surface the reason so the user is told it didn't take.
+                    self.capture_blocked = Some(format!("exclusion not saved: {e}"));
+                    return Err(e);
+                }
+                // Durable write succeeded → safe to enforce in memory, and clear any prior block.
+                self.pipeline.add_exclusions(add);
+                self.capture_blocked = None;
             }
         }
         Ok(())
@@ -410,6 +438,9 @@ impl Daemon {
         if ex.exists() {
             std::fs::remove_file(ex)?;
         }
+        // Recovery: wiping the store removes the (possibly corrupt) exclusions
+        // file, so any prior block no longer applies.
+        self.capture_blocked = None;
         Ok(())
     }
 
@@ -427,13 +458,24 @@ impl Daemon {
         }
         // residual control/status bookkeeping files hold no raw data but are
         // removed anyway so the verifier's bar stays "nothing but study.json"
-        for extra in ["control.jsonl", "control.offset", "daemon.status", "exclusions.json"] {
+        // FIX 3 (C3 residual): include exclusions.json.tmp — a stale temp from a
+        // kill between write and rename must not fail the deletion verifier.
+        for extra in [
+            "control.jsonl",
+            "control.offset",
+            "daemon.status",
+            "exclusions.json",
+            "exclusions.json.tmp",
+        ] {
             let p = self.store_root.join(extra);
             if p.exists() {
                 std::fs::remove_file(p)?;
             }
         }
         self.control_offset = 0;
+        // Recovery: a delete-everything wipes the exclusions file, so any prior
+        // block no longer applies — restore a usable daemon.
+        self.capture_blocked = None;
         let receipt =
             nibbin_store::verify_raw_data_deleted(&self.store_root, &daemon_now().to_rfc3339());
         anyhow::ensure!(
@@ -453,6 +495,7 @@ impl Daemon {
             "remaining_ms": nibbin_study::remaining_ms(&self.study, now),
             "paused": self.gate.is_paused(),
             "pipeline_halted": self.pipeline.halted(),
+            "capture_blocked": self.capture_blocked,
             "at": now.to_rfc3339(),
         });
         std::fs::write(self.store_root.join("daemon.status"), status.to_string())

@@ -1,7 +1,8 @@
 //! Durable storage for user capture exclusions (T&C spec §5.1, T1/T2).
 //! The file is the source of truth; the in-memory pipeline is a cache loaded
-//! on `Daemon::open()`. A corrupt file fails CLOSED (load returns Err so the
-//! daemon refuses to start) rather than starting with no exclusions (TC-P3).
+//! on `Daemon::open()`. A corrupt file fails CLOSED: `load_exclusions` returns
+//! Err and the daemon (per §5.1) starts with capture SUSPENDED + the error
+//! surfaced, rather than starting with no exclusions (TC-P3).
 
 use anyhow::Context;
 use nibbin_redaction::UserExclusions;

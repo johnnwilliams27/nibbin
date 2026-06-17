@@ -57,13 +57,40 @@ fn an_exclusion_survives_a_daemon_restart() {
 }
 
 #[test]
-fn a_corrupt_exclusions_file_stops_the_daemon() {
+fn a_corrupt_exclusions_file_blocks_capture_but_keeps_daemon_alive() {
+    // Spec §5.1: a corrupt exclusions file must "pause capture and surface an
+    // error" — NOT refuse to start. The daemon comes up (so the tray gets a
+    // daemon.status) but capture is suspended via capture_blocked.
     let dir = tempfile::tempdir().unwrap();
     std::fs::write(dir.path().join("exclusions.json"), b"{not json").unwrap();
-    // No control commands needed: open() runs before anything and must fail.
     let out = run_observerd(dir.path(), "2026-06-12T08:00:00Z");
     assert!(
-        !out.status.success(),
-        "a corrupt exclusions file must fail closed (daemon must not start)"
+        out.status.success(),
+        "daemon must start so it writes daemon.status: stderr: {}",
+        String::from_utf8_lossy(&out.stderr)
     );
+    let status: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(dir.path().join("daemon.status")).unwrap())
+            .unwrap();
+    assert!(
+        !status["capture_blocked"].is_null(),
+        "a corrupt exclusions file must block + surface, not silently capture"
+    );
+}
+
+#[test]
+fn a_failed_exclusion_save_blocks_capture_instead_of_silently_enforcing() {
+    let dir = tempfile::tempdir().unwrap();
+    // Make the atomic-write temp path un-writable by making it a directory.
+    std::fs::create_dir(dir.path().join("exclusions.json.tmp")).unwrap();
+    let control = dir.path().join("control.jsonl");
+    append_line(&control, "{\"cmd\":\"consent\"}");
+    append_line(&control, "{\"cmd\":\"start\"}");
+    append_line(&control, "{\"cmd\":\"add_exclusion\",\"host\":\"a.com\"}");
+    let out = run_observerd(dir.path(), "2026-06-12T08:00:00Z");
+    assert!(out.status.success(), "stderr: {}", String::from_utf8_lossy(&out.stderr));
+    assert!(!dir.path().join("exclusions.json").exists(), "must not persist on save failure");
+    let status: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(dir.path().join("daemon.status")).unwrap()).unwrap();
+    assert!(!status["capture_blocked"].is_null(), "capture must be blocked + surfaced on save failure");
 }
