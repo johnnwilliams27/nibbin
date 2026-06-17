@@ -83,6 +83,7 @@ async fn grove_show(window: tauri::Window) -> Result<(), String> {
         .parse::<url::Url>()
         .ok()
         .and_then(|u| u.host_str().map(str::to_string));
+    let app_handle = window.app_handle().clone();
     let mut builder =
         tauri::webview::WebviewBuilder::new("grove", tauri::WebviewUrl::External(parsed))
             .on_navigation(move |url| {
@@ -93,10 +94,26 @@ async fn grove_show(window: tauri::Window) -> Result<(), String> {
                 if !matches!(url.scheme(), "http" | "https") {
                     return true;
                 }
-                match &allowed_host {
-                    Some(host) => url.host_str() == Some(host.as_str()),
-                    None => false,
+                let host_ok =
+                    matches!(&allowed_host, Some(h) if url.host_str() == Some(h.as_str()));
+                // The embedded web app signing out (or its session expiring)
+                // lands the Grove webview on /login. The native shell keeps a
+                // separate keychain session, so without this it would still show
+                // the signed-in tab bar over a signed-out web page. Propagate:
+                // clear the native session and re-boot the main webview to the
+                // native login gate. (eval, not an event — the event ACL isn't
+                // granted; see bridge.onEvent.)
+                if host_ok && url.path() == "/login" {
+                    let app = app_handle.clone();
+                    let _ = app_handle.run_on_main_thread(move || {
+                        let _ = auth::sign_out();
+                        if let Some(main) = app.get_webview("main") {
+                            let _ = main
+                                .eval("window.__nibbinSignedOut__ && window.__nibbinSignedOut__()");
+                        }
+                    });
                 }
+                host_ok
             });
     if let Some(s) = script {
         builder = builder.initialization_script(&s);
