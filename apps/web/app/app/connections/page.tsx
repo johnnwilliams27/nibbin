@@ -4,8 +4,8 @@ import { appSession } from '../../../lib/auth/app-session';
 import { AppShell } from '../../../components/shell/AppShell';
 import { Card, Badge, InlineFeedback } from '../../../components/ui';
 import { ProviderIcon } from '../../../components/connections/ProviderIcon';
-import { CONNECTABLE_PROVIDERS } from '../../../lib/connections/providers';
-import { beginConnectAction } from './actions';
+import { CONNECTABLE_PROVIDERS, scopeSummary, isReadOnly } from '../../../lib/connections/providers';
+import { beginConnectAction, disconnectAction } from './actions';
 import { adoptFromShopAction } from '../shop/actions';
 import styles from './connections.module.css';
 
@@ -18,7 +18,7 @@ const STATUS_TONE: Record<string, Tone> = { active: 'moss', pending: 'honey', pa
 export default async function ConnectionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ connected?: string; error?: string; needed?: string; resume?: string }>;
+  searchParams: Promise<{ connected?: string; disconnected?: string; error?: string; needed?: string; resume?: string }>;
 }) {
   let session;
   try {
@@ -44,6 +44,11 @@ export default async function ConnectionsPage({
       </header>
 
       {sp.connected && <InlineFeedback tone="success">{sp.connected} is connected.</InlineFeedback>}
+      {sp.disconnected && (
+        <InlineFeedback tone="success">
+          {CONNECTABLE_PROVIDERS.find((p) => p.id === sp.disconnected)?.label ?? 'Account'} disconnected — its access was revoked.
+        </InlineFeedback>
+      )}
       {sp.error === 'expired' && <InlineFeedback tone="error">That connection link expired — try again.</InlineFeedback>}
       {sp.error === 'exchange_failed' && <InlineFeedback tone="error">Couldn't finish connecting — nothing was saved. Try again.</InlineFeedback>}
       {sp.error === 'declined' && <InlineFeedback tone="error">You declined the connection.</InlineFeedback>}
@@ -65,7 +70,16 @@ export default async function ConnectionsPage({
                 {conn && <Badge tone={STATUS_TONE[conn.status] ?? 'neutral'}>{conn.status}</Badge>}
               </div>
               {conn ? (
-                <p className={styles.scopes}>{conn.scopes?.length ? conn.scopes.join(' · ') : 'Read-only access'}</p>
+                <>
+                  <p className={styles.access}>{scopeSummary(conn.scopes as string[] | null)}</p>
+                  <p className={styles.accessNote}>
+                    {isReadOnly(conn.scopes as string[] | null) ? 'Read-only access' : 'Includes actions you approve'} · revoke anytime
+                  </p>
+                  <form action={disconnectAction} className={styles.disconnectRow}>
+                    <input type="hidden" name="provider" value={p.id} />
+                    <button className={styles.disconnect} type="submit">Disconnect</button>
+                  </form>
+                </>
               ) : p.wired ? (
                 <form action={beginConnectAction}>
                   <input type="hidden" name="provider" value={p.id} />
