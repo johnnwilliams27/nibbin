@@ -1,7 +1,7 @@
 import { shade } from './color';
 import { mass, pear, bean } from './mass';
 import { eyesRound, eyesOval, eyesBead, blush, smileOpen, smileTiny, feet } from './parts';
-import { caplingFull } from './cells';
+import { caplingFull, sproutFull, wispFull, longearFull, puffFull, glimFull } from './cells';
 import type { BodyParts, EggParts, SpeciesDef, SpeciesName, Stage } from './types';
 
 function i0(stage?: Stage): 'student' | 'senior' | 'grad' {
@@ -14,6 +14,7 @@ export const SPECIES: Record<SpeciesName, SpeciesDef> = {
   Sprout: {
     trait: 'head-sprout blooms',
     tilt: -2,
+    full: (o) => sproutFull(o),
     egg(color: string): EggParts {
       return {
         art: `<ellipse cx="36" cy="62" rx="15" ry="3" fill="#23291A" opacity=".08"/>
@@ -49,6 +50,7 @@ export const SPECIES: Record<SpeciesName, SpeciesDef> = {
   Wisp: {
     trait: 'flame brightens',
     tilt: 3,
+    full: (o) => wispFull(o),
     egg(color: string): EggParts {
       const dk = shade(color, -28);
       return {
@@ -135,6 +137,7 @@ export const SPECIES: Record<SpeciesName, SpeciesDef> = {
   Longear: {
     trait: 'ears rise & perk',
     tilt: 2,
+    full: (o) => longearFull(o),
     egg(color: string): EggParts {
       const dk = shade(color, -28);
       return {
@@ -182,6 +185,7 @@ export const SPECIES: Record<SpeciesName, SpeciesDef> = {
   Puff: {
     trait: 'wings fledge',
     tilt: -3,
+    full: (o) => puffFull(o),
     egg(color: string): EggParts {
       return {
         art: `<ellipse cx="36" cy="62" rx="14" ry="2.8" fill="#23291A" opacity=".08"/>
@@ -235,6 +239,7 @@ export const SPECIES: Record<SpeciesName, SpeciesDef> = {
   Glim: {
     trait: 'glow awakens',
     tilt: 2,
+    full: (o) => glimFull(o),
     egg(color: string): EggParts {
       const dk = shade(color, -28);
       return {

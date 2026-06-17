@@ -5,3 +5,8 @@
  * engine to wire onto `SpeciesDef.full`.
  */
 export { caplingFull } from './capling';
+export { sproutFull } from './sprout';
+export { wispFull } from './wisp';
+export { longearFull } from './longear';
+export { puffFull } from './puff';
+export { glimFull } from './glim';
