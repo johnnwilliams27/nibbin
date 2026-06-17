@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { dispatchForConnection, type ConnectorEvent } from './dispatch';
-import type { NibbinRef, AdmissionOutcome } from '@nibbin/runtime';
+import type { NibbinRef, RunOutcome } from '@nibbin/runtime';
 
 function makeNibbin(overrides: Partial<NibbinRef> = {}): NibbinRef {
   return {
@@ -31,7 +31,8 @@ const gmailEvent: ConnectorEvent = {
   dedupeKey: 'gmail:conn-1:msg-abc',
 };
 
-const runOutcome: AdmissionOutcome = { kind: 'started', runId: 'run-1', balance: 10 };
+const runOutcome: RunOutcome = { kind: 'not_started', why: 'deduped' };
+
 
 describe('dispatchForConnection', () => {
   it('calls triggerRun for a Nibbin whose trigger source matches the event', async () => {
