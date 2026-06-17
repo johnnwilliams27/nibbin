@@ -30,6 +30,30 @@ export async function beginConnectAction(formData: FormData): Promise<void> {
   redirect(url);
 }
 
+/**
+ * Disconnect the caller's connection for a provider from the Connections card.
+ * Account-scoped lookup so a request can only ever revoke the caller's own
+ * connection (never an arbitrary connection_id). revokeAndSuspend destroys the
+ * vault secret, flips status → revoked, and suspends dependent write-grants.
+ */
+export async function disconnectAction(formData: FormData): Promise<void> {
+  const provider = String(formData.get('provider') ?? '');
+  const { user, accountId } = await appSession();
+  const svc = serviceClient();
+
+  const { data: conn } = await svc
+    .from('connections')
+    .select('id')
+    .eq('account_id', accountId)
+    .eq('provider', provider)
+    .neq('status', 'revoked')
+    .maybeSingle();
+
+  if (conn?.id) await revokeAndSuspend(conn.id as string, user.id, svc);
+
+  redirect(`/app/connections?disconnected=${encodeURIComponent(provider)}`);
+}
+
 export async function beginWriteConnectAction(formData: FormData): Promise<void> {
   const nibbinId = String(formData.get('nibbinId') ?? '').trim();
   const provider = String(formData.get('provider') ?? 'gmail');
