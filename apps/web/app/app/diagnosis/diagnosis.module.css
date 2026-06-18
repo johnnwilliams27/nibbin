@@ -353,3 +353,68 @@
   font-size: 13px;
   margin: 0 0 10px;
 }
+
+/* ── Reveal ceremony (Beat 1) — all gated under .playing ─────────────── */
+.revealKeeper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  margin: 4px 0 20px;
+}
+.revealKeeperSprite { line-height: 0; }
+.revealKeeperSprite :global(svg) { display: block; }
+.revealKeeperLine {
+  font-family: var(--display);
+  font-size: 16px;
+  color: var(--ink);
+  max-width: 30ch;
+  margin: 0;
+}
+
+/* Section entrance: each .revealSec rises + fades, staggered by --sec. */
+.playing .revealSec {
+  opacity: 0;
+  animation: reveal-rise var(--dur-3) var(--ease-settle) forwards;
+  animation-delay: calc(var(--sec, 0) * 140ms);
+}
+@keyframes reveal-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* The map "grows in": spokes draw, nodes scale up from their center, each
+   staggered by --i, and only after the map section itself has arrived. */
+.playing .revealMap .mapSpoke {
+  opacity: 0;
+  animation: reveal-spoke var(--dur-3) var(--ease-settle) forwards;
+  animation-delay: calc(700ms + var(--i, 0) * 60ms);
+}
+@keyframes reveal-spoke {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.playing .revealMap .mapNode {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: reveal-node var(--dur-3) var(--ease-pop) forwards;
+  animation-delay: calc(800ms + var(--i, 0) * 80ms);
+}
+@keyframes reveal-node {
+  from { opacity: 0; transform: scale(0.4); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Belt-and-suspenders: even if .playing is somehow present, honor the OS
+   preference (the client also gates on it, so this is the static fallback). */
+@media (prefers-reduced-motion: reduce) {
+  .playing .revealSec,
+  .playing .revealMap .mapSpoke,
+  .playing .revealMap .mapNode {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}

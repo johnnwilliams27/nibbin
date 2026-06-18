@@ -100,6 +100,7 @@ export default async function DiagnosisPage({
           <DiagnosisReveal
             map={newestMap}
             letter={newest.letter}
+            diagnosisId={newest.id}
             window={
               newest.packet?.capturedFrom && newest.packet?.capturedTo
                 ? { from: newest.packet.capturedFrom, to: newest.packet.capturedTo }

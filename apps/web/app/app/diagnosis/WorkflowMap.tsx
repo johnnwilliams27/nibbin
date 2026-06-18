@@ -1,3 +1,4 @@
+import type React from 'react';
 import type { DiagnosisWorkflow } from '../../../lib/diagnosis/types';
 import styles from './diagnosis.module.css';
 
@@ -130,16 +131,28 @@ export function WorkflowMap({ workflows }: { workflows: DiagnosisWorkflow[] }) {
       >
         {/* Faint hub spokes — "all one week", not a data relationship. */}
         {nodes.length > 1 && (
-          <g fill="none" stroke={COLOR.line} strokeWidth="1.4">
-            {nodes.slice(1).map((n) => (
-              <line key={`spoke-${n.key}`} x1={hub.x} y1={hub.y} x2={n.x} y2={n.y} />
+          <g className={styles.mapSpokes} fill="none" stroke={COLOR.line} strokeWidth="1.4">
+            {nodes.slice(1).map((n, i) => (
+              <line
+                key={`spoke-${n.key}`}
+                className={styles.mapSpoke}
+                style={{ '--i': i } as React.CSSProperties}
+                x1={hub.x}
+                y1={hub.y}
+                x2={n.x}
+                y2={n.y}
+              />
             ))}
           </g>
         )}
 
         <g fontFamily="var(--mono)">
-          {nodes.map((n) => (
-            <g key={n.key} className={styles.wfNode}>
+          {nodes.map((n, i) => (
+            <g
+              key={n.key}
+              className={`${styles.wfNode} ${styles.mapNode}`}
+              style={{ '--i': i } as React.CSSProperties}
+            >
               <title>
                 {n.label} — ~{n.hrs}h/week
                 {n.automatable > 0 ? `, ~${n.automatable}% automatable` : ''}
