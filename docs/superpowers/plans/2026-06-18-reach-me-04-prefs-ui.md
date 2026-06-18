@@ -205,7 +205,7 @@ export async function saveChannelPrefs(formData: FormData) {
   const { supabase, accountId } = await appSession();
   const { error } = await supabase.rpc('set_channel_prefs', {
     target_account: accountId,
-    channel,
+    p_channel: channel, // NB: the SQL param is `p_channel` (renamed to avoid an ON CONFLICT (account_id, channel) ambiguity in Plan 01)
     enabled,
     priority,
     urgency_threshold: urgencyThreshold,
