@@ -11,8 +11,7 @@
 //! error rather than pretending to capture: a daemon must fail loudly, not
 //! record nothing silently while a study burns days.
 
-use crate::CaptureSource;
-use nibbin_redaction::AxSnapshot;
+use crate::{CaptureItem, CaptureSource};
 
 pub struct MacAxCapture {
     started: bool,
@@ -52,7 +51,7 @@ impl CaptureSource for MacAxCapture {
         );
     }
 
-    fn poll(&mut self) -> anyhow::Result<Vec<AxSnapshot>> {
+    fn poll(&mut self) -> anyhow::Result<Vec<CaptureItem>> {
         Ok(vec![])
     }
 

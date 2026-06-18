@@ -2,8 +2,7 @@
 //! behind the same capture trait"). macOS lands first; this adapter carries
 //! the same fail-loud contract until its bring-up pass.
 
-use crate::CaptureSource;
-use nibbin_redaction::AxSnapshot;
+use crate::{CaptureItem, CaptureSource};
 
 pub struct WindowsUiaCapture {
     started: bool,
@@ -35,7 +34,7 @@ impl CaptureSource for WindowsUiaCapture {
         anyhow::bail!("Windows UIA capture lands at the Windows-parity pass (M8)");
     }
 
-    fn poll(&mut self) -> anyhow::Result<Vec<AxSnapshot>> {
+    fn poll(&mut self) -> anyhow::Result<Vec<CaptureItem>> {
         Ok(vec![])
     }
 
