@@ -40,7 +40,7 @@ const DEFAULT_CEILINGS: RunCeilings = {
   maxWallClockMs: 60_000,
 };
 
-const PROMOTION = { windowRuns: 25, minApprovedUneditedPct: 0.95 };
+const PROMOTION = { windowRuns: 25, minApprovedUneditedPct: 0.95, coverageMinPatterns: 4 };
 
 function spec(partial: Omit<AgentSpec, 'version' | 'creditProfile'>): AgentSpec {
   return {

@@ -9,12 +9,15 @@ import { describe, expect, it } from 'vitest';
 import { quarantine } from '@nibbin/connectors';
 import {
   executeRun,
+  promotionCheck,
   MemoryEventSink,
   MemoryGrantStore,
   MemoryIdempotencyStore,
   MemoryRoutineStore,
   MemoryRunStore,
   type AgentSpec,
+  type CurriculumConfig,
+  type Decision,
   type NibbinRef,
   type ProgramFn,
   type RunnerDeps,
@@ -182,5 +185,102 @@ describe('§7.2 trust gates — side effects below Graduate', () => {
     const outcome = await executeRun(nibbin('grad'), PATHS[0].trigger, presentation, h.deps);
     expect(outcome.kind).toBe('awaiting_approval');
     expect(h.executed).toHaveLength(0);
+  });
+});
+
+/**
+ * Promotion gate v2 — strictly ADDITIVE R3 severity + R1 coverage. Every case
+ * proves the new conditions can only REJECT (never promote what the base
+ * 95%/25 unweighted gate refused) and that the floors only tighten.
+ */
+function curriculum(coverageMinPatterns?: number): CurriculumConfig {
+  return {
+    measures: 'test',
+    promotion: { windowRuns: 25, minApprovedUneditedPct: 0.95, coverageMinPatterns },
+    routineMinApprovals: 5,
+  };
+}
+
+/** Build a newest-first decisions array: `approved` count + `rejected` filler to 25. */
+function decisions(approved: number, total = 25): Decision[] {
+  const arr: Decision[] = [];
+  for (let i = 0; i < approved; i++) arr.push('approved');
+  for (let i = approved; i < total; i++) arr.push('rejected');
+  return arr;
+}
+
+describe('§4.7 promotion gate v2 — additive R3 severity + R1 coverage', () => {
+  it('base unchanged: 25/25 approved with no opts is eligible', () => {
+    expect(promotionCheck(decisions(25), curriculum()).eligible).toBe(true);
+  });
+
+  it('base unchanged: 23/25 approved (0.92 < 0.95) is NOT eligible', () => {
+    expect(promotionCheck(decisions(23), curriculum()).eligible).toBe(false);
+  });
+
+  it('R3 weighted blocks: unweighted 24/25 passes but a single computer_use reject drags weighted <0.95', () => {
+    // 24 standard approved + 1 computer_use rejected: unweighted 24/25=0.96 pass,
+    // weighted 24/(24+10)=0.71 → fail.
+    const ds: Decision[] = [];
+    const weights: number[] = [];
+    for (let i = 0; i < 24; i++) { ds.push('approved'); weights.push(1); }
+    ds.push('rejected'); weights.push(10);
+    const out = promotionCheck(ds, curriculum(), { weights });
+    expect(out.eligible).toBe(false);
+  });
+
+  it('R3 weighted blocks on edited (the common near-miss): unweighted 24/25 passes but one computer_use edit drags weighted <0.95', () => {
+    // 24 standard approved + 1 computer_use edited: unweighted 24/25=0.96 pass,
+    // weighted 24/(24+10)=0.71 → fail. `edited` drags the weighted ratio just
+    // like a rejection — it is NOT approved-unedited.
+    const ds: Decision[] = [];
+    const weights: number[] = [];
+    for (let i = 0; i < 24; i++) { ds.push('approved'); weights.push(1); }
+    ds.push('edited'); weights.push(10);
+    const out = promotionCheck(ds, curriculum(), { weights });
+    expect(out.eligible).toBe(false);
+  });
+
+  it('R3 cannot loosen: an unweighted-fail stays NOT eligible even with high-weight successes', () => {
+    // 20/25 unweighted (base fails). Make the 20 approved high-weight (10) and the
+    // 5 rejects low-weight (1): weighted ratio would be high, but base must still fail.
+    const ds: Decision[] = [];
+    const weights: number[] = [];
+    for (let i = 0; i < 20; i++) { ds.push('approved'); weights.push(10); }
+    for (let i = 0; i < 5; i++) { ds.push('rejected'); weights.push(1); }
+    const out = promotionCheck(ds, curriculum(), { weights });
+    expect(out.eligible).toBe(false);
+  });
+
+  it('R1 coverage blocks at senior: base+weighted pass but distinctPatterns=3 is NOT eligible', () => {
+    const weights = decisions(25).map(() => 1);
+    expect(
+      promotionCheck(decisions(25), curriculum(), { weights, distinctPatterns: 3, stage: 'senior' }).eligible,
+    ).toBe(false);
+  });
+
+  it('R1 coverage at senior: distinctPatterns=4 is eligible', () => {
+    const weights = decisions(25).map(() => 1);
+    expect(
+      promotionCheck(decisions(25), curriculum(), { weights, distinctPatterns: 4, stage: 'senior' }).eligible,
+    ).toBe(true);
+  });
+
+  it('R1 only at senior: student with distinctPatterns=0 is eligible (coverage not required)', () => {
+    const weights = decisions(25).map(() => 1);
+    expect(
+      promotionCheck(decisions(25), curriculum(), { weights, distinctPatterns: 0, stage: 'student' }).eligible,
+    ).toBe(true);
+  });
+
+  it('floors only tighten: coverageMinPatterns=2 still requires 4 (Math.max floor)', () => {
+    const weights = decisions(25).map(() => 1);
+    // distinctPatterns=3 would pass a K=2 curriculum, but the floor forces K=4.
+    expect(
+      promotionCheck(decisions(25), curriculum(2), { weights, distinctPatterns: 3, stage: 'senior' }).eligible,
+    ).toBe(false);
+    expect(
+      promotionCheck(decisions(25), curriculum(2), { weights, distinctPatterns: 4, stage: 'senior' }).eligible,
+    ).toBe(true);
   });
 });

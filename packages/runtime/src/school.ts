@@ -62,14 +62,41 @@ export interface PromotionCheck {
  * (decided after the Nibbin's stage_changed_at) — the promotion window is
  * stage-scoped so each stage is earned fresh and a demotion resets the climb.
  */
-export function promotionCheck(decisions: readonly Decision[], curriculum: CurriculumConfig): PromotionCheck {
+export function promotionCheck(
+  decisions: readonly Decision[],
+  curriculum: CurriculumConfig,
+  opts?: {
+    /** Per-decision severity weight (1/3/10), parallel to `decisions`. R3. */
+    weights?: readonly number[];
+    /** Distinct routine patterns approved-unedited in this stage. R1. */
+    distinctPatterns?: number;
+    /** Current stage — coverage applies only to senior→grad. */
+    stage?: StageName;
+  },
+): PromotionCheck {
   // The floors are invariant: config may tighten, never loosen (§4.7).
   const windowRuns = Math.max(curriculum.promotion.windowRuns, 25);
   const needPct = Math.max(curriculum.promotion.minApprovedUneditedPct, 0.95);
+  const coverageK = Math.max(curriculum.promotion.coverageMinPatterns ?? 4, 4);
   const window = decisions.slice(0, windowRuns);
   const approved = window.filter((d) => d === 'approved').length;
+
+  let eligible = window.length >= windowRuns && approved / window.length >= needPct;
+
+  // R3 (additive): must ALSO clear the gate weighted by stakes.
+  if (eligible && opts?.weights) {
+    const w = opts.weights.slice(0, windowRuns);
+    const wTotal = w.reduce((s, x) => s + x, 0);
+    const wApproved = window.reduce((s, d, i) => s + (d === 'approved' ? (w[i] ?? 1) : 0), 0);
+    if (wTotal > 0 && wApproved / wTotal < needPct) eligible = false;
+  }
+  // R1 (additive, senior→grad only): breadth across ≥K distinct patterns.
+  if (eligible && opts?.stage === 'senior') {
+    if ((opts.distinctPatterns ?? 0) < coverageK) eligible = false;
+  }
+
   return {
-    eligible: window.length >= windowRuns && approved / window.length >= needPct,
+    eligible,
     decidedInWindow: window.length,
     approvedUnedited: approved,
     windowRuns,
