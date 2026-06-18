@@ -62,9 +62,12 @@ export function parsePass1(
       ? (r[key] as unknown[]).slice(0, arrMax).map((x) => clampProse(x, itemMax)).filter(Boolean)
       : [];
   return {
-    // P3.9: drop any voice sample carrying an obvious account-number / secret.
+    // P3.9 / #114: drop any voice sample OR inferred fact carrying an obvious
+    // account-number / secret. The output guard must be symmetric across the
+    // free-text fields the model emits — inferredFacts can just as easily carry a
+    // leaked number as voiceSamples.
     voiceSamples: clampArr('voiceSamples', 280, 3).filter((s) => !isSensitiveSample(s)),
-    inferredFacts: clampArr('inferredFacts', 120, 6),
+    inferredFacts: clampArr('inferredFacts', 120, 6).filter((s) => !isSensitiveSample(s)),
     extraChannels: clampArr('extraChannels', 40, 5),
     extraTools: clampArr('extraTools', 40, 5),
   };
@@ -75,7 +78,13 @@ export function parsePass2(raw: string): Pick<SweepDerived, 'faqCandidates'> {
   if (!o || typeof o !== 'object' || Array.isArray(o)) return { faqCandidates: [] };
   const r = o as Record<string, unknown>;
   const faqCandidates = Array.isArray(r.faqCandidates)
-    ? (r.faqCandidates as unknown[]).slice(0, 8).map((x) => clampProse(x, 200)).filter(Boolean)
+    ? (r.faqCandidates as unknown[])
+        .slice(0, 8)
+        .map((x) => clampProse(x, 200))
+        .filter(Boolean)
+        // #114 symmetry: faqCandidates is a model-emitted free-text field stored in
+        // grove memory too, so it gets the same secret guard as voiceSamples/inferredFacts.
+        .filter((s) => !isSensitiveSample(s))
     : [];
   return { faqCandidates };
 }

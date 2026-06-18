@@ -95,8 +95,21 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         const result = await dispatchForConnection(event, {
           activeNibbinsForAccount: (accountId) => resolveNibbins(accountId),
           triggerRun: (nibbinId, trigger) => triggerNibbinRun(nibbinId, trigger),
-          // Per-(message, Nibbin) deduplication: already-dispatched Nibbins are
-          // skipped on the re-poll after a capped cycle; excess Nibbins fire.
+          // #113: read-only skip BEFORE triggerRun, so a Nibbin already fired in a
+          // prior (capped) cycle is not re-invoked while the cursor stays parked.
+          // Fail OPEN: this is an optimization, not the correctness boundary
+          // (recordOnce's unique constraint is). A transient read error must fall
+          // through to triggerRun + recordOnce, never abort the connection and park
+          // the cursor (which would re-run the whole delta next cycle).
+          alreadyDispatched: async (key) => {
+            try {
+              return await eventStore.hasRecord('gmail', key);
+            } catch {
+              return false;
+            }
+          },
+          // Per-(message, Nibbin) deduplication: the first-fire claim, committed
+          // only after triggerRun succeeds (claim-then-commit, P2.5).
           recordOnce: (key) => eventStore.recordOnce('gmail', key, connection.id),
         });
         triggered += result.triggered;

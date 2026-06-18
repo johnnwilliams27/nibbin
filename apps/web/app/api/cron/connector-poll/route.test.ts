@@ -31,7 +31,10 @@ vi.mock('@nibbin/connectors', async () => {
   return {
     CONNECTOR_REGISTRY,
     SupabaseWebhookEventStore: vi.fn(function () {
-      return { recordOnce: vi.fn().mockResolvedValue(true) };
+      return {
+        recordOnce: vi.fn().mockResolvedValue(true),
+        hasRecord: vi.fn().mockResolvedValue(false),
+      };
     }),
     SupabaseTokenVault: vi.fn(function () {
       return {};
