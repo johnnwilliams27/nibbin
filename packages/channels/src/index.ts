@@ -8,3 +8,4 @@ export { deliverWithFallback, type ChannelStore, type DispatchContext, type Disp
 export { parseTelegramUpdate, verifyTelegramSecret, telegramStartLink } from './inbound/telegram';
 export { parseTwilioInbound, verifyTwilioSignature } from './inbound/sms';
 export { parseWhatsAppWebhook, verifyMetaSignature } from './inbound/whatsapp';
+export { gateTurn, type TurnGateDeps, type TurnGateConfig, type TurnGateResult } from './conversation/budget';
