@@ -68,8 +68,9 @@ describe('tier table (§6.3)', () => {
   });
 
   it('the table covers every task except chat', () => {
-    // 15 base tasks + sweep_pass1/sweep_pass2 (Spec 4 history sweep) = 17.
-    expect(Object.keys(TIER_FOR_TASK)).toHaveLength(17);
+    // 15 base tasks + sweep_pass1/sweep_pass2 (Spec 4 history sweep)
+    // + memory_extract (§12A agent memory) = 18.
+    expect(Object.keys(TIER_FOR_TASK)).toHaveLength(18);
   });
 });
 
