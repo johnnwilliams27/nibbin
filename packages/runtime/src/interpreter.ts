@@ -224,7 +224,30 @@ export function interpretSpec(spec: AgentSpec, connMap: ConnectionMap, nowMs: nu
         const resolved = resolvePrimitiveInputs(cap, (s as CapabilityStep).inputs);
         // The primitive's ProgramFn ignores ctx (it yields the same step shapes
         // the runner gates); forward it for signature parity all the same.
-        yield* impl(resolved, connMap, nowMs)(ctx);
+        //
+        // Defense-in-depth (FIX 3): every primitive already sanitizes its own
+        // attacker-influenceable strings (safeAddress on `to`, safeHeaderValue
+        // on subjects) before they reach effectArgs. We add a BACKSTOP here:
+        // each primitive-yielded draft/write step's effectArgs are passed
+        // through the same sanitizeEffectArgs the atomic composed path uses. It
+        // is idempotent on already-safe strings, so byte-for-byte parity with
+        // the templates is preserved — if it ever changed a value, that would
+        // mean a primitive failed to sanitize something (investigate, not
+        // suppress). We drive the impl generator manually (rather than `yield*`)
+        // so we can intercept its yielded steps while still forwarding each
+        // next() value the runner feeds back.
+        const gen = impl(resolved, connMap, nowMs)(ctx);
+        let fed: QuarantinedContent | undefined;
+        for (;;) {
+          const r = await gen.next(fed as QuarantinedContent);
+          if (r.done) break;
+          const step = r.value;
+          const safe =
+            step.kind === 'draft'
+              ? ({ ...step, effectArgs: sanitizeEffectArgs(step.effectArgs) } satisfies ProgramStep)
+              : step;
+          fed = yield safe;
+        }
         continue;
       }
 

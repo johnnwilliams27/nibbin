@@ -47,6 +47,20 @@ export async function adoptRecommendationOutcome(templateKey: string): Promise<A
   }
 }
 
+/** Friendly display name for a connector provider id (review card). */
+function connectorLabel(provider: string): string {
+  switch (provider) {
+    case 'gmail':
+      return 'Gmail';
+    case 'google-calendar':
+      return 'Google Calendar';
+    case 'stripe':
+      return 'Stripe';
+    default:
+      return provider;
+  }
+}
+
 /* ── Synthesis (Composer Slice 2a): build a custom Nibbin for a workflow ───── */
 
 export type ComposerReviewResult =
@@ -118,7 +132,9 @@ export async function synthesizeForWorkflow(
     summary,
     tone: spec.personaPolicy?.tone ?? 'warm, plainspoken',
     trigger: 'Every morning, and whenever you ask',
-    connectorsNeeded: spec.requiredConnectors,
+    // Friendly connector names for the review card — a cross-resource Nibbin
+    // (e.g. calendar→email) lists both (Google Calendar and Gmail).
+    connectorsNeeded: spec.requiredConnectors.map(connectorLabel),
     spec,
   };
 }
