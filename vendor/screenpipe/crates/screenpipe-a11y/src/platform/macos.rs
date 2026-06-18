@@ -1754,7 +1754,9 @@ static CLIPBOARD_CRASH_CHECK: std::sync::Once = std::sync::Once::new();
 
 fn check_clipboard_crash_marker() {
     CLIPBOARD_CRASH_CHECK.call_once(|| {
-        let dir = dirs::data_dir().unwrap_or_else(std::env::temp_dir).join("screenpipe");
+        let dir = dirs::data_dir()
+            .unwrap_or_else(std::env::temp_dir)
+            .join("screenpipe");
         let inflight = dir.join(CLIPBOARD_INFLIGHT_FILE);
         let legacy_disabled = dir.join(CLIPBOARD_LEGACY_DISABLED_FILE);
 
@@ -1783,7 +1785,9 @@ fn get_clipboard() -> Option<String> {
         return None;
     }
 
-    let dir = dirs::data_dir().unwrap_or_else(std::env::temp_dir).join("screenpipe");
+    let dir = dirs::data_dir()
+        .unwrap_or_else(std::env::temp_dir)
+        .join("screenpipe");
     let inflight = dir.join(CLIPBOARD_INFLIGHT_FILE);
     // Best-effort marker — if write fails (e.g., disk full) we proceed; the worst
     // case is we don't detect a crash next startup.

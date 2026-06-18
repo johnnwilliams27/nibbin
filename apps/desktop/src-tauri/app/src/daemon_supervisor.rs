@@ -2,7 +2,11 @@ use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager, Runtime};
 
 pub fn observerd_binary_name() -> &'static str {
-    if cfg!(windows) { "observerd.exe" } else { "observerd" }
+    if cfg!(windows) {
+        "observerd.exe"
+    } else {
+        "observerd"
+    }
 }
 
 /// Resolve the bundled observerd binary. In a release bundle it sits in the
@@ -30,7 +34,8 @@ pub fn observerd_path<R: Runtime>(app: &AppHandle<R>) -> anyhow::Result<PathBuf>
 pub const LAUNCH_LABEL: &str = "app.nibbin.observerd";
 
 pub fn launchagent_plist(observerd: &Path, store: &Path) -> String {
-    format!(r#"<?xml version="1.0" encoding="UTF-8"?>
+    format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
   <key>Label</key><string>{label}</string>
@@ -46,14 +51,19 @@ pub fn launchagent_plist(observerd: &Path, store: &Path) -> String {
 </dict></plist>"#,
         label = LAUNCH_LABEL,
         obs = observerd.display(),
-        store = store.display())
+        store = store.display()
+    )
 }
 
 pub const RUN_VALUE_NAME: &str = "NibbinObserver";
 
 /// The HKCU\...\Run value data: the quoted observerd path + --store arg.
 pub fn run_command_line(observerd: &Path, store: &Path) -> String {
-    format!("\"{}\" --store \"{}\"", observerd.display(), store.display())
+    format!(
+        "\"{}\" --store \"{}\"",
+        observerd.display(),
+        store.display()
+    )
 }
 
 #[cfg(windows)]
@@ -62,8 +72,15 @@ pub fn register_windows(observerd: &Path, store: &Path) -> anyhow::Result<()> {
     let data = run_command_line(observerd, store);
     let status = Command::new("reg")
         .args([
-            "add", r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run",
-            "/v", RUN_VALUE_NAME, "/t", "REG_SZ", "/d", &data, "/f",
+            "add",
+            r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run",
+            "/v",
+            RUN_VALUE_NAME,
+            "/t",
+            "REG_SZ",
+            "/d",
+            &data,
+            "/f",
         ])
         .status()?;
     anyhow::ensure!(status.success(), "reg add (HKCU Run) failed");
@@ -83,10 +100,16 @@ pub fn register_macos(observerd: &Path, store: &Path) -> anyhow::Result<()> {
     anyhow::ensure!(uid_out.status.success(), "`id -u` failed");
     let uid = String::from_utf8(uid_out.stdout)?.trim().to_string();
     let domain = format!("gui/{uid}");
-    let plist_str = plist.to_str().ok_or_else(|| anyhow::anyhow!("non-utf8 plist path"))?;
+    let plist_str = plist
+        .to_str()
+        .ok_or_else(|| anyhow::anyhow!("non-utf8 plist path"))?;
     // bootout is best-effort (no-op if not loaded); bootstrap (re)loads it.
-    let _ = Command::new("launchctl").args(["bootout", &domain, plist_str]).status();
-    let ok = Command::new("launchctl").args(["bootstrap", &domain, plist_str]).status()?;
+    let _ = Command::new("launchctl")
+        .args(["bootout", &domain, plist_str])
+        .status();
+    let ok = Command::new("launchctl")
+        .args(["bootstrap", &domain, plist_str])
+        .status()?;
     anyhow::ensure!(ok.success(), "launchctl bootstrap failed");
     Ok(())
 }
@@ -99,12 +122,18 @@ pub fn ensure_daemon_running<R: Runtime>(app: &AppHandle<R>) {
         let obs = observerd_path(app)?;
         let store = crate::commands::store_root(app)?;
         #[cfg(target_os = "macos")]
-        { register_macos(&obs, &store)?; }
+        {
+            register_macos(&obs, &store)?;
+        }
         #[cfg(windows)]
-        { register_windows(&obs, &store)?; }
+        {
+            register_windows(&obs, &store)?;
+        }
         // On platforms with no registration path (e.g. Linux/CI) this is a no-op.
         #[cfg(not(any(target_os = "macos", windows)))]
-        { let _ = (&obs, &store); }
+        {
+            let _ = (&obs, &store);
+        }
         Ok(())
     })();
     match result {

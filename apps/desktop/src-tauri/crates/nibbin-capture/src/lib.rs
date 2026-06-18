@@ -11,10 +11,10 @@
 //!   forwards nothing once it is set. No locks, no IO on that path.
 
 pub mod gate;
-#[cfg(feature = "screenpipe")]
-pub mod map;
 #[cfg(target_os = "macos")]
 pub mod macos;
+#[cfg(feature = "screenpipe")]
+pub mod map;
 pub mod mock;
 #[cfg(target_os = "windows")]
 pub mod windows;

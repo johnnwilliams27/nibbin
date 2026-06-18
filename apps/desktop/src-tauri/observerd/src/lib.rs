@@ -23,7 +23,8 @@ use nibbin_redaction::{
 };
 use nibbin_store::{KeyProvider, ObserverStore, StaticTestKey};
 use nibbin_study::{
-    capture_allowed, deadline_passed, new_study, transition, CaptureDepth, StudyCommand, StudyKind, StudySnapshot,
+    capture_allowed, deadline_passed, new_study, transition, CaptureDepth, StudyCommand, StudyKind,
+    StudySnapshot,
 };
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
@@ -332,7 +333,11 @@ impl Daemon {
                     CaptureReadiness::Ready => {
                         self.source.start()?;
                         // clear a prior permission block if we're now good
-                        if self.capture_blocked.as_deref().map_or(false, |s| s.starts_with("permission:")) {
+                        if self
+                            .capture_blocked
+                            .as_deref()
+                            .map_or(false, |s| s.starts_with("permission:"))
+                        {
                             self.capture_blocked = None;
                         }
                     }

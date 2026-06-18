@@ -130,7 +130,12 @@ pub enum StudyError {
     UnverifiedReceipt,
 }
 
-pub fn new_study(study_id: &str, kind: StudyKind, label: Option<String>, depth: CaptureDepth) -> StudySnapshot {
+pub fn new_study(
+    study_id: &str,
+    kind: StudyKind,
+    label: Option<String>,
+    depth: CaptureDepth,
+) -> StudySnapshot {
     StudySnapshot {
         v: 1,
         study_id: study_id.to_string(),
@@ -189,7 +194,12 @@ pub fn transition(snap: &StudySnapshot, cmd: StudyCommand) -> Result<StudySnapsh
             next.state = RawDeleting;
             next.aborted = true;
         }
-        StudyCommand::CreateStudy { id, kind, label, depth } => {
+        StudyCommand::CreateStudy {
+            id,
+            kind,
+            label,
+            depth,
+        } => {
             if !matches!(snap.state, NotStarted | Complete | Deleted) {
                 return Err(invalid(snap.state, "create_study"));
             }
@@ -415,7 +425,12 @@ mod tests {
     #[test]
     fn quick_scan_window_is_six_hours_full_is_fourteen_days() {
         let q = transition(
-            &new_study("q", StudyKind::QuickScan, Some("Invoices".into()), CaptureDepth::default()),
+            &new_study(
+                "q",
+                StudyKind::QuickScan,
+                Some("Invoices".into()),
+                CaptureDepth::default(),
+            ),
             StudyCommand::Consent {
                 at: t("2026-06-10T08:00:00Z"),
             },
@@ -485,7 +500,12 @@ mod tests {
 
     #[test]
     fn new_study_defaults_to_lite() {
-        let s = new_study("full_x", StudyKind::FullStudy, None, CaptureDepth::default());
+        let s = new_study(
+            "full_x",
+            StudyKind::FullStudy,
+            None,
+            CaptureDepth::default(),
+        );
         assert_eq!(s.depth, CaptureDepth::Lite);
     }
 
@@ -497,14 +517,25 @@ mod tests {
 
     #[test]
     fn depth_serde_roundtrips_snake_case() {
-        assert_eq!(serde_json::to_string(&CaptureDepth::Lite).unwrap(), "\"lite\"");
-        assert_eq!(serde_json::to_string(&CaptureDepth::Detailed).unwrap(), "\"detailed\"");
+        assert_eq!(
+            serde_json::to_string(&CaptureDepth::Lite).unwrap(),
+            "\"lite\""
+        );
+        assert_eq!(
+            serde_json::to_string(&CaptureDepth::Detailed).unwrap(),
+            "\"detailed\""
+        );
     }
 
     #[test]
     fn old_study_json_without_depth_loads_as_lite() {
         // a snapshot serialized before `depth` existed must deserialize with depth=Lite.
-        let s = new_study("s_back_compat", StudyKind::FullStudy, None, CaptureDepth::Lite);
+        let s = new_study(
+            "s_back_compat",
+            StudyKind::FullStudy,
+            None,
+            CaptureDepth::Lite,
+        );
         let mut json_val = serde_json::to_value(&s).unwrap();
         // remove the depth field to simulate an old study.json
         json_val.as_object_mut().unwrap().remove("depth");

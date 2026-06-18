@@ -58,12 +58,12 @@
 //! handle.stop();
 //! ```
 
-pub mod local_compat;
 pub mod activity_feed;
 pub mod budget;
 pub mod config;
 pub mod events;
 pub mod incognito;
+pub mod local_compat;
 pub mod platform;
 pub mod tree;
 pub mod url_filter;

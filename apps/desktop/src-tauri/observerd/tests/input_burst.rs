@@ -65,7 +65,10 @@ fn input_counts_are_persisted_as_input_burst() {
     let burst = bursts[0];
 
     // Must carry counts and no AX tree.
-    let input = burst.input.as_ref().expect("InputBurst must have input counts");
+    let input = burst
+        .input
+        .as_ref()
+        .expect("InputBurst must have input counts");
     assert_eq!(input.keys, 7, "key count must match");
     assert_eq!(input.clicks, 3, "click count must match");
     assert_eq!(input.duration_ms, 900, "duration_ms must match");

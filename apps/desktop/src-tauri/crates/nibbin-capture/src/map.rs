@@ -11,7 +11,11 @@ pub fn node_to_ax(n: &AccessibilityNode) -> AxSnapshotNode {
         role: n.control_type.clone(),
         label: n.name.clone(),
         value: n.value.clone(),
-        secure: if n.is_password == Some(true) { Some(true) } else { None },
+        secure: if n.is_password == Some(true) {
+            Some(true)
+        } else {
+            None
+        },
         action: None,
         children: n.children.iter().map(node_to_ax).collect(),
     }
@@ -64,7 +68,11 @@ mod tests {
     use super::*;
     use screenpipe_a11y::AccessibilityNode;
 
-    fn node(control_type: &str, value: Option<&str>, is_password: Option<bool>) -> AccessibilityNode {
+    fn node(
+        control_type: &str,
+        value: Option<&str>,
+        is_password: Option<bool>,
+    ) -> AccessibilityNode {
         AccessibilityNode {
             control_type: control_type.to_string(),
             name: None,
@@ -84,7 +92,10 @@ mod tests {
 
     #[test]
     fn non_password_node_is_not_secure() {
-        assert_eq!(node_to_ax(&node("Edit", Some("hi"), Some(false))).secure, None);
+        assert_eq!(
+            node_to_ax(&node("Edit", Some("hi"), Some(false))).secure,
+            None
+        );
         assert_eq!(node_to_ax(&node("Edit", Some("hi"), None)).secure, None);
     }
 

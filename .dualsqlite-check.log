@@ -1,0 +1,9 @@
+   Compiling nibbin-study v0.1.0 (C:\nibbin-capture-bringup\apps\desktop\src-tauri\crates\nibbin-study)
+   Compiling ureq v2.12.1
+   Compiling screenpipe-a11y v0.1.0 (C:\nibbin-capture-bringup\vendor\screenpipe\crates\screenpipe-a11y)
+   Compiling nibbin-store v0.1.0 (C:\nibbin-capture-bringup\apps\desktop\src-tauri\crates\nibbin-store)
+   Compiling nibbin-ner v0.1.0 (C:\nibbin-capture-bringup\apps\desktop\src-tauri\crates\nibbin-ner)
+   Compiling nibbin-capture v0.1.0 (C:\nibbin-capture-bringup\apps\desktop\src-tauri\crates\nibbin-capture)
+   Compiling observerd v0.1.0 (C:\nibbin-capture-bringup\apps\desktop\src-tauri\observerd)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 9.80s
+DUAL_SQLITE_EXIT=0

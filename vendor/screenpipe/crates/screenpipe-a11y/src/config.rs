@@ -6,8 +6,8 @@
 //!
 //! Provides settings for what to capture, privacy filters, and performance tuning.
 
-use regex::Regex;
 use crate::local_compat::window_pattern::{self, WindowPattern};
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 

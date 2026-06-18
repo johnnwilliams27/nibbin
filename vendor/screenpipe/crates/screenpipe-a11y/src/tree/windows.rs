@@ -14,9 +14,9 @@ use super::{
 use crate::events::AccessibilityNode;
 use crate::platform::windows_uia::UiaContext;
 
+use crate::local_compat::window_pattern::{self, WindowPattern};
 use anyhow::Result;
 use chrono::Utc;
-use crate::local_compat::window_pattern::{self, WindowPattern};
 use std::cell::UnsafeCell;
 use std::time::Instant;
 use tracing::debug;

@@ -24,7 +24,11 @@
 ///
 /// Pure (no hardware) so the 90 s threshold is unit-testable without waiting.
 #[cfg_attr(not(any(feature = "screenpipe", test)), allow(dead_code))]
-pub(crate) fn is_idle(last_activity: Option<std::time::Instant>, now: std::time::Instant, threshold: std::time::Duration) -> bool {
+pub(crate) fn is_idle(
+    last_activity: Option<std::time::Instant>,
+    now: std::time::Instant,
+    threshold: std::time::Duration,
+) -> bool {
     match last_activity {
         None => false,
         Some(t) => now.duration_since(t) >= threshold,
@@ -44,9 +48,7 @@ mod real {
     use std::sync::Arc;
     use std::time::{Duration, Instant};
     use windows::Win32::Foundation::{HINSTANCE, LPARAM, LRESULT, WPARAM};
-    use windows::Win32::System::Com::{
-        CoInitializeEx, CoUninitialize, COINIT_APARTMENTTHREADED,
-    };
+    use windows::Win32::System::Com::{CoInitializeEx, CoUninitialize, COINIT_APARTMENTTHREADED};
     use windows::Win32::System::Threading::GetCurrentThreadId;
     use windows::Win32::UI::WindowsAndMessaging::{
         CallNextHookEx, GetForegroundWindow, GetMessageW, PostThreadMessageW, SetWindowsHookExW,
@@ -570,7 +572,8 @@ mod input_count_tests {
     #[test]
     fn sendinput_keystrokes_and_clicks_are_counted() {
         let mut cap = WindowsUiaCapture::new();
-        cap.start().expect("start() should init COM + UIA + hook thread");
+        cap.start()
+            .expect("start() should init COM + UIA + hook thread");
 
         // Give the hook thread time to install the hooks + start pumping.
         std::thread::sleep(Duration::from_millis(200));

@@ -57,7 +57,11 @@ mod tests {
     fn queued_input_drains_as_input_item() {
         let mut m = MockCapture::default();
         m.start().unwrap();
-        m.queue_input(InputCounts { keys: 5, clicks: 2, duration_ms: 1200 });
+        m.queue_input(InputCounts {
+            keys: 5,
+            clicks: 2,
+            duration_ms: 1200,
+        });
         let items = m.poll().unwrap();
         assert_eq!(items.len(), 1);
         match &items[0] {
