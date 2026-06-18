@@ -10,8 +10,9 @@ publish.workspace = true
 default = []
 # Platform bring-up wires the vendored Screenpipe a11y fork (vendor/screenpipe,
 # MIT commit 892199f742) behind this flag during macOS hardware bring-up.
-screenpipe = []
+screenpipe = ["dep:screenpipe-a11y"]
 
 [dependencies]
 nibbin-redaction = { path = "../nibbin-redaction" }
 anyhow = { workspace = true }
+screenpipe-a11y = { path = "../../../../../vendor/screenpipe/crates/screenpipe-a11y", optional = true }
