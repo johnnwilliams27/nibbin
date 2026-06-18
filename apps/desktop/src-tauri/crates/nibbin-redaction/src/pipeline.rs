@@ -42,11 +42,14 @@ impl<N: NerClient> RedactionPipeline<N> {
         self.halted_reason.is_some()
     }
 
+    /// The current merged exclusions — the daemon persists these after an add.
+    pub fn exclusions(&self) -> &UserExclusions {
+        &self.exclusions
+    }
+
     /// Layer-4 exclusions feed back into layer 2 for the rest of the study.
     pub fn add_exclusions(&mut self, more: UserExclusions) {
-        self.exclusions.hosts.extend(more.hosts);
-        self.exclusions.bundle_ids.extend(more.bundle_ids);
-        self.exclusions.app_names.extend(more.app_names);
+        self.exclusions.merge(more);
     }
 
     /// Re-arm after the sidecar supervisor reports healthy again.
@@ -168,5 +171,23 @@ impl<N: NerClient> RedactionPipeline<N> {
 
         sink.append(&event)?;
         Ok(ProcessOutcome::Persisted)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::RedactionPipeline;
+    use crate::blocklist::UserExclusions;
+    use crate::ner::HeuristicNer;
+
+    #[test]
+    fn exclusions_accessor_reflects_adds() {
+        let mut p = RedactionPipeline::new(HeuristicNer);
+        assert!(p.exclusions().hosts.is_empty());
+        p.add_exclusions(UserExclusions {
+            hosts: vec!["a.com".into()],
+            ..Default::default()
+        });
+        assert_eq!(p.exclusions().hosts, vec!["a.com".to_string()]);
     }
 }
