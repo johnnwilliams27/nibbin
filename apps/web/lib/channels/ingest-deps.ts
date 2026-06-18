@@ -52,7 +52,7 @@ function todayUtc(): string {
 // Gate deps — built over the service client
 // ---------------------------------------------------------------------------
 
-function buildGateDeps(svc: ReturnType<typeof serviceClient>): TurnGateDeps {
+export function buildGateDeps(svc: ReturnType<typeof serviceClient>): TurnGateDeps {
   const smsSpendCap = smsSpendCapFromEnv();
   const defaultSpendCap = defaultSpendCapFromEnv();
   const turnLimit = turnLimitFromEnv();
