@@ -18,6 +18,9 @@
   --honey: #D9A21B;
   --coral: #E2603A;
 
+  /* Tints (light surfaces — recessed row / chip backgrounds) */
+  --moss-tint: #EFF4E4;
+
   /* Deeps (the only text-safe colors) */
   --moss-deep: #44601F;
   --teal-deep: #2E5F58;

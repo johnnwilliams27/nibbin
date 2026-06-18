@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { buildCreature } from '@nibbin/creatures';
+import { NotificationBell } from './NotificationBell';
 import styles from './shell.module.css';
 
 /** The Grovekeeper creature as a small inline glyph (mount-gated — the engine
@@ -123,7 +124,6 @@ const NAV: { key: NavKey; label: string; href: string }[] = [
   { key: 'diagnosis', label: 'Diagnosis', href: '/app/diagnosis' },
   { key: 'memory', label: 'Memory', href: '/app/memory' },
   { key: 'shop', label: 'Agent Shop', href: '/app/shop' },
-  { key: 'notifications', label: 'Leaves', href: '/app/notifications' },
   { key: 'billing', label: 'Plan & credits', href: '/billing' },
   { key: 'settings', label: 'Settings', href: '/app/settings/profile' },
 ];
@@ -212,6 +212,7 @@ export function AppShell({ active, title, email, children, panel, onboarding }: 
           </button>
           <h1 className={styles.title}>{title}</h1>
           <div className={styles.account}>
+            {!onboarding && <NotificationBell />}
             {email ? <span className={styles.email}>{email}</span> : null}
             <form action="/auth/signout" method="post">
               <button className={styles.signout} type="submit">
