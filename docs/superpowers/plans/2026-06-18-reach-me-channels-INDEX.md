@@ -45,11 +45,11 @@ This spec spans multiple independent subsystems, so per `superpowers:writing-pla
 - [x] **Plan 03 — inbound + identity** — BUILT + opus-reviewed (fixed a silent message-loss path the final review caught).
 - [x] **Plan 04 — multi-channel prefs UI** — BUILT + opus-reviewed (ready to merge).
 - [x] **Plan 05 — conversation + §11 cost/abuse + on-channel approval bridge** — BUILT; **4-reviewer adversarial gate PASS after fixes** (2 P1s: empty-secret fail-open, inert gate p_account; + 2 P2 hardenings). Gate record: `docs/gates/2026-06-18-reach-me-conversation-approval.md`.
-- [ ] **Plan 06 — offline enablement** — NOT BUILT (the 10DLC/Meta checklist + consent/STOP-HELP/subprocessor scaffolding).
+- [x] **Plan 06 — offline enablement** — BUILT + opus-reviewed (ready to merge). Offline checklist + consent/STOP-HELP/START copy + audited `sms_opt_out` RPC + subprocessor registry. (reference/subprocessors.html publish = content-owner follow-up; START re-subscribe handler = pre-go-live follow-up, both in the checklist.)
 - [ ] PR + migrations to dev/staging/prod (timestamps may need renumbering on rebase) + human gate sign-off.
 
 ### Migrations added (apply dev/staging/prod at PR time, in order)
-`20260618030000` channels schema · `20260618040000` channel RPCs · `20260618050000` notifications 'reach' kind · `20260618060000` model_calls origin/channel · `20260618070000` channel budgets · `20260618080000` approval bridge (linked_by + decide_run_service).
+`20260618030000` channels schema · `20260618040000` channel RPCs · `20260618050000` notifications 'reach' kind · `20260618060000` model_calls origin/channel · `20260618070000` channel budgets · `20260618080000` approval bridge (linked_by + decide_run_service) · `20260618090000` sms_opt_out RPC.
 
 ### Cross-cutting follow-ups (from reviews/gate)
 - Spend cap is rolling-soft; turn-count is the hard backstop (decide hard-vs-soft; align spend/turn windows).
