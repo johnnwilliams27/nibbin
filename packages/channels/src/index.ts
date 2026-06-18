@@ -9,3 +9,4 @@ export { parseTelegramUpdate, verifyTelegramSecret, telegramStartLink } from './
 export { parseTwilioInbound, verifyTwilioSignature } from './inbound/sms';
 export { parseWhatsAppWebhook, verifyMetaSignature } from './inbound/whatsapp';
 export { gateTurn, type TurnGateDeps, type TurnGateConfig, type TurnGateResult } from './conversation/budget';
+export { classifyIntent, type Intent } from './conversation/orchestrator';
