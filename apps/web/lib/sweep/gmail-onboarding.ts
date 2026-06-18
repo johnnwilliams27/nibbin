@@ -7,7 +7,8 @@ import type { UnderstandingProfile } from '@nibbin/keeper';
 import { runPass1, runPass2, mergeSweepDerived, type SentBatch, type ThreadBatch } from './derive';
 import type { SweepDerived, SweepStatus } from './types';
 
-export const SWEEP_WINDOW_DAYS = 90;
+// ≈12-month onboarding seed; caps (MAX_SENT_MESSAGES/MAX_INBOX_THREADS) + newest-first ordering bind first.
+export const SWEEP_WINDOW_DAYS = 365;
 export const MAX_SENT_MESSAGES = 200;
 export const MAX_INBOX_THREADS = 300;
 export const BATCH_SIZE_PASS1 = 20;

@@ -30,21 +30,31 @@ const rpcMock = vi.fn();
 const updateMock = vi.fn();
 const eqMock = vi.fn();
 let updateErrors: Array<{ error: unknown }> = [];
+// Controls what sweep_consent_at the connections select returns. null = no consent.
+let consentAt: string | null = '2026-01-01T00:00:00Z';
 
 vi.mock('../../../../../lib/supabase/service', () => ({
   serviceClient: () => ({
     rpc: (...a: unknown[]) => rpcMock(...a),
-    from: () => ({
-      update: (vals: Record<string, unknown>) => {
-        updateMock(vals);
-        return {
-          eq: (...a: unknown[]) => {
-            eqMock(...a);
-            return Promise.resolve(updateErrors.shift() ?? { error: null });
-          },
-        };
-      },
-    }),
+    from: (table: string) => {
+      if (table === 'connections') {
+        // consent-check select: .select(...).eq(...).eq(...).eq(...).maybeSingle()
+        const chainEq = (): unknown => ({ eq: chainEq, maybeSingle: async () => ({ data: { sweep_consent_at: consentAt } }) });
+        return { select: () => ({ eq: chainEq }) };
+      }
+      // gmail_sweep_log table: update path used by finalize
+      return {
+        update: (vals: Record<string, unknown>) => {
+          updateMock(vals);
+          return {
+            eq: (...a: unknown[]) => {
+              eqMock(...a);
+              return Promise.resolve(updateErrors.shift() ?? { error: null });
+            },
+          };
+        },
+      };
+    },
   }),
 }));
 
@@ -61,6 +71,7 @@ describe('POST /api/sweep/gmail/onboarding', () => {
     process.env.SWEEP_HMAC_SECRET = SECRET;
     vi.clearAllMocks();
     updateErrors = [];
+    consentAt = '2026-01-01T00:00:00Z'; // default: consented — existing tests keep passing
     rpcMock.mockResolvedValue({ data: 'claim-1', error: null });
     gmailOnboardingSweep.mockResolvedValue(sweepResult);
   });
@@ -115,5 +126,17 @@ describe('POST /api/sweep/gmail/onboarding', () => {
     const res = await POST(req({ accountId: ACCT, connectionId: CONN, hmac: goodHmac }));
     expect(res.status).toBe(500);
     expect(updateMock).toHaveBeenCalledWith(expect.objectContaining({ status: 'failed' }));
+  });
+
+  it('refuses to sweep (skipped: no_consent) when the connection has no sweep consent', async () => {
+    consentAt = null; // connection has no recorded consent
+    const { POST } = await import('./route');
+    const res = await POST(req({ accountId: ACCT, connectionId: CONN, hmac: goodHmac }));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ status: 'skipped', reason: 'no_consent' });
+    // The claim RPC must NOT have been called (no budget spent)
+    expect(rpcMock).not.toHaveBeenCalled();
+    // The sweep itself must NOT have been called
+    expect(gmailOnboardingSweep).not.toHaveBeenCalled();
   });
 });

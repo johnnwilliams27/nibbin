@@ -8,6 +8,7 @@ export interface ConnectionRow {
   provider: string;
   scopes: string[] | null;
   status: string;
+  sweep_consent_at?: string | null;
 }
 
 export interface ConnectionSummary {
@@ -30,6 +31,17 @@ export function connectionSummary(rows: ConnectionRow[]): ConnectionSummary {
     };
   });
   return { total: items.length, items };
+}
+
+export function sweepConsentRow(
+  rows: { provider: string; status: string; sweep_consent_at?: string | null }[],
+): { gmailConnected: boolean; consented: boolean; consentedAt: string | null } {
+  const gmail = rows.find((r) => r.provider === 'gmail' && r.status === 'active');
+  return {
+    gmailConnected: !!gmail,
+    consented: !!gmail?.sweep_consent_at,
+    consentedAt: gmail?.sweep_consent_at ?? null,
+  };
 }
 
 export interface DeletionState {

@@ -14,6 +14,7 @@ const writeUpgradePending: PendingAuth = {
   returnTo: '/app/nibbins/nib1?writeGranted=gmail',
   resumeTemplate: null,
   nibbinId: 'nib1',
+  sweepConsent: false,
   expiresAt: new Date(Date.now() + 60000).toISOString(),
   consumedAt: null,
 };

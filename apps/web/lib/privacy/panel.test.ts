@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { connectionSummary, deletionState, type ConnectionRow } from './panel';
+import { connectionSummary, deletionState, sweepConsentRow, type ConnectionRow } from './panel';
 
 describe('connectionSummary', () => {
   it('counts connections and labels access by scope count', () => {
@@ -26,6 +26,16 @@ describe('connectionSummary', () => {
 
   it('handles an empty list', () => {
     expect(connectionSummary([])).toEqual({ total: 0, items: [] });
+  });
+});
+
+describe('sweepConsentRow', () => {
+  it('reports gmail connected + consent state', () => {
+    expect(sweepConsentRow([{ provider: 'gmail', status: 'active', sweep_consent_at: '2026-06-18T00:00:00Z' }]))
+      .toEqual({ gmailConnected: true, consented: true, consentedAt: '2026-06-18T00:00:00Z' });
+    expect(sweepConsentRow([{ provider: 'gmail', status: 'active', sweep_consent_at: null }]))
+      .toEqual({ gmailConnected: true, consented: false, consentedAt: null });
+    expect(sweepConsentRow([])).toEqual({ gmailConnected: false, consented: false, consentedAt: null });
   });
 });
 
