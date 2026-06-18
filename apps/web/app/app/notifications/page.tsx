@@ -6,11 +6,11 @@
  */
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { revalidatePath } from 'next/cache';
 import { createClient } from '../../../lib/supabase/server';
 import { ensureAccount } from '../../../lib/auth/bootstrap';
 import { upsertOwnProfile } from '../../../lib/auth/profile';
 import { AppShell } from '../../../components/shell/AppShell';
+import { markRead } from './actions';
 import styles from './notifications.module.css';
 
 export const metadata: Metadata = { title: 'From the grove — Nibbin' };
@@ -25,13 +25,11 @@ interface LeafRow {
   read_at: string | null;
 }
 
-async function markRead(formData: FormData): Promise<void> {
+/** Thin FormData adapter: the archive's <form> posts the id; delegate to the
+ *  shared markRead(id) server action (single mark-read path). */
+async function markReadForm(formData: FormData): Promise<void> {
   'use server';
-  const id = formData.get('id');
-  if (typeof id !== 'string' || !id) return;
-  const supabase = await createClient();
-  await supabase.rpc('mark_notification_read', { target_id: id });
-  revalidatePath('/app/notifications');
+  await markRead(String(formData.get('id')));
 }
 
 export default async function NotificationsPage() {
@@ -82,7 +80,7 @@ export default async function NotificationsPage() {
               {leaf.read_at ? (
                 <span className={styles.leafMeta}>Read</span>
               ) : (
-                <form action={markRead}>
+                <form action={markReadForm}>
                   <input type="hidden" name="id" value={leaf.id} />
                   <button className={styles.markRead} type="submit">
                     Mark read
