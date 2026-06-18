@@ -245,7 +245,6 @@ export function KeeperChat({
       }
     });
     // Mount-only: pendingCelebrations is a stable server prop for this render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /* Keep the newest card in view. */
