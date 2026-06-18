@@ -16,6 +16,7 @@
     "@nibbin/drip": "*",
     "@nibbin/email": "*",
     "@nibbin/keeper": "*",
+    "@nibbin/redaction": "*",
     "@nibbin/router": "*",
     "@nibbin/runtime": "*",
     "@nibbin/scan": "*",
