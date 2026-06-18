@@ -2,6 +2,9 @@ import { applyBattery } from '@nibbin/redaction';
 import { quarantine } from '@nibbin/connectors';
 import type { InboundChannelMessage, InboundResult } from '@nibbin/channels';
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function asUuid(v?: string) { return v && UUID_RE.test(v) ? v : undefined; }
+
 export interface IngestDeps {
   resolveAccount(channel: string, externalId: string): Promise<string | null>;
   verifyBinding(nonce: string, externalId: string, label?: string): Promise<string | null>;
@@ -26,11 +29,11 @@ export async function ingestInbound(inbound: InboundChannelMessage, deps: Ingest
 
   // 3. redact + quarantine, then persist + hand off
   const battery = applyBattery(inbound.text);
-  const quarantined = quarantine(battery.text, `${inbound.channel}:${accountId}:${inbound.externalId}`);
+  const quarantined = quarantine(battery.text, `${inbound.channel}:${accountId}`);
   await deps.persistInbound({
     accountId, channel: inbound.channel, externalId: inbound.externalId,
     redactedText: battery.text, redactionRules: battery.rulesHit,
-    inReplyTo: inbound.inReplyTo, action: inbound.action,
+    inReplyTo: asUuid(inbound.inReplyTo), action: inbound.action,
   });
   await deps.handoff({ accountId, inbound, quarantined: { wrapped: quarantined.wrapped, source: quarantined.source } });
   return { status: 'accepted' };

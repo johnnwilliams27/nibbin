@@ -14,11 +14,12 @@ export function supabaseIngestDeps(): IngestDeps {
       return (data as string | null) ?? null;
     },
     async persistInbound(row) {
-      await svc.from('channel_messages').insert({
+      const { error } = await svc.from('channel_messages').insert({
         account_id: row.accountId, channel: row.channel, direction: 'inbound', kind: 'inbound',
         status: 'received', verified: true, redacted_text: row.redactedText, redaction_rules: row.redactionRules,
         request_id: row.inReplyTo ?? null,
       });
+      if (error) { console.error('channel_messages persistInbound failed', error); throw error; }
     },
     async handoff() {
       // Plan 05 consumes the verified inbound (escalation reply -> approval gate;
