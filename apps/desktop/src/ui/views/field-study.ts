@@ -14,6 +14,8 @@ import { notesView } from './notes.js';
 import { preferencesView } from './preferences.js';
 import { reviewView } from './review.js';
 import { deleteEverythingCard, studyView } from './study.js';
+import { packetReviewView } from './packet-review.js';
+import type { ReviewDecision } from '../sync-study.js';
 import { viewForState } from './field-study-state.js';
 
 type Sub = 'home' | 'review' | 'notes' | 'preferences';
@@ -30,6 +32,7 @@ const syncStates = new Map<string, SyncState>();
 
 const SYNC_COPY: Record<SyncState, string> = {
   building: 'Building your diagnosis…',
+  reviewing: 'Review what’s about to be sent.',
   uploading: 'Sending to Nibbin…',
   done: 'Done — your diagnosis is ready.',
   error: `Couldn't send your diagnosis. Your raw data is still here, untouched — we'll only delete it once the diagnosis is safely saved.`,
@@ -54,6 +57,7 @@ function synthesizingView(
   const persisted = syncStates.get(studyId);
   const resumed = persisted !== undefined;
   let syncState: SyncState = persisted ?? 'building';
+  let pendingReview: HTMLElement | null = null;
 
   function setState(s: SyncState): void {
     syncState = s;
@@ -62,6 +66,12 @@ function synthesizingView(
   }
 
   function render(): void {
+    // While reviewing, show the packet itself (the review screen owns the UI
+    // and resolves the pending decision); otherwise show the status card.
+    if (syncState === 'reviewing' && pendingReview) {
+      root.replaceChildren(pendingReview);
+      return;
+    }
     // Retry is reachable on any non-'done' state of a re-mounted (resumed)
     // study, and on 'error' for the live first mount. Never strand on a
     // non-interactive spinner.
@@ -86,6 +96,16 @@ function synthesizingView(
       kind: meta.kind,
       label: meta.label,
       onState: (s) => { setState(s); },
+      // Review-before-upload (§5.2): render the packet and resolve on the
+      // user's choice. The pending element is shown by render() in 'reviewing'.
+      review: (packet) =>
+        new Promise<ReviewDecision>((resolve) => {
+          pendingReview = packetReviewView(packet, (decision) => {
+            pendingReview = null;
+            resolve(decision);
+          });
+          render();
+        }),
     }).then((res) => {
       // On success the daemon advances past SYNTHESIZING; reflect that promptly.
       if (res.ok) rerender();
