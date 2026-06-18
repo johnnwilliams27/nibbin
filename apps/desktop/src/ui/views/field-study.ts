@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Field Study tab — wraps the existing field-study sub-navigation and
  * daemon-state dispatch that previously lived in main.ts. Stage C adds the
  * Grove tab beside this one; account management moves to the global auth gate
@@ -261,12 +261,72 @@ function entryView(
   const root = el('div', {});
   const mount = el('div', {});
 
+  // Depth-choice step: shown between the entry card click and begin().
+  // Renders two selectable option cards (Lite pre-selected, radio-style)
+  // and a Continue button that calls onChosen(selectedDepth). Back returns
+  // to the entry choices without creating a study.
+  function depthChoiceView(kind: StudyKind, label: string | null, onChosen: (depth: StudyDepth) => void): HTMLElement {
+    let selected: StudyDepth = 'lite';
+
+    const liteCard = el('div', { class: 'card depth-option selected', role: 'radio', 'aria-pressed': 'true', tabindex: '0' }, [
+      el('div', { class: 'row' }, [
+        el('h2', {}, ['Lite — best for admin & comms work']),
+        el('span', { class: 'chip active' }, ['Recommended']),
+      ]),
+      el('p', {}, ['Reads the structure of your work — no screenshots.']),
+      el('p', { class: 'muted' }, [
+        'email & replies, scheduling, invoicing & chasing payments, CRM, data entry, spreadsheets, docs, project tracking, support.',
+      ]),
+    ]);
+
+    const detailedCard = el('div', { class: 'card depth-option', role: 'radio', 'aria-pressed': 'false', tabindex: '0' }, [
+      el('h2', {}, ['Detailed — best for creative & visual work']),
+      el('p', {}, ['Adds periodic screenshots, processed and deleted on your device, so Nibbin can see inside tools like Photoshop or Premiere.']),
+      el('p', { class: 'muted' }, ['photo/video editing, design, illustration, motion, audio/music production.']),
+      el('p', { class: 'muted' }, [
+        'Asks for Screen Recording permission. Screenshots never leave your device — only redacted text rides your diagnosis.',
+      ]),
+    ]);
+
+    function selectDepth(depth: StudyDepth): void {
+      selected = depth;
+      if (depth === 'lite') {
+        liteCard.classList.add('selected');
+        liteCard.setAttribute('aria-pressed', 'true');
+        detailedCard.classList.remove('selected');
+        detailedCard.setAttribute('aria-pressed', 'false');
+      } else {
+        detailedCard.classList.add('selected');
+        detailedCard.setAttribute('aria-pressed', 'true');
+        liteCard.classList.remove('selected');
+        liteCard.setAttribute('aria-pressed', 'false');
+      }
+    }
+
+    liteCard.addEventListener('click', () => selectDepth('lite'));
+    detailedCard.addEventListener('click', () => selectDepth('detailed'));
+    liteCard.addEventListener('keydown', (e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectDepth('lite'); } });
+    detailedCard.addEventListener('keydown', (e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectDepth('detailed'); } });
+
+    return el('div', {}, [
+      el('p', { class: 'eyebrow' }, ['Field study']),
+      el('h1', {}, ['What kind of work should Nibbin watch?']),
+      liteCard,
+      detailedCard,
+      el('p', { class: 'muted' }, ['Mixed? Start Lite — you can run a Detailed study later.']),
+      el('div', { class: 'row' }, [
+        button('Continue', () => onChosen(selected), 'primary'),
+        button('Back', () => { mount.replaceChildren(); renderChoices(); }),
+      ]),
+    ]);
+  }
+
   // Mint the study, then hand off to the consent screen for this kind. Consent
   // fires `consent`+`start` itself; the daemon's `create_study` reset clears any
   // prior study's store so the new capture starts empty.
   function begin(kind: StudyKind, label: string | null, depth: StudyDepth = 'lite'): void {
     void bridge.createStudy(crypto.randomUUID(), kind, label, depth).then(() => {
-      mount.replaceChildren(consentView(onChanged, kind));
+      mount.replaceChildren(consentView(onChanged, kind, depth));
     });
   }
 
@@ -279,7 +339,7 @@ function entryView(
     ]);
     fullCard.append(
       el('div', { class: 'row' }, [
-        button('Start 14-day field study', () => begin('full_study', null), 'primary'),
+        button('Start 14-day field study', () => { mount.replaceChildren(depthChoiceView('full_study', null, (depth) => begin('full_study', null, depth))); }, 'primary'),
       ]),
     );
 
@@ -301,7 +361,7 @@ function entryView(
           () => {
             const label = scanInput.value.trim().slice(0, 80);
             if (!label) { scanInput.focus(); return; }
-            begin('quick_scan', label);
+            mount.replaceChildren(depthChoiceView('quick_scan', label, (depth) => begin('quick_scan', label, depth)));
           },
           'primary',
         ),
@@ -501,7 +561,7 @@ export function fieldStudyView(_rerender: () => void): HTMLElement {
     if (sub === 'preferences') { mount.append(preferencesView(() => void paint())); return; }
 
     const surface = viewForState(status.state);
-    const study = status.study as { kind?: StudyKind } | null;
+    const study = status.study as { kind?: StudyKind; depth?: StudyDepth } | null;
 
     switch (surface) {
       case 'entry': {
@@ -523,7 +583,7 @@ export function fieldStudyView(_rerender: () => void): HTMLElement {
         break;
       }
       case 'consent':
-        mount.append(consentView(() => void paint(), study?.kind ?? 'full_study'));
+        mount.append(consentView(() => void paint(), study?.kind ?? 'full_study', study?.depth ?? 'lite'));
         break;
       case 'studyOrScan':
         mount.append(
