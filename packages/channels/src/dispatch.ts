@@ -39,12 +39,16 @@ export async function deliverWithFallback(msg: OutboundChannelMessage, ctx: Disp
   const prefBy = new Map(prefs.map((p) => [p.channel, p]));
   const quietNow = quiet ? inQuietHours(ctx.localHour(ctx.now(), msg.accountId), quiet) : false;
 
-  // eligible = verified ∧ enabled ∧ urgency≥threshold ∧ (not quiet OR urgent), ordered by priority asc
+  // eligible = verified ∧ enabled ∧ urgency≥threshold ∧ (not quiet OR urgent) ∧ adapter configured,
+  // ordered by priority asc. A verified channel with no configured adapter port is not deliverable
+  // and is excluded here so the fallback chain can proceed to the next eligible channel instead of
+  // silently skipping it mid-loop.
   const eligible = verified
     .map((v) => ({ v, p: prefBy.get(v.channel) }))
     .filter(({ p }) => p && p.enabled)
     .filter(({ p }) => p!.urgencyThreshold === 'all' || URGENCY_RANK[msg.urgency] >= URGENCY_RANK[p!.urgencyThreshold as Urgency])
     .filter(() => !quietNow || msg.urgency === 'urgent')
+    .filter(({ v }) => ctx.ports.has(v.channel)) // a verified channel with no configured adapter is not deliverable; let the fallback chain handle it
     .sort((a, b) => a.p!.priority - b.p!.priority);
 
   const attempts: { channel: ChannelKind; ok: boolean }[] = [];

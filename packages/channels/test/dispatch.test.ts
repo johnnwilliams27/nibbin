@@ -46,6 +46,8 @@ describe('deliverWithFallback', () => {
     const r = await deliverWithFallback({ accountId: 'a', channel: 'telegram', externalId: '', kind: 'escalation', urgency: 'high', body: 'go?' }, c);
     expect(r.deliveredVia).toBe('floor');
     expect((c as any)._floorWrites).toHaveLength(1);
+    // a fallback log row must have been written
+    expect((c as any)._logs.some((l: any) => l.status === 'fallback')).toBe(true);
   });
 
   it('respects the urgency threshold (sms only takes >= high)', async () => {
@@ -59,5 +61,12 @@ describe('deliverWithFallback', () => {
     const c = ctx({ async quietHours() { return { start: 21, end: 9 }; } }, [port('telegram', true)], 23);
     const r = await deliverWithFallback({ accountId: 'a', channel: 'telegram', externalId: '', kind: 'beat', urgency: 'normal', body: 'evening' }, c);
     expect(r.deliveredVia).toBe('floor');
+  });
+
+  it('in quiet hours, urgent message still delivers via an eligible channel (not floor)', async () => {
+    // §6 allows urgent through quiet hours; §8 would suppress non-urgent. Urgent must NOT fall to floor.
+    const c = ctx({ async quietHours() { return { start: 21, end: 9 }; } }, [port('telegram', true)], 23);
+    const r = await deliverWithFallback({ accountId: 'a', channel: 'telegram', externalId: '', kind: 'escalation', urgency: 'urgent', body: 'wake up' }, c);
+    expect(r.deliveredVia).toBe('telegram');
   });
 });
