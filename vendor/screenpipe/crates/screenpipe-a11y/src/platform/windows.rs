@@ -13,7 +13,7 @@ use anyhow::Result;
 use chrono::Utc;
 use crossbeam_channel::{bounded, Receiver, Sender};
 use parking_lot::Mutex;
-use screenpipe_core::pii_removal::remove_pii;
+// remove_pii dropped: Nibbin redaction is authoritative (local_compat stub)
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::thread;
@@ -509,11 +509,9 @@ fn run_native_hooks(
                             for p in pending {
                                 let content = if capture_content {
                                     get_clipboard_text().map(|c| {
-                                        if apply_pii {
-                                            remove_pii(&c)
-                                        } else {
-                                            c
-                                        }
+                                        // PII removal dropped: Nibbin redaction is authoritative
+                                        let _ = apply_pii;
+                                        c
                                     })
                                 } else {
                                     None
@@ -571,11 +569,8 @@ fn run_native_hooks(
 fn flush_text_buffer(state: &mut HookState) {
     if !state.text_buf.is_empty() {
         let content = std::mem::take(&mut state.text_buf);
-        let text = if state.config.apply_pii_removal {
-            remove_pii(&content)
-        } else {
-            content
-        };
+        // PII removal dropped: Nibbin redaction is authoritative
+        let text = content;
         let event = UiEvent::text(Utc::now(), state.start.elapsed().as_millis() as u64, text);
         let _ = state.tx.try_send(event);
         state.last_text_time = None;

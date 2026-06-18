@@ -16,6 +16,7 @@ export const STUDY_DAYS = 14;
 export const STUDY_DURATION_MS = STUDY_DAYS * 24 * 60 * 60 * 1000;
 
 export type StudyKind = 'full_study' | 'quick_scan';
+export type StudyDepth = 'lite' | 'detailed';
 const QUICK_SCAN_DURATION_MS = 6 * 60 * 60 * 1000;
 
 /** Auto-stop backstop per kind: the full study is the 14-day C2 hard stop; a
@@ -47,6 +48,7 @@ export interface StudySnapshot {
   v: 1;
   studyId: string;
   kind: StudyKind;
+  depth: StudyDepth;
   label: string | null;
   state: StudyState;
   consentedAt: string | null;
@@ -77,7 +79,7 @@ export type StudyCommand =
   | { type: 'synthesis_complete' }
   | { type: 'deletion_verified'; receipt: DeletionReceipt }
   | { type: 'delete_everything' }
-  | { type: 'create_study'; id: string; kind: StudyKind; label: string | null };
+  | { type: 'create_study'; id: string; kind: StudyKind; label: string | null; depth: StudyDepth };
 
 export class InvalidTransitionError extends Error {
   constructor(state: StudyState, command: StudyCommand['type']) {
@@ -90,11 +92,13 @@ export function newStudy(
   studyId: string,
   kind: StudyKind = 'full_study',
   label: string | null = null,
+  depth: StudyDepth = 'lite',
 ): StudySnapshot {
   return {
     v: 1,
     studyId,
     kind,
+    depth,
     label,
     state: 'NOT_STARTED',
     consentedAt: null,
@@ -134,7 +138,7 @@ export function transition(snap: StudySnapshot, cmd: StudyCommand): StudySnapsho
     if (snap.state !== 'NOT_STARTED' && !TERMINAL.has(snap.state)) {
       throw new InvalidTransitionError(snap.state, cmd.type);
     }
-    return newStudy(cmd.id, cmd.kind, cmd.label);
+    return newStudy(cmd.id, cmd.kind, cmd.label, cmd.depth);
   }
 
   switch (cmd.type) {

@@ -11,6 +11,7 @@ export interface StudyStatus {
   remaining_ms: number | null;
   paused: boolean | null;
   pipeline_halted: boolean | null;
+  daemon_health: string | null;
   /** Set by the daemon (observerd) when capture is suspended for a surfaced
    *  reason — e.g. an exclusion failed to persist. null = capture healthy. */
   capture_blocked: string | null;
@@ -52,12 +53,13 @@ export const bridge = {
       remaining_ms: null,
       paused: null,
       pipeline_halted: null,
+      daemon_health: null,
       capture_blocked: null,
       study: null,
     }),
   sendControl: (cmd: string) => call<void>('send_control', { cmd }, undefined),
-  createStudy: (id: string, kind: 'full_study' | 'quick_scan', label: string | null) =>
-    call<void>('create_study', { id, kind, label }, undefined),
+  createStudy: (id: string, kind: 'full_study' | 'quick_scan', label: string | null, depth: 'lite' | 'detailed' = 'lite') =>
+    call<void>('create_study', { id, kind, label, depth }, undefined),
   reviewEvents: () => call<ObserverEvent[]>('review_events', undefined, []),
   reviewDelete: (ids: string[]) => call<void>('review_delete', { ids }, undefined),
   reviewKeep: (ids: string[]) => call<void>('review_keep', { ids }, undefined),

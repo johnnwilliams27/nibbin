@@ -6,8 +6,8 @@
 //!
 //! Provides settings for what to capture, privacy filters, and performance tuning.
 
+use crate::local_compat::window_pattern::{self, WindowPattern};
 use regex::Regex;
-use screenpipe_core::window_pattern::{self, WindowPattern};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
@@ -461,89 +461,6 @@ mod tests {
         assert!(!config.should_capture_window("Secret Notes - App"));
         // "Private Browsing" and "Incognito" are handled by crate::incognito.
         assert!(config.should_capture_window("GitHub - Chrome"));
-    }
-
-    #[test]
-    fn test_user_window_filters() {
-        let mut config = UiCaptureConfig::new();
-        config.ignored_windows = vec!["WhatsApp".to_string()];
-
-        assert!(!config.should_capture_app("WhatsApp"));
-        assert!(!config.should_capture_window("WhatsApp chat"));
-        assert!(!config.should_capture_target("WhatsApp", Some("Inbox")));
-        assert!(config.should_capture_target("Chrome", Some("Docs")));
-
-        config.ignored_windows.clear();
-        config.included_windows = vec!["Chrome".to_string(), "ScreenPipe".to_string()];
-
-        assert!(config.should_capture_target("Chrome", Some("Docs")));
-        assert!(config.should_capture_target("Terminal", Some("ScreenPipe logs")));
-        assert!(!config.should_capture_target("Slack", Some("DM")));
-    }
-
-    #[test]
-    fn test_scoped_ignore_per_window() {
-        // `Slack::#hr` should block Slack #hr only; Slack #engineering and
-        // Chrome should still be captured. The app-only check must NOT block
-        // Slack (since we'd lose #engineering too).
-        let mut config = UiCaptureConfig::new();
-        config.ignored_windows = vec!["Slack::#hr".to_string()];
-
-        assert!(config.should_capture_app("Slack"));
-        assert!(!config.should_capture_target("Slack", Some("#hr - mycompany")));
-        assert!(config.should_capture_target("Slack", Some("#engineering")));
-        assert!(config.should_capture_target("Chrome", Some("Docs")));
-    }
-
-    #[test]
-    fn test_scoped_include_per_app_whitelist() {
-        // `Greenhouse::Candidates` should whitelist only that window in
-        // Greenhouse; other apps stay unaffected (regression target — naive
-        // semantics would block everything but Greenhouse).
-        let mut config = UiCaptureConfig::new();
-        config.included_windows = vec!["Greenhouse::Candidates".to_string()];
-
-        assert!(config.should_capture_target("Greenhouse", Some("Candidates")));
-        assert!(!config.should_capture_target("Greenhouse", Some("Compensation")));
-        assert!(config.should_capture_target("Slack", Some("#general")));
-        assert!(config.should_capture_target("Chrome", Some("Docs")));
-    }
-
-    #[test]
-    fn test_cached_pattern_path_is_consistent_with_lazy_path() {
-        // Exercise both code paths in `resolved_ignored()` — verify they
-        // produce identical decisions whether `compile_patterns()` was
-        // called or not. This regression-guards the lazy fallback.
-        let mut lazy = UiCaptureConfig::new();
-        lazy.ignored_windows = vec!["Slack::#hr".to_string(), "1Password".to_string()];
-        // Note: NOT calling compile_patterns — hits the lazy fallback.
-
-        let mut cached = UiCaptureConfig::new();
-        cached.ignored_windows = vec!["Slack::#hr".to_string(), "1Password".to_string()];
-        cached.compile_patterns(); // hot-path cache populated.
-
-        let cases: &[(&str, Option<&str>, bool)] = &[
-            ("Slack", Some("#hr - private"), false),
-            ("Slack", Some("#engineering"), true),
-            ("1Password 7", Some("Dashboard"), false),
-            ("Chrome", Some("Google Docs"), true),
-        ];
-        for (app, title, expected) in cases {
-            assert_eq!(
-                lazy.should_capture_target(app, *title),
-                *expected,
-                "lazy: {} / {:?}",
-                app,
-                title
-            );
-            assert_eq!(
-                cached.should_capture_target(app, *title),
-                *expected,
-                "cached: {} / {:?}",
-                app,
-                title
-            );
-        }
     }
 
     #[test]

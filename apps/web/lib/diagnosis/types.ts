@@ -62,6 +62,8 @@ export interface SynthesisPacket {
   dailyAppMinutes?: Record<string, Record<string, number>>;
   /** Study kind — full 14-day study or an ad-hoc quick scan. */
   kind?: 'full_study' | 'quick_scan';
+  /** Capture depth: Lite (a11y-only) or Detailed (+screenshots). */
+  depth?: 'lite' | 'detailed';
   /** Optional user-supplied task label for a quick scan. */
   label?: string;
 }

@@ -40,7 +40,10 @@ pub fn read_status<R: Runtime>(app: &AppHandle<R>) -> Result<serde_json::Value, 
     let root = store_root(app)?;
     let status: serde_json::Value = match std::fs::read_to_string(root.join("daemon.status")) {
         Ok(text) => serde_json::from_str(&text)?,
-        Err(_) => serde_json::json!({ "state": "DAEMON_OFFLINE" }),
+        Err(_) => {
+            let health = std::fs::read_to_string(root.join("daemon.health")).ok();
+            serde_json::json!({ "state": "DAEMON_OFFLINE", "daemon_health": health })
+        }
     };
     let study: serde_json::Value = match std::fs::read_to_string(root.join("study.json")) {
         Ok(text) => serde_json::from_str(&text)?,
@@ -51,7 +54,9 @@ pub fn read_status<R: Runtime>(app: &AppHandle<R>) -> Result<serde_json::Value, 
         "remaining_ms": status.get("remaining_ms"),
         "paused": status.get("paused"),
         "pipeline_halted": status.get("pipeline_halted"),
+        "capture_blocked": status.get("capture_blocked"),
         "study": study,
+        "daemon_health": status.get("daemon_health"),
     }))
 }
 
@@ -106,16 +111,21 @@ pub fn review_keep(app: AppHandle, ids: Vec<String>) -> Result<(), String> {
 
 /// Mint a fresh study (full study or ad-hoc quick scan). Forwarded to the
 /// daemon, which applies CreateStudy + clears the store so the new study starts
-/// empty. The id is caller-supplied (unique); kind ∈ {full_study, quick_scan}.
+/// empty. The id is caller-supplied (unique); kind ∈ {full_study, quick_scan};
+/// depth ∈ {lite, detailed} (default: lite).
 #[tauri::command]
 pub fn create_study(
     app: AppHandle,
     id: String,
     kind: String,
     label: Option<String>,
+    depth: String,
 ) -> Result<(), String> {
     if kind != "full_study" && kind != "quick_scan" {
         return Err(format!("bad study kind: {kind}"));
+    }
+    if depth != "lite" && depth != "detailed" {
+        return Err(format!("bad capture depth: {depth}"));
     }
     // Bound the caller-supplied fields so an over-long value can't balloon
     // control.jsonl / study.json (and ride the packet to the server). The id is
@@ -137,6 +147,7 @@ pub fn create_study(
         "study_id": id,
         "kind": kind,
         "label": label,
+        "depth": depth,
     })
     .to_string();
     write_control(&app, &line).map_err(|e| e.to_string())

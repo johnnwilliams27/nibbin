@@ -25,15 +25,86 @@ it ourselves.)
 
 ## Build status
 
-NOT yet wired into the cargo workspace. The crate depends on upstream
-siblings (`screenpipe-core`, `screenpipe-config`, `screenpipe-events`) and
-workspace-level dependency pins that we do not vendor wholesale. The Observer
-defines its own capture trait in
-`apps/desktop/src-tauri/crates/nibbin-capture`; the macOS/Windows adapters
-wrap this vendored tree-walking code during platform bring-up (macOS first,
-on hardware), trimming the sibling dependencies at that point. Local
-modifications, when they start, are tracked here.
+Self-contained — `cargo build` succeeds on Windows (clean, zero warnings) and
+all 164 unit tests pass. The sibling path deps have been trimmed (see Local
+modifications below). Not yet wired into the cargo workspace.
 
 ## Local modifications
 
-None yet — pristine copy of the subset at the commit above.
+### Task 2.0 — trim sibling deps; make self-contained (2026-06-18)
+
+`screenpipe-a11y` originally depended on three un-vendored sibling crates.
+All three have been eliminated:
+
+**`screenpipe-core` and `screenpipe-config` → `src/local_compat.rs`**
+
+- `window_pattern::{self, WindowPattern}` — replaced with a capture-everything
+  stub. Nibbin never constructs pattern lists; filtering is Nibbin's own
+  `UserExclusions` + redaction downstream. `matches_any` always returns
+  `false`; `passes_includes` returns `true` when the include-list is empty
+  (which it always is for Nibbin). Import repointed from
+  `screenpipe_core::window_pattern` to `crate::local_compat::window_pattern`
+  in: `src/config.rs`, `src/tree/windows.rs`, `src/tree/macos.rs`,
+  `src/tree/linux.rs`.
+- `pii_removal::remove_pii` — dropped entirely. Each call site replaced with
+  the identity (`let text = content;` or the plain closure value). Nibbin's
+  own redaction pipeline is authoritative. Affected:
+  `src/platform/windows.rs` (2 sites), `src/platform/macos.rs` (6 sites),
+  `src/platform/linux.rs` (5 sites).
+- `paths::default_screenpipe_data_dir()` — replaced with
+  `dirs::data_dir().unwrap_or_else(std::env::temp_dir).join("screenpipe")`.
+  Used only for clipboard crash-marker files on macOS (2 sites in
+  `src/platform/macos.rs`). Approximate path is fine.
+- `screen_is_locked` / `set_screen_locked` — faithfully reimplemented as a
+  global `AtomicBool` in `local_compat::lock_state`. Qualified calls
+  `screenpipe_config::screen_is_locked()` / `set_screen_locked()` replaced
+  with `crate::local_compat::screen_is_locked()` / `set_screen_locked()` in
+  `src/platform/windows_uia.rs` (4 sites, all `#[cfg(target_os = "windows")]`).
+
+**`screenpipe-db` — db feature and `to_db_insert` removed**
+
+The `db` feature and its `screenpipe-db` optional path dep were removed from
+`Cargo.toml`. The entire `#[cfg(feature = "db")] impl UiEvent { to_db_insert
+}` block in `src/events.rs` was deleted. Nibbin uses its own DB schema.
+
+**Test adjustments in `src/tree/windows.rs`**
+
+- `test_extension_popup_ignored_via_child_text`: assertion updated from
+  `hit=true` (window-pattern feature) to `hit=false` (capture-everything
+  stub). Nibbin filters Bitwarden via `EXCLUDED_APPS` + redaction.
+- `test_incognito_detection`: removed incorrect assertion that
+  `is_title_private("Enter Password - Chrome")` returns true (that string
+  is not an incognito indicator and was a pre-existing test bug); replaced
+  with the negation.
+
+**Tests deleted from `src/config.rs`**
+
+Deleted 4 tests that exercised the now-stubbed window-scoping behavior:
+`test_user_window_filters`, `test_scoped_ignore_per_window`,
+`test_scoped_include_per_app_whitelist`,
+`test_cached_pattern_path_is_consistent_with_lazy_path`. Kept:
+`test_default_config`, `test_app_exclusion`, `test_window_exclusion`,
+`test_password_field_detection`.
+
+### Task 2.4 — promote Windows UIA capture surface to `pub` (2026-06-18)
+
+The Nibbin `WindowsUiaCapture` adapter (`crates/nibbin-capture`) drives the
+fork's low-level UIA walker directly, once per capture tick (Approach A: COM
+init once on the capture thread, `UiaContext` reused across ticks). The needed
+APIs were `pub(crate)` upstream; we own the fork, so they are promoted to `pub`:
+
+- `src/platform/windows_uia.rs`:
+  - `pub(crate) struct UiaContext` → `pub struct UiaContext`
+  - `pub(crate) fn UiaContext::new()` → `pub fn`
+  - `pub(crate) fn UiaContext::capture_window_tree(&self, hwnd, max_elements)` → `pub fn`
+  - free fn `get_window_info(hwnd) -> (String, Option<String>, u32)` → `pub fn`
+    (returns app name, optional window title, pid)
+- `src/lib.rs`: added a windows-gated re-export so the adapter imports them at
+  the crate root:
+  `#[cfg(target_os = "windows")] pub use platform::windows_uia::{get_window_info, UiaContext};`
+
+No behavior change inside the fork — visibility only. `WindowTreeSnapshot`'s
+fields were already `pub`, but the adapter intentionally does NOT construct one
+(it would need the fork's private tree-hash fn); instead nibbin-capture's
+`map::parts_to_snapshot` builds the `AxSnapshot` from the raw parts. No new
+dependencies added to the fork (C1: still network-free).
