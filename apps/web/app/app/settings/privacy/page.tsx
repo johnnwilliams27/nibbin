@@ -5,9 +5,9 @@ import { appSession } from '../../../../lib/auth/app-session';
 import { AppShell } from '../../../../components/shell/AppShell';
 import { SettingsNav } from '../../../../components/settings/SettingsNav';
 import { Card, Button, Badge, InlineFeedback, Select } from '../../../../components/ui';
-import { setContribution, setNotificationPrefs } from './actions';
+import { setContribution, setNotificationPrefs, setSweepConsent } from './actions';
 import { HOUR_OPTIONS } from '../../../../lib/privacy/notifications';
-import { connectionSummary, deletionState, type ConnectionRow } from '../../../../lib/privacy/panel';
+import { connectionSummary, deletionState, sweepConsentRow, type ConnectionRow } from '../../../../lib/privacy/panel';
 import styles from '../../../../components/settings/settings.module.css';
 
 export const metadata: Metadata = { title: 'Data & Privacy — Settings · Nibbin' };
@@ -42,10 +42,11 @@ export default async function PrivacySettingsPage({
 
   const { data: conns } = await supabase
     .from('connections')
-    .select('provider, scopes, status')
+    .select('provider, scopes, status, sweep_consent_at')
     .eq('account_id', accountId)
     .neq('status', 'revoked');
   const summary = connectionSummary((conns ?? []) as ConnectionRow[]);
+  const sweep = sweepConsentRow((conns ?? []) as ConnectionRow[]);
 
   const { data: drip } = await supabase
     .from('drip_arcs')
@@ -132,6 +133,26 @@ export default async function PrivacySettingsPage({
             </Link>
           </div>
         </Card>
+
+        {sweep.gmailConnected && (
+          <Card>
+            <h2 className={styles.sectionTitle}>Learn from my Gmail history</h2>
+            <p className={styles.sectionHint}>
+              A one-time read of about your last 12 months of sent &amp; inbox mail to learn your
+              voice and common questions. Your sent messages are processed by the model; your inbox is
+              reduced to subjects and previews. Only short derived notes are kept.
+            </p>
+            {state === 'sweep_saved' && <InlineFeedback tone="success">Saved.</InlineFeedback>}
+            {error === 'sweep' && <InlineFeedback tone="error">Couldn&apos;t update that — try again.</InlineFeedback>}
+            <div className={styles.actions}>
+              <Badge tone={sweep.consented ? 'moss' : 'neutral'}>{sweep.consented ? 'On' : 'Off'}</Badge>
+              <form action={setSweepConsent}>
+                <input type="hidden" name="enabled" value={sweep.consented ? 'false' : 'true'} />
+                <Button type="submit" variant="secondary">{sweep.consented ? 'Turn off' : 'Turn on'}</Button>
+              </form>
+            </div>
+          </Card>
+        )}
 
         <Card>
           <h2 className={styles.sectionTitle}>Notifications</h2>

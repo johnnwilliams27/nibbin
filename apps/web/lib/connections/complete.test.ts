@@ -6,7 +6,7 @@ import type { StoredToken } from '@nibbin/connectors';
 const base: PendingAuth = {
   state: 's', provider: 'gmail', accountId: 'a', userId: 'u', codeVerifier: 'v',
   scopes: ['https://www.googleapis.com/auth/gmail.readonly'], returnTo: '/app/connections',
-  resumeTemplate: null, nibbinId: null, expiresAt: new Date(99_999).toISOString(), consumedAt: null,
+  resumeTemplate: null, nibbinId: null, sweepConsent: false, expiresAt: new Date(99_999).toISOString(), consumedAt: null,
 };
 const token: StoredToken = { accessToken: 'at', scopes: base.scopes };
 

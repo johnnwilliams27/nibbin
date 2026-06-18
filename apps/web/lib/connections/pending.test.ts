@@ -12,6 +12,7 @@ interface FakeRow {
   resume_template: string | null;
   expires_at: string;
   consumed_at: string | null;
+  sweep_consent: boolean;
 }
 
 /** Fake SupabaseClient that models the atomic conditional-update chain used by consumePending:
@@ -122,4 +123,31 @@ it('consumePending maps nibbin_id = null to nibbinId = null', async () => {
   } as unknown as import('@supabase/supabase-js').SupabaseClient;
   const result = await consumePending('st2', Date.now(), svc);
   expect(result?.nibbinId).toBeNull();
+});
+
+it('round-trips sweepConsent through store → consume (defaults false)', async () => {
+  const rows: Record<string, FakeRow> = {};
+  const svc = fakeSvc(rows);
+
+  // Store with sweepConsent: true
+  await storePending({
+    state: 'sc1', provider: 'gmail', accountId: 'a', userId: 'u',
+    scopes: ['x'], returnTo: null, resumeTemplate: null, expiresAtMs: 10_000,
+    sweepConsent: true,
+  }, svc);
+
+  // The inserted row must carry sweep_consent: true
+  expect(rows['sc1'].sweep_consent).toBe(true);
+
+  // Consuming the row maps it back to sweepConsent: true
+  const result = await consumePending('sc1', 5_000, svc);
+  expect(result?.sweepConsent).toBe(true);
+
+  // An absent sweepConsent (undefined) must default to false when stored
+  await storePending({
+    state: 'sc2', provider: 'gmail', accountId: 'a', userId: 'u',
+    scopes: ['x'], returnTo: null, resumeTemplate: null, expiresAtMs: 10_000,
+  }, svc);
+  const result2 = await consumePending('sc2', 5_000, svc);
+  expect(result2?.sweepConsent).toBe(false);
 });

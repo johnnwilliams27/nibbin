@@ -21,6 +21,7 @@ export interface BeginConnectArgs {
   userEmail: string | null;
   returnTo?: string;
   resumeTemplate?: string;
+  sweepConsent?: boolean;
 }
 
 export interface BeginConnectDeps {
@@ -56,6 +57,7 @@ export async function beginConnect(args: BeginConnectArgs, deps: BeginConnectDep
     returnTo: safeReturnTo(args.returnTo) ?? null,
     resumeTemplate: args.resumeTemplate ?? null,
     expiresAtMs: deps.nowMs + (deps.pendingTtlMs ?? PENDING_TTL_MS),
+    sweepConsent: args.sweepConsent ?? false,
   });
 
   return { url: pending.url };

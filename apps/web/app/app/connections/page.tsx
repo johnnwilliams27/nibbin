@@ -88,9 +88,13 @@ export default async function ConnectionsPage({
                   <input type="hidden" name="returnTo" value="/app/connections" />
                   <button className={styles.connect} type="submit">Connect {p.label}</button>
                   {p.id === 'gmail' && (
-                    <p className={styles.accessNote}>
-                      Connecting does a one-time read of your last 90 days of mail to learn your voice &amp; FAQs — only short derived notes are kept, never the raw mail.
-                    </p>
+                    <label className={styles.accessNote} style={{ display: 'block', marginTop: 8 }}>
+                      <input type="checkbox" name="sweepConsent" />{' '}
+                      Also learn my style from my mail — a one-time read of about my last 12 months of
+                      sent &amp; inbox mail. My sent messages are processed by the model to learn my
+                      voice; my inbox is reduced to subjects and previews. Only short derived notes are
+                      kept. I can turn this off in Data &amp; Privacy.
+                    </label>
                   )}
                 </form>
               ) : (
