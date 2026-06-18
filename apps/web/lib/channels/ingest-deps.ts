@@ -62,7 +62,7 @@ export function buildGateDeps(svc: ReturnType<typeof serviceClient>): TurnGateDe
     async take(accountId, channel) {
       const spendCap = channel === 'sms' ? smsSpendCap : defaultSpendCap;
       const { data, error } = await svc.rpc('channel_turn_take', {
-        p_account_id: accountId,
+        p_account: accountId,
         p_day: todayUtc(),
         p_channel: channel,
         p_turn_limit: turnLimit,

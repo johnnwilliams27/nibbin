@@ -18,4 +18,13 @@ describe('twilio inbound', () => {
     expect(verifyTwilioSignature('tok', url, params, sig)).toBe(true);
     expect(verifyTwilioSignature('tok', url, params, 'bad')).toBe(false);
   });
+  it('fails closed when authToken is empty — attacker cannot forge HMAC with empty key', () => {
+    // An empty authToken (unset env var) must NEVER pass, even when the attacker
+    // supplies a signature computed with the empty string as key.
+    const url = 'https://nibbin.com/api/channels/sms';
+    const params = { From: '+1', Body: 'hi' };
+    const data = url + 'Body' + 'hi' + 'From' + '+1';
+    const forgedSig = createHmac('sha1', '').update(data).digest('base64');
+    expect(verifyTwilioSignature('', url, params, forgedSig)).toBe(false);
+  });
 });

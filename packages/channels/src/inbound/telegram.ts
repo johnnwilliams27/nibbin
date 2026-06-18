@@ -7,6 +7,7 @@ function safeEq(a: string, b: string): boolean {
 }
 
 export function verifyTelegramSecret(expected: string, header: string | null): boolean {
+  if (!expected) return false;
   return header != null && safeEq(expected, header);
 }
 

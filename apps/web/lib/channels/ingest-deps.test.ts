@@ -104,7 +104,7 @@ describe('buildGateDeps — take() spend-cap routing', () => {
     expect(rpcArgs['p_turn_limit']).toBe(TURN_LIMIT_DEFAULT);
     // p_day must be a YYYY-MM-DD string
     expect(rpcArgs['p_day']).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    expect(rpcArgs['p_account_id']).toBe(ACCOUNT_ID);
+    expect(rpcArgs['p_account']).toBe(ACCOUNT_ID);
   });
 
   it('passes the default cap for channel = "telegram" (not SMS)', async () => {
@@ -121,7 +121,7 @@ describe('buildGateDeps — take() spend-cap routing', () => {
     expect(rpcArgs['p_channel_spend_cap_microusd']).toBe(DEFAULT_CAP);
     expect(rpcArgs['p_turn_limit']).toBe(TURN_LIMIT_DEFAULT);
     expect(rpcArgs['p_day']).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    expect(rpcArgs['p_account_id']).toBe(ACCOUNT_ID);
+    expect(rpcArgs['p_account']).toBe(ACCOUNT_ID);
   });
 
   it('SMS cap < default cap (regression guard: SMS must be the lower value)', () => {

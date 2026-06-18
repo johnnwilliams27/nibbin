@@ -20,6 +20,7 @@ export function parseWhatsAppWebhook(body: unknown, now: number): InboundChannel
 }
 
 export function verifyMetaSignature(appSecret: string, rawBody: string, header: string | null): boolean {
+  if (!appSecret) return false;
   if (!header) return false;
   const expected = 'sha256=' + createHmac('sha256', appSecret).update(rawBody).digest('hex');
   const a = Buffer.from(expected), b = Buffer.from(header);

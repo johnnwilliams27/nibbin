@@ -24,4 +24,11 @@ describe('telegram inbound', () => {
     expect(verifyTelegramSecret('s3cret', null)).toBe(false);
     expect(telegramStartLink('NibbinBot', 'ab12cd')).toBe('https://t.me/NibbinBot?start=ab12cd');
   });
+  it('fails closed when configured secret is empty — attacker cannot bypass with empty header', () => {
+    // An empty configured secret must NEVER pass, even when the attacker sends
+    // an empty header (which would compare equal via timingSafeEqual on two
+    // empty buffers without the guard).
+    expect(verifyTelegramSecret('', '')).toBe(false);
+    expect(verifyTelegramSecret('', null)).toBe(false);
+  });
 });

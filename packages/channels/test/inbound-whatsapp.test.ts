@@ -15,4 +15,11 @@ describe('whatsapp inbound', () => {
     expect(verifyMetaSignature('appsecret', raw, sig)).toBe(true);
     expect(verifyMetaSignature('appsecret', raw, 'sha256=bad')).toBe(false);
   });
+  it('fails closed when appSecret is empty — attacker cannot forge HMAC-SHA256 with empty key', () => {
+    // An empty appSecret (unset env var) must NEVER pass, even when the attacker
+    // supplies a signature computed with the empty string as key.
+    const raw = '{"a":1}';
+    const forgedSig = 'sha256=' + createHmac('sha256', '').update(raw).digest('hex');
+    expect(verifyMetaSignature('', raw, forgedSig)).toBe(false);
+  });
 });
