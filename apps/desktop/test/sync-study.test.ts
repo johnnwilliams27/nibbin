@@ -90,9 +90,49 @@ describe('syncStudy review gate', () => {
     expect(res).toEqual({ ok: true, deleted: true });
   });
 
-  it('filterPacket drops workflows by key', () => {
-    const filtered = filterPacket(packet(['a', 'b']), new Set(['a']));
+  it('filterPacket drops whole workflows by key', () => {
+    const filtered = filterPacket(packet(['a', 'b']), {
+      workflows: new Set(['a']),
+      sequences: new Set(),
+      urls: new Set(),
+    });
     expect(filtered.workflows.map((w) => w.key)).toEqual(['b']);
+  });
+
+  it('filterPacket drops individual sequences/urls within a kept workflow (§5.2)', () => {
+    const p = {
+      version: 1,
+      studyId: 's',
+      studyDays: 14,
+      capturedFrom: '2026-06-01T00:00:00Z',
+      capturedTo: '2026-06-15T00:00:00Z',
+      workflows: [
+        {
+          key: 'email.general',
+          label: 'email.general',
+          category: 'other',
+          apps: ['App'],
+          minutesObserved: 10,
+          sessions: 1,
+          sequences: [
+            { steps: ['open', 'reply'], count: 3 },
+            { steps: ['open', 'archive'], count: 2 },
+          ],
+          urlTemplates: ['mail/inbox', 'mail/sent'],
+        },
+      ],
+    } as DiagnosisPacket;
+
+    const filtered = filterPacket(p, {
+      workflows: new Set(),
+      sequences: new Set(['email.general#0']),
+      urls: new Set(['email.general#mail/sent']),
+    });
+    const w = filtered.workflows[0];
+    expect(w.sequences?.map((s) => s.steps.join('>'))).toEqual(['open>archive']);
+    expect(w.urlTemplates).toEqual(['mail/inbox']);
+    // Workflow itself is kept — only its sub-segments were trimmed.
+    expect(filtered.workflows.map((x) => x.key)).toEqual(['email.general']);
   });
 });
 
