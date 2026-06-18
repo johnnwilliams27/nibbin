@@ -7,6 +7,7 @@ import 'server-only';
  * trust-critical write). Events + promotion checks ride after.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { after } from 'next/server';
 import { serviceClient } from '../supabase/service';
 import { SupabaseEventSink } from './stores';
 import { maybePromote } from './engine';
@@ -93,15 +94,28 @@ export async function decideDraft(
   // R2: a degrading Senior/Grad gets a calm, human-only nudge (best-effort).
   await maybeDriftNudge(svc, accountId, run.nibbin_id as string);
 
-  // §12A: learn durable memory from this decision (best-effort, never blocks —
-  // the writer swallows its own errors and re-checks redaction on every entry).
-  await writeMemoryFromDecision({
-    accountId,
-    userId,
-    runId,
-    nibbinId: run.nibbin_id as string,
-    decision,
-  });
+  // §12A: learn durable memory from this decision — EDITED-ONLY (the rich
+  // correction signal; approvals are unedited-by-definition + the common hot
+  // case, rejections low-signal) and DEFERRED via after() so it runs
+  // post-response and never adds an LLM call to the decision latency.
+  // Best-effort throughout — the writer swallows its own errors and re-checks
+  // redaction on every entry; after() survives the serverless response unlike a
+  // bare fire-and-forget.
+  if (decision === 'edited') {
+    try {
+      after(() => {
+        void writeMemoryFromDecision({
+          accountId,
+          userId,
+          runId,
+          nibbinId: run.nibbin_id as string,
+          decision,
+        });
+      });
+    } catch {
+      /* not in a request context (e.g. a test/script) — memory is best-effort, skip */
+    }
+  }
 
   return { decision, promotedTo, firstApproval };
 }
