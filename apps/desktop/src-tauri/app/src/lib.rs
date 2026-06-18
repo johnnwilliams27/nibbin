@@ -190,6 +190,10 @@ pub fn run() {
                 let _ = app.handle().emit("study:hotkey-unavailable", e.to_string());
             }
 
+            // Phase 1: register + start the independent capture daemon. Failure
+            // is surfaced honestly via read_status (daemon_health), never fatal.
+            daemon_supervisor::ensure_daemon_running(&app.handle());
+
             // tray: the study countdown is ALWAYS visible while a study runs
             // (SPEC §5); the value is daemon-derived (daemon.status), the
             // tray only displays it.

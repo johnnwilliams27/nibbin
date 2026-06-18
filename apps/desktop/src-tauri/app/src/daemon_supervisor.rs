@@ -112,3 +112,34 @@ pub fn register_macos(observerd: &Path, store: &Path) -> anyhow::Result<()> {
     anyhow::ensure!(ok.success(), "launchctl bootstrap failed");
     Ok(())
 }
+
+/// Register observerd with the OS scheduler and start it. Never panics: a
+/// registration failure is surfaced via a `daemon.health` note next to the store
+/// (read by read_status) and stderr — the app still runs (P-CB1/P-CB5).
+pub fn ensure_daemon_running<R: Runtime>(app: &AppHandle<R>) {
+    let result = (|| -> anyhow::Result<()> {
+        let obs = observerd_path(app)?;
+        let store = crate::commands::store_root(app)?;
+        #[cfg(target_os = "macos")]
+        { register_macos(&obs, &store)?; }
+        #[cfg(windows)]
+        { register_windows(&obs, &store)?; }
+        // On platforms with no registration path (e.g. Linux/CI) this is a no-op.
+        #[cfg(not(any(target_os = "macos", windows)))]
+        { let _ = (&obs, &store); }
+        Ok(())
+    })();
+    match result {
+        Err(e) => {
+            if let Ok(store) = crate::commands::store_root(app) {
+                let _ = std::fs::write(store.join("daemon.health"), format!("install_failed: {e}"));
+            }
+            eprintln!("daemon registration failed: {e}");
+        }
+        Ok(()) => {
+            if let Ok(store) = crate::commands::store_root(app) {
+                let _ = std::fs::remove_file(store.join("daemon.health")); // clear stale failure
+            }
+        }
+    }
+}

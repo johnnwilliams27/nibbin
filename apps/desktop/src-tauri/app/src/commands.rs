@@ -40,7 +40,10 @@ pub fn read_status<R: Runtime>(app: &AppHandle<R>) -> Result<serde_json::Value, 
     let root = store_root(app)?;
     let status: serde_json::Value = match std::fs::read_to_string(root.join("daemon.status")) {
         Ok(text) => serde_json::from_str(&text)?,
-        Err(_) => serde_json::json!({ "state": "DAEMON_OFFLINE" }),
+        Err(_) => {
+            let health = std::fs::read_to_string(root.join("daemon.health")).ok();
+            serde_json::json!({ "state": "DAEMON_OFFLINE", "daemon_health": health })
+        }
     };
     let study: serde_json::Value = match std::fs::read_to_string(root.join("study.json")) {
         Ok(text) => serde_json::from_str(&text)?,
@@ -52,6 +55,7 @@ pub fn read_status<R: Runtime>(app: &AppHandle<R>) -> Result<serde_json::Value, 
         "paused": status.get("paused"),
         "pipeline_halted": status.get("pipeline_halted"),
         "study": study,
+        "daemon_health": status.get("daemon_health"),
     }))
 }
 
