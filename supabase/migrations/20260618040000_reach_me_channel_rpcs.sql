@@ -18,7 +18,7 @@ set search_path = ''
 as $$
 declare
   uid uuid := (select auth.uid());
-  v_nonce text := encode(gen_random_bytes(18), 'hex');
+  v_nonce text := encode(public.gen_random_bytes(18), 'hex');
 begin
   if uid is null then
     raise exception 'not authenticated';
@@ -41,9 +41,11 @@ revoke execute on function public.request_channel_link(uuid, text) from public, 
 grant execute on function public.request_channel_link(uuid, text) to authenticated;
 
 -- set_channel_prefs: upsert per-channel enable/priority/urgency.
+-- NOTE: parameter named p_channel (not channel) to avoid PL/pgSQL ambiguity
+-- between the parameter and the same-named column in ON CONFLICT target.
 create or replace function public.set_channel_prefs(
   target_account uuid,
-  channel text,
+  p_channel text,
   enabled boolean,
   priority smallint,
   urgency_threshold text
@@ -62,8 +64,8 @@ begin
   if not (select private.is_account_member(target_account)) then
     raise exception 'not a member of this account';
   end if;
-  if channel not in ('push','email','sms','telegram','whatsapp') then
-    raise exception 'unknown channel %', channel;
+  if p_channel not in ('push','email','sms','telegram','whatsapp') then
+    raise exception 'unknown channel %', p_channel;
   end if;
   if priority < 0 or priority > 1000 then
     raise exception 'priority must be between 0 and 1000';
@@ -72,7 +74,7 @@ begin
     raise exception 'invalid urgency threshold %', urgency_threshold;
   end if;
   insert into public.channel_prefs (account_id, channel, enabled, priority, urgency_threshold)
-  values (target_account, set_channel_prefs.channel, set_channel_prefs.enabled,
+  values (target_account, p_channel, set_channel_prefs.enabled,
           set_channel_prefs.priority, set_channel_prefs.urgency_threshold)
   on conflict (account_id, channel) do update
     set enabled = set_channel_prefs.enabled,
@@ -81,7 +83,7 @@ begin
         updated_at = now();
   insert into public.audit_log (account_id, actor, actor_id, action, subject, meta)
   values (target_account, 'user', uid::text, 'channel.prefs_set', target_account::text,
-    jsonb_build_object('channel', set_channel_prefs.channel, 'enabled', set_channel_prefs.enabled, 'priority', set_channel_prefs.priority,
+    jsonb_build_object('channel', p_channel, 'enabled', set_channel_prefs.enabled, 'priority', set_channel_prefs.priority,
                        'urgency_threshold', set_channel_prefs.urgency_threshold));
 end;
 $$;
