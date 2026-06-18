@@ -12,8 +12,9 @@ import 'server-only';
  * quarantined results, and end with one proposed action (a draft). They never
  * touch a connector directly and never see an unquarantined byte.
  */
-import type { QuarantinedContent } from '@nibbin/connectors';
 import {
+  digestInboxCleanup,
+  digestMorning,
   interpretSpec,
   nudgeOverdueEmail,
   nudgeOverdueInvoice,
@@ -21,67 +22,10 @@ import {
   replyNewInquiry,
   type AgentSpec,
   type ProgramFn,
-  type ProgramStep,
 } from '@nibbin/runtime';
-import { parseQuarantinedJson } from '@nibbin/scan';
 
 /** Provider → connection id for the adopting account. */
 export type ConnectionMap = Partial<Record<string, string>>;
-
-function gmailListPath(scope: 'in:inbox' | 'in:sent', sinceMs: number): string {
-  const d = new Date(sinceMs);
-  const day = `${d.getUTCFullYear()}/${String(d.getUTCMonth() + 1).padStart(2, '0')}/${String(d.getUTCDate()).padStart(2, '0')}`;
-  const params = new URLSearchParams({ q: `after:${day} ${scope}`, maxResults: '100' });
-  return `/gmail/v1/users/me/messages?${params}`;
-}
-
-function gmailMetaPath(id: string): string {
-  const meta = new URLSearchParams({ format: 'metadata' });
-  for (const h of ['From', 'To', 'Subject', 'Date', 'List-Unsubscribe', 'In-Reply-To']) {
-    meta.append('metadataHeaders', h);
-  }
-  return `/gmail/v1/users/me/messages/${encodeURIComponent(id)}?${meta}`;
-}
-
-interface GmailMeta {
-  id: string;
-  threadId: string;
-  internalDate?: string;
-  payload?: { headers?: Array<{ name: string; value: string }> };
-}
-
-function header(m: GmailMeta, name: string): string | undefined {
-  return m.payload?.headers?.find((h) => h.name.toLowerCase() === name.toLowerCase())?.value;
-}
-
-const DAY = 86_400_000;
-// Sampled per scope; ×2 scopes + 2 list calls must stay under the run's
-// maxSteps ceiling (120) with headroom (cost-auditor P1-1).
-const MAIL_SAMPLE = 40;
-
-interface MailScan {
-  inbox: GmailMeta[];
-  sent: GmailMeta[];
-}
-
-/** Shared mailbox sweep used by several programs. */
-async function* readMailbox(
-  connectionId: string,
-  nowMs: number,
-): AsyncGenerator<ProgramStep, MailScan, QuarantinedContent | undefined> {
-  const since = nowMs - 90 * DAY;
-  const out: MailScan = { inbox: [], sent: [] };
-  for (const scope of ['in:inbox', 'in:sent'] as const) {
-    const listRes = yield { kind: 'read', capability: 'email.read', connectionId, path: gmailListPath(scope, since) };
-    const list = listRes ? parseQuarantinedJson<{ messages?: Array<{ id: string }> }>(listRes) : null;
-    for (const ref of (list?.messages ?? []).slice(0, MAIL_SAMPLE)) {
-      const metaRes = yield { kind: 'read', capability: 'email.read', connectionId, path: gmailMetaPath(ref.id) };
-      const meta = metaRes ? parseQuarantinedJson<GmailMeta>(metaRes) : null;
-      if (meta) (scope === 'in:inbox' ? out.inbox : out.sent).push(meta);
-    }
-  }
-  return out;
-}
 
 /* ── Programs ─────────────────────────────────────────────────────────────── */
 
@@ -112,12 +56,6 @@ export function buildProgram(spec: AgentSpec, connections: ConnectionMap, nowMs:
   }
 }
 
-function requireConn(connections: ConnectionMap, provider: string): string {
-  const id = connections[provider];
-  if (!id) throw new Error(`no active ${provider} connection — pausing politely`);
-  return id;
-}
-
 /**
  * Echo delegates to the SHARED `nudge.overdue-email` primitive implementation
  * (packages/runtime) — the template and the composable primitive are now the
@@ -136,33 +74,17 @@ function echoProgram(connections: ConnectionMap, nowMs: number): ProgramFn {
   return nudgeOverdueEmail({ staleDays: 3 }, connections, nowMs);
 }
 
+/**
+ * Sweep delegates to the SHARED `digest.inbox-cleanup` PRESENTATION primitive
+ * implementation (packages/runtime) — the template and the composable primitive
+ * are the SAME code, so a synthesized inbox-cleanup digest behaves byte-for-byte
+ * like Sweep (differential parity test). The "no gmail connection" pause lives
+ * INSIDE the primitive's generator (Slice-2a P1), not here at build time. It is
+ * presentation-only: the yielded draft reads (email.read) + presents — nothing
+ * is sent or deleted.
+ */
 function sweepProgram(connections: ConnectionMap, nowMs: number): ProgramFn {
-  return async function* () {
-    const gmail = requireConn(connections, 'gmail');
-    const mail = yield* readMailbox(gmail, nowMs);
-    const noise = mail.inbox.filter((m) => header(m, 'List-Unsubscribe'));
-    const senders = new Map<string, number>();
-    for (const m of noise) {
-      const from = (header(m, 'From') ?? 'unknown').replace(/.*<|>.*/g, '');
-      senders.set(from, (senders.get(from) ?? 0) + 1);
-    }
-    const top = [...senders.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
-    yield {
-      kind: 'draft',
-      capability: 'email.read',
-      connectionId: gmail,
-      patternKey: 'sweep:keep-or-clear',
-      presentation: true,
-      title: 'This morning’s sweep',
-      draft:
-        top.length === 0
-          ? 'Your inbox floor is clean — no newsletter pile worth clearing today.'
-          : `${noise.length} newsletter-ish messages are sitting in your inbox. The biggest piles:\n` +
-            top.map(([s, n]) => `• ${s} — ${n} messages`).join('\n') +
-            '\nSay the word and I’ll keep flagging these for a one-tap clear.',
-      effectArgs: { senders: top.map(([s]) => s) },
-    };
-  };
+  return digestInboxCleanup({ topSenders: 5 }, connections, nowMs);
 }
 
 /**
@@ -176,77 +98,17 @@ function scribeProgram(connections: ConnectionMap, nowMs: number): ProgramFn {
   return replyNewInquiry({}, connections, nowMs);
 }
 
+/**
+ * Brief delegates to the SHARED 3-CONNECTOR `digest.morning` PRESENTATION
+ * primitive implementation — byte-for-byte identical to the primitive (the
+ * differential parity test drives both). It reads the calendar (gcal), Stripe
+ * invoices (stripe), and fresh mail (gmail), then presents one 3-part morning
+ * digest. The "no calendar/stripe/gmail connection" pause lives INSIDE the
+ * primitive's generator and checks ALL THREE connectors up front (Slice-2a P1).
+ * Presentation-only — nothing is sent.
+ */
 function briefProgram(connections: ConnectionMap, nowMs: number): ProgramFn {
-  return async function* () {
-    const gmail = requireConn(connections, 'gmail');
-    const gcal = requireConn(connections, 'google-calendar');
-    const stripe = requireConn(connections, 'stripe');
-
-    const evParams = new URLSearchParams({
-      timeMin: new Date(nowMs - DAY).toISOString(),
-      timeMax: new Date(nowMs + 2 * DAY).toISOString(),
-      singleEvents: 'true',
-      maxResults: '250',
-      orderBy: 'startTime',
-    });
-    const evRes = yield {
-      kind: 'read',
-      capability: 'calendar.read',
-      connectionId: gcal,
-      path: `/calendar/v3/calendars/primary/events?${evParams}`,
-    };
-    const events =
-      (evRes && parseQuarantinedJson<{ items?: Array<{ summary?: string; start?: { dateTime?: string } }> }>(evRes))
-        ?.items ?? [];
-
-    const invParams = new URLSearchParams({
-      'created[gte]': String(Math.floor((nowMs - 90 * DAY) / 1000)),
-      limit: '100',
-    });
-    const invRes = yield {
-      kind: 'read',
-      capability: 'payments.read',
-      connectionId: stripe,
-      path: `/v1/invoices?${invParams}`,
-    };
-    const invoices =
-      (invRes &&
-        parseQuarantinedJson<{ data?: Array<{ status?: string; due_date?: number | null; amount_due?: number }> }>(invRes))
-        ?.data ?? [];
-    const overdue = invoices.filter(
-      (i) => i.status === 'open' && typeof i.due_date === 'number' && i.due_date * 1000 < nowMs,
-    );
-    const overdueDollars = Math.round(overdue.reduce((s, i) => s + (i.amount_due ?? 0), 0) / 100);
-
-    const mailList = yield {
-      kind: 'read',
-      capability: 'email.read',
-      connectionId: gmail,
-      path: gmailListPath('in:inbox', nowMs - 2 * DAY),
-    };
-    const freshMail = (mailList && parseQuarantinedJson<{ messages?: unknown[] }>(mailList))?.messages?.length ?? 0;
-
-    const upcoming = events
-      .slice(0, 3)
-      .map((e) => `• ${e.summary ?? 'Booked session'}${e.start?.dateTime ? ` — ${new Date(e.start.dateTime).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' })}` : ''}`)
-      .join('\n');
-    yield {
-      kind: 'draft',
-      capability: 'email.read',
-      connectionId: gmail,
-      patternKey: 'brief:morning-digest',
-      presentation: true,
-      title: 'Your morning, the short version',
-      draft: [
-        events.length > 0 ? `Next on the calendar:\n${upcoming}` : 'Calendar is clear through tomorrow.',
-        freshMail > 0 ? `${freshMail} new messages landed in the last two days.` : 'Inbox has been quiet.',
-        overdue.length > 0
-          ? `${overdue.length} invoices are past due — $${overdueDollars.toLocaleString('en-US')} you already earned.`
-          : 'No invoices are past due. Money side is tidy.',
-      ].join('\n\n'),
-      effectArgs: { events: events.length, freshMail, overdue: overdue.length },
-    };
-  };
+  return digestMorning({}, connections, nowMs);
 }
 
 /**

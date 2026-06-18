@@ -14,6 +14,8 @@
  * patternKey shape the programs do.
  */
 import type { ProgramFn } from './runner';
+import { digestInboxCleanup } from './primitives/digest-inbox-cleanup';
+import { digestMorning } from './primitives/digest-morning';
 import { nudgeOverdueEmail } from './primitives/nudge-overdue-email';
 import { nudgeOverdueInvoice } from './primitives/nudge-overdue-invoice';
 import { nudgeUnconfirmedEvent } from './primitives/nudge-unconfirmed-event';
@@ -148,6 +150,45 @@ export const CAPABILITY_REGISTRY: Record<string, CapabilityDescriptor> = {
     inputSchema: {},
     effectiveTools: ['email.read', 'email.draft'],
   },
+
+  // ── Digest / summarize shape (design §2; Slice 2c) — PRESENTATION primitives ─
+  // Read → present, no side effect. The yielded draft is a READ capability
+  // (email.read) with presentation:true, so the runner gates it as a draft
+  // ALWAYS and never executes — strictly lower-stakes than the nudge family.
+  // From `sweep`: sweep the mailbox, group newsletter-ish senders, present a
+  // top-N keep-or-clear digest. Presentation only — nothing is sent or deleted.
+  'digest.inbox-cleanup': {
+    id: 'digest.inbox-cleanup',
+    resource: 'email',
+    verb: 'digest',
+    sideEffect: 'read',
+    requiredConnector: 'gmail',
+    patternKeyPrefix: 'sweep',
+    kind: 'primitive',
+    inputSchema: {
+      topSenders: { type: 'number', default: 5, min: 1, max: 20 },
+    },
+    // The digest reads the mailbox (email.read) and presents the keep-or-clear
+    // list as a presentation draft (also email.read — no send). One tool.
+    effectiveTools: ['email.read'],
+  },
+  // From `brief`: the 3-CONNECTOR aggregation — read the calendar
+  // (google-calendar), Stripe invoices (stripe), and fresh mail (gmail), then
+  // compose ONE 3-part morning digest. The Composer derives ALL THREE connectors
+  // from effectiveTools; `requiredConnector` is just the primitive's "home"
+  // resource. Presentation only — nothing is sent.
+  'digest.morning': {
+    id: 'digest.morning',
+    resource: 'calendar',
+    verb: 'digest',
+    sideEffect: 'read',
+    requiredConnector: 'google-calendar',
+    patternKeyPrefix: 'brief',
+    kind: 'primitive',
+    // No scalar knob — brief has fixed windows. An empty schema is valid.
+    inputSchema: {},
+    effectiveTools: ['calendar.read', 'payments.read', 'email.read'],
+  },
 };
 
 /**
@@ -175,6 +216,13 @@ export const PRIMITIVE_IMPLS: Record<string, PrimitiveImpl> = {
       nowMs,
     ),
   'reply.new-inquiry': (_inputs, connMap, nowMs) => replyNewInquiry({}, connMap, nowMs),
+  'digest.inbox-cleanup': (inputs, connMap, nowMs) =>
+    digestInboxCleanup(
+      { topSenders: typeof inputs.topSenders === 'number' ? inputs.topSenders : undefined },
+      connMap,
+      nowMs,
+    ),
+  'digest.morning': (_inputs, connMap, nowMs) => digestMorning({}, connMap, nowMs),
 };
 
 export function capability(id: string): CapabilityDescriptor | undefined {
