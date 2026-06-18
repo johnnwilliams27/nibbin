@@ -40,18 +40,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const svc = serviceClient();
 
-  // Look up connection by webhook_state.email (Decision B from the design)
+  // Resolve the active Gmail connection by its seeded webhook_state.email
+  // (Decision B). A Pub/Sub notification carries only the mailbox address, so
+  // limit(1) keeps resolution deterministic and bounded.
   const { data: rows } = await svc
     .from('connections')
     .select('*')
     .eq('provider', 'gmail')
     .eq('status', 'active')
-    .contains('webhook_state', { email: emailAddress });
+    .contains('webhook_state', { email: emailAddress })
+    .limit(1);
 
   const connection = rows?.[0] ? connectionFromRow(rows[0] as Record<string, unknown>) : null;
   if (!connection) {
-    // No connection found — ack to prevent Pub/Sub retry storm
-    // (Flag 3: no-op until Spec 1 seeds webhook_state.email)
+    // No active connection for this mailbox — ack so Pub/Sub doesn't retry-storm.
     return NextResponse.json({ ok: true });
   }
 

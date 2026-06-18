@@ -52,6 +52,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   for (const row of due) {
     try {
       const connection = connectionFromRow(row as Record<string, unknown>);
+      const ws = (row as { webhook_state?: Record<string, unknown> | null }).webhook_state;
+      const existingCursor = ws && typeof ws.historyId === 'string' ? ws.historyId : null;
       const client = new GmailClient(connection, vault);
       // Seed the mailbox address: a Pub/Sub push notification carries only the
       // emailAddress, and the push webhook maps it back to this connection via
@@ -62,7 +64,12 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
       const patch: Record<string, string> = {};
       if (profile.emailAddress) patch.email = profile.emailAddress;
-      if (historyId) patch.historyId = historyId;
+      // Only seed historyId when BOOTSTRAPPING the first watch (no cursor yet).
+      // On renew the connection already holds a delta cursor at the last-processed
+      // message; watch() returns the mailbox's CURRENT historyId, so overwriting
+      // would skip every message in the gap (silent loss). The delta cursor is
+      // advanced only by the push/poll dispatch path, never here.
+      if (historyId && !existingCursor) patch.historyId = historyId;
       // Gmail watches last ~7 days. If the API omits expiration, set a 7-day
       // floor so a watch that returned no expiration is not re-registered on
       // every single cron run.

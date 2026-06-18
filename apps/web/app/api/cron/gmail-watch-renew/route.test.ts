@@ -4,7 +4,9 @@ import { NextRequest } from 'next/server';
 const SECRET = 'renew-secret';
 
 // Shared mutable state so each test can set the rows the query returns.
-const { mockState } = vi.hoisted(() => ({ mockState: { rows: [] as Record<string, unknown>[] } }));
+const { mockState } = vi.hoisted(() => ({
+  mockState: { rows: [] as Record<string, unknown>[], rpcCalls: [] as { name: string; params: Record<string, unknown> }[] },
+}));
 
 function makeReq(authorization?: string): NextRequest {
   return new NextRequest('http://localhost/api/cron/gmail-watch-renew', {
@@ -22,7 +24,10 @@ vi.mock('../../../../lib/supabase/service', () => ({
         })),
       })),
     })),
-    rpc: vi.fn().mockResolvedValue({ error: null }),
+    rpc: vi.fn((name: string, params: Record<string, unknown>) => {
+      mockState.rpcCalls.push({ name, params });
+      return Promise.resolve({ error: null });
+    }),
   })),
 }));
 
@@ -59,6 +64,7 @@ describe('GET /api/cron/gmail-watch-renew', () => {
     process.env.SUPABASE_SECRET_KEY = 'test-key';
     process.env.GMAIL_PUBSUB_TOPIC = 'projects/test/topics/gmail-events';
     mockState.rows = [];
+    mockState.rpcCalls = [];
     vi.clearAllMocks();
   });
 
@@ -107,5 +113,25 @@ describe('GET /api/cron/gmail-watch-renew', () => {
     const { GET } = await import('./route');
     const res = await GET(makeReq(`Bearer ${SECRET}`));
     expect(await res.json()).toMatchObject({ registered: 1, errors: [] });
+  });
+
+  it('does NOT overwrite an existing historyId cursor on renew (regression guard)', async () => {
+    // watch() returns the mailbox's CURRENT historyId; clobbering an existing
+    // delta cursor would silently skip every message in the gap.
+    const soon = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    mockState.rows = [{ id: 'c1', account_id: 'a1', webhook_state: { watchExpiry: soon, historyId: 'cursor-existing' } }];
+    const { GET } = await import('./route');
+    await GET(makeReq(`Bearer ${SECRET}`));
+    const merge = mockState.rpcCalls.find((c) => c.name === 'jsonb_merge_connection_state');
+    expect(merge).toBeTruthy();
+    expect((merge!.params.p_patch as Record<string, unknown>).historyId).toBeUndefined();
+  });
+
+  it('seeds historyId when bootstrapping a connection with no cursor', async () => {
+    mockState.rows = [{ id: 'c1', account_id: 'a1', webhook_state: {} }];
+    const { GET } = await import('./route');
+    await GET(makeReq(`Bearer ${SECRET}`));
+    const merge = mockState.rpcCalls.find((c) => c.name === 'jsonb_merge_connection_state');
+    expect((merge!.params.p_patch as Record<string, unknown>).historyId).toBe('999');
   });
 });

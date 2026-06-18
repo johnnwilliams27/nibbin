@@ -17,7 +17,9 @@ vi.mock('../../../../../lib/supabase/service', () => ({
       select: vi.fn(() => ({
         eq: vi.fn(() => ({
           eq: vi.fn(() => ({
-            contains: vi.fn(() => Promise.resolve({ data: [], error: null })),
+            contains: vi.fn(() => ({
+              limit: vi.fn(() => Promise.resolve({ data: [], error: null })),
+            })),
           })),
         })),
       })),
