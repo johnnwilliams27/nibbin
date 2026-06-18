@@ -28,6 +28,8 @@
 import { describe, expect, it } from 'vitest';
 import { quarantine } from '@nibbin/connectors';
 import {
+  digestInboxCleanup,
+  digestMorning,
   nudgeOverdueEmail,
   nudgeOverdueInvoice,
   nudgeUnconfirmedEvent,
@@ -164,6 +166,53 @@ function gcalGmailReader(): (path: string) => string {
   };
 }
 
+/** sweep fixture: an inbox of newsletter-ish messages (List-Unsubscribe set)
+ *  from SEVEN DISTINCT senders, no sent. With > 5 distinct senders the top-N
+ *  slice is sensitive to `topSenders`: slice(0,5) ≠ slice(0,3) ≠ slice(0,7).
+ *  A drift in the template's delegated default (e.g. topSenders:3) therefore
+ *  changes the digest list length and FAILS this parity case (FIX 2). */
+const SWEEP_SENDERS = 7;
+function sweepReader(): (path: string) => string {
+  return (path) => {
+    if (path.includes('/messages?')) {
+      const isSent = path.includes('in%3Asent') || path.includes('in:sent');
+      if (isSent) return '{"messages":[]}';
+      const ids = Array.from({ length: SWEEP_SENDERS }, (_v, i) => `{"id":"n${i}"}`).join(',');
+      return `{"messages":[${ids}]}`;
+    }
+    // metadata fetch — derive the (distinct) sender index from the id in the
+    // path. Each message has a distinct From + a List-Unsubscribe header, so
+    // every one counts as its own sender pile. Descending message counts keep
+    // the sort order deterministic and the top-N slice meaningful.
+    const m = path.match(/n(\d+)/);
+    const i = m ? Number(m[1]) : 0;
+    return gmailMeta(
+      `n${i}`,
+      { From: `Newsletter ${i} <news${i}@example.com>`, Subject: 'Weekly digest', 'List-Unsubscribe': '<mailto:unsub@x>' },
+      NOW - 1 * DAY,
+    );
+  };
+}
+
+/** brief fixture: 1 calendar event + 1 overdue invoice + fresh inbox messages.
+ *  All three reads return data so every line of the digest is exercised. */
+function briefReader(): (path: string) => string {
+  return (path) => {
+    if (path.includes('/calendar/')) {
+      return JSON.stringify({
+        items: [{ summary: 'Discovery call', start: { dateTime: new Date(NOW + DAY).toISOString() } }],
+      });
+    }
+    if (path.includes('/v1/invoices')) {
+      return JSON.stringify({
+        data: [{ id: 'in_1', status: 'open', due_date: Math.floor((NOW - 5 * DAY) / 1000), amount_due: 12_345 }],
+      });
+    }
+    // gmail fresh-mail list (in:inbox over 2 days).
+    return '{"messages":[{"id":"m1"},{"id":"m2"}]}';
+  };
+}
+
 /* ── the differential parity matrix ─────────────────────────────────────────── */
 
 interface Case {
@@ -199,6 +248,19 @@ const CASES: Case[] = [
     primitive: replyNewInquiry({}, { gmail: GMAIL }, NOW),
     connMap: { gmail: GMAIL },
     reader: mailboxReader(),
+  },
+  // Slice 2c — the digest/summarize shape (presentation primitives).
+  {
+    templateKey: 'sweep',
+    primitive: digestInboxCleanup({ topSenders: 5 }, { gmail: GMAIL }, NOW),
+    connMap: { gmail: GMAIL },
+    reader: sweepReader(),
+  },
+  {
+    templateKey: 'brief',
+    primitive: digestMorning({}, { 'google-calendar': GCAL, stripe: STRIPE, gmail: GMAIL }, NOW),
+    connMap: { 'google-calendar': GCAL, stripe: STRIPE, gmail: GMAIL },
+    reader: briefReader(),
   },
 ];
 

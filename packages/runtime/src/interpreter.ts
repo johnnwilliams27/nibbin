@@ -242,6 +242,21 @@ export function interpretSpec(spec: AgentSpec, connMap: ConnectionMap, nowMs: nu
           const r = await gen.next(fed as QuarantinedContent);
           if (r.done) break;
           const step = r.value;
+          // STRUCTURAL read↔presentation invariant (FIX 3): a read-sideEffect
+          // primitive may yield a side-effect (draft/write) step ONLY as a
+          // PRESENTATION — the runner gates presentation steps as draft ALWAYS,
+          // never executing. (A draft/write capability surfaces as a DraftStep,
+          // `kind:'draft'`; ProgramStep has no separate 'write' kind.) A
+          // non-presentation draft from a read-classified capability would
+          // reach the School gate as an EXECUTABLE draft, promoting a read into
+          // an autonomous write. Reject it so the run fails cleanly rather than
+          // relying on every primitive author's convention. Belt-and-suspenders:
+          // the two shipped digests already satisfy this — a no-op for them.
+          if (cap.sideEffect === 'read' && step.kind === 'draft' && step.presentation !== true) {
+            throw new Error(
+              `read-capability primitive '${cap.id}' yielded a non-presentation side effect`,
+            );
+          }
           const safe =
             step.kind === 'draft'
               ? ({ ...step, effectArgs: sanitizeEffectArgs(step.effectArgs) } satisfies ProgramStep)

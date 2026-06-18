@@ -101,6 +101,10 @@ const PRIMITIVE_DESCRIPTION: Record<string, string> = {
     'watch the calendar for upcoming events with an unconfirmed guest (next N days) and draft a confirmation email',
   'reply.new-inquiry':
     'watch the inbox for a new first-contact inquiry and draft a warm first reply',
+  'digest.inbox-cleanup':
+    'each morning, scan the inbox for newsletter pile-ups and present a top-N keep-or-clear list — read-only, nothing is sent or deleted',
+  'digest.morning':
+    'each morning, pull the day together — next on the calendar, fresh mail, and any overdue invoices — into one short brief (read-only, nothing is sent)',
 };
 
 function menuText(prims: CapabilityDescriptor[]): string {
@@ -202,6 +206,8 @@ const PRIMITIVE_NAME: Record<string, string> = {
   'nudge.overdue-invoice': 'Invoice nudges',
   'nudge.unconfirmed-event': 'Booking confirmations',
   'reply.new-inquiry': 'New-inquiry replies',
+  'digest.inbox-cleanup': 'Morning inbox sweep',
+  'digest.morning': 'Morning brief',
 };
 
 /**
@@ -219,21 +225,47 @@ function mapWorkflowToPrimitive(workflow: DiagnosisWorkflow, prims: CapabilityDe
   const has = (id: string) => prims.some((p) => p.id === id);
   const text = `${workflow.label} ${workflow.friction ?? ''}`.toLowerCase();
   const looksLikeInquiry = /inquir|lead|first[- ]?contact|new client|prospect/.test(text);
+  // Digest (presentation) signals — checked first, since they describe a
+  // "summarize, don't act" workflow that the nudge family would mis-serve.
+  const looksLikeMorningBrief =
+    /morning[- ]?(plan|brief|overview|routine)|daily[- ]?(overview|brief|digest|round)|start (my|the) day|stay on top|plan (my|the) day|what'?s on (my|the) (day|plate)/.test(
+      text,
+    );
+  const looksLikeInboxOverwhelm =
+    /triage|unsubscrib|newsletter|inbox (overwhelm|overload|pile|clutter|cleanup|clean[- ]?up|zero)|too much email|email (overload|overwhelm)|declutter/.test(
+      text,
+    );
 
   let preferred: string;
-  switch (workflow.category) {
-    case 'payments':
-      preferred = 'nudge.overdue-invoice';
-      break;
-    case 'calendar':
-      preferred = 'nudge.unconfirmed-event';
-      break;
-    case 'email':
-      preferred = looksLikeInquiry ? 'reply.new-inquiry' : 'nudge.overdue-email';
-      break;
-    default:
-      preferred = looksLikeInquiry ? 'reply.new-inquiry' : 'nudge.overdue-email';
-  }
+  // A morning-brief / daily-overview signal wins regardless of category — it is
+  // the only multi-source (calendar+payments+email) read aggregation.
+  if (looksLikeMorningBrief && has('digest.morning')) {
+    preferred = 'digest.morning';
+  } else
+    switch (workflow.category) {
+      case 'payments':
+        preferred = 'nudge.overdue-invoice';
+        break;
+      case 'calendar':
+        preferred = 'nudge.unconfirmed-event';
+        break;
+      case 'email':
+        // An inbox-overwhelm / triage / newsletter signal → the read-only
+        // keep-or-clear digest; a first-contact signal → the inquiry reply;
+        // else the generic overdue follow-up.
+        preferred = looksLikeInboxOverwhelm
+          ? 'digest.inbox-cleanup'
+          : looksLikeInquiry
+            ? 'reply.new-inquiry'
+            : 'nudge.overdue-email';
+        break;
+      default:
+        preferred = looksLikeInboxOverwhelm
+          ? 'digest.inbox-cleanup'
+          : looksLikeInquiry
+            ? 'reply.new-inquiry'
+            : 'nudge.overdue-email';
+    }
   if (has(preferred)) return preferred;
   // Mapped primitive's connectors aren't all granted — fall back to whatever
   // the account CAN run (first available), so synthesis still produces a Nibbin.
@@ -275,6 +307,12 @@ function summarize(cap: CapabilityDescriptor, spec: AgentSpec, workflow: Diagnos
     }
     case 'reply.new-inquiry':
       return `Watch your inbox for a new first-contact inquiry, then draft a warm first reply for your approval. ${tail}`;
+    case 'digest.inbox-cleanup': {
+      const topSenders = (p.topSenders as number | undefined) ?? 5;
+      return `Scan your inbox each morning for newsletter pile-ups and show you a top-${topSenders} keep-or-clear list — read-only, nothing is deleted or sent without you. It works on “${workflow.label}” and needs your ${conns} connection.`;
+    }
+    case 'digest.morning':
+      return `Every morning, pull your day together — next on the calendar, fresh mail, and any overdue invoices — into one short brief. It only reads and presents: nothing is ever sent. It works on “${workflow.label}” and needs your ${conns} connection.`;
     default:
       return `Automate “${workflow.label}” — drafts only, for your approval, until it earns more.`;
   }

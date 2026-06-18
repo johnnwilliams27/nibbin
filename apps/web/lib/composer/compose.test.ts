@@ -66,6 +66,30 @@ const INQUIRY_WF: DiagnosisWorkflow = {
   recommendedNibbin: 'scribe',
 };
 
+/** A triage / inbox-overwhelm email workflow → the read-only keep-or-clear
+ *  digest (digest.inbox-cleanup), not a nudge. */
+const TRIAGE_WF: DiagnosisWorkflow = {
+  key: 'email.triage',
+  label: 'Triaging newsletter overload',
+  category: 'email',
+  hoursPerWeek: 2,
+  frequency: 'daily',
+  friction: 'Too much email — newsletters pile up and you want to unsubscribe.',
+  recommendedNibbin: 'sweep',
+};
+
+/** A morning-planning / daily-overview workflow → the 3-source morning brief
+ *  (digest.morning). Category 'other' so the morning-brief text signal drives it. */
+const DAILY_OVERVIEW_WF: DiagnosisWorkflow = {
+  key: 'daily.overview',
+  label: 'Pulling together a morning brief',
+  category: 'other',
+  hoursPerWeek: 1,
+  frequency: 'daily',
+  friction: 'You want to start the day with a daily overview and stay on top of things.',
+  recommendedNibbin: 'brief',
+};
+
 function fakeResult(text: string): GenerateResult {
   return {
     text,
@@ -140,6 +164,37 @@ describe('composeSpec', () => {
     const result = await composeSpec('acct-1', 'user-1', PAYMENTS_WF, ['gmail']);
     if ('error' in result) throw new Error(result.error);
     expect(['nudge.overdue-email', 'reply.new-inquiry']).toContain(result.spec.steps?.[0]?.capability);
+    expect(validateComposedSpec(result.spec, ['gmail'])).toEqual([]);
+  });
+
+  it('no-key fallback maps a triage/inbox-overwhelm workflow → digest.inbox-cleanup (presentation, validates)', async () => {
+    const result = await composeSpec('acct-1', 'user-1', TRIAGE_WF, ['gmail']);
+    if ('error' in result) throw new Error(result.error);
+    expect(result.spec.steps?.[0]?.capability).toBe('digest.inbox-cleanup');
+    expect(result.spec.requiredConnectors).toEqual(['gmail']);
+    expect(result.spec.toolsAllowlist).toEqual(['email.read']);
+    expect(validateComposedSpec(result.spec, ['gmail'])).toEqual([]);
+    expect(result.summary.length).toBeGreaterThan(0);
+  });
+
+  it('no-key fallback maps a daily-overview workflow → digest.morning with ALL THREE connectors derived', async () => {
+    const result = await composeSpec('acct-1', 'user-1', DAILY_OVERVIEW_WF, ['google-calendar', 'stripe', 'gmail']);
+    if ('error' in result) throw new Error(result.error);
+    expect(result.spec.steps?.[0]?.capability).toBe('digest.morning');
+    // 3-connector derivation server-side from effectiveTools.
+    expect([...result.spec.requiredConnectors].sort()).toEqual(['gmail', 'google-calendar', 'stripe']);
+    expect(result.spec.toolsAllowlist).toEqual(['calendar.read', 'payments.read', 'email.read']);
+    expect(validateComposedSpec(result.spec, ['google-calendar', 'stripe', 'gmail'])).toEqual([]);
+  });
+
+  it('hides digest.morning when only gmail is granted → falls back to an available primitive (never invalid)', async () => {
+    // The daily-overview workflow maps to digest.morning, but with only gmail
+    // granted its 3 connectors aren't all present → it isn't available. The
+    // fallback must pick an AVAILABLE gmail primitive (never an invalid spec).
+    const result = await composeSpec('acct-1', 'user-1', DAILY_OVERVIEW_WF, ['gmail']);
+    if ('error' in result) throw new Error(result.error);
+    expect(result.spec.steps?.[0]?.capability).not.toBe('digest.morning');
+    // Whatever it picked must be a gmail-only primitive that passes validation.
     expect(validateComposedSpec(result.spec, ['gmail'])).toEqual([]);
   });
 
