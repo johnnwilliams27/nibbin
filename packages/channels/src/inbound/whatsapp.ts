@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import type { InboundChannelMessage } from './types.js';
+import type { InboundChannelMessage } from './types';
 
 export function parseWhatsAppWebhook(body: unknown, now: number): InboundChannelMessage | null {
   const msg = (body as any)?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];

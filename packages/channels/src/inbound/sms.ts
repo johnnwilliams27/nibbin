@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import type { InboundChannelMessage } from './types.js';
+import type { InboundChannelMessage } from './types';
 
 export function parseTwilioInbound(form: URLSearchParams, now: number): InboundChannelMessage | null {
   const from = form.get('From');
