@@ -31,6 +31,14 @@ grant nibbin_owner to current_user;
 do $$ begin execute format('grant create on database %I to nibbin_owner', current_database()); end $$;
 grant usage, create on schema public to nibbin_owner;
 
+-- pgvector: real Supabase projects have the `vector` extension provisioned by a
+-- privileged role before app migrations run. The CI/local image is
+-- pgvector/pgvector (Postgres 17 + pgvector); enable it here as the superuser so
+-- the agent-memory migration's `create extension if not exists vector` is a
+-- verified no-op (nibbin_owner, the non-superuser migration role, cannot create
+-- extensions — same trust boundary as production).
+create extension if not exists vector;
+
 create schema if not exists auth;
 
 create table if not exists auth.users (

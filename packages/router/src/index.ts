@@ -10,8 +10,10 @@ export {
   UNBUDGETED_T2_TASKS,
 } from './tiers';
 export { AnthropicApiError, createAnthropicClient } from './anthropic';
+export { createVoyageEmbedder } from './voyage';
 export { costMicroUsd, ratesForModel } from './pricing';
 export type { ChatTurn, Generate, GenerateRequest, GenerateResult, SystemBlock } from './anthropic';
+export type { Embed, VoyageInputType, VoyageOptions } from './voyage';
 export type { ModelRates, TokenUsage } from './pricing';
 export type {
   BudgetStatus,
