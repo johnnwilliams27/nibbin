@@ -5,6 +5,7 @@ import { appSession } from '../../../../lib/auth/app-session';
 import { parseNotificationPrefs } from '../../../../lib/privacy/notifications';
 import { serviceClient } from '../../../../lib/supabase/service';
 import { siteOrigin } from '../../../../lib/site-url';
+import { parseChannelPrefsForm, parseSettingsForm } from '../../../../lib/privacy/channels';
 
 /** Toggle model-improvement contribution (R49 structural signals; T&C §7.1).
  * The hidden `enabled` field carries the target value ('true' | 'false'). */
@@ -61,4 +62,63 @@ export async function setNotificationPrefs(formData: FormData) {
   });
   if (error) redirect('/app/settings/privacy?error=notify');
   redirect('/app/settings/privacy?state=notify_saved');
+}
+
+export async function connectChannel(formData: FormData) {
+  const channel = String(formData.get('channel') ?? '');
+  const { supabase, accountId } = await appSession();
+  const { data: nonce, error } = await supabase.rpc('request_channel_link', {
+    target_account: accountId,
+    channel,
+  });
+  if (error || !nonce) redirect('/app/settings/privacy?error=channel');
+  // Telegram: deep-link the user to the bot with the nonce; other channels add
+  // their own completion path here as they go live.
+  if (channel === 'telegram' && process.env.NEXT_PUBLIC_TELEGRAM_BOT) {
+    redirect(`https://t.me/${process.env.NEXT_PUBLIC_TELEGRAM_BOT}?start=${nonce}`);
+  }
+  redirect(`/app/settings/privacy?state=channel_pending&nonce=${nonce}&channel=${channel}`);
+}
+
+export async function disconnectChannel(formData: FormData) {
+  const channelId = String(formData.get('channel_id') ?? '');
+  const { supabase, accountId } = await appSession();
+  const { error } = await supabase.rpc('revoke_channel', { target_account: accountId, channel_id: channelId });
+  redirect(error ? '/app/settings/privacy?error=channel' : '/app/settings/privacy?state=channel_removed');
+}
+
+export async function saveChannelPrefs(formData: FormData) {
+  const { channel, enabled, priority, urgencyThreshold } = parseChannelPrefsForm(formData);
+  const { supabase, accountId } = await appSession();
+  const { error } = await supabase.rpc('set_channel_prefs', {
+    target_account: accountId,
+    p_channel: channel, // NB: the SQL param is `p_channel` (renamed to avoid an ON CONFLICT (account_id, channel) ambiguity in Plan 01)
+    enabled,
+    priority,
+    urgency_threshold: urgencyThreshold,
+  });
+  redirect(error ? '/app/settings/privacy?error=channel' : '/app/settings/privacy?state=channel_saved');
+}
+
+export async function saveNotificationSettings(formData: FormData) {
+  const { quietStart, quietEnd, digestMode } = parseSettingsForm(formData);
+  const { supabase, accountId } = await appSession();
+  // Write the unified per-account settings...
+  const { error } = await supabase.rpc('set_notification_settings', {
+    target_account: accountId,
+    quiet_start: quietStart,
+    quiet_end: quietEnd,
+    digest_mode: digestMode,
+  });
+  // ...and mirror quiet hours into drip_arcs so the LIVE companion-email arc
+  // keeps honoring them until the drip worker reads notification_settings
+  // (flagged follow-up). Errors here are non-fatal (a pre-arc account has no
+  // drip row yet); the unified row is the source of truth.
+  await supabase.rpc('set_notification_prefs', {
+    target_account: accountId,
+    email_enabled: formData.get('email_enabled') === 'on',
+    quiet_start: quietStart,
+    quiet_end: quietEnd,
+  });
+  redirect(error ? '/app/settings/privacy?error=notify' : '/app/settings/privacy?state=notify_saved');
 }
