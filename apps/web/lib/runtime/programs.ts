@@ -13,31 +13,20 @@ import 'server-only';
  * touch a connector directly and never see an unquarantined byte.
  */
 import type { QuarantinedContent } from '@nibbin/connectors';
-import { interpretSpec, nudgeOverdueEmail, type AgentSpec, type ProgramFn, type ProgramStep } from '@nibbin/runtime';
-import { parseQuarantinedJson, unwrapQuarantined } from '@nibbin/scan';
+import {
+  interpretSpec,
+  nudgeOverdueEmail,
+  nudgeOverdueInvoice,
+  nudgeUnconfirmedEvent,
+  replyNewInquiry,
+  type AgentSpec,
+  type ProgramFn,
+  type ProgramStep,
+} from '@nibbin/runtime';
+import { parseQuarantinedJson } from '@nibbin/scan';
 
 /** Provider → connection id for the adopting account. */
 export type ConnectionMap = Partial<Record<string, string>>;
-
-/** Longest body a model draft may contribute; beyond this we trust the template. */
-const MODEL_DRAFT_MAX_CHARS = 1200;
-
-/**
- * Use a runner-provided model draft when one came back, the deterministic
- * template when it didn't (no model wired, outage, ceiling, or junk output).
- * The unwrap can only throw on content the runner didn't produce — treat any
- * irregularity as "no draft" and fall back; a run never fails over prose.
- */
-function modelDraftOr(fallback: string, fed: QuarantinedContent | undefined): string {
-  if (!fed) return fallback;
-  try {
-    const text = unwrapQuarantined(fed).trim();
-    if (text.length === 0 || text.length > MODEL_DRAFT_MAX_CHARS) return fallback;
-    return text;
-  } catch {
-    return fallback;
-  }
-}
 
 function gmailListPath(scope: 'in:inbox' | 'in:sent', sinceMs: number): string {
   const d = new Date(sinceMs);
@@ -69,26 +58,6 @@ const DAY = 86_400_000;
 // Sampled per scope; ×2 scopes + 2 list calls must stay under the run's
 // maxSteps ceiling (120) with headroom (cost-auditor P1-1).
 const MAIL_SAMPLE = 40;
-
-/**
- * Connector-derived strings (From/Subject/attendee email) are external,
- * attacker-influenceable data. They are safe to RENDER (React escapes), but
- * before they become the recipient/subject ARGUMENTS of a real side effect
- * they must be neutralized: strip CR/LF (header-injection) and cap length.
- * Quarantine keeps connector content as data; this keeps it from becoming the
- * parameters of an action (red-team P2-2). Applied at the effectArgs boundary.
- */
-function safeHeaderValue(raw: string | undefined, max = 256): string {
-  return (raw ?? '').replace(/[\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max);
-}
-
-/** A plausible single email address, or '' — never a header-injection vector. */
-function safeAddress(raw: string | undefined): string {
-  const v = safeHeaderValue(raw, 320);
-  const m = v.match(/<([^<>@\s]+@[^<>@\s]+)>/) ?? v.match(/([^<>@\s]+@[^<>@\s]+)/);
-  const addr = m?.[1] ?? '';
-  return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(addr) ? addr : '';
-}
 
 interface MailScan {
   inbox: GmailMeta[];
@@ -196,48 +165,15 @@ function sweepProgram(connections: ConnectionMap, nowMs: number): ProgramFn {
   };
 }
 
+/**
+ * Scribe delegates to the SHARED `reply.new-inquiry` primitive implementation
+ * (packages/runtime) — the template and the composable primitive are the SAME
+ * code, so a synthesized inquiry-reply agent behaves byte-for-byte like Scribe
+ * (parity test in packages/runtime). The "no gmail connection" pause lives
+ * INSIDE the primitive's generator (Slice-2a P1), not here at build time.
+ */
 function scribeProgram(connections: ConnectionMap, nowMs: number): ProgramFn {
-  return async function* () {
-    const gmail = requireConn(connections, 'gmail');
-    const mail = yield* readMailbox(gmail, nowMs);
-    const answered = new Set(mail.sent.map((m) => m.threadId));
-    const inquiries = mail.inbox
-      .filter((m) => !header(m, 'In-Reply-To') && !header(m, 'List-Unsubscribe') && !answered.has(m.threadId))
-      .sort((a, b) => Number(b.internalDate ?? 0) - Number(a.internalDate ?? 0));
-    if (inquiries.length === 0) {
-      yield { kind: 'compose', payload: { note: 'no unanswered inquiries' } };
-      return;
-    }
-    const newest = inquiries[0];
-    const subject = safeHeaderValue(header(newest, 'Subject')) || 'your note';
-    const fallback =
-      `Hi, and thanks so much for reaching out — I’d love to help. ` +
-      `Could you share the date you have in mind and a little about what you’re planning? ` +
-      `I’ll send over availability and a clear picture of how I work and what it costs. ` +
-      `Looking forward to it.`;
-    const fed = yield {
-      kind: 'compose',
-      payload: { note: 'drafting inquiry reply' },
-      prompt: {
-        intent:
-          'Draft a short, warm first reply to a new business inquiry. Thank them for reaching ' +
-          'out, ask for the date and a little about what they are planning, and say a clear ' +
-          'picture of availability and pricing will follow. Under 90 words. Output only the ' +
-          'email body text.',
-        context: `Subject: ${subject}`,
-        maxTokens: 300,
-      },
-    };
-    yield {
-      kind: 'draft',
-      capability: 'email.draft',
-      connectionId: gmail,
-      patternKey: 'email.draft:inquiry-reply',
-      title: `Reply to “${subject}”`,
-      draft: modelDraftOr(fallback, fed),
-      effectArgs: { threadId: newest.threadId, subject: `Re: ${subject}` },
-    };
-  };
+  return replyNewInquiry({}, connections, nowMs);
 }
 
 function briefProgram(connections: ConnectionMap, nowMs: number): ProgramFn {
@@ -313,104 +249,23 @@ function briefProgram(connections: ConnectionMap, nowMs: number): ProgramFn {
   };
 }
 
+/**
+ * Tally delegates to the SHARED `nudge.overdue-invoice` primitive
+ * implementation — byte-for-byte identical to the primitive at its default
+ * `minDaysLate=0` (parity test in packages/runtime). The "no stripe connection"
+ * pause lives INSIDE the primitive's generator (Slice-2a P1).
+ */
 function tallyProgram(connections: ConnectionMap, nowMs: number): ProgramFn {
-  return async function* () {
-    const stripe = requireConn(connections, 'stripe');
-    const params = new URLSearchParams({
-      'created[gte]': String(Math.floor((nowMs - 90 * DAY) / 1000)),
-      limit: '100',
-    });
-    const res = yield {
-      kind: 'read',
-      capability: 'payments.read',
-      connectionId: stripe,
-      path: `/v1/invoices?${params}`,
-    };
-    const invoices =
-      (res &&
-        parseQuarantinedJson<{
-          data?: Array<{ id: string; status?: string; due_date?: number | null; amount_due?: number; customer?: string }>;
-        }>(res))
-        ?.data ?? [];
-    const overdue = invoices
-      .filter((i) => i.status === 'open' && typeof i.due_date === 'number' && i.due_date * 1000 < nowMs)
-      .sort((a, b) => (a.due_date ?? 0) - (b.due_date ?? 0));
-    if (overdue.length === 0) {
-      yield { kind: 'compose', payload: { note: 'no overdue invoices' } };
-      return;
-    }
-    const worst = overdue[0];
-    const dollars = Math.round((worst.amount_due ?? 0) / 100);
-    const daysLate = Math.round((nowMs - (worst.due_date ?? 0) * 1000) / DAY);
-    yield {
-      kind: 'draft',
-      capability: 'invoice.nudge',
-      connectionId: stripe,
-      patternKey: 'invoice.nudge:overdue',
-      title: `Payment nudge — $${dollars.toLocaleString('en-US')}, ${daysLate} days past due`,
-      draft:
-        `Hi! Just a gentle nudge on the invoice for $${dollars.toLocaleString('en-US')} — ` +
-        `it came due ${daysLate} days ago and may have slipped past. ` +
-        `The original link still works; happy to resend it or answer anything. Thank you!`,
-      effectArgs: { invoiceId: worst.id, amountCents: worst.amount_due ?? 0 },
-    };
-  };
+  return nudgeOverdueInvoice({ minDaysLate: 0 }, connections, nowMs);
 }
 
+/**
+ * Hopper delegates to the SHARED CROSS-RESOURCE `nudge.unconfirmed-event`
+ * primitive implementation — byte-for-byte identical at its default
+ * `withinDays=7` (parity test in packages/runtime). It reads the calendar and
+ * drafts the confirmation email; the "no calendar/gmail connection" pause lives
+ * INSIDE the primitive's generator and checks BOTH connectors (Slice-2a P1).
+ */
 function hopperProgram(connections: ConnectionMap, nowMs: number): ProgramFn {
-  return async function* () {
-    const gcal = requireConn(connections, 'google-calendar');
-    const gmail = requireConn(connections, 'gmail');
-    const params = new URLSearchParams({
-      timeMin: new Date(nowMs).toISOString(),
-      timeMax: new Date(nowMs + 7 * DAY).toISOString(),
-      singleEvents: 'true',
-      maxResults: '250',
-      orderBy: 'startTime',
-    });
-    const res = yield {
-      kind: 'read',
-      capability: 'calendar.read',
-      connectionId: gcal,
-      path: `/calendar/v3/calendars/primary/events?${params}`,
-    };
-    const events =
-      (res &&
-        parseQuarantinedJson<{
-          items?: Array<{
-            id: string;
-            summary?: string;
-            status?: string;
-            start?: { dateTime?: string };
-            attendees?: Array<{ email?: string; self?: boolean; responseStatus?: string }>;
-          }>;
-        }>(res))
-        ?.items ?? [];
-    const unconfirmed = events.filter(
-      (e) =>
-        e.status !== 'cancelled' &&
-        (e.attendees ?? []).some((a) => !a.self && a.responseStatus !== 'accepted' && a.responseStatus !== 'declined'),
-    );
-    if (unconfirmed.length === 0) {
-      yield { kind: 'compose', payload: { note: 'everything coming up is confirmed' } };
-      return;
-    }
-    const next = unconfirmed[0];
-    const when = next.start?.dateTime
-      ? new Date(next.start.dateTime).toLocaleString('en-US', { weekday: 'long', hour: 'numeric', minute: '2-digit' })
-      : 'our scheduled time';
-    const guestEmail = safeAddress((next.attendees ?? []).find((a) => !a.self)?.email);
-    yield {
-      kind: 'draft',
-      capability: 'email.draft',
-      connectionId: gmail,
-      patternKey: 'email.draft:session-confirmation',
-      title: `Confirmation for ${next.summary ?? 'your next session'}`,
-      draft:
-        `Hi! Looking forward to ${next.summary ?? 'our session'} on ${when}. ` +
-        `Just confirming the time still works on your end — if anything changed, ` +
-        `reply here and we’ll find a better slot. See you soon!`,
-      effectArgs: { eventId: next.id, to: guestEmail },
-    };
-  };
+  return nudgeUnconfirmedEvent({ withinDays: 7 }, connections, nowMs);
 }

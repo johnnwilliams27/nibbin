@@ -15,6 +15,9 @@
  */
 import type { ProgramFn } from './runner';
 import { nudgeOverdueEmail } from './primitives/nudge-overdue-email';
+import { nudgeOverdueInvoice } from './primitives/nudge-overdue-invoice';
+import { nudgeUnconfirmedEvent } from './primitives/nudge-unconfirmed-event';
+import { replyNewInquiry } from './primitives/reply-new-inquiry';
 
 /**
  * A typed input field for a PRIMITIVE capability's `inputSchema` (design §1).
@@ -101,6 +104,50 @@ export const CAPABILITY_REGISTRY: Record<string, CapabilityDescriptor> = {
     // follow-up (email.draft) — the two atomic tools its yielded steps gate on.
     effectiveTools: ['email.read', 'email.draft'],
   },
+  // From `tally`: watch stripe invoices, draft a nudge for the worst overdue one.
+  'nudge.overdue-invoice': {
+    id: 'nudge.overdue-invoice',
+    resource: 'invoice',
+    verb: 'nudge',
+    sideEffect: 'draft',
+    requiredConnector: 'stripe',
+    patternKeyPrefix: 'invoice.nudge',
+    kind: 'primitive',
+    inputSchema: {
+      minDaysLate: { type: 'number', default: 0, min: 0, max: 120 },
+    },
+    effectiveTools: ['payments.read', 'invoice.nudge'],
+  },
+  // From `hopper`: CROSS-RESOURCE — read the calendar (google-calendar), draft a
+  // confirmation email (gmail). The Composer derives BOTH connectors from
+  // effectiveTools; `requiredConnector` is just the primitive's "home" resource.
+  'nudge.unconfirmed-event': {
+    id: 'nudge.unconfirmed-event',
+    resource: 'calendar',
+    verb: 'nudge',
+    sideEffect: 'draft',
+    requiredConnector: 'google-calendar',
+    patternKeyPrefix: 'email.draft',
+    kind: 'primitive',
+    inputSchema: {
+      withinDays: { type: 'number', default: 7, min: 1, max: 60 },
+    },
+    effectiveTools: ['calendar.read', 'email.draft'],
+  },
+  // From `scribe`: read the mailbox, draft a warm first reply to a new inquiry.
+  'reply.new-inquiry': {
+    id: 'reply.new-inquiry',
+    resource: 'email',
+    verb: 'draft',
+    sideEffect: 'draft',
+    requiredConnector: 'gmail',
+    patternKeyPrefix: 'email.draft',
+    kind: 'primitive',
+    // No scalar knob — first-contact detection isn't day-parameterized. An empty
+    // schema is valid (resolvePrimitiveInputs with {} accepts no keys).
+    inputSchema: {},
+    effectiveTools: ['email.read', 'email.draft'],
+  },
 };
 
 /**
@@ -115,6 +162,19 @@ export const PRIMITIVE_IMPLS: Record<string, PrimitiveImpl> = {
       connMap,
       nowMs,
     ),
+  'nudge.overdue-invoice': (inputs, connMap, nowMs) =>
+    nudgeOverdueInvoice(
+      { minDaysLate: typeof inputs.minDaysLate === 'number' ? inputs.minDaysLate : undefined },
+      connMap,
+      nowMs,
+    ),
+  'nudge.unconfirmed-event': (inputs, connMap, nowMs) =>
+    nudgeUnconfirmedEvent(
+      { withinDays: typeof inputs.withinDays === 'number' ? inputs.withinDays : undefined },
+      connMap,
+      nowMs,
+    ),
+  'reply.new-inquiry': (_inputs, connMap, nowMs) => replyNewInquiry({}, connMap, nowMs),
 };
 
 export function capability(id: string): CapabilityDescriptor | undefined {
