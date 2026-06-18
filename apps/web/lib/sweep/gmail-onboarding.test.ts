@@ -38,7 +38,7 @@ describe('buildInboxQuery', () => {
 });
 
 describe('sweep constants', () => {
-  it('SWEEP_WINDOW_DAYS is 90', () => expect(SWEEP_WINDOW_DAYS).toBe(90));
+  it('SWEEP_WINDOW_DAYS is 365 (≈12-month seed)', () => expect(SWEEP_WINDOW_DAYS).toBe(365));
   it('MAX_SENT_MESSAGES is a positive number', () => expect(MAX_SENT_MESSAGES).toBeGreaterThan(0));
   it('MAX_INBOX_THREADS is a positive number', () => expect(MAX_INBOX_THREADS).toBeGreaterThan(0));
   it('BATCH_SIZE_PASS1 is a positive number', () => expect(BATCH_SIZE_PASS1).toBeGreaterThan(0));
