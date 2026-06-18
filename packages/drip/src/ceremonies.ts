@@ -45,7 +45,7 @@ export async function buildHalfTime(
   // One evolution if earned (§4.5) — the single celebration of this email.
   const evolution = events.find((e) => e.kind === 'evolution');
   const celebration: Celebration | null = evolution
-    ? { heading: `${evolution.nibbin} evolved`, body: evolution.detail }
+    ? { heading: `${evolution.nibbin} moved up`, body: evolution.detail }
     : null;
 
   return {
