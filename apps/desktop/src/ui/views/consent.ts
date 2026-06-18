@@ -19,9 +19,13 @@ export function consentView(onChanged: () => void, kind: StudyKind = 'full_study
   // "What gets captured" differs by depth: Lite reads structure only (no
   // screenshots); Detailed also takes periodic screenshots, processed on-device
   // then deleted — only redacted text informs the diagnosis.
+  // NOTE: the Detailed branch is depth-aware and retained for when Detailed ships.
+  // The picker currently locks selection to 'lite', so this branch won't trigger
+  // in practice — but the plumbing stays correct. Copy uses future tense (“will
+  // add…”) so it makes no false present-tense capture promise (gate CA-01).
   const whatGetsCaptured =
     depth === 'detailed'
-      ? 'Which apps and windows you use, the shape of what you click and type (counts and timing — never the keys themselves), redacted text descriptions like “Invoice {NUM} — {PERSON}”, and periodic screenshots processed by on-device OCR then deleted — only the redacted text informs your diagnosis. Requires Screen Recording permission.'
+      ? 'Which apps and windows you use, the shape of what you click and type (counts and timing — never the keys themselves), redacted text descriptions like “Invoice {NUM} — {PERSON}”, and (when Detailed is fully available) periodic screenshots that will be processed by on-device OCR then deleted — only the redacted text will inform your diagnosis. Will require Screen Recording permission.'
       : 'Which apps and windows you use, the shape of what you click and type (counts and timing — never the keys themselves), and redacted text descriptions like “Invoice {NUM} — {PERSON}”. No screenshots.';
 
   const root = el('div', {}, [

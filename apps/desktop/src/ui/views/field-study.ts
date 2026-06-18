@@ -297,34 +297,43 @@ function entryView(
       ]),
     ]);
 
-    const detailedCard = el('div', { class: 'card depth-option', role: 'radio', 'aria-pressed': 'false', tabindex: '0' }, [
-      el('h2', {}, ['Detailed — best for creative & visual work']),
-      el('p', {}, ['Adds periodic screenshots, processed and deleted on your device, so Nibbin can see inside tools like Photoshop or Premiere.']),
-      el('p', { class: 'muted' }, ['photo/video editing, design, illustration, motion, audio/music production.']),
-      el('p', { class: 'muted' }, [
-        'Asks for Screen Recording permission. Screenshots never leave your device — only redacted text rides your diagnosis.',
+    // Detailed is non-selectable until screenshot/OCR capture is built (gate CA-01).
+    // aria-disabled + the `disabled` CSS class signal this to both AT and styles.
+    // tabindex="-1" keeps it out of the keyboard tab order entirely.
+    const detailedCard = el('div', {
+      class: 'card depth-option disabled',
+      role: 'radio',
+      'aria-pressed': 'false',
+      'aria-disabled': 'true',
+      tabindex: '-1',
+    }, [
+      el('div', { class: 'row' }, [
+        el('h2', {}, ['Detailed — coming soon']),
+        el('span', { class: 'chip' }, ['Coming soon']),
       ]),
+      el('p', {}, [
+        'Will add periodic screenshots, processed and deleted on your device, so Nibbin can see inside tools like Photoshop or Premiere. ',
+        'Not available yet — studies run in Lite for now.',
+      ]),
+      el('p', { class: 'muted' }, ['photo/video editing, design, illustration, motion, audio/music production.']),
     ]);
 
+    // Lite is the only choosable option; Detailed clicks are no-ops.
     function selectDepth(depth: StudyDepth): void {
+      if (depth === 'detailed') return; // non-selectable until built
       selected = depth;
-      if (depth === 'lite') {
-        liteCard.classList.add('selected');
-        liteCard.setAttribute('aria-pressed', 'true');
-        detailedCard.classList.remove('selected');
-        detailedCard.setAttribute('aria-pressed', 'false');
-      } else {
-        detailedCard.classList.add('selected');
-        detailedCard.setAttribute('aria-pressed', 'true');
-        liteCard.classList.remove('selected');
-        liteCard.setAttribute('aria-pressed', 'false');
-      }
+      liteCard.classList.add('selected');
+      liteCard.setAttribute('aria-pressed', 'true');
+      detailedCard.classList.remove('selected');
+      detailedCard.setAttribute('aria-pressed', 'false');
     }
 
     liteCard.addEventListener('click', () => selectDepth('lite'));
-    detailedCard.addEventListener('click', () => selectDepth('detailed'));
+    // Detailed click is intentionally a no-op — no listener needed, but
+    // we add one explicitly for clarity (blocks selection, does nothing else).
+    detailedCard.addEventListener('click', () => { /* coming soon — no-op */ });
     liteCard.addEventListener('keydown', (e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectDepth('lite'); } });
-    detailedCard.addEventListener('keydown', (e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectDepth('detailed'); } });
+    // No keydown listener on detailedCard — tabindex="-1" keeps it out of tab order.
 
     return el('div', {}, [
       el('p', { class: 'eyebrow' }, ['Field study']),
