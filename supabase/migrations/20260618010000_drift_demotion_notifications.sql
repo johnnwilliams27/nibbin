@@ -1,7 +1,7 @@
 -- Drift nudge (R2) + dignified demotion (CE5) notification surfaces.
 -- Adds two notification kinds and a service_role-only insert path (the web
 -- server's drift/demotion leaves; clients still cannot insert — see m5 RLS).
-alter table public.notifications drop constraint notifications_kind_check;
+alter table public.notifications drop constraint if exists notifications_kind_check;
 alter table public.notifications
   add constraint notifications_kind_check
   check (kind in ('beat', 'evolution', 'graduation', 'nudge', 'demotion'));

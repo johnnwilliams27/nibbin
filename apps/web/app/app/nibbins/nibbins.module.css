@@ -357,7 +357,7 @@
   border-radius: 4px;
   cursor: pointer;
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--canopy);
   color: var(--ink-soft);
   display: inline-block;
   transition: background 0.2s ease;

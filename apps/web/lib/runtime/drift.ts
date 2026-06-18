@@ -14,6 +14,7 @@ export async function maybeDriftNudge(
       .from('nibbins')
       .select('name, stage, species, palette, accessory, marking')
       .eq('id', nibbinId)
+      .eq('account_id', accountId)
       .single();
     if (!n || (n.stage !== 'senior' && n.stage !== 'grad')) return;
 

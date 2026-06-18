@@ -109,6 +109,7 @@ export async function demoteNibbinAction(nibbinId: string): Promise<DemoteResult
       .from('nibbins')
       .select('name, species, palette, accessory, marking, stage_changed_at')
       .eq('id', id)
+      .eq('account_id', accountId)
       .single();
     if (n) {
       await svc.rpc('insert_system_notification', {
