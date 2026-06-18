@@ -10,7 +10,9 @@ import { getConnector } from '../registry/registry';
 import type { ConnectorDescriptor } from '../registry/types';
 import { safeFetch, type SafeResponse, type UnsafeTestOverrides } from '../egress/safe-fetch';
 import { quarantine, type QuarantinedContent } from '../quarantine';
-import type { TokenVault } from '../vault';
+import type { StoredToken, TokenVault } from '../vault';
+import { refreshAccessToken } from '../oauth/flow';
+import { oauthClientCredentials } from '../oauth/client-credentials';
 import type { Connection, ConnectorClient } from '../types';
 
 export class ConnectorRequestError extends Error {
@@ -47,6 +49,7 @@ export class HttpConnectorClient implements ConnectorClient {
   protected async request(
     path: string,
     init: { method?: string; body?: string; headers?: Record<string, string>; signal?: AbortSignal } = {},
+    isRetry = false,
   ): Promise<SafeResponse> {
     if (this.connection.status !== 'active') {
       // revoked/paused connections are unusable everywhere, not just in the UI
@@ -68,10 +71,42 @@ export class HttpConnectorClient implements ConnectorClient {
       { allowedHosts: this.descriptor.egressAllowlist },
       this.unsafeTestOverrides,
     );
-    if (res.status === 401 || res.status === 403) throw new ConnectorRequestError(this.provider, res.status, 'auth');
+    if (res.status === 401 || res.status === 403) {
+      // Access tokens expire ~hourly. On the first auth failure, try a one-shot
+      // refresh-and-retry: refresh the access token from the stored refresh
+      // token, re-seal it in the vault, and replay the request (which re-reads
+      // the now-fresh token). If refresh is impossible or fails (no/revoked
+      // refresh token), surface the auth error — the user must reconnect.
+      if (!isRetry && (await this.tryRefresh(token))) {
+        return this.request(path, init, true);
+      }
+      throw new ConnectorRequestError(this.provider, res.status, 'auth');
+    }
     if (res.status === 429) throw new ConnectorRequestError(this.provider, res.status, 'rate-limit');
     if (res.status >= 400) throw new ConnectorRequestError(this.provider, res.status, 'provider');
     return res;
+  }
+
+  /** Refresh the access token from the stored refresh token and re-seal it.
+   * Returns false (no throw) when refresh is impossible/fails so the caller can
+   * fall through to a typed auth error. */
+  private async tryRefresh(current: StoredToken): Promise<boolean> {
+    if (!current.refreshToken) return false;
+    const creds = oauthClientCredentials(this.connection.provider);
+    if (!creds) return false;
+    try {
+      const next = await refreshAccessToken(
+        this.connection.provider,
+        current,
+        creds.clientId,
+        creds.clientSecret,
+        this.unsafeTestOverrides,
+      );
+      await this.vault.store(this.connection.id, next);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /** Read-only fetch; the result is quarantined external data. */
