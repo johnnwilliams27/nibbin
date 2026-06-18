@@ -19,4 +19,9 @@ describe('buildPorts', () => {
     const a = buildPorts({});
     expect(a.ports.has('telegram')).toBe(false);
   });
+
+  it('omits SMS when the flag is on but Twilio env is incomplete', () => {
+    const a = buildPorts({ TELEGRAM_BOT_TOKEN: 'BOT', CHANNELS_SMS_ENABLED: 'true' });
+    expect(a.ports.has('sms')).toBe(false);
+  });
 });

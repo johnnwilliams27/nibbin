@@ -46,11 +46,12 @@ export function supabaseChannelStore(svc: SupabaseClient): ChannelStore {
       return data ? { start: data.quiet_start, end: data.quiet_end } : null;
     },
     async logDelivery(row) {
-      await svc.from('channel_messages').insert({
+      const { error } = await svc.from('channel_messages').insert({
         account_id: row.accountId, channel: row.channel, direction: row.direction, kind: row.kind,
         status: row.status, urgency: row.urgency, provider_message_id: row.providerMessageId ?? null,
         cost_microusd: row.costMicroUsd, request_id: row.requestId ?? null,
       });
+      if (error) console.error('channel_messages logDelivery failed', error);
     },
   };
 }
