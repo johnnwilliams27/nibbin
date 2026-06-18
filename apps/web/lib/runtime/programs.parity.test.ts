@@ -167,21 +167,28 @@ function gcalGmailReader(): (path: string) => string {
 }
 
 /** sweep fixture: an inbox of newsletter-ish messages (List-Unsubscribe set)
- *  from two senders, no sent. Drives the non-trivial top-N digest path. */
+ *  from SEVEN DISTINCT senders, no sent. With > 5 distinct senders the top-N
+ *  slice is sensitive to `topSenders`: slice(0,5) ≠ slice(0,3) ≠ slice(0,7).
+ *  A drift in the template's delegated default (e.g. topSenders:3) therefore
+ *  changes the digest list length and FAILS this parity case (FIX 2). */
+const SWEEP_SENDERS = 7;
 function sweepReader(): (path: string) => string {
   return (path) => {
     if (path.includes('/messages?')) {
       const isSent = path.includes('in%3Asent') || path.includes('in:sent');
-      return isSent
-        ? '{"messages":[]}'
-        : '{"messages":[{"id":"n1"},{"id":"n2"},{"id":"n3"}]}';
+      if (isSent) return '{"messages":[]}';
+      const ids = Array.from({ length: SWEEP_SENDERS }, (_v, i) => `{"id":"n${i}"}`).join(',');
+      return `{"messages":[${ids}]}`;
     }
-    // metadata fetch — id is in the path; n1/n2 from Acme, n3 from Beta.
-    const id = path.includes('n3') ? 'n3' : path.includes('n2') ? 'n2' : 'n1';
-    const from = id === 'n3' ? 'Beta <news@beta.com>' : 'Acme <news@acme.com>';
+    // metadata fetch — derive the (distinct) sender index from the id in the
+    // path. Each message has a distinct From + a List-Unsubscribe header, so
+    // every one counts as its own sender pile. Descending message counts keep
+    // the sort order deterministic and the top-N slice meaningful.
+    const m = path.match(/n(\d+)/);
+    const i = m ? Number(m[1]) : 0;
     return gmailMeta(
-      id,
-      { From: from, Subject: 'Weekly digest', 'List-Unsubscribe': '<mailto:unsub@x>' },
+      `n${i}`,
+      { From: `Newsletter ${i} <news${i}@example.com>`, Subject: 'Weekly digest', 'List-Unsubscribe': '<mailto:unsub@x>' },
       NOW - 1 * DAY,
     );
   };
