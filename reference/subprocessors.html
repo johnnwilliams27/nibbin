@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Subprocessors — Nibbin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#F5F6F2;--card:#fff;--ink:#23291A;--soft:#5A6248;--line:#D6DAC8;--moss:#5B7C2E;--moss-deep:#44601F;
+--mono:'IBM Plex Mono',ui-monospace,monospace;--sans:'Archivo',sans-serif;--display:'Bricolage Grotesque','Archivo',sans-serif;}
+*{margin:0;box-sizing:border-box}body{font-family:var(--sans);background:var(--paper);color:var(--ink);line-height:1.65;-webkit-font-smoothing:antialiased}
+.wrap{max-width:760px;margin:0 auto;padding:0 24px}
+nav{border-bottom:1px solid var(--line);background:rgba(245,246,242,.93);position:sticky;top:0;backdrop-filter:blur(8px)}
+nav .in{display:flex;justify-content:space-between;align-items:center;height:60px}
+nav a{text-decoration:none;color:var(--ink);font-weight:900;font-size:17px}
+nav .back{font-family:var(--mono);font-size:11.5px;font-weight:600;color:var(--soft)}
+header{padding:56px 0 28px}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--moss-deep);font-weight:600}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(30px,4.5vw,42px);letter-spacing:-.02em;margin:10px 0 8px}
+.meta{font-family:var(--mono);font-size:11.5px;color:var(--soft)}
+main{padding:10px 0 90px}
+h2{font-size:19px;font-weight:700;margin:38px 0 10px;scroll-margin-top:80px}
+p,li{font-size:14.5px;color:var(--soft);max-width:68ch}
+ul{padding-left:22px;margin:8px 0}
+li{margin:5px 0}
+b,strong{color:var(--ink)}
+.box{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin:16px 0}
+.box .t{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--moss-deep);font-weight:600;display:block;margin-bottom:8px}
+table{border-collapse:collapse;width:100%;background:var(--card);border:1px solid var(--line);border-radius:8px;overflow:hidden;font-size:13px;margin:14px 0}
+th{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--soft);background:#FCFDF9;text-align:left;padding:9px 12px;border-bottom:1px solid var(--line)}
+td{padding:9px 12px;border-bottom:1px solid var(--line);color:var(--soft);vertical-align:top}
+tr:last-child td{border-bottom:none}
+a{color:var(--moss-deep)}
+footer{border-top:1px solid var(--line);padding:26px 0 50px;font-family:var(--mono);font-size:11px;color:var(--soft)}
+footer .in{display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+footer a{color:inherit}
+</style></head><body>
+<nav><div class="wrap in"><a href="nibbin-demo.html">Nibbin</a><a class="back" href="nibbin-demo.html">← back to nibbin.com</a></div></nav>
+
+<header><div class="wrap">
+<span class="eyebrow">Nibbin, Inc.</span>
+<h1>Subprocessors</h1>
+<div class="meta">The named list, kept current · effective June 10, 2026 · referenced from the <a href="privacy.html">Privacy Policy</a></div>
+</div></header>
+<main><div class="wrap">
+
+<p>These are the third parties that process data to run Nibbin. We publish the named list here and update it <b>before</b> anyone new begins processing your data. Your Field Study screen captures never reach any of them — they stay on your device by architecture (see the <a href="data-ai.html">Data &amp; AI</a> page).</p>
+
+<table>
+<tr><th>Subprocessor</th><th>What they do</th><th>Data they process</th><th>Region</th></tr>
+<tr><td><b>Vercel</b></td><td>Web application hosting &amp; delivery</td><td>App traffic; aggregate usage analytics</td><td>United States / global edge</td></tr>
+<tr><td><b>Supabase</b></td><td>Postgres database &amp; the encrypted token vault</td><td>Account data; connection tokens (KMS-encrypted in the vault — we never store them in plaintext)</td><td>United States</td></tr>
+<tr><td><b>Anthropic</b></td><td>Large language model inference (the Grovekeeper, scan summaries, the work you delegate)</td><td>Only the content a given task needs; contractually barred from retaining or training on it; never your raw study data</td><td>United States</td></tr>
+<tr><td><b>Resend</b></td><td>Transactional email (Field Notes, account mail)</td><td>Your email address and the message content we send you</td><td>United States</td></tr>
+<tr><td><b>Stripe</b></td><td>Payments &amp; billing</td><td>Billing details — Stripe handles card data directly; we never see full card numbers</td><td>United States</td></tr>
+</table>
+
+<div class="box"><span class="t">What never reaches a subprocessor</span>
+<p>Your Field Study screen captures and recordings (processed and deleted on your device — the capture component has no network capability); your vault tokens in readable form; and your raw connected-service content beyond the specific task at hand. Only redacted, structured text leaves your device, and only on your explicit action.</p></div>
+
+<h2>Changes to this list</h2>
+<p>We update this page before adding any new subprocessor. New service channels under development (for example, text-message and chat notification providers) will be listed here, with their region and the data they process, before they ever handle your data.</p>
+
+<p style="margin-top:26px;font-size:13px;">Questions, or something here that doesn't match what you see in the product? That's a bug — tell us: <b>hello@nibbin.com</b></p>
+
+</div></main><footer><div class="wrap in">
+<span>© 2026 Nibbin, Inc. · hello@nibbin.com</span>
+<span><a href="privacy.html">Privacy Policy</a> · <a href="terms.html">Terms of Service</a> · <a href="data-ai.html">Data &amp; AI</a></span>
+</div></footer></body></html>
