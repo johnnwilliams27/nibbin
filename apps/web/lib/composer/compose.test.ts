@@ -36,6 +36,36 @@ const EMAIL_WF: DiagnosisWorkflow = {
   recommendedNibbin: 'echo',
 };
 
+const PAYMENTS_WF: DiagnosisWorkflow = {
+  key: 'payments.overdue',
+  label: 'Chasing unpaid invoices',
+  category: 'payments',
+  hoursPerWeek: 2,
+  frequency: 'weekly',
+  friction: 'Invoices go past due and you forget to follow up.',
+  recommendedNibbin: 'tally',
+};
+
+const CALENDAR_WF: DiagnosisWorkflow = {
+  key: 'calendar.confirm',
+  label: 'Confirming upcoming sessions',
+  category: 'calendar',
+  hoursPerWeek: 1,
+  frequency: 'weekly',
+  friction: 'Guests forget to confirm and you chase them.',
+  recommendedNibbin: 'hopper',
+};
+
+const INQUIRY_WF: DiagnosisWorkflow = {
+  key: 'email.inquiries',
+  label: 'Answering new client inquiries',
+  category: 'email',
+  hoursPerWeek: 4,
+  frequency: 'daily',
+  friction: 'First-contact inquiries pile up and replies are slow.',
+  recommendedNibbin: 'scribe',
+};
+
 function fakeResult(text: string): GenerateResult {
   return {
     text,
@@ -63,6 +93,54 @@ describe('composeSpec', () => {
   it('returns an error when no primitive is available (connector not connected)', async () => {
     const result = await composeSpec('acct-1', 'user-1', EMAIL_WF, []); // no gmail
     expect('error' in result).toBe(true);
+  });
+
+  it('no-key fallback maps a payments workflow → nudge.overdue-invoice (validates)', async () => {
+    const result = await composeSpec('acct-1', 'user-1', PAYMENTS_WF, ['stripe']);
+    if ('error' in result) throw new Error(result.error);
+    expect(result.spec.steps?.[0]?.capability).toBe('nudge.overdue-invoice');
+    expect(result.spec.requiredConnectors).toEqual(['stripe']);
+    expect(result.spec.toolsAllowlist).toEqual(['payments.read', 'invoice.nudge']);
+    expect(validateComposedSpec(result.spec, ['stripe'])).toEqual([]);
+    expect(result.summary.length).toBeGreaterThan(0);
+  });
+
+  it('no-key fallback maps a calendar workflow → nudge.unconfirmed-event with BOTH connectors derived', async () => {
+    const result = await composeSpec('acct-1', 'user-1', CALENDAR_WF, ['google-calendar', 'gmail']);
+    if ('error' in result) throw new Error(result.error);
+    expect(result.spec.steps?.[0]?.capability).toBe('nudge.unconfirmed-event');
+    // The cross-resource primitive's connectors are derived server-side from
+    // effectiveTools (calendar.read→gcal, email.draft→gmail) — both required.
+    expect([...result.spec.requiredConnectors].sort()).toEqual(['gmail', 'google-calendar']);
+    expect(result.spec.toolsAllowlist).toEqual(['calendar.read', 'email.draft']);
+    expect(validateComposedSpec(result.spec, ['google-calendar', 'gmail'])).toEqual([]);
+  });
+
+  it('no-key fallback maps an inquiry-signal email workflow → reply.new-inquiry', async () => {
+    const result = await composeSpec('acct-1', 'user-1', INQUIRY_WF, ['gmail']);
+    if ('error' in result) throw new Error(result.error);
+    expect(result.spec.steps?.[0]?.capability).toBe('reply.new-inquiry');
+    expect(validateComposedSpec(result.spec, ['gmail'])).toEqual([]);
+  });
+
+  it('hides the cross-resource primitive when only ONE of its connectors is granted', async () => {
+    // calendar workflow, but only gcal connected (no gmail). nudge.unconfirmed-event
+    // isn't available, so the fallback picks an available primitive (or errors if
+    // none) — never an unrunnable cross-resource spec.
+    const result = await composeSpec('acct-1', 'user-1', CALENDAR_WF, ['google-calendar']);
+    // gcal alone powers no primitive (every primitive needs gmail or stripe), so
+    // this account can build nothing for the calendar workflow → error.
+    expect('error' in result).toBe(true);
+  });
+
+  it('falls back to an available primitive when the mapped one is unrunnable', async () => {
+    // A payments workflow but stripe is NOT connected; gmail IS. The mapped
+    // invoice primitive is unavailable, so synthesis falls back to an available
+    // email primitive rather than failing.
+    const result = await composeSpec('acct-1', 'user-1', PAYMENTS_WF, ['gmail']);
+    if ('error' in result) throw new Error(result.error);
+    expect(['nudge.overdue-email', 'reply.new-inquiry']).toContain(result.spec.steps?.[0]?.capability);
+    expect(validateComposedSpec(result.spec, ['gmail'])).toEqual([]);
   });
 
   it('accepts a model pick on the menu and still validates fail-closed', async () => {
