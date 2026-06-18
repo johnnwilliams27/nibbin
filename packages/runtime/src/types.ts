@@ -91,6 +91,15 @@ export interface CapabilityStep {
   prompt?: ComposePrompt;              // present = generative draft (model)
   presentation?: boolean;              // no-side-effect presentation draft
   title?: string;
+  /**
+   * Optional semantic routine-identity for this step (e.g.
+   * `email.draft:overdue-followup`). When set, the interpreter uses it
+   * verbatim as the step's patternKey so a Composer/author can give two
+   * distinct drafts distinct routine-approval identities (§4.7). Absent: the
+   * interpreter derives a per-step key (prefix:templateKey#idx) so steps still
+   * never collapse into one identity (logic-skeptic P2-3).
+   */
+  patternKey?: string;
 }
 
 export interface PersonaPolicy { voice?: string; tone?: string; brandKit?: string }

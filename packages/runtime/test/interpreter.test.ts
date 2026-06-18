@@ -106,7 +106,8 @@ describe('interpretSpec — runs a declarative steps-spec via the real runner', 
     expect(h.reads).toEqual(['/gmail/v1/users/me/messages?q=in:inbox']);
     // The draft carries the model text (compose→draft handoff) + the bound args.
     expect(outcome.draft.draft).toContain('circling back');
-    expect(outcome.draft.patternKey).toBe('email.draft:echo');
+    // Per-step patternKey: prefix:templateKey#idx (the draft is step index 1).
+    expect(outcome.draft.patternKey).toBe('email.draft:echo#1');
     expect(outcome.draft.effectArgs).toEqual({ to: 'someone@example.com', subject: 'Re: Project' });
     // It NEVER executed — interpreter yields steps; the runner gated it as a draft.
     expect(h.executed).toHaveLength(0);
@@ -173,5 +174,96 @@ describe('interpretSpec — runs a declarative steps-spec via the real runner', 
     const outcome = await executeRun(nib(s, 'grad'), TRIGGER, interpretSpec(s, CONN_MAP), h.deps);
     expect(outcome.kind).toBe('executed');
     expect(h.executed).toEqual([{ capability: 'email.draft' }]);
+  });
+
+  /* ── P2-1: read-path guard (SSRF / traversal) ──────────────────────────── */
+
+  it.each([
+    ['absolute URL', 'https://evil.example/steal'],
+    ['protocol-relative', '//evil.example/steal'],
+    ['scheme inside', '/x?u=http://evil.example'],
+    ['traversal', '/gmail/v1/../../admin'],
+    ['not slash-rooted', 'gmail/v1/users/me/messages'],
+  ])('a read path that is %s fails the run cleanly (does not yield a read)', async (_label, path) => {
+    const h = harness();
+    const s = spec([{ capability: 'email.read', inputs: { path } }]);
+    const outcome = await executeRun(nib(s), TRIGGER, interpretSpec(s, CONN_MAP), h.deps);
+    expect(outcome.kind).toBe('failed');
+    // No read reached the reader — the guard threw before yielding.
+    expect(h.reads).toHaveLength(0);
+  });
+
+  it('a safe connector-relative read path is allowed', async () => {
+    const h = harness();
+    const s = spec([{ capability: 'email.read', inputs: { path: '/gmail/v1/users/me/messages?q=x' } }]);
+    await executeRun(nib(s), TRIGGER, interpretSpec(s, CONN_MAP), h.deps);
+    expect(h.reads).toEqual(['/gmail/v1/users/me/messages?q=x']);
+  });
+
+  /* ── P2-2: effectArgs sanitization (header / MIME injection) ───────────── */
+
+  it('strips CR/LF from effectArgs strings before drafting (no injected header break)', async () => {
+    const h = harness();
+    const s = spec([
+      {
+        capability: 'email.draft',
+        inputs: {
+          to: 'victim@example.com\r\nBcc: attacker@evil.example',
+          subject: 'Hello\nX-Injected: 1',
+          count: 3,
+          flag: true,
+          meta: { reply: 'line1\r\nline2' },
+        },
+      },
+    ]);
+    const outcome = await executeRun(nib(s), TRIGGER, interpretSpec(s, CONN_MAP), h.deps);
+    expect(outcome.kind).toBe('awaiting_approval');
+    if (outcome.kind !== 'awaiting_approval') throw new Error('expected awaiting_approval');
+    const args = outcome.draft.effectArgs;
+    expect(args.to).toBe('victim@example.com Bcc: attacker@evil.example');
+    expect(args.to).not.toMatch(/[\r\n]/);
+    expect(args.subject).toBe('Hello X-Injected: 1');
+    // Numbers/booleans untouched; nested strings neutralized one level deep.
+    expect(args.count).toBe(3);
+    expect(args.flag).toBe(true);
+    expect((args.meta as { reply: string }).reply).toBe('line1 line2');
+  });
+
+  it('caps an over-long effectArgs string at the header-line length', async () => {
+    const h = harness();
+    const long = 'a'.repeat(2000);
+    const s = spec([{ capability: 'email.draft', inputs: { subject: long } }]);
+    const outcome = await executeRun(nib(s), TRIGGER, interpretSpec(s, CONN_MAP), h.deps);
+    if (outcome.kind !== 'awaiting_approval') throw new Error('expected awaiting_approval');
+    expect((outcome.draft.effectArgs.subject as string).length).toBe(998);
+  });
+
+  /* ── P2-3: per-step patternKey discriminator ──────────────────────────── */
+
+  it('two distinct draft steps get distinct patternKeys (independent routine identities)', async () => {
+    const s = spec([
+      { capability: 'email.draft', inputs: { to: 'a@b.com' } },
+      { capability: 'email.draft', inputs: { to: 'c@d.com' } },
+    ]);
+    const gen = interpretSpec(s, CONN_MAP)({ nibbin: nib(s), trigger: TRIGGER });
+    const first = await gen.next();
+    const second = await gen.next();
+    if (first.done || second.done) throw new Error('expected two draft steps');
+    if (first.value.kind !== 'draft' || second.value.kind !== 'draft') {
+      throw new Error('expected draft steps');
+    }
+    expect(first.value.patternKey).toBe('email.draft:echo#0');
+    expect(second.value.patternKey).toBe('email.draft:echo#1');
+    expect(first.value.patternKey).not.toBe(second.value.patternKey);
+  });
+
+  it('a step-level patternKey overrides the derived per-step key', async () => {
+    const s = spec([
+      { capability: 'email.draft', patternKey: 'email.draft:overdue-followup', inputs: { to: 'a@b.com' } },
+    ]);
+    const gen = interpretSpec(s, CONN_MAP)({ nibbin: nib(s), trigger: TRIGGER });
+    const step = await gen.next();
+    if (step.done || step.value.kind !== 'draft') throw new Error('expected a draft step');
+    expect(step.value.patternKey).toBe('email.draft:overdue-followup');
   });
 });
