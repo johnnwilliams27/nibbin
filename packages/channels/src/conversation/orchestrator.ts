@@ -1,4 +1,4 @@
-import type { InboundChannelMessage } from '../inbound/types.js';
+import type { InboundChannelMessage } from '../inbound/types';
 
 export type Intent =
   | { kind: 'approval'; requestId: string; decision: 'approve' | 'deny' }
