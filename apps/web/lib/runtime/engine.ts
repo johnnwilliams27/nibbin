@@ -112,6 +112,10 @@ interface SpecRow {
   triggers: AgentSpec['triggers'];
   curriculum: AgentSpec['curriculum'];
   credit_profile: AgentSpec['creditProfile'];
+  // Synthesis Slice 1 (forward-compat): present once migration
+  // 20260618040000 lands; existing/template rows default to []/{}.
+  steps?: AgentSpec['steps'];
+  persona_policy?: AgentSpec['personaPolicy'];
 }
 
 export function specFromRow(row: SpecRow): AgentSpec {
@@ -124,6 +128,11 @@ export function specFromRow(row: SpecRow): AgentSpec {
     triggers: row.triggers,
     curriculum: row.curriculum,
     creditProfile: row.credit_profile,
+    // A template adoption carries empty steps → buildProgram routes it to the
+    // hand-written program (no behavior change); a composed spec round-trips
+    // its steps/persona through to the interpreter.
+    steps: row.steps ?? [],
+    personaPolicy: row.persona_policy ?? {},
   };
 }
 
@@ -284,7 +293,7 @@ export async function triggerNibbinRun(nibbinId: string, trigger: RunTrigger): P
   for (const c of connections) connMap[c.provider] = c.id;
   const byId = new Map(connections.map((c) => [c.id, c]));
 
-  const program = buildProgram(nibbin.spec.templateKey ?? '', connMap, nowMs);
+  const program = buildProgram(nibbin.spec, connMap, nowMs);
 
   // Load account created_at for new-account velocity budget
   const { data: accRow } = await svc.from('accounts').select('created_at').eq('id', nibbin.accountId).single();

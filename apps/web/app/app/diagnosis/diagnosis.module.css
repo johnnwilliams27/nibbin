@@ -418,3 +418,80 @@
     transform: none;
   }
 }
+
+/* Synthesis: build-a-Nibbin review-before-adopt (Slice 2a). Token-only, no coral. */
+.wfBuild {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.buildReview {
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper-deep);
+}
+.buildPlan {
+  color: var(--ink);
+  font-size: 14.5px;
+  line-height: 1.55;
+  margin: 0 0 12px;
+}
+.buildMeta {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+.buildMeta > div {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+.buildMeta dt {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--moss-deep);
+  min-width: 140px;
+}
+.buildMeta dd {
+  margin: 0;
+  color: var(--ink);
+  font-size: 14px;
+}
+.buildNameLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--moss-deep);
+  margin-bottom: 12px;
+}
+.buildNameInput {
+  font-family: var(--display);
+  font-size: 15px;
+  color: var(--ink);
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+.buildNameInput:focus {
+  outline: none;
+  border-color: var(--moss);
+}
+.buildActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.buildError {
+  color: var(--moss-deep);
+  font-size: 13px;
+  margin: 0 0 10px;
+}

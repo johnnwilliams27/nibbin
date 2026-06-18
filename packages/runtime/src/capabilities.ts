@@ -1,0 +1,233 @@
+/**
+ * The capability registry — the durable abstraction synthesis composes from
+ * (design §4: a capability is `(resource, verb) → side-effect`). Today's six
+ * hand-written programs (apps/web/lib/runtime/programs.ts) and the shop
+ * templates' `toolsAllowlist` reference these by id; the conformance test
+ * binds them to this registry (no orphan capabilities) WITHOUT rewriting the
+ * imperative programs. Composer (Slice 2) emits `steps[]` over these same ids,
+ * which the interpreter runs through the unchanged runner gates.
+ *
+ * `requiredConnector` matches what each program's `requireConn(...)` actually
+ * uses: email.* → gmail, calendar.read → google-calendar, payments/invoice →
+ * stripe. `patternKeyPrefix` is the routine-matching identity prefix for
+ * draft/write capabilities (§4.7), so the interpreter mints the same
+ * patternKey shape the programs do.
+ */
+import type { ProgramFn } from './runner';
+import { digestInboxCleanup } from './primitives/digest-inbox-cleanup';
+import { digestMorning } from './primitives/digest-morning';
+import { nudgeOverdueEmail } from './primitives/nudge-overdue-email';
+import { nudgeOverdueInvoice } from './primitives/nudge-overdue-invoice';
+import { nudgeUnconfirmedEvent } from './primitives/nudge-unconfirmed-event';
+import { replyNewInquiry } from './primitives/reply-new-inquiry';
+
+/**
+ * A typed input field for a PRIMITIVE capability's `inputSchema` (design §1).
+ * The Composer's only freedom is choosing a primitive id + values for these
+ * scalar fields, validated against type/bounds — it never emits read paths or
+ * effectArgs (those are built by the primitive's trusted implementation).
+ */
+export interface PrimitiveInputField {
+  type: 'number' | 'string' | 'enum';
+  default?: unknown;
+  min?: number;
+  max?: number;
+  values?: string[];
+  required?: boolean;
+}
+
+export interface CapabilityDescriptor {
+  id: string;
+  resource: string;
+  verb: string;
+  sideEffect: 'read' | 'draft' | 'write';
+  requiredConnector: string;
+  /** routine-matching identity prefix for draft/write capabilities (School §4.7). */
+  patternKeyPrefix?: string;
+  /**
+   * Atomic capabilities (Slice 1 — the six below) yield ONE gated step; a
+   * primitive (composite, design §1) has a trusted server-side implementation
+   * that yields many steps. Default 'atomic' (omitted on the back-compat
+   * entries).
+   */
+  kind?: 'atomic' | 'primitive';
+  /** Primitives only: the typed scalar params the Composer may set. */
+  inputSchema?: Record<string, PrimitiveInputField>;
+  /**
+   * Primitives only: the ATOMIC capability ids the implementation actually
+   * yields (e.g. nudge.overdue-email yields email.read + email.draft). The
+   * runner's allowlist gate keys on the YIELDED step's capability, not the
+   * primitive id — so a composed spec's `toolsAllowlist` must list these, and
+   * `validateSpec` (connector-registry powered) validates these, not the
+   * primitive id (which is not a connector capability). The Composer copies
+   * this into `toolsAllowlist`; validateComposedSpec checks against it.
+   */
+  effectiveTools?: string[];
+}
+
+/**
+ * A primitive's trusted implementation factory: bound inputs (already schema-
+ * validated) + the account's connector map + the run clock → a ProgramFn the
+ * interpreter `yield*`s. Registered separately from the descriptor so the
+ * registry stays pure data.
+ */
+export type PrimitiveImpl = (
+  inputs: Record<string, unknown>,
+  connMap: Record<string, string | undefined>,
+  nowMs: number,
+) => ProgramFn;
+
+/** The capabilities today's programs + grants reference. The durable abstraction
+ *  Composer/Planner compose from (spec §4: (resource, verb) → side-effect). */
+export const CAPABILITY_REGISTRY: Record<string, CapabilityDescriptor> = {
+  'email.read':    { id: 'email.read',    resource: 'email',    verb: 'get',   sideEffect: 'read',  requiredConnector: 'gmail' },
+  'email.draft':   { id: 'email.draft',   resource: 'email',    verb: 'draft', sideEffect: 'draft', requiredConnector: 'gmail', patternKeyPrefix: 'email.draft' },
+  'email.send':    { id: 'email.send',    resource: 'email',    verb: 'send',  sideEffect: 'write', requiredConnector: 'gmail', patternKeyPrefix: 'email.send' },
+  'calendar.read': { id: 'calendar.read', resource: 'calendar', verb: 'get',   sideEffect: 'read',  requiredConnector: 'google-calendar' },
+  'payments.read': { id: 'payments.read', resource: 'payments', verb: 'get',   sideEffect: 'read',  requiredConnector: 'stripe' },
+  'invoice.nudge': { id: 'invoice.nudge', resource: 'invoice',  verb: 'nudge', sideEffect: 'draft', requiredConnector: 'stripe', patternKeyPrefix: 'invoice.nudge' },
+
+  // ── Primitives (composite capabilities; design §1) ─────────────────────────
+  // A primitive bundles read→detect→draft as ONE trusted implementation the
+  // Composer composes by id + typed params. The LLM never emits the read
+  // paths / effectArgs; this descriptor's inputSchema bounds its only freedom.
+  'nudge.overdue-email': {
+    id: 'nudge.overdue-email',
+    resource: 'email',
+    verb: 'nudge',
+    sideEffect: 'draft',
+    requiredConnector: 'gmail',
+    patternKeyPrefix: 'email.draft',
+    kind: 'primitive',
+    inputSchema: {
+      staleDays: { type: 'number', default: 3, min: 1, max: 30 },
+    },
+    // The detect-and-nudge impl reads the mailbox (email.read) then drafts the
+    // follow-up (email.draft) — the two atomic tools its yielded steps gate on.
+    effectiveTools: ['email.read', 'email.draft'],
+  },
+  // From `tally`: watch stripe invoices, draft a nudge for the worst overdue one.
+  'nudge.overdue-invoice': {
+    id: 'nudge.overdue-invoice',
+    resource: 'invoice',
+    verb: 'nudge',
+    sideEffect: 'draft',
+    requiredConnector: 'stripe',
+    patternKeyPrefix: 'invoice.nudge',
+    kind: 'primitive',
+    inputSchema: {
+      minDaysLate: { type: 'number', default: 0, min: 0, max: 120 },
+    },
+    effectiveTools: ['payments.read', 'invoice.nudge'],
+  },
+  // From `hopper`: CROSS-RESOURCE — read the calendar (google-calendar), draft a
+  // confirmation email (gmail). The Composer derives BOTH connectors from
+  // effectiveTools; `requiredConnector` is just the primitive's "home" resource.
+  'nudge.unconfirmed-event': {
+    id: 'nudge.unconfirmed-event',
+    resource: 'calendar',
+    verb: 'nudge',
+    sideEffect: 'draft',
+    requiredConnector: 'google-calendar',
+    patternKeyPrefix: 'email.draft',
+    kind: 'primitive',
+    inputSchema: {
+      withinDays: { type: 'number', default: 7, min: 1, max: 60 },
+    },
+    effectiveTools: ['calendar.read', 'email.draft'],
+  },
+  // From `scribe`: read the mailbox, draft a warm first reply to a new inquiry.
+  'reply.new-inquiry': {
+    id: 'reply.new-inquiry',
+    resource: 'email',
+    verb: 'draft',
+    sideEffect: 'draft',
+    requiredConnector: 'gmail',
+    patternKeyPrefix: 'email.draft',
+    kind: 'primitive',
+    // No scalar knob — first-contact detection isn't day-parameterized. An empty
+    // schema is valid (resolvePrimitiveInputs with {} accepts no keys).
+    inputSchema: {},
+    effectiveTools: ['email.read', 'email.draft'],
+  },
+
+  // ── Digest / summarize shape (design §2; Slice 2c) — PRESENTATION primitives ─
+  // Read → present, no side effect. The yielded draft is a READ capability
+  // (email.read) with presentation:true, so the runner gates it as a draft
+  // ALWAYS and never executes — strictly lower-stakes than the nudge family.
+  // From `sweep`: sweep the mailbox, group newsletter-ish senders, present a
+  // top-N keep-or-clear digest. Presentation only — nothing is sent or deleted.
+  'digest.inbox-cleanup': {
+    id: 'digest.inbox-cleanup',
+    resource: 'email',
+    verb: 'digest',
+    sideEffect: 'read',
+    requiredConnector: 'gmail',
+    patternKeyPrefix: 'sweep',
+    kind: 'primitive',
+    inputSchema: {
+      topSenders: { type: 'number', default: 5, min: 1, max: 20 },
+    },
+    // The digest reads the mailbox (email.read) and presents the keep-or-clear
+    // list as a presentation draft (also email.read — no send). One tool.
+    effectiveTools: ['email.read'],
+  },
+  // From `brief`: the 3-CONNECTOR aggregation — read the calendar
+  // (google-calendar), Stripe invoices (stripe), and fresh mail (gmail), then
+  // compose ONE 3-part morning digest. The Composer derives ALL THREE connectors
+  // from effectiveTools; `requiredConnector` is just the primitive's "home"
+  // resource. Presentation only — nothing is sent.
+  'digest.morning': {
+    id: 'digest.morning',
+    resource: 'calendar',
+    verb: 'digest',
+    sideEffect: 'read',
+    requiredConnector: 'google-calendar',
+    patternKeyPrefix: 'brief',
+    kind: 'primitive',
+    // No scalar knob — brief has fixed windows. An empty schema is valid.
+    inputSchema: {},
+    effectiveTools: ['calendar.read', 'payments.read', 'email.read'],
+  },
+};
+
+/**
+ * Trusted implementation factories for primitive capabilities (design §1/§2.2).
+ * Kept separate from the descriptor so the registry stays pure data; the
+ * interpreter dispatches a primitive step through `PRIMITIVE_IMPLS[cap.id]`.
+ */
+export const PRIMITIVE_IMPLS: Record<string, PrimitiveImpl> = {
+  'nudge.overdue-email': (inputs, connMap, nowMs) =>
+    nudgeOverdueEmail(
+      { staleDays: typeof inputs.staleDays === 'number' ? inputs.staleDays : undefined },
+      connMap,
+      nowMs,
+    ),
+  'nudge.overdue-invoice': (inputs, connMap, nowMs) =>
+    nudgeOverdueInvoice(
+      { minDaysLate: typeof inputs.minDaysLate === 'number' ? inputs.minDaysLate : undefined },
+      connMap,
+      nowMs,
+    ),
+  'nudge.unconfirmed-event': (inputs, connMap, nowMs) =>
+    nudgeUnconfirmedEvent(
+      { withinDays: typeof inputs.withinDays === 'number' ? inputs.withinDays : undefined },
+      connMap,
+      nowMs,
+    ),
+  'reply.new-inquiry': (_inputs, connMap, nowMs) => replyNewInquiry({}, connMap, nowMs),
+  'digest.inbox-cleanup': (inputs, connMap, nowMs) =>
+    digestInboxCleanup(
+      { topSenders: typeof inputs.topSenders === 'number' ? inputs.topSenders : undefined },
+      connMap,
+      nowMs,
+    ),
+  'digest.morning': (_inputs, connMap, nowMs) => digestMorning({}, connMap, nowMs),
+};
+
+export function capability(id: string): CapabilityDescriptor | undefined {
+  // Object.hasOwn (not bracket access / `in`) so inherited members like
+  // 'constructor'/'toString'/'__proto__' never resolve to a truthy descriptor
+  // (a prototype-pollution-shaped lookup must return undefined, not Object's).
+  return Object.hasOwn(CAPABILITY_REGISTRY, id) ? CAPABILITY_REGISTRY[id] : undefined;
+}

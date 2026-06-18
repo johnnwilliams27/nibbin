@@ -9,6 +9,8 @@
  * Keeper" — such specs are rejected, not gated.
  */
 import { CONNECTOR_REGISTRY, capabilityCanSend } from '@nibbin/connectors';
+import { capability } from './capabilities';
+import { resolvePrimitiveInputs } from './interpreter';
 import type { AgentSpec, TriggerDef } from './types';
 
 export const KEEPER_NODE = 'keeper';
@@ -181,4 +183,129 @@ export function validateTriggerGraph(specs: AgentSpec[]): string[] {
   }
 
   return problems;
+}
+
+/**
+ * Fail-closed gate for a SYNTHESIZED spec (design §2.4) — the trust boundary
+ * between the untrusted Composer and adoption. Returns problems (empty = ok);
+ * the caller adopts ONLY when the list is empty. Every check must pass:
+ *
+ *  - the base spec is valid (validateSpec via validateTriggerGraph): allowlist
+ *    powered by connectors, triggers well-formed, Keeper rules, promotion
+ *    floors, positive ceilings;
+ *  - the trigger graph across the account's existing specs + this one is
+ *    acyclic (no Nibbin-triggers-Nibbin cycle, §6.2);
+ *  - every `step.capability` is a CAPABILITY_REGISTRY id;
+ *  - every step's capability is in `toolsAllowlist` (so the runner's allowlist
+ *    gate admits it — a step the allowlist would kill is rejected here);
+ *  - a composed `draft`/`write` step MUST be a primitive (kind==='primitive'):
+ *    a raw atomic draft/write step would carry attacker-shaped effectArgs from
+ *    `step.inputs`, so composed side effects must ride a primitive that builds
+ *    its own effectArgs;
+ *  - every primitive step's `inputs` match the primitive's inputSchema
+ *    (types/bounds, no unknown keys) — `resolvePrimitiveInputs` is the single
+ *    source of that check, shared with the interpreter;
+ *  - every `requiredConnector` is in `accountConnections` (granted/active);
+ *  - (defense-in-depth, should be moot — primitives own paths/effectArgs) an
+ *    ATOMIC read step's `inputs.path` is connector-relative (no scheme,
+ *    no '..', slash-rooted): the same SSRF/traversal guard the interpreter
+ *    applies at run time, applied here so an invalid one never adopts.
+ *
+ * The LLM only ever picks a primitive id + schema-checked scalar params; this
+ * function is what makes that structurally safe.
+ */
+export function validateComposedSpec(spec: AgentSpec, accountConnections: string[], existing: AgentSpec[] = []): string[] {
+  const problems: string[] = [];
+  const at = (msg: string) => problems.push(`${spec.displayName}: ${msg}`);
+
+  // Base spec + cross-account cycle check (reuses the shop-spec validation).
+  problems.push(...validateTriggerGraph([...existing, spec]));
+
+  const granted = new Set(accountConnections);
+  for (const provider of spec.requiredConnectors) {
+    if (!granted.has(provider)) at(`required connector "${provider}" is not connected on this account`);
+  }
+
+  const allowlist = new Set(spec.toolsAllowlist);
+  const steps = spec.steps ?? [];
+  if (steps.length === 0) at('a composed spec must have at least one step');
+
+  let idx = -1;
+  for (const step of steps) {
+    idx += 1;
+    const cap = capability(step.capability);
+    if (!cap) {
+      at(`step ${idx} capability "${step.capability}" is not a registry capability`);
+      continue;
+    }
+    // This per-step check intentionally validates ONLY the capability's "home"
+    // connector (cap.requiredConnector). For a cross-resource primitive
+    // (e.g. nudge.unconfirmed-event reads gcal but drafts on gmail) the home
+    // connector is just one of several it touches; full multi-connector
+    // completeness is enforced SEPARATELY by the `requiredConnectors ⊆
+    // accountConnections` loop above and by validateSpec's tool→connector loop
+    // (every effectiveTool must be powered by a required connector). Do NOT
+    // remove that loop thinking this per-step check covers it — it does not.
+    if (!granted.has(cap.requiredConnector)) {
+      at(`step ${idx} needs connector "${cap.requiredConnector}", not connected`);
+    }
+
+    if (cap.kind === 'primitive') {
+      // The runner's allowlist gate keys on the ATOMIC steps the primitive
+      // yields, so the allowlist must contain the primitive's effectiveTools
+      // (not the primitive id, which is not a connector capability).
+      for (const tool of cap.effectiveTools ?? []) {
+        if (!allowlist.has(tool)) {
+          at(`step ${idx} primitive "${cap.id}" yields "${tool}" which is not in toolsAllowlist (the runner would kill it)`);
+        }
+      }
+      try {
+        resolvePrimitiveInputs(cap, step.inputs as Record<string, unknown> | undefined);
+      } catch (err) {
+        at(`step ${idx}: ${err instanceof Error ? err.message : 'invalid primitive inputs'}`);
+      }
+      continue;
+    }
+
+    // A composed draft/write step MUST ride a primitive: a primitive's trusted
+    // implementation builds its own effectArgs, but a RAW atomic draft/write
+    // step would carry effectArgs straight from `step.inputs` (the interpreter's
+    // generic path only CRLF/length-sanitizes them) — reopening the very
+    // attacker-controlled-args surface the primitive boundary closes (e.g. a
+    // composed `email.send` with a `bcc` arg). Fail-closed: reject it here so a
+    // composed write can only ever flow through a primitive.
+    if (cap.sideEffect === 'draft' || cap.sideEffect === 'write') {
+      at(
+        `step ${idx} capability "${cap.id}" is a raw ${cap.sideEffect} step — composed ${cap.sideEffect} steps must ride a primitive that owns its effectArgs, not a raw atomic capability`,
+      );
+      continue;
+    }
+
+    // Atomic step: its own id must be allowlisted.
+    if (!allowlist.has(cap.id)) {
+      at(`step ${idx} capability "${cap.id}" is not in toolsAllowlist (the runner would kill it)`);
+    }
+
+    // Atomic defense-in-depth: a read step must carry a safe connector-relative
+    // path (the same guard the interpreter throws on at run time).
+    if (cap.sideEffect === 'read') {
+      const path = (step.inputs as Record<string, unknown> | undefined)?.path;
+      const pathProblem = unsafeReadPathReason(path);
+      if (pathProblem) at(`step ${idx} read path ${pathProblem}`);
+    }
+  }
+
+  return problems;
+}
+
+/** Mirror of the interpreter's assertSafeReadPath, as a reason string (null =
+ *  safe). Defense-in-depth: a composed spec should never carry an atomic read
+ *  path (primitives own them), but if one appears it is rejected here too. */
+function unsafeReadPathReason(path: unknown): string | null {
+  if (typeof path !== 'string' || path.length === 0) return 'is missing';
+  if (path.includes('://')) return 'must be connector-relative, not an absolute URL';
+  if (path.startsWith('//')) return 'must not be protocol-relative';
+  if (!path.startsWith('/')) return "must start with '/'";
+  if (path.includes('..')) return "must not contain '..' (traversal)";
+  return null;
 }

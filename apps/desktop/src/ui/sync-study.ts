@@ -26,9 +26,27 @@ interface SyncBridge {
   sendControl(cmd: string): Promise<void>;
 }
 
-/** Drop the workflows the user removed at the review gate, by key. */
-export function filterPacket(packet: DiagnosisPacket, removedKeys: Set<string>): DiagnosisPacket {
-  return { ...packet, workflows: packet.workflows.filter((w) => !removedKeys.has(w.key)) };
+export interface ReviewRemovals {
+  workflows: Set<string>;            // whole-workflow keys removed
+  sequences: Set<string>;            // `${wfKey}#${seqIndex}` removed
+  urls: Set<string>;                 // `${wfKey}#${urlTemplate}` removed
+}
+
+/** Drop removed workflows entirely; for kept workflows, strip the individual
+ *  sequences / url-templates the user removed (per-segment granularity, §5.2). */
+export function filterPacket(packet: DiagnosisPacket, removed: ReviewRemovals): DiagnosisPacket {
+  const workflows = packet.workflows
+    .filter((w) => !removed.workflows.has(w.key))
+    .map((w) => {
+      const sequences = (w.sequences ?? []).filter((_s, i) => !removed.sequences.has(`${w.key}#${i}`));
+      const urlTemplates = (w.urlTemplates ?? []).filter((u) => !removed.urls.has(`${w.key}#${u}`));
+      return {
+        ...w,
+        ...(w.sequences ? { sequences } : {}),
+        ...(w.urlTemplates ? { urlTemplates } : {}),
+      };
+    });
+  return { ...packet, workflows };
 }
 
 export async function syncStudy(opts: {

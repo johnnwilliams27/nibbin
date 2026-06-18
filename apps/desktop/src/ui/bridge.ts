@@ -12,6 +12,9 @@ export interface StudyStatus {
   paused: boolean | null;
   pipeline_halted: boolean | null;
   daemon_health: string | null;
+  /** Set by the daemon (observerd) when capture is suspended for a surfaced
+   *  reason — e.g. an exclusion failed to persist. null = capture healthy. */
+  capture_blocked: string | null;
   study: unknown;
 }
 
@@ -51,6 +54,7 @@ export const bridge = {
       paused: null,
       pipeline_halted: null,
       daemon_health: null,
+      capture_blocked: null,
       study: null,
     }),
   sendControl: (cmd: string) => call<void>('send_control', { cmd }, undefined),

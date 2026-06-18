@@ -12,6 +12,15 @@
  * the money- and trust-critical checks in SQL.
  */
 export * from './types';
+export * from './capabilities';
+export * from './primitives/shared';
+export * from './primitives/nudge-overdue-email';
+export * from './primitives/nudge-overdue-invoice';
+export * from './primitives/nudge-unconfirmed-event';
+export * from './primitives/reply-new-inquiry';
+export * from './primitives/digest-inbox-cleanup';
+export * from './primitives/digest-morning';
+export * from './interpreter';
 export * from './events';
 export * from './validate';
 export * from './school';
