@@ -51,6 +51,9 @@ export function modelDrafterFor(accountId: string): ModelDrafter | undefined {
         // recency), injected as a third system block after Grove Memory.
         // Best-effort — null on any failure, never blocks the draft. NOT cached:
         // it varies by intent, so it stays in the volatile (uncached) suffix.
+        // INVARIANT: only the static pattern `intent` is embedded/sent to the
+        // embedding subprocessor (Voyage); never `context` or connector content.
+        // Future programs must keep `intent` free of interpolated evidence.
         const mem = await memoryBlockFor(runId, intent);
         const system = [
           { text: DRAFTING_SYSTEM_PROMPT, cache: true },

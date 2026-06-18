@@ -1,12 +1,15 @@
 /**
  * Unit tests for the memory writer's pure helpers (§12A):
  *   • parseEntries tolerates bad / partial JSON → [] and validates the schema;
- *   • the derived-not-raw guard (applyBattery) drops any entry whose text still
- *     trips a redaction rule, BEFORE it would be embedded or stored.
+ *   • the derived-not-raw guard (the EXPORTED `isClean` predicate the writer
+ *     actually calls — applyBattery + a deterministic NER name check) drops any
+ *     entry whose text still trips a rule, BEFORE it would be embedded/stored.
+ *     Testing the real predicate (not a re-implementation) means a regression in
+ *     the production filter line is caught here.
  */
 import { describe, it, expect } from 'vitest';
 import { applyBattery } from '@nibbin/redaction';
-import { parseEntries } from './extract';
+import { parseEntries, isClean } from './extract';
 
 describe('parseEntries', () => {
   it('returns [] on non-JSON / no array', () => {
@@ -46,18 +49,28 @@ describe('parseEntries', () => {
   });
 });
 
-describe('derived-not-raw guard (the writer filters on applyBattery hits)', () => {
-  // Mirror the exact filter used in writeMemoryFromDecision.
-  const guard = (text: string) => Boolean(text) && applyBattery(text).rulesHit.length === 0;
-
-  it('keeps clean derived text (zero redaction hits)', () => {
-    expect(guard('prefers a warm sign-off')).toBe(true);
+describe('derived-not-raw guard — the EXPORTED isClean predicate the writer calls', () => {
+  it('keeps clean derived text (no battery hit, no name run)', async () => {
+    expect(await isClean('prefers a warm sign-off')).toBe(true);
   });
 
-  it('drops text that still carries PII (a redaction rule fires)', () => {
+  it('drops empty text', async () => {
+    expect(await isClean('')).toBe(false);
+    expect(await isClean('   ')).toBe(false);
+  });
+
+  it('drops text that still carries structured PII (a redaction rule fires)', async () => {
     // An email address is a battery rule; applyBattery must report a hit.
     const sentinel = 'contact them at jane.doe@example.com next week';
     expect(applyBattery(sentinel).rulesHit.length).toBeGreaterThan(0);
-    expect(guard(sentinel)).toBe(false);
+    expect(await isClean(sentinel)).toBe(false);
+  });
+
+  it('drops text with an unstructured person name the regex battery cannot see', async () => {
+    // No structured PII here — only a capitalized two-token name run, which the
+    // NER pass (not applyBattery) catches. This is the gate-finding case.
+    const named = 'the client Maria Sanchez prefers bullet points';
+    expect(applyBattery(named).rulesHit.length).toBe(0); // battery alone misses it
+    expect(await isClean(named)).toBe(false); // isClean's NER pass catches it
   });
 });

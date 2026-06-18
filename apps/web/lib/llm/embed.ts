@@ -8,8 +8,12 @@ import 'server-only';
  * embedTexts/embedQuery return null — entries store with embedding = null and
  * retrieval ranks on full-text + recency alone. Nothing requires the key.
  *
- * Voyage only ever receives ALREADY-REDACTED derived text (the writer runs
- * applyBattery on every entry before calling here).
+ * Voyage only ever receives derived text the writer already cleared: each entry
+ * passed the upstream sidecar redaction (it is distilled from already-sanitized
+ * draft text), then the writer re-checked it here with applyBattery (regex
+ * battery) + a deterministic NER name check and DROPPED anything that tripped a
+ * rule, before calling this. This is a regex-battery + heuristic-NER guard, not
+ * a guarantee of full PII removal — the load-bearing redaction is upstream.
  */
 import { createVoyageEmbedder, type Embed } from '@nibbin/router';
 
