@@ -10,6 +10,7 @@ import { quarantine } from '@nibbin/connectors';
 import {
   executeRun,
   promotionCheck,
+  stakesOf,
   MemoryEventSink,
   MemoryGrantStore,
   MemoryIdempotencyStore,
@@ -282,5 +283,38 @@ describe('§4.7 promotion gate v2 — additive R3 severity + R1 coverage', () =>
     expect(
       promotionCheck(decisions(25), curriculum(2), { weights, distinctPatterns: 4, stage: 'senior' }).eligible,
     ).toBe(true);
+  });
+});
+
+/**
+ * stakesOf — the TS mirror of the SQL `capability_stakes`. Reads are low (1),
+ * destructive is highest (10), everything else (incl. unknown/null) is the
+ * consequential default (3). Must agree with capability_stakes byte-for-byte.
+ */
+describe('stakesOf — per-action side-effect stakes', () => {
+  it('reads → 1', () => {
+    expect(stakesOf('email.read')).toBe(1);
+    expect(stakesOf('calendar.read')).toBe(1);
+  });
+
+  it('consequential (draft/send/nudge/unknown) → 3', () => {
+    expect(stakesOf('email.draft')).toBe(3);
+    expect(stakesOf('email.send')).toBe(3);
+    expect(stakesOf('invoice.nudge')).toBe(3);
+    expect(stakesOf('foo.bar')).toBe(3);
+  });
+
+  it('destructive → 10', () => {
+    expect(stakesOf('mail.delete')).toBe(10);
+    expect(stakesOf('mail.archive')).toBe(10);
+  });
+
+  it('null/undefined → 1', () => {
+    expect(stakesOf(null)).toBe(1);
+    expect(stakesOf(undefined)).toBe(1);
+  });
+
+  it('empty string → 3 (matches SQL: only NULL is the no-tool sentinel)', () => {
+    expect(stakesOf('')).toBe(3);
   });
 });

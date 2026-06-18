@@ -104,6 +104,16 @@ export function promotionCheck(
   };
 }
 
+/** Side-effect stakes for a capability — the TS mirror of the SQL
+ *  `capability_stakes`. Reads are low; destructive highest; everything else
+ *  (incl. unknown) is consequential (=3). Used to weight R3 (see promotionCheck). */
+export function stakesOf(capability: string | null | undefined): number {
+  if (capability == null) return 1; // NULL/undefined → 1; matches SQL ('' falls through to the 3 default)
+  if (capability.endsWith('.read')) return 1;
+  if (capability.endsWith('.delete') || capability.endsWith('.archive')) return 10;
+  return 3;
+}
+
 export function nextStage(stage: StageName): StageName | null {
   switch (stage) {
     case 'egg': return 'student';
