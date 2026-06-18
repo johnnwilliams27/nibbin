@@ -1,4 +1,4 @@
-import type { ChannelKind } from '../types.js';
+import type { ChannelKind } from '../types';
 
 export interface TurnGateDeps {
   take(accountId: string, channel: ChannelKind): Promise<{ granted: boolean; turns: number; channelSpent: number }>;

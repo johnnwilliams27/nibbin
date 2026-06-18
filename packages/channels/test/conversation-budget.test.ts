@@ -21,7 +21,13 @@ describe('gateTurn', () => {
     if (!r.ok) { expect(r.reason).toBe('budget'); expect(r.notice).toMatch(/breather/i); expect(r.notice).toMatch(/app/i); }
   });
   it('blocks (anomaly) before spending', async () => {
-    const r = await gateTurn('a', 'telegram', deps({ async anomaly() { return true; } }), cfg);
+    let takeCalls = 0;
+    const d = deps({
+      async anomaly() { return true; },
+      async take() { takeCalls++; return { granted: true, turns: 0, channelSpent: 0 }; },
+    });
+    const r = await gateTurn('a', 'telegram', d, cfg);
     expect(r).toMatchObject({ ok: false, reason: 'anomaly' });
+    expect(takeCalls).toBe(0);
   });
 });
