@@ -11,7 +11,7 @@ Gate: the matching `CHANNELS_*_ENABLED` flag stays FALSE until its whole section
 - [ ] ⚑ Counsel: review TCPA consent language + quiet-hours policy + record-keeping.
 - [ ] In-repo: opt-in consent copy + STOP/HELP handler shipped (Tasks 2–3 below).
 - [ ] **In-repo (pre-go-live): wire the inbound `START` re-subscribe handler.** The CTIA `START` keyword is recognized by `isStartKeyword`, but the SMS route currently acts only on STOP/HELP — an opted-out number that texts START will NOT auto-resume. Before flipping the flag, add a START branch that replies pointing the user to reconnect in the app (re-binding requires the authenticated nonce; do NOT auto-un-revoke from a bare SMS — that would bypass the link-verification security model).
-- [ ] **Apply the `sms_opt_out` RPC migration (`20260618090000`) to dev/staging/prod BEFORE flipping the flag.** If the RPC is absent at runtime, `optOutSms` silently degrades to log-only — a TCPA opt-out gap exactly when it matters.
+- [ ] **Apply the `sms_opt_out` RPC migration (`20260618160000`) to dev/staging/prod BEFORE flipping the flag.** If the RPC is absent at runtime, `optOutSms` silently degrades to log-only — a TCPA opt-out gap exactly when it matters.
 - [ ] ⚑ Configure the Twilio messaging webhook → `https://nibbin.com/api/channels/sms` with request-signature validation on.
 - [ ] Set env: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER`, `SMS_WEBHOOK_URL`, `TWILIO_PER_MESSAGE_MICROUSD`.
 - [ ] ⚑ COGS modeling: fold per-message SMS cost into the unit-economics model; tune the §11 SMS sub-cap (`smsSpendCapMicroUsd`).

@@ -49,7 +49,8 @@ This spec spans multiple independent subsystems, so per `superpowers:writing-pla
 - [ ] PR + migrations to dev/staging/prod (timestamps may need renumbering on rebase) + human gate sign-off.
 
 ### Migrations added (apply dev/staging/prod at PR time, in order)
-`20260618030000` channels schema · `20260618040000` channel RPCs · `20260618050000` notifications 'reach' kind · `20260618060000` model_calls origin/channel · `20260618070000` channel budgets · `20260618080000` approval bridge (linked_by + decide_run_service) · `20260618090000` sms_opt_out RPC.
+Renumbered from `…0[3-9]0000` to `…1[0-6]0000` on the rebase onto main (cleared collisions with agent_memory/gmail_sweep/agent_spec_steps/adopt_nibbin_steps/sweep_consent). Apply in this order:
+`20260618100000` channels schema · `20260618110000` channel RPCs · `20260618120000` notifications 'reach' kind · `20260618130000` model_calls origin/channel · `20260618140000` channel budgets · `20260618150000` approval bridge (linked_by + decide_run_service) · `20260618160000` sms_opt_out RPC.
 
 ### Cross-cutting follow-ups (from reviews/gate)
 - Spend cap is rolling-soft; turn-count is the hard backstop (decide hard-vs-soft; align spend/turn windows).
