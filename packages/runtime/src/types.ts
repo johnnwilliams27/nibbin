@@ -48,6 +48,12 @@ export interface PromotionThresholds {
   windowRuns: number;
   /** Approved-unedited share required. Floor 0.95 — config may only tighten. */
   minApprovedUneditedPct: number;
+  /**
+   * Distinct routine patterns required for Senior→Grad (R1 coverage). Floor 4
+   * — config may only tighten. Optional for back-compat with existing specs;
+   * the SQL + mirror default to 4 when absent.
+   */
+  coverageMinPatterns?: number;
 }
 
 export interface CurriculumConfig {
