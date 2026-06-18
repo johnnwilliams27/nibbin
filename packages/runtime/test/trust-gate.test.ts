@@ -313,4 +313,8 @@ describe('stakesOf — per-action side-effect stakes', () => {
     expect(stakesOf(null)).toBe(1);
     expect(stakesOf(undefined)).toBe(1);
   });
+
+  it('empty string → 3 (matches SQL: only NULL is the no-tool sentinel)', () => {
+    expect(stakesOf('')).toBe(3);
+  });
 });
