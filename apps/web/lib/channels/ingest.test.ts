@@ -7,8 +7,8 @@ function deps(over: Partial<IngestDeps> = {}): IngestDeps & { persisted: any[]; 
   return {
     async resolveAccount() { return 'acc-1'; },
     async verifyBinding() { return 'chan-1'; },
-    async persistInbound(row) { persisted.push(row); },
-    async handoff(v) { handed.push(v); },
+    async persistInbound(row: Parameters<IngestDeps['persistInbound']>[0]) { persisted.push(row); },
+    async handoff(v: Parameters<IngestDeps['handoff']>[0]) { handed.push(v); },
     persisted, handed,
     ...over,
   } as any;
