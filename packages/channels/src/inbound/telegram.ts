@@ -15,8 +15,13 @@ export function telegramStartLink(botUsername: string, nonce: string): string {
   return `https://t.me/${botUsername}?start=${nonce}`;
 }
 
+interface TelegramUpdate {
+  callback_query?: { message?: { chat?: { id?: unknown } }; data?: unknown };
+  message?: { chat?: { id?: unknown }; text?: unknown };
+}
+
 export function parseTelegramUpdate(update: unknown, now: number): InboundChannelMessage | null {
-  const u = update as any;
+  const u = update as TelegramUpdate;
   if (u?.callback_query) {
     const chatId = u.callback_query.message?.chat?.id;
     const data = String(u.callback_query.data ?? '');

@@ -1,9 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { floorAdapter, type NotificationsFloorStore } from '@nibbin/channels';
 
+type FloorWrite = { accountId: string; kind: string; sourceId: string; title: string; body: string; payload: Record<string, unknown> };
+
 describe('floorAdapter', () => {
   it('stores non-beat messages as kind=reach', async () => {
-    const writes: unknown[] = [];
+    const writes: FloorWrite[] = [];
     const store: NotificationsFloorStore = {
       async insertNotification(accountId, n) {
         writes.push({ accountId, ...n });
@@ -17,11 +19,11 @@ describe('floorAdapter', () => {
     });
     expect(res.delivered).toBe(true);
     expect(writes).toHaveLength(1);
-    expect((writes[0] as any).kind).toBe('reach');
+    expect(writes[0].kind).toBe('reach');
   });
 
   it('stores beat messages as kind=beat', async () => {
-    const writes: unknown[] = [];
+    const writes: FloorWrite[] = [];
     const store: NotificationsFloorStore = {
       async insertNotification(accountId, n) {
         writes.push({ accountId, ...n });
@@ -34,6 +36,6 @@ describe('floorAdapter', () => {
     });
     expect(res.delivered).toBe(true);
     expect(writes).toHaveLength(1);
-    expect((writes[0] as any).kind).toBe('beat');
+    expect(writes[0].kind).toBe('beat');
   });
 });

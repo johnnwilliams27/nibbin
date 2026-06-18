@@ -6,7 +6,7 @@
  * so we can control whether it passes or fails without HMAC arithmetic.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ── Module-level mocks (hoisted) ──────────────────────────────────────────────
 
@@ -34,7 +34,7 @@ vi.mock('../../../../lib/channels/sms-compliance', () => ({
 // ── Imports after mocks ───────────────────────────────────────────────────────
 
 import { POST } from './route';
-import { verifyTwilioSignature, SMS_STOP_REPLY, SMS_HELP_REPLY } from '@nibbin/channels';
+import { verifyTwilioSignature, SMS_STOP_REPLY, SMS_HELP_REPLY, type InboundResult } from '@nibbin/channels';
 import { ingestInbound } from '../../../../lib/channels/ingest';
 import { optOutSms } from '../../../../lib/channels/sms-compliance';
 
@@ -64,7 +64,7 @@ beforeEach(() => {
   process.env.TWILIO_AUTH_TOKEN = 'test-token';
   process.env.SMS_WEBHOOK_URL = 'https://example.com/api/channels/sms';
   vi.mocked(verifyTwilioSignature).mockReturnValue(true);
-  vi.mocked(ingestInbound).mockResolvedValue({ status: 'accepted' } as any);
+  vi.mocked(ingestInbound).mockResolvedValue({ status: 'accepted' } as InboundResult);
   vi.mocked(optOutSms).mockResolvedValue(undefined);
 });
 

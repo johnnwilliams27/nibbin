@@ -1,13 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { smsAdapter } from '@nibbin/channels';
 
-function fakeFetch(cap: { url?: string; auth?: string; form?: URLSearchParams }, ok = true) {
-  return (async (url: string, init?: any) => {
-    cap.url = url;
-    cap.auth = init.headers.authorization;
-    cap.form = new URLSearchParams(init.body);
-    return { ok, status: ok ? 201 : 400, async json() { return ok ? { sid: 'SM123' } : { message: 'unverified number' }; } } as any;
-  }) as unknown as typeof fetch;
+function fakeFetch(cap: { url?: string; auth?: string; form?: URLSearchParams }, ok = true): typeof fetch {
+  return async (url: string | URL | Request, init?: RequestInit) => {
+    cap.url = String(url);
+    cap.auth = (init?.headers as Record<string, string>)?.['authorization'];
+    cap.form = new URLSearchParams(init?.body as string);
+    return { ok, status: ok ? 201 : 400, async json() { return ok ? { sid: 'SM123' } : { message: 'unverified number' }; } } as Response;
+  };
 }
 
 describe('smsAdapter', () => {

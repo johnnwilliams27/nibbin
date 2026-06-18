@@ -1,17 +1,20 @@
 import { describe, it, expect, vi } from 'vitest';
 import { ingestInbound, type IngestDeps } from './ingest';
 
-function deps(over: Partial<IngestDeps> = {}): IngestDeps & { persisted: any[]; handed: any[] } {
-  const persisted: any[] = [];
-  const handed: any[] = [];
+type PersistRow = Parameters<IngestDeps['persistInbound']>[0];
+type HandoffArg = Parameters<IngestDeps['handoff']>[0];
+
+function deps(over: Partial<IngestDeps> = {}): IngestDeps & { persisted: PersistRow[]; handed: HandoffArg[] } {
+  const persisted: PersistRow[] = [];
+  const handed: HandoffArg[] = [];
   return {
     async resolveAccount() { return 'acc-1'; },
     async verifyBinding() { return 'chan-1'; },
-    async persistInbound(row: Parameters<IngestDeps['persistInbound']>[0]) { persisted.push(row); },
-    async handoff(v: Parameters<IngestDeps['handoff']>[0]) { handed.push(v); },
+    async persistInbound(row: PersistRow) { persisted.push(row); },
+    async handoff(v: HandoffArg) { handed.push(v); },
     persisted, handed,
     ...over,
-  } as any;
+  };
 }
 
 describe('ingestInbound', () => {

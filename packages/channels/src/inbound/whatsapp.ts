@@ -1,8 +1,18 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { InboundChannelMessage } from './types';
 
+interface WhatsAppMessage {
+  from?: unknown;
+  type?: string;
+  text?: { body?: string };
+  interactive?: { button_reply?: { id?: string; title?: string } };
+}
+interface WhatsAppWebhook {
+  entry?: Array<{ changes?: Array<{ value?: { messages?: WhatsAppMessage[] } }> }>;
+}
+
 export function parseWhatsAppWebhook(body: unknown, now: number): InboundChannelMessage | null {
-  const msg = (body as any)?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
+  const msg = (body as WhatsAppWebhook)?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
   if (!msg?.from) return null;
   if (msg.type === 'text' && msg.text?.body) {
     return { channel: 'whatsapp', externalId: String(msg.from), text: msg.text.body, receivedAt: now };

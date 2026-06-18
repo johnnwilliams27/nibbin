@@ -18,7 +18,6 @@ const UID_B = 'bbbbbbbb-8888-4888-8888-888888888888';
 describe.skipIf(!dbAvailable)('reach-me channels RLS + RPCs', () => {
   const h = new RlsHarness();
   let accountA = '';
-  let accountB = '';
 
   const asA = { kind: 'authenticated', uid: UID_A } as const;
   const asB = { kind: 'authenticated', uid: UID_B } as const;
@@ -42,8 +41,8 @@ describe.skipIf(!dbAvailable)('reach-me channels RLS + RPCs', () => {
     accountA = await h.as(asA, async (c) =>
       (await c.query(`select public.create_account_with_owner('A Grove') as id`)).rows[0].id,
     );
-    accountB = await h.as(asB, async (c) =>
-      (await c.query(`select public.create_account_with_owner('B Grove') as id`)).rows[0].id,
+    await h.as(asB, async (c) =>
+      c.query(`select public.create_account_with_owner('B Grove')`),
     );
   });
 

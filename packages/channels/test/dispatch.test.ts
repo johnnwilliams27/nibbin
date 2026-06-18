@@ -1,12 +1,20 @@
 import { describe, it, expect } from 'vitest';
-import { deliverWithFallback, floorAdapter, type ChannelPort, type ChannelStore, type DispatchContext } from '@nibbin/channels';
+import { deliverWithFallback, floorAdapter, type ChannelPort, type ChannelStore, type DispatchContext, type ChannelKind, type NotificationsFloorStore } from '@nibbin/channels';
 
-function port(channel: any, ok: boolean): ChannelPort {
+type LogRow = Parameters<ChannelStore['logDelivery']>[0];
+type FloorNotification = Parameters<NotificationsFloorStore['insertNotification']>[1];
+
+interface TestCtx extends DispatchContext {
+  _logs: LogRow[];
+  _floorWrites: { a: string; n: FloorNotification }[];
+}
+
+function port(channel: ChannelKind, ok: boolean): ChannelPort {
   return { channel, async deliver() { return ok ? { delivered: true, providerMessageId: 'x' } : { delivered: false, error: 'down' }; } };
 }
 
-function ctx(over: Partial<ChannelStore>, ports: ChannelPort[], hour = 12): DispatchContext {
-  const logs: any[] = [];
+function ctx(over: Partial<ChannelStore>, ports: ChannelPort[], hour = 12): TestCtx {
+  const logs: LogRow[] = [];
   const store: ChannelStore = {
     async verifiedChannels() { return [{ channel: 'telegram', externalId: 't' }, { channel: 'sms', externalId: 's' }]; },
     async prefs() {
@@ -19,12 +27,12 @@ function ctx(over: Partial<ChannelStore>, ports: ChannelPort[], hour = 12): Disp
     async logDelivery(row) { logs.push(row); },
     ...over,
   };
-  const floorWrites: any[] = [];
+  const floorWrites: { a: string; n: FloorNotification }[] = [];
   const floor = floorAdapter({ async insertNotification(a, n) { floorWrites.push({ a, n }); } });
   return Object.assign(
     { ports: new Map(ports.map((p) => [p.channel, p])), floor, store, now: () => new Date(), localHour: () => hour },
-    { _logs: logs, _floorWrites: floorWrites } as any,
-  ) as any;
+    { _logs: logs, _floorWrites: floorWrites },
+  ) as TestCtx;
 }
 
 describe('deliverWithFallback', () => {
@@ -45,9 +53,9 @@ describe('deliverWithFallback', () => {
     const c = ctx({}, [port('telegram', false), port('sms', false)]);
     const r = await deliverWithFallback({ accountId: 'a', channel: 'telegram', externalId: '', kind: 'escalation', urgency: 'high', body: 'go?' }, c);
     expect(r.deliveredVia).toBe('floor');
-    expect((c as any)._floorWrites).toHaveLength(1);
+    expect(c._floorWrites).toHaveLength(1);
     // a fallback log row must have been written
-    expect((c as any)._logs.some((l: any) => l.status === 'fallback')).toBe(true);
+    expect(c._logs.some((l) => l.status === 'fallback')).toBe(true);
   });
 
   it('respects the urgency threshold (sms only takes >= high)', async () => {

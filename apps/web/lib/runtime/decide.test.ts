@@ -63,7 +63,6 @@ function makeQueryChain(table: string) {
       // when any terminal is reached. The actual query in decide.ts chains:
       //   .select(..., {count:'exact',head:true}).eq(...).in(..., [...])
       // so we need at least 1 eq + 1 in deep, then the result is awaited.
-      const countResult = { count, error: null };
       // Proxy: every method returns something that also has eq/in and the count result fields
       function deepCountChain(): Record<string, unknown> {
         const c: Record<string, unknown> = { count, error: null };

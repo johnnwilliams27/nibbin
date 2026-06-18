@@ -68,7 +68,9 @@ function makeDeps(over: Partial<HandleInboundDeps> = {}): HandleInboundDeps & {
     workEnabled: false,
   };
 
-  return { ...base, ...over, replied, decideCalls, answerCalls } as any;
+  return { ...base, ...over, replied, decideCalls, answerCalls } as HandleInboundDeps & {
+    replied: typeof replied; decideCalls: typeof decideCalls; answerCalls: typeof answerCalls;
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -150,7 +152,7 @@ describe('handleInbound — status intent', () => {
     const deps = makeDeps({
       classify: () => ({ kind: 'status', text: 'what is going on?' }),
       gate: async () => blocked,
-      answer: answerSpy as any,
+      answer: answerSpy as HandleInboundDeps['answer'],
     });
 
     await handleInbound(makeVerified(), deps);
@@ -206,8 +208,8 @@ describe('handleInbound — work intent', () => {
     const deps = makeDeps({
       classify: () => ({ kind: 'work', text: 'draft a reply to Maya' }),
       gate: async () => blocked,
-      answer: answerSpy as any,
-      decide: decideSpy as any,
+      answer: answerSpy as HandleInboundDeps['answer'],
+      decide: decideSpy as HandleInboundDeps['decide'],
       workEnabled: false,
     });
 
@@ -225,8 +227,8 @@ describe('handleInbound — work intent', () => {
     const deps = makeDeps({
       classify: () => ({ kind: 'work', text: 'schedule a meeting' }),
       gate: async () => ({ ok: true }),
-      answer: answerSpy as any,
-      decide: decideSpy as any,
+      answer: answerSpy as HandleInboundDeps['answer'],
+      decide: decideSpy as HandleInboundDeps['decide'],
       workEnabled: false,
     });
 
@@ -246,8 +248,8 @@ describe('handleInbound — work intent', () => {
     const deps = makeDeps({
       classify: () => ({ kind: 'work', text: 'draft a response' }),
       gate: async () => ({ ok: true }),
-      answer: answerSpy as any,
-      decide: decideSpy as any,
+      answer: answerSpy as HandleInboundDeps['answer'],
+      decide: decideSpy as HandleInboundDeps['decide'],
       workEnabled: true,
     });
 
@@ -290,7 +292,7 @@ describe('gate blocked — no model work for status or work', () => {
           ? { kind: 'status', text: 'what is up?' }
           : { kind: 'work', text: 'draft something' }),
         gate: async () => ({ ok: false, reason: 'budget', notice: BREATHER }),
-        answer: answerSpy as any,
+        answer: answerSpy as HandleInboundDeps['answer'],
         workEnabled: false,
       });
 
