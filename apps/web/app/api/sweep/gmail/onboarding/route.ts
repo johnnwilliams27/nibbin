@@ -29,6 +29,24 @@ export async function POST(request: NextRequest): Promise<Response> {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
+  const svc = serviceClient();
+
+  // Idempotency / cost guard: the onboarding sweep is a one-time derive per
+  // connection that reads ~90 days of inbox and spends model budget. If it
+  // already ran for this connection (complete or partial), do NOT re-run it on a
+  // callback retry or a replay of the (static) HMAC — that would re-read the
+  // whole inbox and re-spend budget. A prior 'failed' row is allowed to retry.
+  const { data: prior } = await svc
+    .from('gmail_sweep_log')
+    .select('id')
+    .eq('connection_id', connectionId)
+    .in('status', ['complete', 'partial'])
+    .limit(1)
+    .maybeSingle();
+  if (prior) {
+    return NextResponse.json({ status: 'skipped', reason: 'already_swept' });
+  }
+
   try {
     const result = await gmailOnboardingSweep(accountId, connectionId);
     return NextResponse.json({ status: result.status, messagesRead: result.messagesRead });
@@ -38,7 +56,7 @@ export async function POST(request: NextRequest): Promise<Response> {
     // error_summary — without this, failures never reach the table (the success
     // path is the only writer) and the status/error_summary columns stay dead.
     const errorSummary = (err instanceof Error ? err.message : String(err)).slice(0, 500);
-    const { error: logErr } = await serviceClient().from('gmail_sweep_log').insert({
+    const { error: logErr } = await svc.from('gmail_sweep_log').insert({
       account_id: accountId,
       connection_id: connectionId,
       status: 'failed',

@@ -14,6 +14,13 @@ export interface GmailDeltaDeps {
   checkOverdueThreads?: (signal?: AbortSignal) => Promise<Array<{ threadId: string }>>;
 }
 
+/** True when an error from history.list signals an expired/unknown historyId (HTTP 404). */
+function isNotFound(err: unknown): boolean {
+  if (typeof err !== 'object' || err === null) return false;
+  const e = err as { status?: unknown; code?: unknown; response?: { status?: unknown } };
+  return e.status === 404 || e.code === 404 || e.response?.status === 404;
+}
+
 export async function fetchGmailDelta(
   connectionId: string,
   accountId: string,
@@ -26,7 +33,18 @@ export async function fetchGmailDelta(
     cursor = await deps.getProfileHistoryId();
   }
 
-  const { messages, historyId: newHistoryId } = await deps.historyList(cursor, signal);
+  let messages: Array<{ id: string; threadId: string }>;
+  let newHistoryId: string;
+  try {
+    ({ messages, historyId: newHistoryId } = await deps.historyList(cursor, signal));
+  } catch (err) {
+    // An expired historyId returns 404 from history.list. The gap is unrecoverable,
+    // so skip it: advance the cursor to the current historyId and resume tracking
+    // from now, returning zero events for this cycle.
+    if (!isNotFound(err)) throw err;
+    const resumeHistoryId = await deps.getProfileHistoryId();
+    return { events: [], newHistoryId: resumeHistoryId };
+  }
 
   const seen = new Set<string>();
   const events: ConnectorEvent[] = [];

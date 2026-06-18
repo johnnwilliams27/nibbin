@@ -51,7 +51,6 @@ export async function beginConnect(args: BeginConnectArgs, deps: BeginConnectDep
     provider: args.provider,
     accountId: args.accountId,
     userId: args.userId,
-    nonce: pending.nonce,
     codeVerifier: pending.codeVerifier,
     scopes: pending.scopes,
     returnTo: safeReturnTo(args.returnTo) ?? null,

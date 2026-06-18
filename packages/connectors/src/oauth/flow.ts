@@ -1,6 +1,11 @@
 /**
  * OAuth authorization-code engine (SPEC §6.5).
  *
+ * Anti-replay is enforced with state + PKCE: `state` is issued per flow and
+ * checked timing-safe on the callback, and the S256 `code_verifier` binds the
+ * redeemed code to this client. (No `nonce`/`id_token` is requested or
+ * consumed, so none is emitted — it would be dead scaffolding.)
+ *
  * C8 by construction: `beginAuthorization` always requests the descriptor's
  * READ scopes. Write scopes exist on a separate code path
  * (`beginWriteScopeUpgrade`) that demands the adopting Nibbin's id and a
@@ -17,7 +22,6 @@ import { OAUTH_PROVIDERS } from './providers';
 import {
   codeChallengeS256,
   generateCodeVerifier,
-  generateNonce,
   generateState,
   timingSafeEqualString,
 } from './pkce';
@@ -53,7 +57,6 @@ export interface PendingAuthorization {
   provider: string;
   url: string;
   state: string;
-  nonce: string;
   codeVerifier?: string;
   /** The exact scopes requested — recorded onto the connection at callback. */
   scopes: string[];
@@ -118,14 +121,12 @@ function buildAuthorization(
 ): PendingAuthorization {
   const config = OAUTH_PROVIDERS[descriptor.id]!;
   const state = generateState();
-  const nonce = generateNonce();
   const url = new URL(config.authorizationUrl);
   url.searchParams.set('response_type', 'code');
   url.searchParams.set('client_id', req.clientId);
   url.searchParams.set('redirect_uri', req.redirectUri);
   url.searchParams.set('scope', scopes.join(' '));
   url.searchParams.set('state', state);
-  url.searchParams.set('nonce', nonce);
   if (req.loginHint) url.searchParams.set('login_hint', req.loginHint);
   for (const [k, v] of Object.entries(config.extraAuthParams ?? {})) {
     url.searchParams.set(k, v);
@@ -139,7 +140,7 @@ function buildAuthorization(
     url.searchParams.set('code_challenge', codeChallengeS256(codeVerifier));
     url.searchParams.set('code_challenge_method', 'S256');
   }
-  return { provider: descriptor.id, url: url.href, state, nonce, codeVerifier, scopes };
+  return { provider: descriptor.id, url: url.href, state, codeVerifier, scopes };
 }
 
 /**

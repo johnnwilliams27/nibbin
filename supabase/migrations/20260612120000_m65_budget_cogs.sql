@@ -150,6 +150,16 @@ grant execute on function public.account_model_cogs(uuid, integer) to service_ro
 -- Default OFF; flipping it is an explicit, audited account-level act. The
 -- flag gates any FUTURE training use of account content; model providers are
 -- contractually barred regardless (SPEC §2 C11).
+--
+-- NOT YET WIRED: as of this migration `training_opt_in` is written only by
+-- `set_training_opt_in` below — it is read/enforced NOWHERE in app code and
+-- there is no Settings UI to flip it. No training pipeline consumes account
+-- content today, so OFF-by-default is honored by absence. Published surfaces
+-- (privacy.html / data-ai.html) therefore promise the toggle as "coming",
+-- not as a shipped control — keep them in sync when the reader + UI land.
+-- FOLLOW-UP: explicit opt-in / skip gating of the one-time Gmail onboarding
+-- sweep (it currently runs on connect) is a separate, not-yet-built consent
+-- step.
 
 alter table public.accounts
   add column training_opt_in boolean not null default false;

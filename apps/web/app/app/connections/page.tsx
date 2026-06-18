@@ -86,6 +86,11 @@ export default async function ConnectionsPage({
                   {sp.resume && <input type="hidden" name="resumeTemplate" value={sp.resume} />}
                   <input type="hidden" name="returnTo" value="/app/connections" />
                   <button className={styles.connect} type="submit">Connect {p.label}</button>
+                  {p.id === 'gmail' && (
+                    <p className={styles.accessNote}>
+                      Connecting does a one-time read of your last 90 days of mail to learn your voice &amp; FAQs — only short derived notes are kept, never the raw mail.
+                    </p>
+                  )}
                 </form>
               ) : (
                 <p className={styles.soon}>Coming soon</p>

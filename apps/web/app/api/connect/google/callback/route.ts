@@ -46,6 +46,11 @@ export async function exchangeViaEngine(
   overrides?: UnsafeTestOverrides,
 ): Promise<StoredToken> {
   const cfg = getGoogleOAuthConfig();
+  // State is already validated upstream: completeConnection consumes the pending
+  // BY the returned state (consumePending), so by the time we exchange,
+  // pending.state IS the callback's returned state by construction. The
+  // expected/returned pair below is therefore that already-validated value —
+  // belt-and-suspenders, not the primary CSRF check.
   return exchangeCode(
     {
       provider: pending.provider,
@@ -83,11 +88,17 @@ export function makeCreateActiveConnection(svc: SupabaseClient) {
           .update({ scopes: token.scopes })
           .eq('id', existing.id as string);
         if (upErr) throw new Error(`connection scopes update failed: ${upErr.message}`);
-        const { error: vErr } = await svc.rpc('connection_token_store', {
-          p_connection: existing.id,
-          p_token: JSON.stringify(token),
-        });
-        if (vErr) throw new Error(`token store failed: ${vErr.message}`);
+        // Only overwrite the vaulted token when the re-consent actually returned
+        // a refresh token (prompt=consent normally guarantees one). Storing a
+        // refresh-less token would wipe our ability to refresh; in that rare case
+        // keep the existing token and just take the widened scopes above.
+        if (token.refreshToken) {
+          const { error: vErr } = await svc.rpc('connection_token_store', {
+            p_connection: existing.id,
+            p_token: JSON.stringify(token),
+          });
+          if (vErr) throw new Error(`token store failed: ${vErr.message}`);
+        }
         return existing.id as string;
       }
     }

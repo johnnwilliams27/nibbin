@@ -57,6 +57,8 @@ export interface GmailMessageMeta {
   threadId: string;
   labelIds?: string[];
   internalDate?: string;
+  /** Short server-side preview (~first 200 chars). Present even on format=metadata. */
+  snippet?: string;
   payload?: { headers?: Array<{ name: string; value: string }> };
 }
 

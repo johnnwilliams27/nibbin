@@ -13,48 +13,73 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  const svc = serviceClient();
   const topicName = process.env.GMAIL_PUBSUB_TOPIC ?? '';
+  // No Pub/Sub topic configured → push isn't wired; nothing to register. Stay
+  // inert rather than calling watch('') and erroring per connection.
+  if (!topicName) return NextResponse.json({ skipped: 'no_topic', registered: 0 });
+
+  const svc = serviceClient();
   const renewalHorizon = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
-  // Connections whose watch expires within the next 24 hours
+  // Every active Gmail connection — we register a watch for any that either has
+  // NO watch yet (null watchExpiry → bootstrap the first watch) or whose watch
+  // expires within the next 24h (renew). The prior renew-only query filtered on
+  // `watchExpiry < horizon`, which silently excludes null watchExpiry, so a
+  // freshly connected inbox never got a first watch and push never started.
   const { data: rows, error } = await svc
     .from('connections')
     .select('*')
     .eq('provider', 'gmail')
-    .eq('status', 'active')
-    .lt('webhook_state->>watchExpiry', renewalHorizon);
+    .eq('status', 'active');
 
   if (error) return NextResponse.json({ error: 'query_failed' }, { status: 500 });
+
+  const due = (rows ?? []).filter((row) => {
+    const ws = (row as { webhook_state?: Record<string, unknown> | null }).webhook_state;
+    const expiry = ws && typeof ws.watchExpiry === 'string' ? ws.watchExpiry : null;
+    return expiry === null || expiry < renewalHorizon;
+  });
 
   const vault = new SupabaseTokenVault({
     supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
     serviceKey: process.env.SUPABASE_SECRET_KEY ?? '',
   });
 
-  let renewed = 0;
+  const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+  let registered = 0;
   const errors: string[] = [];
 
-  for (const row of rows ?? []) {
+  for (const row of due) {
     try {
       const connection = connectionFromRow(row as Record<string, unknown>);
       const client = new GmailClient(connection, vault);
+      // Seed the mailbox address: a Pub/Sub push notification carries only the
+      // emailAddress, and the push webhook maps it back to this connection via
+      // webhook_state.email. Without this the push handler never matches a
+      // connection and push delivery is silently inert.
+      const profile = await client.getProfile();
       const { historyId, expiration } = await client.watch(topicName);
 
       const patch: Record<string, string> = {};
+      if (profile.emailAddress) patch.email = profile.emailAddress;
       if (historyId) patch.historyId = historyId;
-      if (expiration) patch.watchExpiry = new Date(Number(expiration)).toISOString();
+      // Gmail watches last ~7 days. If the API omits expiration, set a 7-day
+      // floor so a watch that returned no expiration is not re-registered on
+      // every single cron run.
+      patch.watchExpiry = expiration
+        ? new Date(Number(expiration)).toISOString()
+        : new Date(Date.now() + SEVEN_DAYS_MS).toISOString();
 
       await svc.rpc('jsonb_merge_connection_state', {
         p_connection: connection.id,
         p_patch: patch,
       });
 
-      renewed++;
+      registered++;
     } catch (e) {
       errors.push(`${(row as { id: string }).id}: ${(e as Error).message}`);
     }
   }
 
-  return NextResponse.json({ renewed, errors });
+  return NextResponse.json({ registered, errors });
 }

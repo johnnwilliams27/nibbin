@@ -10,6 +10,7 @@ import {
   BATCH_SIZE_PASS1,
   BATCH_SIZE_PASS2,
   isNewsletter,
+  isSensitiveThread,
   writeSweepDerivedToMemory,
   mergeProfileChannelsAndTools,
 } from './gmail-onboarding';
@@ -55,6 +56,38 @@ describe('isNewsletter', () => {
   });
   it('returns false when payload/headers absent', () => {
     expect(isNewsletter({ id: 'x', threadId: 'y' })).toBe(false);
+  });
+});
+
+describe('isSensitiveThread — P3.9 pre-filter', () => {
+  const meta = (from: string, subject: string) => ({
+    id: 'x',
+    threadId: 'y',
+    payload: { headers: [{ name: 'From', value: from }, { name: 'Subject', value: subject }] },
+  });
+
+  it('skips banking subjects', () => {
+    expect(isSensitiveThread(meta('alerts@chase.com', 'Your bank statement is ready'))).toBe(true);
+  });
+  it('skips health subjects', () => {
+    expect(isSensitiveThread(meta('portal@clinic.com', 'Your lab results are available'))).toBe(true);
+  });
+  it('skips legal subjects', () => {
+    expect(isSensitiveThread(meta('office@law.com', 'Settlement agreement attached'))).toBe(true);
+  });
+  it('skips password / 2FA subjects', () => {
+    expect(isSensitiveThread(meta('no-reply@app.com', 'Your verification code'))).toBe(true);
+    expect(isSensitiveThread(meta('no-reply@app.com', 'Reset your password'))).toBe(true);
+  });
+  it('does not flag ordinary client mail (low false positive)', () => {
+    expect(isSensitiveThread(meta('client@example.com', 'Booking my session for June'))).toBe(false);
+    expect(isSensitiveThread(meta('lead@example.com', 'Question about your rates'))).toBe(false);
+  });
+  it('matches whole words only — "taxi" is not "tax"', () => {
+    expect(isSensitiveThread(meta('driver@example.com', 'Your taxi receipt'))).toBe(false);
+  });
+  it('returns false when headers absent', () => {
+    expect(isSensitiveThread({ id: 'x', threadId: 'y' })).toBe(false);
   });
 });
 

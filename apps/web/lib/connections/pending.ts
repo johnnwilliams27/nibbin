@@ -17,7 +17,7 @@ export interface PendingAuth {
 }
 
 export interface StorePendingInput {
-  state: string; provider: string; accountId: string; userId: string; nonce: string;
+  state: string; provider: string; accountId: string; userId: string;
   codeVerifier?: string; scopes: string[]; returnTo: string | null; resumeTemplate: string | null;
   expiresAtMs: number;
   nibbinId?: string | null;
@@ -32,7 +32,6 @@ export async function storePending(
     provider: input.provider,
     account_id: input.accountId,
     user_id: input.userId,
-    nonce: input.nonce,
     code_verifier: input.codeVerifier ?? null,
     scopes: input.scopes,
     return_to: input.returnTo,

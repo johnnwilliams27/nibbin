@@ -58,11 +58,11 @@ describe('first connect is read-only (C8)', () => {
     expect(pending.scopes).toEqual(getConnector('gmail').scopes.read);
   });
 
-  it('carries state, nonce, PKCE S256, and offline access for Google', () => {
+  it('carries state, PKCE S256, and offline access for Google — no dead nonce', () => {
     const pending = beginAuthorization(GMAIL_BASE);
     const url = new URL(pending.url);
     expect(url.searchParams.get('state')).toBe(pending.state);
-    expect(url.searchParams.get('nonce')).toBe(pending.nonce);
+    expect(url.searchParams.has('nonce')).toBe(false);
     expect(url.searchParams.get('code_challenge')).toBe(codeChallengeS256(pending.codeVerifier!));
     expect(url.searchParams.get('code_challenge_method')).toBe('S256');
     expect(url.searchParams.get('access_type')).toBe('offline');
