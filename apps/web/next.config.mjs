@@ -9,6 +9,17 @@ const nextConfig = {
   // checks need, which otherwise fails the build. The deploy just compiles.
   eslint: { ignoreDuringBuilds: true },
   typescript: { ignoreBuildErrors: true },
+  // @nibbin/redaction (unlike the other workspace packages) uses NodeNext
+  // `.js`-extension relative imports in its TS source (`from './ner.js'`).
+  // webpack won't map those to `.ts` on its own, so teach the resolver to try
+  // `.ts`/`.tsx` for a `.js` request (real `.js` still resolves — it's last).
+  webpack: (config) => {
+    config.resolve.extensionAlias = {
+      ...(config.resolve.extensionAlias ?? {}),
+      '.js': ['.ts', '.tsx', '.js'],
+    };
+    return config;
+  },
 };
 
 // Source-map upload only happens when SENTRY_ORG/PROJECT/AUTH_TOKEN are set
