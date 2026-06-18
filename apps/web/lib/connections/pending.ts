@@ -12,6 +12,7 @@ export interface PendingAuth {
   returnTo: string | null;
   resumeTemplate: string | null;
   nibbinId: string | null;
+  sweepConsent: boolean;
   expiresAt: string;
   consumedAt: string | null;
 }
@@ -21,6 +22,7 @@ export interface StorePendingInput {
   codeVerifier?: string; scopes: string[]; returnTo: string | null; resumeTemplate: string | null;
   expiresAtMs: number;
   nibbinId?: string | null;
+  sweepConsent?: boolean;
 }
 
 export async function storePending(
@@ -38,6 +40,7 @@ export async function storePending(
     resume_template: input.resumeTemplate,
     expires_at: new Date(input.expiresAtMs).toISOString(),
     nibbin_id: input.nibbinId ?? null,
+    sweep_consent: input.sweepConsent ?? false,
   });
   if (error) throw new Error(`pending store failed: ${error.message}`);
 }
@@ -68,6 +71,7 @@ export async function consumePending(
     returnTo: data.return_to ?? null,
     resumeTemplate: data.resume_template ?? null,
     nibbinId: data.nibbin_id ?? null,
+    sweepConsent: data.sweep_consent ?? false,
     expiresAt: data.expires_at,
     consumedAt: data.consumed_at ?? null,
   };
