@@ -54,8 +54,8 @@ export const bridge = {
       study: null,
     }),
   sendControl: (cmd: string) => call<void>('send_control', { cmd }, undefined),
-  createStudy: (id: string, kind: 'full_study' | 'quick_scan', label: string | null) =>
-    call<void>('create_study', { id, kind, label }, undefined),
+  createStudy: (id: string, kind: 'full_study' | 'quick_scan', label: string | null, depth: 'lite' | 'detailed' = 'lite') =>
+    call<void>('create_study', { id, kind, label, depth }, undefined),
   reviewEvents: () => call<ObserverEvent[]>('review_events', undefined, []),
   reviewDelete: (ids: string[]) => call<void>('review_delete', { ids }, undefined),
   reviewKeep: (ids: string[]) => call<void>('review_keep', { ids }, undefined),

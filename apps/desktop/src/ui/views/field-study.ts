@@ -5,7 +5,7 @@
  * (Stage B).
  */
 import { bridge, type StudyStatus } from '../bridge.js';
-import type { StudyKind } from '../../core/study-machine.js';
+import type { StudyKind, StudyDepth } from '../../core/study-machine.js';
 import { button, el } from '../dom.js';
 import { syncStudy, type SyncState } from '../sync-study.js';
 import { EVER_COMPLETED_KEY } from '../tab-dot.js';
@@ -264,8 +264,8 @@ function entryView(
   // Mint the study, then hand off to the consent screen for this kind. Consent
   // fires `consent`+`start` itself; the daemon's `create_study` reset clears any
   // prior study's store so the new capture starts empty.
-  function begin(kind: StudyKind, label: string | null): void {
-    void bridge.createStudy(crypto.randomUUID(), kind, label).then(() => {
+  function begin(kind: StudyKind, label: string | null, depth: StudyDepth = 'lite'): void {
+    void bridge.createStudy(crypto.randomUUID(), kind, label, depth).then(() => {
       mount.replaceChildren(consentView(onChanged, kind));
     });
   }
