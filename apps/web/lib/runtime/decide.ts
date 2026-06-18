@@ -225,5 +225,4 @@ export async function decideViaChannel(
   // Step f: post-decision side-effects (events, TTFAD, promotion, drift nudge)
   const eff = await applyDecisionEffects(svc, accountId, linkedBy, runId, run.nibbin_id as string, decision);
   return { decision, promotedTo: eff.promotedTo, firstApproval: eff.firstApproval };
->>>>>>> 9e50689 (feat(web): decideViaChannel bridge — verified binding -> ownership -> service decision + shared effects)
 }
