@@ -23,7 +23,7 @@ use nibbin_redaction::{
 };
 use nibbin_store::{KeyProvider, ObserverStore, StaticTestKey};
 use nibbin_study::{
-    capture_allowed, deadline_passed, new_study, transition, StudyCommand, StudyKind, StudySnapshot,
+    capture_allowed, deadline_passed, new_study, transition, CaptureDepth, StudyCommand, StudyKind, StudySnapshot,
 };
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
@@ -104,6 +104,8 @@ pub enum ControlCommand {
         kind: Option<String>,
         #[serde(default)]
         label: Option<String>,
+        #[serde(default)]
+        depth: Option<String>,
     },
     /// Review's "never record this again" (layer 4 → layer 2).
     AddExclusion {
@@ -145,6 +147,7 @@ impl Daemon {
                 &format!("full_{}", chrono::Utc::now().timestamp_millis()),
                 StudyKind::FullStudy,
                 None,
+                CaptureDepth::default(),
             )
         });
         nibbin_study::save(store_root, &study)?;
@@ -360,15 +363,21 @@ impl Daemon {
                 study_id,
                 kind,
                 label,
+                depth,
             } => {
                 let kind = match kind.as_deref() {
                     Some("quick_scan") => StudyKind::QuickScan,
                     _ => StudyKind::FullStudy,
                 };
+                let depth = match depth.as_deref() {
+                    Some("detailed") => CaptureDepth::Detailed,
+                    _ => CaptureDepth::Lite,
+                };
                 self.apply(StudyCommand::CreateStudy {
                     id: study_id,
                     kind,
                     label,
+                    depth,
                 })?;
                 // A fresh study starts empty: clear the observer-store. Reuse
                 // the post-deletion destroy path — drop the in-memory handle
