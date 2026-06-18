@@ -2,7 +2,7 @@ import { withSentryConfig } from '@sentry/nextjs';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ['@nibbin/creatures', '@nibbin/drip', '@nibbin/email', '@nibbin/keeper', '@nibbin/router', '@nibbin/shared'],
+  transpilePackages: ['@nibbin/creatures', '@nibbin/drip', '@nibbin/email', '@nibbin/keeper', '@nibbin/redaction', '@nibbin/router', '@nibbin/shared'],
   // CI gates typecheck and lint on every PR (npm run typecheck / lint / build),
   // so the deploy build must not re-run them — Vercel's production install omits
   // the root-level devDependencies (typescript, eslint, @types/node) that those
