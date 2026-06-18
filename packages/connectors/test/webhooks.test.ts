@@ -158,6 +158,18 @@ describe('idempotency + replay windows (§6.9)', () => {
     expect(await store.recordOnce('square', 'evt_1')).toBe(true); // provider-scoped
   });
 
+  it('hasRecord reads without claiming (#113)', async () => {
+    const store = new MemoryWebhookEventStore();
+    // Unseen key: read returns false and does NOT claim it.
+    expect(await store.hasRecord('gmail', 'k:nib-1')).toBe(false);
+    expect(await store.recordOnce('gmail', 'k:nib-1')).toBe(true); // still first-fire
+    // Now seen: read returns true; recordOnce reports it as a duplicate.
+    expect(await store.hasRecord('gmail', 'k:nib-1')).toBe(true);
+    expect(await store.recordOnce('gmail', 'k:nib-1')).toBe(false);
+    // Provider-scoped, like recordOnce.
+    expect(await store.hasRecord('square', 'k:nib-1')).toBe(false);
+  });
+
   it('replay window helper bounds both directions', () => {
     expect(isWithinReplayWindow(10_000, 300, 10_000 + 299_000)).toBe(true);
     expect(isWithinReplayWindow(10_000, 300, 10_000 + 301_000)).toBe(false);

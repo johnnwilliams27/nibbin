@@ -15,6 +15,17 @@ export interface DispatchDeps {
   triggerRun: (nibbinId: string, trigger: RunTrigger) => Promise<RunOutcome>;
   fanOutCeiling?: number;
   /**
+   * Optional read-only check (issue #113): has this (event, Nibbin) already been
+   * dispatched in a prior cycle? Consulted BEFORE `triggerRun` so an already-
+   * fired Nibbin is skipped at the dispatch layer on a capped re-poll — instead
+   * of re-invoking `triggerRun` every cycle and leaning on the runtime admission
+   * debounce (≈ the poll interval, not guaranteed ≥ it) to suppress model
+   * re-spend. It MUST be read-only: the first-fire claim is still committed only
+   * after a successful `triggerRun` (via `recordOnce`), so a failed run is
+   * retried, not swallowed (P2.5). Key: `${event.dedupeKey}:${nibbin.id}`.
+   */
+  alreadyDispatched?: (key: string) => Promise<boolean>;
+  /**
    * Optional per-(event, Nibbin) deduplication guard. When provided,
    * `dispatchForConnection` calls it before firing each Nibbin; if it returns
    * false the Nibbin is skipped (already dispatched in a prior cycle).
@@ -69,6 +80,21 @@ export async function dispatchForConnection(
   let triggered = 0;
   let deferred = 0;
   for (const nibbin of eligibleAll) {
+    const claimKey = `${event.dedupeKey}:${nibbin.id}`;
+
+    //  P3.4 (#113) — skip already-fired Nibbins BEFORE consuming a ceiling slot
+    //  or calling triggerRun. On a capped re-poll the cursor stays parked and
+    //  this same event re-dispatches every cycle; without this guard each
+    //  already-fired Nibbin re-enters triggerRun and only the runtime admission
+    //  debounce (not guaranteed >= the poll interval) prevents model re-spend.
+    //  The check is read-only — the claim is still committed only after a
+    //  successful triggerRun below, so P2.5 (failed run is retried) holds. When
+    //  the dep is absent, behaviour is unchanged: the post-trigger recordOnce
+    //  still dedupes the count, just one cycle later.
+    if (deps.alreadyDispatched && (await deps.alreadyDispatched(claimKey))) {
+      continue;
+    }
+
     if (triggered >= ceiling) {
       // Beyond the ceiling: defer WITHOUT consuming recordOnce.
       deferred++;
@@ -79,7 +105,7 @@ export async function dispatchForConnection(
     await deps.triggerRun(nibbin.id, { kind: 'event', key: source, dedupeKey: event.dedupeKey });
     // Commit the first-fire claim only after the run was successfully started.
     if (deps.recordOnce) {
-      const isFirst = await deps.recordOnce(`${event.dedupeKey}:${nibbin.id}`);
+      const isFirst = await deps.recordOnce(claimKey);
       if (!isFirst) continue; // already dispatched in a prior cycle — don't count
     }
     triggered++;
