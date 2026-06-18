@@ -5,30 +5,42 @@ import { revalidatePath } from 'next/cache';
 import { appSession } from '../../../lib/auth/app-session';
 import { serviceClient } from '../../../lib/supabase/service';
 import { adoptTemplate } from '../../../lib/runtime/adopt';
+import type { AdoptOutcome } from '../../../components/adopt/types';
 
 /**
- * Adopt a recommended Nibbin straight from the diagnosis reveal. Same path as
- * the grove's adopt (adoptTemplate → adopt_nibbin under the account lock). A
- * missing required connector bounces back with a hint rather than erroring.
+ * Adopt a recommended Nibbin straight from the diagnosis reveal. Returns an
+ * AdoptOutcome so the client can play the hatch ceremony; a missing connector
+ * or error becomes a navigation the client performs instead of a redirect here.
  */
-export async function adoptRecommendation(formData: FormData) {
-  const templateKey = String(formData.get('templateKey') ?? '').trim();
-  if (!templateKey) redirect('/app/diagnosis');
+export async function adoptRecommendationOutcome(templateKey: string): Promise<AdoptOutcome> {
+  const key = templateKey.trim();
+  if (!key) return { ok: false, redirectTo: '/app/diagnosis' };
 
   const { user, accountId } = await appSession();
 
-  // redirect() throws NEXT_REDIRECT, so resolve the target first, then redirect
-  // OUTSIDE the try — otherwise the catch would swallow the redirect.
-  let target = '/app';
   try {
-    const result = await adoptTemplate(accountId, user.id, templateKey);
-    if (result.missingConnectors && result.missingConnectors.length > 0) {
-      target = `/app/diagnosis?needs=${encodeURIComponent(result.missingConnectors.join(','))}`;
+    const result = await adoptTemplate(accountId, user.id, key);
+    if (result.missingConnectors.length > 0) {
+      return {
+        ok: false,
+        redirectTo: `/app/diagnosis?needs=${encodeURIComponent(result.missingConnectors.join(','))}`,
+      };
     }
+    return {
+      ok: true,
+      nibbinId: result.nibbinId,
+      name: result.name,
+      species: result.species,
+      stage: result.stage,
+      palette: result.palette,
+      accessory: result.accessory,
+      marking: result.marking,
+      isFirstAdoption: result.isFirstAdoption,
+      ctaPath: '/app',
+    };
   } catch {
-    target = '/app/diagnosis?error=adopt';
+    return { ok: false, redirectTo: '/app/diagnosis?error=adopt' };
   }
-  redirect(target);
 }
 
 /**
