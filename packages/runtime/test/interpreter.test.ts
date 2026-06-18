@@ -6,7 +6,7 @@
  * idempotency / ceilings.
  */
 import { describe, expect, it } from 'vitest';
-import { quarantine, type QuarantinedContent } from '@nibbin/connectors';
+import { quarantine } from '@nibbin/connectors';
 import {
   executeRun,
   interpretSpec,
