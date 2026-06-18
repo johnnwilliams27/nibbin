@@ -225,6 +225,10 @@ interface Harness {
   deps: RunnerDeps;
   reads: Array<{ connectionId: string; path: string }>;
   executed: Array<{ capability: string }>;
+  /** Exposed so a test can seed routine approvals / write-grants to isolate the
+   *  presentation gate from the stage/novelty/grant gates (FIX 1). */
+  routines: MemoryRoutineStore;
+  grants: MemoryGrantStore;
 }
 
 function harness(reader: (connectionId: string, path: string) => string): Harness {
@@ -232,10 +236,12 @@ function harness(reader: (connectionId: string, path: string) => string): Harnes
   runs.seedCredits(ACCOUNT, 100);
   const reads: Array<{ connectionId: string; path: string }> = [];
   const executed: Array<{ capability: string }> = [];
+  const routines = new MemoryRoutineStore();
+  const grants = new MemoryGrantStore();
   const deps: RunnerDeps = {
     runs,
-    routines: new MemoryRoutineStore(),
-    grants: new MemoryGrantStore(),
+    routines,
+    grants,
     idempotency: new MemoryIdempotencyStore(),
     events: new MemoryEventSink(),
     reader: {
@@ -251,7 +257,7 @@ function harness(reader: (connectionId: string, path: string) => string): Harnes
     },
     now: () => Date.now(),
   };
-  return { deps, reads, executed };
+  return { deps, reads, executed, routines, grants };
 }
 
 function morningReader(): (c: string, path: string) => string {
@@ -317,7 +323,7 @@ describe('interpreter dispatches the digest primitives through the runner (prese
     expect(outcome.draft.effectArgs).toEqual({ events: 1, freshMail: 2, overdue: 1 });
   });
 
-  it('digest.inbox-cleanup never executes even at a SENIOR stage (presentation always drafts)', async () => {
+  it('digest.inbox-cleanup never executes even at a SENIOR stage — presentation is the BINDING constraint', async () => {
     const h = harness(noisyMailboxReader(2));
     const s = spec({
       toolsAllowlist: ['email.read'],
@@ -325,6 +331,23 @@ describe('interpreter dispatches the digest primitives through the runner (prese
       steps: [{ capability: 'digest.inbox-cleanup', inputs: {} }],
     });
     const seniorNib: NibbinRef = { ...nib(s), stage: 'senior' };
+
+    // Remove every NON-presentation reason to draft, so the ONLY thing keeping
+    // this from executing is `presentation: true`:
+    //  - seed routineApprovals ≥ curriculum.routineMinApprovals (5) for this
+    //    digest's exact patternKey, so gateSideEffect('senior', 5, …) → execute
+    //    (school.ts:38) rather than draft/reason:'novelty'; and
+    //  - grant email.read on the gmail connection so the C8 grant gate
+    //    (runner.ts:258) does not itself force a fallback to draft.
+    // With both removed, a NON-presentation draft step with this exact seeding
+    // WOULD reach { action: 'execute' } and run; this stays awaiting_approval
+    // ONLY because the digest yields presentation:true. (Verified to bite:
+    // flip the impl's presentation→false and this test fails — h.executed → 1.)
+    for (let i = 0; i < CURRICULUM.routineMinApprovals; i++) {
+      h.routines.approve(seniorNib.id, 'sweep:keep-or-clear');
+    }
+    h.grants.grant(seniorNib.id, GMAIL, 'email.read');
+
     const outcome = await executeRun(seniorNib, TRIGGER, interpretSpec(s, { gmail: GMAIL }, NOW), h.deps);
     expect(outcome.kind).toBe('awaiting_approval');
     expect(h.executed).toHaveLength(0);
