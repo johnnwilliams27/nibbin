@@ -21,7 +21,7 @@ export function floorAdapter(store: NotificationsFloorStore): ChannelPort {
     channel: 'push',
     async deliver(msg: OutboundChannelMessage): Promise<DeliveryResult> {
       await store.insertNotification(msg.accountId, {
-        kind: 'beat',
+        kind: msg.kind === 'beat' ? 'beat' : 'reach',
         sourceId: msg.requestId ?? `${msg.kind}:${msg.expiresAt ?? ''}:${msg.body.slice(0, 32)}`,
         title: TITLE[msg.kind],
         body: msg.body,
