@@ -32,11 +32,32 @@ fn blocklist() -> &'static BlocklistFile {
 }
 
 /// User-added exclusions (layer 4 feeds layer 2). Stored locally only.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct UserExclusions {
+    #[serde(default)]
     pub hosts: Vec<String>,
+    #[serde(default)]
     pub bundle_ids: Vec<String>,
+    #[serde(default)]
     pub app_names: Vec<String>,
+}
+
+impl UserExclusions {
+    /// Merge another set in, preserving insertion order and dropping
+    /// duplicates so the persisted file never grows unbounded on re-adds.
+    pub fn merge(&mut self, more: UserExclusions) {
+        for (dst, src) in [
+            (&mut self.hosts, more.hosts),
+            (&mut self.bundle_ids, more.bundle_ids),
+            (&mut self.app_names, more.app_names),
+        ] {
+            for v in src {
+                if !dst.contains(&v) {
+                    dst.push(v);
+                }
+            }
+        }
+    }
 }
 
 fn host_matches(host: &str, suffix: &str) -> bool {
@@ -105,4 +126,36 @@ pub fn blocked_category_for(
     }
 
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::UserExclusions;
+
+    #[test]
+    fn exclusions_serde_round_trips() {
+        let ex = UserExclusions {
+            hosts: vec!["evil.com".into()],
+            bundle_ids: vec!["com.evil.app".into()],
+            app_names: vec!["Evil".into()],
+        };
+        let json = serde_json::to_string(&ex).unwrap();
+        let back: UserExclusions = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.hosts, ex.hosts);
+        assert_eq!(back.bundle_ids, ex.bundle_ids);
+        assert_eq!(back.app_names, ex.app_names);
+    }
+
+    #[test]
+    fn merge_dedupes_repeated_entries() {
+        let mut ex = UserExclusions {
+            hosts: vec!["a.com".into()],
+            ..Default::default()
+        };
+        ex.merge(UserExclusions {
+            hosts: vec!["a.com".into(), "b.com".into()],
+            ..Default::default()
+        });
+        assert_eq!(ex.hosts, vec!["a.com".to_string(), "b.com".to_string()]);
+    }
 }
