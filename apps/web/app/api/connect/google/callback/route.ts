@@ -1,5 +1,4 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { createHmac } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { exchangeCode, type StoredToken } from '@nibbin/connectors';
 import type { UnsafeTestOverrides } from '@nibbin/connectors';
@@ -9,35 +8,9 @@ import { consumePending, type PendingAuth } from '../../../../../lib/connections
 import { completeConnection } from '../../../../../lib/connections/complete';
 import { adoptTemplate } from '../../../../../lib/runtime/adopt';
 import { createWriteGrant } from '../../../../../lib/connections/grants';
+import { onGmailConnected } from '../../../../../lib/sweep/dispatch';
 
 export const dynamic = 'force-dynamic';
-
-function makeSweepHmac(accountId: string, connectionId: string): string | null {
-  const secret = process.env.SWEEP_HMAC_SECRET;
-  if (!secret) return null;
-  return createHmac('sha256', secret).update(`${accountId}:${connectionId}`).digest('hex');
-}
-
-function dispatchSweepFireAndForget(
-  request: NextRequest,
-  accountId: string,
-  connectionId: string,
-  provider: string,
-): void {
-  if (provider !== 'gmail') return;
-  const hmac = makeSweepHmac(accountId, connectionId);
-  if (!hmac) return; // no secret configured — skip silently
-  const sweepUrl = new URL('/api/sweep/gmail/onboarding', request.url).href;
-  // Fire-and-forget: 5 s timeout so the callback is never blocked
-  fetch(sweepUrl, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ accountId, connectionId, hmac }),
-    signal: AbortSignal.timeout(5_000),
-  }).catch(() => {
-    // ignore — sweep failure is non-fatal for the connection flow
-  });
-}
 
 /** Redeem the callback code via the OAuth engine (test override injects a mock token endpoint). */
 export async function exchangeViaEngine(
@@ -137,6 +110,8 @@ export async function GET(request: NextRequest): Promise<Response> {
 
   const svc = serviceClient();
   let createdConnectionId: string | null = null;
+  let createdPending: PendingAuth | null = null;
+  let createdPendingUserId: string | null = null;
 
   const createAndCapture = async (pending: PendingAuth, token: StoredToken): Promise<string> => {
     const id = await makeCreateActiveConnection(svc)(pending, token);
@@ -147,7 +122,11 @@ export async function GET(request: NextRequest): Promise<Response> {
   const { redirectTo } = await completeConnection(
     { code, returnedState: state, nowMs: Date.now() },
     {
-      consume: (s, now) => consumePending(s, now, svc),
+      consume: async (s, now) => {
+        const p = await consumePending(s, now, svc);
+        if (p) { createdPending = p; createdPendingUserId = p.userId; }
+        return p;
+      },
       exchange: (pending, c) => exchangeViaEngine(pending, c),
       createActiveConnection: createAndCapture,
       resumeAdopt: async (pending, templateKey) => {
@@ -171,16 +150,11 @@ export async function GET(request: NextRequest): Promise<Response> {
     },
   );
 
-  // Dispatch sweep (fire-and-forget) if we got a connection id
+  // Dispatch sweep (fire-and-forget) iff the user gave sweep consent
   if (createdConnectionId) {
-    const { data: conn } = await svc
-      .from('connections')
-      .select('account_id, provider')
-      .eq('id', createdConnectionId)
-      .maybeSingle();
-    if (conn?.provider === 'gmail') {
-      dispatchSweepFireAndForget(request, conn.account_id as string, createdConnectionId, 'gmail');
-    }
+    const capturedPending = createdPending as PendingAuth | null;
+    const pendingConsent = capturedPending?.sweepConsent ?? false;
+    await onGmailConnected(svc, request.url, createdConnectionId, pendingConsent, createdPendingUserId ?? '');
   }
 
   return NextResponse.redirect(new URL(redirectTo, request.url));
