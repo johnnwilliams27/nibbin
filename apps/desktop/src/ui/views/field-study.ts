@@ -122,6 +122,23 @@ function synthesizingView(
 }
 
 /**
+ * Calm, informational banner shown whenever the daemon reports `capture_blocked`
+ * — capture has been suspended for a surfaced reason (e.g. an exclusion failed
+ * to persist), so it must not be silent. Deliberately NOT coral/destructive:
+ * uses the honey/warn tint (same palette as `.chip.warn`/`.update-banner`) to
+ * read as "paused, recoverable" rather than "error". Shown above the normal
+ * state content on every render while blocked.
+ */
+function captureBlockedBanner(reason: string): HTMLElement {
+  return el('div', { class: 'card capture-blocked-banner' }, [
+    el('p', { class: 'eyebrow' }, ['Capture paused']),
+    el('h2', {}, ['Capture is paused']),
+    el('p', {}, [reason]),
+    el('p', { class: 'muted' }, ['Capture resumes once this is resolved.']),
+  ]);
+}
+
+/**
  * Renders the "other" terminal daemon states (REVIEW, SYNTHESIZING,
  * RAW_DELETING, COMPLETE, DELETED, DAEMON_OFFLINE). Moved verbatim from
  * main.ts's `reviewStateView`, renamed `stateView`. The "Open review" button
@@ -470,6 +487,11 @@ export function fieldStudyView(_rerender: () => void): HTMLElement {
     if (sub === 'review') { mount.append(reviewView()); return; }
     if (sub === 'notes') { mount.append(notesView()); return; }
     if (sub === 'preferences') { mount.append(preferencesView(() => void paint())); return; }
+
+    // A suspended capture must not be silent: surface it calmly above the
+    // normal Field Study content on every render while blocked (bit a).
+    const blocked = typeof status.capture_blocked === 'string' ? status.capture_blocked.trim() : '';
+    if (blocked) mount.append(captureBlockedBanner(blocked));
 
     const surface = viewForState(status.state);
     const study = status.study as { kind?: StudyKind } | null;

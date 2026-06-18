@@ -549,3 +549,16 @@ input:focus-visible {
   opacity: 0.85;
   border-style: dashed;
 }
+
+/* capture_blocked banner (bit a): a suspended capture is surfaced calmly, not
+   silently. Honey/warn tint + left rail (same palette as .chip.warn and
+   .update-banner) so it reads as "paused, recoverable" — deliberately NOT
+   coral/destructive. Tokens only. */
+.capture-blocked-banner {
+  background: rgba(217, 162, 27, 0.14);
+  border-left: 3px solid var(--honey-deep);
+}
+
+.capture-blocked-banner h2 {
+  color: var(--honey-deep);
+}
