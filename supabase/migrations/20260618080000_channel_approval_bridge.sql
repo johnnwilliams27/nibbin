@@ -146,6 +146,13 @@ begin
   if p_edit_distance is null or p_edit_distance < 0 then
     raise exception 'edit distance must be >= 0';
   end if;
+  -- Fix 2: edit_distance parity with decide_run — accuracy signal must not be forgeable
+  if p_decision = 'approved' and p_edit_distance <> 0 then
+    raise exception 'an approved-unedited decision cannot carry edits';
+  end if;
+  if p_decision = 'edited' and p_edit_distance < 1 then
+    raise exception 'an edited decision must carry a positive edit distance';
+  end if;
 
   -- lock the run (serialized; mirrors decide_run and run_finish)
   select account_id, status into v_account, v_status
@@ -155,6 +162,16 @@ begin
 
   if not found or v_status <> 'awaiting_approval' then
     raise exception 'run not awaiting approval';
+  end if;
+
+  -- Fix 1: self-defend actor membership — SQL layer must not rely solely on the
+  -- app layer having verified that p_actor_user belongs to the run's account.
+  -- Mirrors the column names from private.is_account_member (M1).
+  if not exists (
+    select 1 from public.memberships
+    where account_id = v_account and user_id = p_actor_user and status = 'active'
+  ) then
+    raise exception 'actor not a member';
   end if;
 
   -- a decision must be ABOUT a drafted artifact — same guard as decide_run

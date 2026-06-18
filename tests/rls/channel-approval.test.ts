@@ -21,6 +21,9 @@ if (!dbAvailable && !process.env.CI) {
 // Use UUIDs in the v4 format (8-4-4-4-12 with version nibble 4, variant 8)
 const ACTOR_USER = 'cccccccc-1111-4111-8111-111111111111';
 const OTHER_USER = 'dddddddd-2222-4222-8222-222222222222';
+// A user that is never inserted into memberships for the test account — used
+// exclusively to verify the actor-membership guard in decide_run_service.
+const NONMEMBER_USER = 'eeeeeeee-3333-4333-8333-333333333333';
 
 describe.skipIf(!dbAvailable)('channel approval bridge — security properties', () => {
   const h = new RlsHarness();
@@ -61,8 +64,8 @@ describe.skipIf(!dbAvailable)('channel approval bridge — security properties',
 
     // seed auth.users (superuser path — harness.sql)
     await h.sql(
-      `insert into auth.users (id, email) values ($1, 'actor@example.test'), ($2, 'other@example.test')`,
-      [ACTOR_USER, OTHER_USER],
+      `insert into auth.users (id, email) values ($1, 'actor@example.test'), ($2, 'other@example.test'), ($3, 'nonmember@example.test')`,
+      [ACTOR_USER, OTHER_USER, NONMEMBER_USER],
     );
 
     // seed public.users (authenticated path mirrors other test suites)
@@ -320,6 +323,36 @@ describe.skipIf(!dbAvailable)('channel approval bridge — security properties',
     );
     // The new row is attributed to OTHER_USER (who triggered nonce2)
     expect(ncRow.linked_by).toBe(OTHER_USER);
+  });
+
+  // ── audit log ────────────────────────────────────────────────────────────
+
+  // ── Fix 1: actor membership guard ────────────────────────────────────────
+
+  it('rejects decide_run_service when p_actor_user is not an active member of the run account', async () => {
+    // NONMEMBER_USER exists in auth.users but has no row in memberships for accountId
+    const runId = await draftRun('nonmember-actor');
+    await expect(
+      h.as(service, (c) =>
+        c.query(`select * from public.decide_run_service($1, $2, 'approved', 0)`, [runId, NONMEMBER_USER]),
+      ),
+    ).rejects.toThrow(/actor not a member/);
+    // run must still be awaiting_approval (guard fired before any state change)
+    const runRow = await h.as(service, async (c) =>
+      (await c.query(`select status from public.runs where id = $1`, [runId])).rows[0],
+    );
+    expect(runRow.status).toBe('awaiting_approval');
+  });
+
+  // ── Fix 2: edit_distance parity (optional coverage) ──────────────────────
+
+  it('rejects approved decision with non-zero edit_distance (accuracy-signal guard)', async () => {
+    const runId = await draftRun('approved-with-edits');
+    await expect(
+      h.as(service, (c) =>
+        c.query(`select * from public.decide_run_service($1, $2, 'approved', 3)`, [runId, ACTOR_USER]),
+      ),
+    ).rejects.toThrow(/approved-unedited decision cannot carry edits/);
   });
 
   // ── audit log ────────────────────────────────────────────────────────────
