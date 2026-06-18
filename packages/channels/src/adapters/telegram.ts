@@ -1,4 +1,4 @@
-import type { ChannelAction, ChannelPort, DeliveryResult, OutboundChannelMessage } from '../types.js';
+import type { ChannelAction, ChannelPort, DeliveryResult, OutboundChannelMessage } from '../types';
 
 export interface TelegramConfig {
   botToken: string;

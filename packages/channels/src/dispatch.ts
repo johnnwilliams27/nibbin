@@ -1,4 +1,4 @@
-import type { ChannelKind, ChannelPort, OutboundChannelMessage, Urgency } from './types.js';
+import type { ChannelKind, ChannelPort, OutboundChannelMessage, Urgency } from './types';
 
 const URGENCY_RANK: Record<Urgency, number> = { normal: 0, high: 1, urgent: 2 };
 

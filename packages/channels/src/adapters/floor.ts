@@ -1,4 +1,4 @@
-import type { ChannelPort, DeliveryResult, OutboundChannelMessage } from '../types.js';
+import type { ChannelPort, DeliveryResult, OutboundChannelMessage } from '../types';
 
 export interface NotificationsFloorStore {
   /** Insert an in-app notifications-leaf row (idempotent on its own anchor). */
