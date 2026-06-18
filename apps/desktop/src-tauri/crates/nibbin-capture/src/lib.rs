@@ -26,6 +26,11 @@ use nibbin_redaction::AxSnapshot;
 
 /// One drained capture item. Snapshots feed the existing redaction path
 /// (AxDelta); input counts become InputBurst events directly (no content → no NER).
+// large_enum_variant is intentional: a CaptureItem lives only transiently — poll()
+// returns a tiny Vec (≈1 Snapshot + ≈1 Input per tick) that the daemon consumes
+// immediately. Boxing the Snapshot would add a per-tick allocation for no real
+// benefit, so the size difference is accepted here.
+#[allow(clippy::large_enum_variant)]
 pub enum CaptureItem {
     Snapshot(AxSnapshot),
     Input(InputCounts),

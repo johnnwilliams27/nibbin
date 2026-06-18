@@ -336,7 +336,7 @@ impl Daemon {
                         if self
                             .capture_blocked
                             .as_deref()
-                            .map_or(false, |s| s.starts_with("permission:"))
+                            .is_some_and(|s| s.starts_with("permission:"))
                         {
                             self.capture_blocked = None;
                         }
