@@ -971,6 +971,7 @@ mod tests {
                         control_type: "Edit".to_string(),
                         name: Some("Password".to_string()),
                         value: Some("hunter2".to_string()),
+                        is_password: Some(true),
                         ..Default::default()
                     },
                 ],
@@ -1005,6 +1006,12 @@ mod tests {
         assert!(
             !hit,
             "local_compat stub: window-pattern ignored list is a no-op; hit must be false"
+        );
+        // C4: OS-flagged password field (is_password = Some(true)) must never appear
+        // in the text buffer — the guard at tree/windows.rs:560 must suppress it.
+        assert!(
+            !buf.contains("hunter2"),
+            "C4 violation: password value leaked into text buffer (is_password guard broken)"
         );
     }
 
