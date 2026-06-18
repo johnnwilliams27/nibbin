@@ -198,6 +198,9 @@
 
 /* ceremonial card — shell surface, lantern-lit on dusk */
 .celebrationCard {
+  display: flex;
+  gap: 10px;
+  align-items: center;
   background: var(--shell);
   border: 1px solid color-mix(in srgb, var(--honey) 45%, var(--shell));
   align-self: flex-start;
@@ -455,4 +458,31 @@
     animation: none !important;
     transition: none !important;
   }
+}
+
+/* ── Beat 3: in-grove promotion celebration ──────────────────────────────── */
+
+.celebrateCreature {
+  flex-shrink: 0;
+  line-height: 0;
+}
+.celebrateCreature :global(svg) {
+  display: block;
+}
+.celebrateText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.celebrateTitle {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--ink);
+}
+.celebrateLine {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-soft);
 }
