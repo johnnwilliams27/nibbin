@@ -34,6 +34,31 @@ pub fn window_tree_to_snapshot(s: &WindowTreeSnapshot, url: Option<String>) -> A
     }
 }
 
+/// Build an AxSnapshot from the raw parts the platform adapter has on hand
+/// (app name, optional window title, captured root node, optional URL). This
+/// avoids constructing a full `WindowTreeSnapshot` (which would need the
+/// element count + tree hash that the adapter doesn't compute). C4 secure-field
+/// suppression still happens structurally via `node_to_ax`.
+pub fn parts_to_snapshot(
+    app_name: String,
+    window_title: Option<String>,
+    root: &AccessibilityNode,
+    url: Option<String>,
+) -> AxSnapshot {
+    AxSnapshot {
+        window: AxWindow {
+            app: app_name,
+            bundle_id: None,
+            title: window_title.unwrap_or_default(),
+            category: None,
+            id: None,
+        },
+        url,
+        ax_tree: node_to_ax(root),
+        frame_ref: None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -70,5 +95,31 @@ mod tests {
         let ax = node_to_ax(&parent);
         assert_eq!(ax.children.len(), 1);
         assert_eq!(ax.children[0].value.as_deref(), Some("hi"));
+    }
+
+    #[test]
+    fn parts_to_snapshot_carries_window_and_tree() {
+        let mut root = node("Window", None, None);
+        root.name = Some("Root".to_string());
+        root.children = vec![node("Edit", Some("hi"), None)];
+        let snap = parts_to_snapshot(
+            "notepad.exe".to_string(),
+            Some("Untitled - Notepad".to_string()),
+            &root,
+            None,
+        );
+        assert_eq!(snap.window.app, "notepad.exe");
+        assert_eq!(snap.window.title, "Untitled - Notepad");
+        assert_eq!(snap.ax_tree.role, "Window");
+        assert_eq!(snap.ax_tree.children.len(), 1);
+        assert_eq!(snap.url, None);
+        assert!(snap.frame_ref.is_none());
+    }
+
+    #[test]
+    fn parts_to_snapshot_missing_title_is_empty() {
+        let root = node("Window", None, None);
+        let snap = parts_to_snapshot("app.exe".to_string(), None, &root, None);
+        assert_eq!(snap.window.title, "");
     }
 }

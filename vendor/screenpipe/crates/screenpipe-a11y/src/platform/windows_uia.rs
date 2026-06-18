@@ -91,7 +91,7 @@ pub struct ClickElementRequest {
 }
 
 /// UIA context holding COM objects (single-thread only, not Send)
-pub(crate) struct UiaContext {
+pub struct UiaContext {
     automation: IUIAutomation,
     cache_request: IUIAutomationCacheRequest,
     /// Per-element cache request for TreeWalker fallback (Chromium/Electron).
@@ -102,7 +102,7 @@ pub(crate) struct UiaContext {
 
 impl UiaContext {
     /// Initialize UI Automation COM objects. Must be called on a COM-initialized thread.
-    pub(crate) fn new() -> windows::core::Result<Self> {
+    pub fn new() -> windows::core::Result<Self> {
         unsafe {
             let automation: IUIAutomation = CoCreateInstance(&CUIAutomation, None, CLSCTX_ALL)?;
 
@@ -171,7 +171,7 @@ impl UiaContext {
     /// Uses CacheRequest to batch all property reads into minimal cross-process calls.
     /// Falls back to TreeWalker for apps whose UIA providers don't populate
     /// the cached subtree (Chromium, Electron, etc.).
-    pub(crate) fn capture_window_tree(
+    pub fn capture_window_tree(
         &self,
         hwnd: HWND,
         max_elements: usize,
@@ -955,7 +955,7 @@ fn hash_node(node: &AccessibilityNode, hasher: &mut DefaultHasher) {
 }
 
 /// Get window info (app name, title, pid) from HWND
-fn get_window_info(hwnd: HWND) -> (String, Option<String>, u32) {
+pub fn get_window_info(hwnd: HWND) -> (String, Option<String>, u32) {
     unsafe {
         let mut title_buf = [0u16; 512];
         let len = GetWindowTextW(hwnd, &mut title_buf);

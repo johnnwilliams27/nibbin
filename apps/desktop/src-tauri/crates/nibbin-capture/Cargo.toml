@@ -10,9 +10,21 @@ publish.workspace = true
 default = []
 # Platform bring-up wires the vendored Screenpipe a11y fork (vendor/screenpipe,
 # MIT commit 892199f742) behind this flag during macOS hardware bring-up.
-screenpipe = ["dep:screenpipe-a11y"]
+# On Windows it also pulls in the `windows` crate (gated to the windows target
+# below) so WindowsUiaCapture can drive per-tick UIA tree snapshots.
+screenpipe = ["dep:screenpipe-a11y", "dep:windows"]
 
 [dependencies]
 nibbin-redaction = { path = "../nibbin-redaction" }
 anyhow = { workspace = true }
 screenpipe-a11y = { path = "../../../../../vendor/screenpipe/crates/screenpipe-a11y", optional = true }
+
+# Windows UIA adapter (real capture) needs GetForegroundWindow + COM init.
+# Optional + windows-target-only; enabled by the `screenpipe` feature. Pin to
+# 0.58 to match the vendored fork so the HWND/HRESULT types are identical.
+[target.'cfg(target_os = "windows")'.dependencies]
+windows = { version = "0.58", features = [
+    "Win32_Foundation",
+    "Win32_System_Com",
+    "Win32_UI_WindowsAndMessaging",
+], optional = true }

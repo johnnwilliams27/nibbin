@@ -2373,6 +2373,7 @@ dependencies = [
  "anyhow",
  "nibbin-redaction",
  "screenpipe-a11y",
+ "windows 0.58.0",
 ]
 
 [[package]]

@@ -79,6 +79,12 @@ pub use platform::{
     check_input_monitoring, request_input_monitoring, PermissionStatus, RecordingHandle, UiRecorder,
 };
 
+// Low-level Windows UIA capture surface, exposed for the Nibbin capture adapter
+// (nibbin-capture) which drives per-tick AX-tree snapshots directly. These were
+// `pub(crate)` upstream; the Nibbin fork promotes them to `pub`. See VENDOR.md.
+#[cfg(target_os = "windows")]
+pub use platform::windows_uia::{get_window_info, UiaContext};
+
 /// Prelude for convenient imports
 pub mod prelude {
     pub use crate::activity_feed::{ActivityFeed, ActivityKind, CaptureParams};

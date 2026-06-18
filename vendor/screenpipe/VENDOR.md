@@ -85,3 +85,26 @@ Deleted 4 tests that exercised the now-stubbed window-scoping behavior:
 `test_cached_pattern_path_is_consistent_with_lazy_path`. Kept:
 `test_default_config`, `test_app_exclusion`, `test_window_exclusion`,
 `test_password_field_detection`.
+
+### Task 2.4 — promote Windows UIA capture surface to `pub` (2026-06-18)
+
+The Nibbin `WindowsUiaCapture` adapter (`crates/nibbin-capture`) drives the
+fork's low-level UIA walker directly, once per capture tick (Approach A: COM
+init once on the capture thread, `UiaContext` reused across ticks). The needed
+APIs were `pub(crate)` upstream; we own the fork, so they are promoted to `pub`:
+
+- `src/platform/windows_uia.rs`:
+  - `pub(crate) struct UiaContext` → `pub struct UiaContext`
+  - `pub(crate) fn UiaContext::new()` → `pub fn`
+  - `pub(crate) fn UiaContext::capture_window_tree(&self, hwnd, max_elements)` → `pub fn`
+  - free fn `get_window_info(hwnd) -> (String, Option<String>, u32)` → `pub fn`
+    (returns app name, optional window title, pid)
+- `src/lib.rs`: added a windows-gated re-export so the adapter imports them at
+  the crate root:
+  `#[cfg(target_os = "windows")] pub use platform::windows_uia::{get_window_info, UiaContext};`
+
+No behavior change inside the fork — visibility only. `WindowTreeSnapshot`'s
+fields were already `pub`, but the adapter intentionally does NOT construct one
+(it would need the fork's private tree-hash fn); instead nibbin-capture's
+`map::parts_to_snapshot` builds the `AxSnapshot` from the raw parts. No new
+dependencies added to the fork (C1: still network-free).
