@@ -5,6 +5,7 @@
 
 mod auth;
 mod commands;
+pub mod daemon_supervisor;
 mod update;
 
 use tauri::{
