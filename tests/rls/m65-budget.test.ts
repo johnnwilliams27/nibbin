@@ -127,24 +127,26 @@ describe.skipIf(!dbAvailable)('M6.5: frontier budget + COGS at the DB layer', ()
     });
   });
 
-  describe('training opt-in (C11)', () => {
-    it('defaults off; members flip it with an audit row; outsiders cannot', async () => {
+  describe('model-improvement contribution (C11 / D1-A)', () => {
+    it('defaults on; a member flips it off with an audit row; outsiders cannot', async () => {
+      // D1-A: structural contribution is opt-out, default ON. model_contribution_enabled
+      // replaces the retired opt-in training_opt_in flag; content is never trained.
       const before = await h.as(service, async (c) =>
-        (await c.query(`select training_opt_in from public.accounts where id = $1`, [accountId])).rows[0],
+        (await c.query(`select model_contribution_enabled from public.accounts where id = $1`, [accountId])).rows[0],
       );
-      expect(before.training_opt_in).toBe(false);
+      expect(before.model_contribution_enabled).toBe(true);
 
-      await h.as(owner, (c) => c.query(`select public.set_training_opt_in($1, true)`, [accountId]));
+      await h.as(owner, (c) => c.query(`select public.set_model_contribution($1, false)`, [accountId]));
       const after = await h.as(service, async (c) =>
-        (await c.query(`select training_opt_in from public.accounts where id = $1`, [accountId])).rows[0],
+        (await c.query(`select model_contribution_enabled from public.accounts where id = $1`, [accountId])).rows[0],
       );
-      expect(after.training_opt_in).toBe(true);
+      expect(after.model_contribution_enabled).toBe(false);
 
       const audit = await h.as(service, async (c) =>
         (
           await c.query(
             `select count(*)::int as n from public.audit_log
-              where account_id = $1 and action = 'account.training_opt_in_set'`,
+              where account_id = $1 and action = 'account.model_contribution_set'`,
             [accountId],
           )
         ).rows[0].n,
@@ -152,7 +154,7 @@ describe.skipIf(!dbAvailable)('M6.5: frontier budget + COGS at the DB layer', ()
       expect(audit).toBe(1);
 
       await expect(
-        h.as(outsider, (c) => c.query(`select public.set_training_opt_in($1, false)`, [accountId])),
+        h.as(outsider, (c) => c.query(`select public.set_model_contribution($1, true)`, [accountId])),
       ).rejects.toThrow(/not a member/);
     });
   });
