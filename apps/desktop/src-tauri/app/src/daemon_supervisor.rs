@@ -49,52 +49,24 @@ pub fn launchagent_plist(observerd: &Path, store: &Path) -> String {
         store = store.display())
 }
 
-pub const TASK_NAME: &str = "NibbinObserver";
+pub const RUN_VALUE_NAME: &str = "NibbinObserver";
 
-pub fn scheduled_task_xml(observerd: &Path, store: &Path) -> String {
-    format!(r#"<?xml version="1.0" encoding="UTF-16"?>
-<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
-  <Principals>
-    <Principal id="Author">
-      <LogonType>InteractiveToken</LogonType>
-      <RunLevel>LeastPrivilege</RunLevel>
-    </Principal>
-  </Principals>
-  <Triggers><LogonTrigger><Enabled>true</Enabled></LogonTrigger></Triggers>
-  <Settings>
-    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
-    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
-    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
-    <RestartOnFailure><Interval>PT1M</Interval><Count>3</Count></RestartOnFailure>
-    <ExecutionTimeLimit>PT0S</ExecutionTimeLimit>
-  </Settings>
-  <Actions Context="Author">
-    <Exec>
-      <Command>{obs}</Command>
-      <Arguments>--store "{store}"</Arguments>
-    </Exec>
-  </Actions>
-</Task>"#, obs = observerd.display(), store = store.display())
+/// The HKCU\...\Run value data: the quoted observerd path + --store arg.
+pub fn run_command_line(observerd: &Path, store: &Path) -> String {
+    format!("\"{}\" --store \"{}\"", observerd.display(), store.display())
 }
 
 #[cfg(windows)]
 pub fn register_windows(observerd: &Path, store: &Path) -> anyhow::Result<()> {
     use std::process::Command;
-    let xml = scheduled_task_xml(observerd, store);
-    let tmp = std::env::temp_dir().join("nibbin-observer-task.xml");
-    // Task Scheduler requires UTF-16 (with BOM) for /XML files.
-    let utf16: Vec<u8> = xml.encode_utf16().flat_map(|u| u.to_le_bytes()).collect();
-    let mut bytes = vec![0xFF, 0xFE]; // UTF-16 LE BOM
-    bytes.extend(utf16);
-    std::fs::write(&tmp, bytes)?;
-    let tmp_str = tmp.to_str().ok_or_else(|| anyhow::anyhow!("non-utf8 temp path"))?;
-    // /F makes re-registration idempotent.
-    let create = Command::new("schtasks")
-        .args(["/Create", "/TN", TASK_NAME, "/XML", tmp_str, "/F"])
+    let data = run_command_line(observerd, store);
+    let status = Command::new("reg")
+        .args([
+            "add", r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run",
+            "/v", RUN_VALUE_NAME, "/t", "REG_SZ", "/d", &data, "/f",
+        ])
         .status()?;
-    anyhow::ensure!(create.success(), "schtasks /Create failed");
-    // Start now so the user need not log out/in.
-    let _ = Command::new("schtasks").args(["/Run", "/TN", TASK_NAME]).status();
+    anyhow::ensure!(status.success(), "reg add (HKCU Run) failed");
     Ok(())
 }
 

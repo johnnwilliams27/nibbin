@@ -21,25 +21,12 @@ fn plist_has_required_keys() {
 }
 
 #[test]
-fn task_xml_has_logon_trigger_and_restart() {
-    let xml = nibbin_observer_app::daemon_supervisor::scheduled_task_xml(
+fn run_command_line_quotes_paths_and_store() {
+    let cmd = nibbin_observer_app::daemon_supervisor::run_command_line(
         std::path::Path::new("C:/Program Files/Nibbin/observerd.exe"),
         std::path::Path::new("C:/Users/x/AppData/Roaming/app.nibbin.observer/observer-store"),
     );
-    assert!(xml.contains("<LogonTrigger>"));
-    assert!(xml.contains("observerd.exe"));
-    assert!(xml.contains("--store"));
-    assert!(xml.contains("<RestartOnFailure>"));
-}
-
-#[test]
-fn task_xml_is_unprivileged() {
-    let xml = nibbin_observer_app::daemon_supervisor::scheduled_task_xml(
-        std::path::Path::new("C:/Program Files/Nibbin/observerd.exe"),
-        std::path::Path::new("C:/Users/x/AppData/Roaming/app.nibbin.observer/observer-store"),
-    );
-    assert!(xml.contains(r#"<Principal id="Author">"#));
-    assert!(xml.contains("<LogonType>InteractiveToken</LogonType>"));
-    assert!(xml.contains("<RunLevel>LeastPrivilege</RunLevel>"));
-    assert!(xml.contains(r#"<Actions Context="Author">"#));
+    assert!(cmd.contains("observerd.exe"));
+    assert!(cmd.contains("--store"));
+    assert!(cmd.starts_with('"')); // observerd path quoted so "Program Files" survives
 }
