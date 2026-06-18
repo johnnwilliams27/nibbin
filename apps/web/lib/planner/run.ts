@@ -17,13 +17,19 @@ import 'server-only';
  * re-runs.
  */
 import {
+  quarantine,
+} from '@nibbin/connectors';
+import {
   runPlan,
   type PlanOutcome,
   type PlanRunState,
   type PlanTurn,
   type PlannerDeps,
+  type UtilityDispatch,
 } from '@nibbin/runtime';
 import { serviceClient } from '../supabase/service';
+import { embedQuery } from '../llm/embed';
+import { webSearch, webFetch } from './websearch';
 
 export interface PlanRunStore {
   create(state: PlanRunState): Promise<void>;
@@ -139,6 +145,48 @@ async function resolveResponse(
   }
   // value | auth | decision → the free-text answer is the observation.
   return `human answered: ${response.value}`;
+}
+
+/* ── Utility dispatch (web + memory) ─────────────────────────────────────────
+ *
+ * The harness routes web.search/web.fetch/memory.retrieve through these; each
+ * returns an observation the picker only ever sees QUARANTINED (web.* already
+ * quarantine; memory rows are derived, account-scoped, and wrapped here).
+ */
+export function buildUtilityDispatch(accountId: string): UtilityDispatch {
+  return {
+    async webSearch(query) {
+      return await webSearch(query);
+    },
+    async webFetch(url) {
+      return await webFetch(url);
+    },
+    async memoryRetrieve(query, k) {
+      try {
+        const svc = serviceClient();
+        const vec = await embedQuery(query); // null if no key / failure
+        const pEmbedding = vec ? `[${vec.join(',')}]` : null;
+        const { data } = await svc.rpc('match_memory', {
+          p_account: accountId,
+          // a plan run is ephemeral (no nibbin) → null returns ONLY the
+          // account's user-scoped memory (the agent clause is null-safe).
+          p_nibbin: null,
+          p_embedding: pEmbedding,
+          p_query: query,
+          p_limit: Math.min(Math.max(k, 1), 10),
+          p_min_confidence: 0.3,
+        });
+        const rows = (data ?? []) as { text: string; provenance: string }[];
+        const body = rows.length === 0
+          ? 'no relevant memory found'
+          : rows.map((r) => `- (${r.provenance}) ${r.text}`).join('\n');
+        return quarantine(body, 'memory').wrapped;
+      } catch (err) {
+        console.error('[planner] memory.retrieve failed (best-effort)', err instanceof Error ? err.message : err);
+        return quarantine('memory retrieval is unavailable', 'memory').wrapped;
+      }
+    },
+  };
 }
 
 /* ── In-memory store (tests / scripts) ──────────────────────────────────────── */
