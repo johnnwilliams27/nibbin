@@ -32,6 +32,15 @@ it('throws a friendly tester error when email is not allowlisted', async () => {
   )).rejects.toThrow();
 });
 
+it('forwards sweepConsent into the saved pending row', async () => {
+  const saved: StorePendingInput[] = [];
+  await beginConnect(
+    { provider: 'gmail', accountId: 'a', userId: 'u', userEmail: 'john@gmail.com', sweepConsent: true },
+    { config, allowlistFor: async () => makeTesterAllowlist(['john@gmail.com']), save: async (i) => { saved.push(i); }, nowMs: 0 },
+  );
+  expect(saved[0].sweepConsent).toBe(true);
+});
+
 it('safeReturnTo: absolute/protocol-relative URLs are dropped; /app/ paths are preserved', async () => {
   // evil absolute URL — must be dropped (saved row's returnTo should be null)
   const savedEvil: StorePendingInput[] = [];
