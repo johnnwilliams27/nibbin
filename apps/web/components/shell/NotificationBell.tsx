@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { buildCreature, type SpeciesName, type Stage, type Accessory, type Marking } from '@nibbin/creatures';
 import { listLeaves, markRead, markAllRead, type Leaf } from '../../app/app/notifications/actions';
 import styles from './notification-center.module.css';
 
@@ -93,9 +94,29 @@ export function NotificationBell() {
               items.map((leaf) => (
                 <button key={leaf.id} type="button" role="menuitem"
                   className={`${styles.leaf} ${leaf.read ? '' : styles.leafUnread}`} onClick={() => activate(leaf)}>
-                  <p className={styles.leafTitle}>{leaf.title}</p>
-                  <p className={styles.leafBody}>{leaf.body}</p>
-                  <span className={styles.leafTime}>{relTime(leaf.createdAt)}</span>
+                  <span className={styles.leafRow}>
+                    {leaf.creature && (
+                      <span
+                        className={styles.leafCreature}
+                        aria-hidden="true"
+                        dangerouslySetInnerHTML={{
+                          __html: buildCreature({
+                            species: leaf.creature.species as SpeciesName,
+                            stage: leaf.creature.stage as Stage,
+                            color: leaf.creature.palette ?? undefined,
+                            acc: leaf.creature.accessory as Accessory,
+                            mark: leaf.creature.marking as Marking,
+                            size: 40,
+                          }),
+                        }}
+                      />
+                    )}
+                    <span className={styles.leafText}>
+                      <span className={styles.leafTitle}>{leaf.title}</span>
+                      <span className={styles.leafBody}>{leaf.body}</span>
+                      <span className={styles.leafTime}>{relTime(leaf.createdAt)}</span>
+                    </span>
+                  </span>
                 </button>
               ))
             )}

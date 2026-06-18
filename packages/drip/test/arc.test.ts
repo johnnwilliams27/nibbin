@@ -332,7 +332,10 @@ describe('the 14-day arc, fast-clock (DoD)', () => {
     );
     await mem.store.completeArc('acct-1');
 
-    const event: EarnedEvent = { id: 'evt-9', kind: 'graduation', nibbin: 'Scout', detail: 'Verified accuracy over 25 runs.' };
+    const event: EarnedEvent = {
+      id: 'evt-9', kind: 'graduation', nibbin: 'Scout', detail: 'Verified accuracy over 25 runs.',
+      nibbinId: 'nib-9', species: 'Sprout', stage: 'grad', palette: null, accessory: null, marking: null,
+    };
     const emails: BeatEmail[] = [];
     await tick({
       store: mem.store,
@@ -348,7 +351,10 @@ describe('the 14-day arc, fast-clock (DoD)', () => {
   });
 
   it('earned events land as leaves whenever they fire, idempotently, outside the daily push', async () => {
-    const event: EarnedEvent = { id: 'evt-1', kind: 'evolution', nibbin: 'Scout', detail: 'Scout grew into a Senior.' };
+    const event: EarnedEvent = {
+      id: 'evt-1', kind: 'evolution', nibbin: 'Scout', detail: 'Scout grew into a Senior.',
+      nibbinId: 'nib-1', species: 'Sprout', stage: 'senior', palette: null, accessory: null, marking: null,
+    };
     const data = stubArcData({ earnedEvents: async () => [event] });
     const sim = runArc({ tz: 'UTC', data, days: 3 });
     await sim.simulate();

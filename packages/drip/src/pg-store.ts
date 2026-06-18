@@ -134,10 +134,22 @@ export function pgDripStore(pool: Pool): DripStore & { ensureArcs(): Promise<num
     async insertEarnedNotification(accountId, event: EarnedEvent): Promise<void> {
       const title = event.kind === 'graduation' ? `${event.nibbin} graduated` : `${event.nibbin} evolved`;
       await pool.query(
-        `insert into notifications (account_id, kind, source_id, title, body)
-         values ($1, $2, $3, $4, $5)
+        `insert into notifications (account_id, kind, source_id, title, body, payload)
+         values ($1, $2, $3, $4, $5, $6)
          on conflict (account_id, kind, source_id) do nothing`,
-        [accountId, event.kind, event.id, title, event.detail],
+        [
+          accountId, event.kind, event.id, title, event.detail,
+          JSON.stringify({
+            ctaPath: '/app/nibbins',
+            ctaLabel: 'See your Nibbins',
+            nibbinId: event.nibbinId,
+            species: event.species,
+            stage: event.stage,
+            palette: event.palette,
+            accessory: event.accessory ?? 'none',
+            marking: event.marking ?? 'none',
+          }),
+        ],
       );
     },
 
