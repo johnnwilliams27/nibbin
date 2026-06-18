@@ -10,6 +10,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { serviceClient } from '../supabase/service';
 import { SupabaseEventSink } from './stores';
 import { maybePromote } from './engine';
+import { maybeDriftNudge } from './drift';
 
 export type DraftDecision = 'approved' | 'edited' | 'rejected';
 
@@ -87,6 +88,9 @@ export async function decideDraft(
       props: { nibbinId: run.nibbin_id as string, to: promotedTo },
     });
   }
+
+  // R2: a degrading Senior/Grad gets a calm, human-only nudge (best-effort).
+  await maybeDriftNudge(svc, accountId, run.nibbin_id as string);
 
   return { decision, promotedTo, firstApproval };
 }

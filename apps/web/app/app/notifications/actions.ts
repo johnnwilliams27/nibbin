@@ -7,7 +7,7 @@ import { upsertOwnProfile } from '../../../lib/auth/profile';
 
 export interface Leaf {
   id: string;
-  kind: 'beat' | 'evolution' | 'graduation';
+  kind: 'beat' | 'evolution' | 'graduation' | 'nudge' | 'demotion';
   title: string;
   body: string;
   ctaPath: string | null;

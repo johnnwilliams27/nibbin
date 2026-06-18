@@ -299,7 +299,7 @@ export default async function AppPage({ searchParams }: { searchParams: Promise<
       .from('notifications')
       .select('id, kind, title, body, payload, created_at')
       .eq('account_id', accountId)
-      .in('kind', ['evolution', 'graduation'])
+      .in('kind', ['evolution', 'graduation', 'demotion'])
       .gte('created_at', new Date(now - 14 * 24 * 60 * 60 * 1000).toISOString())
       .order('created_at', { ascending: false })
       .limit(5),
@@ -325,10 +325,14 @@ export default async function AppPage({ searchParams }: { searchParams: Promise<
       } | null;
     }>
   )
-    .filter((r) => r.payload?.species && (r.kind === 'evolution' || r.kind === 'graduation'))
+    .filter(
+      (r) =>
+        r.payload?.species &&
+        (r.kind === 'evolution' || r.kind === 'graduation' || r.kind === 'demotion'),
+    )
     .map((r) => ({
       id: r.id,
-      kind: r.kind as 'evolution' | 'graduation',
+      kind: r.kind as 'evolution' | 'graduation' | 'demotion',
       title: r.title,
       line: r.body,
       species: r.payload!.species as string,

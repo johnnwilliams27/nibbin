@@ -5,6 +5,7 @@ import { appSession } from '../../../lib/auth/app-session';
 import { AppShell } from '../../../components/shell/AppShell';
 import { NoteRefresher } from './NoteRefresher';
 import { NibbinEditor } from './NibbinEditor';
+import { BackToDrafts } from './BackToDrafts';
 import { refreshNibbinNote } from './actions';
 import styles from './nibbins.module.css';
 
@@ -397,7 +398,10 @@ export default async function NibbinsPage() {
                     <>Access: <b>draft-only until graduation</b></>
                   )}
                 </span>
-                <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <span style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  {(n.stage === 'senior' || n.stage === 'grad') && (
+                    <BackToDrafts nibbinId={n.id} name={n.name} />
+                  )}
                   <NibbinEditor
                     nibbin={{
                       id: n.id,
