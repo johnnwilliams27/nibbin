@@ -21,9 +21,13 @@ jobs:
     timeout-minutes: 15
     services:
       postgres:
-        # pinned by digest (postgres:17-alpine @ 2026-06-10) — no floating images
-        # in CI (red-team M0 finding). RLS attack suite runs against this.
-        image: postgres@sha256:979c4379dd698aba0b890599a6104e082035f98ef31d9b9291ec22f2b13059ca
+        # pinned by digest (pgvector/pgvector:pg17 @ 2026-06-18) — no floating
+        # images in CI (red-team M0 finding). RLS attack suite runs against this.
+        # pgvector image (Postgres 17 + the `vector` extension) because the
+        # agent-memory migration declares an `embedding vector(1024)` column and
+        # an HNSW index; stock postgres:17 has no pgvector and the migration —
+        # applied verbatim by the RLS harness — would fail to create the extension.
+        image: pgvector/pgvector@sha256:be400b50812ab2cc908ed78593fda2e51e3b45fe774fa637f1c7b16e68531d95
         env:
           POSTGRES_PASSWORD: postgres
         ports:
