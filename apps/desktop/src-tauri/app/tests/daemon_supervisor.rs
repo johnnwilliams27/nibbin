@@ -31,3 +31,15 @@ fn task_xml_has_logon_trigger_and_restart() {
     assert!(xml.contains("--store"));
     assert!(xml.contains("<RestartOnFailure>"));
 }
+
+#[test]
+fn task_xml_is_unprivileged() {
+    let xml = nibbin_observer_app::daemon_supervisor::scheduled_task_xml(
+        std::path::Path::new("C:/Program Files/Nibbin/observerd.exe"),
+        std::path::Path::new("C:/Users/x/AppData/Roaming/app.nibbin.observer/observer-store"),
+    );
+    assert!(xml.contains(r#"<Principal id="Author">"#));
+    assert!(xml.contains("<LogonType>InteractiveToken</LogonType>"));
+    assert!(xml.contains("<RunLevel>LeastPrivilege</RunLevel>"));
+    assert!(xml.contains(r#"<Actions Context="Author">"#));
+}

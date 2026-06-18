@@ -54,6 +54,12 @@ pub const TASK_NAME: &str = "NibbinObserver";
 pub fn scheduled_task_xml(observerd: &Path, store: &Path) -> String {
     format!(r#"<?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <Principals>
+    <Principal id="Author">
+      <LogonType>InteractiveToken</LogonType>
+      <RunLevel>LeastPrivilege</RunLevel>
+    </Principal>
+  </Principals>
   <Triggers><LogonTrigger><Enabled>true</Enabled></LogonTrigger></Triggers>
   <Settings>
     <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
@@ -62,7 +68,7 @@ pub fn scheduled_task_xml(observerd: &Path, store: &Path) -> String {
     <RestartOnFailure><Interval>PT1M</Interval><Count>3</Count></RestartOnFailure>
     <ExecutionTimeLimit>PT0S</ExecutionTimeLimit>
   </Settings>
-  <Actions>
+  <Actions Context="Author">
     <Exec>
       <Command>{obs}</Command>
       <Arguments>--store "{store}"</Arguments>
