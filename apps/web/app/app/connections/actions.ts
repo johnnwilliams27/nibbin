@@ -15,11 +15,12 @@ export async function beginConnectAction(formData: FormData): Promise<void> {
   const provider = String(formData.get('provider') ?? '');
   const returnTo = (formData.get('returnTo') as string) || undefined;
   const resumeTemplate = (formData.get('resumeTemplate') as string) || undefined;
+  const sweepConsent = formData.get('sweepConsent') === 'on';
 
   const { user, accountId } = await appSession();
   const svc = serviceClient();
   const { url } = await beginConnect(
-    { provider, accountId, userId: user.id, userEmail: user.email ?? null, returnTo, resumeTemplate },
+    { provider, accountId, userId: user.id, userEmail: user.email ?? null, returnTo, resumeTemplate, sweepConsent },
     {
       config: getGoogleOAuthConfig(),
       allowlistFor: (p) => loadTesterAllowlist(p, svc),
