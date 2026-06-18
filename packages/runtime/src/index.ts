@@ -13,6 +13,7 @@
  */
 export * from './types';
 export * from './capabilities';
+export * from './primitives/shared';
 export * from './primitives/nudge-overdue-email';
 export * from './interpreter';
 export * from './events';
