@@ -11,6 +11,15 @@ import {
 import { Button } from '../ui';
 import styles from './adopt-hatch.module.css';
 
+/** §9 fallback: a creature-engine failure yields copy-only, never a broken SVG. */
+function safeBuild(opts: Parameters<typeof buildCreature>[0]): string {
+  try {
+    return buildCreature(opts);
+  } catch {
+    return '';
+  }
+}
+
 const BURST = [
   { dx: '-46px', dy: '-38px', rot: '-80deg' },
   { dx: '-26px', dy: '-58px', rot: '-30deg' },
@@ -47,11 +56,13 @@ export function AdoptHatch({
   const timers = useRef<number[]>([]);
 
   // A generic egg (matches the grove hatch); the real creature emerges from it.
+  // §9: a creature-engine failure must fall back to a copy-only celebration —
+  // never a broken animation as the "moment" — so the SVG build is guarded.
   const size = isFirstAdoption ? 132 : 104;
-  const eggSvg = useMemo(() => buildCreature({ species: 'Sprout', stage: 'egg', size: 112 }), []);
+  const eggSvg = useMemo(() => safeBuild({ species: 'Sprout', stage: 'egg', size: 112 }), []);
   const creatureSvg = useMemo(
     () =>
-      buildCreature({
+      safeBuild({
         species: species as SpeciesName,
         stage: stage as Stage,
         color: palette,
@@ -66,6 +77,15 @@ export function AdoptHatch({
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
     setReducedMotion(mq.matches);
   }, []);
+
+  // Esc dismisses the ceremony (the data behind it is never gated — §8/CE-P4).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onDismiss();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onDismiss]);
 
   // Egg cracks, then the adopted creature emerges (instant under reduced motion).
   useEffect(() => {
@@ -86,12 +106,13 @@ export function AdoptHatch({
 
   const title = isFirstAdoption ? `Meet ${name} — your first Nibbin` : `${name} hatched`;
   const body = isFirstAdoption
-    ? `${name} starts small and only ever drafts for your approval — they earn more as you confirm their work. Come say hello.`
+    ? `${name} starts small and only ever drafts for your approval — earning more as you confirm their work. They're already drafting; I'll bring it to you to approve.`
     : `${name} is in your grove now, drafting for your approval. They earn more as they get it right.`;
 
   return (
     <div className={styles.backdrop} role="dialog" aria-modal="true" aria-label={title}>
       <div className={styles.card}>
+        {creatureSvg && (
         <div className={styles.spot}>
           {!hatched ? (
             <div
@@ -129,9 +150,10 @@ export function AdoptHatch({
             </>
           )}
         </div>
+        )}
         <h2 className={styles.title}>{title}</h2>
         <p className={styles.body}>{body}</p>
-        <Button type="button" variant="primary" className={styles.cta} onClick={onDismiss}>
+        <Button type="button" variant="primary" className={styles.cta} onClick={onDismiss} autoFocus>
           Meet {name}
         </Button>
       </div>
