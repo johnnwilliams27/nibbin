@@ -13,7 +13,7 @@ import 'server-only';
  * touch a connector directly and never see an unquarantined byte.
  */
 import type { QuarantinedContent } from '@nibbin/connectors';
-import type { ProgramFn, ProgramStep } from '@nibbin/runtime';
+import { interpretSpec, type AgentSpec, type ProgramFn, type ProgramStep } from '@nibbin/runtime';
 import { parseQuarantinedJson, unwrapQuarantined } from '@nibbin/scan';
 
 /** Provider → connection id for the adopting account. */
@@ -129,8 +129,16 @@ function overdueInbound(mail: MailScan, nowMs: number): GmailMeta[] {
 
 /* ── Programs ─────────────────────────────────────────────────────────────── */
 
-export function buildProgram(templateKey: string, connections: ConnectionMap, nowMs: number): ProgramFn {
-  switch (templateKey) {
+/**
+ * Route a run to its program. A composed spec (`steps[]` present, future
+ * Composer output / the Slice-1 proof agent) runs through the declarative
+ * interpreter; everything else routes to its hand-written template program,
+ * byte-for-byte unchanged. The interpreter yields ProgramSteps the same runner
+ * gates — no execution path lives outside the runner either way.
+ */
+export function buildProgram(spec: AgentSpec, connections: ConnectionMap, nowMs: number): ProgramFn {
+  if (spec.steps && spec.steps.length > 0) return interpretSpec(spec, connections);
+  switch (spec.templateKey) {
     case 'echo':
       return echoProgram(connections, nowMs);
     case 'sweep':
@@ -144,7 +152,7 @@ export function buildProgram(templateKey: string, connections: ConnectionMap, no
     case 'hopper':
       return hopperProgram(connections, nowMs);
     default:
-      throw new Error(`no program for template ${templateKey}`);
+      throw new Error(`no program for spec (templateKey=${spec.templateKey})`);
   }
 }
 
