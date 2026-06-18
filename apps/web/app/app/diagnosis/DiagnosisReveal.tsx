@@ -3,6 +3,8 @@ import type { DiagnosisMap, Frequency } from '../../../lib/diagnosis/types';
 import { adoptRecommendationOutcome } from './actions';
 import { AdoptButton } from '../../../components/adopt/AdoptButton';
 import { WorkflowMap } from './WorkflowMap';
+import { RevealStage } from './RevealStage';
+import { RevealKeeper } from './RevealKeeper';
 import styles from './diagnosis.module.css';
 
 const MONTH_DAY = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
@@ -44,10 +46,12 @@ export function DiagnosisReveal({
   map,
   letter,
   window,
+  diagnosisId,
 }: {
   map: DiagnosisMap;
   letter: string | null;
   window?: { from: string; to: string };
+  diagnosisId?: string;
 }) {
   const timeSaved = Math.round(map.timeSavedPerWeek ?? 0);
   const studyWindow = formatWindow(window);
@@ -60,58 +64,77 @@ export function DiagnosisReveal({
   const appAllocation = map.appAllocation ?? [];
   const maxAppHours = appAllocation.reduce((m, a) => Math.max(m, a.hoursPerWeek), 0);
 
-  return (
+  const body = (
     <>
-      {letter && (
-        <Card className={styles.letterCard}>
-          <p className={styles.letterEyebrow}>A letter from the Grovekeeper</p>
-          <p className={styles.letter}>{letter}</p>
-        </Card>
+      {diagnosisId && (
+        <div className={styles.revealSec} style={{ '--sec': 0 } as React.CSSProperties}>
+          <RevealKeeper />
+        </div>
       )}
 
-      <div className={styles.total}>
-        <span className={styles.totalValue}>{map.totalHoursPerWeek}h</span>
-        <span className={styles.totalLabel}>
-          of routine a week, mapped across {map.workflows.length}{' '}
-          {map.workflows.length === 1 ? 'workflow' : 'workflows'}
-        </span>
+      {letter && (
+        <div className={styles.revealSec} style={{ '--sec': 1 } as React.CSSProperties}>
+          <Card className={styles.letterCard}>
+            <p className={styles.letterEyebrow}>A letter from the Grovekeeper</p>
+            <p className={styles.letter}>{letter}</p>
+          </Card>
+        </div>
+      )}
+
+      <div className={styles.revealSec} style={{ '--sec': 2 } as React.CSSProperties}>
+        <div className={styles.total}>
+          <span className={styles.totalValue}>{map.totalHoursPerWeek}h</span>
+          <span className={styles.totalLabel}>
+            of routine a week, mapped across {map.workflows.length}{' '}
+            {map.workflows.length === 1 ? 'workflow' : 'workflows'}
+          </span>
+        </div>
       </div>
 
       {timeSaved > 0 && (
-        <p className={styles.timeSaved}>
-          ~<span className={styles.timeSavedValue}>{timeSaved}h</span>/week could move to your grove
-        </p>
+        <div className={styles.revealSec} style={{ '--sec': 3 } as React.CSSProperties}>
+          <p className={styles.timeSaved}>
+            ~<span className={styles.timeSavedValue}>{timeSaved}h</span>/week could move to your grove
+          </p>
+        </div>
       )}
 
-      <div className={styles.chipline}>
-        {studyWindow && (
+      <div className={styles.revealSec} style={{ '--sec': 4 } as React.CSSProperties}>
+        <div className={styles.chipline}>
+          {studyWindow && (
+            <div className={styles.chip}>
+              STUDY WINDOW
+              <b>{studyWindow}</b>
+            </div>
+          )}
           <div className={styles.chip}>
-            STUDY WINDOW
-            <b>{studyWindow}</b>
+            WORKFLOWS FOUND
+            <b>{map.workflows.length}</b>
           </div>
-        )}
-        <div className={styles.chip}>
-          WORKFLOWS FOUND
-          <b>{map.workflows.length}</b>
-        </div>
-        <div className={styles.chip}>
-          OBSERVED
-          <b>{map.totalHoursPerWeek}h/wk</b>
-        </div>
-        <div className={styles.chip}>
-          AUTOMATABLE
-          <b className={styles.chipMoss}>{timeSaved}h/wk</b>
-        </div>
-        <div className={styles.chip}>
-          BIGGEST FRICTION
-          <b className={styles.chipCoral}>{frictionWorkflow?.label ?? '—'}</b>
+          <div className={styles.chip}>
+            OBSERVED
+            <b>{map.totalHoursPerWeek}h/wk</b>
+          </div>
+          <div className={styles.chip}>
+            AUTOMATABLE
+            <b className={styles.chipMoss}>{timeSaved}h/wk</b>
+          </div>
+          <div className={styles.chip}>
+            BIGGEST FRICTION
+            <b className={styles.chipCoral}>{frictionWorkflow?.label ?? '—'}</b>
+          </div>
         </div>
       </div>
 
-      <WorkflowMap workflows={map.workflows} />
+      <div
+        className={`${styles.revealSec} ${styles.revealMap}`}
+        style={{ '--sec': 5 } as React.CSSProperties}
+      >
+        <WorkflowMap workflows={map.workflows} />
+      </div>
 
       {appAllocation.length > 0 && (
-        <>
+        <div className={styles.revealSec} style={{ '--sec': 6 } as React.CSSProperties}>
           <h2 className={styles.sectionTitle}>Where your desktop time goes</h2>
           <div className={styles.allocList}>
             {appAllocation.map((a) => (
@@ -127,33 +150,35 @@ export function DiagnosisReveal({
               </div>
             ))}
           </div>
-        </>
+        </div>
       )}
 
-      <h2 className={styles.sectionTitle}>Where the hours go</h2>
-      <div className={styles.wfList}>
-        {map.workflows.map((w) => (
-          <Card key={w.key} className={styles.wfCard}>
-            <div className={styles.wfHead}>
-              <span className={styles.wfName}>{w.label}</span>
-              <span className={styles.wfHours}>~{w.hoursPerWeek}h / week</span>
-            </div>
-            <div className={styles.wfMeta}>
-              <Badge tone={FREQ_TONE[w.frequency]}>{FREQ_LABEL[w.frequency]}</Badge>
-              <Badge tone="neutral">{w.category}</Badge>
-              {(w.automatable ?? 0) > 0 && <Badge tone="sky">~{w.automatable}% automatable</Badge>}
-              {w.recommendedNibbin && (
-                <Badge tone="moss">{NIBBIN_NAME[w.recommendedNibbin] ?? w.recommendedNibbin} can help</Badge>
-              )}
-            </div>
-            {w.description && <p className={styles.wfDesc}>{w.description}</p>}
-            {w.friction && <p className={styles.wfFriction}>{w.friction}</p>}
-          </Card>
-        ))}
+      <div className={styles.revealSec} style={{ '--sec': 7 } as React.CSSProperties}>
+        <h2 className={styles.sectionTitle}>Where the hours go</h2>
+        <div className={styles.wfList}>
+          {map.workflows.map((w) => (
+            <Card key={w.key} className={styles.wfCard}>
+              <div className={styles.wfHead}>
+                <span className={styles.wfName}>{w.label}</span>
+                <span className={styles.wfHours}>~{w.hoursPerWeek}h / week</span>
+              </div>
+              <div className={styles.wfMeta}>
+                <Badge tone={FREQ_TONE[w.frequency]}>{FREQ_LABEL[w.frequency]}</Badge>
+                <Badge tone="neutral">{w.category}</Badge>
+                {(w.automatable ?? 0) > 0 && <Badge tone="sky">~{w.automatable}% automatable</Badge>}
+                {w.recommendedNibbin && (
+                  <Badge tone="moss">{NIBBIN_NAME[w.recommendedNibbin] ?? w.recommendedNibbin} can help</Badge>
+                )}
+              </div>
+              {w.description && <p className={styles.wfDesc}>{w.description}</p>}
+              {w.friction && <p className={styles.wfFriction}>{w.friction}</p>}
+            </Card>
+          ))}
+        </div>
       </div>
 
       {map.topRecommendations.length > 0 && (
-        <>
+        <div className={styles.revealSec} style={{ '--sec': 8 } as React.CSSProperties}>
           <h2 className={styles.sectionTitle}>Ready to take the first slices</h2>
           <div className={styles.wfList}>
             {map.topRecommendations.map((key) => (
@@ -172,8 +197,10 @@ export function DiagnosisReveal({
               </Card>
             ))}
           </div>
-        </>
+        </div>
       )}
     </>
   );
+
+  return diagnosisId ? <RevealStage diagnosisId={diagnosisId}>{body}</RevealStage> : body;
 }
