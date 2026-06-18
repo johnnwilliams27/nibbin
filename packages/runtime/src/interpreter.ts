@@ -25,9 +25,9 @@
  */
 import type { QuarantinedContent } from '@nibbin/connectors';
 import { QUARANTINE_PREFIX } from '@nibbin/connectors';
-import { capability } from './capabilities';
+import { capability, PRIMITIVE_IMPLS, type CapabilityDescriptor, type PrimitiveInputField } from './capabilities';
 import type { ProgramFn } from './runner';
-import type { AgentSpec, ProgramStep } from './types';
+import type { AgentSpec, CapabilityStep, ProgramStep } from './types';
 
 type ConnectionMap = Record<string, string | undefined>;
 
@@ -139,13 +139,77 @@ function modelDraftOr(fallback: string, fed: QuarantinedContent | undefined): st
 }
 
 /**
+ * Validate + coerce a primitive step's `inputs` against the descriptor's
+ * inputSchema (design §1/§2.2): every supplied key must be declared; values
+ * must match the field type and stay within bounds; defaults fill omitted
+ * optional fields; a required field with no value throws. Fail-closed — any
+ * mismatch throws so the run fails cleanly rather than running with attacker-
+ * shaped params. Shared verbatim by validateComposedSpec (single source of the
+ * schema check). Returns the resolved (coerced + defaulted) inputs.
+ */
+export function resolvePrimitiveInputs(
+  cap: CapabilityDescriptor,
+  inputs: Record<string, unknown> | undefined,
+): Record<string, unknown> {
+  const schema = cap.inputSchema ?? {};
+  const given = inputs ?? {};
+  for (const key of Object.keys(given)) {
+    // Object.hasOwn (not `in`) so prototype-chain keys like '__proto__' /
+    // 'constructor' are rejected as unknown rather than slipping the guard.
+    if (!Object.hasOwn(schema, key)) throw new Error(`primitive ${cap.id} got unknown input "${key}"`);
+  }
+  const out: Record<string, unknown> = {};
+  for (const [key, field] of Object.entries(schema)) {
+    const present = key in given;
+    const raw = present ? given[key] : field.default;
+    if (raw === undefined || raw === null) {
+      if (field.required) throw new Error(`primitive ${cap.id} missing required input "${key}"`);
+      continue;
+    }
+    out[key] = coerceField(cap.id, key, field, raw);
+  }
+  return out;
+}
+
+function coerceField(capId: string, key: string, field: PrimitiveInputField, raw: unknown): unknown {
+  if (field.type === 'number') {
+    if (typeof raw !== 'number' || !Number.isFinite(raw)) {
+      throw new Error(`primitive ${capId} input "${key}" must be a finite number`);
+    }
+    if (field.min !== undefined && raw < field.min) {
+      throw new Error(`primitive ${capId} input "${key}" below min ${field.min}`);
+    }
+    if (field.max !== undefined && raw > field.max) {
+      throw new Error(`primitive ${capId} input "${key}" above max ${field.max}`);
+    }
+    return raw;
+  }
+  if (field.type === 'string') {
+    if (typeof raw !== 'string') throw new Error(`primitive ${capId} input "${key}" must be a string`);
+    return raw;
+  }
+  // enum
+  if (typeof raw !== 'string' || !(field.values ?? []).includes(raw)) {
+    throw new Error(`primitive ${capId} input "${key}" must be one of ${(field.values ?? []).join(', ')}`);
+  }
+  return raw;
+}
+
+/**
  * Run a linear capability `steps[]` as a ProgramFn. Yields ProgramSteps ONLY —
  * the runner applies every gate. Unknown capability / missing connection /
  * missing read path throws (run fails cleanly).
+ *
+ * A PRIMITIVE step (cap.kind === 'primitive', design §1) dispatches to its
+ * trusted server-side implementation: inputs are schema-validated/coerced, then
+ * the implementation's steps are delegated with `yield*` so the runner gates
+ * every read/compose/draft it yields exactly as for an atomic step. The
+ * implementation — not the spec — owns the read paths + effectArgs, which is
+ * why the untrusted Composer can never inject either.
  */
-export function interpretSpec(spec: AgentSpec, connMap: ConnectionMap): ProgramFn {
+export function interpretSpec(spec: AgentSpec, connMap: ConnectionMap, nowMs: number = Date.now()): ProgramFn {
   const steps = spec.steps ?? [];
-  return async function* (): AsyncGenerator<ProgramStep, void, QuarantinedContent | undefined> {
+  return async function* (ctx): AsyncGenerator<ProgramStep, void, QuarantinedContent | undefined> {
     let idx = -1;
     for (const s of steps) {
       idx += 1;
@@ -153,6 +217,16 @@ export function interpretSpec(spec: AgentSpec, connMap: ConnectionMap): ProgramF
       if (!cap) throw new Error(`unknown capability ${s.capability}`);
       const connectionId = connMap[cap.requiredConnector];
       if (!connectionId) throw new Error(`no active ${cap.requiredConnector} connection`);
+
+      if (cap.kind === 'primitive') {
+        const impl = PRIMITIVE_IMPLS[cap.id];
+        if (!impl) throw new Error(`primitive ${cap.id} has no implementation`);
+        const resolved = resolvePrimitiveInputs(cap, (s as CapabilityStep).inputs);
+        // The primitive's ProgramFn ignores ctx (it yields the same step shapes
+        // the runner gates); forward it for signature parity all the same.
+        yield* impl(resolved, connMap, nowMs)(ctx);
+        continue;
+      }
 
       if (cap.sideEffect === 'read') {
         // Guard the verbatim GET path (SSRF / traversal — red-team P2-1).

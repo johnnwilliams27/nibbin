@@ -13,7 +13,7 @@ import 'server-only';
  * touch a connector directly and never see an unquarantined byte.
  */
 import type { QuarantinedContent } from '@nibbin/connectors';
-import { interpretSpec, type AgentSpec, type ProgramFn, type ProgramStep } from '@nibbin/runtime';
+import { interpretSpec, nudgeOverdueEmail, type AgentSpec, type ProgramFn, type ProgramStep } from '@nibbin/runtime';
 import { parseQuarantinedJson, unwrapQuarantined } from '@nibbin/scan';
 
 /** Provider → connection id for the adopting account. */
@@ -114,19 +114,6 @@ async function* readMailbox(
   return out;
 }
 
-function overdueInbound(mail: MailScan, nowMs: number): GmailMeta[] {
-  const answered = new Set(mail.sent.map((m) => m.threadId));
-  return mail.inbox
-    .filter(
-      (m) =>
-        !header(m, 'In-Reply-To') &&
-        !header(m, 'List-Unsubscribe') &&
-        !answered.has(m.threadId) &&
-        nowMs - Number(m.internalDate ?? nowMs) > 3 * DAY,
-    )
-    .sort((a, b) => Number(a.internalDate ?? 0) - Number(b.internalDate ?? 0));
-}
-
 /* ── Programs ─────────────────────────────────────────────────────────────── */
 
 /**
@@ -137,7 +124,7 @@ function overdueInbound(mail: MailScan, nowMs: number): GmailMeta[] {
  * gates — no execution path lives outside the runner either way.
  */
 export function buildProgram(spec: AgentSpec, connections: ConnectionMap, nowMs: number): ProgramFn {
-  if (spec.steps && spec.steps.length > 0) return interpretSpec(spec, connections);
+  if (spec.steps && spec.steps.length > 0) return interpretSpec(spec, connections, nowMs);
   switch (spec.templateKey) {
     case 'echo':
       return echoProgram(connections, nowMs);
@@ -162,47 +149,22 @@ function requireConn(connections: ConnectionMap, provider: string): string {
   return id;
 }
 
+/**
+ * Echo delegates to the SHARED `nudge.overdue-email` primitive implementation
+ * (packages/runtime) — the template and the composable primitive are now the
+ * SAME code, so a synthesized detect-and-nudge agent behaves byte-for-byte
+ * like Echo (parity test in packages/runtime).
+ *
+ * The "no active gmail connection — pausing politely" guard lives INSIDE the
+ * primitive's generator body (nudge-overdue-email.ts), NOT here at factory
+ * build time: an eager throw would fire before executeRun creates the run row,
+ * propagate out of triggerNibbinRun, and abort the dispatch fan-out loop (the
+ * cursor would never advance → re-fires forever; no `failed` run recorded).
+ * Delegating to the primitive keeps the throw inside the generator, where
+ * executeRun's try/catch records a clean `failed` run.
+ */
 function echoProgram(connections: ConnectionMap, nowMs: number): ProgramFn {
-  return async function* () {
-    const gmail = requireConn(connections, 'gmail');
-    const mail = yield* readMailbox(gmail, nowMs);
-    const overdue = overdueInbound(mail, nowMs);
-    if (overdue.length === 0) {
-      yield { kind: 'compose', payload: { note: 'no overdue threads — nothing to draft' } };
-      return;
-    }
-    const oldest = overdue[0];
-    const from = safeHeaderValue(header(oldest, 'From')) || 'them';
-    const subject = safeHeaderValue(header(oldest, 'Subject')) || 'your last message';
-    const waitedDays = Math.round((nowMs - Number(oldest.internalDate ?? nowMs)) / DAY);
-    const fallback =
-      `Hi — thanks for your patience, and sorry for the slow reply. ` +
-      `I wanted to pick this back up: happy to answer anything still open on “${subject}”. ` +
-      `If the timing moved on, no trouble at all — just let me know either way.`;
-    // M6.5: ask the runner for a model draft (T1). Context is the same
-    // sanitized metadata the template uses — never raw message bodies.
-    const fed = yield {
-      kind: 'compose',
-      payload: { note: 'drafting overdue follow-up' },
-      prompt: {
-        intent:
-          'Draft a short, warm follow-up email body for a conversation the sender let go quiet. ' +
-          'Apologize briefly for the slow reply without groveling, reopen the thread, and make ' +
-          'responding easy. Under 90 words. Output only the email body text.',
-        context: `Subject: ${subject}\nWaiting: ${waitedDays} days\nRecipient (from header): ${from}`,
-        maxTokens: 300,
-      },
-    };
-    yield {
-      kind: 'draft',
-      capability: 'email.draft',
-      connectionId: gmail,
-      patternKey: 'email.draft:overdue-followup',
-      title: `Follow-up on “${subject}” (waiting ${waitedDays} days)`,
-      draft: modelDraftOr(fallback, fed),
-      effectArgs: { threadId: oldest.threadId, to: safeAddress(from), subject: `Re: ${subject}` },
-    };
-  };
+  return nudgeOverdueEmail({ staleDays: 3 }, connections, nowMs);
 }
 
 function sweepProgram(connections: ConnectionMap, nowMs: number): ProgramFn {

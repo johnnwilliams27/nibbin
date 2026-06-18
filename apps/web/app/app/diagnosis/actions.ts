@@ -4,8 +4,12 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { appSession } from '../../../lib/auth/app-session';
 import { serviceClient } from '../../../lib/supabase/service';
-import { adoptTemplate } from '../../../lib/runtime/adopt';
+import { adoptComposedSpec, adoptTemplate } from '../../../lib/runtime/adopt';
+import { activeConnections } from '../../../lib/runtime/engine';
+import { composeSpec } from '../../../lib/composer/compose';
+import type { DiagnosisMap, DiagnosisWorkflow } from '../../../lib/diagnosis/types';
 import type { AdoptOutcome } from '../../../components/adopt/types';
+import type { AgentSpec } from '@nibbin/runtime';
 
 /**
  * Adopt a recommended Nibbin straight from the diagnosis reveal. Returns an
@@ -36,6 +40,131 @@ export async function adoptRecommendationOutcome(templateKey: string): Promise<A
       accessory: result.accessory,
       marking: result.marking,
       isFirstAdoption: result.isFirstAdoption,
+      ctaPath: '/app',
+    };
+  } catch {
+    return { ok: false, redirectTo: '/app/diagnosis?error=adopt' };
+  }
+}
+
+/* ── Synthesis (Composer Slice 2a): build a custom Nibbin for a workflow ───── */
+
+export type ComposerReviewResult =
+  | {
+      ok: true;
+      workflowKey: string;
+      workflowLabel: string;
+      displayName: string;
+      summary: string;
+      tone: string;
+      trigger: string;
+      connectorsNeeded: string[];
+      /**
+       * The reviewed, already-validated spec — carried through to adoption so
+       * the user hatches EXACTLY what they approved (no recomposition / no 2nd
+       * model call that could drift, e.g. a different staleDays). Client-supplied
+       * at adopt time, but `adoptComposedSpec` re-validates it fail-closed
+       * against the registry + the account's live connections BEFORE any write,
+       * so it is confined to a valid menu-primitive spec regardless.
+       */
+      spec: AgentSpec;
+    }
+  | { ok: false; error: string };
+
+/** Load a diagnosis (account-scoped) and find one workflow by key. */
+async function loadWorkflow(
+  accountId: string,
+  diagnosisId: string,
+  workflowKey: string,
+): Promise<DiagnosisWorkflow | null> {
+  const svc = serviceClient();
+  const { data, error } = await svc
+    .from('diagnoses')
+    .select('map')
+    .eq('id', diagnosisId)
+    .eq('account_id', accountId)
+    .maybeSingle();
+  if (error || !data) return null;
+  const map = data.map as DiagnosisMap | null;
+  return map?.workflows?.find((w) => w.key === workflowKey) ?? null;
+}
+
+/**
+ * Compose (but do NOT adopt) a custom Nibbin for one diagnosis workflow. Returns
+ * the proposed agent's human-readable plan for the review-before-adopt surface.
+ * Deterministic with no model key (CI-safe); fail-closed validated by composeSpec.
+ */
+export async function synthesizeForWorkflow(
+  diagnosisId: string,
+  workflowKey: string,
+): Promise<ComposerReviewResult> {
+  const { user, accountId } = await appSession();
+  const workflow = await loadWorkflow(accountId, diagnosisId, workflowKey);
+  if (!workflow) return { ok: false, error: 'That workflow is no longer in this diagnosis.' };
+
+  const svc = serviceClient();
+  const connections = await activeConnections(svc, accountId);
+  const providers = connections.map((c) => c.provider);
+
+  const result = await composeSpec(accountId, user.id, workflow, providers);
+  if ('error' in result) return { ok: false, error: result.error };
+
+  const { spec, summary } = result;
+  return {
+    ok: true,
+    workflowKey,
+    workflowLabel: workflow.label,
+    displayName: spec.displayName,
+    summary,
+    tone: spec.personaPolicy?.tone ?? 'warm, plainspoken',
+    trigger: 'Every morning, and whenever you ask',
+    connectorsNeeded: spec.requiredConnectors,
+    spec,
+  };
+}
+
+/**
+ * Adopt the REVIEWED custom spec for one workflow. The spec comes straight from
+ * the review step (synthesizeForWorkflow) — it is NOT recomposed here, so the
+ * user hatches exactly what they approved (a 2nd composeSpec at temperature 0.3
+ * could drift, e.g. a different staleDays, and would double the model spend).
+ *
+ * The spec is client-supplied, but that is safe: `adoptComposedSpec` re-runs
+ * `validateComposedSpec` (capability∈registry, schema-checked primitive params,
+ * connector-granted, allowlist⊇yielded tools, acyclic graph) fail-closed BEFORE
+ * any write — so a tampered spec is confined to a valid menu-primitive spec
+ * regardless. The validator is the trust boundary, not the transport.
+ *
+ * Returns an AdoptOutcome so the client plays the Beat-2 hatch ceremony,
+ * exactly like a template adoption.
+ */
+export async function adoptSynthesized(
+  spec: AgentSpec,
+  chosenName?: string,
+): Promise<AdoptOutcome> {
+  const { user, accountId } = await appSession();
+
+  try {
+    const name = (chosenName ?? spec.displayName).trim() || spec.displayName;
+    // adoptComposedSpec re-validates `spec` fail-closed against the account's
+    // live connections + the registry BEFORE any DB write (the trust boundary).
+    const adopted = await adoptComposedSpec(accountId, user.id, spec, name);
+    if (adopted.missingConnectors.length > 0) {
+      return {
+        ok: false,
+        redirectTo: `/app/diagnosis?needs=${encodeURIComponent(adopted.missingConnectors.join(','))}`,
+      };
+    }
+    return {
+      ok: true,
+      nibbinId: adopted.nibbinId,
+      name: adopted.name,
+      species: adopted.species,
+      stage: adopted.stage,
+      palette: adopted.palette,
+      accessory: adopted.accessory,
+      marking: adopted.marking,
+      isFirstAdoption: adopted.isFirstAdoption,
       ctaPath: '/app',
     };
   } catch {

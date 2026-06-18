@@ -2,6 +2,7 @@ import { Badge, Card } from '../../../components/ui';
 import type { DiagnosisMap, Frequency } from '../../../lib/diagnosis/types';
 import { adoptRecommendationOutcome } from './actions';
 import { AdoptButton } from '../../../components/adopt/AdoptButton';
+import { BuildNibbinButton } from './BuildNibbinButton';
 import { WorkflowMap } from './WorkflowMap';
 import { RevealStage } from './RevealStage';
 import { RevealKeeper } from './RevealKeeper';
@@ -172,6 +173,14 @@ export function DiagnosisReveal({
               </div>
               {w.description && <p className={styles.wfDesc}>{w.description}</p>}
               {w.friction && <p className={styles.wfFriction}>{w.friction}</p>}
+              {/* Synthesis (Slice 2a): build a bespoke detect-and-nudge Nibbin
+                  for an email workflow — the alternative to adopting a shop
+                  template. Only on the persisted reveal (needs a diagnosisId). */}
+              {diagnosisId && w.category === 'email' && (
+                <div className={styles.wfBuild}>
+                  <BuildNibbinButton diagnosisId={diagnosisId} workflowKey={w.key} />
+                </div>
+              )}
             </Card>
           ))}
         </div>
