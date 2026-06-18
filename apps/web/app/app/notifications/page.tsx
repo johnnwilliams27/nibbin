@@ -19,10 +19,12 @@ export const dynamic = 'force-dynamic';
 
 interface LeafRow {
   id: string;
-  kind: 'beat' | 'evolution' | 'graduation';
+  kind: 'beat' | 'evolution' | 'graduation' | 'nudge' | 'demotion';
   title: string;
   body: string;
   payload: {
+    ctaPath?: string;
+    ctaLabel?: string;
     species?: string;
     stage?: string;
     palette?: string | null;
@@ -103,6 +105,11 @@ export default async function NotificationsPage() {
                 <div className={styles.leafText}>
                   <h2 className={styles.leafTitle}>{leaf.title}</h2>
                   <p className={styles.leafBody}>{leaf.body}</p>
+                  {leaf.payload?.ctaPath && leaf.payload?.ctaLabel && (
+                    <a className={styles.leafCta} href={leaf.payload.ctaPath}>
+                      {leaf.payload.ctaLabel}
+                    </a>
+                  )}
                 </div>
               </div>
               {leaf.read_at ? (
