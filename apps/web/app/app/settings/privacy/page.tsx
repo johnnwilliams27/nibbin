@@ -5,8 +5,9 @@ import { appSession } from '../../../../lib/auth/app-session';
 import { AppShell } from '../../../../components/shell/AppShell';
 import { SettingsNav } from '../../../../components/settings/SettingsNav';
 import { Card, Button, Badge, InlineFeedback, Select } from '../../../../components/ui';
-import { setContribution, setNotificationPrefs, setSweepConsent } from './actions';
+import { setContribution, setNotificationPrefs, setSweepConsent, connectChannel, disconnectChannel, saveChannelPrefs, saveNotificationSettings } from './actions';
 import { HOUR_OPTIONS } from '../../../../lib/privacy/notifications';
+import { channelMeta, URGENCY_OPTIONS, DIGEST_OPTIONS } from '../../../../lib/privacy/channels';
 import { connectionSummary, deletionState, sweepConsentRow, type ConnectionRow } from '../../../../lib/privacy/panel';
 import styles from '../../../../components/settings/settings.module.css';
 
@@ -56,6 +57,30 @@ export default async function PrivacySettingsPage({
   const emailEnabled = drip?.email_enabled ?? true;
   const quietStart = drip?.quiet_start ?? 21;
   const quietEnd = drip?.quiet_end ?? 9;
+
+  const { data: channels } = await supabase
+    .from('notification_channels')
+    .select('id, channel, status, external_label')
+    .neq('status', 'revoked');
+  const { data: chanPrefs } = await supabase
+    .from('channel_prefs')
+    .select('channel, enabled, priority, urgency_threshold');
+  const { data: settings } = await supabase
+    .from('notification_settings')
+    .select('quiet_start, quiet_end, digest_mode')
+    .maybeSingle();
+
+  const flags = {
+    telegram: !!process.env.TELEGRAM_BOT_TOKEN,
+    sms: process.env.CHANNELS_SMS_ENABLED === 'true',
+    whatsapp: process.env.CHANNELS_WHATSAPP_ENABLED === 'true',
+  };
+  const meta = channelMeta(flags);
+  const prefByChannel = new Map((chanPrefs ?? []).map((p) => [p.channel, p]));
+  const connectedByChannel = new Map((channels ?? []).map((c) => [c.channel, c]));
+  const settingsQuietStart = settings?.quiet_start ?? quietStart;
+  const settingsQuietEnd = settings?.quiet_end ?? quietEnd;
+  const digestMode = settings?.digest_mode ?? 'smart';
 
   return (
     <AppShell active="settings" title="Settings" email={user.email}>
@@ -158,14 +183,14 @@ export default async function PrivacySettingsPage({
           <h2 className={styles.sectionTitle}>Notifications</h2>
           <p className={styles.sectionHint}>
             During your field study, your grove sends a few gentle email nudges — Field Notes,
-            milestones, your map when it’s ready. Turn them off or set quiet hours here. (Text and
-            chat channels arrive when your Nibbins start doing real work.)
+            milestones, your map when it&apos;s ready. Turn them off here. Quiet hours are now set
+            in the card below.
           </p>
           {state === 'notify_saved' && (
             <InlineFeedback tone="success">Saved — your notification choices are recorded.</InlineFeedback>
           )}
           {error === 'notify' && (
-            <InlineFeedback tone="error">That didn’t save — give it another go.</InlineFeedback>
+            <InlineFeedback tone="error">That didn&apos;t save — give it another go.</InlineFeedback>
           )}
           <form action={setNotificationPrefs} className={styles.form}>
             <div className={styles.field}>
@@ -182,24 +207,90 @@ export default async function PrivacySettingsPage({
                 Email me the field-study nudges
               </label>
             </div>
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="quiet_start">
-                Quiet hours start
-              </label>
-              <Select id="quiet_start" name="quiet_start" defaultValue={String(quietStart)} options={HOUR_OPTIONS} />
-            </div>
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="quiet_end">
-                Quiet hours end
-              </label>
-              <Select id="quiet_end" name="quiet_end" defaultValue={String(quietEnd)} options={HOUR_OPTIONS} />
-              <span className={styles.fieldHint}>No emails are sent during your quiet hours.</span>
-            </div>
             <div className={styles.actions}>
               <Button type="submit" variant="primary">
                 Save notifications
               </Button>
             </div>
+          </form>
+        </Card>
+
+        <Card>
+          <h2 className={styles.sectionTitle}>Where your grove reaches you</h2>
+          <p className={styles.sectionHint}>
+            Choose the channels your grove can reach you on, and how it tries them. The app always has
+            your back — it&apos;s the one place anything sensitive happens.
+          </p>
+          {state === 'channel_saved' && <InlineFeedback tone="success">Saved — your channel choices are recorded.</InlineFeedback>}
+          {state === 'channel_removed' && <InlineFeedback tone="success">Disconnected.</InlineFeedback>}
+          {error === 'channel' && <InlineFeedback tone="error">That didn&apos;t go through — give it another go.</InlineFeedback>}
+
+          {(['telegram', 'sms', 'whatsapp'] as const).map((ch) => {
+            const m = meta[ch];
+            const connected = connectedByChannel.get(ch);
+            const pref = prefByChannel.get(ch);
+            return (
+              <div key={ch} className={styles.field}>
+                <label className={styles.label}>
+                  {m.label}{' '}
+                  {connected?.status === 'verified' && <Badge tone="moss">Connected</Badge>}
+                  {connected?.status === 'pending' && <Badge tone="honey">Pending</Badge>}
+                  {!m.live && <Badge tone="neutral">Coming soon</Badge>}
+                </label>
+                <span className={styles.fieldHint}>{m.help}</span>
+
+                {connected?.status === 'verified' ? (
+                  <>
+                    <form action={saveChannelPrefs} className={styles.form}>
+                      <input type="hidden" name="channel" value={ch} />
+                      <label className={styles.fieldHint}>
+                        <input type="checkbox" name="enabled" defaultChecked={pref?.enabled ?? true} /> Reach me here
+                      </label>
+                      <Select name="urgency_threshold" defaultValue={pref?.urgency_threshold ?? 'all'} options={URGENCY_OPTIONS} aria-label={`${m.label} urgency`} />
+                      <input type="hidden" name="priority" value={String(pref?.priority ?? 100)} />
+                      <div className={styles.actions}><Button type="submit" variant="secondary">Save</Button></div>
+                    </form>
+                    <form action={disconnectChannel}>
+                      <input type="hidden" name="channel_id" value={connected.id} />
+                      <Button type="submit" variant="ghost">Disconnect</Button>
+                    </form>
+                  </>
+                ) : (
+                  <form action={connectChannel}>
+                    <input type="hidden" name="channel" value={ch} />
+                    <Button type="submit" variant="primary" disabled={!m.live}>
+                      {m.live ? `Connect ${m.label}` : 'Coming soon'}
+                    </Button>
+                  </form>
+                )}
+              </div>
+            );
+          })}
+        </Card>
+
+        <Card>
+          <h2 className={styles.sectionTitle}>Quiet hours & digests</h2>
+          <p className={styles.sectionHint}>
+            Pick when your grove stays quiet, and how it batches the non-urgent. Only genuinely urgent
+            things cross your quiet hours.
+          </p>
+          {state === 'notify_saved' && <InlineFeedback tone="success">Saved.</InlineFeedback>}
+          {error === 'notify' && <InlineFeedback tone="error">That didn&apos;t save — give it another go.</InlineFeedback>}
+          <form action={saveNotificationSettings} className={styles.form}>
+            <input type="hidden" name="email_enabled" value={emailEnabled ? 'on' : ''} />
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="qs">Quiet hours start</label>
+              <Select id="qs" name="quiet_start" defaultValue={String(settingsQuietStart)} options={HOUR_OPTIONS} />
+            </div>
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="qe">Quiet hours end</label>
+              <Select id="qe" name="quiet_end" defaultValue={String(settingsQuietEnd)} options={HOUR_OPTIONS} />
+            </div>
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="dm">Non-urgent notifications</label>
+              <Select id="dm" name="digest_mode" defaultValue={digestMode} options={DIGEST_OPTIONS} />
+            </div>
+            <div className={styles.actions}><Button type="submit" variant="primary">Save quiet hours</Button></div>
           </form>
         </Card>
 
@@ -214,7 +305,7 @@ export default async function PrivacySettingsPage({
             <InlineFeedback tone="success">Saved — your choice is recorded.</InlineFeedback>
           )}
           {error === 'contribution' && (
-            <InlineFeedback tone="error">That didn’t save — give it another go.</InlineFeedback>
+            <InlineFeedback tone="error">That didn&apos;t save — give it another go.</InlineFeedback>
           )}
           <div className={styles.actions}>
             <Badge tone={contributing ? 'moss' : 'neutral'}>{contributing ? 'On' : 'Off'}</Badge>
@@ -240,8 +331,8 @@ export default async function PrivacySettingsPage({
           ) : (
             <p className={styles.sectionHint}>
               You can delete your account and everything in it — your grove, your Nibbins, your
-              diagnosis, and every connection — from the Account tab. On the desktop app, “Delete
-              everything” wipes the captured study data on this machine and verifies it&apos;s gone.
+              diagnosis, and every connection — from the Account tab. On the desktop app, &quot;Delete
+              everything&quot; wipes the captured study data on this machine and verifies it&apos;s gone.
             </p>
           )}
           <div className={styles.actions}>
