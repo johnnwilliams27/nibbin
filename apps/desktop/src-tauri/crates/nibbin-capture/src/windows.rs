@@ -13,15 +13,36 @@
 //! refuses) returns an EMPTY vec — a graceful capture gap, never an error.
 
 // ---------------------------------------------------------------------------
+// Pure idle-logic helper — no hardware, no feature gate.
+// Extracted so the 90 s threshold is unit-testable without waiting.
+// ---------------------------------------------------------------------------
+
+/// P-CB6: Returns true when the user has been idle longer than `threshold`.
+/// "Idle" = no input events AND foreground window unchanged for `threshold`.
+/// `last_activity = None` means "never active" → not idle (a fresh start
+/// must not immediately skip the first tree walk).
+///
+/// Pure (no hardware) so the 90 s threshold is unit-testable without waiting.
+#[cfg_attr(not(any(feature = "screenpipe", test)), allow(dead_code))]
+pub(crate) fn is_idle(last_activity: Option<std::time::Instant>, now: std::time::Instant, threshold: std::time::Duration) -> bool {
+    match last_activity {
+        None => false,
+        Some(t) => now.duration_since(t) >= threshold,
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Real adapter (feature = "screenpipe")
 // ---------------------------------------------------------------------------
 #[cfg(feature = "screenpipe")]
 mod real {
+    use super::is_idle;
     use crate::map;
     use crate::{CaptureItem, CaptureReadiness, CaptureSource, InputCounts};
     use screenpipe_a11y::{get_window_info, UiaContext};
     use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
     use std::sync::Arc;
+    use std::time::{Duration, Instant};
     use windows::Win32::Foundation::{HINSTANCE, LPARAM, LRESULT, WPARAM};
     use windows::Win32::System::Com::{
         CoInitializeEx, CoUninitialize, COINIT_APARTMENTTHREADED,
@@ -139,7 +160,14 @@ mod real {
         last_keys: u64,
         last_clicks: u64,
         /// When the last input burst was drained (start of the current window).
-        last_input_at: Option<std::time::Instant>,
+        last_input_at: Option<Instant>,
+        // P-CB6: idle-suspend fields.
+        /// Timestamp of the last detected user activity (input or focus change).
+        /// Initialised to `Some(now)` in start() so a fresh start is never idle.
+        last_activity: Option<Instant>,
+        /// HWND value of the foreground window as of the last poll tick.
+        /// A change counts as activity (wakes idle-suspend).
+        last_foreground: isize,
     }
 
     impl WindowsUiaCapture {
@@ -153,6 +181,8 @@ mod real {
                 last_keys: 0,
                 last_clicks: 0,
                 last_input_at: None,
+                last_activity: None,
+                last_foreground: 0,
             }
         }
     }
@@ -239,7 +269,11 @@ mod real {
                     let _ = UnhookWindowsHookEx(h);
                 }
             }));
-            self.last_input_at = Some(std::time::Instant::now());
+            let now = Instant::now();
+            self.last_input_at = Some(now);
+            // P-CB6: initialise to now so a fresh start is never immediately idle.
+            self.last_activity = Some(now);
+            self.last_foreground = 0;
 
             self.started = true;
             Ok(())
@@ -253,13 +287,36 @@ mod real {
                 return Ok(vec![]);
             };
 
+            let now = Instant::now();
             let mut items: Vec<CaptureItem> = Vec::new();
+
+            // Read current foreground HWND + peek input deltas to decide activity.
+            let hwnd = unsafe { GetForegroundWindow() };
+            let hwnd_val = hwnd.0 as isize;
+
+            // Drain input COUNTS accrued since the last poll. COUNTS ONLY — the
+            // hooks never captured which key/button, only that one happened.
+            let keys_now = KEY_COUNT.load(Ordering::Relaxed);
+            let clicks_now = CLICK_COUNT.load(Ordering::Relaxed);
+            let dk = keys_now.saturating_sub(self.last_keys);
+            let dc = clicks_now.saturating_sub(self.last_clicks);
+
+            // P-CB6: idle >90s suspends the UIA tree walk; wakes on input or focus change.
+            let focus_changed = hwnd_val != self.last_foreground;
+            if dk > 0 || dc > 0 || focus_changed {
+                self.last_activity = Some(now);
+            }
+            if focus_changed {
+                self.last_foreground = hwnd_val;
+            }
+
+            let idle = is_idle(self.last_activity, now, Duration::from_secs(90));
 
             // No foreground window (locked / secure desktop / UAC prompt owns
             // the desktop) → no snapshot this tick, but input counts may still
             // have accrued, so we fall through to the input-delta drain.
-            let hwnd = unsafe { GetForegroundWindow() };
-            if !hwnd.is_invalid() {
+            // Idle → skip the expensive capture_window_tree call this tick.
+            if !idle && !hwnd.is_invalid() {
                 let (app_name, window_title, _pid) = get_window_info(hwnd);
 
                 // Provider couldn't be read this tick → gap, not an error.
@@ -272,14 +329,8 @@ mod real {
                 }
             }
 
-            // Drain input COUNTS accrued since the last poll. COUNTS ONLY — the
-            // hooks never captured which key/button, only that one happened.
-            let keys_now = KEY_COUNT.load(Ordering::Relaxed);
-            let clicks_now = CLICK_COUNT.load(Ordering::Relaxed);
-            let dk = keys_now.saturating_sub(self.last_keys);
-            let dc = clicks_now.saturating_sub(self.last_clicks);
+            // Emit input counts if any accrued.
             if dk > 0 || dc > 0 {
-                let now = std::time::Instant::now();
                 let dur = self
                     .last_input_at
                     .map(|t| now.duration_since(t).as_millis() as u64)
@@ -298,6 +349,12 @@ mod real {
         }
 
         fn stop(&mut self) {
+            if !self.started && !self.com_init && self.hook_join.is_none() {
+                // Already fully torn down (idempotent no-op fast path).
+                return;
+            }
+            let t0 = Instant::now(); // C6 teardown timing (#22)
+
             // Tear down the input hook thread first. WM_QUIT makes its
             // GetMessage pump return FALSE, so it unhooks both LL hooks and
             // exits; then we join it. Safe to call twice: tid 0 → no post,
@@ -320,6 +377,20 @@ mod real {
                 self.com_init = false;
             }
             self.started = false;
+
+            // C6 reconcile (#22): log observer teardown latency so the C6 pause-
+            // latency claim can be validated against a real number. The gate flip
+            // itself is wait-free in nibbin-capture::gate; this measures the
+            // hook-thread join + CoUninitialize portion.
+            eprintln!("capture teardown took {} ms", t0.elapsed().as_millis());
+        }
+    }
+    impl Drop for WindowsUiaCapture {
+        fn drop(&mut self) {
+            // Ensure COM + the hook thread are torn down even if stop() wasn't
+            // called (avoids a CoUninitialize leak / orphaned hook thread on
+            // unwind). stop() is idempotent: Drop-after-stop is a no-op.
+            self.stop();
         }
     }
 }
@@ -543,5 +614,57 @@ mod input_count_tests {
             clicks >= 2,
             "expected >= 2 injected clicks counted, got {clicks}"
         );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Pure unit tests for is_idle() — no hardware, no screenpipe feature required.
+// Tests the 90 s idle threshold logic without waiting for real time to pass.
+// ---------------------------------------------------------------------------
+#[cfg(test)]
+mod idle_logic_tests {
+    use super::is_idle;
+    use std::time::{Duration, Instant};
+
+    /// A fresh start (None) → never idle: the first tick should always snapshot.
+    #[test]
+    fn none_last_activity_is_not_idle() {
+        let now = Instant::now();
+        assert!(!is_idle(None, now, Duration::from_secs(90)));
+    }
+
+    /// Activity within the threshold → not idle.
+    #[test]
+    fn active_within_threshold_is_not_idle() {
+        let now = Instant::now();
+        // Simulate 45 s ago — well within 90 s window.
+        let last = now - Duration::from_secs(45);
+        assert!(!is_idle(Some(last), now, Duration::from_secs(90)));
+    }
+
+    /// Activity exactly at the threshold boundary → idle (>= comparison).
+    #[test]
+    fn exactly_at_threshold_is_idle() {
+        let now = Instant::now();
+        let last = now - Duration::from_secs(90);
+        assert!(is_idle(Some(last), now, Duration::from_secs(90)));
+    }
+
+    /// Activity well beyond the threshold → idle.
+    #[test]
+    fn beyond_threshold_is_idle() {
+        let now = Instant::now();
+        let last = now - Duration::from_secs(200);
+        assert!(is_idle(Some(last), now, Duration::from_secs(90)));
+    }
+
+    /// Custom threshold: 1 s — useful for verifying the helper with a tiny window.
+    #[test]
+    fn custom_threshold_one_second() {
+        let now = Instant::now();
+        let just_under = now - Duration::from_millis(999);
+        let just_over = now - Duration::from_millis(1001);
+        assert!(!is_idle(Some(just_under), now, Duration::from_secs(1)));
+        assert!(is_idle(Some(just_over), now, Duration::from_secs(1)));
     }
 }
