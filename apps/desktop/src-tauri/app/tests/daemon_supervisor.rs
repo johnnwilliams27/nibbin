@@ -19,3 +19,15 @@ fn plist_has_required_keys() {
     assert!(p.contains("RunAtLoad"));
     assert!(p.contains("KeepAlive"));
 }
+
+#[test]
+fn task_xml_has_logon_trigger_and_restart() {
+    let xml = nibbin_observer_app::daemon_supervisor::scheduled_task_xml(
+        std::path::Path::new("C:/Program Files/Nibbin/observerd.exe"),
+        std::path::Path::new("C:/Users/x/AppData/Roaming/app.nibbin.observer/observer-store"),
+    );
+    assert!(xml.contains("<LogonTrigger>"));
+    assert!(xml.contains("observerd.exe"));
+    assert!(xml.contains("--store"));
+    assert!(xml.contains("<RestartOnFailure>"));
+}
