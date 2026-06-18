@@ -211,8 +211,12 @@ export function pgArcData(pool: Pool): ArcDataPort {
       // 'nibbin.stage_promoted', meta {from,to}). The store dedups on event
       // id (notifications unique on source_id), so re-reading a window is
       // idempotent; 30 days comfortably covers any worker gap.
-      const r = await pool.query<{ id: string; to_stage: string; nibbin: string }>(
-        `select l.id, l.meta ->> 'to' as to_stage, n.name as nibbin
+      const r = await pool.query<{
+        id: string; to_stage: string; nibbin: string; nibbin_id: string;
+        species: string; stage: string; palette: string | null; accessory: string | null; marking: string | null;
+      }>(
+        `select l.id, l.meta ->> 'to' as to_stage, n.name as nibbin,
+                n.id::text as nibbin_id, n.species, n.stage, n.palette, n.accessory, n.marking
            from audit_log l
            join nibbins n on n.id::text = l.subject
           where l.account_id = $1
@@ -229,6 +233,12 @@ export function pgArcData(pool: Pool): ArcDataPort {
           row.to_stage === 'grad'
             ? 'Graduated on verified accuracy — earned, never time-served.'
             : `Evolved to ${row.to_stage} — earned on your approvals.`,
+        nibbinId: row.nibbin_id,
+        species: row.species,
+        stage: row.stage,
+        palette: row.palette,
+        accessory: row.accessory,
+        marking: row.marking,
       }));
     },
 

@@ -139,6 +139,13 @@ export interface EarnedEvent {
   kind: 'evolution' | 'graduation';
   nibbin: string;
   detail: string;
+  // creature metadata for the in-leaf celebration (rendered at the NEW stage)
+  nibbinId: string;
+  species: string;
+  stage: string;
+  palette: string | null;
+  accessory: string | null;
+  marking: string | null;
 }
 
 /**
