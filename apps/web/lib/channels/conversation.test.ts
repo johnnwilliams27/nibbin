@@ -238,6 +238,27 @@ describe('handleInbound — work intent', () => {
     expect(decideSpy).not.toHaveBeenCalled();
   });
 
+  it('replies the honest cant-yet line when gate ok and workEnabled is true (Planner not yet injected)', async () => {
+    const answerSpy = vi.fn();
+    const decideSpy = vi.fn();
+    const deps = makeDeps({
+      classify: () => ({ kind: 'work', text: 'draft a response' }),
+      gate: async () => ({ ok: true }),
+      answer: answerSpy as any,
+      decide: decideSpy as any,
+      workEnabled: true,
+    });
+
+    await handleInbound(makeVerified(), deps);
+
+    expect(deps.replied).toHaveLength(1);
+    expect(deps.replied[0].body).toBe(
+      "I can't take that on just yet — but I can tell you what your grove's up to, or you can do it in the app.",
+    );
+    expect(answerSpy).not.toHaveBeenCalled();
+    expect(decideSpy).not.toHaveBeenCalled();
+  });
+
   it('gate is consulted before any work reply', async () => {
     const gateSpy = vi.fn(async (): Promise<TurnGateResult> => ({ ok: true }));
     const deps = makeDeps({

@@ -117,8 +117,6 @@ export async function handleInbound(
 
   // -------------------------------------------------------------------------
   // §7.3 Work branch — initiated work (deferred until Planner is available)
-  // Plan 05 §7.3: when a Planner is injected + workEnabled, route here →
-  // plan-preview → approval gate.
   // -------------------------------------------------------------------------
   if (intent.kind === 'work') {
     const g = await deps.gate(accountId, channel);
@@ -127,17 +125,20 @@ export async function handleInbound(
       return; // no model call when gate is closed
     }
 
-    if (!deps.workEnabled) {
-      // Honest degrade — sentence case, brand voice.
-      await deps.reply(
-        channel,
-        externalId,
-        "I can't take that on just yet — but I can tell you what your grove's up to, or you can do it in the app.",
-      );
-      return;
-    }
-
-    // Plan 05 §7.3: when a Planner is injected + workEnabled, route here →
-    // plan-preview → approval gate.
+    // Plan 05 §7.3: when a Planner is injected AND deps.workEnabled, route here →
+    // plan-preview → approval gate. Until then, degrade honestly:
+    await deps.reply(
+      channel,
+      externalId,
+      "I can't take that on just yet — but I can tell you what your grove's up to, or you can do it in the app.",
+    );
+    return;
   }
+
+  // defensive: unknown intent kind never silently drops
+  await deps.reply(
+    channel,
+    externalId,
+    "I didn't quite catch that — you can ask what your grove's up to, or do it in the app.",
+  );
 }
