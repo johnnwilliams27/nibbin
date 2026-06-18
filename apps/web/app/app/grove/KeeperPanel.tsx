@@ -15,7 +15,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { buildCreature } from '@nibbin/creatures';
 import type { KeeperExpression, KeeperMessage, OnboardingStep, UnderstandingProfile } from '@nibbin/keeper';
-import { KeeperChat } from './KeeperChat';
+import { KeeperChat, type Celebration } from './KeeperChat';
 import styles from './keeper-panel.module.css';
 
 export interface KeeperPanelProps {
@@ -27,6 +27,8 @@ export interface KeeperPanelProps {
   initialProfile: UnderstandingProfile | null;
   /** Server-derived: account has ≥1 `active` connection (NIB-4 next step). */
   hasConnection: boolean;
+  /** Recent promotions to celebrate in-grove (Beat 3). */
+  pendingCelebrations: Celebration[];
 }
 
 export function KeeperPanel({
@@ -37,6 +39,7 @@ export function KeeperPanel({
   credits,
   initialProfile,
   hasConnection,
+  pendingCelebrations,
 }: KeeperPanelProps) {
   // The creature engine mints unique gradient ids per render, so SSR + hydration
   // can't match — mount-gate it (same pattern as KeeperSprite).
@@ -73,6 +76,7 @@ export function KeeperPanel({
           credits={credits}
           initialProfile={initialProfile}
           hasConnection={hasConnection}
+          pendingCelebrations={pendingCelebrations}
         />
       </div>
     </div>
