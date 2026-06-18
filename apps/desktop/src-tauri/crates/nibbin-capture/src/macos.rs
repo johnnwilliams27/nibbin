@@ -34,6 +34,10 @@ impl CaptureSource for MacAxCapture {
         "macos-ax"
     }
 
+    fn readiness(&self) -> crate::CaptureReadiness {
+        crate::CaptureReadiness::Blocked("macOS capture bring-up pending".into())
+    }
+
     fn start(&mut self) -> anyhow::Result<()> {
         // TODO(M6 macOS bring-up): wire the vendored a11y tree walker:
         //   1. Check AXIsProcessTrusted / Screen Recording permission; if

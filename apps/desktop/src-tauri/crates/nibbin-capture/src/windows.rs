@@ -153,6 +153,12 @@ mod real {
         started: bool,
         com_init: bool,
         uia: Option<ThreadBoundUia>,
+        /// Win32 thread id of the thread that ran `start()` (CoInitializeEx +
+        /// UiaContext::new). COM apartment teardown (CoUninitialize + dropping
+        /// the !Send UiaContext) is only sound on this same thread. 0 = not
+        /// started. `stop()` checks this against the current thread before
+        /// touching any COM state (LS-02).
+        com_thread: u32,
         /// Thread id of the hook/message-pump thread (it publishes its own id
         /// here on spawn). 0 = no live hook thread. `stop()` posts WM_QUIT to it.
         hook_tid: Arc<AtomicU32>,
@@ -178,6 +184,7 @@ mod real {
                 started: false,
                 com_init: false,
                 uia: None,
+                com_thread: 0,
                 hook_tid: Arc::new(AtomicU32::new(0)),
                 hook_join: None,
                 last_keys: 0,
@@ -224,6 +231,9 @@ mod real {
                 }
             }
             self.com_init = true;
+            // LS-02: record the thread that owns this COM apartment. Only this
+            // thread may CoUninitialize / drop the !Send UiaContext later.
+            self.com_thread = unsafe { GetCurrentThreadId() };
 
             let uia = UiaContext::new()
                 .map_err(|e| anyhow::anyhow!("UiaContext::new (UIA COM init) failed: {e}"))?;
@@ -237,10 +247,17 @@ mod real {
             CLICK_COUNT.store(0, Ordering::SeqCst);
             self.last_keys = 0;
             self.last_clicks = 0;
+            // LS-03: the hook thread must publish its TID BEFORE start() returns,
+            // otherwise a stop() that races in first sees hook_tid == 0, posts no
+            // WM_QUIT, and join() blocks forever. A rendezvous sync_channel(0)
+            // makes start() block on recv() until the thread has installed the
+            // hooks and sent its TID (or report failure on a timeout).
             let tid = self.hook_tid.clone();
+            let (tid_tx, tid_rx) = std::sync::mpsc::sync_channel::<u32>(0);
             self.hook_join = Some(std::thread::spawn(move || unsafe {
                 // Publish this thread's id so stop() can PostThreadMessage WM_QUIT.
-                tid.store(GetCurrentThreadId(), Ordering::SeqCst);
+                let my_tid = GetCurrentThreadId();
+                tid.store(my_tid, Ordering::SeqCst);
                 // HINSTANCE is unused for WH_*_LL hooks; pass a null handle.
                 // thread id 0 => global (all threads in the desktop).
                 let kb = SetWindowsHookExW(
@@ -257,6 +274,11 @@ mod real {
                     0,
                 )
                 .ok();
+                // Rendezvous: hooks are installed and the TID is published, so
+                // start() can safely return knowing stop() will see a live TID.
+                // A send error means start() already gave up (timeout) — fall
+                // through and keep pumping so stop()'s WM_QUIT still tears us down.
+                let _ = tid_tx.send(my_tid);
                 // Pump messages so the LL hook callbacks actually fire on this
                 // thread. GetMessageW returns FALSE (0) on WM_QUIT → loop ends.
                 let mut msg = MSG::default();
@@ -271,6 +293,22 @@ mod real {
                     let _ = UnhookWindowsHookEx(h);
                 }
             }));
+
+            // LS-03: block until the hook thread has installed its hooks and
+            // published its TID. If it never reports (install hung / panicked),
+            // surface the failure instead of returning a half-started source.
+            match tid_rx.recv_timeout(Duration::from_secs(5)) {
+                Ok(_) => {}
+                Err(_) => {
+                    // Tear down what we did set up so we don't leak the COM
+                    // apartment or orphan the hook thread, then fail loudly.
+                    self.stop();
+                    anyhow::bail!(
+                        "input hook thread did not publish its TID within 5s; capture start aborted"
+                    );
+                }
+            }
+
             let now = Instant::now();
             self.last_input_at = Some(now);
             // P-CB6: initialise to now so a fresh start is never immediately idle.
@@ -372,12 +410,41 @@ mod real {
             }
             self.hook_tid.store(0, Ordering::SeqCst);
 
-            // Drop the COM objects before CoUninitialize.
-            self.uia = None;
-            if self.com_init {
-                unsafe { CoUninitialize() };
+            // LS-02: COM apartment teardown is only sound on the thread that ran
+            // CoInitializeEx in start(). The normal daemon path (start/poll/stop
+            // on one capture thread) hits the `on_com_thread` branch. If Drop
+            // ever fires on a DIFFERENT thread (e.g. the struct is moved and
+            // dropped elsewhere), CoUninitialize would corrupt the wrong (or no)
+            // apartment and dropping the !Send UiaContext would touch COM off
+            // its apartment — UB. In that case we LEAK rather than corrupt:
+            // forget the UiaContext and skip CoUninitialize, with a warning.
+            let on_com_thread =
+                self.com_thread != 0 && unsafe { GetCurrentThreadId() } == self.com_thread;
+            if self.com_init && !on_com_thread {
+                eprintln!(
+                    "WARNING: WindowsUiaCapture::stop() called off the COM-owning thread \
+                     (created on {}, now on {}); leaking UIA context instead of corrupting \
+                     the COM apartment.",
+                    self.com_thread,
+                    unsafe { GetCurrentThreadId() }
+                );
+                if let Some(uia) = self.uia.take() {
+                    std::mem::forget(uia);
+                }
+                // Do NOT CoUninitialize off-thread. Mark torn down so we don't
+                // retry; the apartment will be reclaimed when its owning thread
+                // exits (or has already exited).
                 self.com_init = false;
+            } else {
+                // On the COM-owning thread (or nothing to tear down): drop the
+                // COM objects before CoUninitialize.
+                self.uia = None;
+                if self.com_init {
+                    unsafe { CoUninitialize() };
+                    self.com_init = false;
+                }
             }
+            self.com_thread = 0;
             self.started = false;
 
             // C6 reconcile (#22): log observer teardown latency so the C6 pause-

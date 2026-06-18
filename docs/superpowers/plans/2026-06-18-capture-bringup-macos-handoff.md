@@ -42,7 +42,7 @@ The trim (Task 2.0) only compiled on Windows. On the Mac, FIRST `cargo build --m
 ## On-Mac test checklist (Task 3.4 — CB12)
 Run on the real Mac after the adapter compiles:
 1. **Permissions:** grant + deny Accessibility → `readiness()` returns Ready / `Blocked("accessibility")`; denial surfaces `capture_blocked` + the rehearsal, never a silent dead study.
-2. **Real capture:** build observerd with the feature, run a short session → real `AxDelta` `ObserverEvent`s reflecting your live windows (app/window names), like Windows' 1500-event proof.
+2. **Real capture:** build observerd with the feature, run a short session → real `AxDelta` `ObserverEvent`s reflecting your live windows (app/window names), mirroring the Windows real-capture proof. (Note: the ~1500 events was a one-time count observed in a single manual Windows run, not a CI-asserted constant — the committed `real_ax_capture` test only asserts the capture is non-empty, i.e. ≥1 event.)
 3. **C4:** focus a real password field → its value never appears in the store (it's skipped/suppressed). Run the redaction corpus against a live capture.
 4. **Input counts:** type/click → `InputBurst` events with non-zero counts; confirm NO keystroke content is stored.
 5. **Idle:** >90s idle suspends the walk; resumes on activity.

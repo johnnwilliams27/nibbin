@@ -54,6 +54,7 @@ pub fn read_status<R: Runtime>(app: &AppHandle<R>) -> Result<serde_json::Value, 
         "remaining_ms": status.get("remaining_ms"),
         "paused": status.get("paused"),
         "pipeline_halted": status.get("pipeline_halted"),
+        "capture_blocked": status.get("capture_blocked"),
         "study": study,
         "daemon_health": status.get("daemon_health"),
     }))
