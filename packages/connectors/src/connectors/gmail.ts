@@ -84,7 +84,7 @@ export class GmailClient extends HttpConnectorClient {
   /** Headers/labels only — works on the gmail.metadata scope. */
   async getMessageMetadata(id: string): Promise<GmailMessageMeta> {
     const params = new URLSearchParams({ format: 'metadata' });
-    for (const h of ['From', 'To', 'Subject', 'Date', 'List-Unsubscribe', 'In-Reply-To']) {
+    for (const h of ['From', 'To', 'Cc', 'Subject', 'Date', 'List-Unsubscribe', 'In-Reply-To']) {
       params.append('metadataHeaders', h);
     }
     const { data } = await this.readJson<GmailMessageMeta>(

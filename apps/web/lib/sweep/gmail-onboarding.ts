@@ -163,12 +163,13 @@ export async function gmailOnboardingSweep(
       if (sentFetched >= MAX_SENT_MESSAGES) { status = 'partial'; break outer; }
       // #114: gate the sent-mail body fetch on the same sensitive signal the
       // inbox Pass-2 uses — fetch headers first and skip before any body reaches
-      // the LLM. Sent mail is always From the user, so the bank/doctor/lawyer is
-      // in To; run the check over To/Subject. A metadata fetch failure skips the
-      // message (fail-closed), matching getMessageBody's swallow-and-skip.
+      // the LLM. Sent mail is always From the user, so the bank/doctor/lawyer is a
+      // recipient; screen To AND Cc (the reply-all case where the institution is
+      // Cc'd). A metadata fetch failure skips the message (fail-closed), matching
+      // getMessageBody's swallow-and-skip.
       let meta: MessageMetaLike;
       try { meta = await client.getMessageMetadata(id); } catch { continue; }
-      if (isSensitiveThread(meta, ['to'])) continue;
+      if (isSensitiveThread(meta, ['to', 'cc'])) continue;
       const body = await client.getMessageBody(id); // swallows failures
       if (body) {
         batchBodies.push(body);

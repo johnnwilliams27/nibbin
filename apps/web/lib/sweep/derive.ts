@@ -78,7 +78,13 @@ export function parsePass2(raw: string): Pick<SweepDerived, 'faqCandidates'> {
   if (!o || typeof o !== 'object' || Array.isArray(o)) return { faqCandidates: [] };
   const r = o as Record<string, unknown>;
   const faqCandidates = Array.isArray(r.faqCandidates)
-    ? (r.faqCandidates as unknown[]).slice(0, 8).map((x) => clampProse(x, 200)).filter(Boolean)
+    ? (r.faqCandidates as unknown[])
+        .slice(0, 8)
+        .map((x) => clampProse(x, 200))
+        .filter(Boolean)
+        // #114 symmetry: faqCandidates is a model-emitted free-text field stored in
+        // grove memory too, so it gets the same secret guard as voiceSamples/inferredFacts.
+        .filter((s) => !isSensitiveSample(s))
     : [];
   return { faqCandidates };
 }

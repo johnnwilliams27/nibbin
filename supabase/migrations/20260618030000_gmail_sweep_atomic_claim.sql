@@ -13,7 +13,9 @@
 -- A 'failed' row is NOT covered by the index, so a genuine retry can re-claim.
 
 -- 1. Allow the 'running' sentinel status (constraint name verified against the DB).
-alter table public.gmail_sweep_log drop constraint gmail_sweep_log_status_check;
+--    IF EXISTS keeps the migration replay-safe on a fresh bootstrap whose base
+--    migration might name the auto-generated CHECK differently.
+alter table public.gmail_sweep_log drop constraint if exists gmail_sweep_log_status_check;
 alter table public.gmail_sweep_log
   add constraint gmail_sweep_log_status_check
   check (status in ('running', 'complete', 'partial', 'failed'));

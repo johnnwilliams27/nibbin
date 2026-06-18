@@ -19,7 +19,7 @@ export interface WebhookEventStore {
    * re-poll, without claiming the key before the run actually starts (which
    * would re-break claim-then-commit / P2.5).
    */
-  hasRecord(provider: string, providerEventId: string, connectionId?: string): Promise<boolean>;
+  hasRecord(provider: string, providerEventId: string): Promise<boolean>;
 }
 
 export class MemoryWebhookEventStore implements WebhookEventStore {
@@ -80,14 +80,18 @@ export class SupabaseWebhookEventStore implements WebhookEventStore {
     throw new Error(`webhook_events insert failed with status ${res.status}`);
   }
 
-  async hasRecord(provider: string, providerEventId: string, connectionId?: string): Promise<boolean> {
+  async hasRecord(provider: string, providerEventId: string): Promise<boolean> {
+    // Key on (provider, provider_event_id) ONLY — that is exactly the unique
+    // constraint recordOnce's claim is enforced by (M3 migration). connection_id
+    // is deliberately NOT filtered: it is not part of that constraint, so a
+    // connection-scoped read would silently diverge from the provider+event-scoped
+    // claim if a future dedupeKey ever stopped embedding the connection.
     const params = new URLSearchParams({
       provider: `eq.${provider}`,
       provider_event_id: `eq.${providerEventId}`,
       select: 'provider_event_id',
       limit: '1',
     });
-    if (connectionId) params.set('connection_id', `eq.${connectionId}`);
     const res = await safeFetch(
       `${this.supabaseUrl.replace(/\/$/, '')}/rest/v1/webhook_events?${params}`,
       {

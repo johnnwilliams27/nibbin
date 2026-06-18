@@ -94,29 +94,37 @@ describe('isSensitiveThread — P3.9 pre-filter', () => {
   // signal — the counterparty (a bank/doctor/lawyer) is in To. Pass-1 passes
   // ['to'] so sent mail is filtered symmetrically with the inbox.
   describe('sent-mail variant — reads To/Subject (#114)', () => {
-    const sent = (to: string, subject: string) => ({
+    const sent = (to: string, subject: string, cc = '') => ({
       id: 'x',
       threadId: 'y',
       payload: { headers: [
         { name: 'From', value: 'me@myself.com' },
         { name: 'To', value: to },
+        { name: 'Cc', value: cc },
         { name: 'Subject', value: subject },
       ] },
     });
 
-    it('flags sent mail to a sensitive recipient when checking To', () => {
-      expect(isSensitiveThread(sent('billing@chase-bank.com', 'Re: my account'), ['to'])).toBe(true);
-      expect(isSensitiveThread(sent('intake@law.com', 'Re: the settlement'), ['to'])).toBe(true);
+    it('flags sent mail to a sensitive recipient when checking To/Cc', () => {
+      expect(isSensitiveThread(sent('billing@chase-bank.com', 'Re: my account'), ['to', 'cc'])).toBe(true);
+      expect(isSensitiveThread(sent('intake@law.com', 'Re: the settlement'), ['to', 'cc'])).toBe(true);
     });
 
-    it('default From-only check misses the sensitive recipient (why ["to"] is needed)', () => {
+    it('flags a sensitive recipient who is only Cc’d (reply-all case, RT-3)', () => {
+      // To is an ordinary client; the bank is Cc'd. Screening To alone would miss it.
+      const m = sent('client@example.com', 'Re: the project', 'statements@chase-bank.com');
+      expect(isSensitiveThread(m, ['to'])).toBe(false);
+      expect(isSensitiveThread(m, ['to', 'cc'])).toBe(true);
+    });
+
+    it('default From-only check misses the sensitive recipient (why ["to","cc"] is needed)', () => {
       // Same message, default behavior: From is the user → not flagged. This is
       // exactly the asymmetry #114 closes for the sent pass.
       expect(isSensitiveThread(sent('billing@chase-bank.com', 'Re: my account'))).toBe(false);
     });
 
     it('does not flag ordinary sent client mail', () => {
-      expect(isSensitiveThread(sent('client@example.com', 'Re: your session next week'), ['to'])).toBe(false);
+      expect(isSensitiveThread(sent('client@example.com', 'Re: your session next week'), ['to', 'cc'])).toBe(false);
     });
   });
 });

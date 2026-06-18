@@ -135,6 +135,17 @@ describe('parsePass2', () => {
   it('returns empty array on parse failure', () => {
     expect(parsePass2('{bad json').faqCandidates).toEqual([]);
   });
+
+  it('drops faqCandidates that carry an account number / secret (#114 symmetric guard)', () => {
+    const raw = JSON.stringify({
+      faqCandidates: [
+        'What is your account? → Wire to 021000021 account 1234567890',
+        'Do you travel? → Yes, within 50 miles.',
+      ],
+    });
+    const out = parsePass2(raw);
+    expect(out.faqCandidates).toEqual(['Do you travel? → Yes, within 50 miles.']);
+  });
 });
 
 // ── mergeSweepDerived ───────────────────────────────────────────────────────
