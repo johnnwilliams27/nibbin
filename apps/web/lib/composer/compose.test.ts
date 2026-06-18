@@ -8,9 +8,16 @@
  */
 import { describe, expect, it, vi } from 'vitest';
 import { validateComposedSpec } from '@nibbin/runtime';
-import type { Generate, GenerateResult } from '@nibbin/router';
+import { createRouter, InMemoryBudgetStore, type Generate, type GenerateResult, type Router } from '@nibbin/router';
 import type { DiagnosisWorkflow } from '../diagnosis/types';
 import { composeSpec } from './compose';
+
+/** A router with an in-memory budget (no DB). `budget` sets the per-user/day
+ *  frontier cap — `0` forces immediate degradation (budget exhausted). The
+ *  composer routes custom_spec_draft as origin:'chat', so this budget applies. */
+function testRouter(budget = 5): Router {
+  return createRouter({ dailyFrontierBudget: budget, budgetStore: new InMemoryBudgetStore() });
+}
 
 // recordModelCall writes to the service client (a DB) — stub it so the LLM-path
 // test doesn't need one. The no-key path never calls it.
@@ -69,7 +76,7 @@ describe('composeSpec', () => {
         }),
       ),
     );
-    const result = await composeSpec('acct-1', 'user-1', EMAIL_WF, ['gmail'], [], generate);
+    const result = await composeSpec('acct-1', 'user-1', EMAIL_WF, ['gmail'], [], generate, testRouter());
     expect('error' in result).toBe(false);
     if ('error' in result) throw new Error(result.error);
     expect(result.spec.displayName).toBe('Inbox follow-ups');
@@ -79,7 +86,7 @@ describe('composeSpec', () => {
 
   it('falls back deterministically when the model returns junk', async () => {
     const generate: Generate = vi.fn(async () => fakeResult('not json at all'));
-    const result = await composeSpec('acct-1', 'user-1', EMAIL_WF, ['gmail'], [], generate);
+    const result = await composeSpec('acct-1', 'user-1', EMAIL_WF, ['gmail'], [], generate, testRouter());
     expect('error' in result).toBe(false);
     if ('error' in result) throw new Error(result.error);
     // Deterministic default params (staleDays omitted → interpreter default 3).
@@ -91,9 +98,41 @@ describe('composeSpec', () => {
     const generate: Generate = vi.fn(async () =>
       fakeResult(JSON.stringify({ capability: 'send.everything', inputs: {} })),
     );
-    const result = await composeSpec('acct-1', 'user-1', EMAIL_WF, ['gmail'], [], generate);
+    const result = await composeSpec('acct-1', 'user-1', EMAIL_WF, ['gmail'], [], generate, testRouter());
     expect('error' in result).toBe(false);
     if ('error' in result) throw new Error(result.error);
     expect(result.spec.steps?.[0]?.capability).toBe('nudge.overdue-email');
+  });
+
+  it('throttles to the deterministic proposal when the frontier budget is spent (gate P1)', async () => {
+    // budget 0 → route() degrades immediately. composeSpec must NOT call the
+    // model (the entry point is now bounded) and stands on the deterministic
+    // no-model proposal — synthesis still works, no COGS, no throw to the user.
+    const generate = vi.fn(async () =>
+      fakeResult(JSON.stringify({ displayName: 'Should not be used', capability: 'nudge.overdue-email', inputs: { staleDays: 7 } })),
+    );
+    const result = await composeSpec('acct-1', 'user-1', EMAIL_WF, ['gmail'], [], generate as unknown as Generate, testRouter(0));
+    expect(generate).not.toHaveBeenCalled();
+    expect('error' in result).toBe(false);
+    if ('error' in result) throw new Error(result.error);
+    // Deterministic default name + params (NOT the model's "Should not be used"/7).
+    expect(result.spec.displayName).toBe('Overdue follow-ups');
+    expect(result.spec.steps?.[0]?.capability).toBe('nudge.overdue-email');
+    expect(validateComposedSpec(result.spec, ['gmail'])).toEqual([]);
+  });
+
+  it('draws the per-user budget once per call (bounded at the daily cap)', async () => {
+    // With budget 1, the first call uses the model; the second degrades to the
+    // deterministic proposal — proving custom_spec_draft is now budgeted.
+    const generate = vi.fn(async () =>
+      fakeResult(JSON.stringify({ displayName: 'Inbox follow-ups', capability: 'nudge.overdue-email', inputs: { staleDays: 5 } })),
+    );
+    const router = testRouter(1);
+    const first = await composeSpec('acct-1', 'user-1', EMAIL_WF, ['gmail'], [], generate as unknown as Generate, router);
+    const second = await composeSpec('acct-1', 'user-1', EMAIL_WF, ['gmail'], [], generate as unknown as Generate, router);
+    if ('error' in first || 'error' in second) throw new Error('unexpected error result');
+    expect(generate).toHaveBeenCalledTimes(1);
+    expect(first.spec.displayName).toBe('Inbox follow-ups'); // model pick
+    expect(second.spec.displayName).toBe('Overdue follow-ups'); // deterministic
   });
 });

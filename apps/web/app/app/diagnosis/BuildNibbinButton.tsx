@@ -50,9 +50,14 @@ export function BuildNibbinButton({
   }
 
   function confirm() {
+    if (!review) return;
     setError(null);
+    const reviewed = review;
     startTransition(async () => {
-      const outcome = await adoptSynthesized(diagnosisId, workflowKey, name.trim() || undefined);
+      // Adopt the EXACT spec the user reviewed — no recomposition (FIX 3:
+      // a 2nd model call could drift from what they approved). adoptSynthesized
+      // re-validates it fail-closed server-side before any write.
+      const outcome = await adoptSynthesized(reviewed.spec, name.trim() || undefined);
       if (!outcome.ok) {
         router.push(outcome.redirectTo);
         return;

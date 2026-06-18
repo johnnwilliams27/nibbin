@@ -22,7 +22,7 @@ import 'server-only';
  * deterministic proposal fails validation (should not happen for the seeded
  * primitive, but the path is fail-closed).
  */
-import type { Generate } from '@nibbin/router';
+import type { Generate, Router } from '@nibbin/router';
 import {
   CAPABILITY_REGISTRY,
   validateComposedSpec,
@@ -182,6 +182,7 @@ export async function composeSpec(
   accountConnections: string[],
   existing: AgentSpec[] = [],
   generateOverride?: Generate,
+  routerOverride?: Router,
 ): Promise<ComposerResult> {
   const prims = availablePrimitives(accountConnections);
   if (prims.length === 0) {
@@ -192,7 +193,23 @@ export async function composeSpec(
   const llm = generateOverride ?? anthropicGenerate();
   if (llm) {
     try {
-      const decision = await groveRouter.route({ userId, task: 'custom_spec_draft', origin: 'pipeline' });
+      // FIX (gate P1): synthesizeForWorkflow is a USER-initiated interactive
+      // call, not a background pipeline splurge — so route it as `origin:'chat'`
+      // (NOT 'pipeline'). custom_spec_draft is a T2 task; with chat origin the
+      // router's `unbudgeted` is false, so it draws the per-user DAILY frontier
+      // budget. That bounds this otherwise-unthrottled model-call entry point at
+      // DEFAULT_DAILY_FRONTIER_BUDGET calls/user/day. When the budget is spent,
+      // route() returns a clean `degraded` decision (it never throws); we honor
+      // that by skipping the model entirely and standing on the deterministic
+      // no-model proposal — synthesis still works, just without the flourish.
+      const router = routerOverride ?? groveRouter;
+      const decision = await router.route({ userId, task: 'custom_spec_draft', origin: 'chat' });
+      if (decision.degraded) {
+        // Frontier budget exhausted for today — deterministic proposal stands.
+        // (Falls through to the deterministic draft assembled below; no model
+        // call, no COGS — the throttle is what bounds the entry point.)
+        throw new Error('frontier_budget_exhausted');
+      }
       const result = await llm({
         model: decision.model,
         system: [{ text: COMPOSER_SYSTEM_PROMPT, cache: true }],
@@ -224,7 +241,14 @@ export async function composeSpec(
         draft = parsed;
       }
     } catch (err) {
-      console.error('[composer] draft failed — deterministic proposal stands', err instanceof Error ? err.message : err);
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg === 'frontier_budget_exhausted') {
+        // Expected throttle, not an error: the user spent today's frontier
+        // budget. The deterministic proposal stands (info, not error).
+        console.info('[composer] frontier budget spent — deterministic proposal stands');
+      } else {
+        console.error('[composer] draft failed — deterministic proposal stands', msg);
+      }
     }
   }
 

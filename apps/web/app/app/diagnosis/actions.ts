@@ -9,6 +9,7 @@ import { activeConnections } from '../../../lib/runtime/engine';
 import { composeSpec } from '../../../lib/composer/compose';
 import type { DiagnosisMap, DiagnosisWorkflow } from '../../../lib/diagnosis/types';
 import type { AdoptOutcome } from '../../../components/adopt/types';
+import type { AgentSpec } from '@nibbin/runtime';
 
 /**
  * Adopt a recommended Nibbin straight from the diagnosis reveal. Returns an
@@ -58,6 +59,15 @@ export type ComposerReviewResult =
       tone: string;
       trigger: string;
       connectorsNeeded: string[];
+      /**
+       * The reviewed, already-validated spec — carried through to adoption so
+       * the user hatches EXACTLY what they approved (no recomposition / no 2nd
+       * model call that could drift, e.g. a different staleDays). Client-supplied
+       * at adopt time, but `adoptComposedSpec` re-validates it fail-closed
+       * against the registry + the account's live connections BEFORE any write,
+       * so it is confined to a valid menu-primitive spec regardless.
+       */
+      spec: AgentSpec;
     }
   | { ok: false; error: string };
 
@@ -109,37 +119,36 @@ export async function synthesizeForWorkflow(
     tone: spec.personaPolicy?.tone ?? 'warm, plainspoken',
     trigger: 'Every morning, and whenever you ask',
     connectorsNeeded: spec.requiredConnectors,
+    spec,
   };
 }
 
 /**
- * Synthesize + adopt a custom Nibbin for one workflow. Re-runs composeSpec (the
- * proposal is deterministic for a given workflow + connectors, so the adopted
- * spec == the reviewed one), then adoptComposedSpec — which re-validates
- * fail-closed before any write. Returns an AdoptOutcome so the client plays the
- * Beat-2 hatch ceremony, exactly like a template adoption.
+ * Adopt the REVIEWED custom spec for one workflow. The spec comes straight from
+ * the review step (synthesizeForWorkflow) — it is NOT recomposed here, so the
+ * user hatches exactly what they approved (a 2nd composeSpec at temperature 0.3
+ * could drift, e.g. a different staleDays, and would double the model spend).
+ *
+ * The spec is client-supplied, but that is safe: `adoptComposedSpec` re-runs
+ * `validateComposedSpec` (capability∈registry, schema-checked primitive params,
+ * connector-granted, allowlist⊇yielded tools, acyclic graph) fail-closed BEFORE
+ * any write — so a tampered spec is confined to a valid menu-primitive spec
+ * regardless. The validator is the trust boundary, not the transport.
+ *
+ * Returns an AdoptOutcome so the client plays the Beat-2 hatch ceremony,
+ * exactly like a template adoption.
  */
 export async function adoptSynthesized(
-  diagnosisId: string,
-  workflowKey: string,
+  spec: AgentSpec,
   chosenName?: string,
 ): Promise<AdoptOutcome> {
   const { user, accountId } = await appSession();
-  const workflow = await loadWorkflow(accountId, diagnosisId, workflowKey);
-  if (!workflow) return { ok: false, redirectTo: '/app/diagnosis?error=adopt' };
 
   try {
-    const svc = serviceClient();
-    const connections = await activeConnections(svc, accountId);
-    const providers = connections.map((c) => c.provider);
-
-    const result = await composeSpec(accountId, user.id, workflow, providers);
-    if ('error' in result) {
-      return { ok: false, redirectTo: '/app/diagnosis?error=adopt' };
-    }
-
-    const name = (chosenName ?? result.spec.displayName).trim() || result.spec.displayName;
-    const adopted = await adoptComposedSpec(accountId, user.id, result.spec, name);
+    const name = (chosenName ?? spec.displayName).trim() || spec.displayName;
+    // adoptComposedSpec re-validates `spec` fail-closed against the account's
+    // live connections + the registry BEFORE any DB write (the trust boundary).
+    const adopted = await adoptComposedSpec(accountId, user.id, spec, name);
     if (adopted.missingConnectors.length > 0) {
       return {
         ok: false,

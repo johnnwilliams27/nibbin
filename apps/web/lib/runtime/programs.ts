@@ -153,12 +153,17 @@ function requireConn(connections: ConnectionMap, provider: string): string {
  * Echo delegates to the SHARED `nudge.overdue-email` primitive implementation
  * (packages/runtime) — the template and the composable primitive are now the
  * SAME code, so a synthesized detect-and-nudge agent behaves byte-for-byte
- * like Echo (parity test in packages/runtime). requireConn keeps Echo's
- * "pause politely" message when gmail is missing (the primitive throws the
- * identical text).
+ * like Echo (parity test in packages/runtime).
+ *
+ * The "no active gmail connection — pausing politely" guard lives INSIDE the
+ * primitive's generator body (nudge-overdue-email.ts), NOT here at factory
+ * build time: an eager throw would fire before executeRun creates the run row,
+ * propagate out of triggerNibbinRun, and abort the dispatch fan-out loop (the
+ * cursor would never advance → re-fires forever; no `failed` run recorded).
+ * Delegating to the primitive keeps the throw inside the generator, where
+ * executeRun's try/catch records a clean `failed` run.
  */
 function echoProgram(connections: ConnectionMap, nowMs: number): ProgramFn {
-  requireConn(connections, 'gmail');
   return nudgeOverdueEmail({ staleDays: 3 }, connections, nowMs);
 }
 
