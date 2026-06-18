@@ -232,7 +232,7 @@ export function pgArcData(pool: Pool): ArcDataPort {
         detail:
           row.to_stage === 'grad'
             ? 'Graduated on verified accuracy — earned, never time-served.'
-            : `Evolved to ${row.to_stage} — earned on your approvals.`,
+            : `Moved up to ${row.to_stage} — earned on your approvals.`,
         nibbinId: row.nibbin_id,
         species: row.species,
         stage: row.stage,

@@ -132,7 +132,7 @@ export function pgDripStore(pool: Pool): DripStore & { ensureArcs(): Promise<num
     },
 
     async insertEarnedNotification(accountId, event: EarnedEvent): Promise<void> {
-      const title = event.kind === 'graduation' ? `${event.nibbin} graduated` : `${event.nibbin} evolved`;
+      const title = event.kind === 'graduation' ? `${event.nibbin} graduated` : `${event.nibbin} moved up`;
       await pool.query(
         `insert into notifications (account_id, kind, source_id, title, body, payload)
          values ($1, $2, $3, $4, $5, $6)

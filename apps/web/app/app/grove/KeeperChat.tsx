@@ -50,7 +50,7 @@ function keeperItem(message: KeeperMessage): ChatItem {
 export interface Celebration {
   id: string;            // notification id — the per-device "shown" key
   kind: 'evolution' | 'graduation';
-  title: string;         // "{name} graduated" / "{name} evolved"
+  title: string;         // "{name} graduated" / "{name} moved up"
   line: string;          // earned copy (the notification body)
   species: string;
   stage: string;         // the NEW stage
