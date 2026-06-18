@@ -8,6 +8,7 @@ import {
   STUDY_DURATION_MS,
   transition,
   type DeletionReceipt,
+  type StudyDepth,
   type StudySnapshot,
 } from '../src/core/study-machine.js';
 
@@ -133,13 +134,26 @@ describe('study lifecycle state machine', () => {
       { type: 'deletion_verified', receipt },
     );
     expect(complete.state).toBe('COMPLETE');
-    const fresh = transition(complete, { type: 'create_study', id: 'q2', kind: 'quick_scan', label: null });
+    const fresh = transition(complete, { type: 'create_study', id: 'q2', kind: 'quick_scan', label: null, depth: 'lite' });
     expect(fresh.state).toBe('NOT_STARTED');
     expect(fresh.studyId).toBe('q2');
     expect(fresh.kind).toBe('quick_scan');
     // not allowed mid-capture
     expect(() =>
-      transition(started(), { type: 'create_study', id: 'x', kind: 'full_study', label: null }),
+      transition(started(), { type: 'create_study', id: 'x', kind: 'full_study', label: null, depth: 'lite' }),
     ).toThrow(InvalidTransitionError);
+  });
+
+  it('depth defaults to lite and round-trips detailed', () => {
+    // newStudy defaults to 'lite'
+    expect(newStudy('s1').depth).toBe<StudyDepth>('lite');
+    expect(newStudy('s2', 'full_study', null, 'detailed').depth).toBe<StudyDepth>('detailed');
+
+    // create_study command preserves the supplied depth
+    const base = newStudy('s3');
+    const lite = transition(base, { type: 'create_study', id: 's4', kind: 'full_study', label: null, depth: 'lite' });
+    expect(lite.depth).toBe<StudyDepth>('lite');
+    const detailed = transition(base, { type: 'create_study', id: 's5', kind: 'full_study', label: null, depth: 'detailed' });
+    expect(detailed.depth).toBe<StudyDepth>('detailed');
   });
 });

@@ -5,16 +5,28 @@
  * supports is a claims-auditor finding.
  */
 import { bridge } from '../bridge.js';
-import type { StudyKind } from '../../core/study-machine.js';
+import type { StudyKind, StudyDepth } from '../../core/study-machine.js';
 import { button, el } from '../dom.js';
 
-export function consentView(onChanged: () => void, kind: StudyKind = 'full_study'): HTMLElement {
+export function consentView(onChanged: () => void, kind: StudyKind = 'full_study', depth: StudyDepth = 'lite'): HTMLElement {
   // The "When it ends" claim is the only line that differs by kind: a quick
   // scan is user-stopped with a short backstop, not the 14-day C2 hard stop.
   const whenItEnds =
     kind === 'quick_scan'
       ? 'This scan stops the moment you tell it to — or after a few hours if you forget. Raw data auto-deletes after your map is built.'
       : 'The field study ends. Really. Capture stops itself on day 14 — the off switch lives in the background process, not in this window. Raw data auto-deletes after your map is built, and you can watch it verify.';
+
+  // "What gets captured" differs by depth: Lite reads structure only (no
+  // screenshots); Detailed also takes periodic screenshots, processed on-device
+  // then deleted — only redacted text informs the diagnosis.
+  // NOTE: the Detailed branch is depth-aware and retained for when Detailed ships.
+  // The picker currently locks selection to 'lite', so this branch won't trigger
+  // in practice — but the plumbing stays correct. Copy uses future tense (“will
+  // add…”) so it makes no false present-tense capture promise (gate CA-01).
+  const whatGetsCaptured =
+    depth === 'detailed'
+      ? 'Which apps and windows you use, the shape of what you click and type (counts and timing — never the keys themselves), redacted text descriptions like “Invoice {NUM} — {PERSON}”, and (when Detailed is fully available) periodic screenshots that will be processed by on-device OCR then deleted — only the redacted text will inform your diagnosis. Will require Screen Recording permission.'
+      : 'Which apps and windows you use, the shape of what you click and type (counts and timing — never the keys themselves), and redacted text descriptions like “Invoice {NUM} — {PERSON}”. No screenshots.';
 
   const root = el('div', {}, [
     el('p', { class: 'eyebrow' }, ['Field study']),
@@ -26,7 +38,7 @@ export function consentView(onChanged: () => void, kind: StudyKind = 'full_study
     el('ul', { class: 'claims' }, [
       el('li', {}, [
         el('strong', {}, ['What gets captured']),
-        'Which apps and windows you use, the shape of what you click and type (counts and timing — never the keys themselves), and redacted text descriptions like "Invoice {NUM} — {PERSON}".',
+        whatGetsCaptured,
       ]),
       el('li', {}, [
         el('strong', {}, ['What never gets captured']),
@@ -34,7 +46,7 @@ export function consentView(onChanged: () => void, kind: StudyKind = 'full_study
       ]),
       el('li', {}, [
         el('strong', {}, ['Where it lives']),
-        'Screen captures never leave your device. Everything sits in an encrypted store on this machine. Names, emails, and numbers are replaced with placeholders before anything is saved.',
+        'Everything sits in an encrypted store on this machine. Names, emails, and numbers are replaced with placeholders before anything is saved. Pixels never leave your device.',
       ]),
       el('li', {}, [
         el('strong', {}, ['What leaves your device']),
@@ -54,10 +66,14 @@ export function consentView(onChanged: () => void, kind: StudyKind = 'full_study
     ]),
   ]);
 
+  const depthLabel = depth === 'detailed' ? 'Detailed' : 'Lite';
+  const confirmLabel = kind === 'quick_scan'
+    ? ('I understand — start my scan (' + depthLabel + ')')
+    : ('I understand — start my field study (' + depthLabel + ')');
   const actions = el('div', { class: 'row' });
   actions.append(
     button(
-      kind === 'quick_scan' ? 'I understand — start my scan' : 'I understand — start my field study',
+      confirmLabel,
       () => {
         void (async () => {
           await bridge.sendControl('consent');

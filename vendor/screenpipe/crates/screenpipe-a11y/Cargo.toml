@@ -7,12 +7,9 @@ license = "MIT"
 
 [features]
 default = []
-db = ["screenpipe-db"]
+# db feature removed: screenpipe-db was never vendored; Nibbin uses its own DB path
 
 [dependencies]
-screenpipe-db = { path = "../screenpipe-db", optional = true }
-screenpipe-core = { path = "../screenpipe-core" }
-screenpipe-config = { path = "../screenpipe-config" }
 # Core
 anyhow = "1.0"
 tracing = "0.1"
@@ -40,11 +37,10 @@ arboard = "3"
 dirs = "5.0"
 
 # VS Code fork document_path resolution reads `state.vscdb` (SQLite).
-# Pinned to 0.29 because that's the last release on libsqlite3-sys 0.26 —
-# same version screenpipe-db pins, so adding this does not pull a second
-# copy of the C library into the workspace. `bundled` ensures we ship our
-# own SQLite on every OS rather than depending on the system's.
-rusqlite = { version = "0.29", features = ["bundled"] }
+# Bumped to 0.32 (libsqlite3-sys 0.30) to match the nibbin workspace and
+# avoid a dual-link of the native sqlite3 library. `bundled` ensures we ship
+# our own SQLite on every OS rather than depending on the system's.
+rusqlite = { version = "0.32", features = ["bundled"] }
 url = "2.5"
 
 [target.'cfg(target_os = "macos")'.dependencies]

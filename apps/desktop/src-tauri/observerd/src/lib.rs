@@ -12,7 +12,7 @@
 
 use anyhow::Context;
 use chrono::{DateTime, Utc};
-use nibbin_capture::{CaptureGate, CaptureSource};
+use nibbin_capture::{CaptureGate, CaptureItem, CaptureReadiness, CaptureSource};
 use nibbin_ner::PresidioSidecarClient;
 use nibbin_redaction::event::{
     AppRef, EventKind, InputRef, ObserverEvent, RedactionMeta, ReviewState, WindowRef,
@@ -23,7 +23,8 @@ use nibbin_redaction::{
 };
 use nibbin_store::{KeyProvider, ObserverStore, StaticTestKey};
 use nibbin_study::{
-    capture_allowed, deadline_passed, new_study, transition, StudyCommand, StudyKind, StudySnapshot,
+    capture_allowed, deadline_passed, new_study, transition, CaptureDepth, StudyCommand, StudyKind,
+    StudySnapshot,
 };
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
@@ -104,6 +105,8 @@ pub enum ControlCommand {
         kind: Option<String>,
         #[serde(default)]
         label: Option<String>,
+        #[serde(default)]
+        depth: Option<String>,
     },
     /// Review's "never record this again" (layer 4 → layer 2).
     AddExclusion {
@@ -145,6 +148,7 @@ impl Daemon {
                 &format!("full_{}", chrono::Utc::now().timestamp_millis()),
                 StudyKind::FullStudy,
                 None,
+                CaptureDepth::default(),
             )
         });
         nibbin_study::save(store_root, &study)?;
@@ -222,8 +226,8 @@ impl Daemon {
         {
             return Ok(());
         }
-        let snapshots = self.source.poll()?;
-        if snapshots.is_empty() {
+        let items = self.source.poll()?;
+        if items.is_empty() {
             return Ok(());
         }
         let now_iso = daemon_now().to_rfc3339();
@@ -235,19 +239,55 @@ impl Daemon {
             )?);
         }
         let store = self.store.as_mut().expect("opened above");
-        for snapshot in snapshots {
+        for (idx, item) in items.into_iter().enumerate() {
             if self.gate.is_paused() {
                 break; // C6: the flip kills forwarding mid-batch too
             }
-            for raw in snapshot_to_raw_events(&snapshot, "ses_local", &now_iso) {
-                match self.pipeline.process(&raw, store)? {
-                    ProcessOutcome::HaltedNerUnavailable => {
-                        // fail-closed: suspend capture; the supervisor decides
-                        // when the sidecar is healthy enough to resume.
-                        self.source.stop();
-                        return Ok(());
+            match item {
+                CaptureItem::Snapshot(snapshot) => {
+                    for raw in snapshot_to_raw_events(&snapshot, "ses_local", &now_iso) {
+                        match self.pipeline.process(&raw, store)? {
+                            ProcessOutcome::HaltedNerUnavailable => {
+                                // fail-closed: suspend capture; the supervisor decides
+                                // when the sidecar is healthy enough to resume.
+                                self.source.stop();
+                                return Ok(());
+                            }
+                            ProcessOutcome::Persisted | ProcessOutcome::BlockedCategory(_) => {}
+                        }
                     }
-                    ProcessOutcome::Persisted | ProcessOutcome::BlockedCategory(_) => {}
+                }
+                CaptureItem::Input(counts) => {
+                    // Input COUNTS carry no content → no NER. Build the InputBurst
+                    // event directly (mirrors record_gap's construction).
+                    let evt = ObserverEvent {
+                        v: 1,
+                        id: format!("evt_input_{now_iso}_{idx}"),
+                        ts: now_iso.clone(),
+                        session: "ses_local".to_string(),
+                        kind: EventKind::InputBurst,
+                        app: AppRef {
+                            bundle_id: "app.nibbin.observer".to_string(),
+                            name: "Observer".to_string(),
+                        },
+                        window: WindowRef {
+                            title_redacted: String::new(),
+                            id: "w_input".to_string(),
+                        },
+                        url: None,
+                        ax: None,
+                        input: Some(InputRef {
+                            keys: counts.keys,
+                            clicks: counts.clicks,
+                            duration_ms: counts.duration_ms,
+                        }),
+                        frame_ref: None,
+                        redaction: RedactionMeta {
+                            rules_hit: vec![],
+                            review_state: ReviewState::Auto,
+                        },
+                    };
+                    store.append(&evt)?;
                 }
             }
         }
@@ -289,7 +329,24 @@ impl Daemon {
             ControlCommand::Consent => self.apply(StudyCommand::Consent { at: now })?,
             ControlCommand::Start => {
                 self.apply(StudyCommand::Start { at: now })?;
-                self.source.start()?;
+                match self.source.readiness() {
+                    CaptureReadiness::Ready => {
+                        self.source.start()?;
+                        // clear a prior permission block if we're now good
+                        if self
+                            .capture_blocked
+                            .as_deref()
+                            .is_some_and(|s| s.starts_with("permission:"))
+                        {
+                            self.capture_blocked = None;
+                        }
+                    }
+                    CaptureReadiness::Blocked(reason) => {
+                        // Never silently capture nothing: study starts but capture is
+                        // blocked-with-reason; the UI surfaces the rehearsal (P-CB1/P-CB2).
+                        self.capture_blocked = Some(format!("permission: {reason}"));
+                    }
+                }
             }
             ControlCommand::Pause => {
                 self.gate.pause(); // C6 first: kill forwarding before any IO
@@ -311,15 +368,21 @@ impl Daemon {
                 study_id,
                 kind,
                 label,
+                depth,
             } => {
                 let kind = match kind.as_deref() {
                     Some("quick_scan") => StudyKind::QuickScan,
                     _ => StudyKind::FullStudy,
                 };
+                let depth = match depth.as_deref() {
+                    Some("detailed") => CaptureDepth::Detailed,
+                    _ => CaptureDepth::Lite,
+                };
                 self.apply(StudyCommand::CreateStudy {
                     id: study_id,
                     kind,
                     label,
+                    depth,
                 })?;
                 // A fresh study starts empty: clear the observer-store. Reuse
                 // the post-deletion destroy path — drop the in-memory handle

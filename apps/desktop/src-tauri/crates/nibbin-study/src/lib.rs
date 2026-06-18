@@ -18,6 +18,14 @@ pub enum StudyKind {
     QuickScan,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum CaptureDepth {
+    #[default]
+    Lite,
+    Detailed,
+}
+
 /// Auto-stop backstop per kind: the full study is the 14-day C2 hard stop; a
 /// quick scan is normally user-stopped, with a short safety net so an abandoned
 /// scan cannot capture indefinitely.
@@ -65,6 +73,8 @@ pub struct StudySnapshot {
     #[serde(default)]
     pub kind: StudyKind,
     #[serde(default)]
+    pub depth: CaptureDepth,
+    #[serde(default)]
     pub label: Option<String>,
     pub state: StudyState,
     pub consented_at: Option<DateTime<Utc>>,
@@ -105,6 +115,7 @@ pub enum StudyCommand {
         id: String,
         kind: StudyKind,
         label: Option<String>,
+        depth: CaptureDepth,
     },
 }
 
@@ -119,11 +130,17 @@ pub enum StudyError {
     UnverifiedReceipt,
 }
 
-pub fn new_study(study_id: &str, kind: StudyKind, label: Option<String>) -> StudySnapshot {
+pub fn new_study(
+    study_id: &str,
+    kind: StudyKind,
+    label: Option<String>,
+    depth: CaptureDepth,
+) -> StudySnapshot {
     StudySnapshot {
         v: 1,
         study_id: study_id.to_string(),
         kind,
+        depth,
         label,
         state: StudyState::NotStarted,
         consented_at: None,
@@ -177,11 +194,16 @@ pub fn transition(snap: &StudySnapshot, cmd: StudyCommand) -> Result<StudySnapsh
             next.state = RawDeleting;
             next.aborted = true;
         }
-        StudyCommand::CreateStudy { id, kind, label } => {
+        StudyCommand::CreateStudy {
+            id,
+            kind,
+            label,
+            depth,
+        } => {
             if !matches!(snap.state, NotStarted | Complete | Deleted) {
                 return Err(invalid(snap.state, "create_study"));
             }
-            return Ok(new_study(&id, kind, label));
+            return Ok(new_study(&id, kind, label, depth));
         }
         StudyCommand::Consent { at } => {
             if snap.state != NotStarted {
@@ -299,7 +321,7 @@ mod tests {
 
     fn started() -> StudySnapshot {
         let s = transition(
-            &new_study("s1", StudyKind::FullStudy, None),
+            &new_study("s1", StudyKind::FullStudy, None, CaptureDepth::default()),
             StudyCommand::Consent {
                 at: t("2026-06-10T08:00:00Z"),
             },
@@ -365,7 +387,7 @@ mod tests {
     #[test]
     fn delete_everything_from_any_nonterminal_state_ends_deleted() {
         for snap in [
-            new_study("s1", StudyKind::FullStudy, None),
+            new_study("s1", StudyKind::FullStudy, None, CaptureDepth::default()),
             started(),
             transition(&started(), StudyCommand::StopDay14).unwrap(),
         ] {
@@ -403,7 +425,12 @@ mod tests {
     #[test]
     fn quick_scan_window_is_six_hours_full_is_fourteen_days() {
         let q = transition(
-            &new_study("q", StudyKind::QuickScan, Some("Invoices".into())),
+            &new_study(
+                "q",
+                StudyKind::QuickScan,
+                Some("Invoices".into()),
+                CaptureDepth::default(),
+            ),
             StudyCommand::Consent {
                 at: t("2026-06-10T08:00:00Z"),
             },
@@ -426,11 +453,11 @@ mod tests {
     fn remaining_ms_pre_start_is_kind_aware() {
         // A quick scan with no ends_at (pre-start) reports its own 6h window,
         // not the 14-day full-study duration. Mirrors the TS twin.
-        let q = new_study("q", StudyKind::QuickScan, None);
+        let q = new_study("q", StudyKind::QuickScan, None, CaptureDepth::default());
         assert_eq!(q.ends_at, None);
         assert_eq!(remaining_ms(&q, t("2026-06-10T08:00:00Z")), 21_600_000);
         // full study still reports 14 days pre-start
-        let f = new_study("f", StudyKind::FullStudy, None);
+        let f = new_study("f", StudyKind::FullStudy, None, CaptureDepth::default());
         assert_eq!(
             remaining_ms(&f, t("2026-06-10T08:00:00Z")),
             Duration::days(STUDY_DAYS).num_milliseconds()
@@ -451,6 +478,7 @@ mod tests {
                 id: "q2".into(),
                 kind: StudyKind::QuickScan,
                 label: None,
+                depth: CaptureDepth::default(),
             },
         )
         .unwrap();
@@ -464,9 +492,56 @@ mod tests {
                 id: "x".into(),
                 kind: StudyKind::FullStudy,
                 label: None,
+                depth: CaptureDepth::default(),
             },
         )
         .is_err());
+    }
+
+    #[test]
+    fn new_study_defaults_to_lite() {
+        let s = new_study(
+            "full_x",
+            StudyKind::FullStudy,
+            None,
+            CaptureDepth::default(),
+        );
+        assert_eq!(s.depth, CaptureDepth::Lite);
+    }
+
+    #[test]
+    fn new_study_can_be_detailed() {
+        let s = new_study("full_y", StudyKind::FullStudy, None, CaptureDepth::Detailed);
+        assert_eq!(s.depth, CaptureDepth::Detailed);
+    }
+
+    #[test]
+    fn depth_serde_roundtrips_snake_case() {
+        assert_eq!(
+            serde_json::to_string(&CaptureDepth::Lite).unwrap(),
+            "\"lite\""
+        );
+        assert_eq!(
+            serde_json::to_string(&CaptureDepth::Detailed).unwrap(),
+            "\"detailed\""
+        );
+    }
+
+    #[test]
+    fn old_study_json_without_depth_loads_as_lite() {
+        // a snapshot serialized before `depth` existed must deserialize with depth=Lite.
+        let s = new_study(
+            "s_back_compat",
+            StudyKind::FullStudy,
+            None,
+            CaptureDepth::Lite,
+        );
+        let mut json_val = serde_json::to_value(&s).unwrap();
+        // remove the depth field to simulate an old study.json
+        json_val.as_object_mut().unwrap().remove("depth");
+        let json_str = serde_json::to_string(&json_val).unwrap();
+        let parsed: StudySnapshot = serde_json::from_str(&json_str).unwrap();
+        assert_eq!(parsed.depth, CaptureDepth::Lite);
     }
 
     #[test]

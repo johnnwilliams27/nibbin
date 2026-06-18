@@ -19,3 +19,7 @@ Thumbs.db
 # Generated at CI build time by desktop-release.yml when Windows signing is
 # configured (adds bundle.windows.signCommand via --config); never committed.
 apps/desktop/src-tauri/app/tauri.signing.windows.json
+
+# Real observerd binary is bundled at CI build time via bundle.resources (Task 1.6);
+# never committed to git.
+apps/desktop/src-tauri/app/binaries/

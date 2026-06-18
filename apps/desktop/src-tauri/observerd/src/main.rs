@@ -6,6 +6,11 @@
 //! pass → status write) and exits — used by health checks and by the
 //! process-level day-14 test (a real observerd process, no UI anywhere).
 
+#![cfg_attr(
+    all(target_os = "windows", not(debug_assertions)),
+    windows_subsystem = "windows"
+)]
+
 use observerd::Daemon;
 use std::path::PathBuf;
 use std::time::Duration;

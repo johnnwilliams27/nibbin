@@ -98,6 +98,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     map,
     letter,
     kind: packet.kind ?? 'full_study',
+    depth: packet.depth ?? 'lite',
     ...(packet.label ? { label: packet.label } : {}),
     ...(packet.studyId ? { study_id: packet.studyId } : {}),
   };
