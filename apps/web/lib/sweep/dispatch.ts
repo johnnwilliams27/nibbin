@@ -14,9 +14,10 @@ export function dispatchSweepFireAndForget(
   accountId: string,
   connectionId: string,
   provider: string,
+  precomputedHmac?: string,
 ): void {
   if (provider !== 'gmail') return;
-  const hmac = makeSweepHmac(accountId, connectionId);
+  const hmac = precomputedHmac ?? makeSweepHmac(accountId, connectionId);
   if (!hmac) return;
   const sweepUrl = new URL('/api/sweep/gmail/onboarding', baseUrl).href;
   fetch(sweepUrl, {
@@ -48,16 +49,18 @@ export async function onGmailConnected(
 
   let consentAt = conn.sweep_consent_at as string | null;
   if (sweepConsent && !consentAt) {
+    const now = new Date().toISOString();
     await svc
       .from('connections')
-      .update({ sweep_consent_at: new Date().toISOString(), sweep_consent_by: userId })
+      .update({ sweep_consent_at: now, sweep_consent_by: userId })
       .eq('id', connectionId);
-    consentAt = 'set';
+    consentAt = now;
   }
   if (!consentAt) return { dispatched: false };
 
   const hmac = makeSweepHmac(conn.account_id as string, connectionId);
   if (!hmac) return { dispatched: false };
-  dispatchSweepFireAndForget(baseUrl, conn.account_id as string, connectionId, 'gmail');
+  // pass the already-computed hmac so dispatchSweepFireAndForget doesn't recompute it
+  dispatchSweepFireAndForget(baseUrl, conn.account_id as string, connectionId, 'gmail', hmac);
   return { dispatched: true };
 }

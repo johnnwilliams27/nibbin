@@ -48,4 +48,12 @@ describe('onGmailConnected', () => {
     const r = await onGmailConnected(svc, 'http://h', 'c', true, 'u');
     expect(r.dispatched).toBe(false);
   });
+
+  it('dispatches without re-stamping when consent already exists (sweepConsent false)', async () => {
+    const svc = svcStub({ provider: 'gmail', account_id: 'a', sweep_consent_at: '2026-06-18T00:00:00Z' });
+    const r = await onGmailConnected(svc, 'http://h', 'c', false, 'u');
+    expect((svc as { __update: ReturnType<typeof vi.fn> }).__update).not.toHaveBeenCalled();
+    expect(r.dispatched).toBe(true);
+    expect(fetch).toHaveBeenCalledOnce();
+  });
 });
