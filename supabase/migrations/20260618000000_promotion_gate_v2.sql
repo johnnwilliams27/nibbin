@@ -61,27 +61,24 @@ begin
       from public.nibbins n join public.agent_specs s on s.id = n.spec_id
       where n.id = p_nibbin;
 
-    -- The window: last v_window DECIDED runs in THIS stage (count-based, so an
-    -- idle/paused Nibbin's earned ratio never decays), each carrying its 1/3/10
-    -- severity weight from runs.weight_class.
-    select count(*),
-           count(*) filter (where w.decision = 'approved'),
-           coalesce(sum(w.weight), 0),
-           coalesce(sum(w.weight) filter (where w.decision = 'approved'), 0)
+    -- The window: last v_window DECIDED runs in THIS stage (count-based; an idle
+    -- /paused Nibbin's earned ratio never decays), each with its 1/3/10 stakes
+    -- weight from runs.weight_class.
+    with win as (
+      select a.run_id, a.decision,
+             case r.weight_class when 'standard' then 1 when 'frontier' then 3 when 'computer_use' then 10 else 1 end as weight
+        from public.approvals a
+        join public.runs r on r.id = a.run_id
+       where a.account_id = v_account
+         and a.decided_at > v_stage_since
+         and r.nibbin_id = p_nibbin
+       order by a.decided_at desc
+       limit v_window
+    )
+    select count(*), count(*) filter (where decision = 'approved'),
+           coalesce(sum(weight), 0), coalesce(sum(weight) filter (where decision = 'approved'), 0)
       into v_decided, v_approved, v_w_total, v_w_approved
-      from (
-        select a.decision,
-               case r.weight_class
-                 when 'standard' then 1 when 'frontier' then 3 when 'computer_use' then 10 else 1
-               end as weight
-          from public.approvals a
-          join public.runs r on r.id = a.run_id
-         where a.account_id = v_account
-           and a.decided_at > v_stage_since
-           and r.nibbin_id = p_nibbin
-         order by a.decided_at desc
-         limit v_window
-      ) w;
+      from win;
 
     -- Base gate (UNCHANGED): enough decided + ≥min_pct UNWEIGHTED approved.
     if v_decided < v_window or v_approved::numeric / greatest(v_decided, 1) < v_min_pct then
@@ -89,31 +86,41 @@ begin
         p_nibbin, v_approved, v_decided, v_min_pct;
     end if;
 
-    -- R3 severity (ADDITIVE — must ALSO clear the gate weighted by stakes; a
-    -- high-stakes miss now counts 3×/10×). Can only reject, never loosen.
+    -- NOTE: today every shipped template ships weight_class='standard' (a
+    -- model-cost tier, not a per-action stakes tier), so R3 below is currently a
+    -- safe no-op — it activates only once weight_class varies or a per-action
+    -- stakes map lands. It can only ever tighten.
+    -- R3 severity (ADDITIVE — must ALSO clear the stakes-weighted ratio; a
+    -- high-stakes miss counts 3×/10×). Can only reject, never loosen.
     if v_w_approved / greatest(v_w_total, 1) < v_min_pct then
       raise exception 'nibbin % has not earned weighted promotion (% of % by stakes, need %)',
         p_nibbin, v_w_approved, v_w_total, v_min_pct;
     end if;
 
     -- R1 coverage (senior→grad ONLY, ADDITIVE): full autonomy requires breadth
-    -- — ≥K distinct routine patterns approved-unedited in this stage. Counts
-    -- only patterns that actually ran (a paused capability can't block the rest;
-    -- a genuinely narrow Nibbin simply caps at Senior, still autonomous on what
-    -- it proved).
+    -- — ≥K distinct routine patterns proven (approved-unedited) WITHIN this same
+    -- window. Counts only patterns that actually ran this window; a narrow
+    -- Nibbin (or one whose recent work is one pattern) caps at Senior, still
+    -- autonomous on what it proved.
     if v_stage = 'senior' then
+      with win as (
+        select a.run_id, a.decision
+          from public.approvals a
+          join public.runs r on r.id = a.run_id
+         where a.account_id = v_account
+           and a.decided_at > v_stage_since
+           and r.nibbin_id = p_nibbin
+         order by a.decided_at desc
+         limit v_window
+      )
       select count(distinct rs.payload ->> 'patternKey')
         into v_distinct_patterns
-        from public.approvals a
-        join public.runs r on r.id = a.run_id
-        join public.run_steps rs on rs.run_id = r.id and rs.kind = 'draft'
-       where a.account_id = v_account
-         and a.decision = 'approved'
-         and a.decided_at > v_stage_since
-         and r.nibbin_id = p_nibbin
+        from win
+        join public.run_steps rs on rs.run_id = win.run_id and rs.kind = 'draft'
+       where win.decision = 'approved'
          and rs.payload ->> 'patternKey' is not null;
       if coalesce(v_distinct_patterns, 0) < v_coverage_k then
-        raise exception 'nibbin % needs broader proof before graduating (% of % distinct patterns)',
+        raise exception 'nibbin % needs broader proof before graduating (% of % distinct patterns in window)',
           p_nibbin, coalesce(v_distinct_patterns, 0), v_coverage_k;
       end if;
     end if;

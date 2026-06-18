@@ -229,6 +229,18 @@ describe('§4.7 promotion gate v2 — additive R3 severity + R1 coverage', () =>
     expect(out.eligible).toBe(false);
   });
 
+  it('R3 weighted blocks on edited (the common near-miss): unweighted 24/25 passes but one computer_use edit drags weighted <0.95', () => {
+    // 24 standard approved + 1 computer_use edited: unweighted 24/25=0.96 pass,
+    // weighted 24/(24+10)=0.71 → fail. `edited` drags the weighted ratio just
+    // like a rejection — it is NOT approved-unedited.
+    const ds: Decision[] = [];
+    const weights: number[] = [];
+    for (let i = 0; i < 24; i++) { ds.push('approved'); weights.push(1); }
+    ds.push('edited'); weights.push(10);
+    const out = promotionCheck(ds, curriculum(), { weights });
+    expect(out.eligible).toBe(false);
+  });
+
   it('R3 cannot loosen: an unweighted-fail stays NOT eligible even with high-weight successes', () => {
     // 20/25 unweighted (base fails). Make the 20 approved high-weight (10) and the
     // 5 rejects low-weight (1): weighted ratio would be high, but base must still fail.

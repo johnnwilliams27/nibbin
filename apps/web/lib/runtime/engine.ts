@@ -376,20 +376,22 @@ export async function maybePromote(nibbinId: string): Promise<StageName | null> 
   };
   const windowRuns = Math.max(specRow.curriculum.promotion.windowRuns, 25);
 
-  const { data: runRows } = await svc.from('runs').select('id').eq('nibbin_id', nibbinId);
-  const runIds = (runRows ?? []).map((r) => r.id as string);
-  if (runIds.length === 0) return null;
+  // Window: last windowRuns decided runs in this stage, scoped by nibbin via the
+  // inner join (NO unbounded run-id IN-list — that could exceed PostgREST limits
+  // and wrongly stall a legit promotion).
   const { data: decisions } = await svc
     .from('approvals')
-    .select('decision, decided_at, runs!inner(weight_class)')
-    .in('run_id', runIds)
+    .select('decision, run_id, decided_at, runs!inner(nibbin_id, weight_class)')
+    .eq('runs.nibbin_id', nibbinId)
     .gt('decided_at', nrow.stage_changed_at as string)
     .order('decided_at', { ascending: false })
     .limit(windowRuns);
   const rows = (decisions ?? []) as Array<{
     decision: Decision;
+    run_id: string;
     runs: { weight_class: string } | { weight_class: string }[];
   }>;
+  if (rows.length === 0) return null;
   const newestFirst = rows.map((d) => d.decision);
   const weightOf = (wc: string) => (wc === 'computer_use' ? 10 : wc === 'frontier' ? 3 : 1);
   const weights = rows.map((d) => {
@@ -397,31 +399,24 @@ export async function maybePromote(nibbinId: string): Promise<StageName | null> 
     return weightOf(r?.weight_class ?? 'standard');
   });
 
-  // R1 coverage (senior→grad): distinct routine patterns approved this stage.
+  // R1 coverage (senior→grad): distinct routine patterns proven WITHIN this
+  // window — i.e. among the approved-unedited runs in `rows`. Bounded to ≤window.
   let distinctPatterns = 0;
   if (stage === 'senior') {
-    const { data: steps } = await svc
-      .from('run_steps')
-      .select('payload, run_id, runs!inner(nibbin_id)')
-      .eq('kind', 'draft')
-      .eq('runs.nibbin_id', nibbinId);
-    // Count distinct patternKeys whose run was approved-unedited in this stage.
-    const approvedRunIds = new Set(
-      ((
-        (await svc
-          .from('approvals')
-          .select('run_id, decision, decided_at')
-          .in('run_id', runIds)
-          .eq('decision', 'approved')
-          .gt('decided_at', nrow.stage_changed_at as string)).data ?? []
-      ) as Array<{ run_id: string }>).map((a) => a.run_id),
-    );
-    const keys = new Set<string>();
-    for (const s of (steps ?? []) as Array<{ payload: { patternKey?: string } | null; run_id: string }>) {
-      const k = s.payload?.patternKey;
-      if (k && approvedRunIds.has(s.run_id)) keys.add(k);
+    const approvedRunIds = rows.filter((d) => d.decision === 'approved').map((d) => d.run_id);
+    if (approvedRunIds.length > 0) {
+      const { data: steps } = await svc
+        .from('run_steps')
+        .select('payload, run_id')
+        .eq('kind', 'draft')
+        .in('run_id', approvedRunIds);
+      const keys = new Set<string>();
+      for (const s of (steps ?? []) as Array<{ payload: { patternKey?: string } | null; run_id: string }>) {
+        const k = s.payload?.patternKey;
+        if (k) keys.add(k);
+      }
+      distinctPatterns = keys.size;
     }
-    distinctPatterns = keys.size;
   }
 
   if (!promotionCheck(newestFirst, specRow.curriculum, { weights, distinctPatterns, stage }).eligible) return null;
