@@ -30,10 +30,10 @@ begin
     raise exception 'unknown channel %', channel;
   end if;
   insert into public.channel_verifications (account_id, channel, nonce, expires_at)
-  values (target_account, channel, v_nonce, now() + interval '30 minutes');
+  values (target_account, request_channel_link.channel, v_nonce, now() + interval '30 minutes');
   insert into public.audit_log (account_id, actor, actor_id, action, subject, meta)
   values (target_account, 'user', uid::text, 'channel.link_requested', target_account::text,
-    jsonb_build_object('channel', channel));
+    jsonb_build_object('channel', request_channel_link.channel));
   return v_nonce;
 end;
 $$;
@@ -81,8 +81,8 @@ begin
         updated_at = now();
   insert into public.audit_log (account_id, actor, actor_id, action, subject, meta)
   values (target_account, 'user', uid::text, 'channel.prefs_set', target_account::text,
-    jsonb_build_object('channel', channel, 'enabled', enabled, 'priority', priority,
-                       'urgency_threshold', urgency_threshold));
+    jsonb_build_object('channel', set_channel_prefs.channel, 'enabled', set_channel_prefs.enabled, 'priority', set_channel_prefs.priority,
+                       'urgency_threshold', set_channel_prefs.urgency_threshold));
 end;
 $$;
 revoke execute on function public.set_channel_prefs(uuid, text, boolean, smallint, text) from public, anon, service_role;
@@ -125,7 +125,7 @@ begin
         updated_at = now();
   insert into public.audit_log (account_id, actor, actor_id, action, subject, meta)
   values (target_account, 'user', uid::text, 'account.notification_settings_set', target_account::text,
-    jsonb_build_object('quiet_start', quiet_start, 'quiet_end', quiet_end, 'digest_mode', digest_mode));
+    jsonb_build_object('quiet_start', set_notification_settings.quiet_start, 'quiet_end', set_notification_settings.quiet_end, 'digest_mode', set_notification_settings.digest_mode));
 end;
 $$;
 revoke execute on function public.set_notification_settings(uuid, smallint, smallint, text) from public, anon, service_role;
