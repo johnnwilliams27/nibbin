@@ -48,6 +48,16 @@ export interface CapabilityDescriptor {
   kind?: 'atomic' | 'primitive';
   /** Primitives only: the typed scalar params the Composer may set. */
   inputSchema?: Record<string, PrimitiveInputField>;
+  /**
+   * Primitives only: the ATOMIC capability ids the implementation actually
+   * yields (e.g. nudge.overdue-email yields email.read + email.draft). The
+   * runner's allowlist gate keys on the YIELDED step's capability, not the
+   * primitive id — so a composed spec's `toolsAllowlist` must list these, and
+   * `validateSpec` (connector-registry powered) validates these, not the
+   * primitive id (which is not a connector capability). The Composer copies
+   * this into `toolsAllowlist`; validateComposedSpec checks against it.
+   */
+  effectiveTools?: string[];
 }
 
 /**
@@ -87,6 +97,9 @@ export const CAPABILITY_REGISTRY: Record<string, CapabilityDescriptor> = {
     inputSchema: {
       staleDays: { type: 'number', default: 3, min: 1, max: 30 },
     },
+    // The detect-and-nudge impl reads the mailbox (email.read) then drafts the
+    // follow-up (email.draft) — the two atomic tools its yielded steps gate on.
+    effectiveTools: ['email.read', 'email.draft'],
   },
 };
 
