@@ -14,6 +14,7 @@ import { loadGroveState } from '../../lib/grove/load';
 import { AppShell } from '../../components/shell/AppShell';
 import { Card, Badge, InlineFeedback } from '../../components/ui';
 import { KeeperPanel } from './grove/KeeperPanel';
+import type { Celebration } from './grove/KeeperChat';
 import { OnboardingCanvas } from './grove/OnboardingCanvas';
 import { decideRunAction } from './actions';
 import styles from './app.module.css';
@@ -252,6 +253,7 @@ export default async function AppPage({ searchParams }: { searchParams: Promise<
     { data: runsData },
     { data: weekCompletedData },
     { data: approvalsData },
+    { data: promoNotifData },
   ] = await Promise.all([
     supabase
       .from('nibbins')
@@ -292,6 +294,15 @@ export default async function AppPage({ searchParams }: { searchParams: Promise<
       .select('run_id, decision, edit_distance, decided_at')
       .eq('account_id', accountId)
       .order('decided_at', { ascending: false }),
+    // Recent promotions (Beat 3) — celebrated in-grove on first sight (per-device).
+    supabase
+      .from('notifications')
+      .select('id, kind, title, body, payload, created_at')
+      .eq('account_id', accountId)
+      .in('kind', ['evolution', 'graduation'])
+      .gte('created_at', new Date(now - 14 * 24 * 60 * 60 * 1000).toISOString())
+      .order('created_at', { ascending: false })
+      .limit(5),
   ]);
 
   const nibbins = (nibbinsData ?? []) as unknown as NibbinRow[];
@@ -303,6 +314,29 @@ export default async function AppPage({ searchParams }: { searchParams: Promise<
     edit_distance: number;
     decided_at: string;
   }[];
+  const pendingCelebrations: Celebration[] = (
+    (promoNotifData ?? []) as Array<{
+      id: string;
+      kind: string;
+      title: string;
+      body: string;
+      payload: {
+        species?: string; stage?: string; palette?: string | null; accessory?: string; marking?: string;
+      } | null;
+    }>
+  )
+    .filter((r) => r.payload?.species && (r.kind === 'evolution' || r.kind === 'graduation'))
+    .map((r) => ({
+      id: r.id,
+      kind: r.kind as 'evolution' | 'graduation',
+      title: r.title,
+      line: r.body,
+      species: r.payload!.species as string,
+      stage: r.payload!.stage as string,
+      palette: (r.payload!.palette as string) ?? null,
+      accessory: (r.payload!.accessory as string) ?? 'none',
+      marking: (r.payload!.marking as string) ?? 'none',
+    }));
   const nibbinOf = (id: string) => nibbins.find((n) => n.id === id) ?? null;
   const nameOf = (id: string) => nibbinOf(id)?.name ?? 'A Nibbin';
 
@@ -390,6 +424,7 @@ export default async function AppPage({ searchParams }: { searchParams: Promise<
       credits={credits}
       initialProfile={grove.profile}
       hasConnection={hasConnection}
+      pendingCelebrations={pendingCelebrations}
     />
   );
 

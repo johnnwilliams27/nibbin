@@ -11,7 +11,7 @@
  */
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { creatureCss } from '@nibbin/creatures';
+import { creatureCss, buildCreature, type SpeciesName, type Stage, type Accessory, type Marking } from '@nibbin/creatures';
 import {
   type KeeperExpression,
   type KeeperMessage,
@@ -31,6 +31,7 @@ interface ChatItem {
   from: 'keeper' | 'user';
   message?: KeeperMessage;
   text?: string;
+  celebration?: Celebration;
 }
 
 const ERROR_LINE = 'Something snagged on my end — nothing was lost. Give it another try in a moment.';
@@ -45,6 +46,61 @@ function keeperItem(message: KeeperMessage): ChatItem {
   return { id: localId(message.id), from: 'keeper', message };
 }
 
+/** A recent promotion to celebrate in-grove (one notifications row). */
+export interface Celebration {
+  id: string;            // notification id — the per-device "shown" key
+  kind: 'evolution' | 'graduation';
+  title: string;         // "{name} graduated" / "{name} evolved"
+  line: string;          // earned copy (the notification body)
+  species: string;
+  stage: string;         // the NEW stage
+  palette: string | null;
+  accessory: string;
+  marking: string;
+}
+
+/** §9: a creature-engine failure (e.g. a legacy/malformed species) must fall
+ *  back to copy-only — never a thrown render. Build defensively. */
+function safeCelebrationSvg(c: Celebration): string {
+  try {
+    return buildCreature({
+      species: c.species as SpeciesName,
+      stage: c.stage as Stage,
+      color: c.palette ?? undefined,
+      acc: c.accessory as Accessory,
+      mark: c.marking as Marking,
+      size: 56,
+    });
+  } catch {
+    return '';
+  }
+}
+
+/** The in-grove promotion celebration (Beat 3): the promoted Nibbin's creature
+ *  at its new stage + the earned line. Copy-only if the engine can't render. */
+function CelebrationBubble({ celebration }: { celebration: Celebration }) {
+  const svg = safeCelebrationSvg(celebration);
+  return (
+    <div className={styles.celebrationCard}>
+      {svg && (
+        <span
+          className={styles.celebrateCreature}
+          aria-hidden="true"
+          // creature SVG is built by the in-repo @nibbin/creatures engine from
+          // fixed enum fields on a trusted notifications row — never user HTML
+          // (same trust basis as nibbins/page.tsx).
+          // nosemgrep: typescript.react.security.audit.react-dangerouslysetinnerhtml.react-dangerouslysetinnerhtml
+          dangerouslySetInnerHTML={{ __html: svg }}
+        />
+      )}
+      <span className={styles.celebrateText}>
+        <strong className={styles.celebrateTitle}>{celebration.title}</strong>
+        <span className={styles.celebrateLine}>{celebration.line}</span>
+      </span>
+    </div>
+  );
+}
+
 export function KeeperChat({
   initialMessages,
   initialExpression,
@@ -55,6 +111,7 @@ export function KeeperChat({
   initialProfile,
   variant,
   hasConnection = false,
+  pendingCelebrations = [],
   onStep,
 }: {
   initialMessages: KeeperMessage[];
@@ -68,6 +125,8 @@ export function KeeperChat({
   /** Server-derived: account has ≥1 `active` connection (drives the NIB-4
    *  next-step affordance shown at step === 'done'). */
   hasConnection?: boolean;
+  /** Recent promotions to celebrate in-grove (Beat 3); panel variant only. */
+  pendingCelebrations?: Celebration[];
   /** Optional callback fired whenever the onboarding step changes. */
   onStep?: (step: OnboardingStep) => void;
 }) {
@@ -153,6 +212,40 @@ export function KeeperChat({
     // Deps stay narrow on purpose: initialMessages/initialExpression are
     // stable props; `hatched` flipping true makes the rerun a no-op.
   }, [reducedMotion]);
+
+  /* Beat 3: celebrate recent promotions the first time they're seen in-grove.
+     Per-device via localStorage (keyed by notification id) — never replays.
+     Silence/onboarding never trips it (gated on step==='done' + !freshHatch). */
+  useEffect(() => {
+    if (!isPanel || freshHatch || step !== 'done' || pendingCelebrations.length === 0) return;
+    let fresh: Celebration[];
+    try {
+      fresh = pendingCelebrations.filter(
+        (c) => window.localStorage.getItem(`nibbin:promo-celebrated:${c.id}`) !== '1',
+      );
+    } catch {
+      return; // storage blocked — skip silently rather than risk a replay loop
+    }
+    if (fresh.length === 0) return;
+    // Coalesce to at most the 3 most recent to avoid a pile-up.
+    const show = fresh.slice(0, 3);
+    show.forEach((c, i) => {
+      const item: ChatItem = { id: localId(`celebrate-${c.id}`), from: 'keeper', celebration: c };
+      later(() => setItems((prev) => [...prev, item]), i * 520);
+    });
+    later(() => {
+      setExpression('delighted');
+      setBurstKey((k) => k + 1);
+    }, Math.max(0, (show.length - 1) * 520));
+    fresh.forEach((c) => {
+      try {
+        window.localStorage.setItem(`nibbin:promo-celebrated:${c.id}`, '1');
+      } catch {
+        /* ignore */
+      }
+    });
+    // Mount-only: pendingCelebrations is a stable server prop for this render.
+  }, []);
 
   /* Keep the newest card in view. */
   useEffect(() => {
@@ -259,7 +352,9 @@ export function KeeperChat({
   const log = (
     <div className={styles.log} role="log" aria-live="polite" ref={logRef} tabIndex={0}>
       {items.map((item) =>
-        item.from === 'user' ? (
+        item.celebration ? (
+          <CelebrationBubble key={item.id} celebration={item.celebration} />
+        ) : item.from === 'user' ? (
           <div key={item.id} className={styles.userBubble}>
             {item.text}
           </div>
