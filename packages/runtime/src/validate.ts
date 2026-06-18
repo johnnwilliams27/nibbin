@@ -10,8 +10,9 @@
  */
 import { CONNECTOR_REGISTRY, capabilityCanSend } from '@nibbin/connectors';
 import { capability } from './capabilities';
-import { resolvePrimitiveInputs } from './interpreter';
-import type { AgentSpec, TriggerDef } from './types';
+import { assertSafeReadPath, resolvePrimitiveInputs } from './interpreter';
+import { plannerTool, EGRESS_UTILITY_IDS } from './utilities';
+import type { AgentSpec, PlanSpec, PlannerTool, TriggerDef } from './types';
 
 export const KEEPER_NODE = 'keeper';
 
@@ -296,6 +297,246 @@ export function validateComposedSpec(spec: AgentSpec, accountConnections: string
   }
 
   return problems;
+}
+
+/* ── Planner (Slice 3a) validators — the trust boundary, applied twice ───────
+ *
+ * design §5: fail-closed on the PlanSpec at preview, AND fail-closed on every
+ * runtime pick. Provisioning is fixed at preview and can never self-grant: the
+ * picker may only select among the plan's `toolsAllowlist` (connector caps +
+ * utility ids). An invalid pick yields NO step.
+ */
+
+/** Highest `maxIterations` a frontier plan may set (design §7 — bound the loop). */
+export const MAX_PLAN_ITERATIONS = 30;
+
+/**
+ * Fail-closed validation of a synthesized PlanSpec, run at plan-preview before
+ * the loop is ever provisioned. Returns problems (empty = valid):
+ *  - every `toolsAllowlist` entry is a known connector capability OR a known
+ *    utility id (an off-surface entry rejects the whole plan);
+ *  - a `web.*` utility may appear only when a search provider is configured
+ *    (`opts.webSearchEnabled`), since web egress is the load-bearing surface;
+ *  - every required connector is granted on this account;
+ *  - every connector capability is powered by a granted required connector;
+ *  - ceilings positive + `maxIterations` within `MAX_PLAN_ITERATIONS`.
+ */
+export function validatePlanSpec(
+  plan: PlanSpec,
+  accountConnections: string[],
+  opts: { webSearchEnabled: boolean },
+): string[] {
+  const problems: string[] = [];
+  const at = (msg: string) => problems.push(`plan: ${msg}`);
+
+  if (plan.kind !== 'plan') at('not a plan spec');
+  if (!plan.goal.trim()) at('goal required');
+  if (plan.weightClass !== 'frontier') at('plan weightClass must be "frontier"');
+
+  const granted = new Set(accountConnections);
+  for (const provider of plan.requiredConnectors) {
+    if (!CONNECTOR_REGISTRY.has(provider)) at(`unknown connector "${provider}"`);
+    else if (!granted.has(provider)) at(`required connector "${provider}" is not connected on this account`);
+  }
+
+  if (plan.toolsAllowlist.length === 0) at('tool allowlist must not be empty');
+  for (const id of plan.toolsAllowlist) {
+    const util = plannerTool(id);
+    if (util) {
+      // A web.* utility is only valid when a provider is configured: web egress
+      // is offered to the loop only when it can actually (and safely) run.
+      if (EGRESS_UTILITY_IDS.has(id) && !opts.webSearchEnabled) {
+        at(`utility "${id}" requires a configured web-search provider`);
+      }
+      continue;
+    }
+    const cap = capability(id);
+    if (!cap) {
+      at(`tool "${id}" is neither a registry capability nor a known utility`);
+      continue;
+    }
+    // A connector capability must be powered by a granted required connector
+    // (the home connector for atomic; the unique set for a primitive).
+    const conns = cap.effectiveTools && cap.effectiveTools.length > 0
+      ? uniqueConnectorsFor(cap.effectiveTools)
+      : [cap.requiredConnector];
+    for (const provider of conns) {
+      if (!plan.requiredConnectors.includes(provider)) {
+        at(`tool "${id}" needs connector "${provider}" which is not in requiredConnectors`);
+      } else if (!granted.has(provider)) {
+        at(`tool "${id}" needs connector "${provider}" which is not connected`);
+      }
+    }
+  }
+
+  const c = plan.ceilings;
+  if (c.maxSteps < 1 || c.maxTokens < 0 || c.maxWallClockMs < 1) at('per-run ceilings must be positive');
+  if (!Number.isInteger(c.maxIterations) || c.maxIterations < 1) at('maxIterations must be a positive integer');
+  else if (c.maxIterations > MAX_PLAN_ITERATIONS) at(`maxIterations ${c.maxIterations} exceeds the bound of ${MAX_PLAN_ITERATIONS}`);
+
+  return problems;
+}
+
+/** The unique connectors a set of atomic tool ids needs (server-side, from the
+ *  registry — never from LLM output). Mirrors the Composer's connectorsFor. */
+function uniqueConnectorsFor(tools: string[]): string[] {
+  const set = new Set<string>();
+  for (const t of tools) {
+    const dep = capability(t);
+    if (dep) set.add(dep.requiredConnector);
+  }
+  return [...set];
+}
+
+export type PlannerPickInput =
+  | { tool: string; args: Record<string, unknown> }
+  | { done: true; artifact: unknown }
+  | { ask_human: true; kind: 'auth' | 'decision' | 'value'; question: string };
+
+export type PickValidation = { ok: true } | { ok: false; reason: string };
+
+/**
+ * Fail-closed validation of ONE runtime pick (design §5), re-run every
+ * iteration. An invalid pick is never yielded to the runner:
+ *  - `done`: always valid (ends the loop);
+ *  - `ask_human`: kind ∈ {auth,decision,value} and a non-empty question;
+ *  - a tool pick: the tool ∈ the plan's `toolsAllowlist` (the provisioned
+ *    surface — the loop can NEVER reach beyond it); then either
+ *      • a utility → args validated against the utility's argSchema, OR
+ *      • a connector capability → its connector granted; a primitive's args
+ *        through `resolvePrimitiveInputs`; an atomic read's `path` through
+ *        `assertSafeReadPath` (SSRF/traversal); an atomic draft/write is
+ *        rejected (composed side effects must ride a primitive, as in
+ *        validateComposedSpec).
+ */
+export function validatePick(
+  pick: PlannerPickInput,
+  plan: PlanSpec,
+  accountConnections: string[],
+): PickValidation {
+  if ('done' in pick && pick.done === true) return { ok: true };
+
+  if ('ask_human' in pick && pick.ask_human === true) {
+    if (!['auth', 'decision', 'value'].includes(pick.kind)) {
+      return { ok: false, reason: `ask_human kind must be auth|decision|value, got "${String(pick.kind)}"` };
+    }
+    if (typeof pick.question !== 'string' || pick.question.trim() === '') {
+      return { ok: false, reason: 'ask_human needs a non-empty question' };
+    }
+    return { ok: true };
+  }
+
+  if (!('tool' in pick) || typeof pick.tool !== 'string') {
+    return { ok: false, reason: 'pick has no tool' };
+  }
+  const tool = pick.tool;
+  const args = (pick.args ?? {}) as Record<string, unknown>;
+
+  // THE core boundary: the picked tool must be in the plan's provisioned surface.
+  if (!plan.toolsAllowlist.includes(tool)) {
+    return { ok: false, reason: `tool "${tool}" is not in the plan's provisioned surface` };
+  }
+
+  // A utility pick → schema-check its args.
+  const util = plannerTool(tool);
+  if (util) {
+    try {
+      resolveUtilityArgs(util, args);
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, reason: err instanceof Error ? err.message : 'invalid utility args' };
+    }
+  }
+
+  // A connector capability pick.
+  const cap = capability(tool);
+  if (!cap) return { ok: false, reason: `tool "${tool}" is not a registry capability` };
+
+  const granted = new Set(accountConnections);
+  if (!granted.has(cap.requiredConnector)) {
+    return { ok: false, reason: `tool "${tool}" needs connector "${cap.requiredConnector}" which is not granted` };
+  }
+
+  if (cap.kind === 'primitive') {
+    try {
+      resolvePrimitiveInputs(cap, args);
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, reason: err instanceof Error ? err.message : 'invalid primitive args' };
+    }
+  }
+
+  // Atomic capability. A draft/write must ride a primitive (so the picker can
+  // never inject effectArgs) — exactly the validateComposedSpec rule.
+  if (cap.sideEffect === 'draft' || cap.sideEffect === 'write') {
+    return {
+      ok: false,
+      reason: `tool "${tool}" is a raw ${cap.sideEffect} capability — composed side effects must ride a primitive`,
+    };
+  }
+
+  // Atomic read → its path must be safe (SSRF/traversal), reusing the
+  // interpreter's run-time guard.
+  try {
+    assertSafeReadPath(args.path, tool);
+  } catch (err) {
+    return { ok: false, reason: err instanceof Error ? err.message : 'unsafe read path' };
+  }
+  return { ok: true };
+}
+
+/**
+ * Validate + coerce a utility pick's args against the utility's argSchema —
+ * the parallel of `resolvePrimitiveInputs` for the fixed utility set. Unknown
+ * keys, missing-required, and out-of-bounds/type-mismatch all throw fail-closed.
+ */
+export function resolveUtilityArgs(
+  util: PlannerTool,
+  args: Record<string, unknown> | undefined,
+): Record<string, unknown> {
+  const schema = util.argSchema;
+  const given = args ?? {};
+  for (const key of Object.keys(given)) {
+    if (!Object.hasOwn(schema, key)) throw new Error(`utility ${util.id} got unknown arg "${key}"`);
+  }
+  const out: Record<string, unknown> = {};
+  for (const [key, field] of Object.entries(schema)) {
+    const present = Object.hasOwn(given, key);
+    const raw = present ? given[key] : undefined;
+    if (raw === undefined || raw === null) {
+      if (field.required) throw new Error(`utility ${util.id} missing required arg "${key}"`);
+      continue;
+    }
+    out[key] = coerceUtilityField(util.id, key, field, raw);
+  }
+  return out;
+}
+
+function coerceUtilityField(
+  utilId: string,
+  key: string,
+  field: PlannerTool['argSchema'][string],
+  raw: unknown,
+): unknown {
+  if (field.type === 'number') {
+    if (typeof raw !== 'number' || !Number.isFinite(raw)) throw new Error(`utility ${utilId} arg "${key}" must be a finite number`);
+    if (field.min !== undefined && raw < field.min) throw new Error(`utility ${utilId} arg "${key}" below min ${field.min}`);
+    if (field.max !== undefined && raw > field.max) throw new Error(`utility ${utilId} arg "${key}" above max ${field.max}`);
+    return raw;
+  }
+  if (field.type === 'boolean') {
+    if (typeof raw !== 'boolean') throw new Error(`utility ${utilId} arg "${key}" must be a boolean`);
+    return raw;
+  }
+  if (field.type === 'string') {
+    if (typeof raw !== 'string') throw new Error(`utility ${utilId} arg "${key}" must be a string`);
+    return raw;
+  }
+  // enum
+  if (typeof raw !== 'string' || !(field.values ?? []).includes(raw)) {
+    throw new Error(`utility ${utilId} arg "${key}" must be one of ${(field.values ?? []).join(', ')}`);
+  }
+  return raw;
 }
 
 /** Mirror of the interpreter's assertSafeReadPath, as a reason string (null =
