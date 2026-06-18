@@ -119,6 +119,10 @@ export function AdoptHatch({
               className={cracking ? `${styles.egg} ${styles.eggCracking}` : styles.egg}
               role="img"
               aria-label="An egg, about to hatch"
+              // eggSvg is built by the in-repo @nibbin/creatures engine from
+              // fixed enum inputs — never user/runtime HTML (same trust basis as
+              // every other creature render, e.g. grove/KeeperSprite.tsx).
+              // nosemgrep: typescript.react.security.audit.react-dangerouslysetinnerhtml.react-dangerouslysetinnerhtml
               dangerouslySetInnerHTML={{ __html: eggSvg }}
             />
           ) : (
@@ -127,6 +131,10 @@ export function AdoptHatch({
                 className={`${styles.creature}${reducedMotion ? '' : ` ${styles.emerge}`}`}
                 role="img"
                 aria-label={`${name}, your new Nibbin`}
+                // creatureSvg is built by the in-repo @nibbin/creatures engine
+                // from fixed enum inputs — never user/runtime HTML (same trust
+                // basis as every other creature render, e.g. nibbins/page.tsx).
+                // nosemgrep: typescript.react.security.audit.react-dangerouslysetinnerhtml.react-dangerouslysetinnerhtml
                 dangerouslySetInnerHTML={{ __html: creatureSvg }}
               />
               {!reducedMotion && (
