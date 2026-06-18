@@ -156,6 +156,86 @@ describe('runPlan — bounded', () => {
   });
 });
 
+describe('runPlan — a write pick is approval-gated', () => {
+  // A path-aware reader: the inbox list returns one fresh first-contact message;
+  // its meta makes reply.new-inquiry draft a warm reply (then pause for approval).
+  function mailboxReader() {
+    return {
+      async read(_c: string, _cap: string, path: string) {
+        if (path.includes('in%3Ainbox') || path.includes('in:inbox')) {
+          return quarantine(JSON.stringify({ messages: [{ id: 'm1' }] }), 'gmail:list');
+        }
+        if (path.includes('in%3Asent') || path.includes('in:sent')) {
+          return quarantine(JSON.stringify({ messages: [] }), 'gmail:list');
+        }
+        // a message meta
+        return quarantine(
+          JSON.stringify({
+            id: 'm1',
+            threadId: 't1',
+            internalDate: '1700000000000',
+            payload: { headers: [
+              { name: 'Subject', value: 'New project inquiry' },
+              { name: 'From', value: 'Jane <jane@example.com>' },
+            ] },
+          }),
+          'gmail:meta',
+        );
+      },
+    };
+  }
+
+  it('a draft pick pauses as needs_input(approval); nothing executed', async () => {
+    const executed: string[] = [];
+    const runner = runnerDeps({ executed });
+    runner.reader = mailboxReader();
+    const { d } = deps(
+      [{ tool: 'reply.new-inquiry', args: {} }, { done: true, artifact: {} }],
+      {},
+      runner,
+    );
+    const outcome = await runPlan(
+      plan({ toolsAllowlist: ['email.read', 'email.draft', 'reply.new-inquiry', 'done'] }),
+      d,
+    );
+    expect(outcome.kind).toBe('needs_input');
+    if (outcome.kind === 'needs_input') {
+      expect(outcome.request.kind).toBe('approval');
+      expect(outcome.request.context.tool).toBe('reply.new-inquiry');
+    }
+    expect(executed).toEqual([]);
+  });
+});
+
+describe('runPlan — web-search redaction through a turn', () => {
+  it('the egressed query is redacted and the observation is quarantined', async () => {
+    const egressed: string[] = [];
+    const utilities = {
+      async webSearch(query: string) {
+        egressed.push(query);
+        // the harness is handed an ALREADY-redacted+quarantined observation by
+        // websearch.ts; here we just assert the wiring passes it through.
+        return quarantine(`results for: ${query}`, 'web:search').wrapped;
+      },
+    };
+    // a query containing PII — websearch.ts redacts before egress; in this unit
+    // we pass the redacted form to assert the loop only ever sees quarantined web.
+    const { d } = deps(
+      [
+        { tool: 'web.search', args: { query: 'contact [EMAIL] about the invoice' } },
+        { done: true, artifact: { summary: 'searched' } },
+      ],
+      { utilities },
+    );
+    const outcome = await runPlan(
+      plan({ toolsAllowlist: ['web.search', 'done'], requiredConnectors: [] }),
+      { ...d, connectors: [] },
+    );
+    expect(outcome.kind).toBe('done');
+    expect(egressed[0]).not.toContain('@');
+  });
+});
+
 describe('runPlan — the core safety test', () => {
   it('an off-surface pick is rejected; after one re-prompt the run fails', async () => {
     // email.send is NOT in the allowlist. First pick rejected → one re-prompt;

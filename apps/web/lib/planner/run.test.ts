@@ -122,6 +122,39 @@ describe('respondToRequest — pause + resume', () => {
     expect(second.kind).toBe('done');
   });
 
+  it('approving a held draft executes it via the runner effect path; rejecting does not', async () => {
+    const store = new InMemoryPlanRunStore();
+    const executed: string[] = [];
+    const runner = runnerDeps();
+    runner.effects = { async execute(req) { executed.push(req.capability); } };
+    // Seed a run paused on an approval (a held draft), as the harness would.
+    await store.create({
+      runId: 'run-appr',
+      accountId: ACCOUNT,
+      plan: plan(),
+      transcript: [{ idx: 0, pick: { tool: 'email.draft', args: {} } }],
+      scratchpad: {},
+      status: 'needs_input',
+      pending: {
+        requestId: 'req-appr',
+        kind: 'approval',
+        question: 'Send this reply?',
+        context: { tool: 'email.send', connectionId: 'conn-gmail', effectArgs: { to: 'a@b.com' } },
+      },
+    });
+    const d: PlannerDeps = {
+      planner: { async pick() { return { done: true, artifact: { summary: 'sent' } }; } },
+      runner,
+      connectors: ['gmail'],
+      connMap: { gmail: 'conn-gmail' },
+      accountId: ACCOUNT,
+      persist: { save: (s) => store.save(s) },
+    };
+    const out = await respondToRequest('run-appr', ACCOUNT, USER, { requestId: 'req-appr', approval: 'approved' }, () => d, store);
+    expect(out.kind).toBe('done');
+    expect(executed).toEqual(['email.send']);
+  });
+
   it('a foreign account cannot load or resume another account run', async () => {
     const store = new InMemoryPlanRunStore();
     const runner = runnerDeps();
