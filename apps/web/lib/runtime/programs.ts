@@ -124,7 +124,7 @@ async function* readMailbox(
  * gates — no execution path lives outside the runner either way.
  */
 export function buildProgram(spec: AgentSpec, connections: ConnectionMap, nowMs: number): ProgramFn {
-  if (spec.steps && spec.steps.length > 0) return interpretSpec(spec, connections);
+  if (spec.steps && spec.steps.length > 0) return interpretSpec(spec, connections, nowMs);
   switch (spec.templateKey) {
     case 'echo':
       return echoProgram(connections, nowMs);
