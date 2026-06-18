@@ -49,8 +49,8 @@ function keeperItem(message: KeeperMessage): ChatItem {
 /** A recent promotion to celebrate in-grove (one notifications row). */
 export interface Celebration {
   id: string;            // notification id — the per-device "shown" key
-  kind: 'evolution' | 'graduation';
-  title: string;         // "{name} graduated" / "{name} moved up"
+  kind: 'evolution' | 'graduation' | 'demotion';
+  title: string;         // "{name} graduated" / "{name} moved up" / "{name} is back to drafts"
   line: string;          // earned copy (the notification body)
   species: string;
   stage: string;         // the NEW stage
@@ -80,8 +80,9 @@ function safeCelebrationSvg(c: Celebration): string {
  *  at its new stage + the earned line. Copy-only if the engine can't render. */
 function CelebrationBubble({ celebration }: { celebration: Celebration }) {
   const svg = safeCelebrationSvg(celebration);
+  const calm = celebration.kind === 'demotion';
   return (
-    <div className={styles.celebrationCard}>
+    <div className={`${styles.celebrationCard} ${calm ? styles.demotionCard : ''}`}>
       {svg && (
         <span
           className={styles.celebrateCreature}
@@ -233,9 +234,14 @@ export function KeeperChat({
       const item: ChatItem = { id: localId(`celebrate-${c.id}`), from: 'keeper', celebration: c };
       later(() => setItems((prev) => [...prev, item]), i * 520);
     });
+    // Celebratory flourish (delighted + leaf-burst) is promotion-only. A
+    // demotion is a calm acknowledgment: no burst, no delighted expression.
+    const anyCelebratory = show.some((c) => c.kind !== 'demotion');
     later(() => {
-      setExpression('delighted');
-      setBurstKey((k) => k + 1);
+      if (anyCelebratory) {
+        setExpression('delighted');
+        setBurstKey((k) => k + 1);
+      }
     }, Math.max(0, (show.length - 1) * 520));
     fresh.forEach((c) => {
       try {

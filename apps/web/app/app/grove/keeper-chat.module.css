@@ -207,6 +207,14 @@
   color: var(--ink);
 }
 
+/* CE5: a demotion is calm, not celebratory — neutral recessed surface, no
+ * honey/shell glow, no coral (coral is reserved for danger). Paused ≠ penalized. */
+.demotionCard {
+  background: var(--understory);
+  border-color: var(--line);
+  color: var(--ink-soft);
+}
+
 @keyframes grove-rise {
   from {
     opacity: 0;
