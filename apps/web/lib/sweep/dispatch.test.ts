@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { onGmailConnected, dispatchSweepFireAndForget } from './dispatch';
+import { onGmailConnected } from './dispatch';
 
 function svcStub(conn: Record<string, unknown> | null) {
   const update = vi.fn(() => ({ eq: vi.fn(async () => ({ error: null })) }));
