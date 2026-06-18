@@ -381,13 +381,50 @@ export async function maybePromote(nibbinId: string): Promise<StageName | null> 
   if (runIds.length === 0) return null;
   const { data: decisions } = await svc
     .from('approvals')
-    .select('decision, decided_at')
+    .select('decision, decided_at, runs!inner(weight_class)')
     .in('run_id', runIds)
     .gt('decided_at', nrow.stage_changed_at as string)
     .order('decided_at', { ascending: false })
     .limit(windowRuns);
-  const newestFirst = (decisions ?? []).map((d) => d.decision as Decision);
-  if (!promotionCheck(newestFirst, specRow.curriculum).eligible) return null;
+  const rows = (decisions ?? []) as Array<{
+    decision: Decision;
+    runs: { weight_class: string } | { weight_class: string }[];
+  }>;
+  const newestFirst = rows.map((d) => d.decision);
+  const weightOf = (wc: string) => (wc === 'computer_use' ? 10 : wc === 'frontier' ? 3 : 1);
+  const weights = rows.map((d) => {
+    const r = Array.isArray(d.runs) ? d.runs[0] : d.runs;
+    return weightOf(r?.weight_class ?? 'standard');
+  });
+
+  // R1 coverage (senior→grad): distinct routine patterns approved this stage.
+  let distinctPatterns = 0;
+  if (stage === 'senior') {
+    const { data: steps } = await svc
+      .from('run_steps')
+      .select('payload, run_id, runs!inner(nibbin_id)')
+      .eq('kind', 'draft')
+      .eq('runs.nibbin_id', nibbinId);
+    // Count distinct patternKeys whose run was approved-unedited in this stage.
+    const approvedRunIds = new Set(
+      ((
+        (await svc
+          .from('approvals')
+          .select('run_id, decision, decided_at')
+          .in('run_id', runIds)
+          .eq('decision', 'approved')
+          .gt('decided_at', nrow.stage_changed_at as string)).data ?? []
+      ) as Array<{ run_id: string }>).map((a) => a.run_id),
+    );
+    const keys = new Set<string>();
+    for (const s of (steps ?? []) as Array<{ payload: { patternKey?: string } | null; run_id: string }>) {
+      const k = s.payload?.patternKey;
+      if (k && approvedRunIds.has(s.run_id)) keys.add(k);
+    }
+    distinctPatterns = keys.size;
+  }
+
+  if (!promotionCheck(newestFirst, specRow.curriculum, { weights, distinctPatterns, stage }).eligible) return null;
 
   const { data, error } = await svc.rpc('nibbin_promote', { p_nibbin: nibbinId });
   if (error) return null; // SQL is the authority; a refusal here is final
