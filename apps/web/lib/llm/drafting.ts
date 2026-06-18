@@ -15,6 +15,7 @@ import 'server-only';
  */
 import { groveRouter } from '../grove/router';
 import { loadGroveMemoryBlock } from '../grove/memory';
+import { memoryBlockFor } from '../memory/retrieve';
 import { anthropicGenerate, recordModelCall } from './client';
 import { DRAFTING_SYSTEM_PROMPT } from './prompts';
 import type { ModelDrafter } from '@nibbin/runtime';
@@ -46,12 +47,19 @@ export function modelDrafterFor(accountId: string): ModelDrafter | undefined {
           origin: 'pipeline',
         });
         const memory = await groveBlock();
-        const system = memory
-          ? [
-              { text: DRAFTING_SYSTEM_PROMPT, cache: true },
-              { text: memory, cache: true },
-            ]
-          : [{ text: DRAFTING_SYSTEM_PROMPT, cache: true }];
+        // Agent/user memory (§12A): retrieved per draft (semantic + FTS +
+        // recency), injected as a third system block after Grove Memory.
+        // Best-effort — null on any failure, never blocks the draft. NOT cached:
+        // it varies by intent, so it stays in the volatile (uncached) suffix.
+        // INVARIANT: only the static pattern `intent` is embedded/sent to the
+        // embedding subprocessor (Voyage); never `context` or connector content.
+        // Future programs must keep `intent` free of interpolated evidence.
+        const mem = await memoryBlockFor(runId, intent);
+        const system = [
+          { text: DRAFTING_SYSTEM_PROMPT, cache: true },
+          ...(memory ? [{ text: memory, cache: true }] : []),
+          ...(mem ? [{ text: mem, cache: false }] : []),
+        ];
         const result = await llm({
           model: decision.model,
           system,
