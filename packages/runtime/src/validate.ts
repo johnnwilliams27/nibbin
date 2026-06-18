@@ -198,6 +198,10 @@ export function validateTriggerGraph(specs: AgentSpec[]): string[] {
  *  - every `step.capability` is a CAPABILITY_REGISTRY id;
  *  - every step's capability is in `toolsAllowlist` (so the runner's allowlist
  *    gate admits it — a step the allowlist would kill is rejected here);
+ *  - a composed `draft`/`write` step MUST be a primitive (kind==='primitive'):
+ *    a raw atomic draft/write step would carry attacker-shaped effectArgs from
+ *    `step.inputs`, so composed side effects must ride a primitive that builds
+ *    its own effectArgs;
  *  - every primitive step's `inputs` match the primitive's inputSchema
  *    (types/bounds, no unknown keys) — `resolvePrimitiveInputs` is the single
  *    source of that check, shared with the interpreter;
@@ -252,6 +256,20 @@ export function validateComposedSpec(spec: AgentSpec, accountConnections: string
       } catch (err) {
         at(`step ${idx}: ${err instanceof Error ? err.message : 'invalid primitive inputs'}`);
       }
+      continue;
+    }
+
+    // A composed draft/write step MUST ride a primitive: a primitive's trusted
+    // implementation builds its own effectArgs, but a RAW atomic draft/write
+    // step would carry effectArgs straight from `step.inputs` (the interpreter's
+    // generic path only CRLF/length-sanitizes them) — reopening the very
+    // attacker-controlled-args surface the primitive boundary closes (e.g. a
+    // composed `email.send` with a `bcc` arg). Fail-closed: reject it here so a
+    // composed write can only ever flow through a primitive.
+    if (cap.sideEffect === 'draft' || cap.sideEffect === 'write') {
+      at(
+        `step ${idx} capability "${cap.id}" is a raw ${cap.sideEffect} step — composed ${cap.sideEffect} steps must ride a primitive that owns its effectArgs, not a raw atomic capability`,
+      );
       continue;
     }
 

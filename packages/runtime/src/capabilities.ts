@@ -118,5 +118,8 @@ export const PRIMITIVE_IMPLS: Record<string, PrimitiveImpl> = {
 };
 
 export function capability(id: string): CapabilityDescriptor | undefined {
-  return CAPABILITY_REGISTRY[id];
+  // Object.hasOwn (not bracket access / `in`) so inherited members like
+  // 'constructor'/'toString'/'__proto__' never resolve to a truthy descriptor
+  // (a prototype-pollution-shaped lookup must return undefined, not Object's).
+  return Object.hasOwn(CAPABILITY_REGISTRY, id) ? CAPABILITY_REGISTRY[id] : undefined;
 }

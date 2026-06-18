@@ -154,7 +154,9 @@ export function resolvePrimitiveInputs(
   const schema = cap.inputSchema ?? {};
   const given = inputs ?? {};
   for (const key of Object.keys(given)) {
-    if (!(key in schema)) throw new Error(`primitive ${cap.id} got unknown input "${key}"`);
+    // Object.hasOwn (not `in`) so prototype-chain keys like '__proto__' /
+    // 'constructor' are rejected as unknown rather than slipping the guard.
+    if (!Object.hasOwn(schema, key)) throw new Error(`primitive ${cap.id} got unknown input "${key}"`);
   }
   const out: Record<string, unknown> = {};
   for (const [key, field] of Object.entries(schema)) {

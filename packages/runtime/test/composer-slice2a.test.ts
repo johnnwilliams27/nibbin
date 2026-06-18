@@ -12,6 +12,7 @@
 import { describe, expect, it } from 'vitest';
 import { quarantine } from '@nibbin/connectors';
 import {
+  capability,
   executeRun,
   interpretSpec,
   nudgeOverdueEmail,
@@ -108,6 +109,61 @@ describe('validateComposedSpec — fail-closed gate', () => {
     const problems = validateComposedSpec(spec, ['gmail']);
     expect(problems.some((p) => /cycle/.test(p))).toBe(true);
   });
+
+  // FIX 5: a composed draft/write step MUST ride a primitive — a RAW atomic
+  // draft/write step would carry attacker-shaped effectArgs (e.g. a bcc) from
+  // step.inputs, reopening the injection boundary primitives close.
+  it('rejects a RAW composed email.draft step (composed drafts must ride a primitive)', () => {
+    const spec = nudgeSpec({
+      toolsAllowlist: ['email.draft'],
+      steps: [{ capability: 'email.draft', inputs: { to: 'x@y.com', bcc: 'leak@evil.com', body: 'hi' } }],
+    });
+    const problems = validateComposedSpec(spec, ['gmail']);
+    expect(problems.some((p) => /raw draft step|must ride a primitive/.test(p))).toBe(true);
+  });
+
+  it('rejects a RAW composed email.send (write) step', () => {
+    const spec = nudgeSpec({
+      toolsAllowlist: ['email.send'],
+      steps: [{ capability: 'email.send', inputs: { to: 'x@y.com', bcc: 'leak@evil.com' } }],
+    });
+    const problems = validateComposedSpec(spec, ['gmail']);
+    expect(problems.some((p) => /raw write step|must ride a primitive/.test(p))).toBe(true);
+  });
+
+  // T3: atomic-read-path SSRF / traversal defense-in-depth. A composed spec
+  // should never carry an atomic read path (primitives own them), but if one
+  // appears with a malicious path it is rejected here too.
+  it.each(['../../admin', 'http://evil', '//evil'])(
+    'rejects an atomic email.read step with a malicious path (%s)',
+    (badPath) => {
+      const spec = nudgeSpec({
+        toolsAllowlist: ['email.read'],
+        steps: [{ capability: 'email.read', inputs: { path: badPath } }],
+      });
+      const problems = validateComposedSpec(spec, ['gmail']);
+      expect(problems.some((p) => /read path/.test(p))).toBe(true);
+    },
+  );
+});
+
+// FIX 4: registry lookups must not resolve prototype-chain members, and the
+// primitive input guard must reject prototype-chain keys as unknown.
+describe('prototype-chain safety', () => {
+  it('capability() returns undefined for inherited Object members', () => {
+    expect(capability('constructor')).toBeUndefined();
+    expect(capability('toString')).toBeUndefined();
+    expect(capability('__proto__')).toBeUndefined();
+    expect(capability('hasOwnProperty')).toBeUndefined();
+  });
+
+  it('rejects a primitive input named "constructor" as an unknown input', () => {
+    const spec = nudgeSpec({
+      steps: [{ capability: 'nudge.overdue-email', inputs: { constructor: 'x' } as Record<string, unknown> }],
+    });
+    const problems = validateComposedSpec(spec, ['gmail']);
+    expect(problems.some((p) => /unknown input/.test(p))).toBe(true);
+  });
 });
 
 /* ── interpreter dispatches the primitive through the real runner ──────────── */
@@ -118,7 +174,10 @@ interface Harness {
   executed: Array<{ capability: string }>;
 }
 
-function harness(model?: ModelDrafter, mailbox?: () => string): Harness {
+/** `mailbox` may branch on the read path (list vs meta) — the real Gmail sweep
+ *  yields two distinct path shapes, so a faithful end-to-end test must answer
+ *  each correctly. Defaults to an empty mailbox for every path. */
+function harness(model?: ModelDrafter, mailbox?: (path: string) => string): Harness {
   const runs = new MemoryRunStore(() => Date.now());
   runs.seedCredits(ACCOUNT, 100);
   const reads: string[] = [];
@@ -132,7 +191,7 @@ function harness(model?: ModelDrafter, mailbox?: () => string): Harness {
     reader: {
       async read(_c, _cap, path) {
         reads.push(path);
-        return quarantine(mailbox ? mailbox() : '{"messages":[]}', `gmail:test:${path}`);
+        return quarantine(mailbox ? mailbox(path) : '{"messages":[]}', `gmail:test:${path}`);
       },
     },
     effects: {
@@ -153,30 +212,73 @@ function nib(s: AgentSpec, stage: NibbinRef['stage'] = 'student'): NibbinRef {
 const NOW = 1_700_000_000_000;
 const DAY = 86_400_000;
 
-/** A mailbox with one overdue inbound thread (10 days stale) so the primitive
- *  drafts a follow-up. List → ids; meta → headers. */
-function overdueMailbox(): string {
-  // The reader returns the same body for every path in this stub; the primitive
-  // parses list-shaped JSON for list paths and meta-shaped for meta paths. We
-  // make a body that satisfies BOTH parses: a list with one id whose meta is
-  // an overdue inbound. Since the stub can't branch on path, we instead drive
-  // the primitive directly in the parity test; here we only assert dispatch
-  // reaches the read + ends awaiting_approval with an empty mailbox (no draft).
+/** An EMPTY mailbox — every read path returns no messages, so the primitive
+ *  yields a no-op compose ("nothing to draft") and produces NO draft. (Renamed
+ *  from the old misnamed `overdueMailbox`, which despite its name returned
+ *  `{"messages":[]}` — T1.) */
+function emptyMailbox(): string {
   return '{"messages":[]}';
 }
 
+const OVERDUE_THREAD = 'thread-1';
+
+/** A REAL overdue mailbox, path-aware: the inbox list returns one id whose meta
+ *  is an unanswered, non-reply, non-bulk inbound thread 10 days stale; the sent
+ *  list is empty. Drives the primitive to a real follow-up draft. */
+function overdueMailbox(path: string): string {
+  if (path.includes('/messages?')) {
+    const isSent = path.includes('in%3Asent') || path.includes('in:sent');
+    return isSent ? '{"messages":[]}' : `{"messages":[{"id":"${OVERDUE_THREAD}"}]}`;
+  }
+  return JSON.stringify({
+    id: OVERDUE_THREAD,
+    threadId: OVERDUE_THREAD,
+    internalDate: String(NOW - 10 * DAY),
+    payload: { headers: [
+      { name: 'From', value: 'Dana Client <dana@example.com>' },
+      { name: 'Subject', value: 'Project kickoff' },
+    ] },
+  });
+}
+
 describe('interpreter dispatches nudge.overdue-email through the runner', () => {
-  it('runs the primitive: reads the mailbox (allowlist-gated) and completes without executing', async () => {
-    const h = harness(undefined, overdueMailbox);
+  it('runs the primitive on an EMPTY mailbox: reads (allowlist-gated), no draft, no execute', async () => {
+    const h = harness(undefined, emptyMailbox);
     const s = nudgeSpec();
     const outcome = await executeRun(nib(s), TRIGGER, interpretSpec(s, CONN_MAP, NOW), h.deps);
     // Empty mailbox → the primitive yields a no-op compose ("nothing to draft")
-    // → the run completes; either way it NEVER executes a side effect.
-    expect(['completed', 'awaiting_approval']).toContain(outcome.kind);
+    // → the run completes; it NEVER executes a side effect.
+    expect(outcome.kind).toBe('completed');
     // The mailbox sweep ran through the runner's allowlist + quarantine gate.
     expect(h.reads.length).toBeGreaterThan(0);
     expect(h.reads.every((p) => p.startsWith('/gmail/'))).toBe(true);
     expect(h.executed).toHaveLength(0);
+  });
+
+  it('runs the primitive on an OVERDUE mailbox end-to-end: dispatch → runner gating → awaiting_approval follow-up draft (T2)', async () => {
+    const h = harness(undefined, overdueMailbox);
+    const s = nudgeSpec();
+    const outcome = await executeRun(nib(s), TRIGGER, interpretSpec(s, CONN_MAP, NOW), h.deps);
+
+    // A Student-stage Nibbin drafts (never executes) — School gates the side
+    // effect; the trusted primitive built the effectArgs, not the spec.
+    expect(outcome.kind).toBe('awaiting_approval');
+    if (outcome.kind !== 'awaiting_approval') throw new Error('expected awaiting_approval');
+    expect(h.executed).toHaveLength(0);
+
+    const draft = outcome.draft;
+    expect(draft.kind).toBe('draft');
+    if (draft.kind !== 'draft') throw new Error('expected a draft step');
+    expect(draft.capability).toBe('email.draft');
+    // Per-primitive trusted routine identity (echo parity key).
+    expect(draft.patternKey).toBe('email.draft:overdue-followup');
+    // The effectArgs were built by the trusted primitive (threadId + sanitized
+    // recipient + Re: subject) — the composed spec only chose the primitive id.
+    expect(draft.effectArgs).toEqual({
+      threadId: OVERDUE_THREAD,
+      to: 'dana@example.com',
+      subject: 'Re: Project kickoff',
+    });
   });
 
   it('rejects out-of-bounds params at run time too (fails cleanly, no read)', async () => {
