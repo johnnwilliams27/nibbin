@@ -120,5 +120,5 @@ export async function saveNotificationSettings(formData: FormData) {
     quiet_start: quietStart,
     quiet_end: quietEnd,
   });
-  redirect(error ? '/app/settings/privacy?error=notify' : '/app/settings/privacy?state=notify_saved');
+  redirect(error ? '/app/settings/privacy?error=quiet' : '/app/settings/privacy?state=quiet_saved');
 }

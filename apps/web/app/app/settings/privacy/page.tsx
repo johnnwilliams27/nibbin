@@ -274,8 +274,8 @@ export default async function PrivacySettingsPage({
             Pick when your grove stays quiet, and how it batches the non-urgent. Only genuinely urgent
             things cross your quiet hours.
           </p>
-          {state === 'notify_saved' && <InlineFeedback tone="success">Saved.</InlineFeedback>}
-          {error === 'notify' && <InlineFeedback tone="error">That didn&apos;t save — give it another go.</InlineFeedback>}
+          {state === 'quiet_saved' && <InlineFeedback tone="success">Saved.</InlineFeedback>}
+          {error === 'quiet' && <InlineFeedback tone="error">That didn&apos;t save — give it another go.</InlineFeedback>}
           <form action={saveNotificationSettings} className={styles.form}>
             <input type="hidden" name="email_enabled" value={emailEnabled ? 'on' : ''} />
             <div className={styles.field}>
