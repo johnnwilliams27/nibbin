@@ -6,3 +6,5 @@ export { smsAdapter, type SmsConfig } from './adapters/sms';
 export { whatsappAdapter, type WhatsAppConfig } from './adapters/whatsapp';
 export { deliverWithFallback, type ChannelStore, type DispatchContext, type DispatchResult } from './dispatch';
 export { parseTelegramUpdate, verifyTelegramSecret, telegramStartLink } from './inbound/telegram';
+export { parseTwilioInbound, verifyTwilioSignature } from './inbound/sms';
+export { parseWhatsAppWebhook, verifyMetaSignature } from './inbound/whatsapp';
