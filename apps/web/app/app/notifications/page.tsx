@@ -6,6 +6,7 @@
  */
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
+import { buildCreature, type Accessory, type Marking, type SpeciesName, type Stage } from '@nibbin/creatures';
 import { createClient } from '../../../lib/supabase/server';
 import { ensureAccount } from '../../../lib/auth/bootstrap';
 import { upsertOwnProfile } from '../../../lib/auth/profile';
@@ -21,6 +22,13 @@ interface LeafRow {
   kind: 'beat' | 'evolution' | 'graduation';
   title: string;
   body: string;
+  payload: {
+    species?: string;
+    stage?: string;
+    palette?: string | null;
+    accessory?: string;
+    marking?: string;
+  } | null;
   created_at: string;
   read_at: string | null;
 }
@@ -56,7 +64,7 @@ export default async function NotificationsPage() {
 
   const { data } = await supabase
     .from('notifications')
-    .select('id, kind, title, body, created_at, read_at')
+    .select('id, kind, title, body, payload, created_at, read_at')
     .eq('account_id', accountId)
     .order('created_at', { ascending: false })
     .limit(50);
@@ -75,8 +83,28 @@ export default async function NotificationsPage() {
         ) : (
           leaves.map((leaf) => (
             <article key={leaf.id} className={`${styles.leaf} ${leaf.read_at ? '' : styles.leafUnread}`}>
-              <h2 className={styles.leafTitle}>{leaf.title}</h2>
-              <p className={styles.leafBody}>{leaf.body}</p>
+              <div className={styles.leafRow}>
+                {leaf.payload?.species && (
+                  <span
+                    className={styles.leafCreature}
+                    aria-hidden="true"
+                    dangerouslySetInnerHTML={{
+                      __html: buildCreature({
+                        species: leaf.payload.species as SpeciesName,
+                        stage: (leaf.payload.stage ?? 'student') as Stage,
+                        color: leaf.payload.palette ?? undefined,
+                        acc: (leaf.payload.accessory ?? 'none') as Accessory,
+                        mark: (leaf.payload.marking ?? 'none') as Marking,
+                        size: 60,
+                      }),
+                    }}
+                  />
+                )}
+                <div className={styles.leafText}>
+                  <h2 className={styles.leafTitle}>{leaf.title}</h2>
+                  <p className={styles.leafBody}>{leaf.body}</p>
+                </div>
+              </div>
               {leaf.read_at ? (
                 <span className={styles.leafMeta}>Read</span>
               ) : (
