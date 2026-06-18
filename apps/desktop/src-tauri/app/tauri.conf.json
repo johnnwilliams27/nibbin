@@ -40,6 +40,7 @@
   },
   "bundle": {
     "active": true,
+    "resources": ["binaries/observerd*"],
     "targets": ["dmg", "app", "msi", "nsis"],
     "icon": [
       "icons/32x32.png",
