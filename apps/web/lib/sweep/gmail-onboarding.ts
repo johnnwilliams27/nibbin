@@ -57,16 +57,27 @@ const SENSITIVE_KEYWORDS = [
   '2fa', 'two-factor', 'two factor', 'reset your password', 'login code',
 ];
 
-export function isSensitiveThread(meta: MessageMetaLike): boolean {
+/**
+ * @param addressHeaders which address header(s) carry the counterparty. Inbox
+ *   mail is identified by `From` (the default); sent mail (#114) is always from
+ *   the user, so the bank/doctor/lawyer is in `To` — callers pass `['to']` so the
+ *   same sensitive signal gates the sent-mail Pass-1 body fetch, not just inbox.
+ */
+export function isSensitiveThread(
+  meta: MessageMetaLike,
+  addressHeaders: readonly string[] = ['from'],
+): boolean {
   const headers = meta.payload?.headers ?? [];
   const get = (name: string): string =>
     headers.find((h) => h.name.toLowerCase() === name)?.value?.toLowerCase() ?? '';
-  // Normalize From/Subject to single-space-delimited tokens, padded with spaces,
-  // so we get whole-word matching via plain includes() — no dynamic RegExp (SAST
-  // detect-non-literal-regexp) and no ReDoS surface. Keywords are normalized the
-  // same way, so multi-word / hyphenated terms (e.g. "two-factor") still match.
+  // Normalize address/Subject to single-space-delimited tokens, padded with
+  // spaces, so we get whole-word matching via plain includes() — no dynamic
+  // RegExp (SAST detect-non-literal-regexp) and no ReDoS surface. Keywords are
+  // normalized the same way, so multi-word / hyphenated terms (e.g.
+  // "two-factor") still match.
   const norm = (s: string): string => ` ${s.replace(/[^a-z0-9]+/g, ' ').trim()} `;
-  const haystack = norm(`${get('from')} ${get('subject')}`);
+  const addresses = addressHeaders.map((h) => get(h)).join(' ');
+  const haystack = norm(`${addresses} ${get('subject')}`);
   return SENSITIVE_KEYWORDS.some((kw) => haystack.includes(norm(kw)));
 }
 
@@ -150,6 +161,14 @@ export async function gmailOnboardingSweep(
     for (const id of ids) {
       if (Date.now() > deadline) { status = 'partial'; break outer; }
       if (sentFetched >= MAX_SENT_MESSAGES) { status = 'partial'; break outer; }
+      // #114: gate the sent-mail body fetch on the same sensitive signal the
+      // inbox Pass-2 uses — fetch headers first and skip before any body reaches
+      // the LLM. Sent mail is always From the user, so the bank/doctor/lawyer is
+      // in To; run the check over To/Subject. A metadata fetch failure skips the
+      // message (fail-closed), matching getMessageBody's swallow-and-skip.
+      let meta: MessageMetaLike;
+      try { meta = await client.getMessageMetadata(id); } catch { continue; }
+      if (isSensitiveThread(meta, ['to'])) continue;
       const body = await client.getMessageBody(id); // swallows failures
       if (body) {
         batchBodies.push(body);
@@ -246,15 +265,9 @@ export async function gmailOnboardingSweep(
       );
   }
 
-  // ── Insert gmail_sweep_log ───────────────────────────────────────────────
-  await svc.from('gmail_sweep_log').insert({
-    account_id: accountId,
-    connection_id: connectionId,
-    status,
-    messages_read: totalRead,
-    oldest_message_date: derived.oldestMessageDate || null,
-    error_summary: null,
-  });
-
+  // #112: the gmail_sweep_log row is no longer written here. The route claims a
+  // 'running' row up front (claim_gmail_sweep) and UPDATEs it to this final
+  // status by id — so the claim and the result are the same row, and the
+  // claim-before-work serialization holds. This function just returns the result.
   return { status, messagesRead: totalRead, derived };
 }

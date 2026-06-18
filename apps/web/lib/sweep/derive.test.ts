@@ -68,6 +68,20 @@ describe('parsePass1', () => {
     const out = parsePass1(raw);
     expect(out.voiceSamples).toEqual(['Looking forward to working together!']);
   });
+
+  it('drops inferredFacts that carry an account number / secret (#114 symmetric guard)', () => {
+    const raw = JSON.stringify({
+      voiceSamples: [],
+      inferredFacts: [
+        'Client routing number is 021000021',
+        'Runs a booking-based photography business',
+      ],
+      extraChannels: [],
+      extraTools: [],
+    });
+    const out = parsePass1(raw);
+    expect(out.inferredFacts).toEqual(['Runs a booking-based photography business']);
+  });
 });
 
 // ── isSensitiveSample (P3.9 output guard) ─────────────────────────────────────

@@ -89,6 +89,36 @@ describe('isSensitiveThread — P3.9 pre-filter', () => {
   it('returns false when headers absent', () => {
     expect(isSensitiveThread({ id: 'x', threadId: 'y' })).toBe(false);
   });
+
+  // #114: sent mail is always From the user, so the From header carries no
+  // signal — the counterparty (a bank/doctor/lawyer) is in To. Pass-1 passes
+  // ['to'] so sent mail is filtered symmetrically with the inbox.
+  describe('sent-mail variant — reads To/Subject (#114)', () => {
+    const sent = (to: string, subject: string) => ({
+      id: 'x',
+      threadId: 'y',
+      payload: { headers: [
+        { name: 'From', value: 'me@myself.com' },
+        { name: 'To', value: to },
+        { name: 'Subject', value: subject },
+      ] },
+    });
+
+    it('flags sent mail to a sensitive recipient when checking To', () => {
+      expect(isSensitiveThread(sent('billing@chase-bank.com', 'Re: my account'), ['to'])).toBe(true);
+      expect(isSensitiveThread(sent('intake@law.com', 'Re: the settlement'), ['to'])).toBe(true);
+    });
+
+    it('default From-only check misses the sensitive recipient (why ["to"] is needed)', () => {
+      // Same message, default behavior: From is the user → not flagged. This is
+      // exactly the asymmetry #114 closes for the sent pass.
+      expect(isSensitiveThread(sent('billing@chase-bank.com', 'Re: my account'))).toBe(false);
+    });
+
+    it('does not flag ordinary sent client mail', () => {
+      expect(isSensitiveThread(sent('client@example.com', 'Re: your session next week'), ['to'])).toBe(false);
+    });
+  });
 });
 
 describe('writeSweepDerivedToMemory — section gating', () => {

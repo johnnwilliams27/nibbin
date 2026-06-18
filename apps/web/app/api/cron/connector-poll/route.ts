@@ -95,8 +95,11 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         const result = await dispatchForConnection(event, {
           activeNibbinsForAccount: (accountId) => resolveNibbins(accountId),
           triggerRun: (nibbinId, trigger) => triggerNibbinRun(nibbinId, trigger),
-          // Per-(message, Nibbin) deduplication: already-dispatched Nibbins are
-          // skipped on the re-poll after a capped cycle; excess Nibbins fire.
+          // #113: read-only skip BEFORE triggerRun, so a Nibbin already fired in a
+          // prior (capped) cycle is not re-invoked while the cursor stays parked.
+          alreadyDispatched: (key) => eventStore.hasRecord('gmail', key, connection.id),
+          // Per-(message, Nibbin) deduplication: the first-fire claim, committed
+          // only after triggerRun succeeds (claim-then-commit, P2.5).
           recordOnce: (key) => eventStore.recordOnce('gmail', key, connection.id),
         });
         triggered += result.triggered;

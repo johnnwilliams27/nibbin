@@ -62,9 +62,12 @@ export function parsePass1(
       ? (r[key] as unknown[]).slice(0, arrMax).map((x) => clampProse(x, itemMax)).filter(Boolean)
       : [];
   return {
-    // P3.9: drop any voice sample carrying an obvious account-number / secret.
+    // P3.9 / #114: drop any voice sample OR inferred fact carrying an obvious
+    // account-number / secret. The output guard must be symmetric across the
+    // free-text fields the model emits — inferredFacts can just as easily carry a
+    // leaked number as voiceSamples.
     voiceSamples: clampArr('voiceSamples', 280, 3).filter((s) => !isSensitiveSample(s)),
-    inferredFacts: clampArr('inferredFacts', 120, 6),
+    inferredFacts: clampArr('inferredFacts', 120, 6).filter((s) => !isSensitiveSample(s)),
     extraChannels: clampArr('extraChannels', 40, 5),
     extraTools: clampArr('extraTools', 40, 5),
   };

@@ -31,39 +31,48 @@ export async function POST(request: NextRequest): Promise<Response> {
 
   const svc = serviceClient();
 
-  // Idempotency / cost guard: the onboarding sweep is a one-time derive per
-  // connection that reads ~90 days of inbox and spends model budget. If it
-  // already ran for this connection (complete or partial), do NOT re-run it on a
-  // callback retry or a replay of the (static) HMAC — that would re-read the
-  // whole inbox and re-spend budget. A prior 'failed' row is allowed to retry.
-  const { data: prior } = await svc
-    .from('gmail_sweep_log')
-    .select('id')
-    .eq('connection_id', connectionId)
-    .in('status', ['complete', 'partial'])
-    .limit(1)
-    .maybeSingle();
-  if (prior) {
+  // #112: atomic claim-before-work. The onboarding sweep is a one-time derive per
+  // connection that reads ~90 days of inbox and spends model budget. Replacing
+  // the old read-then-act guard, claim_gmail_sweep INSERTs a 'running' sentinel
+  // guarded by a partial unique index on (connection_id); concurrent dispatches
+  // (or replays of the static HMAC) that lose the race get a null id back and are
+  // skipped, so the full inbox is read — and budget spent — at most once. A prior
+  // 'failed' row is not in the index, so a genuine retry re-claims. The claim row
+  // is then UPDATEd to the final status by id (no concurrency on a PK update).
+  const { data: claimId, error: claimErr } = await svc.rpc('claim_gmail_sweep', {
+    _account_id: accountId,
+    _connection_id: connectionId,
+  });
+  if (claimErr) {
+    console.error('[sweep/route] claim failed', claimErr.message);
+    return NextResponse.json({ error: 'claim_failed' }, { status: 500 });
+  }
+  if (!claimId) {
     return NextResponse.json({ status: 'skipped', reason: 'already_swept' });
   }
 
   try {
     const result = await gmailOnboardingSweep(accountId, connectionId);
+    await svc
+      .from('gmail_sweep_log')
+      .update({
+        status: result.status,
+        messages_read: result.messagesRead,
+        oldest_message_date: result.derived.oldestMessageDate || null,
+        swept_at: new Date().toISOString(),
+      })
+      .eq('id', claimId);
     return NextResponse.json({ status: result.status, messagesRead: result.messagesRead });
   } catch (err) {
     console.error('[sweep/route] sweep failed', err instanceof Error ? err.message : err);
-    // Record the failure so gmail_sweep_log carries a 'failed' row with a real
-    // error_summary — without this, failures never reach the table (the success
-    // path is the only writer) and the status/error_summary columns stay dead.
+    // Finalize the claim row to 'failed' with a real error_summary. 'failed' is
+    // outside the partial unique index, so a later callback retry can re-claim.
     const errorSummary = (err instanceof Error ? err.message : String(err)).slice(0, 500);
-    const { error: logErr } = await svc.from('gmail_sweep_log').insert({
-      account_id: accountId,
-      connection_id: connectionId,
-      status: 'failed',
-      messages_read: 0,
-      error_summary: errorSummary,
-    });
-    if (logErr) console.error('[sweep/route] failed to write sweep failure log', logErr.message);
+    const { error: logErr } = await svc
+      .from('gmail_sweep_log')
+      .update({ status: 'failed', error_summary: errorSummary })
+      .eq('id', claimId);
+    if (logErr) console.error('[sweep/route] failed to finalize sweep failure log', logErr.message);
     return NextResponse.json({ error: 'sweep_failed' }, { status: 500 });
   }
 }
