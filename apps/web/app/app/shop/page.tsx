@@ -4,7 +4,8 @@ import { buildCreature, type Stage } from '@nibbin/creatures';
 import { SHOP_TEMPLATES } from '@nibbin/runtime';
 import { TIERS, type Tier } from '@nibbin/shared';
 import { appSession } from '../../../lib/auth/app-session';
-import { adoptFromShopAction } from './actions';
+import { AdoptButton } from '../../../components/adopt/AdoptButton';
+import { adoptFromShopOutcome } from './actions';
 import { AppShell } from '../../../components/shell/AppShell';
 import styles from './shop.module.css';
 
@@ -118,12 +119,11 @@ export default async function ShopPage({
                       </p>
                     </>
                   ) : (
-                    <form action={adoptFromShopAction}>
-                      <input type="hidden" name="templateKey" value={t.key} />
-                      <button className={styles.adopt} type="submit">
-                        Adopt {t.spec.displayName}
-                      </button>
-                    </form>
+                    <AdoptButton
+                      action={adoptFromShopOutcome}
+                      templateKey={t.key}
+                      label={`Adopt ${t.spec.displayName}`}
+                    />
                   )}
                 </div>
               </article>

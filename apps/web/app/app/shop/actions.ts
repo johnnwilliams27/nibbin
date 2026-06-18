@@ -1,18 +1,17 @@
 'use server';
 
 /**
- * Shop adoption action (§4.6): one tap adopts; the Nibbin hatches as an Egg
- * in the grove and the first draft follows fast. Trust-critical checks live
- * below this layer (trigger-graph validation in @nibbin/runtime, the tier cap
- * in the adopt_nibbin RPC).
+ * Shop adoption action (§4.6): one tap adopts; the Nibbin hatches in the grove
+ * and the first draft follows fast. Returns an AdoptOutcome so the client can
+ * play the hatch ceremony; the limit / missing-connector paths become a
+ * navigation the client performs.
  */
-import { redirect } from 'next/navigation';
 import { SHOP_TEMPLATE_KEYS } from '@nibbin/runtime';
 import { appSession } from '../../../lib/auth/app-session';
 import { adoptTemplate } from '../../../lib/runtime/adopt';
+import type { AdoptOutcome } from '../../../components/adopt/types';
 
-export async function adoptFromShopAction(formData: FormData): Promise<void> {
-  const templateKey = String(formData.get('templateKey') ?? '');
+export async function adoptFromShopOutcome(templateKey: string): Promise<AdoptOutcome> {
   if (!SHOP_TEMPLATE_KEYS.includes(templateKey)) throw new Error('unknown template');
 
   const { user, accountId } = await appSession();
@@ -20,17 +19,31 @@ export async function adoptFromShopAction(formData: FormData): Promise<void> {
   try {
     result = await adoptTemplate(accountId, user.id, templateKey);
   } catch (e) {
-    if (e instanceof Error && e.message === 'nibbin_limit') redirect('/app/shop?limit=1');
+    if (e instanceof Error && e.message === 'nibbin_limit') {
+      return { ok: false, redirectTo: '/app/shop?limit=1' };
+    }
     throw e;
   }
 
   if (result.missingConnectors.length > 0) {
-    redirect(
-      `/app/connections?needed=${encodeURIComponent(result.missingConnectors.join(','))}` +
+    return {
+      ok: false,
+      redirectTo:
+        `/app/connections?needed=${encodeURIComponent(result.missingConnectors.join(','))}` +
         `&resume=${encodeURIComponent(templateKey)}`,
-    );
+    };
   }
-  // the hatch ceremony and the first draft live in the grove (the Keeper rides
-  // along as the docked panel on Grove Home)
-  redirect('/app');
+
+  return {
+    ok: true,
+    nibbinId: result.nibbinId,
+    name: result.name,
+    species: result.species,
+    stage: result.stage,
+    palette: result.palette,
+    accessory: result.accessory,
+    marking: result.marking,
+    isFirstAdoption: result.isFirstAdoption,
+    ctaPath: '/app',
+  };
 }

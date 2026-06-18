@@ -6,7 +6,8 @@ import { Card, Badge, InlineFeedback } from '../../../components/ui';
 import { ProviderIcon } from '../../../components/connections/ProviderIcon';
 import { CONNECTABLE_PROVIDERS, scopeSummary, isReadOnly } from '../../../lib/connections/providers';
 import { beginConnectAction, disconnectAction } from './actions';
-import { adoptFromShopAction } from '../shop/actions';
+import { AdoptButton } from '../../../components/adopt/AdoptButton';
+import { adoptFromShopOutcome } from '../shop/actions';
 import styles from './connections.module.css';
 
 export const metadata: Metadata = { title: 'Connections — Nibbin' };
@@ -95,11 +96,12 @@ export default async function ConnectionsPage({
               ) : (
                 <p className={styles.soon}>Coming soon</p>
               )}
-              {conn && resumeHere && (
-                <form action={adoptFromShopAction}>
-                  <input type="hidden" name="templateKey" value={sp.resume} />
-                  <button className={styles.connect} type="submit">Finish adopting</button>
-                </form>
+              {conn && resumeHere && sp.resume && (
+                <AdoptButton
+                  action={adoptFromShopOutcome}
+                  templateKey={sp.resume}
+                  label="Finish adopting"
+                />
               )}
             </Card>
           );
