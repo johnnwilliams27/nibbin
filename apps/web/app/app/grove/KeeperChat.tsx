@@ -59,6 +59,48 @@ export interface Celebration {
   marking: string;
 }
 
+/** §9: a creature-engine failure (e.g. a legacy/malformed species) must fall
+ *  back to copy-only — never a thrown render. Build defensively. */
+function safeCelebrationSvg(c: Celebration): string {
+  try {
+    return buildCreature({
+      species: c.species as SpeciesName,
+      stage: c.stage as Stage,
+      color: c.palette ?? undefined,
+      acc: c.accessory as Accessory,
+      mark: c.marking as Marking,
+      size: 56,
+    });
+  } catch {
+    return '';
+  }
+}
+
+/** The in-grove promotion celebration (Beat 3): the promoted Nibbin's creature
+ *  at its new stage + the earned line. Copy-only if the engine can't render. */
+function CelebrationBubble({ celebration }: { celebration: Celebration }) {
+  const svg = safeCelebrationSvg(celebration);
+  return (
+    <div className={styles.celebrationCard}>
+      {svg && (
+        <span
+          className={styles.celebrateCreature}
+          aria-hidden="true"
+          // creature SVG is built by the in-repo @nibbin/creatures engine from
+          // fixed enum fields on a trusted notifications row — never user HTML
+          // (same trust basis as nibbins/page.tsx).
+          // nosemgrep: typescript.react.security.audit.react-dangerouslysetinnerhtml.react-dangerouslysetinnerhtml
+          dangerouslySetInnerHTML={{ __html: svg }}
+        />
+      )}
+      <span className={styles.celebrateText}>
+        <strong className={styles.celebrateTitle}>{celebration.title}</strong>
+        <span className={styles.celebrateLine}>{celebration.line}</span>
+      </span>
+    </div>
+  );
+}
+
 export function KeeperChat({
   initialMessages,
   initialExpression,
@@ -312,30 +354,7 @@ export function KeeperChat({
     <div className={styles.log} role="log" aria-live="polite" ref={logRef} tabIndex={0}>
       {items.map((item) =>
         item.celebration ? (
-          <div key={item.id} className={styles.celebrationCard}>
-            <span
-              className={styles.celebrateCreature}
-              aria-hidden="true"
-              // creature SVG is built by the in-repo @nibbin/creatures engine from
-              // fixed enum fields on a trusted notifications row — never user HTML
-              // (same trust basis as nibbins/page.tsx).
-              // nosemgrep: typescript.react.security.audit.react-dangerouslysetinnerhtml.react-dangerouslysetinnerhtml
-              dangerouslySetInnerHTML={{
-                __html: buildCreature({
-                  species: item.celebration.species as SpeciesName,
-                  stage: item.celebration.stage as Stage,
-                  color: item.celebration.palette ?? undefined,
-                  acc: item.celebration.accessory as Accessory,
-                  mark: item.celebration.marking as Marking,
-                  size: 56,
-                }),
-              }}
-            />
-            <span className={styles.celebrateText}>
-              <strong className={styles.celebrateTitle}>{item.celebration.title}</strong>
-              <span className={styles.celebrateLine}>{item.celebration.line}</span>
-            </span>
-          </div>
+          <CelebrationBubble key={item.id} celebration={item.celebration} />
         ) : item.from === 'user' ? (
           <div key={item.id} className={styles.userBubble}>
             {item.text}
