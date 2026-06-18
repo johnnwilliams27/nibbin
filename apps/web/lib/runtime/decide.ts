@@ -11,6 +11,7 @@ import { serviceClient } from '../supabase/service';
 import { SupabaseEventSink } from './stores';
 import { maybePromote } from './engine';
 import { maybeDriftNudge } from './drift';
+import { writeMemoryFromDecision } from '../memory/extract';
 
 export type DraftDecision = 'approved' | 'edited' | 'rejected';
 
@@ -91,6 +92,16 @@ export async function decideDraft(
 
   // R2: a degrading Senior/Grad gets a calm, human-only nudge (best-effort).
   await maybeDriftNudge(svc, accountId, run.nibbin_id as string);
+
+  // §12A: learn durable memory from this decision (best-effort, never blocks —
+  // the writer swallows its own errors and re-checks redaction on every entry).
+  await writeMemoryFromDecision({
+    accountId,
+    userId,
+    runId,
+    nibbinId: run.nibbin_id as string,
+    decision,
+  });
 
   return { decision, promotedTo, firstApproval };
 }
