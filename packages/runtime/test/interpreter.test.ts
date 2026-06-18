@@ -5,9 +5,10 @@
  * yields steps; the runner enforces allowlist / quarantine / School / grants /
  * idempotency / ceilings.
  */
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { quarantine } from '@nibbin/connectors';
 import {
+  CAPABILITY_REGISTRY,
   executeRun,
   interpretSpec,
   MemoryEventSink,
@@ -15,10 +16,12 @@ import {
   MemoryIdempotencyStore,
   MemoryRoutineStore,
   MemoryRunStore,
+  PRIMITIVE_IMPLS,
   type AgentSpec,
   type CapabilityStep,
   type ModelDrafter,
   type NibbinRef,
+  type ProgramStep,
   type RunnerDeps,
   type RunTrigger,
 } from '../src/index';
@@ -265,5 +268,73 @@ describe('interpretSpec — runs a declarative steps-spec via the real runner', 
     const step = await gen.next();
     if (step.done || step.value.kind !== 'draft') throw new Error('expected a draft step');
     expect(step.value.patternKey).toBe('email.draft:overdue-followup');
+  });
+
+  /* ── FIX 3: STRUCTURAL read↔presentation invariant ─────────────────────────
+   * A read-sideEffect primitive may only yield a draft step as a PRESENTATION.
+   * A non-presentation draft from a read-classified capability would reach the
+   * School gate as an EXECUTABLE draft (promoting a read into an autonomous
+   * write). The interpreter rejects it structurally, not by convention. We
+   * register a synthetic read-primitive whose yielded draft's presentation flag
+   * is the only variable. */
+
+  const MOCK_READ_PRIM = 'mock.read-prim';
+
+  /** Register a synthetic read-sideEffect primitive that yields a single draft
+   *  step with the given presentation flag, then clean up after the test. */
+  function registerMockReadPrimitive(presentation: boolean): void {
+    CAPABILITY_REGISTRY[MOCK_READ_PRIM] = {
+      id: MOCK_READ_PRIM,
+      resource: 'email',
+      verb: 'mock',
+      sideEffect: 'read',
+      requiredConnector: 'gmail',
+      kind: 'primitive',
+      inputSchema: {},
+      effectiveTools: ['email.read'],
+    };
+    PRIMITIVE_IMPLS[MOCK_READ_PRIM] = (_inputs, connMap) =>
+      async function* (): AsyncGenerator<ProgramStep, void, unknown> {
+        const gmail = connMap.gmail;
+        if (!gmail) throw new Error('no active gmail connection');
+        yield {
+          kind: 'draft',
+          capability: 'email.read',
+          connectionId: gmail,
+          patternKey: 'mock:read',
+          presentation,
+          title: 'mock',
+          draft: 'mock body',
+          effectArgs: {},
+        };
+      };
+  }
+
+  afterEach(() => {
+    delete CAPABILITY_REGISTRY[MOCK_READ_PRIM];
+    delete PRIMITIVE_IMPLS[MOCK_READ_PRIM];
+  });
+
+  it('rejects a read-primitive that yields a NON-presentation side effect (run fails cleanly)', async () => {
+    registerMockReadPrimitive(false);
+    const h = harness();
+    const s = spec([{ capability: MOCK_READ_PRIM, inputs: {} }]);
+    const outcome = await executeRun(nib(s), TRIGGER, interpretSpec(s, CONN_MAP), h.deps);
+    expect(outcome.kind).toBe('failed');
+    if (outcome.kind !== 'failed') throw new Error('expected failed');
+    expect(outcome.error).toContain('non-presentation side effect');
+    // It never reached the gate as an executable draft.
+    expect(h.executed).toHaveLength(0);
+  });
+
+  it('allows a read-primitive that yields a PRESENTATION side effect (drafts, never executes)', async () => {
+    registerMockReadPrimitive(true);
+    const h = harness();
+    const s = spec([{ capability: MOCK_READ_PRIM, inputs: {} }]);
+    const outcome = await executeRun(nib(s), TRIGGER, interpretSpec(s, CONN_MAP), h.deps);
+    expect(outcome.kind).toBe('awaiting_approval');
+    if (outcome.kind !== 'awaiting_approval') throw new Error('expected awaiting_approval');
+    expect(outcome.draft.presentation).toBe(true);
+    expect(h.executed).toHaveLength(0);
   });
 });
