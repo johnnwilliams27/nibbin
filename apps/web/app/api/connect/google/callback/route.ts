@@ -8,6 +8,7 @@ import { consumePending, type PendingAuth } from '../../../../../lib/connections
 import { completeConnection } from '../../../../../lib/connections/complete';
 import { adoptTemplate } from '../../../../../lib/runtime/adopt';
 import { createWriteGrant } from '../../../../../lib/connections/grants';
+import { siteOrigin } from '../../../../../lib/site-url';
 import { onGmailConnected } from '../../../../../lib/sweep/dispatch';
 
 export const dynamic = 'force-dynamic';
@@ -150,11 +151,14 @@ export async function GET(request: NextRequest): Promise<Response> {
     },
   );
 
-  // Dispatch sweep (fire-and-forget) iff the user gave sweep consent
-  if (createdConnectionId) {
-    const capturedPending = createdPending as PendingAuth | null;
-    const pendingConsent = capturedPending?.sweepConsent ?? false;
-    await onGmailConnected(svc, request.url, createdConnectionId, pendingConsent, createdPendingUserId ?? '');
+  // Dispatch sweep (fire-and-forget) iff the user gave sweep consent.
+  // Use siteOrigin() — NOT request.url — for the internal HMAC-bearing worker
+  // POST: request.url derives from the attacker-influenceable Host header on
+  // Vercel, so the credentials must only ever go to our pinned origin (RT-2).
+  if (createdConnectionId && createdPendingUserId) {
+    // cast needed: TS narrows the closure-assigned `createdPending` to `never` here.
+    const pendingConsent = (createdPending as PendingAuth | null)?.sweepConsent ?? false;
+    await onGmailConnected(svc, siteOrigin(), createdConnectionId, pendingConsent, createdPendingUserId);
   }
 
   return NextResponse.redirect(new URL(redirectTo, request.url));

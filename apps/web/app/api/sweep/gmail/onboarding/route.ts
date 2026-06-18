@@ -45,7 +45,7 @@ export async function POST(request: NextRequest): Promise<Response> {
   }
 
   // #112: atomic claim-before-work. The onboarding sweep is a one-time derive per
-  // connection that reads ~90 days of inbox and spends model budget. Replacing
+  // connection that reads ~12 months of inbox and spends model budget. Replacing
   // the old read-then-act guard, claim_gmail_sweep INSERTs a 'running' sentinel
   // guarded by a partial unique index on (connection_id); concurrent dispatches
   // (or replays of the static HMAC) that lose the race get a null id back and are
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest): Promise<Response> {
     // Finalize the claim row. The expensive sweep has already run, so this is
     // pure bookkeeping — but a SILENTLY-dropped failure here would leave the row
     // stuck 'running', and the 15-min stale-reclaim would then re-run the whole
-    // ~90-day sweep and re-spend the model budget (the very double-spend #112
+    // ~12-month sweep and re-spend the model budget (the very double-spend #112
     // exists to prevent). So we capture the error and retry once, symmetric with
     // the failure path below which already checks its result.
     const finalize = () =>

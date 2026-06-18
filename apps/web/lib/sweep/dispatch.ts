@@ -40,6 +40,11 @@ export async function onGmailConnected(
   sweepConsent: boolean,
   userId: string,
 ): Promise<{ dispatched: boolean }> {
+  // Only an affirmative opt-in in THIS flow triggers a sweep. A pre-existing
+  // consent stamp must NOT re-fire the sweep on an unrelated action that reuses
+  // the connection row (e.g. a write-scope upgrade) — gate LS-1.
+  if (!sweepConsent) return { dispatched: false };
+
   const { data: conn } = await svc
     .from('connections')
     .select('account_id, provider, sweep_consent_at')
@@ -47,16 +52,13 @@ export async function onGmailConnected(
     .maybeSingle();
   if (!conn || conn.provider !== 'gmail') return { dispatched: false };
 
-  let consentAt = conn.sweep_consent_at as string | null;
-  if (sweepConsent && !consentAt) {
-    const now = new Date().toISOString();
+  // Record consent if this is the first opt-in; a prior stamp is left as-is.
+  if (!conn.sweep_consent_at) {
     await svc
       .from('connections')
-      .update({ sweep_consent_at: now, sweep_consent_by: userId })
+      .update({ sweep_consent_at: new Date().toISOString(), sweep_consent_by: userId })
       .eq('id', connectionId);
-    consentAt = now;
   }
-  if (!consentAt) return { dispatched: false };
 
   const hmac = makeSweepHmac(conn.account_id as string, connectionId);
   if (!hmac) return { dispatched: false };
