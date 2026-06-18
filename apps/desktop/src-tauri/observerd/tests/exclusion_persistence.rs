@@ -36,7 +36,11 @@ fn an_exclusion_survives_a_daemon_restart() {
     append_line(&control, "{\"cmd\":\"start\"}");
     append_line(&control, "{\"cmd\":\"add_exclusion\",\"host\":\"a.com\"}");
     let out1 = run_observerd(dir.path(), now);
-    assert!(out1.status.success(), "stderr: {}", String::from_utf8_lossy(&out1.stderr));
+    assert!(
+        out1.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&out1.stderr)
+    );
 
     let after1: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(dir.path().join("exclusions.json")).unwrap())
@@ -47,7 +51,11 @@ fn an_exclusion_survives_a_daemon_restart() {
     // control.offset means a.com's line is never re-applied.
     append_line(&control, "{\"cmd\":\"add_exclusion\",\"host\":\"b.com\"}");
     let out2 = run_observerd(dir.path(), now);
-    assert!(out2.status.success(), "stderr: {}", String::from_utf8_lossy(&out2.stderr));
+    assert!(
+        out2.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&out2.stderr)
+    );
 
     let after2: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(dir.path().join("exclusions.json")).unwrap())
@@ -88,9 +96,20 @@ fn a_failed_exclusion_save_blocks_capture_instead_of_silently_enforcing() {
     append_line(&control, "{\"cmd\":\"start\"}");
     append_line(&control, "{\"cmd\":\"add_exclusion\",\"host\":\"a.com\"}");
     let out = run_observerd(dir.path(), "2026-06-12T08:00:00Z");
-    assert!(out.status.success(), "stderr: {}", String::from_utf8_lossy(&out.stderr));
-    assert!(!dir.path().join("exclusions.json").exists(), "must not persist on save failure");
+    assert!(
+        out.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        !dir.path().join("exclusions.json").exists(),
+        "must not persist on save failure"
+    );
     let status: serde_json::Value =
-        serde_json::from_str(&std::fs::read_to_string(dir.path().join("daemon.status")).unwrap()).unwrap();
-    assert!(!status["capture_blocked"].is_null(), "capture must be blocked + surfaced on save failure");
+        serde_json::from_str(&std::fs::read_to_string(dir.path().join("daemon.status")).unwrap())
+            .unwrap();
+    assert!(
+        !status["capture_blocked"].is_null(),
+        "capture must be blocked + surfaced on save failure"
+    );
 }

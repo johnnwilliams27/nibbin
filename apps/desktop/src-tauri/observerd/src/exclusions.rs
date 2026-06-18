@@ -24,8 +24,9 @@ pub fn save_exclusions(root: &Path, ex: &UserExclusions) -> anyhow::Result<()> {
 pub fn load_exclusions(root: &Path) -> anyhow::Result<UserExclusions> {
     let path = root.join(FILE);
     match std::fs::read_to_string(&path) {
-        Ok(text) => serde_json::from_str(&text)
-            .with_context(|| format!("{} is corrupt", path.display())),
+        Ok(text) => {
+            serde_json::from_str(&text).with_context(|| format!("{} is corrupt", path.display()))
+        }
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(UserExclusions::default()),
         Err(e) => Err(e).with_context(|| format!("reading {}", path.display())),
     }
@@ -38,7 +39,10 @@ mod tests {
     #[test]
     fn round_trips_through_disk() {
         let dir = tempfile::tempdir().unwrap();
-        let ex = UserExclusions { hosts: vec!["evil.com".into()], ..Default::default() };
+        let ex = UserExclusions {
+            hosts: vec!["evil.com".into()],
+            ..Default::default()
+        };
         save_exclusions(dir.path(), &ex).unwrap();
         let back = load_exclusions(dir.path()).unwrap();
         assert_eq!(back.hosts, vec!["evil.com".to_string()]);
@@ -55,6 +59,9 @@ mod tests {
     fn corrupt_file_fails_closed() {
         let dir = tempfile::tempdir().unwrap();
         std::fs::write(dir.path().join("exclusions.json"), b"{not json").unwrap();
-        assert!(load_exclusions(dir.path()).is_err(), "corrupt file must fail closed");
+        assert!(
+            load_exclusions(dir.path()).is_err(),
+            "corrupt file must fail closed"
+        );
     }
 }

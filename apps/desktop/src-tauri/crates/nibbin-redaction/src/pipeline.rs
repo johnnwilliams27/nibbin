@@ -184,7 +184,10 @@ mod tests {
     fn exclusions_accessor_reflects_adds() {
         let mut p = RedactionPipeline::new(HeuristicNer);
         assert!(p.exclusions().hosts.is_empty());
-        p.add_exclusions(UserExclusions { hosts: vec!["a.com".into()], ..Default::default() });
+        p.add_exclusions(UserExclusions {
+            hosts: vec!["a.com".into()],
+            ..Default::default()
+        });
         assert_eq!(p.exclusions().hosts, vec!["a.com".to_string()]);
     }
 }
