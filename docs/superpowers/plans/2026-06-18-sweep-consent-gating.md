@@ -21,7 +21,7 @@
 
 | File | Responsibility | Action |
 |---|---|---|
-| `supabase/migrations/20260618040000_sweep_consent.sql` | consent columns | create |
+| `supabase/migrations/20260618060000_sweep_consent.sql` | consent columns | create |
 | `apps/web/lib/connections/pending.ts` | thread `sweepConsent` through store/consume | modify |
 | `apps/web/lib/connections/begin.ts` | accept + forward `sweepConsent` | modify |
 | `apps/web/lib/sweep/dispatch.ts` | extracted sweep dispatch + consent-stamp-and-dispatch helper | create |
@@ -39,7 +39,7 @@
 ### Task 1: Migration — consent columns
 
 **Files:**
-- Create: `supabase/migrations/20260618040000_sweep_consent.sql`
+- Create: `supabase/migrations/20260618060000_sweep_consent.sql`
 
 **Interfaces:**
 - Produces: `oauth_pending_authorizations.sweep_consent boolean`, `connections.sweep_consent_at timestamptz`, `connections.sweep_consent_by uuid`.
@@ -79,7 +79,7 @@ Expected: `sweep_consent_at`, `sweep_consent_by`.
 - [ ] **Step 4: Commit**
 
 ```bash
-git add supabase/migrations/20260618040000_sweep_consent.sql
+git add supabase/migrations/20260618060000_sweep_consent.sql
 git commit -m "feat(db): sweep consent columns (pending.sweep_consent, connections.sweep_consent_at/by)"
 ```
 
