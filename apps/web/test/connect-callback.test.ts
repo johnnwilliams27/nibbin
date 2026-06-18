@@ -6,7 +6,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 const pending: PendingAuth = {
   state: 's', provider: 'gmail', accountId: 'a', userId: 'u', codeVerifier: 'v',
   scopes: ['https://www.googleapis.com/auth/gmail.readonly'], returnTo: '/app/connections',
-  resumeTemplate: null, nibbinId: null, expiresAt: new Date(Date.now() + 60000).toISOString(), consumedAt: null,
+  resumeTemplate: null, nibbinId: null, sweepConsent: false, expiresAt: new Date(Date.now() + 60000).toISOString(), consumedAt: null,
 };
 
 interface FakeCalls {
