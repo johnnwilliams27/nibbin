@@ -41,5 +41,10 @@ This spec spans multiple independent subsystems, so per `superpowers:writing-pla
 ## Status
 - [x] Worktree + baseline install
 - [x] Codebase mapping (5 agents)
-- [ ] Plan 01 — schema foundation (drafted; awaiting review)
-- [ ] Plans 02–06 (pending)
+- [x] Plan 01 — schema foundation (drafted; awaiting review)
+- [x] Plan 02 — delivery adapters (drafted)
+- [x] Plan 03 — inbound ingest & identity (drafted)
+- [x] Plan 04 — multi-channel prefs UI (drafted)
+- [x] Plan 05 — conversation orchestrator + cost/abuse (drafted)
+- [x] Plan 06 — offline enablement (drafted)
+- [ ] Review gate → implementation (Plan 01 first; adversarial gate runs on the sensitive-surface PRs per feedback)
