@@ -25,6 +25,13 @@ export interface AdoptResult {
   /** Outcome of the first dispatched run (§4.1 step 7 — first value fast). */
   firstRun: RunOutcome | null;
   missingConnectors: string[];
+  /** Creature appearance for the hatch ceremony (resolved template ∪ override). */
+  species: string;
+  palette: string;
+  accessory: string;
+  marking: string;
+  /** True when this is the account's first non-sleeping Nibbin (hero ceremony). */
+  isFirstAdoption: boolean;
 }
 
 async function accountSpecs(svc: SupabaseClient, accountId: string): Promise<AgentSpec[]> {
@@ -71,6 +78,17 @@ export async function adoptTemplate(
   const connections = await activeConnections(svc, accountId);
   const have = new Set(connections.map((c) => c.provider));
   const missing = template.spec.requiredConnectors.filter((p) => !have.has(p));
+
+  // §4.1: the hero hatch only plays for the account's FIRST Nibbin. Count
+  // non-sleeping Nibbins BEFORE we write the new one.
+  const { count: existingCount, error: countErr } = await svc
+    .from('nibbins')
+    .select('id', { count: 'exact', head: true })
+    .eq('account_id', accountId)
+    .neq('status', 'sleeping');
+  if (countErr) throw new Error(`nibbin count failed: ${countErr.message}`);
+  const isFirstAdoption = (existingCount ?? 0) === 0;
+
   if (missing.length > 0) {
     return {
       nibbinId: '',
@@ -79,6 +97,11 @@ export async function adoptTemplate(
       stage: 'egg',
       firstRun: null,
       missingConnectors: missing,
+      species,
+      palette,
+      accessory,
+      marking,
+      isFirstAdoption,
     };
   }
 
@@ -123,7 +146,19 @@ export async function adoptTemplate(
     firstRun = await triggerNibbinRun(nibbinId, { kind: 'user', key: 'adoption.first-run' });
   }
 
-  return { nibbinId, name, templateKey, stage: hatched ? 'student' : 'egg', firstRun, missingConnectors: [] };
+  return {
+    nibbinId,
+    name,
+    templateKey,
+    stage: hatched ? 'student' : 'egg',
+    firstRun,
+    missingConnectors: [],
+    species,
+    palette,
+    accessory,
+    marking,
+    isFirstAdoption,
+  };
 }
 
 function hashCode(s: string): number {
