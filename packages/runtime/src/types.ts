@@ -79,6 +79,31 @@ export interface CreditProfile {
   ceilings: RunCeilings;
 }
 
+/**
+ * A composed step (Composer/Planner output, §4). `capability` refs
+ * CAPABILITY_REGISTRY; the interpreter validates it and yields a ProgramStep
+ * the runner gates. `prompt` present = a generative draft (model). Absent for
+ * template agents, which run their hand-written program instead.
+ */
+export interface CapabilityStep {
+  capability: string;                  // refs CAPABILITY_REGISTRY
+  inputs?: Record<string, unknown>;    // bound args: a read `path`, or draft `effectArgs`
+  prompt?: ComposePrompt;              // present = generative draft (model)
+  presentation?: boolean;              // no-side-effect presentation draft
+  title?: string;
+  /**
+   * Optional semantic routine-identity for this step (e.g.
+   * `email.draft:overdue-followup`). When set, the interpreter uses it
+   * verbatim as the step's patternKey so a Composer/author can give two
+   * distinct drafts distinct routine-approval identities (§4.7). Absent: the
+   * interpreter derives a per-step key (prefix:templateKey#idx) so steps still
+   * never collapse into one identity (logic-skeptic P2-3).
+   */
+  patternKey?: string;
+}
+
+export interface PersonaPolicy { voice?: string; tone?: string; brandKit?: string }
+
 export interface AgentSpec {
   /** Shop template key; null for custom hatch-wizard specs. */
   templateKey: string | null;
@@ -90,6 +115,10 @@ export interface AgentSpec {
   triggers: TriggerDef[];
   curriculum: CurriculumConfig;
   creditProfile: CreditProfile;
+  /** Composed steps (Composer/Planner output). Absent for template agents,
+   *  which run their hand-written program. */
+  steps?: CapabilityStep[];
+  personaPolicy?: PersonaPolicy;
 }
 
 /* ── Runs ─────────────────────────────────────────────────────────────────── */

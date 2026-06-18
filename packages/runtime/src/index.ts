@@ -12,6 +12,8 @@
  * the money- and trust-critical checks in SQL.
  */
 export * from './types';
+export * from './capabilities';
+export * from './interpreter';
 export * from './events';
 export * from './validate';
 export * from './school';
