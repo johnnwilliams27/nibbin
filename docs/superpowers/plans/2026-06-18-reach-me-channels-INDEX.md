@@ -39,12 +39,20 @@ This spec spans multiple independent subsystems, so per `superpowers:writing-pla
 - **Don't touch `reference/*.html`.**
 
 ## Status
-- [x] Worktree + baseline install
-- [x] Codebase mapping (5 agents)
-- [x] Plan 01 — schema foundation (drafted; awaiting review)
-- [x] Plan 02 — delivery adapters (drafted)
-- [x] Plan 03 — inbound ingest & identity (drafted)
-- [x] Plan 04 — multi-channel prefs UI (drafted)
-- [x] Plan 05 — conversation orchestrator + cost/abuse (drafted)
-- [x] Plan 06 — offline enablement (drafted)
-- [ ] Review gate → implementation (Plan 01 first; adversarial gate runs on the sensitive-surface PRs per feedback)
+- [x] Worktree + baseline install · codebase mapping (5 agents) · all 6 plans drafted
+- [x] **Plan 01 — schema foundation** — BUILT + opus-reviewed (ready to merge). Live-DB RLS gate caught 2 real bugs.
+- [x] **Plan 02 — delivery adapters** — BUILT + opus-reviewed (ready to merge). Floor + Telegram (live) + SMS/WhatsApp (inert), dispatcher, fallback.
+- [x] **Plan 03 — inbound + identity** — BUILT + opus-reviewed (fixed a silent message-loss path the final review caught).
+- [x] **Plan 04 — multi-channel prefs UI** — BUILT + opus-reviewed (ready to merge).
+- [x] **Plan 05 — conversation + §11 cost/abuse + on-channel approval bridge** — BUILT; **4-reviewer adversarial gate PASS after fixes** (2 P1s: empty-secret fail-open, inert gate p_account; + 2 P2 hardenings). Gate record: `docs/gates/2026-06-18-reach-me-conversation-approval.md`.
+- [ ] **Plan 06 — offline enablement** — NOT BUILT (the 10DLC/Meta checklist + consent/STOP-HELP/subprocessor scaffolding).
+- [ ] PR + migrations to dev/staging/prod (timestamps may need renumbering on rebase) + human gate sign-off.
+
+### Migrations added (apply dev/staging/prod at PR time, in order)
+`20260618030000` channels schema · `20260618040000` channel RPCs · `20260618050000` notifications 'reach' kind · `20260618060000` model_calls origin/channel · `20260618070000` channel budgets · `20260618080000` approval bridge (linked_by + decide_run_service).
+
+### Cross-cutting follow-ups (from reviews/gate)
+- Spend cap is rolling-soft; turn-count is the hard backstop (decide hard-vs-soft; align spend/turn windows).
+- Drip worker should read `notification_settings` quiet-hours, then retire the `drip_arcs` mirror.
+- Anomaly v1 fixed-threshold → AS-§18.4 adaptive baseline.
+- `next build` not yet run E2E (transpilePackages/extensionAlias wired; verify at deploy).
