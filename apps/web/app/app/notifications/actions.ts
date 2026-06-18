@@ -14,6 +14,7 @@ export interface Leaf {
   ctaLabel: string | null;
   createdAt: string;
   read: boolean;
+  creature: { species: string; stage: string; palette: string | null; accessory: string; marking: string } | null;
 }
 
 async function resolve() {
@@ -45,12 +46,25 @@ export async function listLeaves(limit = 12): Promise<{ items: Leaf[]; unread: n
     .limit(limit);
   const rows = (data ?? []) as Array<{
     id: string; kind: Leaf['kind']; title: string; body: string;
-    payload: { ctaPath?: string; ctaLabel?: string } | null; created_at: string; read_at: string | null;
+    payload: {
+      ctaPath?: string; ctaLabel?: string;
+      species?: string; stage?: string; palette?: string | null; accessory?: string; marking?: string;
+    } | null;
+    created_at: string; read_at: string | null;
   }>;
   const items: Leaf[] = rows.map((r) => ({
     id: r.id, kind: r.kind, title: r.title, body: r.body,
     ctaPath: r.payload?.ctaPath ?? null, ctaLabel: r.payload?.ctaLabel ?? null,
     createdAt: r.created_at, read: r.read_at != null,
+    creature: r.payload?.species
+      ? {
+          species: r.payload.species as string,
+          stage: r.payload.stage as string,
+          palette: (r.payload.palette as string) ?? null,
+          accessory: (r.payload.accessory as string) ?? 'none',
+          marking: (r.payload.marking as string) ?? 'none',
+        }
+      : null,
   }));
   const { count } = await supabase
     .from('notifications')

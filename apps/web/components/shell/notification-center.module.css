@@ -36,6 +36,10 @@
 }
 .leaf:hover { background: var(--understory); }
 .leaf:last-child { border-bottom: none; }
+.leafRow { display: flex; gap: 10px; align-items: flex-start; }
+.leafCreature { flex-shrink: 0; line-height: 0; margin-top: 2px; }
+.leafCreature :global(svg) { display: block; }
+.leafText { display: flex; flex-direction: column; min-width: 0; }
 .leafUnread { background: var(--moss-tint, #EFF4E4); }
 .leafUnread:hover { background: var(--moss-tint, #EFF4E4); }
 .leafTitle { font-weight: 700; font-size: 13.5px; color: var(--ink); margin: 0 0 2px; }
