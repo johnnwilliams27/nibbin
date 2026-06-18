@@ -11,6 +11,7 @@ export interface StudyStatus {
   remaining_ms: number | null;
   paused: boolean | null;
   pipeline_halted: boolean | null;
+  daemon_health: string | null;
   study: unknown;
 }
 
@@ -49,6 +50,7 @@ export const bridge = {
       remaining_ms: null,
       paused: null,
       pipeline_halted: null,
+      daemon_health: null,
       study: null,
     }),
   sendControl: (cmd: string) => call<void>('send_control', { cmd }, undefined),

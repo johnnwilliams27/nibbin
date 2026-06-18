@@ -196,20 +196,45 @@ function stateView(status: StudyStatus, onOpenReview: () => void, rerender: () =
 }
 
 /**
+ * Copy for the daemon-health note. `health` is read_status's daemon_health:
+ * null/empty → the daemon is merely starting (transient); a non-empty string
+ * (e.g. "install_failed: ...") → registration actually failed (CB2).
+ */
+export function daemonNoteCopy(health: string | null | undefined): {
+  eyebrow: string;
+  lines: string[];
+} {
+  if (health && health.trim()) {
+    // Strip the internal "install_failed: " prefix for a human-facing reason.
+    const reason = health.replace(/^install_failed:\s*/, '').trim();
+    return {
+      eyebrow: 'Background watcher',
+      lines: [
+        `Nibbin couldn't start its background recorder${reason ? `: ${reason}` : '.'}`,
+        `Try again, or reinstall Nibbin. Until it starts, a study can't capture.`,
+      ],
+    };
+  }
+  return {
+    eyebrow: 'Background watcher',
+    lines: [
+      `The background process isn't reporting yet — it may still be starting up. You can start a study now; it will run when the watcher comes online.`,
+      `If this keeps showing, start it from the menu bar or reinstall.`,
+    ],
+  };
+}
+
+/**
  * Small daemon-health note shown beneath entry cards when the daemon is
  * (still) offline. Keeps guidance accessible without blocking the start flow.
  * The Retry button calls `onRetry`, which should run the same 3× cold-start
  * poll as mount (`paint(true)`) so a real cold-start resolves on retry.
  */
-function daemonHealthNote(onRetry: () => void): HTMLElement {
+function daemonHealthNote(onRetry: () => void, health?: string | null): HTMLElement {
+  const copy = daemonNoteCopy(health);
   return el('div', { class: 'card daemon-health-note' }, [
-    el('p', { class: 'eyebrow' }, ['Background watcher']),
-    el('p', { class: 'muted' }, [
-      `The background process isn't reporting yet — it may still be starting up. You can start a study now; it will run when the watcher comes online.`,
-    ]),
-    el('p', { class: 'muted' }, [
-      `If this keeps showing, start it from the menu bar or reinstall.`,
-    ]),
+    el('p', { class: 'eyebrow' }, [copy.eyebrow]),
+    ...copy.lines.map((line) => el('p', { class: 'muted' }, [line])),
     el('div', { class: 'row' }, [button('Retry', onRetry)]),
   ]);
 }
@@ -227,7 +252,12 @@ function daemonHealthNote(onRetry: () => void): HTMLElement {
  * defaults to `onChanged` but callers can pass `() => void paint(true)` to run
  * the 3× cold-start poll (NIB-7 fold-in fix B).
  */
-function entryView(onChanged: () => void, showDaemonNote = false, onRetry?: () => void): HTMLElement {
+function entryView(
+  onChanged: () => void,
+  showDaemonNote = false,
+  onRetry?: () => void,
+  health?: string | null,
+): HTMLElement {
   const root = el('div', {});
   const mount = el('div', {});
 
@@ -280,8 +310,7 @@ function entryView(onChanged: () => void, showDaemonNote = false, onRetry?: () =
 
     const children: HTMLElement[] = [fullCard, scanCard];
     if (showDaemonNote) {
-      // Use onRetry (paint(true)) if provided, else fall back to onChanged.
-      children.push(daemonHealthNote(onRetry ?? onChanged));
+      children.push(daemonHealthNote(onRetry ?? onChanged, health));
     }
     mount.replaceChildren(...children);
   }
@@ -489,7 +518,7 @@ export function fieldStudyView(_rerender: () => void): HTMLElement {
           );
         } else {
           const showDaemonNote = status.state !== 'NOT_STARTED';
-          mount.append(entryView(() => void paint(), showDaemonNote, () => void paint(true)));
+          mount.append(entryView(() => void paint(), showDaemonNote, () => void paint(true), status.daemon_health));
         }
         break;
       }
