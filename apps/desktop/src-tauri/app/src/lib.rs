@@ -231,15 +231,23 @@ pub fn run() {
                         let hours = (remaining_ms % 86_400_000) / 3_600_000;
                         // Kind-aware copy: a quick scan never says "field study"
                         // and omits the days field (its window is hours-scale).
-                        let is_quick_scan = status
-                            .get("study")
+                        let study_obj = status.get("study");
+                        let is_quick_scan = study_obj
                             .and_then(|s| s.get("kind"))
                             .and_then(|k| k.as_str())
                             == Some("quick_scan");
+                        let depth_label = match study_obj
+                            .and_then(|s| s.get("depth"))
+                            .and_then(|d| d.as_str())
+                            .unwrap_or("lite")
+                        {
+                            "detailed" => "Detailed",
+                            _ => "Lite",
+                        };
                         let tooltip = if is_quick_scan {
-                            format!("Nibbin — quick scan: {hours}h left")
+                            format!("Nibbin — quick scan ({depth_label}): {hours}h left")
                         } else {
-                            format!("Nibbin — field study: {days}d {hours}h left")
+                            format!("Nibbin — field study ({depth_label}): {days}d {hours}h left")
                         };
                         let _ = tray.set_tooltip(Some(tooltip));
                     }

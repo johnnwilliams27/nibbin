@@ -391,9 +391,11 @@ function entryView(
  * study keeps its countdown UI in `studyView`.
  */
 function quickScanView(status: StudyStatus, onChanged: () => void): HTMLElement {
-  const study = status.study as { label?: string | null } | null;
+  const study = status.study as { label?: string | null; depth?: StudyDepth } | null;
   const label = study?.label?.trim();
   const paused = status.state === 'PAUSED' || status.paused === true;
+  const depth = study?.depth ?? 'lite';
+  const depthLabel = depth === 'detailed' ? 'Detailed — with screenshots' : 'Lite — no screenshots';
 
   const root = el('div', {}, [
     el('p', { class: 'eyebrow' }, ['Quick scan']),
@@ -406,6 +408,7 @@ function quickScanView(status: StudyStatus, onChanged: () => void): HTMLElement 
         ]),
         el('span', { class: `chip ${paused ? 'warn' : 'active'}` }, [paused ? 'Paused' : 'Capturing']),
       ]),
+      el('p', { class: 'muted' }, [depthLabel]),
       el('p', { class: 'muted' }, [
         'Work through the task, then stop the scan when you’re done. It also stops automatically after 6 hours, so an abandoned scan can’t keep capturing.',
       ]),
