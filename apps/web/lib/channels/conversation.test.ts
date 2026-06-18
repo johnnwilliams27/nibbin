@@ -58,8 +58,8 @@ function makeDeps(over: Partial<HandleInboundDeps> = {}): HandleInboundDeps & {
       decideCalls.push(args);
       return { decision: 'approved' };
     },
-    answer: async (...args) => {
-      answerCalls.push(args);
+    answer: async (accountId, channel) => {
+      answerCalls.push([accountId, channel]);
       return { reply: 'Here is your status.' };
     },
     reply: async (channel, externalId, body) => {
@@ -161,15 +161,15 @@ describe('handleInbound — status intent', () => {
     expect(deps.decideCalls).toHaveLength(0);
   });
 
-  it('calls answer with (accountId, channel, text) and delivers its reply when gate is ok', async () => {
+  it('calls answer with (accountId, channel) — no raw text — and delivers its reply when gate is ok', async () => {
     const TEXT = 'what is my grove doing?';
     const REPLY = 'Your grove is currently tracking three habits.';
 
     const deps = makeDeps({
       classify: () => ({ kind: 'status', text: TEXT }),
       gate: async () => ({ ok: true }),
-      answer: async (accountId, channel, text) => {
-        deps.answerCalls.push([accountId, channel, text]);
+      answer: async (accountId, channel) => {
+        deps.answerCalls.push([accountId, channel]);
         return { reply: REPLY };
       },
     });
@@ -177,7 +177,9 @@ describe('handleInbound — status intent', () => {
     await handleInbound(makeVerified(), deps);
 
     expect(deps.answerCalls).toHaveLength(1);
-    expect(deps.answerCalls[0]).toEqual([ACCOUNT_ID, CHANNEL, TEXT]);
+    // P2-B: answer receives (accountId, channel) only — raw text is
+    // structurally excluded from the dep signature.
+    expect(deps.answerCalls[0]).toEqual([ACCOUNT_ID, CHANNEL]);
     expect(deps.replied).toHaveLength(1);
     expect(deps.replied[0].body).toBe(REPLY);
     expect(deps.decideCalls).toHaveLength(0);

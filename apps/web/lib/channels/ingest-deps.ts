@@ -9,6 +9,7 @@ import {
 import { buildPorts } from './ports';
 import { handleInbound, type HandleInboundDeps } from './conversation';
 import { decideViaChannel } from '../runtime/decide';
+import { asUuid } from './ingest';
 import { anthropicGenerate, recordModelCall } from '../llm/client';
 import { groveRouter } from '../grove/router';
 import {
@@ -264,16 +265,21 @@ export function supabaseIngestDeps(): IngestDeps {
 
         gate: (accountId, channel) => gateTurn(accountId, channel, gateDeps, cfg),
 
-        answer: (accountId, channel, _text) =>
-          // Always use the quarantined text, not the argument forwarded by
-          // handleInbound — handleInbound passes intent.text which came from
-          // inbound.text. We override it with the quarantined form here so
-          // no raw text ever reaches the model.
+        // P2-B: signature drops `text` — raw inbound text can structurally
+        // never reach the model. The quarantined text is bound in the closure.
+        answer: (accountId, channel) =>
           buildAnswer(accountId, channel, textForKeeper),
 
         reply: buildReply,
 
-        decide: decideViaChannel,
+        // P2-A: UUID-guard runId before it reaches decideViaChannel. A
+        // non-UUID from attacker-influenced callback_data resolves to null
+        // (treated as "couldn't action") instead of relying on a Postgres
+        // type error as the only defence.
+        decide: (channel, externalId, runId, decision) =>
+          asUuid(runId)
+            ? decideViaChannel(channel, externalId, runId, decision)
+            : Promise.resolve(null),
 
         workEnabled: process.env.CHANNELS_INITIATED_WORK_ENABLED === 'true',
       };

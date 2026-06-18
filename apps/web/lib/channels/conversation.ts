@@ -47,8 +47,13 @@ export interface HandleInboundDeps {
    * Run keeperChat + recordModelCall(origin:'chat', channel) for the given
    * account and channel, returning the keeper's reply text. Read-only — the
    * keeper has no tools, no hands (C10).
+   *
+   * NOTE: text is intentionally NOT a parameter here. The dep is constructed
+   * with the quarantined text captured in its closure (ingest-deps.ts) so raw
+   * inbound text can never reach the model — enforced structurally, not by
+   * convention.
    */
-  answer: (accountId: string, channel: ChannelKind, text: string) => Promise<{ reply: string }>;
+  answer: (accountId: string, channel: ChannelKind) => Promise<{ reply: string }>;
 
   /**
    * Deliver a reply body back on the originating channel.
@@ -110,7 +115,7 @@ export async function handleInbound(
       await deps.reply(channel, externalId, g.notice);
       return; // no model call when gate is closed
     }
-    const { reply: text } = await deps.answer(accountId, channel, intent.text);
+    const { reply: text } = await deps.answer(accountId, channel);
     await deps.reply(channel, externalId, text);
     return;
   }

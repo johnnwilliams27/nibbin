@@ -2,8 +2,8 @@ import { applyBattery } from '@nibbin/redaction';
 import { quarantine } from '@nibbin/connectors';
 import type { InboundChannelMessage, InboundResult } from '@nibbin/channels';
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-function asUuid(v?: string) { return v && UUID_RE.test(v) ? v : undefined; }
+export const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export function asUuid(v?: string) { return v && UUID_RE.test(v) ? v : undefined; }
 
 export interface IngestDeps {
   resolveAccount(channel: string, externalId: string): Promise<string | null>;
