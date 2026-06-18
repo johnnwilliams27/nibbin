@@ -27,5 +27,6 @@ export * from './validate';
 export * from './school';
 export * from './stores';
 export * from './runner';
+export * from './planner';
 export * from './templates';
 export * from './velocity';
