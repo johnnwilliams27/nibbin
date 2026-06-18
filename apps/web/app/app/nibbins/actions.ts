@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { appSession } from '../../../lib/auth/app-session';
+import { serviceClient } from '../../../lib/supabase/service';
 import { refreshLearnedNote } from '../../../lib/nibbins/learned-note';
 
 /**
@@ -71,6 +72,67 @@ export async function updateNibbinAppearance(
   });
   if (error) return { ok: false, error: error.message };
 
+  revalidatePath('/app/nibbins');
+  revalidatePath('/app');
+  return { ok: true };
+}
+
+export interface DemoteResult {
+  ok: boolean;
+  error?: string;
+}
+
+/** CE5: the user puts a Nibbin back to drafts. One click, dignified. Calls the
+ *  member-checked nibbin_demote RPC with the caller's session (so the SQL's
+ *  is_account_member/auth.uid() path applies), then drops the calm demotion leaf
+ *  (and the in-grove ack rides the Beat-3 pending path). */
+export async function demoteNibbinAction(nibbinId: string): Promise<DemoteResult> {
+  const id = nibbinId?.trim();
+  if (!id) return { ok: false, error: 'missing nibbin' };
+
+  let supabase;
+  let accountId: string;
+  try {
+    ({ supabase, accountId } = await appSession());
+  } catch {
+    return { ok: false, error: 'You need to be signed in.' };
+  }
+
+  // session client — auth.uid() drives the RPC's member check
+  const { data: newStage, error } = await supabase.rpc('nibbin_demote', { p_nibbin: id });
+  if (error) return { ok: false, error: error.message };
+
+  // Calm demotion leaf (best-effort). Service client = controlled insert path.
+  try {
+    const svc = serviceClient();
+    const { data: n } = await svc
+      .from('nibbins')
+      .select('name, species, palette, accessory, marking, stage_changed_at')
+      .eq('id', id)
+      .single();
+    if (n) {
+      await svc.rpc('insert_system_notification', {
+        p_account: accountId,
+        p_kind: 'demotion',
+        p_source_id: `demotion:${id}:${n.stage_changed_at}`,
+        p_title: `${n.name} is back to drafts`,
+        p_body:
+          `Good instinct catching that — nothing's lost. ${n.name} keeps what she learned and re-earns the step the same way. You're back in the loop on everything she sends.`,
+        p_payload: {
+          ctaPath: '/app/nibbins',
+          ctaLabel: `See ${n.name}`,
+          nibbinId: id,
+          species: n.species,
+          stage: newStage as string,
+          palette: n.palette ?? null,
+          accessory: n.accessory ?? 'none',
+          marking: n.marking ?? 'none',
+        },
+      });
+    }
+  } catch {
+    // leaf is best-effort; the demotion itself already succeeded
+  }
   revalidatePath('/app/nibbins');
   revalidatePath('/app');
   return { ok: true };
