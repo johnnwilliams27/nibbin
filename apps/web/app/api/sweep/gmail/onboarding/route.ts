@@ -31,6 +31,19 @@ export async function POST(request: NextRequest): Promise<Response> {
 
   const svc = serviceClient();
 
+  // Consent is authoritative at the worker (fail-closed): a replayed/forged HMAC
+  // cannot sweep a connection the user never opted into.
+  const { data: consentRow } = await svc
+    .from('connections')
+    .select('sweep_consent_at')
+    .eq('id', connectionId)
+    .eq('account_id', accountId)
+    .eq('status', 'active')
+    .maybeSingle();
+  if (!consentRow || consentRow.sweep_consent_at == null) {
+    return NextResponse.json({ status: 'skipped', reason: 'no_consent' });
+  }
+
   // #112: atomic claim-before-work. The onboarding sweep is a one-time derive per
   // connection that reads ~90 days of inbox and spends model budget. Replacing
   // the old read-then-act guard, claim_gmail_sweep INSERTs a 'running' sentinel
