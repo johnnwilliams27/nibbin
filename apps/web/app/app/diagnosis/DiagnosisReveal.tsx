@@ -1,6 +1,7 @@
-import { Badge, Button, Card } from '../../../components/ui';
+import { Badge, Card } from '../../../components/ui';
 import type { DiagnosisMap, Frequency } from '../../../lib/diagnosis/types';
-import { adoptRecommendation } from './actions';
+import { adoptRecommendationOutcome } from './actions';
+import { AdoptButton } from '../../../components/adopt/AdoptButton';
 import { WorkflowMap } from './WorkflowMap';
 import styles from './diagnosis.module.css';
 
@@ -162,12 +163,11 @@ export function DiagnosisReveal({
                     Adopt <strong>{NIBBIN_NAME[key] ?? key}</strong> to start handling this — drafts
                     only, for your approval, until it earns more.
                   </span>
-                  <form className={styles.recForm} action={adoptRecommendation}>
-                    <input type="hidden" name="templateKey" value={key} />
-                    <Button type="submit" variant="primary">
-                      Adopt {NIBBIN_NAME[key] ?? key}
-                    </Button>
-                  </form>
+                  <AdoptButton
+                    action={adoptRecommendationOutcome}
+                    templateKey={key}
+                    label={`Adopt ${NIBBIN_NAME[key] ?? key}`}
+                  />
                 </div>
               </Card>
             ))}
