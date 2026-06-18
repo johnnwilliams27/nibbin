@@ -28,6 +28,8 @@
 import { describe, expect, it } from 'vitest';
 import { quarantine } from '@nibbin/connectors';
 import {
+  digestInboxCleanup,
+  digestMorning,
   nudgeOverdueEmail,
   nudgeOverdueInvoice,
   nudgeUnconfirmedEvent,
@@ -164,6 +166,46 @@ function gcalGmailReader(): (path: string) => string {
   };
 }
 
+/** sweep fixture: an inbox of newsletter-ish messages (List-Unsubscribe set)
+ *  from two senders, no sent. Drives the non-trivial top-N digest path. */
+function sweepReader(): (path: string) => string {
+  return (path) => {
+    if (path.includes('/messages?')) {
+      const isSent = path.includes('in%3Asent') || path.includes('in:sent');
+      return isSent
+        ? '{"messages":[]}'
+        : '{"messages":[{"id":"n1"},{"id":"n2"},{"id":"n3"}]}';
+    }
+    // metadata fetch — id is in the path; n1/n2 from Acme, n3 from Beta.
+    const id = path.includes('n3') ? 'n3' : path.includes('n2') ? 'n2' : 'n1';
+    const from = id === 'n3' ? 'Beta <news@beta.com>' : 'Acme <news@acme.com>';
+    return gmailMeta(
+      id,
+      { From: from, Subject: 'Weekly digest', 'List-Unsubscribe': '<mailto:unsub@x>' },
+      NOW - 1 * DAY,
+    );
+  };
+}
+
+/** brief fixture: 1 calendar event + 1 overdue invoice + fresh inbox messages.
+ *  All three reads return data so every line of the digest is exercised. */
+function briefReader(): (path: string) => string {
+  return (path) => {
+    if (path.includes('/calendar/')) {
+      return JSON.stringify({
+        items: [{ summary: 'Discovery call', start: { dateTime: new Date(NOW + DAY).toISOString() } }],
+      });
+    }
+    if (path.includes('/v1/invoices')) {
+      return JSON.stringify({
+        data: [{ id: 'in_1', status: 'open', due_date: Math.floor((NOW - 5 * DAY) / 1000), amount_due: 12_345 }],
+      });
+    }
+    // gmail fresh-mail list (in:inbox over 2 days).
+    return '{"messages":[{"id":"m1"},{"id":"m2"}]}';
+  };
+}
+
 /* ── the differential parity matrix ─────────────────────────────────────────── */
 
 interface Case {
@@ -199,6 +241,19 @@ const CASES: Case[] = [
     primitive: replyNewInquiry({}, { gmail: GMAIL }, NOW),
     connMap: { gmail: GMAIL },
     reader: mailboxReader(),
+  },
+  // Slice 2c — the digest/summarize shape (presentation primitives).
+  {
+    templateKey: 'sweep',
+    primitive: digestInboxCleanup({ topSenders: 5 }, { gmail: GMAIL }, NOW),
+    connMap: { gmail: GMAIL },
+    reader: sweepReader(),
+  },
+  {
+    templateKey: 'brief',
+    primitive: digestMorning({}, { 'google-calendar': GCAL, stripe: STRIPE, gmail: GMAIL }, NOW),
+    connMap: { 'google-calendar': GCAL, stripe: STRIPE, gmail: GMAIL },
+    reader: briefReader(),
   },
 ];
 

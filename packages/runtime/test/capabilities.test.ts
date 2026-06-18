@@ -47,10 +47,18 @@ describe('capability registry — conformance', () => {
       expect(d.resource.length).toBeGreaterThan(0);
       expect(d.verb.length).toBeGreaterThan(0);
       expect(d.requiredConnector.length).toBeGreaterThan(0);
-      // draft/write capabilities carry a routine-matching prefix (§4.7);
-      // reads do not (they have no patternKey).
-      if (d.sideEffect === 'read') expect(d.patternKeyPrefix).toBeUndefined();
-      else expect(d.patternKeyPrefix).toBeTruthy();
+      // draft/write capabilities carry a routine-matching prefix (§4.7). Atomic
+      // reads do not (they yield no patternKey). The one exception is a
+      // PRESENTATION primitive (Slice 2c digest/summarize shape): its sideEffect
+      // is 'read' (no real side effect — the runner gates it as a draft always),
+      // yet it yields a presentation DRAFT carrying a routine-matching patternKey,
+      // so it legitimately declares a patternKeyPrefix.
+      const isPresentationPrimitive = d.sideEffect === 'read' && d.kind === 'primitive';
+      if (d.sideEffect === 'read' && !isPresentationPrimitive) {
+        expect(d.patternKeyPrefix).toBeUndefined();
+      } else {
+        expect(d.patternKeyPrefix).toBeTruthy();
+      }
     }
   });
 
