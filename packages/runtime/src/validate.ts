@@ -238,6 +238,14 @@ export function validateComposedSpec(spec: AgentSpec, accountConnections: string
       at(`step ${idx} capability "${step.capability}" is not a registry capability`);
       continue;
     }
+    // This per-step check intentionally validates ONLY the capability's "home"
+    // connector (cap.requiredConnector). For a cross-resource primitive
+    // (e.g. nudge.unconfirmed-event reads gcal but drafts on gmail) the home
+    // connector is just one of several it touches; full multi-connector
+    // completeness is enforced SEPARATELY by the `requiredConnectors ⊆
+    // accountConnections` loop above and by validateSpec's tool→connector loop
+    // (every effectiveTool must be powered by a required connector). Do NOT
+    // remove that loop thinking this per-step check covers it — it does not.
     if (!granted.has(cap.requiredConnector)) {
       at(`step ${idx} needs connector "${cap.requiredConnector}", not connected`);
     }

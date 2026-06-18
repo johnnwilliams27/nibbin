@@ -25,6 +25,7 @@ import 'server-only';
 import type { Generate, Router } from '@nibbin/router';
 import {
   CAPABILITY_REGISTRY,
+  capability,
   validateComposedSpec,
   type AgentSpec,
   type CapabilityDescriptor,
@@ -55,17 +56,56 @@ interface ComposedDraft {
   personaPolicy?: PersonaPolicy;
 }
 
-/** Primitives the account can actually run (connector connected). */
+/**
+ * The connectors a primitive actually needs — the UNIQUE set of each effective
+ * tool's atomic-descriptor `requiredConnector` (server-side, from the registry,
+ * never from LLM output). A cross-resource primitive (e.g.
+ * `nudge.unconfirmed-event`: calendar.read + email.draft) needs BOTH gcal AND
+ * gmail. Falls back to `[cap.requiredConnector]` if effectiveTools is absent
+ * (atomic descriptors keep their single home connector).
+ */
+function connectorsFor(cap: CapabilityDescriptor): string[] {
+  const tools = cap.effectiveTools;
+  if (!tools || tools.length === 0) return [cap.requiredConnector];
+  const set = new Set<string>();
+  for (const t of tools) {
+    const dep = capability(t);
+    if (dep) set.add(dep.requiredConnector);
+  }
+  // A primitive must always have its home connector represented.
+  if (set.size === 0) set.add(cap.requiredConnector);
+  return [...set];
+}
+
+/** Primitives the account can actually run: EVERY derived connector connected
+ *  (so a cross-resource primitive only appears when both connectors are). */
 function availablePrimitives(accountConnections: string[]): CapabilityDescriptor[] {
   const granted = new Set(accountConnections);
   return Object.values(CAPABILITY_REGISTRY).filter(
-    (c) => c.kind === 'primitive' && granted.has(c.requiredConnector),
+    (c) => c.kind === 'primitive' && connectorsFor(c).every((p) => granted.has(p)),
   );
 }
 
 export const COMPOSER_SYSTEM_PROMPT = `You are the Composer for Nibbin — you turn one observed workflow into a small, safe agent by choosing ONE capability from a fixed menu and its parameters. You may ONLY pick a capability id from the menu and set its listed parameters within their bounds. You never write code, URLs, email addresses, or message text — the capability already knows how to do its job. Output STRICT JSON only, no prose, no markdown fences, shaped exactly:
 {"displayName": string (<= 40 chars, sentence case, warm, e.g. "Overdue follow-ups"), "capability": string (a menu id), "inputs": object (only the listed params), "personaPolicy": {"tone": string}}
 Pick the capability whose job best fits the workflow. If unsure, pick the first menu item with its default params.`;
+
+/** One-line, plain description of what each primitive does — shown to the LLM
+ *  so it can match a workflow to the right capability. Keyed by primitive id. */
+const PRIMITIVE_DESCRIPTION: Record<string, string> = {
+  'nudge.overdue-email':
+    'watch the inbox for threads gone quiet (unanswered N+ days) and draft a warm follow-up',
+  'nudge.overdue-invoice':
+    'watch Stripe invoices for ones past due (N+ days late) and draft a gentle payment nudge',
+  'nudge.unconfirmed-event':
+    'watch the calendar for upcoming events with an unconfirmed guest (next N days) and draft a confirmation email',
+  'reply.new-inquiry':
+    'watch the inbox for a new first-contact inquiry and draft a warm first reply',
+  'digest.inbox-cleanup':
+    'each morning, scan the inbox for newsletter pile-ups and present a top-N keep-or-clear list — read-only, nothing is sent or deleted',
+  'digest.morning':
+    'each morning, pull the day together — next on the calendar, fresh mail, and any overdue invoices — into one short brief (read-only, nothing is sent)',
+};
 
 function menuText(prims: CapabilityDescriptor[]): string {
   return prims
@@ -77,7 +117,9 @@ function menuText(prims: CapabilityDescriptor[]): string {
           return `    - ${k}: ${f.type}${bounds}${vals}`;
         })
         .join('\n');
-      return `- ${c.id} — drafts via ${c.requiredConnector}\n${params || '    (no params)'}`;
+      const desc = PRIMITIVE_DESCRIPTION[c.id] ?? `drafts a ${c.resource} ${c.verb}`;
+      const conns = connectorsFor(c).join(' + ');
+      return `- ${c.id} — ${desc} (uses ${conns})\n${params || '    (no params)'}`;
     })
     .join('\n');
 }
@@ -121,9 +163,11 @@ function assembleSpec(
     version: 1,
     displayName,
     // Allowlist = the atomic tools the primitive yields (the runner gates on
-    // those, not the primitive id).
-    toolsAllowlist: [...(cap.effectiveTools ?? [])],
-    requiredConnectors: [cap.requiredConnector],
+    // those, not the primitive id). requiredConnectors = the UNIQUE set of
+    // connectors those tools need, derived server-side from the registry — so a
+    // cross-resource primitive declares both connectors (never from the LLM).
+    toolsAllowlist: cap.effectiveTools ? [...cap.effectiveTools] : [cap.id],
+    requiredConnectors: connectorsFor(cap),
     triggers: [
       { kind: 'schedule', schedule: 'daily.morning', cooldownSecs: 3600 },
       { kind: 'user' },
@@ -156,19 +200,136 @@ function sanitizeInputs(cap: CapabilityDescriptor, inputs: Record<string, unknow
 
 const DEFAULT_NAME = 'Follow-ups';
 
-/** The deterministic fallback proposal — the seeded detect-and-nudge primitive
- *  with default params. Used with no model key or on any parse/validation
- *  failure of the model output, so synthesis always works (CI-safe). */
-function deterministicDraft(): ComposedDraft {
-  return { capability: 'nudge.overdue-email', inputs: {}, displayName: 'Overdue follow-ups', personaPolicy: { tone: 'warm, plainspoken' } };
+/** A warm display name per primitive for the deterministic (no-model) proposal. */
+const PRIMITIVE_NAME: Record<string, string> = {
+  'nudge.overdue-email': 'Overdue follow-ups',
+  'nudge.overdue-invoice': 'Invoice nudges',
+  'nudge.unconfirmed-event': 'Booking confirmations',
+  'reply.new-inquiry': 'New-inquiry replies',
+  'digest.inbox-cleanup': 'Morning inbox sweep',
+  'digest.morning': 'Morning brief',
+};
+
+/**
+ * Map a workflow to the best-fit primitive id, server-side and model-free —
+ * the no-model fallback (CI / fresh dev / budget spent). Category drives the
+ * pick; an "inquiry/lead/first-contact" signal in the label/friction prefers
+ * the inquiry-reply primitive over a generic email follow-up.
+ *
+ * Only ever returns a primitive that is in `prims` (available — all connectors
+ * granted); if the mapped one isn't available, falls back to the first
+ * available primitive. Returns null only when nothing is available.
+ */
+function mapWorkflowToPrimitive(workflow: DiagnosisWorkflow, prims: CapabilityDescriptor[]): string | null {
+  if (prims.length === 0) return null;
+  const has = (id: string) => prims.some((p) => p.id === id);
+  const text = `${workflow.label} ${workflow.friction ?? ''}`.toLowerCase();
+  const looksLikeInquiry = /inquir|lead|first[- ]?contact|new client|prospect/.test(text);
+  // Digest (presentation) signals — checked first, since they describe a
+  // "summarize, don't act" workflow that the nudge family would mis-serve.
+  const looksLikeMorningBrief =
+    /morning[- ]?(plan|brief|overview|routine)|daily[- ]?(overview|brief|digest|round)|start (my|the) day|stay on top|plan (my|the) day|what'?s on (my|the) (day|plate)/.test(
+      text,
+    );
+  const looksLikeInboxOverwhelm =
+    /triage|unsubscrib|newsletter|inbox (overwhelm|overload|pile|clutter|cleanup|clean[- ]?up|zero)|too much email|email (overload|overwhelm)|declutter/.test(
+      text,
+    );
+
+  let preferred: string;
+  // A morning-brief / daily-overview signal wins regardless of category — it is
+  // the only multi-source (calendar+payments+email) read aggregation.
+  if (looksLikeMorningBrief && has('digest.morning')) {
+    preferred = 'digest.morning';
+  } else
+    switch (workflow.category) {
+      case 'payments':
+        preferred = 'nudge.overdue-invoice';
+        break;
+      case 'calendar':
+        preferred = 'nudge.unconfirmed-event';
+        break;
+      case 'email':
+        // An inbox-overwhelm / triage / newsletter signal → the read-only
+        // keep-or-clear digest; a first-contact signal → the inquiry reply;
+        // else the generic overdue follow-up.
+        preferred = looksLikeInboxOverwhelm
+          ? 'digest.inbox-cleanup'
+          : looksLikeInquiry
+            ? 'reply.new-inquiry'
+            : 'nudge.overdue-email';
+        break;
+      default:
+        preferred = looksLikeInboxOverwhelm
+          ? 'digest.inbox-cleanup'
+          : looksLikeInquiry
+            ? 'reply.new-inquiry'
+            : 'nudge.overdue-email';
+    }
+  if (has(preferred)) return preferred;
+  // Mapped primitive's connectors aren't all granted — fall back to whatever
+  // the account CAN run (first available), so synthesis still produces a Nibbin.
+  return prims[0].id;
 }
 
+/**
+ * The deterministic fallback proposal — the best-fit AVAILABLE primitive for
+ * this workflow with default params. Used with no model key or on any
+ * parse/validation failure of the model output, so synthesis always works
+ * (CI-safe). Returns null when no primitive is available.
+ */
+function deterministicDraft(workflow: DiagnosisWorkflow, prims: CapabilityDescriptor[]): ComposedDraft | null {
+  const id = mapWorkflowToPrimitive(workflow, prims);
+  if (!id) return null;
+  return { capability: id, inputs: {}, displayName: PRIMITIVE_NAME[id] ?? DEFAULT_NAME, personaPolicy: { tone: 'warm, plainspoken' } };
+}
+
+/** A human sentence for the review card, keyed by primitive id. Reads naturally
+ *  for all four primitives and names the connection(s) it needs. */
 function summarize(cap: CapabilityDescriptor, spec: AgentSpec, workflow: DiagnosisWorkflow): string {
-  if (cap.id === 'nudge.overdue-email') {
-    const staleDays = (spec.steps?.[0]?.inputs?.staleDays as number | undefined) ?? 3;
-    return `Watch your inbox for threads you haven't answered in ${staleDays} days, then draft a warm follow-up for your approval. It works on “${workflow.label}”, drafts only until it earns more, and needs your Gmail connection.`;
+  const conns = connectorsFor(cap).map(connectorLabel).join(' and ');
+  const tail = `It works on “${workflow.label}”, drafts only until it earns more, and needs your ${conns} connection.`;
+  const p = spec.steps?.[0]?.inputs ?? {};
+  switch (cap.id) {
+    case 'nudge.overdue-email': {
+      const staleDays = (p.staleDays as number | undefined) ?? 3;
+      return `Watch your inbox for threads you haven't answered in ${staleDays} days, then draft a warm follow-up for your approval. ${tail}`;
+    }
+    case 'nudge.overdue-invoice': {
+      const minDaysLate = (p.minDaysLate as number | undefined) ?? 0;
+      const window =
+        minDaysLate > 0 ? `more than ${minDaysLate} days past due` : `that have slipped past due`;
+      return `Watch your Stripe invoices for ones ${window}, then draft a gentle payment nudge for your approval. ${tail}`;
+    }
+    case 'nudge.unconfirmed-event': {
+      const withinDays = (p.withinDays as number | undefined) ?? 7;
+      return `Watch your calendar for guests who haven't confirmed in the next ${withinDays} days, then draft a friendly confirmation email for your approval. ${tail}`;
+    }
+    case 'reply.new-inquiry':
+      return `Watch your inbox for a new first-contact inquiry, then draft a warm first reply for your approval. ${tail}`;
+    case 'digest.inbox-cleanup': {
+      const topSenders = (p.topSenders as number | undefined) ?? 5;
+      return `Scan your inbox each morning for newsletter pile-ups and show you a top-${topSenders} keep-or-clear list — read-only, nothing is deleted or sent without you. It works on “${workflow.label}” and needs your ${conns} connection.`;
+    }
+    case 'digest.morning':
+      return `Every morning, pull your day together — next on the calendar, fresh mail, and any overdue invoices — into one short brief. It only reads and presents: nothing is ever sent. It works on “${workflow.label}” and needs your ${conns} connection.`;
+    default:
+      return `Automate “${workflow.label}” — drafts only, for your approval, until it earns more.`;
   }
-  return `Automate “${workflow.label}” — drafts only, for your approval, until it earns more.`;
+}
+
+/** Friendly name for a connector provider id (for the summary sentence). */
+function connectorLabel(provider: string): string {
+  switch (provider) {
+    case 'gmail':
+      return 'Gmail';
+    case 'google-calendar':
+      return 'Google Calendar';
+    case 'stripe':
+      return 'Stripe';
+    default:
+      return provider;
+  }
 }
 
 /**
@@ -189,7 +350,13 @@ export async function composeSpec(
     return { error: 'No agent can be built for this workflow yet — connect the account it needs first.' };
   }
 
-  let draft: ComposedDraft = deterministicDraft();
+  // The no-model baseline: the best-fit AVAILABLE primitive for this workflow's
+  // category, default params. prims is non-empty, so this is non-null.
+  const baseline = deterministicDraft(workflow, prims);
+  if (!baseline) {
+    return { error: 'No agent can be built for this workflow yet — connect the account it needs first.' };
+  }
+  let draft: ComposedDraft = baseline;
   const llm = generateOverride ?? anthropicGenerate();
   if (llm) {
     try {
@@ -256,7 +423,7 @@ export async function composeSpec(
   if (!cap) {
     // Model named an off-menu/unknown id that slipped the earlier guard — fall
     // back to the deterministic primitive.
-    draft = deterministicDraft();
+    draft = baseline;
     cap = capabilityFor(draft.capability, prims);
   }
   if (!cap) return { error: 'No buildable capability for this workflow.' };
@@ -266,7 +433,7 @@ export async function composeSpec(
   if (problems.length > 0) {
     // The model's params produced an invalid spec — retry once with the
     // deterministic default params before giving up (fail-closed).
-    const safe = deterministicDraft();
+    const safe = baseline;
     const safeCap = capabilityFor(safe.capability, prims);
     if (safeCap) {
       spec = assembleSpec(safeCap, safe, workflow);
