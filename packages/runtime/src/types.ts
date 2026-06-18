@@ -79,6 +79,22 @@ export interface CreditProfile {
   ceilings: RunCeilings;
 }
 
+/**
+ * A composed step (Composer/Planner output, §4). `capability` refs
+ * CAPABILITY_REGISTRY; the interpreter validates it and yields a ProgramStep
+ * the runner gates. `prompt` present = a generative draft (model). Absent for
+ * template agents, which run their hand-written program instead.
+ */
+export interface CapabilityStep {
+  capability: string;                  // refs CAPABILITY_REGISTRY
+  inputs?: Record<string, unknown>;    // bound args: a read `path`, or draft `effectArgs`
+  prompt?: ComposePrompt;              // present = generative draft (model)
+  presentation?: boolean;              // no-side-effect presentation draft
+  title?: string;
+}
+
+export interface PersonaPolicy { voice?: string; tone?: string; brandKit?: string }
+
 export interface AgentSpec {
   /** Shop template key; null for custom hatch-wizard specs. */
   templateKey: string | null;
@@ -90,6 +106,10 @@ export interface AgentSpec {
   triggers: TriggerDef[];
   curriculum: CurriculumConfig;
   creditProfile: CreditProfile;
+  /** Composed steps (Composer/Planner output). Absent for template agents,
+   *  which run their hand-written program. */
+  steps?: CapabilityStep[];
+  personaPolicy?: PersonaPolicy;
 }
 
 /* ── Runs ─────────────────────────────────────────────────────────────────── */
