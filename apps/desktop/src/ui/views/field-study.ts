@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Field Study tab — wraps the existing field-study sub-navigation and
  * daemon-state dispatch that previously lived in main.ts. Stage C adds the
  * Grove tab beside this one; account management moves to the global auth gate

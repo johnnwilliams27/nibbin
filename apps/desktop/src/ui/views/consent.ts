@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Consent screen (SPEC §5): states captures, exclusions, exports, and
  * deletion in plain language BEFORE anything records. The claim sentences
  * track docs/INVARIANTS.md exactly — stronger phrasing than the architecture
