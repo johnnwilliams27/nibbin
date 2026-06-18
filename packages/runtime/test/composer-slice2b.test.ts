@@ -285,6 +285,60 @@ describe('interpreter dispatches the nudge-family primitives through the runner'
   });
 });
 
+/* ── parameterization: the only behavior 2b adds beyond the templates ──────── */
+
+/** Stripe invoices with explicit per-invoice overdue ages (days past due). */
+function stripeAgedReader(ages: Array<{ id: string; daysLate: number; amount: number }>): (c: string, path: string) => string {
+  return () =>
+    JSON.stringify({
+      data: ages.map((a) => ({
+        id: a.id,
+        status: 'open',
+        due_date: Math.floor((NOW - a.daysLate * DAY) / 1000),
+        amount_due: a.amount,
+      })),
+    });
+}
+
+describe('parameterization beyond the templates (minDaysLate / withinDays)', () => {
+  it('nudge.overdue-invoice minDaysLate=30 excludes a 10-day-late invoice but drafts a 40-day-late one', async () => {
+    // A 10-day-late invoice alone → cutoff (now - 30d) excludes it → no draft.
+    const h10 = harness(stripeAgedReader([{ id: 'in_10', daysLate: 10, amount: 10_000 }]));
+    const s = spec({
+      toolsAllowlist: ['payments.read', 'invoice.nudge'],
+      requiredConnectors: ['stripe'],
+      steps: [{ capability: 'nudge.overdue-invoice', inputs: { minDaysLate: 30 } }],
+    });
+    const out10 = await executeRun(nib(s), TRIGGER, interpretSpec(s, { stripe: STRIPE }, NOW), h10.deps);
+    // Compose-only outcome (no draft → completed, not awaiting_approval).
+    expect(out10.kind).not.toBe('awaiting_approval');
+
+    // A 40-day-late invoice → past the 30-day cutoff → it IS drafted.
+    const h40 = harness(stripeAgedReader([{ id: 'in_40', daysLate: 40, amount: 50_000 }]));
+    const out40 = await executeRun(nib(s), TRIGGER, interpretSpec(s, { stripe: STRIPE }, NOW), h40.deps);
+    expect(out40.kind).toBe('awaiting_approval');
+    if (out40.kind !== 'awaiting_approval') throw new Error('expected awaiting_approval');
+    expect(out40.draft.effectArgs).toEqual({ invoiceId: 'in_40', amountCents: 50_000 });
+  });
+
+  it('nudge.unconfirmed-event withinDays=30 widens the calendar timeMax to now + 30 days', async () => {
+    const h = harness(gcalGmailReader());
+    const s = spec({
+      toolsAllowlist: ['calendar.read', 'email.draft'],
+      requiredConnectors: ['google-calendar', 'gmail'],
+      steps: [{ capability: 'nudge.unconfirmed-event', inputs: { withinDays: 30 } }],
+    });
+    await executeRun(nib(s), TRIGGER, interpretSpec(s, { 'google-calendar': GCAL, gmail: GMAIL }, NOW), h.deps);
+    // The single read is the calendar query; parse its timeMax out of the path.
+    expect(h.reads.length).toBe(1);
+    const url = new URL(`https://x${h.reads[0].path}`);
+    const timeMax = url.searchParams.get('timeMax');
+    expect(timeMax).toBe(new Date(NOW + 30 * DAY).toISOString());
+    // Sanity: at the default (7), timeMax would be the narrower horizon.
+    expect(timeMax).not.toBe(new Date(NOW + 7 * DAY).toISOString());
+  });
+});
+
 /* ── parity: each primitive ↔ its template program (same steps + effectArgs) ── */
 
 /** Drive a ProgramFn to exhaustion, feeding quarantined replies keyed by the
