@@ -22,7 +22,7 @@ use super::{
 use crate::tree::linux_lines::{self, AtspiRef, NormalizeRefs};
 use anyhow::{Context, Result};
 use chrono::Utc;
-use screenpipe_core::window_pattern::{self, WindowPattern};
+use crate::local_compat::window_pattern::{self, WindowPattern};
 use std::cell::UnsafeCell;
 use std::time::Instant;
 use tracing::{debug, warn};

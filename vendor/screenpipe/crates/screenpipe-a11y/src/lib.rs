@@ -58,6 +58,7 @@
 //! handle.stop();
 //! ```
 
+pub mod local_compat;
 pub mod activity_feed;
 pub mod budget;
 pub mod config;

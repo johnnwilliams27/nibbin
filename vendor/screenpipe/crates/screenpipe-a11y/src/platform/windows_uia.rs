@@ -73,7 +73,7 @@ fn pause_uia_while_screen_locked(
     click_queue: &Arc<Mutex<Vec<ClickElementRequest>>>,
     last_capture_time: &mut Instant,
 ) -> bool {
-    if !screenpipe_config::screen_is_locked() {
+    if !crate::local_compat::screen_is_locked() {
         return false;
     }
 
@@ -1195,12 +1195,12 @@ mod tests {
         struct ResetScreenLock;
         impl Drop for ResetScreenLock {
             fn drop(&mut self) {
-                screenpipe_config::set_screen_locked(false);
+                crate::local_compat::set_screen_locked(false);
             }
         }
 
         let _reset = ResetScreenLock;
-        screenpipe_config::set_screen_locked(true);
+        crate::local_compat::set_screen_locked(true);
 
         let pending_focus = Arc::new(Mutex::new(Some(PendingFocus {
             hwnd: HWND::default(),
@@ -1223,7 +1223,7 @@ mod tests {
         assert!(click_queue.lock().is_empty());
         assert!(last_capture_time > original_capture_time);
 
-        screenpipe_config::set_screen_locked(false);
+        crate::local_compat::set_screen_locked(false);
         assert!(!pause_uia_while_screen_locked(
             &pending_focus,
             &click_queue,

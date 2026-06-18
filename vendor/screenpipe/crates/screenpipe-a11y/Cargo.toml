@@ -7,12 +7,9 @@ license = "MIT"
 
 [features]
 default = []
-db = ["screenpipe-db"]
+# db feature removed: screenpipe-db was never vendored; Nibbin uses its own DB path
 
 [dependencies]
-screenpipe-db = { path = "../screenpipe-db", optional = true }
-screenpipe-core = { path = "../screenpipe-core" }
-screenpipe-config = { path = "../screenpipe-config" }
 # Core
 anyhow = "1.0"
 tracing = "0.1"

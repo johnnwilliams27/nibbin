@@ -12,7 +12,7 @@ use crate::tree::macos_lines::{self, NormalizeRefs};
 use anyhow::Result;
 use chrono::Utc;
 use cidre::{arc::Retained, ax, cf, ns};
-use screenpipe_core::window_pattern::{self, WindowPattern};
+use crate::local_compat::window_pattern::{self, WindowPattern};
 use std::process::Command;
 use std::time::{Duration, Instant};
 use tracing::debug;
