@@ -148,6 +148,7 @@ export function validateSynthesisPacket(input: unknown): SynthesisPacket | null 
   })();
 
   const kind = p.kind === 'quick_scan' ? 'quick_scan' : 'full_study';
+  const depth = p.depth === 'detailed' ? 'detailed' : 'lite';
   const label = clampStr(p.label, 120).trim();
 
   const candidate: SynthesisPacket = {
@@ -159,6 +160,7 @@ export function validateSynthesisPacket(input: unknown): SynthesisPacket | null 
     workflows,
     ...(dailyAppMinutes ? { dailyAppMinutes } : {}),
     kind,
+    depth,
     ...(label ? { label } : {}),
   };
 

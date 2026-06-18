@@ -46,7 +46,7 @@ const SYNC_COPY: Record<SyncState, string> = {
  */
 function synthesizingView(
   studyId: string,
-  meta: { kind?: 'full_study' | 'quick_scan'; label?: string | null },
+  meta: { kind?: 'full_study' | 'quick_scan'; depth?: 'lite' | 'detailed'; label?: string | null },
   rerender: () => void,
 ): HTMLElement {
   const root = el('div', {});
@@ -94,6 +94,7 @@ function synthesizingView(
       bridge,
       now: new Date().toISOString(),
       kind: meta.kind,
+      depth: meta.depth,
       label: meta.label,
       onState: (s) => { setState(s); },
       // Review-before-upload (§5.2): render the packet and resolve on the
@@ -146,7 +147,7 @@ function stateView(status: StudyStatus, onOpenReview: () => void, rerender: () =
     );
   } else if (state === 'SYNTHESIZING') {
     const study = status.study as
-      | { studyId?: string; kind?: 'full_study' | 'quick_scan'; label?: string | null }
+      | { studyId?: string; kind?: 'full_study' | 'quick_scan'; depth?: 'lite' | 'detailed'; label?: string | null }
       | null;
     const studyId = study?.studyId?.trim();
     if (!studyId) {
@@ -163,7 +164,7 @@ function stateView(status: StudyStatus, onOpenReview: () => void, rerender: () =
       );
       return root;
     }
-    root.append(synthesizingView(studyId, { kind: study?.kind, label: study?.label }, rerender));
+    root.append(synthesizingView(studyId, { kind: study?.kind, depth: study?.depth, label: study?.label }, rerender));
   } else if (state === 'RAW_DELETING') {
     root.append(
       el('p', { class: 'eyebrow' }, ['Field study']),

@@ -36,6 +36,7 @@ export async function syncStudy(opts: {
   bridge: SyncBridge;
   now: string;
   kind?: 'full_study' | 'quick_scan';
+  depth?: 'lite' | 'detailed';
   label?: string | null;
   fetchFn?: typeof fetch;
   onState?: (s: SyncState) => void;
@@ -43,11 +44,11 @@ export async function syncStudy(opts: {
    * it leaves the device. Omitted = legacy direct upload (back-compat). */
   review?: (packet: DiagnosisPacket) => Promise<ReviewDecision>;
 }): Promise<{ ok: boolean; error?: string; deleted?: boolean }> {
-  const { studyId, bridge, now, kind, label, fetchFn = fetch, onState = () => {}, review } = opts;
+  const { studyId, bridge, now, kind, depth, label, fetchFn = fetch, onState = () => {}, review } = opts;
   try {
     onState('building');
     const events = (await bridge.reviewEvents()) as Parameters<typeof segmentStudy>[1];
-    const packet = await segmentStudy(studyId, events, now, { kind, label });
+    const packet = await segmentStudy(studyId, events, now, { kind, depth, label });
 
     let toUpload: DiagnosisPacket = packet;
     if (review) {
