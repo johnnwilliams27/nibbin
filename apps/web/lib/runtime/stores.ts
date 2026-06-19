@@ -203,8 +203,11 @@ export class SupabaseTrainingStore implements TrainingStore {
     // training_sample returns runs_remaining (or NULL when it did NOT sample).
     const remaining = (Array.isArray(data) ? data[0] : data) as number | null;
     if (remaining === null) {
-      // window closed/over-budget/expired — reflect a spent window to the caller.
-      return { ...window, runsUsed: window.maxRuns, endedAtMs: nowMs, endedReason: 'budget' };
+      // The RPC did NOT sample: the window is closed — but NULL does not tell us
+      // WHY (expiry vs. budget vs. user opt-out). Reflect a closed window without
+      // asserting a reason, so an expiry isn't mislabeled 'budget'. (trainingClosedBy
+      // reads endedAtMs with an undefined/non-budget reason as the neutral 'time_box'.)
+      return { ...window, endedAtMs: nowMs };
     }
     const runsUsed = window.maxRuns - remaining;
     const atBudget = runsUsed >= window.maxRuns;

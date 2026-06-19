@@ -83,15 +83,19 @@ describe('SupabaseTrainingStore — additive, account-scoped, budget-bounded', (
     expect(next.endedReason).toBeUndefined();
   });
 
-  it('recordSample treats NULL (not sampled) as a spent/closed window', async () => {
+  it('recordSample treats NULL (not sampled) as closed WITHOUT mislabeling the reason', async () => {
+    // NULL = "did not sample" but does not say why (expiry vs budget vs opt-out).
+    // The store must mark the window closed (endedAtMs) without asserting 'budget'.
     const window = {
       id: 'tw-1', accountId: 'acc1', nibbinId: 'nib1', startedAtMs: 0,
-      expiresAtMs: Date.now() + 1e9, maxRuns: 50, runsUsed: 50, novelty: false,
+      expiresAtMs: Date.now() + 1e9, maxRuns: 50, runsUsed: 3, novelty: false,
     };
     const store = new SupabaseTrainingStore(rpcSvc(null));
-    const next = await store.recordSample(window, Date.now());
-    expect(next.runsUsed).toBe(50);
-    expect(next.endedReason).toBe('budget');
+    const now = Date.now();
+    const next = await store.recordSample(window, now);
+    expect(next.endedAtMs).toBe(now); // closed…
+    expect(next.endedReason).toBeUndefined(); // …but no fabricated 'budget' reason
+    expect(next.runsUsed).toBe(3); // not bumped to maxRuns
   });
 
   it('recordSample auto-closes when remaining hits 0', async () => {

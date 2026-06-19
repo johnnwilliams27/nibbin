@@ -70,10 +70,14 @@ security definer
 set search_path = ''
 as $$
 declare
+  -- Per-account cap on simultaneously-open windows. Bounds aggregate training
+  -- cost (N agents × up-to-100 extra runs each) ahead of the scheduler wiring.
+  max_open_per_account constant integer := 3;
   uid uuid := (select auth.uid());
   v_account uuid;
   v_dur interval;
   v_runs integer;
+  v_open integer;
   v_row public.training_sessions;
 begin
   select n.account_id into v_account from public.nibbins n where n.id = p_nibbin for update;
@@ -84,6 +88,18 @@ begin
     raise exception 'not authenticated';
   end if;
 
+  -- Re-open lockout fix: with no sweep/cron, a window that is past its time box
+  -- but not yet closed still has ended_at IS NULL, so it (a) is skipped by the
+  -- idempotency SELECT below (which requires now() < expires_at) yet (b) still
+  -- occupies the training_sessions_one_open partial unique index — so the INSERT
+  -- would raise unique_violation and lock the user out of re-opening training for
+  -- this agent. Close any such stale, expired-but-open row FIRST (we hold the
+  -- nibbins row lock via the FOR UPDATE above, so this is race-free per agent),
+  -- then the idempotency SELECT + INSERT proceed cleanly.
+  update public.training_sessions
+     set ended_at = now(), ended_reason = 'expired'
+   where nibbin_id = p_nibbin and ended_at is null and now() >= expires_at;
+
   -- idempotent: an already-open window wins (under the unique-open index).
   select * into v_row from public.training_sessions
     where nibbin_id = p_nibbin and ended_at is null
@@ -91,6 +107,16 @@ begin
     and now() < expires_at;
   if found then
     return v_row;
+  end if;
+
+  -- Per-account cap is checked only on the INSERT path (after idempotency found
+  -- no open window): re-opening an EXISTING window for the same agent above
+  -- always succeeds, so the cap can never strand an agent that is already open.
+  select count(*) into v_open from public.training_sessions
+    where account_id = v_account and ended_at is null;
+  if v_open >= max_open_per_account then
+    raise exception 'training open-window limit reached for this account (max %)', max_open_per_account
+      using errcode = 'check_violation';
   end if;
 
   -- clamp to [1 hour, 14 days] and [1, 100] runs (CHECKs also enforce this).

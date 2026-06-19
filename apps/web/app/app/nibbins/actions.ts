@@ -84,6 +84,27 @@ export interface TrainingResult {
 }
 
 /**
+ * Map a raw training RPC error to short, human-actionable copy. The RPCs raise
+ * raw Postgres strings (e.g. "training open-window limit reached…", "unknown
+ * nibbin …", or a membership refusal); surfacing those verbatim leaks PG
+ * internals to the UI. We translate the known cases and otherwise fall back to a
+ * generic line — never the raw message. (Repo error-design stance.)
+ */
+function trainingErrorCopy(message: string | undefined, generic: string): string {
+  const m = (message ?? '').toLowerCase();
+  if (m.includes('limit reached')) {
+    return 'You already have a few agents in training. Finish or stop one before starting another.';
+  }
+  if (m.includes('unknown nibbin') || m.includes('not a member') || m.includes('is_account_member')) {
+    return "We couldn't find that agent on your account.";
+  }
+  if (m.includes('not authenticated')) {
+    return 'You need to be signed in.';
+  }
+  return generic;
+}
+
+/**
  * Opt an agent into Training Mode (§18.1) — a time-boxed, budget-bounded window
  * during which the scheduler MAY sample more triggers so the agent surfaces more
  * drafts-for-approval and accumulates School's promotion signal faster. STRICTLY
@@ -116,7 +137,7 @@ export async function openTrainingAction(
     p_max_runs: maxRuns,
     p_novelty: opts?.novelty ?? false,
   });
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: trainingErrorCopy(error.message, "We couldn't start training just now. Please try again.") };
 
   revalidatePath('/app/nibbins');
   return { ok: true };
@@ -136,7 +157,7 @@ export async function closeTrainingAction(nibbinId: string): Promise<TrainingRes
   }
 
   const { error } = await supabase.rpc('training_close', { p_nibbin: id, p_reason: 'user' });
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: trainingErrorCopy(error.message, "We couldn't stop training just now. Please try again.") };
 
   revalidatePath('/app/nibbins');
   return { ok: true };
