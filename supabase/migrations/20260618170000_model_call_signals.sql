@@ -54,7 +54,8 @@ create index if not exists model_calls_perf_idx
 -- once. (A multi-MODEL run legitimately attributes its single approval to each
 -- distinct (model, task) that participated — that is the intended semantics; the
 -- fix removes only the WITHIN-(model, task) duplication.)
-create or replace view public.model_task_performance as
+create or replace view public.model_task_performance
+  with (security_invoker = true) as
 with volume as (
   -- Volume / cost / outcome / latency over ALL model_calls in the window. This
   -- part was already correct; it stays at model_call granularity (one row per

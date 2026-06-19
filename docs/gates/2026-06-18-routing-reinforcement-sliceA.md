@@ -20,6 +20,11 @@ Adds three additive `model_calls` signals (`outcome` incl. ledgering previously-
 | 5 | cost-auditor | P3 | The view's window + group-by could scan heavily as `model_calls` grows. | Added covering index `model_calls (created_at, model, task, tier)` to the migration (free — not yet applied at the time). |
 | — | claims-auditor | P3 | The admin scoreboard test might be skipped if admin CI ran vitest scoped to the admin root. | Verified moot: CI runs `npm test` → `vitest run` from the **repo root** (`ci.yml`), which picks up the test (passes 8/8). No action. |
 
+### CI-gate finding (caught by the repo's RLS invariant test, after the 4 manual reviewers)
+| # | Source | Sev | Finding | Fix |
+|---|--------|-----|---------|-----|
+| 6 | CI `tests/rls/rls.test.ts` | **P1** | **The new `model_task_performance` view was definer-rights** (a plain Postgres view defaults to definer privileges), violating the repo's blanket invariant "every public view is `security_invoker`" — a definer-rights view can bypass RLS on its underlying tables. Low practical risk here (the view is revoked from `authenticated` + read only via the service-role RPC), but it breaks the categorical rule. The 4 manual reviewers checked the revokes but not `security_invoker`; the CI invariant test caught it — the CI-vs-manual-gate defense-in-depth working. | Recreated the view `with (security_invoker = true)` (the service-role RPC read still works; the invariant is satisfied). Migration file fixed + the view re-applied to dev/staging/prod. |
+
 ### Verified clean (not findings)
 - **Red-team: no P0/P1** — no content path into failure-ledger rows (only model/task/tier/outcome + zero tokens; `err.message`→`console.error` only); the view/RPC are aggregate-only with no identifiers; the view itself is revoked from `authenticated`; the RPC is `security definer`/service-role-only; the staff page gates before any read + rethrows on RPC error; SQL is fully static; the ledger insert is try/catch-swallowed (can't crash a real run).
 - **Cost-auditor: PASS** — pure observability; bounded 1:1 writes (one ledger row per call); no success-path round-trip regression; negligible timing overhead; zero new model calls; recording path can't throw.
