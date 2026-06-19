@@ -6,8 +6,10 @@
  * and a direct call returns a clean error.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import http from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { isQuarantined } from '@nibbin/connectors';
-import { webSearch, webFetch, webSearchEnabled } from './websearch';
+import { webSearch, webFetch, webSearchEnabled, type WebFetchTestSeams } from './websearch';
 
 const ORIGINAL = { ...process.env };
 afterEach(() => {
@@ -66,41 +68,85 @@ describe('webSearch — redact before egress', () => {
 });
 
 describe('webFetch — SSRF guard', () => {
-  it('rejects a non-http(s) scheme', async () => {
-    const out = await webFetch('file:///etc/passwd');
+  // A `lookup` seam that fails the test if it is ever called — proves a URL was
+  // refused by a pre-DNS guard (scheme / credentials / literal private IP)
+  // before any outbound resolution or connection happened.
+  const noResolve: WebFetchTestSeams = {
+    lookup: async () => {
+      throw new Error('DNS lookup must not be reached for a pre-filtered URL');
+    },
+  };
+
+  it('rejects a non-http(s) scheme without touching DNS', async () => {
+    expect(isQuarantined(await webFetch('file:///etc/passwd', noResolve))).toBe(true);
+    const out = await webFetch('ftp://x.com/y', noResolve);
     expect(isQuarantined(out)).toBe(true);
-    const fetchMock = vi.fn();
-    vi.stubGlobal('fetch', fetchMock);
-    await webFetch('ftp://x.com/y');
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(out.toLowerCase()).toContain('http');
   });
 
-  it('rejects credentials in the URL', async () => {
-    const fetchMock = vi.fn();
-    vi.stubGlobal('fetch', fetchMock);
-    const out = await webFetch('https://user:pass@example.com/');
-    expect(fetchMock).not.toHaveBeenCalled();
+  it('rejects credentials in the URL without touching DNS', async () => {
+    const out = await webFetch('https://user:pass@example.com/', noResolve);
     expect(isQuarantined(out)).toBe(true);
+    expect(out.toLowerCase()).toContain('credentials');
   });
 
-  it('rejects a private / loopback host', async () => {
-    const fetchMock = vi.fn();
-    vi.stubGlobal('fetch', fetchMock);
-    for (const url of ['http://127.0.0.1/', 'http://localhost/', 'http://169.254.169.254/latest/meta-data/', 'http://10.0.0.5/', 'http://192.168.1.1/']) {
-      const out = await webFetch(url);
-      expect(isQuarantined(out)).toBe(true);
+  it('rejects a literal private / loopback / link-local / metadata host without touching DNS', async () => {
+    for (const url of [
+      'http://127.0.0.1/',
+      'http://localhost/',
+      'http://169.254.169.254/latest/meta-data/',
+      'http://10.0.0.5/',
+      'http://192.168.1.1/',
+      'http://[::1]/',
+      'http://[fc00::1]/',
+      // octal-form loopback — the old hand-rolled regex missed this; isPublicIp catches it
+      'http://0177.0.0.1/',
+    ]) {
+      const out = await webFetch(url, noResolve);
+      expect(isQuarantined(out), url).toBe(true);
+      expect(out.toLowerCase(), url).toContain('not reachable');
     }
-    expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('fetches a public https URL and quarantines + caps the result', async () => {
-    const big = 'A'.repeat(50_000);
-    const fetchMock = vi.fn(async () => new Response(big, { status: 200, headers: { 'content-type': 'text/plain' } }));
-    vi.stubGlobal('fetch', fetchMock);
-    const out = await webFetch('https://example.com/article');
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(isQuarantined(out)).toBe(true);
-    // length-capped (well under the raw 50k)
-    expect(out.length).toBeLessThan(20_000);
+  it('DNS-REBIND: a PUBLIC hostname that resolves to a private/loopback/link-local/metadata IP is rejected (no connect)', async () => {
+    // The literal pre-filter passes (the host string is public-looking); the
+    // defense is safeFetch resolving the name and refusing the non-public
+    // answer, so the TCP connect to the private IP never happens.
+    for (const privateAddr of ['127.0.0.1', '10.0.0.5', '169.254.169.254', '::1', 'fc00::1']) {
+      const family = privateAddr.includes(':') ? 6 : 4;
+      const rebind: WebFetchTestSeams = {
+        // default isPublicIp (NOT overridden) → the private answer is rejected
+        lookup: async () => [{ address: privateAddr, family }],
+      };
+      const out = await webFetch('https://totally-public-looking.example/', rebind);
+      expect(isQuarantined(out), privateAddr).toBe(true);
+      expect(out.toLowerCase(), privateAddr).toContain('not reachable');
+    }
+  });
+
+  it('a hostname resolving to a PUBLIC IP is allowed (round-trips, quarantined + capped)', async () => {
+    const server = http.createServer((_req, res) => {
+      res.setHeader('content-type', 'text/plain');
+      res.end('A'.repeat(50_000));
+    });
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const port = (server.address() as AddressInfo).port;
+    try {
+      // Treat loopback as public + allow the ephemeral port so the request can
+      // reach the in-process server — exactly the connector egress suite's seam.
+      const ok: WebFetchTestSeams = {
+        lookup: async () => [{ address: '127.0.0.1', family: 4 }],
+        isPublicIp: () => true,
+        allowHttp: true,
+        allowAnyPort: true,
+      };
+      const out = await webFetch(`http://public.example:${port}/article`, ok);
+      expect(isQuarantined(out)).toBe(true);
+      // length-capped (well under the raw 50k)
+      expect(out.length).toBeLessThan(20_000);
+      expect(out).toContain('AAAA');
+    } finally {
+      await new Promise((resolve) => server.close(resolve));
+    }
   });
 });

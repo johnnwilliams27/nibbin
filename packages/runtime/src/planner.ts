@@ -166,6 +166,55 @@ function stepSpecFor(tool: string, args: Record<string, unknown>, plan: PlanSpec
   };
 }
 
+/**
+ * Replay each resumed connector turn through the SAME interpreter program the
+ * live loop runs (interpretSpec ∘ stepSpecFor) and increment the repetition map
+ * for every `read` step it yields, keyed `read:<capability>:<hashArgs(path)>` —
+ * byte-for-byte the key dispatchStep uses live (runner.ts). This makes a resumed
+ * run's repetition state faithful to a non-resumed run for BOTH atomic reads and
+ * primitives (whose internal reads were previously dropped on resume). Feed is
+ * undefined: the deterministic, feed-independent reads (the ones that recur when
+ * the same pick repeats, e.g. a mailbox list sweep) are reached; feed-dependent
+ * per-record reads are unique and never the repetition driver.
+ *
+ * Defensive: a primitive impl can throw (missing connection, etc.). A resume
+ * must never fail because the rebuild couldn't replay a turn — on any throw we
+ * stop draining THAT turn (its counted reads so far stand) and move on; the
+ * live loop will re-validate + re-dispatch the next pick under the real gates.
+ */
+async function rebuildReadRepetition(
+  transcript: PlanTurn[],
+  plan: PlanSpec,
+  connMap: Record<string, string | undefined>,
+  nowMs: number,
+  repetition: Map<string, number>,
+  nibbin: NibbinRef,
+): Promise<void> {
+  for (const t of transcript) {
+    if (!('tool' in t.pick) || typeof t.pick.tool !== 'string') continue;
+    const tool = t.pick.tool;
+    // Only connector capabilities reach the interpreter; utilities/sentinels are
+    // primed elsewhere (and have no capability descriptor).
+    if (plannerTool(tool) || !capability(tool)) continue;
+    const args = (t.pick as { args?: Record<string, unknown> }).args ?? {};
+    try {
+      const program = interpretSpec(stepSpecFor(tool, args, plan), connMap, nowMs);
+      const gen = program({ nibbin, trigger: { kind: 'user' } });
+      for (;;) {
+        const next = await gen.next(undefined);
+        if (next.done) break;
+        const step = next.value;
+        if (step.kind === 'read') {
+          const repKey = `read:${step.capability}:${hashArgs(step.path)}`;
+          repetition.set(repKey, (repetition.get(repKey) ?? 0) + 1);
+        }
+      }
+    } catch {
+      // see doc comment — a failed replay of one turn must not abort the resume.
+    }
+  }
+}
+
 export async function runPlan(
   plan: PlanSpec,
   deps: PlannerDeps,
@@ -187,18 +236,24 @@ export async function runPlan(
   const nibbin = syntheticNibbin(plan, runId);
   nibbin.accountId = deps.accountId;
   const ceilings = plan.ceilings;
+  const startedAt = deps.runner.now();
   const repetition = new Map<string, number>();
   // Rebuild the repetition map from the resumed transcript so a resumed loop
-  // can't bypass the repetition kill by forgetting prior reads.
-  for (const t of state.transcript) {
-    if ('tool' in t.pick && typeof t.pick.tool === 'string') {
-      const c = capability(t.pick.tool);
-      if (c && c.sideEffect === 'read' && c.kind !== 'primitive') {
-        const path = (t.pick as { args: Record<string, unknown> }).args.path;
-        repetition.set(`read:${t.pick.tool}:${hashArgs(path)}`, (repetition.get(`read:${t.pick.tool}:${hashArgs(path)}`) ?? 0) + 1);
-      }
-    }
-  }
+  // can't bypass the repetition kill by forgetting prior moves.
+  //
+  // A connector pick (atomic read OR primitive) is counted EXACTLY as the live
+  // loop counts it: dispatchStep keys repetition on each `read` step it gates,
+  // as `read:<capability>:<hashArgs(path)>` (runner.ts). So we replay the same
+  // interpreter program the live loop runs (interpretSpec ∘ stepSpecFor) and
+  // increment the same key for every `read` step it yields. This restores a
+  // primitive's INTERNAL read counts across a resume — the old rebuild filtered
+  // primitives out (`c.kind !== 'primitive'`), so a primitive repeated across a
+  // resume could exceed REPETITION_KILL_AT without being killed. Replaying with
+  // an undefined feed reaches the deterministic, feed-independent reads (e.g. a
+  // primitive's mailbox-list sweep) — exactly the reads that accumulate to the
+  // kill when the same primitive is picked again; per-message meta reads are
+  // unique and never the repetition driver, so not reaching them is faithful.
+  await rebuildReadRepetition(state.transcript, plan, deps.connMap, startedAt, repetition, nibbin);
   // Prime the utility repetition map + the web-egress counter from the resumed
   // transcript so a resumed loop can't bypass either guard by forgetting prior
   // utility calls (especially repeated web.* egress).
@@ -211,7 +266,6 @@ export async function runPlan(
       if (WEB_UTILITY_IDS.has(t.pick.tool)) webCalls += 1;
     }
   }
-  const startedAt = deps.runner.now();
   let idx = state.transcript.length;
   let tokens = 0;
   let noProgress = 0;
