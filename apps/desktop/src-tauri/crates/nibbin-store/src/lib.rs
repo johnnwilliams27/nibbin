@@ -23,9 +23,24 @@ pub struct ObserverStore {
     /// directly) so tests can drive the fail-safe path with a tiny cap instead
     /// of inserting millions of rows. Production always uses `EVENT_SOFT_CAP`.
     event_soft_cap: u64,
+    /// Cached row count for the `events` table (LS-01/cost-01 fix).
+    ///
+    /// Initialised once from `COUNT(*)` in `open()`, then incremented on every
+    /// successful INSERT so that `append()` never runs a full table scan on the
+    /// hot path. When the cached value is within `COUNT_RECHECK_MARGIN` of the
+    /// cap we re-query the real count to defend against any drift (e.g. an
+    /// external connection deleting rows while we run). This keeps the
+    /// soft-cap invariant sound while eliminating the per-append scan in the
+    /// common case (well below the cap).
+    cached_event_count: u64,
 }
 
 const DB_FILE: &str = "observer.db";
+
+/// When the cached event count is within this many rows of the soft cap we
+/// re-query the real `COUNT(*)` to correct any drift before deciding whether
+/// to block the insert. Outside this margin the cache is authoritative.
+const COUNT_RECHECK_MARGIN: u64 = 100;
 
 /// Generous soft cap on the number of `events` rows. With #151's tree-dedup a
 /// real 14-day study stays far below this; the cap exists only to catch a
@@ -72,10 +87,15 @@ impl ObserverStore {
             "#,
         )
         .context("opening store (wrong key?)")?;
+        // Load the initial count once here; `append()` keeps it current via
+        // increment, so this is the only full table scan in steady-state operation.
+        let cached_event_count = conn
+            .query_row("SELECT COUNT(*) FROM events", [], |r| r.get::<_, u64>(0))?;
         Ok(Self {
             conn,
             root: root.to_path_buf(),
             event_soft_cap: EVENT_SOFT_CAP,
+            cached_event_count,
         })
     }
 
@@ -88,6 +108,9 @@ impl ObserverStore {
     #[cfg(test)]
     fn set_soft_cap_for_test(&mut self, cap: u64) {
         self.event_soft_cap = cap;
+        // Also refresh the cache so the new (tiny) cap takes effect immediately
+        // even if rows were already inserted at the previous cap.
+        self.cached_event_count = self.event_count().unwrap_or(0);
     }
 
     fn event_count(&self) -> Result<u64, anyhow::Error> {
@@ -187,14 +210,29 @@ impl PersistSink for ObserverStore {
         // cost-02 / H2 fail-safe: if the store has reached the soft cap, STOP
         // (do NOT insert) and return a distinct error so the daemon surfaces
         // `capture_blocked`. We never prune or drop study data silently.
+        //
+        // LS-01/cost-01 fix: use the in-memory cached count (initialised once
+        // at open() and incremented on every successful insert) so the common
+        // path never runs a full `SELECT COUNT(*)` per append.  When the
+        // cached value is within COUNT_RECHECK_MARGIN of the cap we re-query
+        // the real count to catch any drift (e.g. external deletion).
         let cap = self.event_soft_cap;
-        if self.event_count()? >= cap {
+        let count = if self.cached_event_count + COUNT_RECHECK_MARGIN >= cap {
+            // Near or at cap: re-query to be exact.
+            let real = self.event_count()?;
+            self.cached_event_count = real;
+            real
+        } else {
+            self.cached_event_count
+        };
+        if count >= cap {
             anyhow::bail!("{SOFT_CAP_MARKER} ({cap} events)");
         }
         self.conn.execute(
             "INSERT INTO events (id, ts, json) VALUES (?1, ?2, ?3)",
             rusqlite::params![event.id, event.ts, serde_json::to_string(event)?],
         )?;
+        self.cached_event_count += 1;
         Ok(())
     }
 }
