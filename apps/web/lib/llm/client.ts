@@ -35,6 +35,19 @@ export interface ModelCallRecord {
   usage: TokenUsage;
   origin?: 'chat' | 'pipeline';
   channel?: string;
+  /**
+   * Routing-reinforcement Slice A signals (pure observability — they change
+   * nothing about which model route() picked). All optional + back-compat:
+   *  - outcome: 'ok' (default) for a real completion; 'error' / 'refusal' on a
+   *    graceful failure (provider error / rate-limit, or a model decline). An
+   *    error/refusal row is the previously-invisible failure being ledgered —
+   *    it carries ZERO tokens and NEVER any prompt/response content.
+   *  - degraded: route()'s decision.degraded (budget forced T2→T1). Default false.
+   *  - latencyMs: model-call wall time; null (default) when not measured.
+   */
+  outcome?: 'ok' | 'refusal' | 'error';
+  degraded?: boolean;
+  latencyMs?: number | null;
 }
 
 export async function recordModelCall(rec: ModelCallRecord): Promise<void> {
@@ -54,6 +67,9 @@ export async function recordModelCall(rec: ModelCallRecord): Promise<void> {
       cost_microusd: costMicroUsd(rec.model, rec.usage),
       origin: rec.origin ?? null,
       channel: rec.channel ?? null,
+      outcome: rec.outcome ?? 'ok',
+      degraded: rec.degraded ?? false,
+      latency_ms: rec.latencyMs ?? null,
     });
     if (error) console.error('[cogs] model_calls insert failed', error.message);
   } catch (err) {
