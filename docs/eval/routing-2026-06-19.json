@@ -1,0 +1,518 @@
+{
+  "date": "2026-06-19",
+  "mock": false,
+  "qualityTolerance": 0.03,
+  "pairs": [
+    {
+      "task": "custom_spec_draft",
+      "tier": "t2",
+      "kind": "cost",
+      "rubricVersion": "custom_spec_draft.v1",
+      "incumbent": {
+        "model": "claude-sonnet-4-6",
+        "aggregate": 0.99,
+        "scores": [
+          {
+            "fixtureId": "overdue-email",
+            "score": 1,
+            "rationale": "Valid strict JSON, correct capability fit, param in bounds, warm sentence-case name under 40 chars, no PII."
+          },
+          {
+            "fixtureId": "overdue-invoice",
+            "score": 1,
+            "rationale": "Valid JSON, correct schema, on-menu id fits invoice workflow, param in bounds, displayName warm and within limit."
+          },
+          {
+            "fixtureId": "unconfirmed-event",
+            "score": 0.98,
+            "rationale": "Valid JSON, correct schema, on-menu id, inputs in bounds, fits workflow; displayName warm and within limit."
+          },
+          {
+            "fixtureId": "morning-brief",
+            "score": 1,
+            "rationale": "Valid strict JSON; correct schema; digest.morning fits workflow ideally; no params needed; warm sentence-case name under 40 chars; no PII."
+          },
+          {
+            "fixtureId": "morning-ops",
+            "score": 0.97,
+            "rationale": "Valid JSON, on-menu ids, params in bounds, fits workflow; displayName 39 chars, warm, sentence case. Minor tone verbosity."
+          }
+        ],
+        "avgCostMicroUsd": 2977
+      },
+      "challenger": {
+        "model": "claude-haiku-4-5-20251001",
+        "aggregate": 0.9879999999999999,
+        "scores": [
+          {
+            "fixtureId": "overdue-email",
+            "score": 1,
+            "rationale": "Valid JSON, correct schema, on-menu id, in-bounds param, good fit, warm short displayName."
+          },
+          {
+            "fixtureId": "overdue-invoice",
+            "score": 1,
+            "rationale": "Valid strict JSON, correct schema; capability fits invoice nudge workflow; param in bounds; displayName warm, short, sentence case, no PII."
+          },
+          {
+            "fixtureId": "unconfirmed-event",
+            "score": 0.97,
+            "rationale": "Valid JSON, correct schema, on-menu id fits workflow, inputs in bounds; displayName warm and short, slight all-good fit"
+          },
+          {
+            "fixtureId": "morning-brief",
+            "score": 1,
+            "rationale": "Valid strict JSON, correct shape; digest.morning fits 'pull day together'; no params used; displayName warm, short, no PII."
+          },
+          {
+            "fixtureId": "morning-ops",
+            "score": 0.97,
+            "rationale": "Valid JSON, on-menu ids, valid params, good fit; displayName fine but borderline mixed case style."
+          }
+        ],
+        "avgCostMicroUsd": 932
+      },
+      "cleared": true,
+      "reason": "cheaper challenger 0.988 is within tolerance 0.030 of incumbent 0.990 — cost win cleared",
+      "costDeltaMicroUsd": -2045
+    },
+    {
+      "task": "complex_plan",
+      "tier": "t2",
+      "kind": "cost",
+      "rubricVersion": "complex_plan.v1",
+      "incumbent": {
+        "model": "claude-sonnet-4-6",
+        "aggregate": 0.818,
+        "scores": [
+          {
+            "fixtureId": "onboarding-sequence",
+            "score": 0.55,
+            "rationale": "Steps coherent but calendar.draft-invite is unused/over-broad and summarize unused in connectors mapping; off-task tool inflates surface."
+          },
+          {
+            "fixtureId": "weekly-roundup",
+            "score": 1,
+            "rationale": "Valid schema, minimal surface, correct connectors (stripe+gmail), coherent decomposition, done included, no banned content."
+          },
+          {
+            "fixtureId": "staged-followups",
+            "score": 0.97,
+            "rationale": "Valid JSON, minimal surface, correct connectors, coherent ordered decomposition respecting conditions; no violations."
+          },
+          {
+            "fixtureId": "cross-tool-triage",
+            "score": 0.95,
+            "rationale": "Valid schema, minimal surface, correct connectors, coherent decomposition; slight redundancy in dual summarize steps."
+          },
+          {
+            "fixtureId": "ambiguous-scope",
+            "score": 0.62,
+            "rationale": "Valid schema, connectors match tools, done included, 6 steps. But invoice.list and calendar broaden beyond minimal comms need; surface not smallest sufficient."
+          }
+        ],
+        "avgCostMicroUsd": 4584
+      },
+      "challenger": {
+        "model": "claude-haiku-4-5-20251001",
+        "aggregate": 0.778,
+        "scores": [
+          {
+            "fixtureId": "onboarding-sequence",
+            "score": 0.55,
+            "rationale": "Valid schema, connectors match; but includes likely-unneeded email.search and summarize, slightly over-broad surface."
+          },
+          {
+            "fixtureId": "weekly-roundup",
+            "score": 1,
+            "rationale": "Valid schema, minimal surface, correct connectors, coherent 4-step decomposition; done included, no prose/code."
+          },
+          {
+            "fixtureId": "staged-followups",
+            "score": 0.55,
+            "rationale": "Schema/structure ok but over-broad: email.search and calendar.list unneeded for spacing logic; could use email.search instead of calendar, not both."
+          },
+          {
+            "fixtureId": "cross-tool-triage",
+            "score": 0.97,
+            "rationale": "Valid schema, minimal surface, correct connectors, coherent 5-step decomposition matching the request."
+          },
+          {
+            "fixtureId": "ambiguous-scope",
+            "score": 0.82,
+            "rationale": "Valid schema, coherent steps, on-surface ids, connectors match. Slightly broad: both email.draft and calendar.draft-invite included for ambiguous step."
+          }
+        ],
+        "avgCostMicroUsd": 1274
+      },
+      "cleared": false,
+      "reason": "cheaper challenger 0.778 falls 0.040 below incumbent 0.818 (> tolerance 0.030) — not cleared",
+      "costDeltaMicroUsd": -3310
+    },
+    {
+      "task": "plan_synthesis",
+      "tier": "t2",
+      "kind": "cost",
+      "rubricVersion": "plan_synthesis.v1",
+      "incumbent": {
+        "model": "claude-sonnet-4-6",
+        "aggregate": 0.994,
+        "scores": [
+          {
+            "fixtureId": "quiet-threads",
+            "score": 1,
+            "rationale": "Valid strict JSON, minimal well-fit surface, done included, gmail-only connector correct, coherent steps, no banned content."
+          },
+          {
+            "fixtureId": "overdue-invoices",
+            "score": 1,
+            "rationale": "Valid strict JSON; minimal well-fit surface; done included; connectors match chosen tools; coherent steps, no banned content."
+          },
+          {
+            "fixtureId": "day-brief",
+            "score": 1,
+            "rationale": "Valid JSON, minimal fitting tools, done included, connectors match used tools, coherent steps, no banned content."
+          },
+          {
+            "fixtureId": "confirm-bookings",
+            "score": 1,
+            "rationale": "Valid strict JSON; minimal well-fit surface, done included, connectors match chosen tools, no banned content."
+          },
+          {
+            "fixtureId": "vague-tidy",
+            "score": 0.97,
+            "rationale": "Valid schema, minimal well-fit surface, correct connector, done included; output had fences but content is clean and coherent."
+          }
+        ],
+        "avgCostMicroUsd": 3843
+      },
+      "challenger": {
+        "model": "claude-haiku-4-5-20251001",
+        "aggregate": 0.8720000000000001,
+        "scores": [
+          {
+            "fixtureId": "quiet-threads",
+            "score": 0.98,
+            "rationale": "Valid JSON, minimal well-fit surface, done included, correct gmail connector, coherent steps; fences are external."
+          },
+          {
+            "fixtureId": "overdue-invoices",
+            "score": 0.98,
+            "rationale": "Valid schema, minimal well-fit surface, done included, connectors match chosen tools; coherent steps, no banned content."
+          },
+          {
+            "fixtureId": "day-brief",
+            "score": 1,
+            "rationale": "Valid strict JSON, minimal on-surface tools, done included, connectors match used tools, coherent 5-step plan, no banned content."
+          },
+          {
+            "fixtureId": "confirm-bookings",
+            "score": 0.85,
+            "rationale": "Valid schema, on-surface ids, done included, correct connectors; summarize is unused/over-broad, minor minimality deduction."
+          },
+          {
+            "fixtureId": "vague-tidy",
+            "score": 0.55,
+            "rationale": "Valid schema, ids on-surface, done present, but calendar.list/email.draft are over-broad for a vague triage request; not minimal surface."
+          }
+        ],
+        "avgCostMicroUsd": 1200
+      },
+      "cleared": false,
+      "reason": "cheaper challenger 0.872 falls 0.122 below incumbent 0.994 (> tolerance 0.030) — not cleared",
+      "costDeltaMicroUsd": -2643
+    },
+    {
+      "task": "specialist_draft",
+      "tier": "t1",
+      "kind": "quality",
+      "rubricVersion": "specialist_draft.v1",
+      "incumbent": {
+        "model": "claude-haiku-4-5-20251001",
+        "aggregate": 0.952,
+        "scores": [
+          {
+            "fixtureId": "gentle-followup",
+            "score": 0.97,
+            "rationale": "Warm, low-pressure, send-ready body; no invented facts, names, or markdown. Matches ask well."
+          },
+          {
+            "fixtureId": "invoice-nudge",
+            "score": 0.92,
+            "rationale": "Faithful, warm first-person reminder offering resend; no invented facts or subject. Slightly formal opener and tone, minor voice deduction."
+          },
+          {
+            "fixtureId": "booking-confirm",
+            "score": 0.95,
+            "rationale": "Warm, plainspoken, first person, sentence case, faithful, no invented details; send-ready. Slightly vague on exact time but accurate."
+          },
+          {
+            "fixtureId": "new-inquiry",
+            "score": 0.97,
+            "rationale": "Warm, plainspoken, first person, sentence case; thanks and one clarifying timeline question; no invented facts or names; send-ready."
+          },
+          {
+            "fixtureId": "reschedule",
+            "score": 0.95,
+            "rationale": "Faithful, warm, send-ready, no invented details or formatting; minor redundancy but on-voice."
+          }
+        ],
+        "avgCostMicroUsd": 427
+      },
+      "challenger": {
+        "model": "claude-sonnet-4-6",
+        "aggregate": 0.944,
+        "scores": [
+          {
+            "fixtureId": "gentle-followup",
+            "score": 0.97,
+            "rationale": "Faithful, warm, low-pressure follow-up; no invented facts, no subject or markdown; send-ready and on-voice."
+          },
+          {
+            "fixtureId": "invoice-nudge",
+            "score": 0.95,
+            "rationale": "Warm, faithful, send-ready, role-based, no invented facts. Slight sign-off-like closing but acceptable."
+          },
+          {
+            "fixtureId": "booking-confirm",
+            "score": 0.95,
+            "rationale": "Faithful, warm, send-ready, no invented details; minor slight informality but on-voice."
+          },
+          {
+            "fixtureId": "new-inquiry",
+            "score": 0.9,
+            "rationale": "Warm, on-voice, faithful first reply with one clarifying timeline question; no invented facts. Slightly long but send-ready."
+          },
+          {
+            "fixtureId": "reschedule",
+            "score": 0.95,
+            "rationale": "Warm, faithful, send-ready, no invented details; minor slightly templated phrasing but on-voice."
+          }
+        ],
+        "avgCostMicroUsd": 1335
+      },
+      "cleared": false,
+      "reason": "quality challenger 0.944 < incumbent 0.952 — not cleared",
+      "costDeltaMicroUsd": 908
+    },
+    {
+      "task": "map_labeling",
+      "tier": "t1",
+      "kind": "quality",
+      "rubricVersion": "map_labeling.v1",
+      "incumbent": {
+        "model": "claude-haiku-4-5-20251001",
+        "aggregate": 0.9119999999999999,
+        "scores": [
+          {
+            "fixtureId": "email-followups",
+            "score": 0.97,
+            "rationale": "Valid JSON, on-enum email category fits chasing threads; label warm, faithful, sentence case, under 6 words."
+          },
+          {
+            "fixtureId": "invoice-chasing",
+            "score": 0.85,
+            "rationale": "Valid category and faithful label, but wrapped in code fences violating strict no-fences requirement."
+          },
+          {
+            "fixtureId": "booking-confirms",
+            "score": 0.85,
+            "rationale": "Valid schema, correct calendar category; label faithful but slightly long/awkward at 5 words."
+          },
+          {
+            "fixtureId": "doc-prep",
+            "score": 0.92,
+            "rationale": "Valid JSON, correct enum category, faithful concise label; minor: not fully warm tone."
+          },
+          {
+            "fixtureId": "mixed-morning",
+            "score": 0.97,
+            "rationale": "Valid JSON, on-enum general fits mixed no-dominant signals; label warm, concise, faithful. Minor fence in output."
+          }
+        ],
+        "avgCostMicroUsd": 306
+      },
+      "challenger": {
+        "model": "claude-sonnet-4-6",
+        "aggregate": 0.9099999999999999,
+        "scores": [
+          {
+            "fixtureId": "email-followups",
+            "score": 1,
+            "rationale": "Valid JSON, on-enum email category fits chasing threads; label warm, concise, faithful."
+          },
+          {
+            "fixtureId": "invoice-chasing",
+            "score": 1,
+            "rationale": "Valid JSON, on-enum payments category fits signals, label concise and faithful with no invented specifics."
+          },
+          {
+            "fixtureId": "booking-confirms",
+            "score": 0.55,
+            "rationale": "Valid schema and faithful label, but signals tied to calendar events; category likely should be calendar."
+          },
+          {
+            "fixtureId": "doc-prep",
+            "score": 1,
+            "rationale": "Valid JSON, on-enum category fits document signals, label concise faithful sentence case."
+          },
+          {
+            "fixtureId": "mixed-morning",
+            "score": 1,
+            "rationale": "Valid JSON, on-enum general fits no dominant action, label concise warm faithful within 6 words."
+          }
+        ],
+        "avgCostMicroUsd": 850
+      },
+      "cleared": false,
+      "reason": "quality challenger 0.910 < incumbent 0.912 — not cleared",
+      "costDeltaMicroUsd": 544
+    },
+    {
+      "task": "complex_plan",
+      "tier": "t2",
+      "kind": "quality",
+      "rubricVersion": "complex_plan.v1",
+      "incumbent": {
+        "model": "claude-sonnet-4-6",
+        "aggregate": 0.9280000000000002,
+        "scores": [
+          {
+            "fixtureId": "onboarding-sequence",
+            "score": 0.92,
+            "rationale": "Valid schema, coherent 6-step decomposition, on-surface ids with done, connectors match chosen tools; minor: invite tool arguably extra but justified."
+          },
+          {
+            "fixtureId": "weekly-roundup",
+            "score": 0.85,
+            "rationale": "Valid schema, on-surface ids, connectors match, well-decomposed; minor over-broad email.draft not strictly requested by summary task."
+          },
+          {
+            "fixtureId": "staged-followups",
+            "score": 0.97,
+            "rationale": "Valid schema, minimal surface, correct connectors, coherent ordering respecting overdue/week conditions. done included; no off-surface ids."
+          },
+          {
+            "fixtureId": "cross-tool-triage",
+            "score": 0.95,
+            "rationale": "Valid schema, on-surface minimal tools, correct connectors, coherent ordering; slight redundancy with summarize step."
+          },
+          {
+            "fixtureId": "ambiguous-scope",
+            "score": 0.95,
+            "rationale": "Valid schema, coherent 4-step read+summarize plan, on-surface ids, done included, connectors match chosen tools; minimal and well-decomposed."
+          }
+        ],
+        "avgCostMicroUsd": 4662
+      },
+      "challenger": {
+        "model": "claude-opus-4-8",
+        "aggregate": 0.9800000000000001,
+        "scores": [
+          {
+            "fixtureId": "onboarding-sequence",
+            "score": 0.95,
+            "rationale": "Valid schema, minimal surface, connectors match, coherent ordered steps; tiny ambiguity in step-tool mapping but sound."
+          },
+          {
+            "fixtureId": "weekly-roundup",
+            "score": 1,
+            "rationale": "Valid JSON, minimal correct surface, connectors match, coherent 4-step decomposition, no banned content."
+          },
+          {
+            "fixtureId": "staged-followups",
+            "score": 1,
+            "rationale": "Valid JSON, minimal surface, done included, connectors match (stripe+gmail), well-decomposed 5 steps respecting timing/once-per-week rule."
+          },
+          {
+            "fixtureId": "cross-tool-triage",
+            "score": 1,
+            "rationale": "Valid JSON, minimal surface, correct connectors, coherent ordered steps, includes done, no banned content."
+          },
+          {
+            "fixtureId": "ambiguous-scope",
+            "score": 0.95,
+            "rationale": "Valid strict JSON, minimal surface, coherent ordered steps, correct connector mapping; minor scope interpretation but well-decomposed."
+          }
+        ],
+        "avgCostMicroUsd": 6995
+      },
+      "cleared": true,
+      "reason": "quality challenger 0.980 ≥ incumbent 0.928 — headroom cleared",
+      "costDeltaMicroUsd": 2333
+    },
+    {
+      "task": "plan_synthesis",
+      "tier": "t2",
+      "kind": "quality",
+      "rubricVersion": "plan_synthesis.v1",
+      "incumbent": {
+        "model": "claude-sonnet-4-6",
+        "aggregate": 0.9960000000000001,
+        "scores": [
+          {
+            "fixtureId": "quiet-threads",
+            "score": 1,
+            "rationale": "Valid strict JSON; minimal well-fit surface, done included, only gmail connector, coherent steps, no banned content."
+          },
+          {
+            "fixtureId": "overdue-invoices",
+            "score": 0.98,
+            "rationale": "Valid strict JSON, on-surface ids, includes done, minimal fit, correct connectors, coherent steps, no banned content."
+          },
+          {
+            "fixtureId": "day-brief",
+            "score": 1,
+            "rationale": "Valid strict JSON, all ids on-surface, done included, connectors match read tools, minimal coherent plan, no banned content."
+          },
+          {
+            "fixtureId": "confirm-bookings",
+            "score": 1,
+            "rationale": "Valid JSON, minimal well-fit surface, correct connectors, done included, no banned content."
+          },
+          {
+            "fixtureId": "vague-tidy",
+            "score": 1,
+            "rationale": "Valid strict JSON, minimal well-fit surface, done included, connector matches email.search, no banned content"
+          }
+        ],
+        "avgCostMicroUsd": 4080
+      },
+      "challenger": {
+        "model": "claude-opus-4-8",
+        "aggregate": 0.986,
+        "scores": [
+          {
+            "fixtureId": "quiet-threads",
+            "score": 1,
+            "rationale": "Valid strict JSON, minimal well-fit surface, includes done, gmail-only connector matches chosen tools, coherent steps, no banned content."
+          },
+          {
+            "fixtureId": "overdue-invoices",
+            "score": 1,
+            "rationale": "Valid JSON, minimal fit surface, done included, connectors match invoice.list(stripe)+email.draft(gmail), coherent steps, no banned content"
+          },
+          {
+            "fixtureId": "day-brief",
+            "score": 1,
+            "rationale": "Valid strict JSON, minimal well-fit tools, done included, connectors match read tools, no banned content."
+          },
+          {
+            "fixtureId": "confirm-bookings",
+            "score": 0.95,
+            "rationale": "Valid schema, on-surface ids, done included, connectors match; summarize arguably extra but defensible. Coherent minimal plan."
+          },
+          {
+            "fixtureId": "vague-tidy",
+            "score": 0.98,
+            "rationale": "Valid JSON, minimal fit surface, correct ids incl done, connector gmail matches email.search; coherent steps, no banned content."
+          }
+        ],
+        "avgCostMicroUsd": 6063
+      },
+      "cleared": false,
+      "reason": "quality challenger 0.986 < incumbent 0.996 — not cleared",
+      "costDeltaMicroUsd": 1983
+    }
+  ]
+}

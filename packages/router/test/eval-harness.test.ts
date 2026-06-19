@@ -288,10 +288,28 @@ export const NEXT = 1;
   });
 });
 
-/* ── This PR ships the EMPTY candidate set unchanged ────────────────────────── */
+/* ── Activation: the 2026-06-19 eval cleared + armed 2 candidate sets ─────────
+ * route() stays unchanged while NIBBIN_REINFORCEMENT is off (the separate
+ * `route-unchanged` test proves it — incumbent is listed FIRST, so the default
+ * resolution returns today's model). These assert the armed state itself. ──── */
 
-describe('this PR keeps DEFAULT_TASK_CANDIDATES empty (route-unchanged stays green)', () => {
-  it('DEFAULT_TASK_CANDIDATES is still empty on disk', () => {
-    expect(Object.keys(DEFAULT_TASK_CANDIDATES)).toHaveLength(0);
+describe('eval-cleared candidate sets are armed (incumbent-first; see docs/eval/routing-2026-06-19.md)', () => {
+  it('custom_spec_draft armed [Sonnet, Haiku] — cost win (Haiku within tolerance, ~3x cheaper)', () => {
+    expect(DEFAULT_TASK_CANDIDATES.custom_spec_draft).toEqual([
+      'claude-sonnet-4-6',
+      'claude-haiku-4-5-20251001',
+    ]);
+  });
+  it('complex_plan armed [Sonnet, Opus] — quality headroom (Opus >= Sonnet)', () => {
+    expect(DEFAULT_TASK_CANDIDATES.complex_plan).toEqual([
+      'claude-sonnet-4-6',
+      'claude-opus-4-8',
+    ]);
+  });
+  it('every armed set lists the incumbent (today config) FIRST — the safe default', () => {
+    // Both armed tasks are t2 (DEFAULT_MODELS.t2 = sonnet), so incumbent === sonnet.
+    for (const set of Object.values(DEFAULT_TASK_CANDIDATES)) {
+      expect(set?.[0]).toBe('claude-sonnet-4-6');
+    }
   });
 });

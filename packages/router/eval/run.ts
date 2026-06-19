@@ -134,7 +134,11 @@ async function main(): Promise<void> {
       process.exit(1);
       return;
     }
-    generate = createAnthropicClient({ apiKey });
+    // The current Claude models reject the `temperature` param (deprecated), and
+    // fixtures/judge set it for determinism — strip it at the single real-generate
+    // seam so both candidate calls and the judge use the model's default sampling.
+    const client = createAnthropicClient({ apiKey });
+    generate = (req) => client({ ...req, temperature: undefined });
     judge = createLlmJudge(generate);
   }
 
