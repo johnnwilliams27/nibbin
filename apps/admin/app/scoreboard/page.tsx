@@ -20,10 +20,6 @@ function pct(rate: number | null): string {
   return rate === null ? '—' : `${(rate * 100).toFixed(0)}%`;
 }
 
-function num(n: number | null): string {
-  return n === null ? '—' : String(n);
-}
-
 function dollars(microusd: number | null): string {
   if (microusd === null) return '—';
   return `$${(microusd / 1_000_000).toFixed(4)}`;

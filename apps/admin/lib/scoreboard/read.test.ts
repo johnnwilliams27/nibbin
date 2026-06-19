@@ -88,6 +88,67 @@ describe('deriveRates — quality/outcome/degradation rates from raw counts', ()
   });
 });
 
+describe('view contract — two models on one task; no-run_id calls in volume not quality', () => {
+  // Mirrors what the SQL view emits: two models for one task. Model A has
+  // approval rows (drafting-style); Model B is a diagnosis/chat-style model whose
+  // calls have NO run_id, so they count in `calls` but never in decided_calls or
+  // the quality columns. The 30-day window is applied SQL-side; the read layer
+  // derives rates over whatever counts it is handed.
+  const modelA: PerformanceRow = {
+    model: 'model-a',
+    task: 'specialist_draft',
+    tier: 't1',
+    calls: 20,
+    decided_calls: 20,
+    approved_unedited: 16,
+    edited: 3,
+    rejected: 1,
+    avg_edit_distance: 0.4,
+    refusals: 0,
+    errors: 1,
+    degraded_calls: 2,
+    avg_cost_microusd: 900,
+    total_cost_microusd: 18000,
+    avg_latency_ms: 700,
+    last_call_at: '2026-06-18T00:00:00Z',
+  };
+  // Same task, different model, NO approvals (run_id-less calls) → decided_calls 0.
+  const modelB: PerformanceRow = {
+    model: 'model-b',
+    task: 'specialist_draft',
+    tier: 't1',
+    calls: 12,
+    decided_calls: 0,
+    approved_unedited: 0,
+    edited: 0,
+    rejected: 0,
+    avg_edit_distance: null,
+    refusals: 1,
+    errors: 0,
+    degraded_calls: 0,
+    avg_cost_microusd: 500,
+    total_cost_microusd: 6000,
+    avg_latency_ms: 400,
+    last_call_at: '2026-06-17T00:00:00Z',
+  };
+
+  it('derives quality for the decided model and leaves the run_id-less model null', async () => {
+    const admin = {
+      rpc: async () => ({ data: [modelA, modelB], error: null }),
+    } as unknown as SupabaseClient;
+    const rows = await loadScoreboard(admin);
+    const a = rows.find((r) => r.model === 'model-a')!;
+    const b = rows.find((r) => r.model === 'model-b')!;
+    expect(a.approvedUneditedRate).toBeCloseTo(16 / 20);
+    expect(a.degradationRate).toBeCloseTo(2 / 20);
+    // Model B's calls show in volume + outcome, but quality is null (no decided).
+    expect(b.calls).toBe(12);
+    expect(b.decided_calls).toBe(0);
+    expect(b.approvedUneditedRate).toBeNull();
+    expect(b.refusalRate).toBeCloseTo(1 / 12);
+  });
+});
+
 describe('loadScoreboard — staff-gated RPC read', () => {
   it('maps the RPC rows through deriveRates', async () => {
     const admin = {
