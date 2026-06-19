@@ -6,11 +6,14 @@ import { optOutSms, optInSms } from '../../../../lib/channels/sms-compliance';
 
 // A channel-initiated message can start/resume a Planner run INLINE (ingestInbound
 // → channel.ts → runPlan), which may launch serverless Chromium for a computer_use
-// plan (90s loop wall-clock ceiling). 120s gives headroom over that ceiling for the
-// Chromium cold-start + teardown, within Vercel's limit. nodejs runtime is required
-// for @sparticuz/chromium (a native binary — not edge-compatible).
+// plan (50s loop wall-clock ceiling). 60s is the Vercel HOBBY hard cap, so we pin
+// here to deploy/run on ANY plan; the 50s loop ceiling leaves headroom for the
+// Chromium cold-start + teardown under this 60s function limit. On a Pro+ plan
+// raise this to 120/300 AND bump COMPUTER_USE_CEILINGS.maxWallClockMs together.
+// nodejs runtime is required for @sparticuz/chromium (a native binary — not
+// edge-compatible).
 export const runtime = 'nodejs';
-export const maxDuration = 120;
+export const maxDuration = 60;
 
 const twiml = (msg: string) =>
   new NextResponse(`<Response><Message>${msg}</Message></Response>`, {

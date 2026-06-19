@@ -278,9 +278,14 @@ async function loadBrowserEngine(): Promise<PwModule | null> {
  * from ensurePage, which only runs when a Planner step actually uses computer_use),
  * so the layer never loads on a cold start that doesn't touch the browser.
  *
- * @param loadEngine the engine loader (the constructor seam — tests inject a fake
- *   PwModule, so launchOptions stays the benign `{ headless: true }` default and
- *   the @sparticuz import is never reached off-serverless).
+ * @param loadEngine the engine loader (the constructor seam). When a NON-default
+ *   loader is injected (the TEST seam — `loadEngine !== loadBrowserEngine`) we take
+ *   the benign `{ headless: true }` launch path and NEVER consult
+ *   `isServerlessRuntime()` / import `@sparticuz`, so the fake-Pw unit tests are
+ *   HERMETIC regardless of ambient env (a CI runner that sets VERCEL /
+ *   AWS_LAMBDA_FUNCTION_NAME / AWS_EXECUTION_ENV would otherwise drive a real
+ *   @sparticuz import). Only the real/default loader path consults
+ *   `isServerlessRuntime()` + `@sparticuz`.
  *
  * SECURITY — @sparticuz args egress audit (verified against v149 at build time):
  * `chromium.args` is a rendering/sandbox/process-model set
@@ -303,7 +308,13 @@ async function loadBrowserEngine(): Promise<PwModule | null> {
 async function loadBrowserRuntime(loadEngine: () => Promise<PwModule | null>): Promise<BrowserRuntime | null> {
   const engine = await loadEngine();
   if (!engine) return null;
-  if (isServerlessRuntime()) {
+  // HERMETIC TEST SEAM: a non-default (injected) loader means a fake engine — take
+  // the benign launch path WITHOUT consulting isServerlessRuntime() / importing
+  // @sparticuz, so the unit tests behave identically whether or not the CI env
+  // happens to set VERCEL / AWS_LAMBDA_FUNCTION_NAME / AWS_EXECUTION_ENV. Only the
+  // real/default loader path reaches the serverless @sparticuz branch below.
+  const isDefaultLoader = loadEngine === loadBrowserEngine;
+  if (isDefaultLoader && isServerlessRuntime()) {
     try {
       // @sparticuz/chromium is an ESM-default module: the namespace's `.default`
       // holds { args, executablePath(), … }. Assemble the specifier at runtime.

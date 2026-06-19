@@ -13,7 +13,7 @@
   "//chromium": "@sparticuz/chromium + playwright-core are RUNTIME deps (ship to prod) so the serverless launch path in lib/planner/browser.ts can run real Chromium on Vercel. @sparticuz/chromium bundles a brotli-compressed headless Chromium (~50 MB) and exposes args/executablePath()/headless; playwright-core is the Playwright engine WITHOUT bundled browsers (it drives that binary). Neither downloads a browser at install. Full `playwright` stays a devDependency for local dev + the gated live test.",
   "dependencies": {
     "@nibbin/channels": "*",
-    "@sparticuz/chromium": "^149.0.0",
+    "@sparticuz/chromium": "~149.0.0",
     "playwright-core": "^1.61.0",
     "@nibbin/connectors": "*",
     "@nibbin/creatures": "*",
