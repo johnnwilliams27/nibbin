@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { buildCreature, type Accessory, type Marking, type SpeciesName, type Stage } from '@nibbin/creatures';
 import { appSession } from '../../../lib/auth/app-session';
 import { AppShell } from '../../../components/shell/AppShell';
+import { Tooltip, InfoTooltip } from '../../../components/ui/Tooltip';
 import { NoteRefresher } from './NoteRefresher';
 import { NibbinEditor } from './NibbinEditor';
 import { BackToDrafts } from './BackToDrafts';
@@ -325,7 +326,8 @@ export default async function NibbinsPage() {
       <p className={styles.intro}>
         Every Nibbin climbs Agent School the same way — egg, student, senior, graduate — and trust is
         earned through verified accuracy, never time served. Streaks and badges below are read
-        straight from real run history.
+        straight from real run history.{' '}
+        <InfoTooltip content="Promotion requires 95% of your last 25 decisions approved without edits — no shortcuts, no time-based bumps." />
       </p>
 
       <div className={styles.roster}>
@@ -406,13 +408,13 @@ export default async function NibbinsPage() {
                   <span className={styles.streak}>{d.cleanStreak}-run clean streak</span>
                 )}
                 {badges.map(([label, earned]) => (
-                  <span
-                    key={label}
-                    className={`${styles.badge} ${earned ? styles.badgeEarned : ''}`}
-                    title={earned ? 'Earned' : 'Not yet earned'}
-                  >
-                    {label}
-                  </span>
+                  <Tooltip key={label} content={earned ? 'Earned' : 'Not yet earned'}>
+                    <span
+                      className={`${styles.badge} ${earned ? styles.badgeEarned : ''}`}
+                    >
+                      {label}
+                    </span>
+                  </Tooltip>
                 ))}
               </div>
 
@@ -424,9 +426,13 @@ export default async function NibbinsPage() {
               <div className={styles.foot}>
                 <span className={styles.footM}>
                   {n.stage === 'grad' ? (
-                    <>Access: <b>acting on its own</b></>
+                    <>Access: <b>acting on its own</b>{' '}
+                      <InfoTooltip content="This Nibbin has graduated and can execute tasks without a draft step — you can move it back to draft-only any time." />
+                    </>
                   ) : (
-                    <>Access: <b>draft-only until graduation</b></>
+                    <>Access: <b>draft-only until graduation</b>{' '}
+                      <InfoTooltip content="Every action is prepared as a draft and waits for your approval. Nothing is sent or executed until you say yes." />
+                    </>
                   )}
                 </span>
                 <span style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>

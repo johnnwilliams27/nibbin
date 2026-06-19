@@ -21,6 +21,7 @@ import {
   type SpeciesName,
 } from '@nibbin/creatures';
 import { hatchNibbin, type HatchResult } from './actions';
+import { InfoTooltip } from '../../../components/ui/Tooltip';
 import styles from './hatch.module.css';
 
 interface ChoreOption {
@@ -100,7 +101,9 @@ export function HatchWizard({ chores, apps }: { chores: ChoreOption[]; apps: str
 
       {step === 1 && (
         <div className={styles.pane}>
-          <h2>What&rsquo;s the chore?</h2>
+          <h2>What&rsquo;s the chore?{' '}
+            <InfoTooltip content="Your Nibbin will watch how you handle this task and draft work for your approval — the more specific you are, the faster it learns." />
+          </h2>
           <p className={styles.sub}>
             Pick the thing you&rsquo;re tired of doing. Plain words are fine — no flowcharts, no
             settings.
@@ -185,7 +188,8 @@ export function HatchWizard({ chores, apps }: { chores: ChoreOption[]; apps: str
           <div className={styles.hatch}>
             <h2>Your egg is ready.</h2>
             <p className={styles.sub} style={{ marginLeft: 'auto', marginRight: 'auto' }}>
-              It already knows the chore and the apps. Give it a name — that&rsquo;s the whole setup.
+              It already knows the chore and the apps. Give it a name — that&rsquo;s the whole setup.{' '}
+              <InfoTooltip content="Enrolling starts Agent School: your Nibbin watches silently for a few days, then hatches and begins drafting work for your yes-or-no." />
             </p>
             <EggCreature species={species} color={palette} />
 
