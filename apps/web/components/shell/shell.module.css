@@ -267,6 +267,27 @@
   background: var(--understory);
 }
 
+.helpButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--understory);
+  color: var(--ink-soft);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
+  transition: background var(--dur-1) var(--ease-settle), color var(--dur-1) var(--ease-settle);
+}
+.helpButton:hover {
+  background: var(--canopy);
+  color: var(--ink);
+}
+
 .content {
   flex: 1;
   padding: 28px 24px 64px;

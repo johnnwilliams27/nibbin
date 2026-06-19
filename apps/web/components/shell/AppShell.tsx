@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { buildCreature } from '@nibbin/creatures';
 import { NotificationBell } from './NotificationBell';
+import { HelpButton } from './HelpButton';
 import styles from './shell.module.css';
 
 /** The Grovekeeper creature as a small inline glyph (mount-gated — the engine
@@ -26,7 +27,8 @@ export type NavKey =
   | 'shop'
   | 'notifications'
   | 'billing'
-  | 'settings';
+  | 'settings'
+  | 'help';
 
 /** Minimal line icons (Lucide-style) per nav item — inherit currentColor so they
  *  pick up the active/hover tint from `.navItem`. */
@@ -95,6 +97,13 @@ function NavIcon({ k }: { k: NavKey }) {
         <circle cx="7" cy="7" r="3" />
       </>
     ),
+    help: (
+      <>
+        <circle cx="12" cy="12" r="10" />
+        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+        <path d="M12 17h.01" />
+      </>
+    ),
   };
   return (
     <svg
@@ -126,6 +135,7 @@ const NAV: { key: NavKey; label: string; href: string }[] = [
   { key: 'shop', label: 'Agent Shop', href: '/app/shop' },
   { key: 'billing', label: 'Plan & credits', href: '/billing' },
   { key: 'settings', label: 'Settings', href: '/app/settings/profile' },
+  { key: 'help', label: 'Help & Getting Started', href: '/app/help' },
 ];
 
 export interface AppShellProps {
@@ -212,6 +222,7 @@ export function AppShell({ active, title, email, children, panel, onboarding }: 
           </button>
           <h1 className={styles.title}>{title}</h1>
           <div className={styles.account}>
+            {!onboarding && <HelpButton />}
             {!onboarding && <NotificationBell />}
             {email ? <span className={styles.email}>{email}</span> : null}
             <form action="/auth/signout" method="post">

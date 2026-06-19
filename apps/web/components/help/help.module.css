@@ -1,3 +1,39 @@
+/* HelpHub layout */
+.hub {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 760px;
+  width: 100%;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sectionTitle {
+  font-family: var(--display);
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0 0 4px;
+  color: var(--ink);
+}
+
+.intro {
+  font-size: 14px;
+  color: var(--ink-soft);
+  line-height: 1.6;
+  margin: 0 0 8px;
+}
+
+.empty {
+  font-size: 14px;
+  color: var(--ink-soft);
+  padding: 12px 0;
+}
+
 .logo { width: 28px; height: 28px; object-fit: contain; border-radius: var(--r-input); }
 .logoFallback {
   display: inline-flex; align-items: center; justify-content: center;
