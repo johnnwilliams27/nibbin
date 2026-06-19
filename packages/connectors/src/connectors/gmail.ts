@@ -84,7 +84,10 @@ export class GmailClient extends HttpConnectorClient {
   /** Headers/labels only — works on the gmail.metadata scope. */
   async getMessageMetadata(id: string): Promise<GmailMessageMeta> {
     const params = new URLSearchParams({ format: 'metadata' });
-    for (const h of ['From', 'To', 'Cc', 'Subject', 'Date', 'List-Unsubscribe', 'In-Reply-To']) {
+    // Bcc is included so isSensitiveThread can screen reply-all/Bcc'd sensitive
+    // recipients (RT-3: a bank Bcc'd on a sent message would otherwise pass the
+    // sensitive-recipient gate even though the body reaches the LLM).
+    for (const h of ['From', 'To', 'Cc', 'Bcc', 'Subject', 'Date', 'List-Unsubscribe', 'In-Reply-To']) {
       params.append('metadataHeaders', h);
     }
     const { data } = await this.readJson<GmailMessageMeta>(

@@ -106,7 +106,8 @@ describe('POST /api/sweep/gmail/onboarding', () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ status: 'complete', messagesRead: 12 });
     expect(gmailOnboardingSweep).toHaveBeenCalledOnce();
-    expect(gmailOnboardingSweep).toHaveBeenCalledWith(ACCT, CONN);
+    // claimId is now passed as a third arg (L1 provenance marker).
+    expect(gmailOnboardingSweep).toHaveBeenCalledWith(ACCT, CONN, 'claim-1');
     expect(updateMock).toHaveBeenCalledOnce();
     expect(updateMock).toHaveBeenCalledWith(expect.objectContaining({ status: 'complete', messages_read: 12 }));
     expect(eqMock).toHaveBeenCalledWith('id', 'claim-1');
