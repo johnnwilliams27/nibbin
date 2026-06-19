@@ -21,8 +21,8 @@ as $$
     and (p_channel is null or channel = p_channel)
     and (created_at at time zone 'utc')::date = p_day;
 $$;
-revoke execute on function public.account_channel_cogs_day(uuid, text, date) from public, anon;
-grant execute on function public.account_channel_cogs_day(uuid, text, date) to authenticated, service_role;
+revoke execute on function public.account_channel_cogs_day(uuid, text, date) from public, anon, authenticated;
+grant execute on function public.account_channel_cogs_day(uuid, text, date) to service_role;
 
 -- One-time soft-warn dedup, per (account, channel, calendar day).
 create table public.channel_spend_notice (

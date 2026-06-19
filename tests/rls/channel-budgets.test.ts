@@ -220,6 +220,55 @@ describe.skipIf(!dbAvailable)('channel budgets RLS + channel_turn_take (N15)', (
       }
     });
 
+    it('soft-warn fires exactly once per (account, channel, day) at >=80% of cap', async () => {
+      // Use the actual current UTC date so that created_at (now()) matches p_day.
+      // account_channel_cogs_day filters by (created_at at time zone 'utc')::date = p_day,
+      // so seeded rows must fall on the same calendar day we pass to channel_turn_take.
+      const DAY: string = await h.as(service, async (c) =>
+        (await c.query(`select (now() at time zone 'utc')::date::text as d`)).rows[0].d,
+      );
+      // Cap = 1_000_000 µUSD; 80% threshold = 800_000.
+      // Seed spend at 850_000 (just above 80%) for channel='whatsapp' to avoid bleed from
+      // any sms spend accumulated on accountA in earlier tests; < 100% so still granted.
+      const CAP = 1_000_000;
+      const SEEDED_COST = 850_000; // >= 80% of CAP, < 100%
+      await h.as(service, async (c) => {
+        await c.query(
+          `insert into public.model_calls
+             (account_id, user_id, tier, task, model,
+              input_tokens, cache_write_tokens, cache_read_tokens, output_tokens,
+              cost_microusd, channel)
+           values ($1, $2, 't1', 'chat', 'claude-haiku-4-5-20251001',
+                   500, 0, 0, 200, $3, 'whatsapp')`,
+          [accountA, UID_A, SEEDED_COST],
+        );
+      });
+
+      // First call: granted=true, warn=true (first crossing of the 80% notice)
+      const first = await h.as(service, async (c) =>
+        (
+          await c.query(
+            `select granted, warn from public.channel_turn_take($1, $2, 100, 'whatsapp', $3)`,
+            [accountA, DAY, CAP],
+          )
+        ).rows[0],
+      );
+      expect(first.granted).toBe(true);
+      expect(first.warn).toBe(true);
+
+      // Second call: granted=true, warn=false (dedup row already exists in channel_spend_notice)
+      const second = await h.as(service, async (c) =>
+        (
+          await c.query(
+            `select granted, warn from public.channel_turn_take($1, $2, 100, 'whatsapp', $3)`,
+            [accountA, DAY, CAP],
+          )
+        ).rows[0],
+      );
+      expect(second.granted).toBe(true);
+      expect(second.warn).toBe(false);
+    });
+
     it('spend cap check is channel-scoped: other channels do not bleed into sms cap', async () => {
       const DAY = '2026-06-23';
 
