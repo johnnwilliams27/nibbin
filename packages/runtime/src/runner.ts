@@ -293,6 +293,62 @@ export async function dispatchStep(
   }
 
   // gate.action === 'execute' (Senior on routine, Graduate within spec)
+  // §18.3 Slice 1: claim the resource BEFORE the idempotency claim. A
+  // conflict-skip must NOT create an idempotency row — otherwise a same-key
+  // event redelivery (missed-push reconcile / re-poll) would later read it as
+  // 'unknown_outcome' and permanently refuse the deferred send. Fail-open: a
+  // store THROW proceeds with the send; a genuine conflict (granted=false)
+  // skips the send and records the conflict on the step.
+  if (deps.claims) {
+    const derived = deriveResourceClaim(step);
+    if (derived) {
+      let claimResult: { granted: boolean; holderRun: string; holderNibbin: string } | null = null;
+      try {
+        claimResult = await deps.claims.claim({
+          accountId: nibbin.accountId,
+          nibbinId: nibbin.id,
+          runId,
+          resourceType: derived.resourceType,
+          resourceId: derived.resourceId,
+        });
+      } catch (err) {
+        // Infra error → fail-open: log and proceed with the send.
+        console.warn(
+          '[runner] claim_resource infra error (fail-open) — proceeding with send:',
+          err instanceof Error ? err.message : String(err),
+        );
+      }
+      if (claimResult !== null && !claimResult.granted) {
+        // Live conflict: another active run holds this resource. Skip the send.
+        // No idempotency row was created (we claim the resource first), so a
+        // later redelivery of the same event re-attempts the claim once the
+        // holder releases — the deferred send is not permanently dropped.
+        await deps.runs.recordStep(nibbin.accountId, runId, {
+          idx: idx++,
+          kind: 'execute',
+          tool: step.capability,
+          inputHash: hashArgs(step.effectArgs),
+          tokens: 0,
+          payload: {
+            patternKey: step.patternKey,
+            deduped: false,
+            resourceConflict: true,
+            resourceType: derived.resourceType,
+            resourceId: derived.resourceId,
+            holderNibbin: claimResult.holderNibbin,
+          },
+        });
+        return done({
+          kind: 'resource_conflict',
+          capability: step.capability,
+          resourceType: derived.resourceType,
+          resourceId: derived.resourceId,
+          holderNibbin: claimResult.holderNibbin,
+        });
+      }
+    }
+  }
+
   const idempotencyKey = effectIdempotencyKey(nibbin, step, trigger, runId);
   const claim = await deps.idempotency.claim({
     accountId: nibbin.accountId,
@@ -305,62 +361,6 @@ export async function dispatchStep(
     return done({ kind: 'failed', error: 'side effect outcome unknown from a prior attempt — not retrying' });
   }
   if (claim === 'claimed') {
-    // §18.3 Slice 1: claim the resource BEFORE the irreversible send.
-    // Fail-open: a store error proceeds with the send; a genuine conflict
-    // (granted=false) skips the send and records the conflict on the step.
-    if (deps.claims) {
-      const derived = deriveResourceClaim(step);
-      if (derived) {
-        let claimResult: { granted: boolean; holderRun: string; holderNibbin: string } | null = null;
-        try {
-          claimResult = await deps.claims.claim({
-            accountId: nibbin.accountId,
-            nibbinId: nibbin.id,
-            runId,
-            resourceType: derived.resourceType,
-            resourceId: derived.resourceId,
-          });
-        } catch (err) {
-          // Infra error → fail-open: log and proceed with the send.
-          console.warn(
-            '[runner] claim_resource infra error (fail-open) — proceeding with send:',
-            err instanceof Error ? err.message : String(err),
-          );
-        }
-        if (claimResult !== null && !claimResult.granted) {
-          // Live conflict: another active run holds this resource. Skip the send.
-          // The idempotency key was claimed but never executed — release it so
-          // a future retry of the SAME trigger is not permanently blocked.
-          // We do NOT call markExecuted; the 'claimed' row stays un-confirmed
-          // so a re-trigger still attempts the claim (the idempotency key
-          // encodes the trigger scope, so a new event gets a fresh key anyway).
-          await deps.runs.recordStep(nibbin.accountId, runId, {
-            idx: idx++,
-            kind: 'execute',
-            tool: step.capability,
-            inputHash: hashArgs(step.effectArgs),
-            tokens: 0,
-            payload: {
-              patternKey: step.patternKey,
-              idempotencyKey,
-              deduped: false,
-              resourceConflict: true,
-              resourceType: derived.resourceType,
-              resourceId: derived.resourceId,
-              holderNibbin: claimResult.holderNibbin,
-            },
-          });
-          return done({
-            kind: 'resource_conflict',
-            capability: step.capability,
-            resourceType: derived.resourceType,
-            resourceId: derived.resourceId,
-            holderNibbin: claimResult.holderNibbin,
-          });
-        }
-      }
-    }
-
     await deps.effects.execute({
       connectionId: step.connectionId,
       capability: step.capability,

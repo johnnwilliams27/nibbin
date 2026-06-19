@@ -50,5 +50,29 @@
   their downstream implicit-any cascades; CI's fresh install resolves them (versioning-PR precedent).
   `SupabaseResourceClaimStore` matches the `ResourceClaimStore` interface exactly.
 
-## Verdicts
-(appended after the reviewer pass)
+## Verdicts (real 3-reviewer pass; 2 BLOCK findings fixed)
+- **Red-team (opus): PASS after fix** — confirmed two agents cannot both send on the auto-execute
+  path (`lock_account` serializes claim_resource per account; partial unique index backstops),
+  no live-claim theft (reclaim needs terminal-or-stale holder), no cross-account, fail-open
+  acceptable (additive — connector send-idempotency + velocity caps still apply). BLOCK'd on the
+  P2 idempotency hole (below). P3 scope note: the guarantee is "two *auto-executing* agents," since
+  approved-draft sends route via `decide_run` not `dispatchStep` — documented in the migration header.
+- **Logic-skeptic (opus): PASS after fix** — branch logic sound, concurrency atomic under the lock,
+  all terminal SQL paths (`run_finish`, `decide_run`, channel bridge) set `ended_at` so the release
+  trigger fires; `deriveResourceClaim` null-coercion correct. BLOCK'd on the same P2 + flagged P3
+  (no `public.runs` reaper → crash-leak up to the stale window).
+- **Claims+cost (sonnet): PASS** — RPC contract + snake/camel + array-unwrap correct, service_role-only
+  + RLS + idempotent DDL + unique timestamp, O(1) per-send via the partial indexes, no LLM/N+1,
+  tests non-vacuous. Corroborated the P2 idempotency concern.
+
+### Fixes applied
+- **P2 (idempotency dangling-claim → deferred send permanently dropped on same-key redelivery):**
+  reordered `dispatchStep` so the resource claim runs BEFORE `idempotency.claim`. A conflict-skip now
+  creates NO idempotency row, so a later redelivery of the same event re-attempts the claim once the
+  holder releases. Regression test added (`granted=false → idempotency.claim NOT called`).
+- **P3 (crash mid-send leaks the claim):** the 24h stale window was based on a wrong premise (claims
+  are only ever held by brief auto-send `running` runs — drafts/approvals never claim), so it's now
+  **15 min** (any claim older than that = a crashed holder), matching `claim_gmail_sweep` / the run
+  reapers. No separate `runs` reaper needed.
+
+**Gate verdict: PASS** after the two fixes. Runtime suite 17/17; migration re-applied + valid on dev.

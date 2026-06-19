@@ -45,8 +45,11 @@ revoke all on public.resource_claims from anon;
 --   granted=false → another ACTIVE run holds it; holder_run/holder_nibbin name it
 --                   so the caller can skip + explain. The caller must NOT act.
 -- A holder is reclaimable when its run is already terminal (ended_at set — a
--- missed release) or the claim is older than 24h (an abandoned awaiting-approval
--- run); a live approval wait legitimately keeps the claim (ended_at stays null).
+-- missed release) or the claim is older than 15 min. Claims are only ever taken
+-- on the auto-execute send path by a 'running' run that completes in seconds
+-- (drafts/approvals never claim), so a claim older than 15 min means the holder
+-- run crashed between claim and run_finish — this is the backstop for that leak
+-- (mirrors the 15-min stale window used by claim_gmail_sweep / the run reapers).
 -- ---------------------------------------------------------------------------
 create or replace function public.claim_resource(
   p_account uuid,
@@ -88,7 +91,7 @@ begin
 
   -- Held by another run — reclaim only if that run is terminal or the claim is stale.
   select ended_at into v_holder_ended from public.runs where id = v_claim.run_id;
-  if v_holder_ended is not null or v_claim.claimed_at < now() - interval '24 hours' then
+  if v_holder_ended is not null or v_claim.claimed_at < now() - interval '15 minutes' then
     update public.resource_claims set released_at = now() where id = v_claim.id;
     insert into public.resource_claims (account_id, nibbin_id, run_id, resource_type, resource_id)
     values (p_account, p_nibbin, p_run, p_resource_type, p_resource_id);

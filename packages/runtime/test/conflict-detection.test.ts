@@ -229,6 +229,26 @@ describe('§18.3 conflict detection — runner integration', () => {
     }
   });
 
+  it('granted=false → idempotency claim is NOT made (P2: same-key redelivery can retry, not buried)', async () => {
+    const claims = new MemoryResourceClaimStore();
+    await claims.claim({
+      accountId: ACCOUNT,
+      nibbinId: NIB_B,
+      runId: 'run-b-prior',
+      resourceType: 'email',
+      resourceId: 'thread-abc',
+    });
+    const h = harness({ claimsOverride: claims });
+    const idemSpy = vi.spyOn(h.deps.idempotency, 'claim');
+    const outcome = await executeRun(seniorNib(NIB_A), TRIGGER, emailDraftProgram, h.deps);
+    expect(h.effects.execute).not.toHaveBeenCalled();
+    // The fix: the resource claim runs BEFORE the idempotency claim, so a
+    // conflict-skip leaves NO un-executed idempotency row that a same-key event
+    // redelivery would later read as 'unknown_outcome' and permanently refuse.
+    expect(idemSpy).not.toHaveBeenCalled();
+    expect(outcome.kind).toBe('completed');
+  });
+
   it('invoice granted=false → send skipped, invoice conflict recorded', async () => {
     const claims = new MemoryResourceClaimStore();
     await claims.claim({
