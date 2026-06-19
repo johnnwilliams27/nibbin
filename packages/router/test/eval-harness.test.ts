@@ -508,12 +508,14 @@ describe('matrix completeness — every evaluated task has fixtures + a rubric',
     }
   });
 
-  it('the matrix covers the expected candidate models incl. Fable', () => {
+  it('the matrix covers the available candidate models; Fable EXCLUDED (no account access)', () => {
     const models = new Set(CANDIDATE_MATRIX.flatMap((p) => [p.incumbent, p.challenger]));
-    expect(models.has(FABLE)).toBe(true);
     expect(models.has(OPUS)).toBe(true);
     expect(models.has(SONNET)).toBe(true);
     expect(models.has(HAIKU)).toBe(true);
+    // Fable 5 needs special "fable-mythos" access this account lacks (the API
+    // rejects it), so it is NOT a live candidate — re-add when access is granted.
+    expect(models.has(FABLE)).toBe(false);
   });
 
   it('no fixture sets a temperature (the current models reject it)', () => {
