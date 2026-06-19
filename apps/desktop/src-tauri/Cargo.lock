@@ -2373,6 +2373,7 @@ dependencies = [
  "anyhow",
  "nibbin-redaction",
  "screenpipe-a11y",
+ "serde_json",
  "windows 0.58.0",
 ]
 

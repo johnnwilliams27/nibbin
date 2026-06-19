@@ -121,6 +121,13 @@ pub fn register_macos(observerd: &Path, store: &Path) -> anyhow::Result<()> {
 /// Register observerd with the OS scheduler and start it. Never panics: a
 /// registration failure is surfaced via a `daemon.health` note next to the store
 /// (read by read_status) and stderr — the app still runs (P-CB1/P-CB5).
+///
+/// Posture (gate RT-2 — dormant-daemon, accepted 2026-06-18): autostart is
+/// registered on first app launch so the daemon is available to run a study.
+/// It is DORMANT until the user consents to a study — `capture_allowed` is false
+/// outside an active study, so NOTHING is captured pre-consent — and it is
+/// removable. We accept this benign persistence over a spawn-on-demand flow,
+/// because the daemon must already be running to receive the Start command.
 pub fn ensure_daemon_running<R: Runtime>(app: &AppHandle<R>) {
     let result = (|| -> anyhow::Result<()> {
         let obs = observerd_path(app)?;

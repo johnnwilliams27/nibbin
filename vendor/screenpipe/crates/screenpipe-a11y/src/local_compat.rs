@@ -44,8 +44,15 @@ mod lock_state {
     pub fn screen_is_locked() -> bool {
         SCREEN_LOCKED.load(Ordering::SeqCst)
     }
+    // Retained as part of the lock-state compat API and exercised by the
+    // windows_uia tests; only test code sets the flag today (the WTS lock-event
+    // wiring is gated elsewhere), so non-test builds see no caller. Now that the
+    // module is `pub(crate)`, dead-code analysis can see this — allow it rather
+    // than drop a deliberately-kept piece of the compat surface.
+    #[allow(dead_code)]
     pub fn set_screen_locked(v: bool) {
         SCREEN_LOCKED.store(v, Ordering::SeqCst);
     }
 }
+#[allow(unused_imports)] // set_screen_locked: see note on the fn above.
 pub use lock_state::{screen_is_locked, set_screen_locked};

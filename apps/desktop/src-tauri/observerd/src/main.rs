@@ -33,6 +33,10 @@ fn main() -> anyhow::Result<()> {
     }
     let store = store.expect("usage: observerd --store <dir> [--once]");
 
+    // P-CB6: run the capture daemon below normal priority so it never competes
+    // with the user's foreground work. No-op on platforms without an impl.
+    nibbin_capture::set_low_process_priority();
+
     let mut daemon = Daemon::open(&store, nibbin_capture::platform_source())?;
 
     loop {

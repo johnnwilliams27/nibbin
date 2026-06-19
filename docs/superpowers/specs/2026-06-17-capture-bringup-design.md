@@ -84,6 +84,7 @@ The single highest-leverage fix: make the daemon **exist** on a real machine.
 - **Bundle** the `observerd` binary with the Tauri app.
 - **Register + start it** as an independent background process: **macOS LaunchAgent** (a `launchd` plist in `~/Library/LaunchAgents`, `RunAtLoad` + `KeepAlive`); **Windows** a per-user service or a Scheduled Task / autostart entry. (Process-model choice = **CB-D1**.)
 - **Keep-alive / restart** on crash; the daemon is the source of truth for the 14-day clock, so it must survive app closure and reboots.
+- **Posture — dormant daemon (gate RT-2, decided 2026-06-18):** autostart is registered on first app launch (the daemon must be running to receive study commands), but it is **dormant until consent** — `capture_allowed` is false outside an active, consented study, so nothing is captured pre-consent — and it is removable. We accept this benign persistence over a spawn-on-demand flow; documented in `daemon_supervisor::ensure_daemon_running`.
 - **UI handoff:** the existing `read_status` + `daemon.status` contract + the `pollUntilOnline(3, 800)` cold-start poll already distinguish "starting" from "offline" — bring-up makes `DAEMON_OFFLINE` a *transient* startup state (daemon comes online) rather than a permanent dead-end. If the daemon truly can't start (e.g. install failed), surface it honestly (the field-study spec's daemon-health note), don't strand.
 
 ### 5.2 macOS AX adapter (M6)

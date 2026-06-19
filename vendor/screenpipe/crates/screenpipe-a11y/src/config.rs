@@ -75,6 +75,7 @@ pub struct UiCaptureConfig {
     pub skip_password_fields: bool,
 
     /// Apply PII removal to captured text
+    /// Inert in the Nibbin fork: PII removal happens in nibbin-redaction (the authoritative layer), not here.
     pub apply_pii_removal: bool,
 
     /// Skip secure input mode (macOS)

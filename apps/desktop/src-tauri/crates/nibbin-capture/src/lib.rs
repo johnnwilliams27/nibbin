@@ -68,8 +68,27 @@ pub trait CaptureSource: Send {
     /// Drain capture items buffered since the last poll.
     fn poll(&mut self) -> anyhow::Result<Vec<CaptureItem>>;
 
+    /// Called when capture resumes after a pause. Adapters that count input
+    /// should reset their baseline so paused-period activity is discarded.
+    fn resume(&mut self) {}
+
     /// Tear down all OS observers. Must be safe to call twice.
     fn stop(&mut self);
+}
+
+/// Lower the current process to below-normal scheduling priority (P-CB6) so the
+/// capture daemon never competes with the user's foreground work.
+/// No-op on platforms without an implementation here.
+pub fn set_low_process_priority() {
+    #[cfg(windows)]
+    unsafe {
+        // `::windows` disambiguates the external crate from this crate's own
+        // `windows` module (crate::windows holds the UIA adapter).
+        use ::windows::Win32::System::Threading::{
+            GetCurrentProcess, SetPriorityClass, BELOW_NORMAL_PRIORITY_CLASS,
+        };
+        let _ = SetPriorityClass(GetCurrentProcess(), BELOW_NORMAL_PRIORITY_CLASS);
+    }
 }
 
 /// Pick the platform source. On unsupported targets (Linux CI) this returns

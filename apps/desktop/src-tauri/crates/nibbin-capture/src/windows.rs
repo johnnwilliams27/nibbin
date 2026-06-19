@@ -43,7 +43,7 @@ mod real {
     use super::is_idle;
     use crate::map;
     use crate::{CaptureItem, CaptureReadiness, CaptureSource, InputCounts};
-    use screenpipe_a11y::{get_window_info, UiaContext};
+    use screenpipe_a11y::{get_window_info, AccessibilityNode, UiaContext};
     use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
     use std::sync::Arc;
     use std::time::{Duration, Instant};
@@ -101,6 +101,24 @@ mod real {
     /// Cap on elements walked per tree. Mirrors the fork's own test budget; the
     /// walker stops once this many nodes are produced (bounds CPU on huge trees).
     const MAX_ELEMENTS: usize = 10_000;
+
+    /// H1 store-size lever: a stable fingerprint of one focused-window capture
+    /// (app + title + serialized accessibility tree). Two identical
+    /// `(app, title, root)` inputs hash equal; any difference (including a
+    /// same-tree-different-window switch) changes the hash. `poll()` skips
+    /// re-emitting a Snapshot when this matches the last emitted one, so an
+    /// unchanged window is not persisted every tick. Pure: no hardware, so it is
+    /// unit-testable directly.
+    fn tree_fingerprint(app: &str, title: &str, root: &AccessibilityNode) -> u64 {
+        use std::hash::{Hash, Hasher};
+        let mut s = std::collections::hash_map::DefaultHasher::new();
+        app.hash(&mut s);
+        title.hash(&mut s);
+        // AccessibilityNode derives Serialize; hashing its JSON gives a stable
+        // structural fingerprint without requiring Hash on every nested type.
+        serde_json::to_string(root).unwrap_or_default().hash(&mut s);
+        s.finish()
+    }
 
     /// `UiaContext` holds COM apartment-threaded interfaces (`IUIAutomation`,
     /// etc.), which are `!Send`. The `CaptureSource` trait is `Send` because the
@@ -176,6 +194,10 @@ mod real {
         /// HWND value of the foreground window as of the last poll tick.
         /// A change counts as activity (wakes idle-suspend).
         last_foreground: isize,
+        /// H1: fingerprint of the last EMITTED focused-window tree. When a tick's
+        /// tree fingerprint matches this, the Snapshot is not re-pushed (the
+        /// biggest store-size lever). `None` = nothing emitted yet / reset.
+        last_tree_hash: Option<u64>,
     }
 
     impl WindowsUiaCapture {
@@ -192,6 +214,7 @@ mod real {
                 last_input_at: None,
                 last_activity: None,
                 last_foreground: 0,
+                last_tree_hash: None,
             }
         }
     }
@@ -314,6 +337,8 @@ mod real {
             // P-CB6: initialise to now so a fresh start is never immediately idle.
             self.last_activity = Some(now);
             self.last_foreground = 0;
+            // H1: no tree emitted yet → first poll always emits.
+            self.last_tree_hash = None;
 
             self.started = true;
             Ok(())
@@ -361,11 +386,20 @@ mod real {
 
                 // Provider couldn't be read this tick → gap, not an error.
                 if let Some(root) = uia.get().capture_window_tree(hwnd, MAX_ELEMENTS) {
-                    // Lite has no frames → url/frame_ref None. C4 secure-field
-                    // suppression happens structurally inside parts_to_snapshot →
-                    // node_to_ax (is_password → secure, content stripped downstream).
-                    let snap = map::parts_to_snapshot(app_name, window_title, &root, None);
-                    items.push(CaptureItem::Snapshot(snap));
+                    // H1: skip re-emitting an unchanged focused-window tree (the
+                    // biggest store-size lever). Fingerprint app+title+tree; if it
+                    // matches the last EMITTED one, push nothing this tick. Input
+                    // counts (below) are unaffected and still drain.
+                    let title_ref = window_title.as_deref().unwrap_or("");
+                    let h = tree_fingerprint(&app_name, title_ref, &root);
+                    if self.last_tree_hash != Some(h) {
+                        // Lite has no frames → url/frame_ref None. C4 secure-field
+                        // suppression happens structurally inside parts_to_snapshot →
+                        // node_to_ax (is_password → secure, content stripped downstream).
+                        let snap = map::parts_to_snapshot(app_name, window_title, &root, None);
+                        items.push(CaptureItem::Snapshot(snap));
+                        self.last_tree_hash = Some(h);
+                    }
                 }
             }
 
@@ -386,6 +420,16 @@ mod real {
             }
 
             Ok(items)
+        }
+
+        // RT-4: on resume, rebaseline the input counters to "now" so the input
+        // accrued during the pause is discarded (the first post-resume poll's
+        // delta then excludes pause-period keystrokes/clicks). The tree-dedup
+        // baseline is also cleared so the next tree always re-emits after a gap.
+        fn resume(&mut self) {
+            self.last_keys = KEY_COUNT.load(Ordering::Relaxed);
+            self.last_clicks = CLICK_COUNT.load(Ordering::Relaxed);
+            self.last_tree_hash = None;
         }
 
         fn stop(&mut self) {
@@ -446,6 +490,8 @@ mod real {
             }
             self.com_thread = 0;
             self.started = false;
+            // H1: drop the dedup baseline so a fresh start re-emits the first tree.
+            self.last_tree_hash = None;
 
             // C6 reconcile (#22): log observer teardown latency so the C6 pause-
             // latency claim can be validated against a real number. The gate flip
@@ -460,6 +506,64 @@ mod real {
             // called (avoids a CoUninitialize leak / orphaned hook thread on
             // unwind). stop() is idempotent: Drop-after-stop is a no-op.
             self.stop();
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // H1 tree-dedup unit tests — pure (no hardware), exercise the fingerprint
+    // helper that poll() uses to decide whether to re-emit a Snapshot.
+    // -----------------------------------------------------------------------
+    #[cfg(test)]
+    mod tree_dedup_tests {
+        use super::{tree_fingerprint, AccessibilityNode};
+
+        fn node(control_type: &str, name: Option<&str>) -> AccessibilityNode {
+            AccessibilityNode {
+                control_type: control_type.to_string(),
+                name: name.map(|s| s.to_string()),
+                children: vec![],
+                ..Default::default()
+            }
+        }
+
+        /// Two identical (app, title, tree) inputs hash equal → the second tick
+        /// would be deduped (no Snapshot re-emitted).
+        #[test]
+        fn identical_trees_hash_equal() {
+            let mut root = node("Window", Some("Root"));
+            root.children = vec![node("Edit", Some("hi"))];
+            let a = tree_fingerprint("notepad.exe", "Untitled - Notepad", &root);
+            let b = tree_fingerprint("notepad.exe", "Untitled - Notepad", &root);
+            assert_eq!(
+                a, b,
+                "identical input must produce an identical fingerprint"
+            );
+        }
+
+        /// A changed tree → different fingerprint → a Snapshot would be emitted.
+        #[test]
+        fn changed_tree_hashes_differ() {
+            let mut root = node("Window", Some("Root"));
+            root.children = vec![node("Edit", Some("hi"))];
+            let base = tree_fingerprint("notepad.exe", "Untitled - Notepad", &root);
+
+            let mut changed = node("Window", Some("Root"));
+            changed.children = vec![node("Edit", Some("bye"))];
+            let after = tree_fingerprint("notepad.exe", "Untitled - Notepad", &changed);
+            assert_ne!(base, after, "a changed tree must change the fingerprint");
+        }
+
+        /// Same tree, different window (app or title) → different fingerprint, so
+        /// a same-tree-different-window switch still emits.
+        #[test]
+        fn same_tree_different_window_hashes_differ() {
+            let root = node("Window", Some("Root"));
+            let app_diff = tree_fingerprint("chrome.exe", "Untitled - Notepad", &root)
+                != tree_fingerprint("notepad.exe", "Untitled - Notepad", &root);
+            let title_diff = tree_fingerprint("notepad.exe", "A", &root)
+                != tree_fingerprint("notepad.exe", "B", &root);
+            assert!(app_diff, "different app must change the fingerprint");
+            assert!(title_diff, "different title must change the fingerprint");
         }
     }
 }
