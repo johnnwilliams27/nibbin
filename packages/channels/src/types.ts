@@ -12,6 +12,9 @@ export interface ChannelAction {
   label: string;
   kind: 'approve' | 'deny' | 'open' | 'reply';
   deepLink?: string;
+  /** Explicit callback_data to emit for this button (e.g. 'ps:go'). When set,
+   *  overrides the legacy `<requestId>:<kind>` encoding. Must fit in 64 bytes. */
+  callbackData?: string;
 }
 
 export interface OutboundChannelMessage {

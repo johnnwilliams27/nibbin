@@ -8,6 +8,10 @@ export interface InboundChannelMessage {
   action?: 'approve' | 'deny';
   startNonce?: string;     // a linking nonce
   receivedAt: number;      // epoch ms
+  /** Plan-session callback action (Task 4: Telegram button callback_data). */
+  planAction?: 'ps:go' | 'ps:cancel' | 'pw:approve' | 'pw:reject';
+  /** The requestId embedded in a pw:approve:<rid> or pw:reject:<rid> callback (FIX 4). */
+  planRequestId?: string;
 }
 
 export interface InboundResult {

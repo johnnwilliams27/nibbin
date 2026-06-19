@@ -192,6 +192,7 @@ export async function planForIntent(
       task: 'plan_synthesis',
       model: result.model,
       usage: result.usage,
+      origin: 'chat',
       degraded: decision.degraded,
       latencyMs: Date.now() - t0,
       outcome: 'ok',
@@ -207,6 +208,7 @@ export async function planForIntent(
       task: 'plan_synthesis',
       model: resolvedModel,
       usage: { inputTokens: 0, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 0 },
+      origin: 'chat',
       outcome: 'error',
       latencyMs: null,
     });

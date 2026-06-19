@@ -53,4 +53,66 @@ describe('telegramAdapter', () => {
     expect(res.delivered).toBe(false);
     expect(res.error).toContain('blocked');
   });
+
+  // Task 4: plan-action button rendering
+  describe('plan-action button rendering (Task 4)', () => {
+    it('renders callback_data as the action id when id starts with ps:', async () => {
+      const cap: { url?: string; body?: TgBody } = {};
+      const port = telegramAdapter({ botToken: 'BOT', fetchImpl: fakeFetch(cap) });
+      await port.deliver({
+        accountId: 'acc', channel: 'telegram', externalId: '123',
+        kind: 'reply', urgency: 'normal', body: 'Ready to start?',
+        actions: [
+          { id: 'ps:go', label: 'Start', kind: 'approve' },
+          { id: 'ps:cancel', label: 'Cancel', kind: 'deny' },
+        ],
+      });
+      const kb = (cap.body?.reply_markup?.inline_keyboard ?? []).flat();
+      expect(kb.find((b) => b.text === 'Start')?.callback_data).toBe('ps:go');
+      expect(kb.find((b) => b.text === 'Cancel')?.callback_data).toBe('ps:cancel');
+    });
+
+    it('renders callback_data as the action id when id starts with pw:', async () => {
+      const cap: { url?: string; body?: TgBody } = {};
+      const port = telegramAdapter({ botToken: 'BOT', fetchImpl: fakeFetch(cap) });
+      await port.deliver({
+        accountId: 'acc', channel: 'telegram', externalId: '123',
+        kind: 'reply', urgency: 'normal', body: 'Approve this step?',
+        actions: [
+          { id: 'pw:approve', label: 'Approve', kind: 'approve' },
+          { id: 'pw:reject', label: 'Reject', kind: 'deny' },
+        ],
+      });
+      const kb = (cap.body?.reply_markup?.inline_keyboard ?? []).flat();
+      expect(kb.find((b) => b.text === 'Approve')?.callback_data).toBe('pw:approve');
+      expect(kb.find((b) => b.text === 'Reject')?.callback_data).toBe('pw:reject');
+    });
+
+    it('uses explicit callbackData when present, overriding id-prefix logic', async () => {
+      const cap: { url?: string; body?: TgBody } = {};
+      const port = telegramAdapter({ botToken: 'BOT', fetchImpl: fakeFetch(cap) });
+      await port.deliver({
+        accountId: 'acc', channel: 'telegram', externalId: '123',
+        kind: 'reply', urgency: 'normal', body: 'Go?',
+        actions: [
+          { id: 'some-id', label: 'Go', kind: 'approve', callbackData: 'ps:go' },
+        ],
+      });
+      const kb = (cap.body?.reply_markup?.inline_keyboard ?? []).flat();
+      expect(kb.find((b) => b.text === 'Go')?.callback_data).toBe('ps:go');
+    });
+
+    it('still renders legacy <requestId>:<kind> for non-plan actions', async () => {
+      const cap: { url?: string; body?: TgBody } = {};
+      const port = telegramAdapter({ botToken: 'BOT', fetchImpl: fakeFetch(cap) });
+      await port.deliver({
+        accountId: 'acc', channel: 'telegram', externalId: '987',
+        kind: 'escalation', urgency: 'high', body: 'Approve?',
+        actions: [{ id: 'r1-approve', label: 'Approve', kind: 'approve' }],
+        requestId: 'req-999',
+      });
+      const kb = (cap.body?.reply_markup?.inline_keyboard ?? []).flat();
+      expect(kb.find((b) => b.text === 'Approve')?.callback_data).toBe('req-999:approve');
+    });
+  });
 });
