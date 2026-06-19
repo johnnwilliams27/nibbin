@@ -86,6 +86,61 @@ describe('planForIntent', () => {
     }
   });
 
+  // A spy-wrapped generate so a test can assert the model is NOT called when the
+  // deterministic non-public-URL guard short-circuits.
+  function spyGenerate(json: unknown) {
+    return vi.fn(fakeGenerate(json));
+  }
+
+  it.each([
+    ['cloud-metadata IP', 'open http://169.254.169.254/ and read it'],
+    ['localhost', 'open http://localhost/ and tell me what it says'],
+    ['literal private IP', 'open http://10.0.0.5/ and summarize'],
+  ])('refuses a non-public URL (%s) WITHOUT calling the model', async (_label, intent) => {
+    const gen = spyGenerate({
+      goal: 'browse',
+      intendedSteps: ['navigate', 'extract'],
+      toolsAllowlist: ['done'],
+      requiredConnectors: [],
+    });
+    const result = await planForIntent('acct-1', 'user-1', intent, GMAIL_GCAL_STRIPE, gen, testRouter());
+    expect('error' in result).toBe(true);
+    if ('error' in result) {
+      expect(result.error).toBe(
+        "I can only browse public web pages — I can't access internal or non-public addresses (like cloud-metadata, localhost, or private IPs).",
+      );
+    }
+    // The short-circuit fired BEFORE the model call — proves the budget is saved.
+    expect(gen).not.toHaveBeenCalled();
+  });
+
+  it('a PUBLIC url does NOT short-circuit — proceeds to the model', async () => {
+    const gen = spyGenerate({
+      goal: 'open the page',
+      intendedSteps: ['navigate', 'extract'],
+      toolsAllowlist: ['done'],
+      requiredConnectors: [],
+    });
+    const result = await planForIntent('acct-1', 'user-1', 'open https://example.com', GMAIL_GCAL_STRIPE, gen, testRouter());
+    expect(gen).toHaveBeenCalledTimes(1);
+    // Not the non-public refusal string.
+    if ('error' in result) {
+      expect(result.error).not.toMatch(/internal or non-public addresses/);
+    }
+  });
+
+  it('a non-URL intent is unaffected — proceeds to the model', async () => {
+    const gen = spyGenerate({
+      goal: 'help',
+      intendedSteps: ['x'],
+      toolsAllowlist: ['email.read', 'done'],
+      requiredConnectors: ['gmail'],
+    });
+    const result = await planForIntent('acct-1', 'user-1', 'do a thing', GMAIL_GCAL_STRIPE, gen, testRouter());
+    expect(gen).toHaveBeenCalledTimes(1);
+    expect('plan' in result || 'error' in result).toBe(true);
+  });
+
   it('drops a connector cap whose connector is not granted', async () => {
     const gen = fakeGenerate({
       goal: 'help',
