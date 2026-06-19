@@ -220,18 +220,127 @@ interface PwContext {
 interface PwBrowser { newContext(opts?: Record<string, unknown>): Promise<PwContext>; close(): Promise<void> }
 interface PwModule { chromium: { launch(opts?: Record<string, unknown>): Promise<PwBrowser> } }
 
-/** Load playwright at runtime WITHOUT a static module reference (so the build
- *  never resolves the absent package). Returns null if it isn't installed. */
-async function loadPlaywright(): Promise<PwModule | null> {
-  try {
-    // The specifier is held in a variable so bundler/tsc static analysis can't
-    // try to resolve `playwright` at build time.
-    const spec = ['play', 'wright'].join('');
-    const mod = (await import(/* webpackIgnore: true */ spec)) as unknown as PwModule;
-    return mod && mod.chromium ? mod : null;
-  } catch {
-    return null;
+/** What `loadBrowserRuntime()` returns: the chromium engine + the launch options
+ *  appropriate for the detected runtime (serverless vs local). */
+interface BrowserRuntime {
+  chromium: PwModule['chromium'];
+  launchOptions: Record<string, unknown>;
+}
+
+/**
+ * Detect a serverless (Vercel / AWS Lambda) runtime. There the stock `playwright`
+ * download can't launch — we drive `@sparticuz/chromium`'s bundled binary via
+ * `playwright-core`. Anywhere else (local dev / CI) we use full `playwright`'s
+ * bundled chromium (today's path).
+ */
+function isServerlessRuntime(): boolean {
+  return Boolean(
+    process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.AWS_EXECUTION_ENV,
+  );
+}
+
+/**
+ * Load the Playwright ENGINE at runtime WITHOUT a static module reference (so the
+ * build never hard-resolves a possibly-absent package). Returns null if nothing
+ * loads (→ the driver is simply unavailable; the harness surfaces a clean
+ * "browser unavailable").
+ *  - Serverless: `playwright-core` (the engine WITHOUT bundled browsers — it
+ *    drives the @sparticuz binary; the launch options come from loadBrowserRuntime).
+ *  - Local/CI: full `playwright` (bundled chromium, as today); fall back to
+ *    `playwright-core` if the full package isn't installed.
+ * Each specifier is assembled at runtime so bundler/tsc static analysis can't try
+ * to resolve it at build time.
+ */
+async function loadBrowserEngine(): Promise<PwModule | null> {
+  const tryImport = async (spec: string): Promise<PwModule | null> => {
+    try {
+      const mod = (await import(/* webpackIgnore: true */ spec)) as unknown as PwModule;
+      return mod && mod.chromium ? mod : null;
+    } catch {
+      return null;
+    }
+  };
+  const core = ['playwright', '-core'].join('');
+  if (isServerlessRuntime()) {
+    // Serverless: prefer the bundled-browser-free engine; if it's somehow absent,
+    // try full playwright as a last resort (won't launch without a binary, but the
+    // null/throw path is handled the same way).
+    return (await tryImport(core)) ?? (await tryImport(['play', 'wright'].join('')));
   }
+  // Local/CI: prefer full playwright (bundled chromium); fall back to core.
+  return (await tryImport(['play', 'wright'].join(''))) ?? (await tryImport(core));
+}
+
+/**
+ * Resolve the chromium engine + the launch options for the current runtime, lazily.
+ *
+ * The ~50 MB @sparticuz chromium layer is imported ONLY here (which is only called
+ * from ensurePage, which only runs when a Planner step actually uses computer_use),
+ * so the layer never loads on a cold start that doesn't touch the browser.
+ *
+ * @param loadEngine the engine loader (the constructor seam). When a NON-default
+ *   loader is injected (the TEST seam — `loadEngine !== loadBrowserEngine`) we take
+ *   the benign `{ headless: true }` launch path and NEVER consult
+ *   `isServerlessRuntime()` / import `@sparticuz`, so the fake-Pw unit tests are
+ *   HERMETIC regardless of ambient env (a CI runner that sets VERCEL /
+ *   AWS_LAMBDA_FUNCTION_NAME / AWS_EXECUTION_ENV would otherwise drive a real
+ *   @sparticuz import). Only the real/default loader path consults
+ *   `isServerlessRuntime()` + `@sparticuz`.
+ *
+ * SECURITY — @sparticuz args egress audit (verified against v149 at build time):
+ * `chromium.args` is a rendering/sandbox/process-model set
+ * (`--single-process`, `--no-sandbox`, gpu/angle/swiftshader, headless, cache size,
+ * `--no-pings`, `--disable-domain-reliability`, …). It contains NO `--proxy-server`
+ * / `--proxy-pac-url` / `--proxy-bypass-list` (nothing reroutes Chromium's egress
+ * away from our interceptor) and NOTHING that disables request interception. The
+ * two relaxations it DOES include — `--disable-web-security` and
+ * site-isolation-off (`--disable-site-isolation-trials`, `IsolateOrigins` /
+ * `site-per-process` in `--disable-features`) — are renderer-side same-origin /
+ * process-model relaxations; they do NOT let any renderer open an unpinned socket,
+ * because `context.route('**')` fetch-and-fulfill (below) intercepts every http(s)
+ * request, `serviceWorkers:'block'` + `routeWebSocket close` cover the
+ * uninterceptable classes, and the network decision is made by the pinned
+ * `safeFetch`, never by Chromium's CORS checks. `--allow-running-insecure-content`
+ * only changes whether Chromium ATTEMPTS a mixed-content subresource — that attempt
+ * is still intercepted + fetched over the pinned connection. So the args do not
+ * weaken the #165 SSRF model; we pass them through unmodified.
+ */
+async function loadBrowserRuntime(loadEngine: () => Promise<PwModule | null>): Promise<BrowserRuntime | null> {
+  const engine = await loadEngine();
+  if (!engine) return null;
+  // HERMETIC TEST SEAM: a non-default (injected) loader means a fake engine — take
+  // the benign launch path WITHOUT consulting isServerlessRuntime() / importing
+  // @sparticuz, so the unit tests behave identically whether or not the CI env
+  // happens to set VERCEL / AWS_LAMBDA_FUNCTION_NAME / AWS_EXECUTION_ENV. Only the
+  // real/default loader path reaches the serverless @sparticuz branch below.
+  const isDefaultLoader = loadEngine === loadBrowserEngine;
+  if (isDefaultLoader && isServerlessRuntime()) {
+    try {
+      // @sparticuz/chromium is an ESM-default module: the namespace's `.default`
+      // holds { args, executablePath(), … }. Assemble the specifier at runtime.
+      const spec = ['@sparticuz', '/chromium'].join('');
+      const ns = (await import(/* webpackIgnore: true */ spec)) as unknown as {
+        default?: { args: string[]; executablePath: () => Promise<string> };
+        args?: string[];
+        executablePath?: () => Promise<string>;
+      };
+      const sparticuz = ns.default ?? (ns as { args: string[]; executablePath: () => Promise<string> });
+      // headless:true is set explicitly (newer @sparticuz dropped the `headless`
+      // getter); args pass through unmodified per the egress audit above.
+      const launchOptions: Record<string, unknown> = {
+        args: sparticuz.args,
+        executablePath: await sparticuz.executablePath(),
+        headless: true,
+      };
+      return { chromium: engine.chromium, launchOptions };
+    } catch {
+      // @sparticuz failed to load/inflate on serverless → unavailable (clean
+      // "browser unavailable" rather than a broken launch).
+      return null;
+    }
+  }
+  // Local/dev/CI: full playwright's bundled chromium, headless (today's path).
+  return { chromium: engine.chromium, launchOptions: { headless: true } };
 }
 
 function capPage(text: string): string {
@@ -260,31 +369,39 @@ function capPage(text: string): string {
  *    blocked observation instead of content.
  */
 export class PlaywrightBrowserDriver implements BrowserDriver {
-  private pw: PwModule | null = null;
+  private runtime: BrowserRuntime | null = null;
   private browser: PwBrowser | null = null;
   private context: PwContext | null = null;
   private page: PwPage | null = null;
 
   /**
    * @param isPublicIp the egress predicate (apps/web passes the connectors one).
-   * @param loadModule TEST-ONLY seam — injects a fake PwModule so the lifecycle/
-   *   interception LOGIC is exercisable without a real Chromium. Production omits
-   *   it and the real (absent-by-default) dynamic import is used.
+   * @param loadModule TEST-ONLY seam — injects a fake PwModule (the chromium
+   *   ENGINE) so the lifecycle/interception LOGIC is exercisable without a real
+   *   Chromium. Production omits it and the runtime-aware `loadBrowserEngine` is
+   *   used (full `playwright` locally; `playwright-core` + `@sparticuz/chromium`
+   *   on Vercel/Lambda — see loadBrowserRuntime). With an injected loader the
+   *   launch options stay the benign `{ headless: true }` (no @sparticuz import).
    * @param fetchImpl TEST-ONLY seam — the pinned fetch the interceptor calls.
    *   Defaults to the connector `safeFetch`; tests inject a fake to assert the
    *   fetch-and-fulfill / fail-closed behavior without real network egress.
    */
   constructor(
     private readonly isPublicIp: (addr: string) => boolean = browserIsPublicIp,
-    private readonly loadModule: () => Promise<PwModule | null> = loadPlaywright,
+    private readonly loadModule: () => Promise<PwModule | null> = loadBrowserEngine,
     private readonly fetchImpl: SafeFetchFn = safeFetch,
   ) {}
 
   private async ensurePage(): Promise<PwPage> {
     if (this.page) return this.page;
-    this.pw ??= await this.loadModule();
-    if (!this.pw) throw new Error('playwright is not installed');
-    this.browser ??= await this.pw.chromium.launch({ headless: true });
+    // Runtime-aware, lazy: returns the chromium engine + launch options for the
+    // detected runtime (serverless → playwright-core + @sparticuz binary; local →
+    // full playwright). The chromium layer is imported only here, only when a run
+    // actually reaches a computer_use verb. The interception below is identical
+    // regardless of which engine/binary launched (#165 egress model unchanged).
+    this.runtime ??= await loadBrowserRuntime(this.loadModule);
+    if (!this.runtime) throw new Error('playwright is not installed');
+    this.browser ??= await this.runtime.chromium.launch(this.runtime.launchOptions);
     // `serviceWorkers: 'block'` closes a whole egress class: a Service Worker's
     // fetches originate OUTSIDE the page and CANNOT be intercepted by
     // `context.route('**')`, so without this a SW could open unpinned Chromium
@@ -525,7 +642,11 @@ export class PlaywrightBrowserDriver implements BrowserDriver {
  */
 export async function buildBrowserDriver(): Promise<BrowserDriver | undefined> {
   if (!browserEnabled()) return undefined;
-  const pw = await loadPlaywright();
-  if (!pw) return undefined;
+  // Probe the runtime-aware engine loader (full playwright locally; playwright-core
+  // on serverless) — if nothing loads, the surface is unavailable. The actual
+  // chromium launch (and the @sparticuz layer on serverless) stays lazy in
+  // ensurePage(); this probe does NOT import @sparticuz.
+  const engine = await loadBrowserEngine();
+  if (!engine) return undefined;
   return new PlaywrightBrowserDriver();
 }

@@ -70,6 +70,41 @@ jobs:
       - run: npm ci
       - run: npm run audit
 
+  computer-use-live:
+    # The REAL-Chromium proof of the #165 egress fix: the gated live suite
+    # (apps/web/lib/planner/browser.live.test.ts) drives the actual
+    # PlaywrightBrowserDriver against a launched Chromium to prove the
+    # context.route('**') fetch-and-fulfill interceptor fires, a private/loopback
+    # target is blocked, and a public navigation is fulfilled from PINNED bytes +
+    # quarantined. This is a DEDICATED, ISOLATED job (separate from `gates` so the
+    # default install stays lean and a Chromium hiccup can't block unrelated work)
+    # — but it DOES gate this branch. The suite self-skips cleanly if the browser
+    # is absent (triple gate in the test), so it can never FALSE-fail; here we
+    # install Chromium so it actually runs.
+    name: computer_use live browser (real Chromium)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24
+          cache: npm
+      # Full install (incl. the `playwright` devDep). Skip the browser download in
+      # npm's postinstall — we install Chromium explicitly below with its OS deps.
+      - run: npm ci
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+      # Install ONLY chromium + its Linux system libraries (the live test launches
+      # the full `playwright` bundled chromium on CI, mirroring local dev).
+      - name: Install Chromium for the live test
+        run: npx playwright install --with-deps chromium
+        working-directory: apps/web
+      - name: Live fetch-and-fulfill suite (real Chromium)
+        run: npx vitest run apps/web/lib/planner/browser.live.test.ts
+        env:
+          COMPUTER_USE_LIVE_TEST: "1"
+
   desktop-rust:
     name: Observer daemon (fmt, clippy, cargo test incl. Rust corpus)
     runs-on: ubuntu-latest

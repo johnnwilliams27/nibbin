@@ -396,6 +396,28 @@ describe('PlaywrightBrowserDriver — launch ↔ close lifecycle (fake Pw)', () 
     expect(counters.closes).toBe(1);
   });
 
+  it('HERMETIC SEAM: with a serverless env var set, an INJECTED loader still uses the fake engine (no @sparticuz import attempt)', async () => {
+    // Simulate a CI/test env that happens to look serverless. The injected
+    // (non-default) loader must take the benign `{ headless: true }` path — it must
+    // NOT consult isServerlessRuntime()/import @sparticuz (which would fail → null →
+    // "playwright is not installed" → a spurious failure). The fake engine launching
+    // exactly once (and the verb returning quarantined content) proves the benign
+    // path was taken regardless of env.
+    const prev = process.env.VERCEL;
+    process.env.VERCEL = '1';
+    try {
+      const counters: FakeCounters = { launches: 0, closes: 0, routePatterns: [], wsRoutePatterns: [] };
+      const driver = new PlaywrightBrowserDriver(isPublicIp, async () => fakePwModule(counters) as never);
+      const read = await driver.extract();
+      expect(counters.launches).toBe(1); // the FAKE engine launched, not a dead @sparticuz path
+      expect(isQuarantined(read.content.wrapped)).toBe(true);
+      await driver.close();
+    } finally {
+      if (prev === undefined) delete process.env.VERCEL;
+      else process.env.VERCEL = prev;
+    }
+  });
+
   it('FIX 2: blocks Service-Worker network (newContext serviceWorkers:block) and installs a closing WebSocket route', async () => {
     const counters: FakeCounters = { launches: 0, closes: 0, routePatterns: [], wsRoutePatterns: [] };
     const driver = new PlaywrightBrowserDriver(isPublicIp, async () => fakePwModule(counters) as never);

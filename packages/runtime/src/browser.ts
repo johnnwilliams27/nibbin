@@ -60,8 +60,15 @@ export type ComputerUseVerb = (typeof COMPUTER_USE_VERBS)[number];
  *    task is mostly navigate→read→one-write, not deep reasoning.
  *  - maxSteps 40: each iteration may yield a couple of gated ProgramSteps.
  *  - maxTokens 12_000: page content is bulky; cap below the frontier 20k.
- *  - maxWallClockMs 90s: a browser action set is slower than an API call but a
- *    supervised run must not hang.
+ *  - maxWallClockMs 50s: a SAFETY cap chosen to FIT inside a 60s serverless
+ *    function on ANY Vercel plan (Hobby = 60s hard cap). Most supervised
+ *    navigate/extract/click-draft runs finish in seconds; 50s leaves headroom
+ *    under the 60s function limit for one in-flight action + Chromium teardown,
+ *    so the loop's own wall-clock kill always fires BEFORE the platform kills the
+ *    function (which would orphan the browser). On a Pro+ plan (where the
+ *    function `maxDuration` can be raised to 120/300) this can be lifted back to
+ *    90_000 for richer runs — bump BOTH the route `maxDuration` and this constant
+ *    together so the loop ceiling stays under the function limit.
  * These are the canonical values the server (apps/web) re-stamps onto a
  * computer_use plan, and the Planner validator bounds against
  * MAX_COMPUTER_USE_* (validate.ts) so a crafted plan can't widen them.
@@ -70,7 +77,7 @@ export const COMPUTER_USE_CEILINGS = {
   maxIterations: 20,
   maxSteps: 40,
   maxTokens: 12_000,
-  maxWallClockMs: 90_000,
+  maxWallClockMs: 50_000,
 } as const;
 
 /** The capability id for a verb (`computer_use.<verb>`). */
