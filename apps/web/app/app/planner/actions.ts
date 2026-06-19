@@ -15,6 +15,8 @@ import {
   crystallizabilityGate,
   runPlan,
   validatePlanSpec,
+  isComputerUseCapability,
+  COMPUTER_USE_CEILINGS,
   type AgentSpec,
   type CrystalRefusal,
   type PlanOutcome,
@@ -95,8 +97,13 @@ export async function startPlanRun(plan: PlanSpec): Promise<PlanOutcome | { erro
 
   // FIX 3a: ceilings are NOT user-meaningful — re-stamp the canonical
   // server-side ceilings onto whatever the client posted BEFORE validating or
-  // running, so a crafted client plan can never widen the loop's budget.
-  const safePlan: PlanSpec = { ...plan, ceilings: { ...PLAN_CEILINGS } };
+  // running, so a crafted client plan can never widen the loop's budget. A plan
+  // provisioning a computer_use (browser) verb is re-stamped with the tighter
+  // computer_use ceilings + weight class (10×); otherwise the frontier defaults.
+  const usesComputerUse = plan.toolsAllowlist.some((id) => isComputerUseCapability(id));
+  const safePlan: PlanSpec = usesComputerUse
+    ? { ...plan, weightClass: 'computer_use', ceilings: { ...COMPUTER_USE_CEILINGS } }
+    : { ...plan, weightClass: 'frontier', ceilings: { ...PLAN_CEILINGS } };
 
   const problems = validatePlanSpec(safePlan, connections, { webSearchEnabled: webSearchEnabled() });
   if (problems.length > 0) {
