@@ -11,20 +11,34 @@ const nextConfig = {
   // binary deterministically in CI/Vercel (not just via lockfile auto-detection).
   outputFileTracingRoot: resolve(__dirname, '../..'),
   transpilePackages: ['@nibbin/channels', '@nibbin/connectors', '@nibbin/creatures', '@nibbin/drip', '@nibbin/email', '@nibbin/keeper', '@nibbin/redaction', '@nibbin/router', '@nibbin/shared'],
-  // The computer_use serverless launch loads @sparticuz/chromium via a dynamic
-  // import whose specifier is assembled at RUNTIME (lib/planner/browser.ts), so
-  // Next's output-file-tracing (nft) can't statically discover it and won't bundle
-  // the ~62 MB brotli chromium binary into the function. Force-include the package
-  // (binary + build/) on the routes that can launch it: the planner page (which
-  // hosts the startPlanRun/respondToPlanRun Server Actions) and the channel
-  // webhooks (which run plans inline via ingestInbound). The .br files are ~67 MB
-  // total — comfortably under Vercel's 250 MB unzipped function limit (Chromium is
-  // inflated to /tmp at runtime, not shipped in the bundle).
+  // The computer_use serverless launch drives @sparticuz/chromium via
+  // `playwright-core` (lib/planner/browser.ts). Both are loaded via dynamic
+  // `import()`; the specifiers are now STATIC LITERALS so nft can trace them, but
+  // we ALSO force-include both packages' files here (belt-and-suspenders) so they
+  // ship even if nft misses a transitive path. @sparticuz/chromium carries the
+  // ~62 MB brotli chromium binary (inflated to /tmp at runtime, not shipped
+  // decompressed); playwright-core is the bundled-browser-free driver engine.
+  // Force-include on the routes that can launch it: the planner page (which hosts
+  // the startPlanRun/respondToPlanRun Server Actions) and the channel webhooks
+  // (which run plans inline via ingestInbound). Total stays comfortably under
+  // Vercel's 250 MB unzipped function limit.
   outputFileTracingIncludes: {
-    '/app/planner': ['../../node_modules/@sparticuz/chromium/**'],
-    '/api/channels/telegram': ['../../node_modules/@sparticuz/chromium/**'],
-    '/api/channels/sms': ['../../node_modules/@sparticuz/chromium/**'],
-    '/api/channels/whatsapp': ['../../node_modules/@sparticuz/chromium/**'],
+    '/app/planner': [
+      '../../node_modules/@sparticuz/chromium/**',
+      '../../node_modules/playwright-core/**',
+    ],
+    '/api/channels/telegram': [
+      '../../node_modules/@sparticuz/chromium/**',
+      '../../node_modules/playwright-core/**',
+    ],
+    '/api/channels/sms': [
+      '../../node_modules/@sparticuz/chromium/**',
+      '../../node_modules/playwright-core/**',
+    ],
+    '/api/channels/whatsapp': [
+      '../../node_modules/@sparticuz/chromium/**',
+      '../../node_modules/playwright-core/**',
+    ],
     // Legal pages read their HTML from reference/ at module load; trace the
     // files so they are bundled into the Vercel function output.
     '/privacy': ['../../reference/privacy.html'],
