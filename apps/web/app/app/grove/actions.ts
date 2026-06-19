@@ -31,6 +31,8 @@ import { groveRouter } from '../../../lib/grove/router';
 import { anthropicGenerate, recordModelCall } from '../../../lib/llm/client';
 import { answersForSave, sanitizeInput, stateFromRow, type GroveRow } from '../../../lib/grove/state';
 import { createClient } from '../../../lib/supabase/server';
+import { serviceClient } from '../../../lib/supabase/service';
+import { DONE, NEXT_STEP } from '@nibbin/keeper';
 
 export interface GroveTurnPayload {
   messages: KeeperMessage[];
@@ -56,6 +58,38 @@ async function groveSession() {
     },
   });
   return { supabase, user, accountId };
+}
+
+/**
+ * Emit the two onboarding-done notification leaves via the service client.
+ * The RPC is idempotent (ON CONFLICT (account_id, kind, source_id) DO NOTHING),
+ * so calling this more than once per account is safe. Best-effort: callers
+ * should fire-and-forget with `void` and never await in a critical path.
+ */
+async function emitOnboardingLeaves(accountId: string): Promise<void> {
+  try {
+    const svc = serviceClient();
+    await Promise.all([
+      svc.rpc('insert_system_notification', {
+        p_account: accountId,
+        p_kind: 'nudge',
+        p_source_id: `onboarding_done:${accountId}`,
+        p_title: DONE.title,
+        p_body: DONE.detail,
+        p_payload: { ctaPath: '/app/connections', ctaLabel: 'Connect an account' },
+      }),
+      svc.rpc('insert_system_notification', {
+        p_account: accountId,
+        p_kind: 'nudge',
+        p_source_id: `field_study_nudge:${accountId}`,
+        p_title: NEXT_STEP.fieldStudy.title,
+        p_body: NEXT_STEP.fieldStudy.detail,
+        p_payload: { ctaPath: '/app/diagnosis', ctaLabel: NEXT_STEP.fieldStudy.cta },
+      }),
+    ]);
+  } catch {
+    // best-effort; never disrupt the onboarding save path
+  }
 }
 
 export async function advanceGroveAction(rawInput: unknown): Promise<GroveTurnPayload> {
@@ -255,6 +289,9 @@ export async function understandStepAction(rawText: unknown): Promise<GroveTurnP
   // On completion, derive + persist the desktop handoff before saving state.
   if (turn.state.step === 'done' && turn.state.profile) {
     await writeHandoff(supabase, accountId, turn.state.profile);
+    // Emit the two onboarding-done leaves to the notification centre.
+    // Best-effort: never block the state save on a leaf failure.
+    void emitOnboardingLeaves(accountId);
   }
 
   const { error } = await supabase.rpc('save_grove_state', {
@@ -292,6 +329,9 @@ export async function skipUnderstandingAction(): Promise<GroveTurnPayload> {
   if (turn.state.profile) {
     await writeHandoff(supabase, accountId, turn.state.profile);
   }
+  // Emit the two onboarding-done leaves to the notification centre.
+  // Best-effort: never block the state save on a leaf failure.
+  void emitOnboardingLeaves(accountId);
   const { error } = await supabase.rpc('save_grove_state', {
     target_account: accountId,
     new_step: turn.state.step,
