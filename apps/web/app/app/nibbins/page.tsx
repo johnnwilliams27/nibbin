@@ -323,12 +323,16 @@ export default async function NibbinsPage() {
   return (
     <AppShell active="nibbins" title="Your Nibbins" email={user.email}>
       <NoteRefresher staleIds={staleIds} action={refreshNibbinNote} />
-      <p className={styles.intro}>
-        Every Nibbin climbs Agent School the same way — egg, student, senior, graduate — and trust is
-        earned through verified accuracy, never time served. Streaks and badges below are read
-        straight from real run history.{' '}
-        <InfoTooltip content="Promotion requires 95% of your last 25 decisions approved without edits — no shortcuts, no time-based bumps." />
-      </p>
+      <div className={styles.pageHead}>
+        <p className={styles.eyebrow}>Agent School</p>
+        <h1 className={styles.h1}>Your nibbins</h1>
+        <p className={styles.intro}>
+          Every Nibbin climbs Agent School the same way — egg, student, senior, graduate — and trust is
+          earned through verified accuracy, never time served. Streaks and badges below are read
+          straight from real run history.{' '}
+          <InfoTooltip content="Promotion requires 95% of your last 25 decisions approved without edits — no shortcuts, no time-based bumps." />
+        </p>
+      </div>
 
       <div className={styles.roster}>
         {nibbins.map((n) => {
