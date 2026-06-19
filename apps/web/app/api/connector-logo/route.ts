@@ -15,6 +15,7 @@ const ALLOWED_DOMAINS = new Set(
 const ONE_DAY = 60 * 60 * 24;
 const ONE_WEEK = ONE_DAY * 7;
 const MAX_LOGO_BYTES = 512 * 1024;
+const LOGO_FETCH_TIMEOUT_MS = 4000;
 
 // Upstream sources tried in priority order:
 //   1. Clearbit  — clean square brand logos when available (HubSpot-era API,
@@ -29,6 +30,7 @@ async function tryFetchImage(
     const res = await fetch(url, {
       // Cache the upstream fetch; logos are effectively static.
       next: { revalidate: ONE_WEEK },
+      signal: AbortSignal.timeout(LOGO_FETCH_TIMEOUT_MS),
     });
     if (!res.ok) return null;
     const contentType = res.headers.get("content-type") ?? "";
