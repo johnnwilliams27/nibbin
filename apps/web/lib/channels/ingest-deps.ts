@@ -39,9 +39,14 @@ function defaultSpendCapFromEnv(): number {
   return Number.isFinite(v) && v > 0 ? Math.floor(v) : 1_000_000;
 }
 
-function inboundHourlyCapFromEnv(): number {
-  const v = Number(process.env.CHANNELS_INBOUND_HOURLY_CAP);
-  return Number.isFinite(v) && v > 0 ? Math.floor(v) : 30;
+function anomalyMultiplierFromEnv(): number {
+  const v = Number(process.env.CHANNELS_ANOMALY_MULTIPLIER);
+  return Number.isFinite(v) && v > 0 ? v : 10;
+}
+
+function anomalyFloorFromEnv(): number {
+  const v = Number(process.env.CHANNELS_ANOMALY_FLOOR);
+  return Number.isFinite(v) && v > 0 ? Math.floor(v) : 5;
 }
 
 /** UTC YYYY-MM-DD for today — used as the channel_turn_take p_day key. */
@@ -57,7 +62,8 @@ export function buildGateDeps(svc: ReturnType<typeof serviceClient>): TurnGateDe
   const smsSpendCap = smsSpendCapFromEnv();
   const defaultSpendCap = defaultSpendCapFromEnv();
   const turnLimit = turnLimitFromEnv();
-  const inboundHourlyCap = inboundHourlyCapFromEnv();
+  const anomalyMultiplier = anomalyMultiplierFromEnv();
+  const anomalyFloor = anomalyFloorFromEnv();
 
   return {
     async take(accountId, channel) {
@@ -73,39 +79,41 @@ export function buildGateDeps(svc: ReturnType<typeof serviceClient>): TurnGateDe
         // Fail closed: if the RPC errors, deny the turn rather than allow
         // an ungated call (AS-§11 / N15).
         console.error('[channels] channel_turn_take rpc failed — failing closed', error.message);
-        return { granted: false, turns: 0, channelSpent: 0 };
+        return { granted: false, turns: 0, channelSpent: 0, warn: false };
       }
       const row = Array.isArray(data) ? data[0] : data;
       return {
         granted: Boolean(row?.granted),
         turns: Number(row?.turns ?? 0),
         channelSpent: Number(row?.channel_spent ?? 0),
+        warn: Boolean(row?.warn),
       };
     },
 
     async anomaly(accountId, channel) {
-      // v1 fixed-threshold anomaly check (AS-§18.4 baseline).
-      // Count verified inbound channel_messages for (account, channel) in the
-      // last hour; return true (anomalous) when it exceeds the hourly cap.
-      // The full per-account, per-channel baseline model (AS-§18.4 "adaptive
-      // threshold + deviation scoring") is a follow-up — this is a conservative
-      // fixed cap that catches runaway inbound floods before any model call.
-      const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-      const { count, error } = await svc
-        .from('channel_messages')
-        .select('id', { count: 'exact', head: true })
-        .eq('account_id', accountId)
-        .eq('channel', channel)
-        .eq('direction', 'inbound')
-        .eq('verified', true)
-        .gte('created_at', since);
+      // AS-§18.4 adaptive baseline: anomalous when today's verified inbound far
+      // exceeds the account's 7-day norm. Fail OPEN — advisory; the budget gate
+      // (take) is the hard stop.
+      const { data, error } = await svc.rpc('channel_inbound_anomaly', {
+        p_account: accountId,
+        p_channel: channel,
+        p_multiplier: anomalyMultiplier,
+        p_floor: anomalyFloor,
+      });
       if (error) {
-        // Fail open here: anomaly detection is advisory; a query failure should
-        // not block all turns. The budget gate (take) is the hard stop.
-        console.error('[channels] anomaly count query failed — failing open', error.message);
+        console.error('[channels] anomaly baseline rpc failed — failing open', error.message);
         return false;
       }
-      return (count ?? 0) > inboundHourlyCap;
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!row?.is_anomalous) return false;
+      // breather + audit flag (no auto-pause).
+      const { error: auditErr } = await svc.from('audit_log').insert({
+        account_id: accountId, actor: 'system', actor_id: 'channel-anomaly',
+        action: 'channel.anomaly_detected', subject: accountId,
+        meta: { channel, today: row.today_count, baseline_per_day: row.baseline_per_day },
+      });
+      if (auditErr) console.error('[channels] anomaly audit insert failed', auditErr.message);
+      return true;
     },
   };
 }

@@ -51,12 +51,10 @@ export default async function PrivacySettingsPage({
 
   const { data: drip } = await supabase
     .from('drip_arcs')
-    .select('email_enabled, quiet_start, quiet_end')
+    .select('email_enabled')
     .eq('account_id', accountId)
-    .maybeSingle<{ email_enabled: boolean; quiet_start: number; quiet_end: number }>();
+    .maybeSingle<{ email_enabled: boolean }>();
   const emailEnabled = drip?.email_enabled ?? true;
-  const quietStart = drip?.quiet_start ?? 21;
-  const quietEnd = drip?.quiet_end ?? 9;
 
   const { data: channels } = await supabase
     .from('notification_channels')
@@ -78,8 +76,8 @@ export default async function PrivacySettingsPage({
   const meta = channelMeta(flags);
   const prefByChannel = new Map((chanPrefs ?? []).map((p) => [p.channel, p]));
   const connectedByChannel = new Map((channels ?? []).map((c) => [c.channel, c]));
-  const settingsQuietStart = settings?.quiet_start ?? quietStart;
-  const settingsQuietEnd = settings?.quiet_end ?? quietEnd;
+  const settingsQuietStart = settings?.quiet_start ?? 21;
+  const settingsQuietEnd = settings?.quiet_end ?? 9;
   const digestMode = settings?.digest_mode ?? 'smart';
 
   return (

@@ -2,7 +2,6 @@
 
 import { redirect } from 'next/navigation';
 import { appSession } from '../../../../lib/auth/app-session';
-import { parseNotificationPrefs } from '../../../../lib/privacy/notifications';
 import { serviceClient } from '../../../../lib/supabase/service';
 import { siteOrigin } from '../../../../lib/site-url';
 import { parseChannelPrefsForm, parseSettingsForm } from '../../../../lib/privacy/channels';
@@ -52,13 +51,13 @@ export async function setSweepConsent(formData: FormData): Promise<void> {
 }
 
 export async function setNotificationPrefs(formData: FormData) {
-  const { emailEnabled, quietStart, quietEnd } = parseNotificationPrefs(formData);
+  const emailEnabled = formData.get('email_enabled') === 'on';
   const { supabase, accountId } = await appSession();
+  // Email-only: the companion-email toggle. Quiet hours are managed separately
+  // by saveNotificationSettings → set_notification_settings.
   const { error } = await supabase.rpc('set_notification_prefs', {
     target_account: accountId,
     email_enabled: emailEnabled,
-    quiet_start: quietStart,
-    quiet_end: quietEnd,
   });
   if (error) redirect('/app/settings/privacy?error=notify');
   redirect('/app/settings/privacy?state=notify_saved');
@@ -110,15 +109,12 @@ export async function saveNotificationSettings(formData: FormData) {
     quiet_end: quietEnd,
     digest_mode: digestMode,
   });
-  // ...and mirror quiet hours into drip_arcs so the LIVE companion-email arc
-  // keeps honoring them until the drip worker reads notification_settings
-  // (flagged follow-up). Errors here are non-fatal (a pre-arc account has no
-  // drip row yet); the unified row is the source of truth.
+  // Mirror email toggle into drip_arcs via the email-only RPC. Errors here are
+  // non-fatal (a pre-arc account has no drip row yet); notification_settings is
+  // the source of truth for quiet hours.
   await supabase.rpc('set_notification_prefs', {
     target_account: accountId,
     email_enabled: formData.get('email_enabled') === 'on',
-    quiet_start: quietStart,
-    quiet_end: quietEnd,
   });
   redirect(error ? '/app/settings/privacy?error=quiet' : '/app/settings/privacy?state=quiet_saved');
 }

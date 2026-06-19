@@ -20,3 +20,6 @@ export const SMS_HELP_REPLY =
 
 export const SMS_STOP_REPLY =
   'You\'ve opted out — your grove won\'t text this number again. You can still reach it in the app, and reply START here to turn texts back on.';
+
+export const SMS_START_REPLY =
+  'You\'re back in — your grove can text this number again. Reply STOP to opt out anytime.';
