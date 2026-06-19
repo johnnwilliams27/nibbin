@@ -24,22 +24,32 @@ import 'server-only';
  *    is NOT the security decision (a separate, unpinned `page.goto` re-resolves
  *    DNS independently, so the probe alone is bypassable by a redirect / JS
  *    redirect / DNS rebind).
- *  - The LOAD-BEARING guard is `context.route('**', …)`: EVERY request the
- *    Chromium context makes (the main navigation, every redirect hop, AND every
- *    subresource) is intercepted, its host resolved, and ABORTED unless the
- *    resolved IP is public. This validates redirects, JS-redirects, DNS-rebinds
- *    and subresource fetches at the browser layer, where they actually happen.
+ *  - The LOAD-BEARING guard is `context.route('**', …)`: EVERY http(s) request
+ *    the Chromium context makes (the main navigation, every redirect hop, AND
+ *    every subresource) is intercepted and FETCHED-AND-FULFILLED through the
+ *    pinned `safeFetch` (DNS-validated + TCP-pinned + per-hop re-checked); the
+ *    response bytes are replayed via `route.fulfill` with framing/hop-by-hop/
+ *    set-cookie headers stripped (content-encoding kept — see
+ *    sanitizeResponseHeaders). Chromium never opens its own socket to a host, so
+ *    the DNS-rebind window is STRUCTURALLY closed for HTTP requests. WebSocket
+ *    handshakes and Service-Worker fetches bypass `context.route` entirely, so
+ *    they are blocked at context creation (`serviceWorkers: 'block'` +
+ *    `routeWebSocket('**', ws => ws.close())`) — closing the rebind class for
+ *    ALL request types, not just HTTP.
  *  - The READ verbs (extract/screenshot/scroll) additionally re-assert
  *    `assertSafeNavigateUrl(page.url())` before returning content: the page may
  *    have moved (redirect/JS) since `navigate`, so we refuse to surface content
  *    from a now-internal URL.
  */
-import { lookup as dnsLookup } from 'node:dns/promises';
 import {
   quarantine,
   isPublicIp as connectorsIsPublicIp,
   safeFetch,
   EgressDeniedError,
+  type SafeResponse,
+  type SafeFetchInit,
+  type EgressPolicy,
+  type UnsafeTestOverrides,
 } from '@nibbin/connectors';
 import {
   assertSafeNavigateUrl,
@@ -70,14 +80,121 @@ const PAGE_MAX_CHARS = 3_500;
 const NAV_TIMEOUT_MS = 15_000;
 
 /**
+ * Generous per-request body cap for the fetch-and-fulfill interceptor. A page +
+ * its subresources can be large; this matches the connector's own default
+ * (`DEFAULT_MAX_BYTES`, 5 MB) so a normal page is fully retrievable over the
+ * pinned connection. If a response exceeds it (or times out) the interceptor
+ * cannot serve the full body safely → it ABORTS (fail closed).
+ */
+const EGRESS_MAX_BYTES = 5 * 1024 * 1024;
+
+/**
+ * Benign request headers we forward to the pinned fetch. Anything not in this
+ * set — crucially the credential headers (`cookie`, `authorization`,
+ * `proxy-authorization`) — is DROPPED: a fresh, cookieless context must never
+ * forward ambient credentials to an arbitrary host.
+ *
+ * SECURITY — DO NOT add `cookie` or `authorization` here. The request-side strip
+ * is what keeps a response `set-cookie` harmless: Chromium may store the cookie
+ * in the throwaway context, but because we never forward `cookie`/`authorization`
+ * outbound, that cookie is never replayed to any host. Adding either name here
+ * would re-open a credential-exfil channel (ambient creds → arbitrary host) and
+ * undo the cookie/credential non-forwarding guarantee.
+ */
+const FORWARDABLE_HEADERS = new Set([
+  'user-agent',
+  'accept',
+  'accept-language',
+  'content-type',
+]);
+
+/**
+ * Response headers we MUST strip before replaying the origin's response to
+ * Chromium via `route.fulfill`. `safeFetch` does ZERO decompression: `resp.body`
+ * is the raw socket bytes and `resp.headers` is verbatim from the origin.
+ *
+ * WHY we KEEP `content-encoding` (and `content-type`/`content-language`/etc.):
+ * because the body is still gzip/br-encoded, `content-encoding` MATCHES the
+ * bytes. Dropping it while leaving the encoded body would make Chromium try to
+ * render compressed bytes as plaintext → garbage.
+ *
+ * WHY we DROP the framing / hop-by-hop headers: `route.fulfill` recomputes
+ * framing (`content-length`, `transfer-encoding`) from the Buffer we hand it.
+ * Replaying the origin's `content-length`/`transfer-encoding` verbatim corrupts
+ * the response framing (`ERR_CONTENT_LENGTH_MISMATCH` / chunked mismatch).
+ * Hop-by-hop headers (`connection`, `keep-alive`, `te`, `trailer`, `upgrade`,
+ * `proxy-*`) describe the upstream socket we already terminated — they are
+ * meaningless on the fulfilled response. We also drop `set-cookie` as
+ * defense-in-depth (a read tool never needs it; the request-side strip already
+ * makes any stored cookie unforwardable — see FORWARDABLE_HEADERS).
+ */
+const STRIPPED_RESPONSE_HEADERS = new Set([
+  'content-length',
+  'transfer-encoding',
+  'connection',
+  'keep-alive',
+  'te',
+  'trailer',
+  'upgrade',
+  'proxy-authenticate',
+  'proxy-authorization',
+  'set-cookie',
+]);
+
+/**
+ * Strip the framing / hop-by-hop / set-cookie headers from a pinned-fetch
+ * response before `route.fulfill` so Playwright recomputes framing from the
+ * Buffer. KEEPS `content-encoding` (the body is still encoded — see
+ * STRIPPED_RESPONSE_HEADERS). Case-insensitive denylist.
+ */
+function sanitizeResponseHeaders(headers: Record<string, string>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(headers)) {
+    if (!STRIPPED_RESPONSE_HEADERS.has(k.toLowerCase())) out[k] = v;
+  }
+  return out;
+}
+
+/**
+ * The Signature of the pinned fetch the interceptor calls. Defaults to the
+ * connector `safeFetch`; a TEST-ONLY constructor seam can swap it so the
+ * fetch-and-fulfill LOGIC is exercisable without real network egress.
+ */
+export type SafeFetchFn = (
+  url: string,
+  init?: SafeFetchInit,
+  policy?: EgressPolicy,
+  unsafeTestOverrides?: UnsafeTestOverrides,
+) => Promise<SafeResponse>;
+
+/**
+ * Build the credential-stripped, benign-only header set to forward to the
+ * pinned fetch from Chromium's per-request headers.
+ */
+function stripRequestHeaders(headers: Record<string, string>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(headers)) {
+    if (FORWARDABLE_HEADERS.has(k.toLowerCase())) out[k.toLowerCase()] = v;
+  }
+  return out;
+}
+
+/**
  * The minimal Playwright surface we use — typed locally so we never need the
  * `@playwright/test` / `playwright` types at build time (the package is not a
  * declared dependency). The dynamic import is cast to this shape.
  */
+interface PwRequest {
+  url(): string;
+  method(): string;
+  postData(): string | null;
+  headers(): Record<string, string>;
+}
 interface PwRoute {
-  request(): { url(): string };
+  request(): PwRequest;
   abort(): Promise<void>;
   continue(): Promise<void>;
+  fulfill(opts: { status?: number; headers?: Record<string, string>; body?: Buffer | string }): Promise<void>;
 }
 interface PwPage {
   url(): string;
@@ -90,11 +207,17 @@ interface PwPage {
   screenshot(opts?: Record<string, unknown>): Promise<Buffer>;
   evaluate<T>(fn: () => T): Promise<T>;
 }
+interface PwWebSocketRoute {
+  close(opts?: { code?: number; reason?: string }): void;
+}
 interface PwContext {
   newPage(): Promise<PwPage>;
   route(pattern: string, handler: (route: PwRoute) => void | Promise<void>): Promise<void>;
+  // routeWebSocket exists in Playwright >= 1.48 (the branch pins 1.61). Optional
+  // here so the fake-Pw test harness / older builds don't have to provide it.
+  routeWebSocket?(pattern: string, handler: (ws: PwWebSocketRoute) => void | Promise<void>): Promise<void>;
 }
-interface PwBrowser { newContext(): Promise<PwContext>; close(): Promise<void> }
+interface PwBrowser { newContext(opts?: Record<string, unknown>): Promise<PwContext>; close(): Promise<void> }
 interface PwModule { chromium: { launch(opts?: Record<string, unknown>): Promise<PwBrowser> } }
 
 /** Load playwright at runtime WITHOUT a static module reference (so the build
@@ -116,60 +239,18 @@ function capPage(text: string): string {
 }
 
 /**
- * The per-request egress decision for the Chromium interceptor (the LOAD-BEARING
- * SSRF guard). Resolve the request's host and decide allow/abort: an http(s) URL
- * to a host that resolves ONLY to public IPs is allowed; anything else (non-http,
- * credentials, a literal/resolved private/loopback/link-local/metadata IP, a DNS
- * failure) is aborted. Mirrors safeFetch's "one private answer poisons the set"
- * rule so a split-horizon / rebind answer can't slip a private IP past us.
- *
- * Exported so the validation LOGIC is unit-testable without a real browser.
- */
-export async function isRequestEgressAllowed(
-  rawUrl: string,
-  isPublicIp: (addr: string) => boolean = browserIsPublicIp,
-  lookup: (host: string) => Promise<Array<{ address: string }>> = async (h) => {
-    const found = await dnsLookup(h, { all: true, verbatim: true });
-    return found.map((f) => ({ address: f.address }));
-  },
-): Promise<boolean> {
-  let parsed: URL;
-  try {
-    parsed = new URL(rawUrl);
-  } catch {
-    return false;
-  }
-  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
-  if (parsed.username || parsed.password) return false;
-  const host = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, '');
-  if (host === '') return false;
-  // Internal-suffix hosts (localhost/.local/.internal) never resolve to a public
-  // answer we'd want to reach — reject without a lookup.
-  if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') || host.endsWith('.internal')) {
-    return false;
-  }
-  const isLiteral = host.includes(':') || /^\d+(\.\d+){3}$/.test(host) || /^\d+$/.test(host);
-  if (isLiteral) return isPublicIp(host);
-  // A name: resolve every answer; ONE private answer poisons the whole set.
-  let answers: Array<{ address: string }>;
-  try {
-    answers = await lookup(host);
-  } catch {
-    return false;
-  }
-  if (answers.length === 0) return false;
-  return answers.every((a) => isPublicIp(a.address));
-}
-
-/**
  * A Playwright-backed BrowserDriver. Constructed lazily (the browser+context+page
  * are launched on first use). READ verbs return quarantined page text. WRITE
  * verbs (click/type) are described but NOT performed (the harness pauses for
  * approval); `commit` performs the already-approved verb.
  *
- * SSRF defense (per-request interception is the load-bearing guard):
- *  - On context creation we install `context.route('**', …)`: EVERY request
- *    (main nav, redirects, subresources) is resolved + aborted unless public.
+ * SSRF defense (per-request fetch-and-fulfill is the load-bearing guard):
+ *  - On context creation we block uninterceptable egress classes
+ *    (`serviceWorkers: 'block'` + `routeWebSocket('**', ws => ws.close())`) and
+ *    install `context.route('**', …)`: EVERY http(s) request (main nav,
+ *    redirects, subresources) is fetched through the pinned safeFetch and the
+ *    bytes replayed via route.fulfill (headers sanitized) — Chromium never opens
+ *    its own socket; any denial fails closed to route.abort().
  *  - `navigate` additionally runs a cheap safeFetch PRE-check that fails CLOSED
  *    (gated on the EgressDeniedError.reason enum: a private-ip/allowlist/dns/
  *    userinfo/protocol/port denial is a hard refusal; only a size/timeout cut —
@@ -189,10 +270,14 @@ export class PlaywrightBrowserDriver implements BrowserDriver {
    * @param loadModule TEST-ONLY seam — injects a fake PwModule so the lifecycle/
    *   interception LOGIC is exercisable without a real Chromium. Production omits
    *   it and the real (absent-by-default) dynamic import is used.
+   * @param fetchImpl TEST-ONLY seam — the pinned fetch the interceptor calls.
+   *   Defaults to the connector `safeFetch`; tests inject a fake to assert the
+   *   fetch-and-fulfill / fail-closed behavior without real network egress.
    */
   constructor(
     private readonly isPublicIp: (addr: string) => boolean = browserIsPublicIp,
     private readonly loadModule: () => Promise<PwModule | null> = loadPlaywright,
+    private readonly fetchImpl: SafeFetchFn = safeFetch,
   ) {}
 
   private async ensurePage(): Promise<PwPage> {
@@ -200,20 +285,100 @@ export class PlaywrightBrowserDriver implements BrowserDriver {
     this.pw ??= await this.loadModule();
     if (!this.pw) throw new Error('playwright is not installed');
     this.browser ??= await this.pw.chromium.launch({ headless: true });
-    this.context = await this.browser.newContext();
-    // LOAD-BEARING: validate Chromium's ACTUAL egress per request. Every request
-    // the context makes — main navigation, redirects, AND subresources — is
-    // resolved and aborted unless it resolves to a public IP. This is what closes
-    // the redirect / JS-redirect / DNS-rebind / subresource SSRF holes that the
-    // throwaway navigate probe cannot.
+    // `serviceWorkers: 'block'` closes a whole egress class: a Service Worker's
+    // fetches originate OUTSIDE the page and CANNOT be intercepted by
+    // `context.route('**')`, so without this a SW could open unpinned Chromium
+    // sockets (the exact rebind class this PR exists to close).
+    this.context = await this.browser.newContext({ serviceWorkers: 'block' });
+    // WebSocket handshakes ALSO bypass `context.route('**')` (it only sees HTTP
+    // requests), so they would otherwise open unpinned sockets. Close every WS
+    // route immediately (we never proxy WS upstream — a bounded read/draft tool
+    // has no WS need). routeWebSocket exists in Playwright >= 1.48 (branch pins
+    // 1.61); guard so the fake-Pw harness / older builds don't throw — a missing
+    // API must not crash the driver.
+    if (typeof this.context.routeWebSocket === 'function') {
+      await this.context.routeWebSocket('**', (ws) => {
+        try {
+          ws.close();
+        } catch {
+          // best-effort: a close on an already-closed route must not escape.
+        }
+      });
+    }
+    // LOAD-BEARING: serve Chromium's egress from a connection WE pin. Rather than
+    // `route.continue()` (which lets Chromium open its own unpinned socket and
+    // re-resolve DNS — the P2 rebind window), we fetch every http(s) request
+    // through the connector `safeFetch` (DNS-validated + TCP-pinned + per-hop
+    // re-checked) and `route.fulfill()` Chromium with those bytes. Chromium never
+    // opens a socket to a host at all, so the rebind window is STRUCTURALLY closed
+    // — for the main navigation, every redirect hop, AND every subresource.
     await this.context.route('**', async (route) => {
-      const url = route.request().url();
+      // Best-effort abort: a reject (e.g. the route was already handled/closed)
+      // must not escape this async handler as an unhandled rejection.
+      const safeAbort = async () => {
+        try {
+          await route.abort();
+        } catch {
+          // best-effort, mirror close().
+        }
+      };
+      const request = route.request();
+      const url = request.url();
+      // Classify the scheme. Only data:/blob:/about: carry no network egress and
+      // no SSRF vector — let Chromium handle those directly. Anything else that
+      // is NOT http(s) (file:/ftp:/ws:/unknown) is aborted, never continued.
+      let scheme: string;
       try {
-        const allowed = await isRequestEgressAllowed(url, this.isPublicIp);
-        if (allowed) await route.continue();
-        else await route.abort();
+        scheme = new URL(url).protocol;
       } catch {
-        await route.abort();
+        await safeAbort();
+        return;
+      }
+      if (scheme === 'data:' || scheme === 'blob:' || scheme === 'about:') {
+        await route.continue();
+        return;
+      }
+      if (scheme !== 'http:' && scheme !== 'https:') {
+        // file:/ftp:/unknown → abort (don't hand Chromium a non-egress-safe URL).
+        await safeAbort();
+        return;
+      }
+      // http(s): fetch through the pinned safeFetch and fulfill from those bytes.
+      try {
+        const policy: EgressPolicy = {
+          maxResponseBytes: EGRESS_MAX_BYTES,
+          timeoutMs: NAV_TIMEOUT_MS,
+          maxRedirects: 3,
+        };
+        const init: SafeFetchInit = {
+          method: request.method(),
+          headers: stripRequestHeaders(request.headers()),
+          body: request.postData() ?? undefined,
+        };
+        const resp = await this.fetchImpl(
+          url,
+          init,
+          policy,
+          // generic-rail (no allowedHosts) — any public host, private answers
+          // rejected, connect pinned. Mirror navigate's probe: allow http only
+          // when the request URL is http:.
+          { ...(scheme === 'http:' ? { allowHttp: true } : {}) },
+        );
+        // Sanitize the verbatim origin headers before replaying: drop the
+        // framing/hop-by-hop/set-cookie headers (Playwright recomputes framing
+        // from the Buffer) but KEEP content-encoding (the body is still encoded).
+        // See sanitizeResponseHeaders / STRIPPED_RESPONSE_HEADERS.
+        await route.fulfill({
+          status: resp.status,
+          headers: sanitizeResponseHeaders(resp.headers),
+          body: resp.body,
+        });
+      } catch {
+        // FAIL CLOSED. Every EgressDeniedError reason (private-ip/dns/allowlist/
+        // protocol/redirect/port/credentials), AND a size/timeout cut (we could
+        // not retrieve the full body over the pinned connection), AND any other
+        // throw → abort. We NEVER route.continue() an http(s) request.
+        await safeAbort();
       }
     });
     this.page = await this.context.newPage();
