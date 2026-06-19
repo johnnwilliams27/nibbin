@@ -4,7 +4,7 @@ import { GmailClient, SupabaseTokenVault } from '@nibbin/connectors';
 import { serviceClient } from '../supabase/service';
 import { anthropicGenerate } from '../llm/client';
 import type { UnderstandingProfile } from '@nibbin/keeper';
-import { runPass1, runPass2, mergeSweepDerived, type SentBatch, type ThreadBatch } from './derive';
+import { runPass1, runPass2, mergeSweepDerived, isSensitiveSample, type SentBatch, type ThreadBatch } from './derive';
 import type { SweepDerived, SweepStatus } from './types';
 
 // ≈12-month onboarding seed; caps (MAX_SENT_MESSAGES/MAX_INBOX_THREADS) + newest-first ordering bind first.
@@ -157,6 +157,29 @@ export async function gmailOnboardingSweep(
   const cutoff = new Date(Date.now() - SWEEP_WINDOW_DAYS * 24 * 60 * 60 * 1000);
   let status: SweepStatus = 'complete';
 
+  // ── Mid-sweep consent re-check (TOCTOU) ──────────────────────────────────
+  // The read loops + derive run for up to ~45 s. The write-time check below is
+  // the last line of defense, but on its own a sweep that the user revokes early
+  // keeps reading + transmitting the whole mailbox to the LLM before the write
+  // is blocked. Re-read consent (and status='active') at each page/batch boundary
+  // so a revocation STOPS the read promptly — minimizing what is read/sent after
+  // the user said stop. Fail-closed: any error or missing/null consent → revoked.
+  let consentRevoked = false;
+  const consentActive = async (): Promise<boolean> => {
+    try {
+      const { data, error } = await svc
+        .from('connections')
+        .select('sweep_consent_at')
+        .eq('id', connectionId)
+        .eq('account_id', accountId)
+        .eq('status', 'active')
+        .maybeSingle();
+      return !error && !!data && data.sweep_consent_at != null;
+    } catch {
+      return false;
+    }
+  };
+
   // ── Pass 1: Sent messages ────────────────────────────────────────────────
   const sentBatches: SentBatch[] = [];
   let sentFetched = 0;
@@ -165,6 +188,9 @@ export async function gmailOnboardingSweep(
 
   outer: do {
     if (Date.now() > deadline) { status = 'partial'; break; }
+    // TOCTOU: re-check consent once per page (≤50 messages) so a mid-sweep
+    // revocation stops the read here rather than after the full derive phase.
+    if (!(await consentActive())) { consentRevoked = true; status = 'partial'; break; }
     const page = await client.listMessages(buildSentQuery(cutoff), pageToken, 50);
     const ids = page.messages?.map((m) => m.id) ?? [];
     const batchBodies: string[] = [];
@@ -184,6 +210,13 @@ export async function gmailOnboardingSweep(
       if (isSensitiveThread(meta, ['to', 'cc', 'bcc'])) continue;
       const body = await client.getMessageBody(id); // swallows failures
       if (body) {
+        // Body content-scan: a sent message with benign To/Cc/Bcc/Subject can
+        // still paste a card/account/routing number, SSN, IBAN, or labelled
+        // secret in the body. Don't transmit such bodies to the LLM at all —
+        // scan with the same high-precision secret detector the output guard
+        // uses (low false-positive: actual secret patterns, not topic words),
+        // and skip the message on a hit.
+        if (isSensitiveSample(body)) continue;
         batchBodies.push(body);
         sentFetched++;
       }
@@ -200,14 +233,29 @@ export async function gmailOnboardingSweep(
   const threadBatches: ThreadBatch[] = [];
   let threadsFetched = 0;
 
-  if (Date.now() <= deadline) {
+  // TOCTOU: re-check consent at Pass-2 entry too. The per-batch modulo check
+  // inside the loop never fires for a small inbox (< BATCH_SIZE_PASS2 threads),
+  // so without this an early revocation would not stop a small-inbox Pass-2 read.
+  if (!consentRevoked && Date.now() <= deadline && !(await consentActive())) {
+    consentRevoked = true;
+    status = 'partial';
+  }
+
+  if (!consentRevoked && Date.now() <= deadline) {
     const threadsResp = await client.listThreads(buildInboxQuery(cutoff), MAX_INBOX_THREADS);
     const threadIds = threadsResp.threads?.map((t) => t.id) ?? [];
     const batchItems: Array<{ subject: string; firstLine: string }> = [];
+    let processed = 0;
 
     for (const id of threadIds) {
       if (Date.now() > deadline) { status = 'partial'; break; }
       if (threadsFetched >= MAX_INBOX_THREADS) { status = 'partial'; break; }
+      // TOCTOU: re-check consent every BATCH_SIZE_PASS2 threads so a mid-sweep
+      // revocation stops the read promptly (bounds reads-after-revoke to one batch).
+      if (processed > 0 && processed % BATCH_SIZE_PASS2 === 0 && !(await consentActive())) {
+        consentRevoked = true; status = 'partial'; break;
+      }
+      processed++;
       try {
         const meta = await client.getMessageMetadata(id);
         if (isNewsletter(meta)) continue;
@@ -229,11 +277,14 @@ export async function gmailOnboardingSweep(
   }
 
   // ── Derive ───────────────────────────────────────────────────────────────
-  const p1 = generate && sentBatches.length > 0
+  // If consent was revoked mid-sweep, do NOT run derive — never transmit the
+  // collected bodies/snippets to the LLM after the user said stop. The write-time
+  // check below is the final guard (it returns without writing on missing consent).
+  const p1 = !consentRevoked && generate && sentBatches.length > 0
     ? await runPass1(sentBatches, generate, accountId)
     : { voiceSamples: [], inferredFacts: [], extraChannels: [], extraTools: [] };
 
-  const p2 = generate && threadBatches.length > 0
+  const p2 = !consentRevoked && generate && threadBatches.length > 0
     ? await runPass2(threadBatches, generate, accountId)
     : { faqCandidates: [] };
 
@@ -248,6 +299,11 @@ export async function gmailOnboardingSweep(
   // The derive phase takes up to ~45 s. Re-read sweep_consent_at from the DB
   // immediately before writing any derived notes; abort (fail-closed, no write)
   // if the user withdrew consent while the sweep was in flight.
+  // If a loop-level re-check already saw the revocation, short-circuit here
+  // (derive was skipped, so `derived` is empty and nothing would be written).
+  if (consentRevoked) {
+    return { status, messagesRead: totalRead, derived };
+  }
   const { data: freshConsent } = await svc
     .from('connections')
     .select('sweep_consent_at')
