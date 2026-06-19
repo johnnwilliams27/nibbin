@@ -236,3 +236,82 @@ export type KillReason =
   | 'allowlist'         // capability outside the spec's tool allowlist
   | 'unquarantined'     // tool output missing quarantine markers (§6.5)
   | 'stage';            // egg attempted output (§4.7: Eggs observe only)
+
+/* ── Planner (Slice 3a): mode C — the supervised bounded-ReAct loop ──────────
+ *
+ * Where the linear interpreter front-loads a fixed `steps[]`, the Planner picks
+ * its next tool at runtime over a VALIDATED, pre-provisioned surface. The
+ * safety thesis (design §1): provisioning is fixed at plan-preview and can
+ * never self-grant; the validator re-runs fail-closed on every pick; every
+ * yielded step rides the SAME runner gates (via dispatchStep); web egress is
+ * redacted-then-quarantined; the loop is bounded by maxIterations + the
+ * existing ceilings + repetition + a no-progress kill; ephemeral (no roster
+ * row), but the run is persisted for resume + audit.
+ */
+
+/** The fixed utility tools the harness dispatches in-process (distinct from
+ *  connector capabilities). A plan's `toolsAllowlist` may include these ids. */
+export type PlannerToolId =
+  | 'scratchpad.write' | 'scratchpad.read' | 'memory.retrieve'
+  | 'web.search' | 'web.fetch' | 'ask_human' | 'done';
+
+export interface PlannerTool {
+  id: PlannerToolId;
+  /** does this tool egress outside the system (web.*) */
+  egress: boolean;
+  /** JSON-schema-lite for the pick's args (mirrors PrimitiveInputField). */
+  argSchema: Record<string, { type: 'number' | 'string' | 'enum' | 'boolean'; required?: boolean; min?: number; max?: number; values?: string[] }>;
+}
+
+export interface PlanSpec {
+  kind: 'plan';
+  ephemeral: true;
+  goal: string;
+  /** narrative, for preview only — never executed */
+  intendedSteps: string[];
+  /** connector capability ids + PlannerToolId — the provisioned surface */
+  toolsAllowlist: string[];
+  requiredConnectors: string[];
+  weightClass: 'frontier';
+  ceilings: RunCeilings & { maxIterations: number };
+  personaPolicy?: PersonaPolicy;
+}
+
+export interface PendingRequest {
+  requestId: string;
+  kind: 'auth' | 'decision' | 'value' | 'approval';
+  question: string;
+  /** for 'approval': the held DraftStep payload */
+  context: Record<string, unknown>;
+}
+
+/** One ReAct turn, persisted for resume + audit. */
+export interface PlanTurn {
+  idx: number;
+  pick:
+    | { tool: string; args: Record<string, unknown> }
+    | { done: true; artifact: unknown }
+    | { ask_human: true; kind: PendingRequest['kind']; question: string };
+  /** quarantined-wrapped observation or human response, length-capped */
+  observation?: string;
+}
+
+export interface PlanRunState {
+  runId: string;
+  accountId: string;
+  plan: PlanSpec;
+  transcript: PlanTurn[];
+  scratchpad: Record<string, string>;
+  status: 'running' | 'needs_input' | 'done' | 'failed' | 'killed';
+  pending?: PendingRequest;
+  artifact?: unknown;
+}
+
+/** The Planner-level outcome. (The linear runner's RunResult is unchanged: a
+ *  yielded draft still returns `awaiting_approval` from the runner; the harness
+ *  wraps that into a plan-level `needs_input(kind:'approval')`.) */
+export type PlanOutcome =
+  | { kind: 'needs_input'; runId: string; request: PendingRequest }
+  | { kind: 'done'; runId: string; artifact: unknown }
+  | { kind: 'killed'; runId: string; reason: KillReason | 'max_iterations' | 'no_progress' }
+  | { kind: 'failed'; runId: string; error: string };

@@ -23,6 +23,11 @@ export const TIER_FOR_TASK: Record<Exclude<RoutedTask, 'chat'>, Tier> = {
   custom_spec_draft: 't2',
   nibbin_note: 't2',
   complex_plan: 't2',
+  // The Planner's plan-synthesis call (Slice 3a) — frontier/T2-class. It is an
+  // INTERACTIVE, user-initiated call routed `origin:'chat'`, so it is NOT in
+  // UNBUDGETED_T2_TASKS: it draws the per-user daily frontier budget (the same
+  // bound the Composer's draft call takes, per the 2a P1 fix).
+  plan_synthesis: 't2',
 };
 
 /**
