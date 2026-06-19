@@ -1,0 +1,248 @@
+/* KeeperDock — persistent layout-mounted Keeper dock.
+   Token-only: all colors from packages/shared/tokens.css.
+   Mirrors shell.module.css panel/panelExpand/panelToggle mechanics for the
+   fixed-position dock that lives in the App Router layout. */
+
+/* ── Shared ──────────────────────────────────────────────────────────────── */
+
+/* keeperGlyph: circular clip for keeper avatar — identical to shell.module.css
+   so the face centres in the frame the same way. */
+.keeperGlyph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  overflow: hidden;
+}
+
+/* ── Desktop right rail ─────────────────────────────────────────────────── */
+
+.rail {
+  position: fixed;
+  top: 60px; /* below the AppShell topbar */
+  right: 0;
+  width: 380px;
+  height: calc(100dvh - 60px);
+  background: var(--canopy);
+  border-left: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  z-index: 22;
+  overflow: hidden;
+  transition: transform var(--dur-4) var(--ease-settle), opacity var(--dur-4) var(--ease-settle);
+}
+
+/* Collapsed: slide off to the right and fade out. */
+.railCollapsed {
+  transform: translateX(100%);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform var(--dur-4) cubic-bezier(0.65, 0, 0.35, 1),
+    opacity var(--dur-4) cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+.railOpen {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+/* Collapse button — top-right corner of the open rail. */
+.collapseBtn {
+  position: absolute;
+  top: 16px;
+  right: 10px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: var(--r-button);
+  background: var(--canopy);
+  color: var(--ink-soft);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  z-index: 2;
+}
+.collapseBtn:hover {
+  background: var(--understory);
+  color: var(--ink);
+}
+
+/* Expand tab — right edge, visible when rail is collapsed. */
+.expandTab {
+  position: fixed;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  width: 30px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-right: none;
+  border-radius: var(--r-button) 0 0 var(--r-button);
+  background: var(--canopy);
+  cursor: pointer;
+  z-index: 22;
+  box-shadow: var(--shadow-2);
+  animation: dockTabIn var(--dur-2) var(--ease-settle);
+}
+.expandTab:hover {
+  background: var(--understory);
+}
+.expandTabHidden {
+  display: none;
+}
+
+@keyframes dockTabIn {
+  from {
+    opacity: 0;
+    transform: translate(10px, -50%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(0, -50%);
+  }
+}
+
+/* expandTab keeperGlyph: button is 30×64px; keeper rendered at size=26.
+   Oversize to 78px wide so the face band (≈36% of SVG height) fills ~28px.
+   SVG aspect 420:500 → height at 78px wide ≈ 93px.
+   Face centre at y≈230/500 of that ≈ 43px; container centre ≈ 14px.
+   Shift up 29px; centre horizontally within 30px button. */
+.expandTab .keeperGlyph :global(svg) {
+  display: block;
+  width: 78px !important;
+  height: auto !important;
+  margin-top: -29px;
+  margin-left: -24px;
+}
+
+/* ── Mobile ─────────────────────────────────────────────────────────────── */
+
+/* Hide desktop rail & expand tab on mobile; show FAB + sheet instead. */
+.rail,
+.expandTab {
+  /* Desktop only — both hidden on mobile by the @media block below */
+}
+
+.backdrop {
+  display: none;
+}
+
+/* Bottom sheet — hidden on desktop. */
+.sheet {
+  display: none;
+}
+
+/* Mobile FAB — hidden on desktop. */
+.fab {
+  display: none;
+}
+
+@media (max-width: 880px) {
+  /* Hide desktop rail and expand tab entirely on mobile. */
+  .rail {
+    display: none;
+  }
+  .expandTab {
+    display: none;
+  }
+
+  /* Backdrop for the bottom sheet. */
+  .backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(35, 41, 26, 0.32);
+    z-index: 25;
+  }
+
+  /* Bottom sheet */
+  .sheet {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    width: 100%;
+    height: 72dvh;
+    background: var(--canopy);
+    border-top: 1px solid var(--line);
+    border-radius: var(--r-shell) var(--r-shell) 0 0;
+    box-shadow: var(--shadow-3);
+    z-index: 28;
+    transform: translateY(100%);
+    transition: transform var(--dur-3) var(--ease-settle);
+    overflow: hidden;
+  }
+  .sheetOpen {
+    transform: translateY(0);
+  }
+
+  /* FAB — bottom-right circle */
+  .fab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--moss);
+    color: var(--canopy);
+    border: none;
+    font-size: 22px;
+    cursor: pointer;
+    box-shadow: var(--shadow-3);
+    z-index: 29;
+    overflow: hidden;
+    transition: background var(--dur-1) var(--ease-settle), transform var(--dur-1) var(--ease-settle);
+  }
+  .fab:hover {
+    background: var(--moss-deep);
+    transform: scale(1.05);
+  }
+
+  /* Mobile FAB keeperGlyph: 52×52px circle; keeper rendered at size=32.
+     Oversize to 98px wide so the face band fills ~35px of the 52px circle.
+     SVG height at 98px wide ≈ 117px.
+     Face centre at y≈230/500 ≈ 54px; container centre ≈ 26px.
+     Shift up 28px; centre horizontally. */
+  .fab .keeperGlyph :global(svg) {
+    display: block;
+    width: 98px !important;
+    height: auto !important;
+    margin-top: -28px;
+    margin-left: -23px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rail,
+  .sheet,
+  .fab {
+    transition: none;
+  }
+  .expandTab {
+    animation: none;
+  }
+}
+
+/* ── Intermediate breakpoint: narrow rail to prevent content pinch ───────
+   Between 881px and 1180px, a 380px dock + 220px sidebar leaves ~280px for
+   content. Narrow the rail defensively. AppShell already collapses the panel
+   in this range via JS; the dock uses the collapsed-by-default behaviour
+   (localStorage-driven) so JS isn't needed here. */
+@media (max-width: 1180px) and (min-width: 881px) {
+  .rail {
+    width: 320px;
+  }
+}
