@@ -45,8 +45,30 @@
 .directory { margin-top: 24px; }
 .directoryHead { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
 .sort { font-size: 13px; color: var(--ink-soft); display: inline-flex; gap: 6px; align-items: center; }
-.group { margin-top: 16px; }
+.group { margin-top: 12px; }
 .group h3 { font-family: var(--display); font-size: 15px; margin: 16px 0 8px; }
+.groupToggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  margin: 4px 0 8px;
+  border: 1px solid var(--understory);
+  border-radius: var(--r-card);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--display);
+  font-size: 15px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease-settle);
+}
+.groupToggle:hover { background: var(--understory); }
+.groupChevron { font-size: 11px; color: var(--ink-soft); width: 12px; flex-shrink: 0; }
+.groupName { flex: 1; min-width: 0; }
+.groupCount { font-family: var(--mono); font-size: 12px; color: var(--ink-soft); }
 .grid { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
 .card { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border: 1px solid var(--understory); border-radius: var(--r-card); background: var(--paper); }
 .cardBody { flex: 1; min-width: 0; }

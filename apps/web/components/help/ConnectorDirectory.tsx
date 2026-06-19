@@ -12,6 +12,23 @@ const STATUS_LABEL: Record<ConnectorEntry['status'], { label: string; tone: 'mos
   coming_soon: { label: 'Coming soon', tone: 'neutral' },
 };
 
+function ConnectorGrid({ items }: { items: ConnectorEntry[] }) {
+  return (
+    <ul className={styles.grid}>
+      {items.map((c) => (
+        <li key={c.id} className={styles.card}>
+          <ConnectorLogo name={c.name} domain={c.domain} />
+          <div className={styles.cardBody}>
+            <div className={styles.cardName}>{c.name}</div>
+            <p className={styles.cardDesc}>{c.whatItDoes}</p>
+          </div>
+          <Badge tone={STATUS_LABEL[c.status].tone}>{STATUS_LABEL[c.status].label}</Badge>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function ConnectorDirectory({
   connectors,
   heading = 'All connectors',
@@ -30,6 +47,22 @@ export function ConnectorDirectory({
     [connectors, mode],
   );
 
+  // Collapse categories by default so each category fetches its (third-party)
+  // logos only when expanded — the first category opens so the section isn't empty.
+  const [open, setOpen] = useState<Set<string>>(() => {
+    const first = groupConnectors(connectors)[0]?.category;
+    return new Set(first ? [first] : []);
+  });
+  const toggle = (category: string) =>
+    setOpen((prev) => {
+      const next = new Set(prev);
+      if (next.has(category)) next.delete(category);
+      else next.add(category);
+      return next;
+    });
+
+  const grouped = mode === 'available';
+
   return (
     <section className={styles.directory}>
       <header className={styles.directoryHead}>
@@ -44,23 +77,30 @@ export function ConnectorDirectory({
           </label>
         )}
       </header>
-      {groups.map((g) => (
-        <div key={g.category} className={styles.group}>
-          <h3>{g.category}</h3>
-          <ul className={styles.grid}>
-            {g.items.map((c) => (
-              <li key={c.id} className={styles.card}>
-                <ConnectorLogo name={c.name} domain={c.domain} />
-                <div className={styles.cardBody}>
-                  <div className={styles.cardName}>{c.name}</div>
-                  <p className={styles.cardDesc}>{c.whatItDoes}</p>
-                </div>
-                <Badge tone={STATUS_LABEL[c.status].tone}>{STATUS_LABEL[c.status].label}</Badge>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
+      {groups.map((g) => {
+        const expanded = !grouped || open.has(g.category);
+        return (
+          <div key={g.category} className={styles.group}>
+            {grouped ? (
+              <button
+                type="button"
+                className={styles.groupToggle}
+                aria-expanded={expanded}
+                onClick={() => toggle(g.category)}
+              >
+                <span className={styles.groupChevron} aria-hidden="true">
+                  {expanded ? '▾' : '▸'}
+                </span>
+                <span className={styles.groupName}>{g.category}</span>
+                <span className={styles.groupCount}>{g.items.length}</span>
+              </button>
+            ) : (
+              <h3>{g.category}</h3>
+            )}
+            {expanded && <ConnectorGrid items={g.items} />}
+          </div>
+        );
+      })}
     </section>
   );
 }
