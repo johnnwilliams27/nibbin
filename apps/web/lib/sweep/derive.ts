@@ -144,12 +144,12 @@ export async function runPass1(
         maxTokens: 800,
         temperature: 0.3,
       });
-      await recordModelCall({ accountId, userId: null, tier: decision.tier, task: 'sweep_pass1', model: result.model, usage: result.usage, degraded: decision.degraded, latencyMs: Date.now() - t0, outcome: 'ok' });
+      await recordModelCall({ accountId, userId: null, tier: decision.tier, task: 'sweep_pass1', model: result.model, usage: result.usage, origin: 'pipeline', degraded: decision.degraded, latencyMs: Date.now() - t0, outcome: 'ok' });
       accumulated.push(parsePass1(result.text));
     } catch (err) {
       console.error('[sweep/pass1] batch failed — skipping', err instanceof Error ? err.message : err);
       // Ledger the graceful failure (Slice A): zero tokens, no content.
-      await recordModelCall({ accountId, userId: null, tier: resolvedTier, task: 'sweep_pass1', model: resolvedModel, usage: { inputTokens: 0, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 0 }, outcome: 'error', degraded: resolvedDegraded, latencyMs: null });
+      await recordModelCall({ accountId, userId: null, tier: resolvedTier, task: 'sweep_pass1', model: resolvedModel, usage: { inputTokens: 0, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 0 }, origin: 'pipeline', outcome: 'error', degraded: resolvedDegraded, latencyMs: null });
     }
   }
   return {
@@ -186,12 +186,12 @@ export async function runPass2(
         maxTokens: 600,
         temperature: 0.4,
       });
-      await recordModelCall({ accountId, userId: null, tier: decision.tier, task: 'sweep_pass2', model: result.model, usage: result.usage, degraded: decision.degraded, latencyMs: Date.now() - t0, outcome: 'ok' });
+      await recordModelCall({ accountId, userId: null, tier: decision.tier, task: 'sweep_pass2', model: result.model, usage: result.usage, origin: 'pipeline', degraded: decision.degraded, latencyMs: Date.now() - t0, outcome: 'ok' });
       allCandidates.push(...parsePass2(result.text).faqCandidates);
     } catch (err) {
       console.error('[sweep/pass2] batch failed — skipping', err instanceof Error ? err.message : err);
       // Ledger the graceful failure (Slice A): zero tokens, no content.
-      await recordModelCall({ accountId, userId: null, tier: resolvedTier, task: 'sweep_pass2', model: resolvedModel, usage: { inputTokens: 0, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 0 }, outcome: 'error', degraded: resolvedDegraded, latencyMs: null });
+      await recordModelCall({ accountId, userId: null, tier: resolvedTier, task: 'sweep_pass2', model: resolvedModel, usage: { inputTokens: 0, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 0 }, origin: 'pipeline', outcome: 'error', degraded: resolvedDegraded, latencyMs: null });
     }
   }
   return { faqCandidates: allCandidates.slice(0, 8) };

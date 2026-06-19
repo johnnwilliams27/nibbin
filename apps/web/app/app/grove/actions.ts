@@ -189,6 +189,7 @@ export async function keeperChatAction(rawText: unknown): Promise<GroveChatPaylo
       task: 'chat',
       model: call.model,
       usage: call.usage,
+      origin: 'chat',
       degraded: reply.decision.degraded,
       latencyMs: lastLatencyMs,
       outcome: 'ok',
@@ -205,6 +206,7 @@ export async function keeperChatAction(rawText: unknown): Promise<GroveChatPaylo
       task: 'chat',
       model: fc.model,
       usage: { inputTokens: 0, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 0 },
+      origin: 'chat',
       outcome: 'error',
       // dispatchedDegraded, NOT decision.degraded — chat.ts resets decision to
       // the scripted floor (degraded:false) on a failed call, so reading
