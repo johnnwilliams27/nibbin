@@ -20,7 +20,7 @@ export const maxDuration = 60;
 export default async function PlannerPage() {
   const { user } = await appSession();
   return (
-    <AppShell title="Ask a Nibbin" email={user.email}>
+    <AppShell title="Ask a Nibbin" active="planner" email={user.email}>
       <div className={styles.header}>
         <p className={styles.eyebrow}>Planner</p>
         <h1 className={styles.title}>Ask a Nibbin to look into something</h1>

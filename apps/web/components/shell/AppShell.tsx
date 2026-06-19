@@ -103,10 +103,9 @@ function NavIcon({ k }: { k: NavKey }) {
     diagnosis: <path d="M22 12h-4l-3 9L9 3l-3 9H2" />,
     planner: (
       <>
-        <rect x="5" y="3" width="14" height="18" rx="2" />
-        <path d="M9 7h6" />
-        <path d="M9 11h6" />
-        <path d="M9 15h4" />
+        <circle cx="6" cy="19" r="3" />
+        <path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15" />
+        <circle cx="18" cy="5" r="3" />
       </>
     ),
     memory: (
