@@ -201,3 +201,51 @@
   font-size: 14px;
   color: var(--moss-deep);
 }
+
+/* ---- Connector filter chips ---- */
+.filterRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.filterChip {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 5px 14px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--line);
+  background: var(--canopy);
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease-settle), border-color var(--dur-1) var(--ease-settle), color var(--dur-1) var(--ease-settle);
+}
+
+.filterChip:hover {
+  background: var(--understory);
+  color: var(--ink);
+}
+
+.filterChipActive {
+  background: var(--moss-deep);
+  border-color: var(--moss-deep);
+  color: var(--canopy);
+}
+
+.filterChipActive:hover {
+  background: var(--moss);
+  border-color: var(--moss);
+  color: var(--canopy);
+}
+
+.emptyState {
+  font-family: var(--sans);
+  font-size: 15px;
+  color: var(--ink-soft);
+  padding: 40px 0;
+  text-align: center;
+}

@@ -611,6 +611,7 @@ export async function composeSpec(
         task: 'custom_spec_draft',
         model: result.model,
         usage: result.usage,
+        origin: 'chat',
         degraded: decision.degraded,
         latencyMs: Date.now() - t0,
         outcome: 'ok',
@@ -640,6 +641,7 @@ export async function composeSpec(
           task: 'custom_spec_draft',
           model: resolvedModel,
           usage: { inputTokens: 0, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 0 },
+          origin: 'chat',
           outcome: 'error',
           // Explicit for consistency with the other 11 ledger sites: a degraded
           // decision throws `frontier_budget_exhausted` and returns BEFORE the

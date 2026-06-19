@@ -79,6 +79,35 @@ describe('recordModelCall — N17 origin + channel attribution', () => {
   });
 });
 
+describe('recordModelCall — N17 pipeline-origin sites (COGS-by-origin completeness)', () => {
+  beforeEach(() => {
+    mockFrom.mockClear();
+    mockInsert.mockClear();
+    mockInsert.mockResolvedValue({ error: null });
+  });
+
+  it("pipeline calls record origin:'pipeline', never null", async () => {
+    // This mirrors every background/cron site (sweep, drafting, synthesis,
+    // memory_extract, diagnosis, nibbin_note, onboarding_understanding).
+    await recordModelCall({ ...BASE_REC, origin: 'pipeline' });
+    const payload = mockInsert.mock.calls[0][0] as Record<string, unknown>;
+    expect(payload.origin).toBe('pipeline');
+  });
+
+  it("user-initiated (chat / composer / planner / crystallize) calls record origin:'chat'", async () => {
+    await recordModelCall({ ...BASE_REC, origin: 'chat' });
+    const payload = mockInsert.mock.calls[0][0] as Record<string, unknown>;
+    expect(payload.origin).toBe('chat');
+  });
+
+  it('channel-originated reach-me messages carry both origin and channel', async () => {
+    await recordModelCall({ ...BASE_REC, origin: 'chat', channel: 'telegram' });
+    const payload = mockInsert.mock.calls[0][0] as Record<string, unknown>;
+    expect(payload.origin).toBe('chat');
+    expect(payload.channel).toBe('telegram');
+  });
+});
+
 describe('recordModelCall — Slice A signals (outcome / degraded / latency_ms)', () => {
   beforeEach(() => {
     mockFrom.mockClear();

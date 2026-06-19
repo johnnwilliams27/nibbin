@@ -214,7 +214,7 @@ export async function labelDiagnosis(accountId: string, map: DiagnosisMap): Prom
       maxTokens: 1500,
       temperature: 0.5,
     });
-    await recordModelCall({ accountId, userId: null, tier: decision.tier, task: 'diagnosis_synthesis', model: result.model, usage: result.usage, degraded: decision.degraded, latencyMs: Date.now() - t0, outcome: 'ok' });
+    await recordModelCall({ accountId, userId: null, tier: decision.tier, task: 'diagnosis_synthesis', model: result.model, usage: result.usage, origin: 'pipeline', degraded: decision.degraded, latencyMs: Date.now() - t0, outcome: 'ok' });
 
     const parsed = parseLabeling(result.text);
     if (!parsed) return { map, letter: deterministicLetter(map) };
@@ -223,7 +223,7 @@ export async function labelDiagnosis(accountId: string, map: DiagnosisMap): Prom
   } catch (err) {
     console.error('[diagnosis] labeling failed — deterministic fallback', err instanceof Error ? err.message : err);
     // Ledger the graceful failure (Slice A): zero tokens, no content.
-    await recordModelCall({ accountId, userId: null, tier: resolvedTier, task: 'diagnosis_synthesis', model: resolvedModel, usage: { inputTokens: 0, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 0 }, outcome: 'error', degraded: resolvedDegraded, latencyMs: null });
+    await recordModelCall({ accountId, userId: null, tier: resolvedTier, task: 'diagnosis_synthesis', model: resolvedModel, usage: { inputTokens: 0, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 0 }, origin: 'pipeline', outcome: 'error', degraded: resolvedDegraded, latencyMs: null });
     return { map, letter: deterministicLetter(map) };
   }
 }
