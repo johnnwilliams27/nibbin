@@ -12,8 +12,8 @@ interface ArcQueryRow {
   started_at: Date;
   status: ArcStatus;
   email_enabled: boolean;
-  quiet_start: number;
-  quiet_end: number;
+  quiet_start: number; // coalesced from notification_settings (default 21)
+  quiet_end: number; // coalesced from notification_settings (default 9)
   tz: string | null;
   email: string | null;
 }
@@ -43,9 +43,12 @@ export function pgDripStore(pool: Pool): DripStore & { ensureArcs(): Promise<num
       // 14 days close (a graduation on day 20 still lands); the worker only
       // plans beats for status='active'.
       const arcs = await pool.query<ArcQueryRow>(
-        `select a.account_id, a.started_at, a.status, a.email_enabled, a.quiet_start, a.quiet_end,
+        `select a.account_id, a.started_at, a.status, a.email_enabled,
+                coalesce(ns.quiet_start, 21) as quiet_start,
+                coalesce(ns.quiet_end, 9)   as quiet_end,
                 u.tz, u.email
            from drip_arcs a
+           left join notification_settings ns on ns.account_id = a.account_id
            join memberships m on m.account_id = a.account_id
                              and m.role = 'owner' and m.status = 'active'
            join users u on u.id = m.user_id`,

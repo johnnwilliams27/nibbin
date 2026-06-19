@@ -187,6 +187,29 @@ describe('handleInbound — status intent', () => {
     expect(deps.decideCalls).toHaveLength(0);
   });
 
+  it('delivers the spend-warn notice as a SECOND reply after the answer when gate returns warn', async () => {
+    const REPLY = 'Your grove is chilling.';
+    const WARN_NOTICE = "Heads up — your grove is close to today's messaging limit. It'll keep going until the limit, then pick back up tomorrow.";
+
+    const deps = makeDeps({
+      classify: () => ({ kind: 'status', text: 'status?' }),
+      gate: async (): Promise<TurnGateResult> => ({ ok: true, warn: { notice: WARN_NOTICE } }),
+      answer: async (accountId, channel) => {
+        deps.answerCalls.push([accountId, channel]);
+        return { reply: REPLY };
+      },
+    });
+
+    await handleInbound(makeVerified(), deps);
+
+    // Two replies: first the answer, then the warn notice
+    expect(deps.replied).toHaveLength(2);
+    expect(deps.replied[0].body).toBe(REPLY);
+    expect(deps.replied[1].body).toBe(WARN_NOTICE);
+    expect(deps.replied[1].channel).toBe(CHANNEL);
+    expect(deps.replied[1].externalId).toBe(EXTERNAL_ID);
+  });
+
   it('does not call decide for a status intent', async () => {
     const deps = makeDeps({ classify: () => ({ kind: 'status', text: 'status please' }) });
     await handleInbound(makeVerified(), deps);
@@ -274,6 +297,25 @@ describe('handleInbound — work intent', () => {
     await handleInbound(makeVerified(), deps);
 
     expect(gateSpy).toHaveBeenCalledWith(ACCOUNT_ID, CHANNEL);
+  });
+
+  it('delivers the spend-warn notice as a SECOND reply after the work degrade reply when gate returns warn', async () => {
+    const WARN_NOTICE = "Heads up — your grove is close to today's messaging limit. It'll keep going until the limit, then pick back up tomorrow.";
+    const CANT_YET = "I can't take that on just yet — but I can tell you what your grove's up to, or you can do it in the app.";
+
+    const deps = makeDeps({
+      classify: () => ({ kind: 'work', text: 'do something' }),
+      gate: async (): Promise<TurnGateResult> => ({ ok: true, warn: { notice: WARN_NOTICE } }),
+      workEnabled: false,
+    });
+
+    await handleInbound(makeVerified(), deps);
+
+    expect(deps.replied).toHaveLength(2);
+    expect(deps.replied[0].body).toBe(CANT_YET);
+    expect(deps.replied[1].body).toBe(WARN_NOTICE);
+    expect(deps.replied[1].channel).toBe(CHANNEL);
+    expect(deps.replied[1].externalId).toBe(EXTERNAL_ID);
   });
 });
 

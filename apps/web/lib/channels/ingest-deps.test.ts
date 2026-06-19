@@ -47,7 +47,7 @@ afterEach(() => {
 type RpcArgs = Record<string, unknown>;
 
 function makeMockSvc(rpcResult: { data: unknown; error: null | { message: string } } = {
-  data: { granted: true, turns: 1, channel_spent: 0 },
+  data: { granted: true, turns: 1, channel_spent: 0, warn: false },
   error: null,
 }) {
   const calls: Array<{ method: string; args: RpcArgs }> = [];
@@ -57,15 +57,13 @@ function makeMockSvc(rpcResult: { data: unknown; error: null | { message: string
       calls.push({ method, args });
       return Promise.resolve(rpcResult);
     },
-    // anomaly() uses .from().select()... — not exercised by these tests, but
-    // included so buildGateDeps() doesn't throw on construction.
+    // anomaly() uses .rpc('channel_inbound_anomaly') + .from('audit_log').insert().
+    // The rpc() stub above handles the anomaly RPC. The from() stub below covers
+    // the audit_log insert path (called only when is_anomalous=true).
     from(_table: string) {
       return {
-        select(_cols: string, _opts?: unknown) {
-          return {
-            eq(_col: string, _val: unknown) { return this; },
-            gte(_col: string, _val: unknown) { return Promise.resolve({ count: 0, error: null }); },
-          };
+        insert(_row: unknown) {
+          return Promise.resolve({ error: null });
         },
       };
     },
@@ -150,5 +148,32 @@ describe('buildGateDeps — take() spend-cap routing', () => {
     expect(result.granted).toBe(false);
     expect(result.turns).toBe(0);
     expect(result.channelSpent).toBe(0);
+    expect(result.warn).toBe(false);
+  });
+
+  it('surfaces warn:true when the rpc row returns warn=true', async () => {
+    const svc = makeMockSvc({
+      data: { granted: true, turns: 5, channel_spent: 160_001, warn: true },
+      error: null,
+    });
+    const deps = buildGateDeps(svc);
+
+    const result = await deps.take(ACCOUNT_ID, 'sms');
+
+    expect(result.granted).toBe(true);
+    expect(result.warn).toBe(true);
+  });
+
+  it('surfaces warn:false when the rpc row returns warn=false', async () => {
+    const svc = makeMockSvc({
+      data: { granted: true, turns: 1, channel_spent: 0, warn: false },
+      error: null,
+    });
+    const deps = buildGateDeps(svc);
+
+    const result = await deps.take(ACCOUNT_ID, 'telegram');
+
+    expect(result.granted).toBe(true);
+    expect(result.warn).toBe(false);
   });
 });

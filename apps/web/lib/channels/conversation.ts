@@ -117,6 +117,7 @@ export async function handleInbound(
     }
     const { reply: text } = await deps.answer(accountId, channel);
     await deps.reply(channel, externalId, text);
+    if (g.warn) await deps.reply(channel, externalId, g.warn.notice);
     return;
   }
 
@@ -137,6 +138,7 @@ export async function handleInbound(
       externalId,
       "I can't take that on just yet — but I can tell you what your grove's up to, or you can do it in the app.",
     );
+    if (g.warn) await deps.reply(channel, externalId, g.warn.notice);
     return;
   }
 
