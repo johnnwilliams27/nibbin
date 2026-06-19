@@ -358,6 +358,11 @@ export async function composeSpec(
   }
   let draft: ComposedDraft = baseline;
   const llm = generateOverride ?? anthropicGenerate();
+  // Captured so the graceful-failure ledger row records the model/tier route()
+  // resolved (Slice A); placeholder only if route() itself threw. custom_spec_draft
+  // is a §6.3 T2 task.
+  let resolvedModel = 'unknown';
+  let resolvedTier: 't0' | 't1' | 't2' = 't2';
   if (llm) {
     try {
       // FIX (gate P1): synthesizeForWorkflow is a USER-initiated interactive
@@ -371,12 +376,15 @@ export async function composeSpec(
       // no-model proposal — synthesis still works, just without the flourish.
       const router = routerOverride ?? groveRouter;
       const decision = await router.route({ userId, task: 'custom_spec_draft', origin: 'chat' });
+      resolvedModel = decision.model;
+      resolvedTier = decision.tier;
       if (decision.degraded) {
         // Frontier budget exhausted for today — deterministic proposal stands.
         // (Falls through to the deterministic draft assembled below; no model
         // call, no COGS — the throttle is what bounds the entry point.)
         throw new Error('frontier_budget_exhausted');
       }
+      const t0 = Date.now();
       const result = await llm({
         model: decision.model,
         system: [{ text: COMPOSER_SYSTEM_PROMPT, cache: true }],
@@ -400,6 +408,9 @@ export async function composeSpec(
         task: 'custom_spec_draft',
         model: result.model,
         usage: result.usage,
+        degraded: decision.degraded,
+        latencyMs: Date.now() - t0,
+        outcome: 'ok',
       });
       const parsed = parseDraft(result.text);
       // Accept the model's pick ONLY if it names an available primitive; else
@@ -411,10 +422,23 @@ export async function composeSpec(
       const msg = err instanceof Error ? err.message : String(err);
       if (msg === 'frontier_budget_exhausted') {
         // Expected throttle, not an error: the user spent today's frontier
-        // budget. The deterministic proposal stands (info, not error).
+        // budget. The deterministic proposal stands (info, not error). NOT
+        // ledgered as a failure — no model call was made (Slice A).
         console.info('[composer] frontier budget spent — deterministic proposal stands');
       } else {
         console.error('[composer] draft failed — deterministic proposal stands', msg);
+        // Ledger the graceful model-call failure (Slice A): zero tokens, no
+        // content. Skipped above for the budget-exhausted throttle (not a failure).
+        await recordModelCall({
+          accountId,
+          userId,
+          tier: resolvedTier,
+          task: 'custom_spec_draft',
+          model: resolvedModel,
+          usage: { inputTokens: 0, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 0 },
+          outcome: 'error',
+          latencyMs: null,
+        });
       }
     }
   }

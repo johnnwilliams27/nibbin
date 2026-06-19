@@ -231,6 +231,7 @@ export async function refreshLearnedNote(accountId: string, nibbinId: string): P
       timesYouApprovedUntouched: ev.cleanCount,
       recentDraftTitles: ev.recentDraftTitles,
     });
+    const t0 = Date.now();
     const result = await llm({
       model: decision.model,
       system: [{ text: SYSTEM, cache: true }],
@@ -245,6 +246,9 @@ export async function refreshLearnedNote(accountId: string, nibbinId: string): P
       task: 'nibbin_note',
       model: result.model,
       usage: result.usage,
+      degraded: decision.degraded,
+      latencyMs: Date.now() - t0,
+      outcome: 'ok',
     });
 
     const parsed = parseNote(result.text);

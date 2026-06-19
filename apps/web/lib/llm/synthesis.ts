@@ -38,12 +38,19 @@ export async function scanSummaryLine(
 ): Promise<string | null> {
   const llm = generateOverride ?? anthropicGenerate();
   if (!llm || findings.length === 0) return null;
+  let resolvedModel = 'unknown';
+  let resolvedTier: 't0' | 't1' | 't2' = 't1';
+  let resolvedDegraded = false;
   try {
     const decision = await groveRouter.route({
       userId,
       task: 'scan_synthesis',
       origin: 'pipeline',
     });
+    resolvedModel = decision.model;
+    resolvedTier = decision.tier;
+    resolvedDegraded = decision.degraded;
+    const t0 = Date.now();
     const result = await llm({
       model: decision.model,
       system: [{ text: SCAN_SUMMARY_SYSTEM_PROMPT, cache: true }],
@@ -58,11 +65,26 @@ export async function scanSummaryLine(
       task: 'scan_synthesis',
       model: result.model,
       usage: result.usage,
+      degraded: decision.degraded,
+      latencyMs: Date.now() - t0,
+      outcome: 'ok',
     });
     const text = result.text.trim();
     return text.length > 0 && text.length <= 400 ? text : null;
   } catch (err) {
     console.error('[synthesis] scan summary failed — templated line stands', err instanceof Error ? err.message : err);
+    // Ledger the graceful failure (Slice A): zero tokens, no content.
+    await recordModelCall({
+      accountId,
+      userId,
+      tier: resolvedTier,
+      task: 'scan_synthesis',
+      model: resolvedModel,
+      usage: { inputTokens: 0, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 0 },
+      outcome: 'error',
+      degraded: resolvedDegraded,
+      latencyMs: null,
+    });
     return null;
   }
 }
@@ -89,13 +111,20 @@ export async function diagnosisSynthesis(
 ): Promise<{ text: string; model: string } | null> {
   const llm = generateOverride ?? anthropicGenerate();
   if (!llm || packet.sections.length === 0) return null;
+  let resolvedModel = 'unknown';
+  let resolvedTier: 't0' | 't1' | 't2' = 't2';
+  let resolvedDegraded = false;
   try {
     const decision = await groveRouter.route({
       userId,
       task: 'diagnosis_synthesis',
       origin: 'pipeline',
     });
+    resolvedModel = decision.model;
+    resolvedTier = decision.tier;
+    resolvedDegraded = decision.degraded;
     const body = packet.sections.map((s) => `## ${s.title}\n${s.content}`).join('\n\n');
+    const t0 = Date.now();
     const result = await llm({
       model: decision.model,
       system: [{ text: DIAGNOSIS_SYSTEM_PROMPT, cache: true }],
@@ -109,11 +138,26 @@ export async function diagnosisSynthesis(
       task: 'diagnosis_synthesis',
       model: result.model,
       usage: result.usage,
+      degraded: decision.degraded,
+      latencyMs: Date.now() - t0,
+      outcome: 'ok',
     });
     const text = result.text.trim();
     return text.length > 0 ? { text, model: result.model } : null;
   } catch (err) {
     console.error('[synthesis] diagnosis failed', err instanceof Error ? err.message : err);
+    // Ledger the graceful failure (Slice A): zero tokens, no content.
+    await recordModelCall({
+      accountId,
+      userId,
+      tier: resolvedTier,
+      task: 'diagnosis_synthesis',
+      model: resolvedModel,
+      usage: { inputTokens: 0, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 0 },
+      outcome: 'error',
+      degraded: resolvedDegraded,
+      latencyMs: null,
+    });
     return null;
   }
 }

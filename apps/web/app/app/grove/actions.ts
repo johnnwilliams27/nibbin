@@ -139,8 +139,13 @@ export async function keeperChatAction(rawText: unknown): Promise<GroveChatPaylo
   // prefix discipline) and only the small context suffix is paid per turn.
   const llm = anthropicGenerate();
   let lastCall: { model: string; usage: TokenUsage } | null = null;
+  // Slice A signals captured in the closure: the latency of the dispatched call,
+  // and the model attempted when it failed gracefully (so the failure is ledgered).
+  let lastLatencyMs: number | null = null;
+  let failedCall: { model: string } | null = null;
   const generate = llm
     ? async (model: string, userText: string) => {
+        const t0 = Date.now();
         try {
           const result = await llm({
             model,
@@ -153,11 +158,13 @@ export async function keeperChatAction(rawText: unknown): Promise<GroveChatPaylo
             temperature: 0.7,
           });
           lastCall = { model: result.model, usage: result.usage };
+          lastLatencyMs = Date.now() - t0;
           return result.text;
         } catch (err) {
           // keeperChat falls back to the scripted floor and reports it
           // honestly; the turn never fails on a provider outage.
           console.error('[keeper] model call failed — scripted floor', err instanceof Error ? err.message : err);
+          failedCall = { model };
           return null;
         }
       }
@@ -182,6 +189,25 @@ export async function keeperChatAction(rawText: unknown): Promise<GroveChatPaylo
       task: 'chat',
       model: call.model,
       usage: call.usage,
+      degraded: reply.decision.degraded,
+      latencyMs: lastLatencyMs,
+      outcome: 'ok',
+    });
+  } else if (failedCall !== null) {
+    // The dispatched chat call failed gracefully (scripted floor served) —
+    // ledger the previously-invisible failure (Slice A): zero tokens, no content,
+    // keyed on the tier the router dispatched at.
+    const fc = failedCall as { model: string };
+    await recordModelCall({
+      accountId,
+      userId: user.id,
+      tier: reply.dispatchedTier ?? reply.decision.tier,
+      task: 'chat',
+      model: fc.model,
+      usage: { inputTokens: 0, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 0 },
+      outcome: 'error',
+      degraded: reply.decision.degraded,
+      latencyMs: null,
     });
   }
 

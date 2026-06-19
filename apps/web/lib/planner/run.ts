@@ -370,10 +370,16 @@ export function plannerDrafterFor(
   return {
     async pick({ goal, tools, transcript, scratchpad }) {
       if (!llm) return null; // no model → the loop fails cleanly
+      // Captured so the graceful-failure ledger row records the model/tier route()
+      // resolved (Slice A). plan_synthesis is a §6.3 T2 task.
+      let resolvedModel = 'unknown';
+      let resolvedTier: 't0' | 't1' | 't2' = 't2';
       try {
         const router = routerOverride ?? groveRouter;
         const decision = await router.route({ userId, task: 'plan_synthesis', origin: 'chat' });
         if (decision.degraded) return null;
+        resolvedModel = decision.model;
+        resolvedTier = decision.tier;
         const utilHints = tools
           .filter((t) => t in STANDARD_UTILITIES)
           .map((t) => `- ${t}`)
@@ -385,6 +391,7 @@ export function plannerDrafterFor(
             return `${p}${t.observation ? `\nobservation: ${t.observation}` : ''}`;
           })
           .join('\n');
+        const t0 = Date.now();
         const result = await llm({
           model: decision.model,
           system: [{ text: PICK_SYSTEM_PROMPT, cache: true }],
@@ -410,10 +417,25 @@ export function plannerDrafterFor(
           task: 'plan_synthesis',
           model: result.model,
           usage: result.usage,
+          degraded: decision.degraded,
+          latencyMs: Date.now() - t0,
+          outcome: 'ok',
         });
         return parsePick(result.text);
       } catch (err) {
         console.error('[planner] pick failed', err instanceof Error ? err.message : err);
+        // Ledger the graceful failure (Slice A): zero tokens, no content.
+        await recordModelCall({
+          accountId,
+          userId,
+          runId: runId ?? null,
+          tier: resolvedTier,
+          task: 'plan_synthesis',
+          model: resolvedModel,
+          usage: { inputTokens: 0, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 0 },
+          outcome: 'error',
+          latencyMs: null,
+        });
         return null;
       }
     },

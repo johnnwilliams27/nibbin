@@ -53,8 +53,15 @@ export async function understandingModelTurn(
   const llm = deps.generate !== undefined ? deps.generate : anthropicGenerate();
   const router = deps.router ?? groveRouter;
   if (!llm) return null;
+  let resolvedModel = 'unknown';
+  let resolvedTier: 't0' | 't1' | 't2' = 't1';
+  let resolvedDegraded = false;
   try {
     const decision = await router.route({ userId, task: 'onboarding_understanding', origin: 'pipeline' });
+    resolvedModel = decision.model;
+    resolvedTier = decision.tier;
+    resolvedDegraded = decision.degraded;
+    const t0 = Date.now();
     const result = await llm({
       model: decision.model,
       system: [{ text: UNDERSTANDING_SYSTEM_PROMPT, cache: true }],
@@ -62,10 +69,12 @@ export async function understandingModelTurn(
       maxTokens: 400,
       temperature: 0.5,
     });
-    await recordModelCall({ accountId, userId, tier: decision.tier, task: 'onboarding_understanding', model: result.model, usage: result.usage });
+    await recordModelCall({ accountId, userId, tier: decision.tier, task: 'onboarding_understanding', model: result.model, usage: result.usage, degraded: decision.degraded, latencyMs: Date.now() - t0, outcome: 'ok' });
     return parseTurn(result.text);
   } catch (err) {
     console.error('[understanding] model turn failed — static fallback', err instanceof Error ? err.message : err);
+    // Ledger the graceful failure (Slice A): zero tokens, no content.
+    await recordModelCall({ accountId, userId, tier: resolvedTier, task: 'onboarding_understanding', model: resolvedModel, usage: { inputTokens: 0, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 0 }, outcome: 'error', degraded: resolvedDegraded, latencyMs: null });
     return null;
   }
 }

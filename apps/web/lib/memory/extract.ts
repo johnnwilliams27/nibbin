@@ -144,6 +144,7 @@ export async function writeMemoryFromDecision(args: {
       task: 'memory_extract',
       origin: 'pipeline',
     });
+    const t0 = Date.now();
     const result = await llm({
       model: decisionR.model,
       system: [{ text: EXTRACT_PROMPT, cache: true }],
@@ -159,6 +160,9 @@ export async function writeMemoryFromDecision(args: {
       task: 'memory_extract',
       model: result.model,
       usage: result.usage,
+      degraded: decisionR.degraded,
+      latencyMs: Date.now() - t0,
+      outcome: 'ok',
     });
 
     const entries = parseEntries(result.text);

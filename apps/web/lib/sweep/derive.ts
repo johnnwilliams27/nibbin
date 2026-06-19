@@ -128,8 +128,15 @@ export async function runPass1(
   const accumulated: ReturnType<typeof parsePass1>[] = [];
   for (const batch of batches) {
     const content = batch.messages.map((m, i) => `[Message ${i + 1}]\n${m}`).join('\n\n---\n\n');
+    let resolvedModel = 'unknown';
+    let resolvedTier: 't0' | 't1' | 't2' = 't1';
+    let resolvedDegraded = false;
     try {
       const decision = await groveRouter.route({ userId: `account:${accountId}`, task: 'sweep_pass1', origin: 'pipeline' });
+      resolvedModel = decision.model;
+      resolvedTier = decision.tier;
+      resolvedDegraded = decision.degraded;
+      const t0 = Date.now();
       const result = await generate({
         model: decision.model,
         system: [{ text: PASS1_SYSTEM, cache: true }],
@@ -137,10 +144,12 @@ export async function runPass1(
         maxTokens: 800,
         temperature: 0.3,
       });
-      await recordModelCall({ accountId, userId: null, tier: decision.tier, task: 'sweep_pass1', model: result.model, usage: result.usage });
+      await recordModelCall({ accountId, userId: null, tier: decision.tier, task: 'sweep_pass1', model: result.model, usage: result.usage, degraded: decision.degraded, latencyMs: Date.now() - t0, outcome: 'ok' });
       accumulated.push(parsePass1(result.text));
     } catch (err) {
       console.error('[sweep/pass1] batch failed — skipping', err instanceof Error ? err.message : err);
+      // Ledger the graceful failure (Slice A): zero tokens, no content.
+      await recordModelCall({ accountId, userId: null, tier: resolvedTier, task: 'sweep_pass1', model: resolvedModel, usage: { inputTokens: 0, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 0 }, outcome: 'error', degraded: resolvedDegraded, latencyMs: null });
     }
   }
   return {
@@ -161,8 +170,15 @@ export async function runPass2(
     const content = batch.threads
       .map((t, i) => `[Thread ${i + 1}] Subject: ${t.subject}\nFirst line: ${t.firstLine}`)
       .join('\n\n');
+    let resolvedModel = 'unknown';
+    let resolvedTier: 't0' | 't1' | 't2' = 't1';
+    let resolvedDegraded = false;
     try {
       const decision = await groveRouter.route({ userId: `account:${accountId}`, task: 'sweep_pass2', origin: 'pipeline' });
+      resolvedModel = decision.model;
+      resolvedTier = decision.tier;
+      resolvedDegraded = decision.degraded;
+      const t0 = Date.now();
       const result = await generate({
         model: decision.model,
         system: [{ text: PASS2_SYSTEM, cache: true }],
@@ -170,10 +186,12 @@ export async function runPass2(
         maxTokens: 600,
         temperature: 0.4,
       });
-      await recordModelCall({ accountId, userId: null, tier: decision.tier, task: 'sweep_pass2', model: result.model, usage: result.usage });
+      await recordModelCall({ accountId, userId: null, tier: decision.tier, task: 'sweep_pass2', model: result.model, usage: result.usage, degraded: decision.degraded, latencyMs: Date.now() - t0, outcome: 'ok' });
       allCandidates.push(...parsePass2(result.text).faqCandidates);
     } catch (err) {
       console.error('[sweep/pass2] batch failed — skipping', err instanceof Error ? err.message : err);
+      // Ledger the graceful failure (Slice A): zero tokens, no content.
+      await recordModelCall({ accountId, userId: null, tier: resolvedTier, task: 'sweep_pass2', model: resolvedModel, usage: { inputTokens: 0, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 0 }, outcome: 'error', degraded: resolvedDegraded, latencyMs: null });
     }
   }
   return { faqCandidates: allCandidates.slice(0, 8) };

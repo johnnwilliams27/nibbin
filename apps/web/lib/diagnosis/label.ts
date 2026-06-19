@@ -167,8 +167,14 @@ export async function labelDiagnosis(accountId: string, map: DiagnosisMap): Prom
   if (!llm || map.workflows.length === 0) {
     return { map, letter: deterministicLetter(map) };
   }
+  let resolvedModel = 'unknown';
+  let resolvedTier: 't0' | 't1' | 't2' = 't2';
+  let resolvedDegraded = false;
   try {
     const decision = await groveRouter.route({ userId: `account:${accountId}`, task: 'diagnosis_synthesis', origin: 'pipeline' });
+    resolvedModel = decision.model;
+    resolvedTier = decision.tier;
+    resolvedDegraded = decision.degraded;
     const input = JSON.stringify({
       totalHoursPerWeek: map.totalHoursPerWeek,
       workflows: map.workflows.map((w) => ({
@@ -200,6 +206,7 @@ export async function labelDiagnosis(accountId: string, map: DiagnosisMap): Prom
       }
     }
 
+    const t0 = Date.now();
     const result = await llm({
       model: decision.model,
       system: [{ text: systemLines.join('\n'), cache: true }],
@@ -207,7 +214,7 @@ export async function labelDiagnosis(accountId: string, map: DiagnosisMap): Prom
       maxTokens: 1500,
       temperature: 0.5,
     });
-    await recordModelCall({ accountId, userId: null, tier: decision.tier, task: 'diagnosis_synthesis', model: result.model, usage: result.usage });
+    await recordModelCall({ accountId, userId: null, tier: decision.tier, task: 'diagnosis_synthesis', model: result.model, usage: result.usage, degraded: decision.degraded, latencyMs: Date.now() - t0, outcome: 'ok' });
 
     const parsed = parseLabeling(result.text);
     if (!parsed) return { map, letter: deterministicLetter(map) };
@@ -215,6 +222,8 @@ export async function labelDiagnosis(accountId: string, map: DiagnosisMap): Prom
     return { map: applyLabeling(map, parsed), letter: parsed.letter || deterministicLetter(map) };
   } catch (err) {
     console.error('[diagnosis] labeling failed — deterministic fallback', err instanceof Error ? err.message : err);
+    // Ledger the graceful failure (Slice A): zero tokens, no content.
+    await recordModelCall({ accountId, userId: null, tier: resolvedTier, task: 'diagnosis_synthesis', model: resolvedModel, usage: { inputTokens: 0, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 0 }, outcome: 'error', degraded: resolvedDegraded, latencyMs: null });
     return { map, letter: deterministicLetter(map) };
   }
 }
