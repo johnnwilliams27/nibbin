@@ -407,10 +407,10 @@ export const HELP_CONTENT: HelpContent = [
       },
       {
         id: "conn-clearbit-note",
-        q: "Are connector logos loaded from a third party?",
+        q: "Where do the connector logos come from?",
         body:
-          "Yes — when you view the connector directory, company logos are loaded from Clearbit (logo.clearbit.com), a third-party logo service. No Nibbin account data is sent; the request is a plain image fetch using the integration’s brand domain.",
-        keywords: ["clearbit", "logos", "third party", "directory", "privacy"],
+          "Company logos in the connector directory are served through Nibbin: our server fetches them from a logo provider (Clearbit) and passes them along, so your browser never contacts the third party directly and your IP is not disclosed to it. No Nibbin account data is involved — it is just a brand logo keyed to the integration’s domain.",
+        keywords: ["clearbit", "logos", "third party", "directory", "privacy", "proxy"],
       },
       {
         id: "conn-directory",
