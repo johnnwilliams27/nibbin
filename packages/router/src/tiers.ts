@@ -108,7 +108,6 @@ export const DEFAULT_TASK_CANDIDATES: Partial<Record<RoutedTask, readonly string
  *   to act on; if the leading candidate lacks the floor we don't reweight at
  *   all and fall back to the configured default. Prevents one lucky early
  *   approval from swinging traffic.
- * - `qualityBandMicros` is unused here; quality comparison is on rate.
  * - `qualityBar`: a candidate must clear this approved-unedited rate to be
  *   eligible on quality grounds at all (a model the humans reject most of the
  *   time is never "cheapest-acceptable").

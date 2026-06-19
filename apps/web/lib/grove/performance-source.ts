@@ -37,7 +37,7 @@ interface PerfRow {
 const DEFAULT_TTL_MS = 5 * 60 * 1000;
 
 function key(model: string, task: string, tier: string): string {
-  return `${model}${task}${tier}`;
+  return `${model}|${task}|${tier}`;
 }
 
 /** Derive the policy's PerfStat from a raw count row (rates pre-divided here). */

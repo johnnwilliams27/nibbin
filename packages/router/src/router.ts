@@ -30,6 +30,47 @@ function requestedTierFor(req: RouteRequest): { tier: Tier; classification?: Cla
   return { tier: TIER_FOR_TASK[req.task] };
 }
 
+/**
+ * A structurally valid model id: a non-empty Anthropic `claude-*` id. Every
+ * vetted model — the tier defaults, the task pins, and the pricing table — is a
+ * `claude-` id (see tiers.ts / pricing.ts). An explicitly-registered challenger
+ * MUST be one too: this is the structural floor that keeps a typo or an empty
+ * string from silently becoming an eligible candidate (red-team P3). It is the
+ * shape gate; promoting a challenger past it is still an eval-gated act.
+ */
+function isVettedModelShape(model: string): boolean {
+  return model.startsWith('claude-');
+}
+
+/**
+ * Constrain `taskCandidates` so reinforcement can NEVER name an unvetted model
+ * (red-team P3 + logic-skeptic P3). The vetted/known set is the union of the
+ * configured tier-model values, the configured task-model pins, and any
+ * explicitly-registered challenger that clears the model-id shape gate. A
+ * candidate id that is empty, whitespace, or not a `claude-*` id is rejected at
+ * construction (fail-closed) rather than silently becoming eligible.
+ */
+function validateCandidates(config: RouterConfig): void {
+  const knownModels = new Set<string>([
+    ...Object.values(config.models),
+    ...Object.values(config.taskModels).filter((m): m is string => Boolean(m)),
+  ]);
+  for (const [task, candidates] of Object.entries(config.taskCandidates)) {
+    if (!candidates) continue;
+    for (const candidate of candidates) {
+      if (typeof candidate !== 'string' || candidate.trim() === '') {
+        throw new Error(`router config: empty candidate model for task ${task}`);
+      }
+      if (!knownModels.has(candidate) && !isVettedModelShape(candidate)) {
+        throw new Error(
+          `router config: candidate "${candidate}" for task ${task} is not a vetted model — ` +
+            'reinforcement candidates must be a configured tier/pin model or a claude-* id',
+        );
+      }
+    }
+  }
+}
+
 function validate(config: RouterConfig): void {
   for (const tier of ['t0', 't1', 't2'] as const) {
     if (!config.models[tier] || config.models[tier].trim() === '') {
@@ -41,6 +82,7 @@ function validate(config: RouterConfig): void {
       throw new Error(`router config: empty task-model pin for ${task}`);
     }
   }
+  validateCandidates(config);
   if (!Number.isInteger(config.dailyFrontierBudget) || config.dailyFrontierBudget < 0) {
     throw new Error('router config: dailyFrontierBudget must be a non-negative integer');
   }
