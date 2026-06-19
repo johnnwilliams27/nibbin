@@ -25,6 +25,12 @@ const nextConfig = {
     '/api/channels/telegram': ['../../node_modules/@sparticuz/chromium/**'],
     '/api/channels/sms': ['../../node_modules/@sparticuz/chromium/**'],
     '/api/channels/whatsapp': ['../../node_modules/@sparticuz/chromium/**'],
+    // Legal pages read their HTML from reference/ at module load; trace the
+    // files so they are bundled into the Vercel function output.
+    '/privacy': ['../../reference/privacy.html'],
+    '/terms': ['../../reference/terms.html'],
+    '/data-ai': ['../../reference/data-ai.html'],
+    '/subprocessors': ['../../reference/subprocessors.html'],
   },
   // CI gates typecheck and lint on every PR (npm run typecheck / lint / build),
   // so the deploy build must not re-run them — Vercel's production install omits

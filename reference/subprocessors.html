@@ -33,16 +33,16 @@ footer{border-top:1px solid var(--line);padding:26px 0 50px;font-family:var(--mo
 footer .in{display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
 footer a{color:inherit}
 </style></head><body>
-<nav><div class="wrap in"><a href="nibbin-demo.html">Nibbin</a><a class="back" href="nibbin-demo.html">← back to nibbin.com</a></div></nav>
+<nav><div class="wrap in"><a href="/">Nibbin</a><a class="back" href="/">← back to nibbin.com</a></div></nav>
 
 <header><div class="wrap">
 <span class="eyebrow">Nibbin, Inc.</span>
 <h1>Subprocessors</h1>
-<div class="meta">The named list, kept current · effective June 10, 2026 · referenced from the <a href="privacy.html">Privacy Policy</a></div>
+<div class="meta">The named list, kept current · effective June 10, 2026 · referenced from the <a href="/privacy">Privacy Policy</a></div>
 </div></header>
 <main><div class="wrap">
 
-<p>These are the third parties that process data to run Nibbin. We publish the named list here and update it <b>before</b> anyone new begins processing your data. Your Field Study screen captures never reach any of them — they stay on your device by architecture (see the <a href="data-ai.html">Data &amp; AI</a> page).</p>
+<p>These are the third parties that process data to run Nibbin. We publish the named list here and update it <b>before</b> anyone new begins processing your data. Your Field Study screen captures never reach any of them — they stay on your device by architecture (see the <a href="/data-ai">Data &amp; AI</a> page).</p>
 
 <table>
 <tr><th>Subprocessor</th><th>What they do</th><th>Data they process</th><th>Region</th></tr>
@@ -52,6 +52,11 @@ footer a{color:inherit}
 <tr><td><b>Voyage AI</b></td><td>Text embeddings for agent-memory semantic retrieval</td><td>Already-redacted derived memory text (facts, preferences, entities) — never raw email or study content</td><td>United States</td></tr>
 <tr><td><b>Resend</b></td><td>Transactional email (Field Notes, account mail)</td><td>Your email address and the message content we send you</td><td>United States</td></tr>
 <tr><td><b>Stripe</b></td><td>Payments &amp; billing</td><td>Billing details — Stripe handles card data directly; we never see full card numbers</td><td>United States</td></tr>
+<tr><td><b>Google / Gmail</b></td><td>Email connector — read-only mail access (with your explicit OAuth grant)</td><td>Email metadata and message content you direct a Nibbin to act on; access token held encrypted in the vault</td><td>United States</td></tr>
+<tr><td><b>Sentry</b></td><td>Error monitoring &amp; performance tracing</td><td>Stack traces, request metadata, and application events — no user-generated content</td><td>United States</td></tr>
+<tr><td><b>Telegram</b></td><td>Inbound and outbound bot messages (reach-me channel)</td><td>Chat ID and message content for notifications and inbound commands you initiate</td><td>Global (Telegram infrastructure)</td></tr>
+<tr><td><b>Twilio</b></td><td>SMS delivery (reach-me channel)</td><td>Your phone number and message content for notifications you request</td><td>United States</td></tr>
+<tr><td><b>Meta / WhatsApp</b></td><td>WhatsApp messaging (reach-me channel)</td><td>Your phone number and message content for notifications you request</td><td>United States / global edge</td></tr>
 </table>
 
 <div class="box"><span class="t">What never reaches a subprocessor</span>
@@ -64,5 +69,5 @@ footer a{color:inherit}
 
 </div></main><footer><div class="wrap in">
 <span>© 2026 Nibbin, Inc. · hello@nibbin.com</span>
-<span><a href="privacy.html">Privacy Policy</a> · <a href="terms.html">Terms of Service</a> · <a href="data-ai.html">Data &amp; AI</a></span>
+<span><a href="/privacy">Privacy Policy</a> · <a href="/terms">Terms of Service</a> · <a href="/data-ai">Data &amp; AI</a></span>
 </div></footer></body></html>
