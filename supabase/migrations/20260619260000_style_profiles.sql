@@ -34,31 +34,41 @@ revoke all on public.style_profiles from anon;
 
 -- ---------------------------------------------------------------------------
 -- upsert_style_profile: called by the extraction pipeline (service-role).
--- Members cannot call this directly. Increments version + updates updated_at.
+-- Members cannot call this directly. Optimistic concurrency: the caller passes
+-- the version it read; the UPDATE only applies when the stored version still
+-- matches, so a concurrent edit cannot be silently clobbered. Returns the
+-- number of rows written (1 = applied, 0 = version conflict → caller retries).
+-- A fresh INSERT sets version=1 so a concurrent first-insert is detectable too.
 -- ---------------------------------------------------------------------------
 create function public.upsert_style_profile(
   p_account uuid,
   p_tone_profile jsonb,
-  p_stats jsonb
-) returns void
+  p_stats jsonb,
+  p_expected_version integer
+) returns integer
 language plpgsql
 security definer
 set search_path = ''
 as $$
+declare
+  v_rows integer;
 begin
-  insert into public.style_profiles (account_id, tone_profile, stats)
-  values (p_account, p_tone_profile, p_stats)
+  insert into public.style_profiles (account_id, tone_profile, stats, version)
+  values (p_account, p_tone_profile, p_stats, 1)
   on conflict (account_id) do update
     set tone_profile = excluded.tone_profile,
         stats        = excluded.stats,
         version      = public.style_profiles.version + 1,
-        updated_at   = now();
+        updated_at   = now()
+    where public.style_profiles.version = p_expected_version;
+  get diagnostics v_rows = row_count;
+  return v_rows;
 end;
 $$;
 
 -- Grant to service_role only (pipeline-internal).
-revoke execute on function public.upsert_style_profile(uuid, jsonb, jsonb) from public, anon, authenticated;
-grant execute on function public.upsert_style_profile(uuid, jsonb, jsonb) to service_role;
+revoke execute on function public.upsert_style_profile(uuid, jsonb, jsonb, integer) from public, anon, authenticated;
+grant execute on function public.upsert_style_profile(uuid, jsonb, jsonb, integer) to service_role;
 
 -- ---------------------------------------------------------------------------
 -- update_style_notes: user-initiated freeform note (settings page).

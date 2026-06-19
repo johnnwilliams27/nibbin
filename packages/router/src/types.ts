@@ -20,6 +20,7 @@ export type RoutedTask =
   | 'formatting'
   | 'field_notes_copy'
   | 'journal_phrasing'
+  | 'style_extraction'
   // T1 — mid (Sonnet-class)
   | 'specialist_draft'
   | 'scan_synthesis'
@@ -29,7 +30,6 @@ export type RoutedTask =
   | 'sweep_pass1'
   | 'sweep_pass2'
   | 'memory_extract'
-  | 'style_extraction'
   // T2 — frontier (Opus/Fable-class)
   | 'diagnosis_synthesis'
   | 'custom_spec_draft'

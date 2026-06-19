@@ -96,3 +96,52 @@
 | Logic-skeptic | **PASS** | Correct gate (edited-only), four fail-safe layers, merge is bounded, injection threshold correct |
 
 **Gate outcome: PASS** — approved for merge to main.
+
+---
+
+## Post-gate fixes (adversarial findings)
+
+Applied after the gate review on the same branch before merge.
+
+### P2 — Lost-update race in profile merge (load-bearing)
+`apps/web/lib/style/update.ts` performed a non-atomic read-modify-write: two
+concurrent edits on the same account could both read the same `existing` row,
+both compute `edits_analyzed = existing + 1`, and the second upsert silently
+clobbered the first — causing an undercount and a lost EMA contribution.
+
+Fix: `updateStyleProfile` now runs a retry loop (max 2 attempts). It reads the
+stored `version`, passes it as `p_expected_version` to the RPC, and retries
+once when the RPC returns `0` (version conflict — `WHERE version = expected`
+was false). The migration was also updated: `upsert_style_profile` is now a
+4-arg, version-guarded, `integer`-returning function; the `ON CONFLICT ... DO
+UPDATE` carries a `WHERE` clause so a concurrent writer cannot be silently
+clobbered; a fresh `INSERT` sets `version = 1` so concurrent first-inserts are
+also detectable.
+
+### P2 — Dead parameter in `growConfidence`
+`growConfidence(current, editsAnalyzed)` accepted a `current` parameter that
+was never read — confidence was always computed from `editsAnalyzed` alone.
+The dead parameter was a misleading signature: callers believed `current`
+influenced the result.
+
+Fix: parameter dropped. Signature is now `growConfidence(editsAnalyzed: number):
+number`. Call site updated accordingly.
+
+### Important — `style_extraction` mis-grouped in tier comment block
+`packages/router/src/types.ts` listed `style_extraction` inside the
+`// T1 — mid (Sonnet-class)` comment block, while `TIER_FOR_TASK` in
+`packages/router/src/tiers.ts` correctly assigned it `'t0'`. The mismatch
+would mislead future readers about which model class the extraction task uses.
+
+Fix: `style_extraction` moved into the `// T0 — local/open-weight + smallest
+API class` comment block. `TIER_FOR_TASK` is unchanged (it was already correct).
+
+### Accepted P3 deferrals (Slice 2)
+The following findings are accepted for Slice 2 and not fixed here:
+- **Injection framing**: free-text fields in the system-prompt injection block
+  could benefit from stricter structural delimiters.
+- **EMA shrink/decay**: sign_offs and removals have no decay path; stale entries
+  accumulate until reset. Deferred — a Slice 2 periodic decay job is the right
+  fix scope.
+- **`field_study_cues`**: column is present but empty; Slice 2 will populate it
+  from Field Study signals.
