@@ -40,9 +40,7 @@ describe("Tooltip", () => {
         <button type="button">Trigger</button>
       </Tooltip>
     );
-    // Extract the tooltip bubble's id
-    const idMatch = html.match(/role="tooltip"\s[^>]*id="([^"]+)"|id="([^"]+)"\s[^>]*role="tooltip"/);
-    // aria-describedby on the trigger must reference that id
+    // aria-describedby on the trigger must reference the bubble id
     expect(html).toMatch(/aria-describedby="[^"]+"/);
     expect(html).toContain('id="');
     // The id value on the bubble must match aria-describedby on the trigger
