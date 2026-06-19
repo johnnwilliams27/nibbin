@@ -279,6 +279,92 @@ export async function activeNibbinsForAccount(svc: SupabaseClient, accountId: st
   });
 }
 
+/** Shape a joined nibbins+agent_specs row into a NibbinRef. */
+function nibbinRefFromJoin(row: Record<string, unknown>): NibbinRef {
+  const specRow = (Array.isArray(row.agent_specs) ? row.agent_specs[0] : row.agent_specs) as Parameters<typeof specFromRow>[0];
+  return {
+    id: row.id as string,
+    accountId: row.account_id as string,
+    name: row.name as string,
+    stage: row.stage as NibbinRef['stage'],
+    status: row.status as NibbinRef['status'],
+    spec: specFromRow(specRow),
+  };
+}
+
+/** A due (nibbin, schedule_key) occurrence: the state row joined to its nibbin. */
+export interface DueScheduleOccurrence {
+  nibbin: NibbinRef;
+  scheduleKey: string;
+}
+
+/**
+ * The DUE-FIRST claim scan (FIX 2 / red-team): every `nibbin_schedule_state` row
+ * with `next_run_at <= now`, ORDERED BY `next_run_at` ASC and bounded by
+ * `limit`, joined to its (active) nibbin + adopted spec. This uses the
+ * `nibbin_schedule_state_next_run_idx` index and makes coverage FAIR — the old
+ * `activeScheduledNibbins` did `.eq(status,'active').order(created_at).limit(200)`
+ * and filtered schedule triggers in TS AFTER the limit, so once an install had
+ * >200 active nibbins, every scheduled nibbin past the 200th-oldest was NEVER
+ * scanned/fired. Here, oldest-due always wins, so nothing is permanently starved.
+ *
+ * The inner join on `nibbins` (active only) means a paused/sleeping nibbin's due
+ * rows are simply not returned — its cadence is dormant until reactivated, and
+ * the state row is left untouched (it will be due immediately when the join
+ * matches again). Returns at most `limit` rows.
+ */
+export async function dueScheduleOccurrences(
+  svc: SupabaseClient,
+  now: Date,
+  limit: number,
+): Promise<DueScheduleOccurrence[]> {
+  const { data, error } = await svc
+    .from('nibbin_schedule_state')
+    .select('schedule_key, next_run_at, nibbins!inner(id, account_id, name, stage, status, agent_specs!inner(*))')
+    .lte('next_run_at', now.toISOString())
+    .eq('nibbins.status', 'active')
+    .order('next_run_at', { ascending: true })
+    .limit(limit);
+  if (error) throw new Error(`due schedule scan failed: ${error.message}`);
+  return (data ?? []).map((row) => {
+    const nib = (Array.isArray(row.nibbins) ? row.nibbins[0] : row.nibbins) as Record<string, unknown>;
+    return { nibbin: nibbinRefFromJoin(nib), scheduleKey: row.schedule_key as string };
+  });
+}
+
+/**
+ * The SEED-PHASE discovery scan (FIX 2): active nibbins whose spec carries a
+ * `schedule` trigger that LACK any `nibbin_schedule_state` row yet, ordered
+ * NEWEST-FIRST so brand-new nibbins are seeded promptly (rather than never,
+ * which was the old behavior past the 200th-oldest). We filter schedule-carrying
+ * specs in SQL via jsonb containment on `agent_specs.triggers` (BEFORE the
+ * limit), then anti-join against existing state rows in TS. Bounded by `limit`.
+ */
+export async function seedCandidateNibbins(svc: SupabaseClient, limit: number): Promise<NibbinRef[]> {
+  // Over-fetch a bounded window of newest active schedule-carrying nibbins, then
+  // drop any that already have a state row. (A nibbin only needs seeding once;
+  // once seeded it leaves this candidate set and enters the fair claim phase.)
+  const { data, error } = await svc
+    .from('nibbins')
+    .select('id, account_id, name, stage, status, agent_specs!inner(*)')
+    .eq('status', 'active')
+    .filter('agent_specs.triggers', 'cs', '[{"kind":"schedule"}]')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(`seed-candidate scan failed: ${error.message}`);
+  const candidates = (data ?? []).map((row) => nibbinRefFromJoin(row as Record<string, unknown>));
+  if (candidates.length === 0) return [];
+
+  // Anti-join: keep only nibbins with NO existing schedule-state row.
+  const { data: stateData, error: stateErr } = await svc
+    .from('nibbin_schedule_state')
+    .select('nibbin_id')
+    .in('nibbin_id', candidates.map((c) => c.id));
+  if (stateErr) throw new Error(`seed-candidate state lookup failed: ${stateErr.message}`);
+  const seeded = new Set((stateData ?? []).map((r) => r.nibbin_id as string));
+  return candidates.filter((c) => !seeded.has(c.id));
+}
+
 /**
  * Trigger one Nibbin run end to end. Used by the grove (user dispatches) and
  * later by schedules/webhooks — every path goes through the same runner.
