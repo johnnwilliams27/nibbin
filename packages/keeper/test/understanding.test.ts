@@ -70,7 +70,8 @@ describe('applyUnderstandingTurn — termination', () => {
     });
     expect(done.state.step).toBe('done');
     expect(done.state.profile).not.toBeNull();
-    expect(done.messages.at(-1)!.card.kind).toBe('celebration');
+    // Completion messages go to notification leaves, not the chat log.
+    expect(done.messages.at(-1)!.card.kind).toBe('prose');
   });
 
   it('stops when confidence reaches 0.75', () => {

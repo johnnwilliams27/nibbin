@@ -28,13 +28,25 @@ export function consentView(onChanged: () => void, kind: StudyKind = 'full_study
       ? 'Which apps and windows you use, the shape of what you click and type (counts and timing — never the keys themselves), redacted text descriptions like “Invoice {NUM} — {PERSON}”, and (when Detailed is fully available) periodic screenshots that will be processed by on-device OCR then deleted — only the redacted text will inform your diagnosis. Will require Screen Recording permission.'
       : 'Which apps and windows you use, the shape of what you click and type (counts and timing — never the keys themselves), and redacted text descriptions like “Invoice {NUM} — {PERSON}”. No screenshots.';
 
+  // D5: h1 and intro differ by kind — a quick scan is not a two-week study.
+  const isQuickScan = kind === 'quick_scan';
+  const heading = isQuickScan
+    ? 'A quick scan of one task — on your terms'
+    : 'Two weeks of watching how you work — on your terms';
+  const intro = isQuickScan
+    ? [
+        'Nibbin will watch just this one task so it can map the workflow — nothing else. ',
+        'Here is the whole deal, before anything records:',
+      ]
+    : [
+        'The field study watches how you work so your diagnosis can show where the busywork hides. ',
+        'Here is the whole deal, before anything records:',
+      ];
+
   const root = el('div', {}, [
-    el('p', { class: 'eyebrow' }, ['Field study']),
-    el('h1', {}, ['Two weeks of watching how you work — on your terms']),
-    el('p', { class: 'muted' }, [
-      'The field study watches how you work so your diagnosis can show where the busywork hides. ',
-      'Here is the whole deal, before anything records:',
-    ]),
+    el('p', { class: 'eyebrow' }, [isQuickScan ? 'Quick scan' : 'Field study']),
+    el('h1', {}, [heading]),
+    el('p', { class: 'muted' }, intro),
     el('ul', { class: 'claims' }, [
       el('li', {}, [
         el('strong', {}, ['What gets captured']),

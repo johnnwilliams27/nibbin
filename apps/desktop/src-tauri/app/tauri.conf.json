@@ -21,12 +21,6 @@
         "visible": true
       }
     ],
-    "trayIcon": {
-      "id": "observer-tray",
-      "iconPath": "icons/tray.png",
-      "iconAsTemplate": true,
-      "tooltip": "Nibbin"
-    },
     "security": {
       "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' ipc: http://ipc.localhost https://oaymttudfazqaqequrke.supabase.co https://nibbin.com"
     }

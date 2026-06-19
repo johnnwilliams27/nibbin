@@ -70,8 +70,8 @@ export function KeeperSprite({
   burstKey: number;
   name: string | null;
 }) {
-  const keeperSvg = useMemo(() => buildCreature({ species: 'Keeper', size: 140 }), []);
-  const eggSvg = useMemo(() => buildCreature({ species: 'Sprout', stage: 'egg', size: 112 }), []);
+  const keeperSvg = useMemo(() => buildCreature({ species: 'Keeper', size: 96 }), []);
+  const eggSvg = useMemo(() => buildCreature({ species: 'Sprout', stage: 'egg', size: 80 }), []);
 
   // The engine mints unique gradient/animation ids per render (GOTCHAS), so
   // SSR markup and the hydration render can never match byte-for-byte —
@@ -79,7 +79,7 @@ export function KeeperSprite({
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   if (!mounted) {
-    return <div className={styles.keeperSpot} style={{ minHeight: 140 }} aria-hidden="true" />;
+    return <div className={styles.keeperSpot} style={{ minHeight: 96 }} aria-hidden="true" />;
   }
 
   return (

@@ -16,11 +16,12 @@
   width: 220px;
   background: var(--canopy);
   border-right: 1px solid var(--line);
-  padding: 22px 16px;
+  padding: 16px 12px;
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 14px;
   z-index: 30;
+  will-change: transform;
   transition: transform var(--dur-2) var(--ease-settle), width var(--dur-2) var(--ease-settle),
     padding var(--dur-2) var(--ease-settle);
 }
@@ -39,22 +40,28 @@
   letter-spacing: -0.02em;
   color: var(--moss-deep);
   text-decoration: none;
-  padding: 0 8px;
+  padding: 0 4px;
   white-space: nowrap;
   overflow: hidden;
-  transition: opacity var(--dur-2) var(--ease-settle), font-size var(--dur-2) var(--ease-settle);
-}
-
-/* Collapsed: shrink the wordmark to a single-letter mark, centred */
-.sidebarCollapsed .brand {
-  font-size: 18px;
-  padding: 0;
   display: flex;
   align-items: center;
+  transition: opacity var(--dur-2) var(--ease-settle);
+}
+
+.brandWord {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  color: var(--moss-deep);
+}
+
+/* Collapsed: show the sprout logomark centred in the 56px rail */
+.sidebarCollapsed .brand {
+  padding: 0;
   justify-content: center;
-  /* clip everything past the first character via a fixed width */
   width: 40px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 /* Collapsed nav button to toggle back open */
@@ -102,7 +109,7 @@
 .nav {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 
 .navItem {
@@ -216,9 +223,10 @@
   overflow: hidden;
   /* Smooth collapse, per Plate 06 (Motion): slide off via transform + fade —
      never animate width. margin-right reclaims the layout space as it goes.
-     --dur-4 (650ms) for a slow, deliberate glide. */
-  transition: transform var(--dur-4) var(--ease-settle), opacity var(--dur-4) var(--ease-settle),
-    margin-right var(--dur-4) var(--ease-settle);
+     --dur-4 (650ms) for a slow, deliberate glide; --ease-snap for drawer feel. */
+  transition: transform var(--dur-4) var(--ease-snap, var(--ease-settle)),
+    opacity var(--dur-4) var(--ease-snap, var(--ease-settle)),
+    margin-right var(--dur-4) var(--ease-snap, var(--ease-settle));
 }
 
 /* The panel toggle button is desktop-hidden; only visible on mobile */
@@ -362,7 +370,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 24px;
+  padding: 14px var(--pad-page, 24px);
   background: color-mix(in srgb, var(--paper) 88%, transparent);
   backdrop-filter: blur(6px);
   border-bottom: 1px solid var(--line);
@@ -430,11 +438,11 @@
 
 .content {
   flex: 1;
-  padding: 28px 24px 64px;
+  padding: 28px var(--pad-page, 24px) 64px;
   max-width: 1040px;
   width: 100%;
   margin: 0 auto;
-  animation: shellFade var(--dur-3) var(--ease-settle);
+  animation: shellFade var(--dur-3) var(--ease-spring, var(--ease-settle));
 }
 @keyframes shellFade {
   from {
@@ -515,8 +523,7 @@
     transform: none;
   }
   .sidebarCollapsed .brand {
-    font-size: 22px;
-    padding: 0 8px;
+    padding: 0 4px;
     width: auto;
     justify-content: flex-start;
   }
@@ -549,7 +556,7 @@
     box-shadow: var(--shadow-3);
     z-index: 28;
     transform: translateY(100%);
-    transition: transform var(--dur-3) var(--ease-settle);
+    transition: transform var(--dur-3) var(--ease-snap, var(--ease-settle));
     overflow-y: auto;
   }
   .panelOpen {
