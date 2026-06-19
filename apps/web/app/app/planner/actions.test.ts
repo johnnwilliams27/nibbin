@@ -15,13 +15,45 @@ const create = vi.fn(async () => {});
 const countRunning = vi.fn(async () => 0);
 const respondToRequest = vi.fn(async () => ({ kind: 'done', runId: 'r', artifact: {} }));
 const buildPlannerRunDeps = vi.fn(async () => ({}));
+// load is account-scoped: returns the run only when accountId matches. Tests
+// override per-case via load.mockResolvedValueOnce.
+const load = vi.fn(async (_runId: string, _accountId: string) => null as unknown);
 vi.mock('../../../lib/planner/run', () => ({
   SupabasePlanRunStore: class {
     create = create;
     countRunning = countRunning;
+    load = (...a: unknown[]) => load(...(a as [string, string]));
   },
   respondToRequest: (...a: unknown[]) => respondToRequest(...(a as [])),
   buildPlannerRunDeps: () => buildPlannerRunDeps(),
+}));
+
+// The crystallize web layer routes the soft-layer LLM; stub the model/router so
+// the REAL crystallize runs the no-key deterministic path (steps still come from
+// the trace via the real gate).
+vi.mock('../../../lib/llm/client', () => ({
+  recordModelCall: vi.fn(async () => {}),
+  anthropicGenerate: () => null,
+}));
+vi.mock('../../../lib/grove/router', () => ({ groveRouter: { route: vi.fn(async () => ({ degraded: true })) } }));
+
+// adoptComposedSpec is the adoption seam — capture the spec it is handed so a
+// faithfulness test can assert the steps == the re-extracted ones.
+const adoptComposedSpec = vi.fn(async (_acct: string, _user: string, spec: unknown) => ({
+  nibbinId: 'nib-1',
+  name: (spec as { displayName: string }).displayName,
+  templateKey: null,
+  stage: 'egg' as const,
+  firstRun: null,
+  missingConnectors: [] as string[],
+  species: 'Wisp',
+  palette: '#5B8DB0',
+  accessory: 'none',
+  marking: 'stripe',
+  isFirstAdoption: true,
+}));
+vi.mock('../../../lib/runtime/adopt', () => ({
+  adoptComposedSpec: (...a: unknown[]) => adoptComposedSpec(...(a as [string, string, unknown])),
 }));
 
 // the live connector list for the account
@@ -37,7 +69,8 @@ vi.mock('@nibbin/runtime', async (orig) => {
   return { ...actual, runPlan: (...a: unknown[]) => runPlan(...(a as [])) };
 });
 
-import { startPlanRun, respondToPlanRun } from './actions';
+import { startPlanRun, respondToPlanRun, proposeCrystal, adoptCrystal } from './actions';
+import type { PlanRunState, PlanTurn } from '@nibbin/runtime';
 
 function tamperedPlan(): PlanSpec {
   return {
@@ -123,5 +156,88 @@ describe('respondToPlanRun — forwards to respondToRequest', () => {
     respondToRequest.mockClear();
     await respondToPlanRun('run-1', { requestId: 'req-1', value: 'hi' });
     expect(respondToRequest).toHaveBeenCalledTimes(1);
+  });
+});
+
+/* ── Crystallization (Slice 4) ─────────────────────────────────────────────── */
+
+const PLAN = {
+  kind: 'plan' as const,
+  ephemeral: true as const,
+  goal: 'draft a follow-up for threads gone quiet',
+  intendedSteps: ['watch the inbox', 'draft a nudge'],
+  toolsAllowlist: ['nudge.overdue-email', 'done'],
+  requiredConnectors: ['gmail'],
+  weightClass: 'frontier' as const,
+  ceilings: { maxSteps: 60, maxTokens: 8000, maxWallClockMs: 60_000, maxIterations: 12 },
+};
+
+function crystallizableRun(accountId = 'acct-1'): PlanRunState {
+  const transcript: PlanTurn[] = [
+    { idx: 0, pick: { tool: 'nudge.overdue-email', args: { staleDays: 3 } }, observation: 'drafted' },
+    { idx: 1, pick: { done: true, artifact: {} } },
+  ];
+  return { runId: 'run-1', accountId, plan: PLAN, transcript, scratchpad: {}, status: 'done' };
+}
+
+describe('proposeCrystal — account-scoped, gate-authoritative', () => {
+  it('returns {spec, preview} for a crystallizable done run', async () => {
+    appSession.mockResolvedValueOnce({ user: { id: 'user-1' }, accountId: 'acct-1' });
+    load.mockResolvedValueOnce(crystallizableRun());
+    const out = await proposeCrystal('run-1');
+    expect('refused' in out).toBe(false);
+    if ('refused' in out) return;
+    expect(out.spec.steps).toEqual([{ capability: 'nudge.overdue-email', inputs: { staleDays: 3 } }]);
+  });
+
+  it('refuses a foreign-account run id with not_found (never leaks)', async () => {
+    appSession.mockResolvedValueOnce({ user: { id: 'user-1' }, accountId: 'acct-other' });
+    load.mockResolvedValueOnce(null); // account-scoped load misses
+    const out = await proposeCrystal('run-1');
+    expect(out).toEqual({ refused: true, reason: 'not_found' });
+  });
+});
+
+describe('adoptCrystal — re-derive + re-validate fail-closed from source', () => {
+  it('re-derives the steps from the source plan_run (ignores any client payload)', async () => {
+    appSession.mockResolvedValueOnce({ user: { id: 'user-1' }, accountId: 'acct-1' });
+    load.mockResolvedValueOnce(crystallizableRun());
+    adoptComposedSpec.mockClear();
+    const out = await adoptCrystal('run-1', 'My follow-ups', { kind: 'schedule', schedule: 'daily.morning' });
+    expect('refused' in out).toBe(false);
+    // The spec handed to adoptComposedSpec carries the RE-EXTRACTED steps.
+    const adoptedSpec = (adoptComposedSpec.mock.calls[0] as unknown[])[2] as { steps: unknown };
+    expect(adoptedSpec.steps).toEqual([{ capability: 'nudge.overdue-email', inputs: { staleDays: 3 } }]);
+  });
+
+  it('passes the source plan_run id for provenance + hatches as an egg', async () => {
+    appSession.mockResolvedValueOnce({ user: { id: 'user-1' }, accountId: 'acct-1' });
+    load.mockResolvedValueOnce(crystallizableRun());
+    adoptComposedSpec.mockClear();
+    const out = await adoptCrystal('run-1', 'My follow-ups', { kind: 'schedule', schedule: 'daily.morning' });
+    if ('refused' in out || !out.ok) throw new Error('expected an egg hatch');
+    expect(out.stage).toBe('egg');
+    const opts = (adoptComposedSpec.mock.calls[0] as unknown[])[5] as { sourcePlanRunId?: string };
+    expect(opts.sourcePlanRunId).toBe('run-1');
+  });
+
+  it('rejects a chosenTrigger that is not a known cadence (before any load)', async () => {
+    appSession.mockResolvedValueOnce({ user: { id: 'user-1' }, accountId: 'acct-1' });
+    // cadence is validated BEFORE the load — no load value queued (would leak).
+    adoptComposedSpec.mockClear();
+    load.mockClear();
+    const out = await adoptCrystal('run-1', 'My follow-ups', { kind: 'schedule', schedule: 'hourly.always' });
+    expect(out).toEqual({ refused: true, reason: 'bad_cadence' });
+    expect(load).not.toHaveBeenCalled();
+    expect(adoptComposedSpec).not.toHaveBeenCalled();
+  });
+
+  it('refuses a foreign-account run id (never leaks, never adopts)', async () => {
+    appSession.mockResolvedValueOnce({ user: { id: 'user-1' }, accountId: 'acct-other' });
+    load.mockResolvedValueOnce(null);
+    adoptComposedSpec.mockClear();
+    const out = await adoptCrystal('run-1', 'X', { kind: 'schedule', schedule: 'daily.morning' });
+    expect(out).toEqual({ refused: true, reason: 'not_found' });
+    expect(adoptComposedSpec).not.toHaveBeenCalled();
   });
 });

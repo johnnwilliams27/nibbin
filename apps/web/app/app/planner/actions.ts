@@ -11,12 +11,23 @@
  * refused with no run created — the loop can never be provisioned beyond the
  * validated surface).
  */
-import { runPlan, validatePlanSpec, type PlanOutcome, type PlanSpec } from '@nibbin/runtime';
+import {
+  runPlan,
+  validatePlanSpec,
+  type AgentSpec,
+  type CrystalRefusal,
+  type PlanOutcome,
+  type PlanSpec,
+  type TriggerDef,
+} from '@nibbin/runtime';
 import { appSession } from '../../../lib/auth/app-session';
 import { serviceClient } from '../../../lib/supabase/service';
 import { activeConnections } from '../../../lib/runtime/engine';
 import { planForIntent, PLAN_CEILINGS, type PlanPreview } from '../../../lib/planner/plan';
 import { webSearchEnabled } from '../../../lib/planner/websearch';
+import { crystallize, isStandardCadence, type CrystalPreview } from '../../../lib/planner/crystallize';
+import { adoptComposedSpec } from '../../../lib/runtime/adopt';
+import type { AdoptOutcome } from '../../../components/adopt/types';
 import {
   SupabasePlanRunStore,
   respondToRequest,
@@ -151,5 +162,114 @@ async function nudgeIfNeedsInput(accountId: string, outcome: PlanOutcome): Promi
     });
   } catch (err) {
     console.error('[planner] needs_input nudge failed (best-effort)', err instanceof Error ? err.message : err);
+  }
+}
+
+/* ── Crystallization (Slice 4, design §6): a done plan_run → a durable B-spec ──
+ *
+ * proposeCrystal runs the gate server-side + returns the candidate (or the
+ * refusal reason); adoptCrystal RE-DERIVES the spec from the SOURCE plan_run
+ * (never a client-passed spec), applies the user's name + explicitly-chosen
+ * cadence, re-validates fail-closed, and adopts as an EGG via adoptComposedSpec
+ * with the source plan_run recorded for provenance. */
+
+/** The refusal reasons surfaced to the preview UX — the gate's CrystalRefusal
+ *  plus the action-layer guards (a foreign run id, a bad cadence). */
+export type CrystalActionRefusal = CrystalRefusal | 'not_found' | 'bad_cadence';
+
+export type CrystalProposeResult =
+  | { spec: AgentSpec; preview: CrystalPreview }
+  | { refused: true; reason: CrystalActionRefusal };
+
+export type CrystalAdoptResult = AdoptOutcome | { refused: true; reason: CrystalActionRefusal };
+
+/**
+ * Propose a crystallized recurring agent for a SUCCESSFUL plan run. Account-
+ * scoped: a foreign run id loads as null → `{refused, reason:'not_found'}` (never
+ * leaks). The gate is the single authority on crystallizability. Does NOT adopt.
+ */
+export async function proposeCrystal(planRunId: string): Promise<CrystalProposeResult> {
+  const { accountId } = await appSession();
+  const store = new SupabasePlanRunStore();
+  const planRun = await store.load(planRunId, accountId);
+  if (!planRun) return { refused: true, reason: 'not_found' };
+
+  const connections = await grantedProviders(accountId);
+  const result = await crystallize(planRun, connections);
+  if ('refused' in result) return { refused: true, reason: result.reason };
+  return result;
+}
+
+/**
+ * Adopt a crystallized recurring agent. RE-LOADS the source plan_run + RE-RUNS
+ * crystallize deterministically — it does NOT trust any client-passed spec, so a
+ * tampered payload can't inject steps. The recurring trigger is the USER's
+ * explicit choice (validated against the standard cadence set); a manual
+ * {kind:'user'} trigger is always included. Re-validates fail-closed (inside
+ * adoptComposedSpec), hatches as an EGG (no trust transfer), and records the
+ * source plan_run id for provenance.
+ */
+export async function adoptCrystal(
+  planRunId: string,
+  chosenName: string,
+  chosenTrigger: TriggerDef,
+): Promise<CrystalAdoptResult> {
+  const { user, accountId } = await appSession();
+
+  // The recurring trigger is the user's choice — validate it's a known cadence
+  // BEFORE any load/re-derive. A manual {kind:'user'} is always also added.
+  if (chosenTrigger.kind !== 'schedule' || !chosenTrigger.schedule || !isStandardCadence(chosenTrigger.schedule)) {
+    return { refused: true, reason: 'bad_cadence' };
+  }
+
+  // Account-scoped re-load: a foreign run id → null (never leak / never adopt).
+  const store = new SupabasePlanRunStore();
+  const planRun = await store.load(planRunId, accountId);
+  if (!planRun) return { refused: true, reason: 'not_found' };
+
+  // Re-derive deterministically from the SOURCE — the steps come from the trace,
+  // never from a round-tripped client payload.
+  const connections = await grantedProviders(accountId);
+  const derived = await crystallize(planRun, connections);
+  if ('refused' in derived) return { refused: true, reason: derived.reason };
+
+  // Apply the user's name + chosen cadence onto the re-derived spec. The steps
+  // are NOT touched (faithfulness); only the soft layer (name) + trigger change.
+  const name = (chosenName ?? '').trim().slice(0, 40) || derived.spec.displayName;
+  const spec: AgentSpec = {
+    ...derived.spec,
+    displayName: name,
+    triggers: [
+      { kind: 'schedule', schedule: chosenTrigger.schedule, cooldownSecs: chosenTrigger.cooldownSecs ?? 3600 },
+      { kind: 'user', debounceSecs: 0, cooldownSecs: 0 },
+    ],
+  };
+
+  try {
+    // adoptComposedSpec re-runs validateComposedSpec fail-closed BEFORE any write
+    // and hatches the Nibbin as an EGG; the source plan_run is recorded.
+    const adopted = await adoptComposedSpec(accountId, user.id, spec, name, undefined, {
+      sourcePlanRunId: planRunId,
+    });
+    if (adopted.missingConnectors.length > 0) {
+      return {
+        ok: false,
+        redirectTo: `/app/planner?needs=${encodeURIComponent(adopted.missingConnectors.join(','))}`,
+      };
+    }
+    return {
+      ok: true,
+      nibbinId: adopted.nibbinId,
+      name: adopted.name,
+      species: adopted.species,
+      stage: adopted.stage,
+      palette: adopted.palette,
+      accessory: adopted.accessory,
+      marking: adopted.marking,
+      isFirstAdoption: adopted.isFirstAdoption,
+      ctaPath: '/app',
+    };
+  } catch {
+    return { ok: false, redirectTo: '/app/planner?error=adopt' };
   }
 }
