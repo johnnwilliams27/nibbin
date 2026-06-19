@@ -256,4 +256,38 @@ describe('config', () => {
     const router = createRouter();
     await expect(router.route(chat('hi', { userId: ' ' }))).rejects.toThrow(/userId/);
   });
+
+  it('rejects an unvetted candidate model (never an unvetted model — fail-closed)', () => {
+    // red-team P3 + logic-skeptic P3: an unknown id can never become eligible.
+    expect(() =>
+      createRouter({ taskCandidates: { specialist_draft: ['not-a-real-model'] } }),
+    ).toThrow(/not a vetted model/);
+  });
+
+  it('rejects an empty-string candidate (logic-skeptic P3b)', () => {
+    expect(() =>
+      createRouter({ taskCandidates: { specialist_draft: [''] } }),
+    ).toThrow(/empty candidate model/);
+    expect(() =>
+      createRouter({ taskCandidates: { specialist_draft: ['  '] } }),
+    ).toThrow(/empty candidate model/);
+  });
+
+  it('accepts a candidate that is a known/vetted model', () => {
+    // a configured tier model is always vetted...
+    expect(() =>
+      createRouter({ taskCandidates: { specialist_draft: ['claude-sonnet-4-6'] } }),
+    ).not.toThrow();
+    // ...and a claude-* challenger clears the structural shape gate.
+    expect(() =>
+      createRouter({ taskCandidates: { specialist_draft: ['claude-haiku-4-5-cheaper-variant'] } }),
+    ).not.toThrow();
+  });
+
+  it('reconfigure also rejects an unvetted candidate', () => {
+    const router = createRouter();
+    expect(() =>
+      router.reconfigure({ taskCandidates: { specialist_draft: ['nope'] } }),
+    ).toThrow(/not a vetted model/);
+  });
 });
