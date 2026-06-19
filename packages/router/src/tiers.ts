@@ -86,13 +86,13 @@ export const UNBUDGETED_T2_TASKS: ReadonlySet<RoutedTask> = new Set<RoutedTask>(
  * allowlist, and adding a candidate is itself an eval-gated act (M6.5 §9
  * "swaps gated by the eval suite").
  *
- * DEFAULT IS EMPTY: when a task has no explicit candidate set, resolution
- * seeds the set from the CURRENT config (the task pin if present, else the
- * tier default) — so today's single configured model is the SOLE candidate
- * and behavior is byte-for-byte unchanged. Reinforcement diverges from the
- * static config ONLY for a task that names ≥2 candidates here AND has
- * ≥ MIN_DECIDED_CALLS of decided data. Seed a 2nd candidate (after it clears
- * the eval suite) to turn reinforcement on for that task.
+ * A task with NO explicit set here resolves to its single configured model
+ * (task pin if present, else the tier default) — its sole candidate. Two sets
+ * were eval-cleared + armed 2026-06-19 (below; see docs/eval/routing-2026-06-19.md).
+ * Even for an armed task, route() is byte-for-byte unchanged UNTIL
+ * `NIBBIN_REINFORCEMENT` is on (the incumbent is listed FIRST, so the
+ * no-perf-source path returns it) AND ≥ MIN_DECIDED_CALLS of decided data has
+ * accrued. Add a candidate only after it clears the eval suite (M6.5 §9).
  */
 export const DEFAULT_TASK_CANDIDATES: Partial<Record<RoutedTask, readonly string[]>> = {
   // Eval-cleared 2026-06-19 — see docs/eval/routing-*.md
