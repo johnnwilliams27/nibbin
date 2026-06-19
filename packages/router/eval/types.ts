@@ -60,15 +60,28 @@ export interface CandidatePair {
   incumbent: string;
   challenger: string;
   kind: ChallengeKind;
+  /**
+   * REPORT-ONLY pairs (the T2 splurges — diagnosis_synthesis, nibbin_note) are
+   * scored + surfaced in the report for INSIGHT, but are NEVER armed into
+   * DEFAULT_TASK_CANDIDATES regardless of clearance (§6.3 "never cost-optimize
+   * the moment that earns belief"). `clearedEntries` (and thus `--write`) skips
+   * any pair flagged here — a hard guard, independent of the score.
+   */
+  reportOnly?: boolean;
 }
 
 /** One scored model output for one fixture. */
 export interface FixtureScore {
   fixtureId: string;
-  /** 0..1 judge score. */
+  /** 0..1 judge score. When multi-sample judging is used, this is the MEDIAN. */
   score: number;
   /** The judge's one-line rationale (kept short; no fixture content echoed). */
   rationale: string;
+  /**
+   * The raw per-sample scores when `sampleCount > 1` (variance visibility in
+   * the report). Length 1 / absent for single-sample (mock + cheap) runs.
+   */
+  samples?: number[];
 }
 
 /** A model's aggregate over a task's fixtures. */
@@ -77,8 +90,14 @@ export interface ModelResult {
   /** Mean of the per-fixture scores (0..1). */
   aggregate: number;
   scores: FixtureScore[];
-  /** Mean cost per call in micro-USD across the fixtures (the P8 signal). */
+  /**
+   * Mean cost per call in micro-USD across the fixtures (the P8 signal). When
+   * the model has no pinned price (e.g. `claude-fable-5`), this is 0 AND
+   * `costKnown` is false — the report renders "N/A" instead of $0.
+   */
   avgCostMicroUsd: number;
+  /** false when no pricing is pinned for the model (cost-delta is informational only). */
+  costKnown: boolean;
 }
 
 /** The full per-pair clearance result (incumbent vs challenger over a task). */
@@ -86,6 +105,8 @@ export interface PairResult {
   task: RoutedTask;
   tier: Tier;
   kind: ChallengeKind;
+  /** Mirrors CandidatePair.reportOnly — splurge pairs scored but never armed. */
+  reportOnly?: boolean;
   rubricVersion: string;
   incumbent: ModelResult;
   challenger: ModelResult;
@@ -95,6 +116,11 @@ export interface PairResult {
   reason: string;
   /** challenger.avgCost − incumbent.avgCost (negative = a cost win). */
   costDeltaMicroUsd: number;
+  /**
+   * false when either side's price is unpinned (e.g. a Fable challenger) — the
+   * delta is then meaningless and the report renders it "N/A".
+   */
+  costDeltaKnown: boolean;
 }
 
 /** The complete harness run (all pairs) — the report payload. */
