@@ -193,9 +193,10 @@ async function applyOutcome(
         accountId, channel, externalId,
         kind: 'awaiting', planRunId: runId, requestId: request.requestId, requestKind: 'approval',
       });
+      // FIX 4: embed requestId in button ids so a stale tap carries its own requestId.
       const actions: ChannelAction[] = [
-        { id: 'pw:approve', label: 'Approve', kind: 'approve' },
-        { id: 'pw:reject', label: 'Reject', kind: 'deny' },
+        { id: `pw:approve:${request.requestId}`, label: 'Approve', kind: 'approve' },
+        { id: `pw:reject:${request.requestId}`, label: 'Reject', kind: 'deny' },
       ];
       if (deps.replyWithActions) {
         await deps.replyWithActions(channel, externalId, draftSummary(request), actions);
@@ -230,6 +231,10 @@ async function applyOutcome(
     await deps.reply(channel, externalId, killSummary(outcome.reason));
     return;
   }
+
+  // FIX 5: defensive fallback — never leave a session orphaned on an unknown outcome kind.
+  await session.clear(channel, externalId);
+  await deps.reply(channel, externalId, "Something went sideways — open the app to take a look.");
 }
 
 // ---------------------------------------------------------------------------
@@ -250,13 +255,23 @@ export async function handleInbound(
   // without going through the classifier at all.
   const session = deps.session ?? null;
   const activeSession = session ? await session.get(channel, externalId) : null;
-  const userId = deps.userId ?? '';
+  const userId = deps.userId;
 
   // (A) Plan-action button callbacks
   if (inbound.planAction) {
     const act = inbound.planAction;
 
-    if (act === 'ps:go' && activeSession?.kind === 'proposed' && activeSession.plan) {
+    if (act === 'ps:go' && activeSession?.kind === 'proposed') {
+      if (!activeSession.plan) {
+        // FIX 3: proposed session with no plan — orphan; clear and error.
+        await session!.clear(channel, externalId);
+        await deps.reply(channel, externalId, "Something went wrong with that plan — try asking again.");
+        return;
+      }
+      if (!userId) {
+        await deps.reply(channel, externalId, "I couldn't action that — open the app to take a look.");
+        return;
+      }
       const startWork = deps.startWork;
       if (!startWork) {
         await deps.reply(channel, externalId, "Work isn't available yet — try again soon.");
@@ -279,12 +294,13 @@ export async function handleInbound(
 
     if (act === 'pw:approve' && activeSession?.kind === 'awaiting' && activeSession.requestKind === 'approval') {
       const respondWork = deps.respondWork;
-      if (!respondWork || !activeSession.planRunId || !activeSession.requestId) {
+      if (!respondWork || !activeSession.planRunId || !activeSession.requestId || !userId) {
         await deps.reply(channel, externalId, "I couldn't action that — open the app to take a look.");
         return;
       }
+      // FIX 4: use planRequestId from button (stale-tap safety) or fall back to session's requestId.
       const outcome = await respondWork(accountId, userId, activeSession.planRunId, {
-        requestId: activeSession.requestId,
+        requestId: inbound.planRequestId ?? activeSession.requestId,
         approval: 'approved',
       });
       await applyOutcome(outcome, { accountId, channel, externalId, deps });
@@ -293,18 +309,25 @@ export async function handleInbound(
 
     if (act === 'pw:reject' && activeSession?.kind === 'awaiting' && activeSession.requestKind === 'approval') {
       const respondWork = deps.respondWork;
-      if (!respondWork || !activeSession.planRunId || !activeSession.requestId) {
+      if (!respondWork || !activeSession.planRunId || !activeSession.requestId || !userId) {
         await deps.reply(channel, externalId, "I couldn't action that — open the app to take a look.");
         return;
       }
+      // FIX 4: use planRequestId from button (stale-tap safety) or fall back to session's requestId.
       const outcome = await respondWork(accountId, userId, activeSession.planRunId, {
-        requestId: activeSession.requestId,
+        requestId: inbound.planRequestId ?? activeSession.requestId,
         approval: 'rejected',
       });
       await applyOutcome(outcome, { accountId, channel, externalId, deps });
       return;
     }
     // Unknown or unmatched plan action — fall through to normal routing below
+  }
+
+  // FIX 2: stray planAction with an active session — never fall through to free-text (B) branch.
+  if (inbound.planAction && activeSession) {
+    await deps.reply(channel, externalId, "Tap the buttons on the message above, or say 'cancel'.");
+    return;
   }
 
   // (B) Free-text while a session is active
@@ -319,7 +342,7 @@ export async function handleInbound(
     if (activeSession.kind === 'awaiting' && activeSession.requestKind && activeSession.requestKind !== 'approval') {
       // auth | decision | value — free text is the answer
       const respondWork = deps.respondWork;
-      if (!respondWork || !activeSession.planRunId || !activeSession.requestId) {
+      if (!respondWork || !activeSession.planRunId || !activeSession.requestId || !userId) {
         await deps.reply(channel, externalId, "I couldn't continue — open the app to take a look.");
         return;
       }
@@ -396,7 +419,7 @@ export async function handleInbound(
       return;
     }
 
-    if (!deps.workEnabled || !deps.proposeWork || !session) {
+    if (!deps.workEnabled || !deps.proposeWork || !session || !userId) {
       await deps.reply(
         channel,
         externalId,

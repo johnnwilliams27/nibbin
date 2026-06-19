@@ -269,8 +269,8 @@ describe('supabaseIngestDeps — Task 5 wiring', () => {
     const convMod = await import('./conversation');
     handleInboundSpy = vi.spyOn(convMod, 'handleInbound').mockResolvedValue(undefined) as ReturnType<typeof vi.fn>;
 
-    // Default fromMock: chains for notification_channels (linked_by lookup) and
-    // channel_work_session (session.get).
+    // Default fromMock: chains for notification_channels (linked_by lookup),
+    // memberships (FIX 1 active-member check), and channel_work_session (session.get).
     fromMock.mockImplementation((table: string) => {
       if (table === 'notification_channels') {
         return {
@@ -280,6 +280,18 @@ describe('supabaseIngestDeps — Task 5 wiring', () => {
                 eq: () => ({
                   maybeSingle: () => Promise.resolve({ data: { linked_by: LINKED_BY }, error: null }),
                 }),
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === 'memberships') {
+        // FIX 1: active member by default — returns count=1 so userId is resolved.
+        return {
+          select: (_col: string, _opts: unknown) => ({
+            eq: () => ({
+              eq: () => ({
+                eq: () => Promise.resolve({ count: 1, error: null }),
               }),
             }),
           }),
@@ -349,6 +361,18 @@ describe('supabaseIngestDeps — Task 5 wiring', () => {
           }),
         };
       }
+      if (table === 'memberships') {
+        // FIX 1: active member when linkedBy is set — returns count=1.
+        return {
+          select: (_col: string, _opts: unknown) => ({
+            eq: () => ({
+              eq: () => ({
+                eq: () => Promise.resolve({ count: linkedBy !== null ? 1 : 0, error: null }),
+              }),
+            }),
+          }),
+        };
+      }
       if (table === 'channel_work_session') {
         return {
           select: () => ({
@@ -393,6 +417,57 @@ describe('supabaseIngestDeps — Task 5 wiring', () => {
     expect(deps.userId).toBeUndefined();
   });
 
+  // FIX 1: membership check — userId undefined when linked_by is set but not an active member
+  it('FIX 1: leaves userId undefined when linked_by is set but membership row is absent/inactive', async () => {
+    // fromMock returns linked_by but memberships count=0 (inactive member)
+    const deps = await runHandoff(LINKED_BY, (table: string) => {
+      if (table === 'notification_channels') {
+        return {
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                eq: () => ({
+                  maybeSingle: () => Promise.resolve({ data: { linked_by: LINKED_BY }, error: null }),
+                }),
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === 'memberships') {
+        // Simulate count query returning 0 — user not an active member
+        return {
+          select: (_col: string, _opts: unknown) => ({
+            eq: () => ({
+              eq: () => ({
+                eq: () => Promise.resolve({ count: 0, error: null }),
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === 'channel_work_session') {
+        return {
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                maybeSingle: () => Promise.resolve({ data: null, error: null }),
+              }),
+            }),
+          }),
+        };
+      }
+      return {
+        select: () => ({
+          eq: () => ({
+            maybeSingle: () => Promise.resolve({ data: null, error: null }),
+          }),
+        }),
+      };
+    });
+    expect(deps.userId).toBeUndefined();
+  });
+
   // ── session.get ───────────────────────────────────────────────────────────
 
   it('session.get returns null when no row exists', async () => {
@@ -416,6 +491,9 @@ describe('supabaseIngestDeps — Task 5 wiring', () => {
             }),
           }),
         };
+      }
+      if (table === 'memberships') {
+        return { select: (_c: string, _o: unknown) => ({ eq: () => ({ eq: () => ({ eq: () => Promise.resolve({ count: 1, error: null }) }) }) }) };
       }
       if (table === 'channel_work_session') {
         return {
@@ -471,6 +549,9 @@ describe('supabaseIngestDeps — Task 5 wiring', () => {
             }),
           }),
         };
+      }
+      if (table === 'memberships') {
+        return { select: (_c: string, _o: unknown) => ({ eq: () => ({ eq: () => ({ eq: () => Promise.resolve({ count: 1, error: null }) }) }) }) };
       }
       if (table === 'channel_work_session') {
         return {

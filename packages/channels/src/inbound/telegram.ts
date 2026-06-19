@@ -28,11 +28,22 @@ export function parseTelegramUpdate(update: unknown, now: number): InboundChanne
     const chatId = u.callback_query.message?.chat?.id;
     const data = String(u.callback_query.data ?? '');
     if (chatId == null) return null;
-    // Plan-session callbacks: route as planAction, no legacy fields set.
+    // Plan-session callbacks: exact match (ps:go, ps:cancel, pw:approve, pw:reject).
     if (PLAN_ACTIONS.has(data)) {
       return {
         channel: 'telegram', externalId: String(chatId), text: data, receivedAt: now,
         planAction: data as 'ps:go' | 'ps:cancel' | 'pw:approve' | 'pw:reject',
+      };
+    }
+    // FIX 4: pw:approve:<rid> and pw:reject:<rid> — base action + embedded requestId.
+    if (data.startsWith('pw:approve:') || data.startsWith('pw:reject:')) {
+      const isApprove = data.startsWith('pw:approve:');
+      const base = isApprove ? 'pw:approve' : 'pw:reject';
+      const rid = data.slice(base.length + 1); // skip "pw:approve:" or "pw:reject:"
+      return {
+        channel: 'telegram', externalId: String(chatId), text: data, receivedAt: now,
+        planAction: base as 'pw:approve' | 'pw:reject',
+        planRequestId: rid || undefined,
       };
     }
     // Legacy: "<requestId>:<action>" format for agent-run approvals.

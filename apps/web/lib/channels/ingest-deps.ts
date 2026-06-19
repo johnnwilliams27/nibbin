@@ -332,10 +332,11 @@ export function supabaseIngestDeps(): IngestDeps {
       const gateDeps = buildGateDeps(svc);
 
       // ── userId: resolve linked_by from the verified binding ───────────────
-      // Mirrors decideViaChannel step (a)/(b): query notification_channels for
-      // the status='verified' row and extract linked_by. If null (no attributable
-      // actor), leave userId undefined — the work branch honest-degrades without
-      // an authenticated user id (never initiates work without a linked user).
+      // Mirrors decideViaChannel steps (a)/(b)/(c): query notification_channels
+      // for the status='verified' row, extract linked_by, then verify that user
+      // is an ACTIVE member of the account. If either check fails, leave userId
+      // undefined — the work branch honest-degrades without an authenticated,
+      // active-member user id (never initiates work without a verified actor).
       const { data: binding } = await svc
         .from('notification_channels')
         .select('linked_by')
@@ -344,6 +345,20 @@ export function supabaseIngestDeps(): IngestDeps {
         .eq('status', 'verified')
         .maybeSingle();
       const linkedBy = (binding?.linked_by as string | null | undefined) ?? null;
+
+      // FIX 1: membership check — mirrors decideViaChannel step (c).
+      let resolvedLinkedBy: string | null = null;
+      if (linkedBy !== null) {
+        const { count: memberCount } = await svc
+          .from('memberships')
+          .select('id', { count: 'exact', head: true })
+          .eq('account_id', verified.accountId)
+          .eq('user_id', linkedBy)
+          .eq('status', 'active');
+        if ((memberCount ?? 0) > 0) {
+          resolvedLinkedBy = linkedBy;
+        }
+      }
 
       const deps: HandleInboundDeps = {
         classify: classifyIntent,
@@ -370,10 +385,10 @@ export function supabaseIngestDeps(): IngestDeps {
 
         workEnabled: process.env.CHANNELS_INITIATED_WORK_ENABLED === 'true',
 
-        // ── userId: linked_by from the verified binding ───────────────────
-        // undefined when no linked_by — the work branch never initiates work
-        // without an attributable actor (honest-degrade).
-        ...(linkedBy !== null ? { userId: linkedBy } : {}),
+        // ── userId: linked_by verified as active member of the account ────
+        // undefined when no linked_by or the user is not an active member.
+        // FIX 1: mirrors decideViaChannel steps (b)+(c) — both checks required.
+        ...(resolvedLinkedBy !== null ? { userId: resolvedLinkedBy } : {}),
 
         // ── session: channel_work_session store ───────────────────────────
         session: {

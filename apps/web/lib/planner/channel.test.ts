@@ -31,6 +31,7 @@ vi.mock('@nibbin/runtime', async (orig) => {
 
 // ── import AFTER mocks are wired ──────────────────────────────────────────
 import { InMemoryPlanRunStore } from './run';
+import { PLAN_CEILINGS } from './plan';
 import {
   startPlanRunForChannel,
   respondToPlanRunForChannel,
@@ -169,6 +170,33 @@ describe('startPlanRunForChannel — (c) concurrency cap → {error} at 3 runnin
 
     expect('error' in out).toBe(true);
     expect(runPlan).not.toHaveBeenCalled();
+  });
+});
+
+describe('startPlanRunForChannel — (d) FIX 6: ceiling clamp — widened client plan gets re-stamped', () => {
+  it('re-stamps PLAN_CEILINGS even when client posts widened ceilings', async () => {
+    const store = new InMemoryPlanRunStore();
+    runPlan.mockClear();
+    runPlan.mockResolvedValueOnce({ kind: 'done', runId: 'r', artifact: { summary: 'ok' } });
+
+    // A plan with ceilings widened far beyond the canonical limits
+    const tamperedCeilingsPlan: PlanSpec = {
+      ...validPlan(),
+      ceilings: { maxSteps: 9999, maxTokens: 999999, maxWallClockMs: 999_000_000, maxIterations: 999 },
+    };
+
+    const out = await startPlanRunForChannel(ACCOUNT, USER, tamperedCeilingsPlan, {
+      store,
+      buildDeps: async () => stubDeps() as unknown as Awaited<ReturnType<typeof import('./run').buildPlannerRunDeps>>,
+    });
+
+    expect('error' in out).toBe(false);
+    expect(runPlan).toHaveBeenCalledTimes(1);
+    // The plan passed to runPlan must have PLAN_CEILINGS, not the widened values
+    const ranPlan = (runPlan.mock.calls[0] as unknown[])[0] as PlanSpec;
+    expect(ranPlan.ceilings).toEqual(PLAN_CEILINGS);
+    expect(ranPlan.ceilings.maxTokens).toBe(8000);
+    expect(ranPlan.ceilings.maxIterations).toBe(12);
   });
 });
 

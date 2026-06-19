@@ -53,6 +53,49 @@ describe('telegram inbound', () => {
       expect(m?.action).toBeUndefined();
     });
 
+    // FIX 4: pw:approve:<rid> and pw:reject:<rid> parsing
+    it('FIX 4: parses pw:approve:<rid> — sets planAction=pw:approve and planRequestId', () => {
+      const m = parseTelegramUpdate(
+        { callback_query: { message: { chat: { id: 77 } }, data: 'pw:approve:r42' } },
+        100,
+      );
+      expect(m).not.toBeNull();
+      expect(m?.planAction).toBe('pw:approve');
+      expect(m?.planRequestId).toBe('r42');
+      expect(m?.inReplyTo).toBeUndefined();
+      expect(m?.action).toBeUndefined();
+    });
+
+    it('FIX 4: parses pw:reject:<rid> — sets planAction=pw:reject and planRequestId', () => {
+      const m = parseTelegramUpdate(
+        { callback_query: { message: { chat: { id: 77 } }, data: 'pw:reject:abc-123' } },
+        100,
+      );
+      expect(m).not.toBeNull();
+      expect(m?.planAction).toBe('pw:reject');
+      expect(m?.planRequestId).toBe('abc-123');
+      expect(m?.inReplyTo).toBeUndefined();
+      expect(m?.action).toBeUndefined();
+    });
+
+    it('FIX 4: exact pw:approve (no rid) still works as before — no planRequestId', () => {
+      const m = parseTelegramUpdate(
+        { callback_query: { message: { chat: { id: 77 } }, data: 'pw:approve' } },
+        100,
+      );
+      expect(m?.planAction).toBe('pw:approve');
+      expect(m?.planRequestId).toBeUndefined();
+    });
+
+    it('FIX 4: exact pw:reject (no rid) still works as before — no planRequestId', () => {
+      const m = parseTelegramUpdate(
+        { callback_query: { message: { chat: { id: 77 } }, data: 'pw:reject' } },
+        100,
+      );
+      expect(m?.planAction).toBe('pw:reject');
+      expect(m?.planRequestId).toBeUndefined();
+    });
+
     it('still parses a legacy <uuid>:approve callback via the legacy path', () => {
       const m = parseTelegramUpdate(
         { callback_query: { message: { chat: { id: 55 } }, data: 'req-uuid-123:approve' } },

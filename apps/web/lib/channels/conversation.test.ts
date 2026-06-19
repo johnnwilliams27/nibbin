@@ -487,11 +487,27 @@ describe('handleInbound — work branch with Planner (Task 3 session state machi
     expect(setArg.requestId).toBe(REQUEST_ID);
     expect(setArg.requestKind).toBe('approval');
 
-    // Buttons: Approve + Reject
+    // Buttons: Approve + Reject (FIX 4: ids now include requestId)
     expect(deps.repliedWithActions).toHaveLength(1);
     const { actions } = deps.repliedWithActions[0];
-    expect(actions.some(a => a.id === 'pw:approve')).toBe(true);
-    expect(actions.some(a => a.id === 'pw:reject')).toBe(true);
+    expect(actions.some(a => a.id === `pw:approve:${REQUEST_ID}`)).toBe(true);
+    expect(actions.some(a => a.id === `pw:reject:${REQUEST_ID}`)).toBe(true);
+  });
+
+  // FIX 4: ps:go → needs_input(approval) → buttons include requestId in id
+  it('FIX 4: approval buttons carry requestId in their ids (pw:approve:<rid>, pw:reject:<rid>)', async () => {
+    const proposedSession: WorkSession = {
+      accountId: ACCOUNT_ID, channel: CHANNEL, externalId: EXTERNAL_ID,
+      kind: 'proposed', plan: STUB_PLAN,
+    };
+    const deps = makeWorkDeps({}, proposedSession);
+    const inbound = makeInbound({ planAction: 'ps:go' });
+    await handleInbound(makeVerified(inbound), deps);
+
+    expect(deps.repliedWithActions).toHaveLength(1);
+    const { actions } = deps.repliedWithActions[0];
+    expect(actions.some(a => a.id === `pw:approve:${REQUEST_ID}`)).toBe(true);
+    expect(actions.some(a => a.id === `pw:reject:${REQUEST_ID}`)).toBe(true);
   });
 
   // (A) pw:approve callback → respondWork → done → clear session + result reply
@@ -625,6 +641,102 @@ describe('handleInbound — work branch with Planner (Task 3 session state machi
     expect(decideCalls).toHaveLength(1);
     expect(deps.proposeWorkCalls).toHaveLength(0);
     expect(deps.startWorkCalls).toHaveLength(0);
+  });
+
+  // FIX 1: userId undefined (no active membership) → honest-degrade, proposeWork NOT called
+  it('FIX 1: work intent with userId:undefined → honest-degrade, proposeWork NOT called', async () => {
+    const deps = makeWorkDeps({ userId: undefined });
+    const inbound = makeInbound({ text: 'draft a reply to Maya' });
+    await handleInbound(makeVerified(inbound), deps);
+
+    expect(deps.proposeWorkCalls).toHaveLength(0);
+    expect(deps.startWorkCalls).toHaveLength(0);
+    expect(deps.replied).toHaveLength(1);
+    expect(deps.replied[0].body).toBe(
+      "I can't take that on just yet — but I can tell you what your grove's up to, or you can do it in the app.",
+    );
+  });
+
+  // FIX 1: userId undefined → ps:go degrades honestly without calling startWork
+  it('FIX 1: ps:go with userId:undefined → cannot-action reply, startWork NOT called', async () => {
+    const proposedSession: WorkSession = {
+      accountId: ACCOUNT_ID, channel: CHANNEL, externalId: EXTERNAL_ID,
+      kind: 'proposed', plan: STUB_PLAN,
+    };
+    const deps = makeWorkDeps({ userId: undefined }, proposedSession);
+    const inbound = makeInbound({ planAction: 'ps:go' });
+    await handleInbound(makeVerified(inbound), deps);
+
+    expect(deps.startWorkCalls).toHaveLength(0);
+    expect(deps.replied.some(r => r.body.includes("couldn't action"))).toBe(true);
+  });
+
+  // FIX 2: stray planAction with active session → nudge, respondWork NOT called
+  it('FIX 2: stale planAction (ps:go) with awaiting(value) session → nudge, respondWork NOT called', async () => {
+    const awaitingSession: WorkSession = {
+      accountId: ACCOUNT_ID, channel: CHANNEL, externalId: EXTERNAL_ID,
+      kind: 'awaiting', planRunId: RUN_ID_WORK, requestId: REQUEST_ID, requestKind: 'value',
+    };
+    const deps = makeWorkDeps({ classify: () => ({ kind: 'status', text: 'ps:go' }) }, awaitingSession);
+    const inbound = makeInbound({ text: 'ps:go', planAction: 'ps:go' });
+    await handleInbound(makeVerified(inbound), deps);
+
+    expect(deps.respondWorkCalls).toHaveLength(0);
+    expect(deps.replied).toHaveLength(1);
+    expect(deps.replied[0].body).toMatch(/tap the buttons|cancel/i);
+  });
+
+  // FIX 3: ps:go with proposed session but null plan → clear + error reply
+  it('FIX 3: ps:go with proposed session but no plan → clears session, replies error', async () => {
+    const proposedSessionNoPlan: WorkSession = {
+      accountId: ACCOUNT_ID, channel: CHANNEL, externalId: EXTERNAL_ID,
+      kind: 'proposed', plan: undefined,
+    };
+    const deps = makeWorkDeps({}, proposedSessionNoPlan);
+    const inbound = makeInbound({ planAction: 'ps:go' });
+    await handleInbound(makeVerified(inbound), deps);
+
+    expect(deps.session.clear).toHaveBeenCalledTimes(1);
+    expect(deps.startWorkCalls).toHaveLength(0);
+    expect(deps.replied.some(r => r.body.includes('went wrong with that plan'))).toBe(true);
+  });
+
+  // FIX 4: pw:approve with planRequestId (stale) → respondWork called with the stale id
+  it('FIX 4: pw:approve with planRequestId (stale) → respondWork called with the stale requestId', async () => {
+    const awaitingSession: WorkSession = {
+      accountId: ACCOUNT_ID, channel: CHANNEL, externalId: EXTERNAL_ID,
+      kind: 'awaiting', planRunId: RUN_ID_WORK, requestId: REQUEST_ID, requestKind: 'approval',
+    };
+    const STALE_REQUEST_ID = 'req-stale-999';
+    const deps = makeWorkDeps({}, awaitingSession);
+    // Simulate respondWork returning current outcome on mismatch (idempotent re-read)
+    deps.respondWork = vi.fn(async (_acct, _user, _run, _response) => {
+      // Mimics respondToRequest mismatch: returns current needs_input outcome
+      return { kind: 'needs_input', runId: RUN_ID_WORK, request: { requestId: REQUEST_ID, kind: 'approval', question: 'Approve?', context: { title: 'Re-prompt', action: 'send_email' } } } as import('@nibbin/runtime').PlanOutcome;
+    }) as typeof deps.respondWork;
+    const inbound = makeInbound({ planAction: 'pw:approve', planRequestId: STALE_REQUEST_ID });
+    await handleInbound(makeVerified(inbound), deps);
+
+    const respondCalls = (deps.respondWork as ReturnType<typeof vi.fn>).mock.calls;
+    expect(respondCalls).toHaveLength(1);
+    const [, , , response] = respondCalls[0] as Parameters<NonNullable<HandleInboundDeps['respondWork']>>;
+    expect(response).toMatchObject({ requestId: STALE_REQUEST_ID, approval: 'approved' });
+  });
+
+  // FIX 5: unknown outcome kind → clear session + sideways reply
+  it('FIX 5: startWork returns unknown outcome kind → clears session, replies sideways message', async () => {
+    const proposedSession: WorkSession = {
+      accountId: ACCOUNT_ID, channel: CHANNEL, externalId: EXTERNAL_ID,
+      kind: 'proposed', plan: STUB_PLAN,
+    };
+    const deps = makeWorkDeps({
+      startWork: async () => ({ kind: 'unknown_future_outcome' } as unknown as import('@nibbin/runtime').PlanOutcome),
+    }, proposedSession);
+    const inbound = makeInbound({ planAction: 'ps:go' });
+    await handleInbound(makeVerified(inbound), deps);
+
+    expect(deps.session.clear).toHaveBeenCalledTimes(1);
+    expect(deps.replied.some(r => r.body.includes('went sideways'))).toBe(true);
   });
 
   // proposeWork returns error → reply error, no session set
