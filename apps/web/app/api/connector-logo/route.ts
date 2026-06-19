@@ -13,6 +13,10 @@ const ALLOWED_DOMAINS = new Set(
 
 const ONE_DAY = 60 * 60 * 24;
 const ONE_WEEK = ONE_DAY * 7;
+const MAX_LOGO_BYTES = 512 * 1024;
+
+// Intentionally public: brand logos are public assets and the response is the
+// same for everyone, so no appSession/auth is needed (and an <img> can't send it).
 
 export async function GET(req: NextRequest) {
   const domain = req.nextUrl.searchParams.get("domain");
@@ -36,14 +40,27 @@ export async function GET(req: NextRequest) {
     return new Response(null, { status: 404 });
   }
 
+  // Clearbit can answer HTTP 200 with a non-image body (e.g. an HTML rate-limit
+  // or maintenance page). Serve only real images so we never cache a poisoned
+  // "logo" slot — anything else falls through to the client's monogram fallback.
+  const contentType = upstream.headers.get("content-type") ?? "";
+  if (!contentType.startsWith("image/")) {
+    return new Response(null, { status: 404 });
+  }
+
   const body = await upstream.arrayBuffer();
-  const contentType = upstream.headers.get("content-type") ?? "image/png";
+  // Hard size cap — real logos are a few KB; reject anything unexpectedly large.
+  if (body.byteLength > MAX_LOGO_BYTES) {
+    return new Response(null, { status: 404 });
+  }
+
   return new Response(body, {
     status: 200,
     headers: {
       "content-type": contentType,
-      // Long-lived caching at the CDN + browser so repeat views don't re-proxy.
-      "cache-control": `public, max-age=${ONE_DAY}, s-maxage=${ONE_WEEK}, immutable`,
+      // Cached at the CDN + browser so repeat views don't re-proxy. NOT `immutable`:
+      // the URL isn't content-hashed, so a stale/bad entry must remain refreshable.
+      "cache-control": `public, max-age=${ONE_DAY}, s-maxage=${ONE_WEEK}`,
     },
   });
 }
