@@ -10,14 +10,7 @@
  *
  * No DB is touched: recordModelCall is stubbed; the router uses InMemoryBudgetStore.
  */
-import { describe, expect, it, vi, beforeEach } from 'vitest';
-import {
-  createRouter,
-  InMemoryBudgetStore,
-  type Generate,
-  type GenerateResult,
-  type Router,
-} from '@nibbin/router';
+import { describe, expect, it, vi } from 'vitest';
 
 // ── stubs ────────────────────────────────────────────────────────────────────
 
@@ -26,34 +19,6 @@ vi.mock('../llm/client', () => ({
   // anthropicGenerate stub returns null — the freeform fn returns null when no key.
   anthropicGenerate: vi.fn(() => null),
 }));
-
-// ── helpers ──────────────────────────────────────────────────────────────────
-
-/** Router that immediately degrades (budget=0). */
-function degradedRouter(): Router {
-  return createRouter({ dailyFrontierBudget: 0, budgetStore: new InMemoryBudgetStore() });
-}
-
-/** Router with ample budget. */
-function healthyRouter(): Router {
-  return createRouter({ dailyFrontierBudget: 10, budgetStore: new InMemoryBudgetStore() });
-}
-
-/** A Generate fn that returns the given text. */
-function mockLlm(text: string): Generate {
-  return vi.fn(async (): Promise<GenerateResult> => ({
-    text,
-    model: 'test-model',
-    usage: { inputTokens: 10, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 20 },
-  }));
-}
-
-/** A Generate fn that throws. */
-function throwingLlm(): Generate {
-  return vi.fn(async (): Promise<GenerateResult> => {
-    throw new Error('provider error');
-  });
-}
 
 // We import the fn under test after the mocks are set up.
 // Because freeform.ts imports groveRouter and anthropicGenerate at module-load
