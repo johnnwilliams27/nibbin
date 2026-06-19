@@ -15,6 +15,16 @@ import { createRouter, type PerformanceSource, type RoutedTask, type Router, typ
 import { pgBudgetStore } from './budget-store';
 import { pgPerformanceSource } from './performance-source';
 
+/**
+ * N17 audit finding: NIBBIN_FRONTIER_BUDGET is the SOLE cap — it is passed
+ * directly as p_limit to frontier_budget_take, which is the durable,
+ * Postgres-enforced gate. There is no separate DB-side maximum: raising this
+ * env var does raise the effective cap. Access is restricted to staff/service
+ * role in Vercel env vars (not user-accessible), so this is an operator
+ * lever, not a user bypass. Keep the value ≤ DEFAULT_DAILY_FRONTIER_BUDGET
+ * (5) in production unless a deliberate capacity decision is recorded in the
+ * SPEC §9 decision log.
+ */
 function budgetFromEnv(): number | undefined {
   const raw = process.env.NIBBIN_FRONTIER_BUDGET;
   if (!raw) return undefined;

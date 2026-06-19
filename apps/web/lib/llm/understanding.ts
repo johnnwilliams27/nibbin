@@ -69,12 +69,12 @@ export async function understandingModelTurn(
       maxTokens: 400,
       temperature: 0.5,
     });
-    await recordModelCall({ accountId, userId, tier: decision.tier, task: 'onboarding_understanding', model: result.model, usage: result.usage, degraded: decision.degraded, latencyMs: Date.now() - t0, outcome: 'ok' });
+    await recordModelCall({ accountId, userId, tier: decision.tier, task: 'onboarding_understanding', model: result.model, usage: result.usage, origin: 'pipeline', degraded: decision.degraded, latencyMs: Date.now() - t0, outcome: 'ok' });
     return parseTurn(result.text);
   } catch (err) {
     console.error('[understanding] model turn failed — static fallback', err instanceof Error ? err.message : err);
     // Ledger the graceful failure (Slice A): zero tokens, no content.
-    await recordModelCall({ accountId, userId, tier: resolvedTier, task: 'onboarding_understanding', model: resolvedModel, usage: { inputTokens: 0, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 0 }, outcome: 'error', degraded: resolvedDegraded, latencyMs: null });
+    await recordModelCall({ accountId, userId, tier: resolvedTier, task: 'onboarding_understanding', model: resolvedModel, usage: { inputTokens: 0, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 0 }, origin: 'pipeline', outcome: 'error', degraded: resolvedDegraded, latencyMs: null });
     return null;
   }
 }
