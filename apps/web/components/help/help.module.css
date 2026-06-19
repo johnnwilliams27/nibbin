@@ -1,0 +1,7 @@
+.logo { width: 28px; height: 28px; object-fit: contain; border-radius: var(--r-input); }
+.logoFallback {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: var(--r-input);
+  background: var(--understory); color: var(--ink-soft);
+  font-family: var(--mono); font-size: 11px; font-weight: 600;
+}
