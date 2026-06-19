@@ -1,9 +1,12 @@
 export { createRouter } from './router';
 export { classifyComplexity } from './classifier';
 export { dayKey, InMemoryBudgetStore } from './budget';
+export { chooseModel } from './reinforce';
 export {
   DEFAULT_DAILY_FRONTIER_BUDGET,
   DEFAULT_MODELS,
+  DEFAULT_REINFORCEMENT,
+  DEFAULT_TASK_CANDIDATES,
   DEFAULT_TASK_MODELS,
   DEGRADATION_NOTICE,
   TIER_FOR_TASK,
@@ -19,6 +22,9 @@ export type {
   BudgetStatus,
   BudgetStore,
   Classification,
+  PerformanceSource,
+  PerfStat,
+  ReinforcementParams,
   RouteDecision,
   RouteOrigin,
   RoutedTask,

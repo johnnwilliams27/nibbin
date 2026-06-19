@@ -1,4 +1,4 @@
-import type { RoutedTask, Tier } from './types';
+import type { ReinforcementParams, RoutedTask, Tier } from './types';
 
 /**
  * The §6.3 tier table, verbatim. `chat` is the single dynamic entry — its
@@ -76,6 +76,56 @@ export const UNBUDGETED_T2_TASKS: ReadonlySet<RoutedTask> = new Set<RoutedTask>(
   // grows) rather than the per-user chat frontier budget.
   'nibbin_note',
 ]);
+
+/**
+ * Per-task ORDERED candidate sets — the eval-cleared allowlist (Slice B,
+ * §4B/§7 "thin owned reinforcement"). Each entry is the set of models the
+ * reinforcement policy may shift traffic AMONG for that task; the FIRST entry
+ * is the safe default (the model route() returns absent data). Reinforcement
+ * NEVER introduces a model outside this set — the candidate set IS the
+ * allowlist, and adding a candidate is itself an eval-gated act (M6.5 §9
+ * "swaps gated by the eval suite").
+ *
+ * DEFAULT IS EMPTY: when a task has no explicit candidate set, resolution
+ * seeds the set from the CURRENT config (the task pin if present, else the
+ * tier default) — so today's single configured model is the SOLE candidate
+ * and behavior is byte-for-byte unchanged. Reinforcement diverges from the
+ * static config ONLY for a task that names ≥2 candidates here AND has
+ * ≥ MIN_DECIDED_CALLS of decided data. Seed a 2nd candidate (after it clears
+ * the eval suite) to turn reinforcement on for that task.
+ */
+export const DEFAULT_TASK_CANDIDATES: Partial<Record<RoutedTask, readonly string[]>> = {
+  // Intentionally empty — every task resolves to its single configured model
+  // until the team adds an eval-cleared second candidate. This pins zero
+  // behavior change at ship: see the route-unchanged test.
+};
+
+/**
+ * Reinforcement weighting parameters (§4B "quality-within-budget"). Thin and
+ * deterministic — NOT ML.
+ * - `minDecidedCalls`: the min-volume floor. A candidate with fewer than this
+ *   many *decided* (human-rated) calls in the window is statistically too thin
+ *   to act on; if the leading candidate lacks the floor we don't reweight at
+ *   all and fall back to the configured default. Prevents one lucky early
+ *   approval from swinging traffic.
+ * - `qualityBandMicros` is unused here; quality comparison is on rate.
+ * - `qualityBar`: a candidate must clear this approved-unedited rate to be
+ *   eligible on quality grounds at all (a model the humans reject most of the
+ *   time is never "cheapest-acceptable").
+ * - `qualityTolerance`: P8 cost-aware tie-break band. Among eligible
+ *   candidates, any whose approved-unedited rate is within this tolerance of
+ *   the BEST eligible rate is "as good"; among those we pick the CHEAPEST
+ *   (avg cost). So we never pay more for a quality difference inside the noise.
+ * - `maxRefusalErrorRate`: a hard exclusion. A candidate refusing/erroring
+ *   more than this fraction of calls is dropped regardless of approval rate
+ *   (a model silently degrading must not keep winning on a stale quality read).
+ */
+export const DEFAULT_REINFORCEMENT: ReinforcementParams = {
+  minDecidedCalls: 30,
+  qualityBar: 0.4,
+  qualityTolerance: 0.03,
+  maxRefusalErrorRate: 0.2,
+};
 
 /** Default T2-from-chat grants per user per day. */
 export const DEFAULT_DAILY_FRONTIER_BUDGET = 5;
