@@ -36,6 +36,7 @@ import {
 import type { Generate, Router } from '@nibbin/router';
 import { serviceClient } from '../supabase/service';
 import { embedQuery } from '../llm/embed';
+import { writeAgentMemory } from '../memory/write';
 import { anthropicGenerate, recordModelCall } from '../llm/client';
 import { groveRouter } from '../grove/router';
 import {
@@ -333,13 +334,31 @@ async function resolveResponse(
  * returns an observation the picker only ever sees QUARANTINED (web.* already
  * quarantine; memory rows are derived, account-scoped, and wrapped here).
  */
-export function buildUtilityDispatch(accountId: string): UtilityDispatch {
+export function buildUtilityDispatch(accountId: string, userId: string, runId?: string): UtilityDispatch {
   return {
     async webSearch(query) {
       return await webSearch(query);
     },
     async webFetch(url) {
       return await webFetch(url);
+    },
+    // memory.write — persist a durable DERIVED fact. Redaction-before-persist +
+    // dedup + account-scope live in writeAgentMemory (#135 stance); the LLM
+    // controls only text/kind/confidence — account_id/userId/source are set here
+    // by trusted code. The observation is plain (an outcome string, not feed
+    // content), so no quarantine wrap is needed.
+    async memoryWrite(text, kind, confidence) {
+      const k = kind === 'fact' || kind === 'preference' || kind === 'entity' ? kind : 'fact';
+      const res = await writeAgentMemory({
+        accountId,
+        userId,
+        text,
+        kind: k,
+        confidence,
+        sourceRunId: runId ?? null,
+      });
+      if (res.ok) return `remembered (${res.status}): "${res.text}"`;
+      return `did not remember: ${res.reason}`;
     },
     async memoryRetrieve(query, k) {
       try {
@@ -529,7 +548,7 @@ export async function buildPlannerRunDeps(accountId: string, userId: string, run
     connectors: connections.map((c) => c.provider),
     connMap,
     accountId,
-    utilities: buildUtilityDispatch(accountId),
+    utilities: buildUtilityDispatch(accountId, userId, runId),
     // computer_use (browser): the driver is built only when COMPUTER_USE_ENABLED
     // is set AND Playwright is installed (else undefined → the harness surfaces a
     // clean "browser unavailable" observation). isPublicIp is the SAME predicate

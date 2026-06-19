@@ -387,6 +387,57 @@ describe('runPlan — resume rebuilds repetition for primitive-internal reads', 
   });
 });
 
+describe('runPlan — memory.write dispatch + per-run write budget', () => {
+  const writePlan = () =>
+    plan({
+      toolsAllowlist: ['memory.write', 'done'],
+      requiredConnectors: [],
+      ceilings: { maxSteps: 60, maxTokens: 8000, maxWallClockMs: 60_000, maxIterations: 20 },
+    });
+
+  it('routes memory.write to the injected handler and surfaces its observation', async () => {
+    const seen: { text: string; kind: string; confidence?: number }[] = [];
+    const utilities = {
+      async memoryWrite(text: string, kind: string, confidence?: number) {
+        seen.push({ text, kind, confidence });
+        return `remembered (created): "${text}"`;
+      },
+    };
+    const { d } = deps(
+      [{ tool: 'memory.write', args: { text: 'prefers a warm sign-off', kind: 'preference', confidence: 0.8 } }, { done: true, artifact: {} }],
+      { utilities },
+    );
+    const outcome = await runPlan(writePlan(), { ...d, connectors: [] });
+    expect(outcome.kind).toBe('done');
+    expect(seen).toEqual([{ text: 'prefers a warm sign-off', kind: 'preference', confidence: 0.8 }]);
+  });
+
+  it('caps memory writes per run (MAX_MEMORY_WRITES = 3): the 4th does not persist', async () => {
+    let calls = 0;
+    const utilities = {
+      async memoryWrite(text: string) {
+        calls += 1;
+        return `remembered (created): "${text}"`;
+      },
+    };
+    // four DISTINCT writes (so repetition never fires) — only the budget stops it.
+    const picks: PlannerPick[] = [1, 2, 3, 4].map((n) => ({ tool: 'memory.write', args: { text: `fact number ${n}`, kind: 'fact' } }));
+    const { d } = deps([...picks, { done: true, artifact: {} }], { utilities });
+    const outcome = await runPlan(writePlan(), { ...d, connectors: [] });
+    expect(outcome.kind).toBe('done');
+    expect(calls).toBe(3); // the 4th hit the budget, no handler call
+  });
+
+  it('handles a missing memoryWrite handler gracefully (no throw)', async () => {
+    const { d } = deps(
+      [{ tool: 'memory.write', args: { text: 'x derived fact', kind: 'fact' } }, { done: true, artifact: {} }],
+      { utilities: {} },
+    );
+    const outcome = await runPlan(writePlan(), { ...d, connectors: [] });
+    expect(outcome.kind).toBe('done');
+  });
+});
+
 describe('runPlan — per-run web-egress cap (FIX 7)', () => {
   it('the 5th distinct web call does not egress', async () => {
     let calls = 0;

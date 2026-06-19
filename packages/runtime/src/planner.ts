@@ -73,6 +73,9 @@ export type PlannerPick = PlannerPickInput;
 export interface UtilityDispatch {
   /** memory.retrieve → the RAG memory_entries (account-scoped, top-k). */
   memoryRetrieve?(query: string, k: number): Promise<string>;
+  /** memory.write → persist a derived fact (redact→embed→dedup→store), account-
+   *  scoped + service-role; returns an observation describing the outcome. */
+  memoryWrite?(text: string, kind: string, confidence?: number): Promise<string>;
   /** web.search → redact→egress→quarantine (apps/web/lib/planner/websearch). */
   webSearch?(query: string): Promise<string>;
   /** web.fetch → SSRF-guarded fetch→quarantine. */
@@ -120,6 +123,12 @@ export const MAX_WEB_CALLS = 4;
 
 /** The egressing utility ids (web.*) — counted against MAX_WEB_CALLS. */
 const WEB_UTILITY_IDS: ReadonlySet<string> = new Set(['web.search', 'web.fetch']);
+
+/** Per-run cap on durable memory writes (memory.write). Bounds memory growth
+ *  per plan run so a loop can't spam memory_entries — a write past the cap does
+ *  NOT persist; it returns a "budget exhausted" observation. The dedup on the
+ *  natural key (apps/web write path) bounds it further across runs. */
+export const MAX_MEMORY_WRITES = 3;
 
 /** Longest observation we keep in the transcript (mirrors the read quarantine cap). */
 const OBSERVATION_MAX_CHARS = 4000;
@@ -302,6 +311,7 @@ export async function runPlan(
   // transcript so a resumed loop can't bypass either guard by forgetting prior
   // utility calls (especially repeated web.* egress).
   let webCalls = 0;
+  let memoryWrites = 0;
   for (const t of state.transcript) {
     if (!('tool' in t.pick) || typeof t.pick.tool !== 'string') continue;
     const tool = t.pick.tool;
@@ -310,6 +320,7 @@ export async function runPlan(
       const repKey = `util:${tool}:${hashArgs(args)}`;
       repetition.set(repKey, (repetition.get(repKey) ?? 0) + 1);
       if (WEB_UTILITY_IDS.has(tool)) webCalls += 1;
+      if (tool === 'memory.write') memoryWrites += 1;
     } else if (capability(tool)?.family === 'computer_use') {
       // Prime the computer_use repetition key so a resumed loop can't bypass the
       // repetition kill by forgetting prior browser picks (mirrors util:/read:).
@@ -455,6 +466,20 @@ export async function runPlan(
         observation = deps.utilities?.memoryRetrieve
           ? await deps.utilities.memoryRetrieve(String(args.query), k)
           : 'memory retrieval is unavailable';
+      } else if (tool === 'memory.write') {
+        // Bounded per-run (MAX_MEMORY_WRITES) so a loop can't spam memory. A
+        // write past the cap does NOT persist. The apps/web handler redacts
+        // (derived-not-raw) BEFORE persist, dedups, and is account-scoped +
+        // service-role — the LLM controls only the proposed text/kind/confidence.
+        if (memoryWrites >= MAX_MEMORY_WRITES) {
+          observation = 'memory write budget exhausted for this run — no further writes';
+        } else {
+          memoryWrites += 1;
+          const confidence = typeof args.confidence === 'number' ? args.confidence : undefined;
+          observation = deps.utilities?.memoryWrite
+            ? await deps.utilities.memoryWrite(String(args.text), String(args.kind), confidence)
+            : 'memory write is unavailable';
+        }
       } else if (tool === 'web.search') {
         if (webCalls >= MAX_WEB_CALLS) {
           observation = 'web budget exhausted for this run — no further web calls';
