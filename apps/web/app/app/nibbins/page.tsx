@@ -326,12 +326,12 @@ export default async function NibbinsPage() {
       <div className={styles.pageHead}>
         <p className={styles.eyebrow}>Agent School</p>
         <h1 className={styles.h1}>Your nibbins</h1>
-        <p className={styles.intro}>
+        <div className={styles.intro}>
           Every Nibbin climbs Agent School the same way — egg, student, senior, graduate — and trust is
           earned through verified accuracy, never time served. Streaks and badges below are read
           straight from real run history.{' '}
-          <InfoTooltip content="Promotion requires 95% of your last 25 decisions approved without edits — no shortcuts, no time-based bumps." />
-        </p>
+          <InfoTooltip content="Promotion is earned by a sustained track record of work you approve without edits — weighted by how much is at stake, and (for graduation) proven across several kinds of task." />
+        </div>
       </div>
 
       <div className={styles.roster}>
@@ -431,7 +431,7 @@ export default async function NibbinsPage() {
                 <span className={styles.footM}>
                   {n.stage === 'grad' ? (
                     <>Access: <b>acting on its own</b>{' '}
-                      <InfoTooltip content="This Nibbin has graduated and can execute tasks without a draft step — you can move it back to draft-only any time." />
+                      <InfoTooltip content="This Nibbin has graduated and can execute tasks without a draft step — you can step it back a grade any time." />
                     </>
                   ) : (
                     <>Access: <b>draft-only until graduation</b>{' '}

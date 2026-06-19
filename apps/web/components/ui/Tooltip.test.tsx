@@ -33,6 +33,36 @@ describe("Tooltip", () => {
     expect(html).toContain("Default side");
     expect(html).toContain('role="tooltip"');
   });
+
+  it("links bubble id to trigger via aria-describedby", () => {
+    const html = renderToStaticMarkup(
+      <Tooltip content="Linked tip">
+        <button type="button">Trigger</button>
+      </Tooltip>
+    );
+    // Extract the tooltip bubble's id
+    const idMatch = html.match(/role="tooltip"\s[^>]*id="([^"]+)"|id="([^"]+)"\s[^>]*role="tooltip"/);
+    // aria-describedby on the trigger must reference that id
+    expect(html).toMatch(/aria-describedby="[^"]+"/);
+    expect(html).toContain('id="');
+    // The id value on the bubble must match aria-describedby on the trigger
+    const describedByMatch = html.match(/aria-describedby="([^"]+)"/);
+    const bubbleIdMatch = html.match(/id="([^"]+)"/);
+    expect(describedByMatch).not.toBeNull();
+    expect(bubbleIdMatch).not.toBeNull();
+    if (describedByMatch && bubbleIdMatch) {
+      expect(describedByMatch[1]).toBe(bubbleIdMatch[1]);
+    }
+  });
+
+  it("merges existing aria-describedby on the child element", () => {
+    const html = renderToStaticMarkup(
+      <Tooltip content="Merged">
+        <button type="button" aria-describedby="existing-id">Trigger</button>
+      </Tooltip>
+    );
+    expect(html).toMatch(/aria-describedby="existing-id [^"]+"/);
+  });
 });
 
 describe("InfoTooltip", () => {

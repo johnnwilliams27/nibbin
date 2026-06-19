@@ -45,7 +45,6 @@
 }
 @media (max-width: 640px) {
   .roster {
-    grid-template-columns: 1fr;
     gap: 12px;
   }
 }

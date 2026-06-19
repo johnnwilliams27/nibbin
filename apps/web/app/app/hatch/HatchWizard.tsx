@@ -187,10 +187,10 @@ export function HatchWizard({ chores, apps }: { chores: ChoreOption[]; apps: str
         <div className={styles.pane}>
           <div className={styles.hatch}>
             <h2>Your egg is ready.</h2>
-            <p className={styles.sub} style={{ marginLeft: 'auto', marginRight: 'auto' }}>
+            <div className={styles.sub} style={{ marginLeft: 'auto', marginRight: 'auto' }}>
               It already knows the chore and the apps. Give it a name — that&rsquo;s the whole setup.{' '}
               <InfoTooltip content="Enrolling starts Agent School: your Nibbin watches silently for a few days, then hatches and begins drafting work for your yes-or-no." />
-            </p>
+            </div>
             <EggCreature species={species} color={palette} />
 
             {!enrolled && (

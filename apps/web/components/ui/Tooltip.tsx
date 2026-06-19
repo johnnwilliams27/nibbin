@@ -1,3 +1,6 @@
+"use client";
+
+import { useId, cloneElement, isValidElement } from "react";
 import type { ReactNode } from "react";
 import styles from "./tooltip.module.css";
 
@@ -14,7 +17,7 @@ export interface TooltipProps {
 
 /**
  * CSS-only tooltip wrapper. Shows a styled bubble on hover and keyboard
- * focus-within. No JS, no "use client" — fully server-component compatible.
+ * focus-within. No JS state — the `useId` call is for aria wiring only.
  *
  * Wrap any trigger element: the wrapper gains `position: relative` and the
  * bubble is absolutely positioned relative to it.
@@ -25,15 +28,28 @@ export interface TooltipProps {
  * </Tooltip>
  */
 export function Tooltip({ content, children, side = "top" }: TooltipProps) {
+  const bubbleId = useId();
   const bubbleClass = [
     styles.bubble,
     side === "bottom" ? styles.bubbleBottom : styles.bubbleTop,
   ].join(" ");
 
+  // Wire aria-describedby onto the trigger child so screen readers announce
+  // the tooltip when the child receives focus.
+  let trigger: ReactNode;
+  if (isValidElement<{ "aria-describedby"?: string }>(children)) {
+    const existing = (children.props as { "aria-describedby"?: string })["aria-describedby"];
+    trigger = cloneElement(children, {
+      "aria-describedby": existing ? `${existing} ${bubbleId}` : bubbleId,
+    });
+  } else {
+    trigger = <span aria-describedby={bubbleId}>{children}</span>;
+  }
+
   return (
     <span className={styles.root}>
-      {children}
-      <span role="tooltip" className={bubbleClass}>
+      {trigger}
+      <span id={bubbleId} role="tooltip" className={bubbleClass}>
         {content}
       </span>
     </span>
