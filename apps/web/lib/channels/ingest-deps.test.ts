@@ -57,15 +57,13 @@ function makeMockSvc(rpcResult: { data: unknown; error: null | { message: string
       calls.push({ method, args });
       return Promise.resolve(rpcResult);
     },
-    // anomaly() uses .from().select()... — not exercised by these tests, but
-    // included so buildGateDeps() doesn't throw on construction.
+    // anomaly() uses .rpc('channel_inbound_anomaly') + .from('audit_log').insert().
+    // The rpc() stub above handles the anomaly RPC. The from() stub below covers
+    // the audit_log insert path (called only when is_anomalous=true).
     from(_table: string) {
       return {
-        select(_cols: string, _opts?: unknown) {
-          return {
-            eq(_col: string, _val: unknown) { return this; },
-            gte(_col: string, _val: unknown) { return Promise.resolve({ count: 0, error: null }); },
-          };
+        insert(_row: unknown) {
+          return Promise.resolve({ error: null });
         },
       };
     },
