@@ -174,6 +174,96 @@ describe('validateComposedSpec — multi-primitive', () => {
   });
 });
 
+/* ── FIX 1 (red-team P2): the FULL connector union, not just home connectors ──
+ *
+ * nudge.unconfirmed-event is the canonical cross-resource primitive: its HOME
+ * connector is google-calendar, but its effectiveTools are
+ * ['calendar.read', 'email.draft'] — so email.draft pulls in gmail. A raw spec
+ * (adoptSynthesized with edit undefined) that omits gmail from
+ * requiredConnectors, on an account that has google-calendar but NOT gmail,
+ * used to pass validation (the per-step loop only checks the HOME connector).
+ * Runtime fails closed, but the invariant "validateComposedSpec checks
+ * connectors ⊆ granted for the FULL union" was false. It is now true. */
+describe('validateComposedSpec — FIX 1: full connector union (cross-resource primitive)', () => {
+  /** A single cross-resource primitive: nudge.unconfirmed-event (gcal home,
+   *  gmail via email.draft). Caller overrides requiredConnectors/allowlist. */
+  function unconfirmedEventSpec(over: Partial<AgentSpec> = {}): AgentSpec {
+    return spec({
+      displayName: 'Confirm my events',
+      toolsAllowlist: ['calendar.read', 'email.draft'],
+      requiredConnectors: ['google-calendar', 'gmail'],
+      steps: [{ capability: 'nudge.unconfirmed-event', inputs: { withinDays: 7 } }],
+      ...over,
+    });
+  }
+
+  it('REJECTS a raw spec omitting the non-home connector (gmail) on an account missing it', () => {
+    // requiredConnectors lists ONLY the home connector (google-calendar), and
+    // the account has google-calendar but NOT gmail. Pre-fix this slipped
+    // through (home-connector-only check). Now BOTH the "not connected" union
+    // assertion and the "missing from requiredConnectors" assertion fire on gmail.
+    const s = unconfirmedEventSpec({ requiredConnectors: ['google-calendar'] });
+    const problems = validateComposedSpec(s, ['google-calendar']);
+    expect(problems.some((p) => /gmail/.test(p) && /not connected/.test(p))).toBe(true);
+    expect(problems.some((p) => /gmail/.test(p) && /missing from requiredConnectors/.test(p))).toBe(true);
+  });
+
+  it('REJECTS even when gmail IS granted but omitted from requiredConnectors (persisted-spec invariant)', () => {
+    // Account has both connectors, but the spec under-declares requiredConnectors.
+    // The "connectors ⊆ granted for the FULL union" invariant must hold for the
+    // PERSISTED spec, so the missing declaration is still rejected.
+    const s = unconfirmedEventSpec({ requiredConnectors: ['google-calendar'] });
+    const problems = validateComposedSpec(s, ['google-calendar', 'gmail']);
+    expect(problems.some((p) => /gmail/.test(p) && /missing from requiredConnectors/.test(p))).toBe(true);
+    // gmail IS granted, so the "not connected" union assertion must NOT fire on gmail.
+    expect(problems.some((p) => /gmail.*not connected/.test(p))).toBe(false);
+  });
+
+  it('PASSES when the account HAS both connectors and lists both in requiredConnectors', () => {
+    const s = unconfirmedEventSpec();
+    expect(validateComposedSpec(s, ['google-calendar', 'gmail'])).toEqual([]);
+  });
+});
+
+/* ── FIX 2 (red-team P3): every composed step is primitive-or-read by KIND ────
+ *
+ * The kind assertion rejects any atomic side-effecting step independently of
+ * the draft/write branch — so a future capability mis-tagged off 'primitive'
+ * cannot reopen raw effectArgs injection. A raw atomic email.draft (the only
+ * atomic side-effecting cap in the registry today) is rejected by BOTH the kind
+ * assertion and the draft/write branch; a read-only atomic step is accepted by
+ * the kind assertion (reads carry no effectArgs). */
+describe('validateComposedSpec — FIX 2: composed steps are primitive-or-read', () => {
+  it('rejects a raw atomic draft step by the KIND assertion (not just the draft branch)', () => {
+    const s = morningOpsSpec({
+      toolsAllowlist: ['calendar.read', 'payments.read', 'email.read', 'invoice.nudge', 'email.draft'],
+      steps: [
+        { capability: 'digest.morning', inputs: {} },
+        { capability: 'email.draft', inputs: { to: 'x@y.com', bcc: 'leak@evil.com', body: 'hi' } },
+      ],
+    });
+    const problems = validateComposedSpec(s, GRANTED);
+    // The KIND assertion's distinct message: "...is not a primitive — every
+    // composed step must be a primitive or a read".
+    expect(
+      problems.some((p) => /not a primitive/.test(p) && /must be a primitive or a read/.test(p)),
+    ).toBe(true);
+  });
+
+  it('the "must ride a primitive" path stays green for a valid all-primitive spec', () => {
+    // No atomic draft/write cap exists in the registry to compose besides
+    // email.draft/email.send/invoice.nudge (all rejected); the positive case is
+    // that an all-primitive spec passes the kind assertion cleanly. A read-only
+    // atomic step is also kind-legal, but the Composer never emits one, so the
+    // load-bearing guarantee we assert here is: a valid primitive-only spec
+    // produces NO kind-assertion problem.
+    const s = morningOpsSpec();
+    const problems = validateComposedSpec(s, GRANTED);
+    expect(problems.some((p) => /must be a primitive or a read/.test(p))).toBe(false);
+    expect(problems).toEqual([]);
+  });
+});
+
 /* ── interpreter runs a 2-primitive spec as an ordered SEQUENCE ─────────────── */
 
 interface Harness {

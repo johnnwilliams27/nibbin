@@ -751,7 +751,10 @@ export function editablePlanFromSpec(spec: AgentSpec): EditablePlan {
  *  - the trusted envelope (toolsAllowlist, requiredConnectors, triggers,
  *    curriculum, credit) is rebuilt server-side from the registry — the client
  *    NEVER supplies it;
- *  - the cadence must be one of COMPOSER_CADENCES (an unknown one is refused);
+ *  - the cadence must be one of COMPOSER_CADENCES; an unknown one is NOT
+ *    refused — it falls back to (defaults to) the reviewed spec's current
+ *    cadence (`cadenceOf(reviewedSpec)`), so an off-menu cadence can never
+ *    widen the schedule, it just leaves it unchanged;
  *  - `validateComposedSpec` runs fail-closed (≥1 step, ≤cap, no duplicate, every
  *    connector granted, allowlist ⊇ yielded tools, acyclic) — an edit that fails
  *    is refused, returned as `{ error }`.
