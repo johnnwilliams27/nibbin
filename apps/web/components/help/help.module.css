@@ -31,6 +31,69 @@
 }
 .search:focus { border-color: var(--ink-soft); }
 
+/* GettingStartedChecklist */
+.checklist { padding: 20px 24px 24px; }
+.checklistHead { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.checklistTitle { font-family: var(--display); font-size: 17px; font-weight: 700; margin: 0; }
+.progress { font-family: var(--mono); font-size: 12px; color: var(--ink-soft); white-space: nowrap; }
+
+/* Progress bar */
+.bar { height: 4px; border-radius: 2px; background: var(--understory); overflow: hidden; margin-bottom: 20px; }
+.barFill { display: block; height: 100%; background: var(--moss); border-radius: 2px; transition: width 0.3s ease; }
+
+/* Step list */
+.steps { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 14px; }
+
+.step,
+.stepDone {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.stepDone .stepLabel { color: var(--ink-soft); text-decoration: line-through; }
+.stepDone .stepDetail { color: var(--ink-muted, var(--ink-soft)); }
+
+.mark {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--moss);
+  background: var(--understory);
+  margin-top: 1px;
+}
+.stepDone .mark { background: var(--moss); color: #fff; border-color: var(--moss); }
+
+.stepBody { flex: 1; min-width: 0; }
+.stepLabel { font-size: 14px; font-weight: 600; line-height: 1.3; }
+.stepDetail { margin: 2px 0 0; font-size: 12px; color: var(--ink-soft); line-height: 1.4; }
+.autoHint { display: inline-block; margin-top: 3px; font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; color: var(--ink-soft); opacity: 0.7; }
+
+/* "Go" link styled as a secondary button */
+.stepGo {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: var(--r-button);
+  border: 1px solid var(--line);
+  background: var(--canopy);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background var(--dur-1) var(--ease-settle);
+}
+.stepGo:hover { background: var(--understory); }
+
 /* HelpAccordion */
 .article {
   border: 1px solid var(--understory);
