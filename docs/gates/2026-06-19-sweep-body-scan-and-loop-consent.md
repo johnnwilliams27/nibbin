@@ -53,5 +53,18 @@ utilities; the route test mocks the sweep). The body scan is covered by the dete
 tests; the loop-time consent re-check is additive on top of the already-tested write-time
 guard, so the write-blocking invariant does not depend solely on the new code.
 
-## Verdicts
-(appended after the reviewer pass)
+## Verdicts (real 2-reviewer pass, opus, on the diff)
+- **Red-team: PASS** — no P1/P2. Confirmed strict-tightening (the body scan can never send a
+  body the old code wouldn't), no consent bypass (triple-guarded: loop break + `!consentRevoked`
+  derive guards + early-return/write-time guards), `consentActive()` fails closed on error/null,
+  no ReDoS. P3 (non-blocking): the body scan catches secret VALUES, not PII-as-prose
+  (names/addresses) — pre-existing and beyond this change's stated scope; future broader coverage
+  could route bodies through `@nibbin/redaction`.
+- **Logic-skeptic: PASS** — no P1/P2 control-flow defects; break/continue targets correct,
+  `processed` cadence correct, derive guards + early-return + status finalization consistent.
+  Two P3s: (1) small inbox (<BATCH_SIZE_PASS2 threads) + early revoke — the per-batch modulo
+  never fires → **FIXED**: added a Pass-2 entry `consentActive()` re-check (symmetric with
+  Pass 1). (2) `\d{9,}` over-skip is an accepted precision-over-recall, fail-safe tradeoff.
+
+**Gate verdict: PASS (0 P0; 0 P1; 0 P2).** The one actionable P3 (small-inbox Pass-2 gap) was
+fixed; remaining P3s are documented residuals/tradeoffs.

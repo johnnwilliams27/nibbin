@@ -233,6 +233,14 @@ export async function gmailOnboardingSweep(
   const threadBatches: ThreadBatch[] = [];
   let threadsFetched = 0;
 
+  // TOCTOU: re-check consent at Pass-2 entry too. The per-batch modulo check
+  // inside the loop never fires for a small inbox (< BATCH_SIZE_PASS2 threads),
+  // so without this an early revocation would not stop a small-inbox Pass-2 read.
+  if (!consentRevoked && Date.now() <= deadline && !(await consentActive())) {
+    consentRevoked = true;
+    status = 'partial';
+  }
+
   if (!consentRevoked && Date.now() <= deadline) {
     const threadsResp = await client.listThreads(buildInboxQuery(cutoff), MAX_INBOX_THREADS);
     const threadIds = threadsResp.threads?.map((t) => t.id) ?? [];
