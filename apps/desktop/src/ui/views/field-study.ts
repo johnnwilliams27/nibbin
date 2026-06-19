@@ -5,7 +5,7 @@
  * (Stage B).
  */
 import { bridge, type StudyStatus } from '../bridge.js';
-import type { StudyKind } from '../../core/study-machine.js';
+import type { StudyKind, StudyDepth } from '../../core/study-machine.js';
 import { button, el } from '../dom.js';
 import { syncStudy, type SyncState } from '../sync-study.js';
 import { EVER_COMPLETED_KEY } from '../tab-dot.js';
@@ -46,7 +46,7 @@ const SYNC_COPY: Record<SyncState, string> = {
  */
 function synthesizingView(
   studyId: string,
-  meta: { kind?: 'full_study' | 'quick_scan'; label?: string | null },
+  meta: { kind?: 'full_study' | 'quick_scan'; depth?: 'lite' | 'detailed'; label?: string | null },
   rerender: () => void,
 ): HTMLElement {
   const root = el('div', {});
@@ -94,6 +94,7 @@ function synthesizingView(
       bridge,
       now: new Date().toISOString(),
       kind: meta.kind,
+      depth: meta.depth,
       label: meta.label,
       onState: (s) => { setState(s); },
       // Review-before-upload (§5.2): render the packet and resolve on the
@@ -163,7 +164,7 @@ function stateView(status: StudyStatus, onOpenReview: () => void, rerender: () =
     );
   } else if (state === 'SYNTHESIZING') {
     const study = status.study as
-      | { studyId?: string; kind?: 'full_study' | 'quick_scan'; label?: string | null }
+      | { studyId?: string; kind?: 'full_study' | 'quick_scan'; depth?: 'lite' | 'detailed'; label?: string | null }
       | null;
     const studyId = study?.studyId?.trim();
     if (!studyId) {
@@ -180,7 +181,7 @@ function stateView(status: StudyStatus, onOpenReview: () => void, rerender: () =
       );
       return root;
     }
-    root.append(synthesizingView(studyId, { kind: study?.kind, label: study?.label }, rerender));
+    root.append(synthesizingView(studyId, { kind: study?.kind, depth: study?.depth, label: study?.label }, rerender));
   } else if (state === 'RAW_DELETING') {
     root.append(
       el('p', { class: 'eyebrow' }, ['Field study']),
@@ -213,20 +214,45 @@ function stateView(status: StudyStatus, onOpenReview: () => void, rerender: () =
 }
 
 /**
+ * Copy for the daemon-health note. `health` is read_status's daemon_health:
+ * null/empty → the daemon is merely starting (transient); a non-empty string
+ * (e.g. "install_failed: ...") → registration actually failed (CB2).
+ */
+export function daemonNoteCopy(health: string | null | undefined): {
+  eyebrow: string;
+  lines: string[];
+} {
+  if (health && health.trim()) {
+    // Strip the internal "install_failed: " prefix for a human-facing reason.
+    const reason = health.replace(/^install_failed:\s*/, '').trim();
+    return {
+      eyebrow: 'Background watcher',
+      lines: [
+        `Nibbin couldn't start its background recorder${reason ? `: ${reason}` : '.'}`,
+        `Try again, or reinstall Nibbin. Until it starts, a study can't capture.`,
+      ],
+    };
+  }
+  return {
+    eyebrow: 'Background watcher',
+    lines: [
+      `The background process isn't reporting yet — it may still be starting up. You can start a study now; it will run when the watcher comes online.`,
+      `If this keeps showing, start it from the menu bar or reinstall.`,
+    ],
+  };
+}
+
+/**
  * Small daemon-health note shown beneath entry cards when the daemon is
  * (still) offline. Keeps guidance accessible without blocking the start flow.
  * The Retry button calls `onRetry`, which should run the same 3× cold-start
  * poll as mount (`paint(true)`) so a real cold-start resolves on retry.
  */
-function daemonHealthNote(onRetry: () => void): HTMLElement {
+function daemonHealthNote(onRetry: () => void, health?: string | null): HTMLElement {
+  const copy = daemonNoteCopy(health);
   return el('div', { class: 'card daemon-health-note' }, [
-    el('p', { class: 'eyebrow' }, ['Background watcher']),
-    el('p', { class: 'muted' }, [
-      `The background process isn't reporting yet — it may still be starting up. You can start a study now; it will run when the watcher comes online.`,
-    ]),
-    el('p', { class: 'muted' }, [
-      `If this keeps showing, start it from the menu bar or reinstall.`,
-    ]),
+    el('p', { class: 'eyebrow' }, [copy.eyebrow]),
+    ...copy.lines.map((line) => el('p', { class: 'muted' }, [line])),
     el('div', { class: 'row' }, [button('Retry', onRetry)]),
   ]);
 }
@@ -244,16 +270,90 @@ function daemonHealthNote(onRetry: () => void): HTMLElement {
  * defaults to `onChanged` but callers can pass `() => void paint(true)` to run
  * the 3× cold-start poll (NIB-7 fold-in fix B).
  */
-function entryView(onChanged: () => void, showDaemonNote = false, onRetry?: () => void): HTMLElement {
+function entryView(
+  onChanged: () => void,
+  showDaemonNote = false,
+  onRetry?: () => void,
+  health?: string | null,
+): HTMLElement {
   const root = el('div', {});
   const mount = el('div', {});
+
+  // Depth-choice step: shown between the entry card click and begin().
+  // Renders two selectable option cards (Lite pre-selected, radio-style)
+  // and a Continue button that calls onChosen(selectedDepth). Back returns
+  // to the entry choices without creating a study.
+  function depthChoiceView(kind: StudyKind, label: string | null, onChosen: (depth: StudyDepth) => void): HTMLElement {
+    let selected: StudyDepth = 'lite';
+
+    const liteCard = el('div', { class: 'card depth-option selected', role: 'radio', 'aria-pressed': 'true', tabindex: '0' }, [
+      el('div', { class: 'row' }, [
+        el('h2', {}, ['Lite — best for admin & comms work']),
+        el('span', { class: 'chip active' }, ['Recommended']),
+      ]),
+      el('p', {}, ['Reads the structure of your work — no screenshots.']),
+      el('p', { class: 'muted' }, [
+        'email & replies, scheduling, invoicing & chasing payments, CRM, data entry, spreadsheets, docs, project tracking, support.',
+      ]),
+    ]);
+
+    // Detailed is non-selectable until screenshot/OCR capture is built (gate CA-01).
+    // aria-disabled + the `disabled` CSS class signal this to both AT and styles.
+    // tabindex="-1" keeps it out of the keyboard tab order entirely.
+    const detailedCard = el('div', {
+      class: 'card depth-option disabled',
+      role: 'radio',
+      'aria-pressed': 'false',
+      'aria-disabled': 'true',
+      tabindex: '-1',
+    }, [
+      el('div', { class: 'row' }, [
+        el('h2', {}, ['Detailed — coming soon']),
+        el('span', { class: 'chip' }, ['Coming soon']),
+      ]),
+      el('p', {}, [
+        'Will add periodic screenshots, processed and deleted on your device, so Nibbin can see inside tools like Photoshop or Premiere. ',
+        'Not available yet — studies run in Lite for now.',
+      ]),
+      el('p', { class: 'muted' }, ['photo/video editing, design, illustration, motion, audio/music production.']),
+    ]);
+
+    // Lite is the only choosable option; Detailed clicks are no-ops.
+    function selectDepth(depth: StudyDepth): void {
+      if (depth === 'detailed') return; // non-selectable until built
+      selected = depth;
+      liteCard.classList.add('selected');
+      liteCard.setAttribute('aria-pressed', 'true');
+      detailedCard.classList.remove('selected');
+      detailedCard.setAttribute('aria-pressed', 'false');
+    }
+
+    liteCard.addEventListener('click', () => selectDepth('lite'));
+    // Detailed click is intentionally a no-op — no listener needed, but
+    // we add one explicitly for clarity (blocks selection, does nothing else).
+    detailedCard.addEventListener('click', () => { /* coming soon — no-op */ });
+    liteCard.addEventListener('keydown', (e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectDepth('lite'); } });
+    // No keydown listener on detailedCard — tabindex="-1" keeps it out of tab order.
+
+    return el('div', {}, [
+      el('p', { class: 'eyebrow' }, ['Field study']),
+      el('h1', {}, ['What kind of work should Nibbin watch?']),
+      liteCard,
+      detailedCard,
+      el('p', { class: 'muted' }, ['Mixed? Start Lite — you can run a Detailed study later.']),
+      el('div', { class: 'row' }, [
+        button('Continue', () => onChosen(selected), 'primary'),
+        button('Back', () => { mount.replaceChildren(); renderChoices(); }),
+      ]),
+    ]);
+  }
 
   // Mint the study, then hand off to the consent screen for this kind. Consent
   // fires `consent`+`start` itself; the daemon's `create_study` reset clears any
   // prior study's store so the new capture starts empty.
-  function begin(kind: StudyKind, label: string | null): void {
-    void bridge.createStudy(crypto.randomUUID(), kind, label).then(() => {
-      mount.replaceChildren(consentView(onChanged, kind));
+  function begin(kind: StudyKind, label: string | null, depth: StudyDepth = 'lite'): void {
+    void bridge.createStudy(crypto.randomUUID(), kind, label, depth).then(() => {
+      mount.replaceChildren(consentView(onChanged, kind, depth));
     });
   }
 
@@ -266,7 +366,7 @@ function entryView(onChanged: () => void, showDaemonNote = false, onRetry?: () =
     ]);
     fullCard.append(
       el('div', { class: 'row' }, [
-        button('Start 14-day field study', () => begin('full_study', null), 'primary'),
+        button('Start 14-day field study', () => { mount.replaceChildren(depthChoiceView('full_study', null, (depth) => begin('full_study', null, depth))); }, 'primary'),
       ]),
     );
 
@@ -288,7 +388,7 @@ function entryView(onChanged: () => void, showDaemonNote = false, onRetry?: () =
           () => {
             const label = scanInput.value.trim().slice(0, 80);
             if (!label) { scanInput.focus(); return; }
-            begin('quick_scan', label);
+            mount.replaceChildren(depthChoiceView('quick_scan', label, (depth) => begin('quick_scan', label, depth)));
           },
           'primary',
         ),
@@ -297,8 +397,7 @@ function entryView(onChanged: () => void, showDaemonNote = false, onRetry?: () =
 
     const children: HTMLElement[] = [fullCard, scanCard];
     if (showDaemonNote) {
-      // Use onRetry (paint(true)) if provided, else fall back to onChanged.
-      children.push(daemonHealthNote(onRetry ?? onChanged));
+      children.push(daemonHealthNote(onRetry ?? onChanged, health));
     }
     mount.replaceChildren(...children);
   }
@@ -319,9 +418,11 @@ function entryView(onChanged: () => void, showDaemonNote = false, onRetry?: () =
  * study keeps its countdown UI in `studyView`.
  */
 function quickScanView(status: StudyStatus, onChanged: () => void): HTMLElement {
-  const study = status.study as { label?: string | null } | null;
+  const study = status.study as { label?: string | null; depth?: StudyDepth } | null;
   const label = study?.label?.trim();
   const paused = status.state === 'PAUSED' || status.paused === true;
+  const depth = study?.depth ?? 'lite';
+  const depthLabel = depth === 'detailed' ? 'Detailed — with screenshots' : 'Lite — no screenshots';
 
   const root = el('div', {}, [
     el('p', { class: 'eyebrow' }, ['Quick scan']),
@@ -334,6 +435,7 @@ function quickScanView(status: StudyStatus, onChanged: () => void): HTMLElement 
         ]),
         el('span', { class: `chip ${paused ? 'warn' : 'active'}` }, [paused ? 'Paused' : 'Capturing']),
       ]),
+      el('p', { class: 'muted' }, [depthLabel]),
       el('p', { class: 'muted' }, [
         'Work through the task, then stop the scan when you’re done. It also stops automatically after 6 hours, so an abandoned scan can’t keep capturing.',
       ]),
@@ -494,7 +596,7 @@ export function fieldStudyView(_rerender: () => void): HTMLElement {
     if (blocked) mount.append(captureBlockedBanner(blocked));
 
     const surface = viewForState(status.state);
-    const study = status.study as { kind?: StudyKind } | null;
+    const study = status.study as { kind?: StudyKind; depth?: StudyDepth } | null;
 
     switch (surface) {
       case 'entry': {
@@ -511,12 +613,12 @@ export function fieldStudyView(_rerender: () => void): HTMLElement {
           );
         } else {
           const showDaemonNote = status.state !== 'NOT_STARTED';
-          mount.append(entryView(() => void paint(), showDaemonNote, () => void paint(true)));
+          mount.append(entryView(() => void paint(), showDaemonNote, () => void paint(true), status.daemon_health));
         }
         break;
       }
       case 'consent':
-        mount.append(consentView(() => void paint(), study?.kind ?? 'full_study'));
+        mount.append(consentView(() => void paint(), study?.kind ?? 'full_study', study?.depth ?? 'lite'));
         break;
       case 'studyOrScan':
         mount.append(

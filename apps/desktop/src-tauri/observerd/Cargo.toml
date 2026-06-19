@@ -9,6 +9,12 @@ publish.workspace = true
 [features]
 default = []
 os-keystore = ["nibbin-store/os-keystore"]
+# Pass-through to enable the real platform capture source (macOS AX / Windows
+# UIA via the vendored screenpipe-a11y fork). Default-off; enable explicitly
+# when running/shipping a real-capture daemon:
+#   cargo build -p observerd --features screenpipe
+# (equivalently --features nibbin-capture/screenpipe).
+screenpipe = ["nibbin-capture/screenpipe"]
 
 [dependencies]
 nibbin-redaction = { path = "../crates/nibbin-redaction" }

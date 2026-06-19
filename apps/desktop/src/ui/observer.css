@@ -608,3 +608,10 @@ input:focus-visible {
 .capture-blocked-banner h2 {
   color: var(--honey-deep);
 }
+
+/* Depth picker: the Detailed option is "Coming soon" / non-selectable until the
+   frame+OCR capture path ships (gate CA-01). Render it visibly inert. */
+.depth-option.disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}

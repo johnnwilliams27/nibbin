@@ -73,7 +73,7 @@ fn pause_uia_while_screen_locked(
     click_queue: &Arc<Mutex<Vec<ClickElementRequest>>>,
     last_capture_time: &mut Instant,
 ) -> bool {
-    if !screenpipe_config::screen_is_locked() {
+    if !crate::local_compat::screen_is_locked() {
         return false;
     }
 
@@ -91,7 +91,7 @@ pub struct ClickElementRequest {
 }
 
 /// UIA context holding COM objects (single-thread only, not Send)
-pub(crate) struct UiaContext {
+pub struct UiaContext {
     automation: IUIAutomation,
     cache_request: IUIAutomationCacheRequest,
     /// Per-element cache request for TreeWalker fallback (Chromium/Electron).
@@ -102,7 +102,7 @@ pub(crate) struct UiaContext {
 
 impl UiaContext {
     /// Initialize UI Automation COM objects. Must be called on a COM-initialized thread.
-    pub(crate) fn new() -> windows::core::Result<Self> {
+    pub fn new() -> windows::core::Result<Self> {
         unsafe {
             let automation: IUIAutomation = CoCreateInstance(&CUIAutomation, None, CLSCTX_ALL)?;
 
@@ -171,7 +171,7 @@ impl UiaContext {
     /// Uses CacheRequest to batch all property reads into minimal cross-process calls.
     /// Falls back to TreeWalker for apps whose UIA providers don't populate
     /// the cached subtree (Chromium, Electron, etc.).
-    pub(crate) fn capture_window_tree(
+    pub fn capture_window_tree(
         &self,
         hwnd: HWND,
         max_elements: usize,
@@ -955,7 +955,7 @@ fn hash_node(node: &AccessibilityNode, hasher: &mut DefaultHasher) {
 }
 
 /// Get window info (app name, title, pid) from HWND
-fn get_window_info(hwnd: HWND) -> (String, Option<String>, u32) {
+pub fn get_window_info(hwnd: HWND) -> (String, Option<String>, u32) {
     unsafe {
         let mut title_buf = [0u16; 512];
         let len = GetWindowTextW(hwnd, &mut title_buf);
@@ -1195,12 +1195,12 @@ mod tests {
         struct ResetScreenLock;
         impl Drop for ResetScreenLock {
             fn drop(&mut self) {
-                screenpipe_config::set_screen_locked(false);
+                crate::local_compat::set_screen_locked(false);
             }
         }
 
         let _reset = ResetScreenLock;
-        screenpipe_config::set_screen_locked(true);
+        crate::local_compat::set_screen_locked(true);
 
         let pending_focus = Arc::new(Mutex::new(Some(PendingFocus {
             hwnd: HWND::default(),
@@ -1223,7 +1223,7 @@ mod tests {
         assert!(click_queue.lock().is_empty());
         assert!(last_capture_time > original_capture_time);
 
-        screenpipe_config::set_screen_locked(false);
+        crate::local_compat::set_screen_locked(false);
         assert!(!pause_uia_while_screen_locked(
             &pending_focus,
             &click_queue,

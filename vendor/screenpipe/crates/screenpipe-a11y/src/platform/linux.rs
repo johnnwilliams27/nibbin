@@ -29,7 +29,7 @@ use anyhow::Result;
 use chrono::Utc;
 use crossbeam_channel::{bounded, Receiver, Sender};
 use parking_lot::Mutex;
-use screenpipe_core::pii_removal::remove_pii;
+// remove_pii dropped: Nibbin redaction is authoritative (local_compat stub)
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -443,11 +443,8 @@ fn run_evdev_monitor(
         let mut buf = text_buf.lock();
         if buf.should_flush() {
             if let Some(s) = buf.flush() {
-                let text = if config.apply_pii_removal {
-                    remove_pii(&s)
-                } else {
-                    s
-                };
+                // PII removal dropped: Nibbin redaction is authoritative
+                let text = s;
                 let event = UiEvent::text(Utc::now(), start.elapsed().as_millis() as u64, text);
                 let _ = tx.try_send(event);
             }
@@ -458,11 +455,8 @@ fn run_evdev_monitor(
     {
         let mut buf = text_buf.lock();
         if let Some(s) = buf.flush() {
-            let text = if config.apply_pii_removal {
-                remove_pii(&s)
-            } else {
-                s
-            };
+            // PII removal dropped: Nibbin redaction is authoritative
+            let text = s;
             let event = UiEvent::text(Utc::now(), start.elapsed().as_millis() as u64, text);
             let _ = tx.try_send(event);
         }
@@ -577,12 +571,9 @@ fn monitor_keyboards(
                                     thread::sleep(std::time::Duration::from_millis(50));
                                     let content = if capture_content {
                                         get_clipboard().map(|s| {
-                                            let truncated = truncate(&s, 1000);
-                                            if apply_pii {
-                                                remove_pii(&truncated)
-                                            } else {
-                                                truncated
-                                            }
+                                            // PII removal dropped: Nibbin redaction is authoritative
+                                            let _ = apply_pii;
+                                            truncate(&s, 1000)
                                         })
                                     } else {
                                         None
@@ -614,12 +605,9 @@ fn monitor_keyboards(
                                     thread::sleep(std::time::Duration::from_millis(50));
                                     let content = if capture_content {
                                         get_clipboard().map(|s| {
-                                            let truncated = truncate(&s, 1000);
-                                            if apply_pii {
-                                                remove_pii(&truncated)
-                                            } else {
-                                                truncated
-                                            }
+                                            // PII removal dropped: Nibbin redaction is authoritative
+                                            let _ = apply_pii;
+                                            truncate(&s, 1000)
                                         })
                                     } else {
                                         None
@@ -645,12 +633,8 @@ fn monitor_keyboards(
                             evdev::KeyCode::KEY_V => {
                                 let content = if config.capture_clipboard_content {
                                     get_clipboard().map(|s| {
-                                        let truncated = truncate(&s, 1000);
-                                        if config.apply_pii_removal {
-                                            remove_pii(&truncated)
-                                        } else {
-                                            truncated
-                                        }
+                                        // PII removal dropped: Nibbin redaction is authoritative
+                                        truncate(&s, 1000)
                                     })
                                 } else {
                                     None

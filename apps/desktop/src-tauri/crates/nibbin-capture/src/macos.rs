@@ -11,8 +11,7 @@
 //! error rather than pretending to capture: a daemon must fail loudly, not
 //! record nothing silently while a study burns days.
 
-use crate::CaptureSource;
-use nibbin_redaction::AxSnapshot;
+use crate::{CaptureItem, CaptureSource};
 
 pub struct MacAxCapture {
     started: bool,
@@ -35,6 +34,10 @@ impl CaptureSource for MacAxCapture {
         "macos-ax"
     }
 
+    fn readiness(&self) -> crate::CaptureReadiness {
+        crate::CaptureReadiness::Blocked("macOS capture bring-up pending".into())
+    }
+
     fn start(&mut self) -> anyhow::Result<()> {
         // TODO(M6 macOS bring-up): wire the vendored a11y tree walker:
         //   1. Check AXIsProcessTrusted / Screen Recording permission; if
@@ -52,7 +55,7 @@ impl CaptureSource for MacAxCapture {
         );
     }
 
-    fn poll(&mut self) -> anyhow::Result<Vec<AxSnapshot>> {
+    fn poll(&mut self) -> anyhow::Result<Vec<CaptureItem>> {
         Ok(vec![])
     }
 

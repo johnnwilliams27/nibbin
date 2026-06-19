@@ -14,7 +14,7 @@ use arc_swap::ArcSwap;
 use chrono::Utc;
 use crossbeam_channel::{bounded, Receiver, Sender};
 use parking_lot::Mutex;
-use screenpipe_core::pii_removal::remove_pii;
+// remove_pii dropped: Nibbin redaction is authoritative (local_compat stub)
 use std::ffi::c_void;
 use std::sync::atomic::{AtomicBool, AtomicI8, AtomicPtr, Ordering};
 use std::sync::Arc;
@@ -401,12 +401,9 @@ fn spawn_clipboard_worker_thread(
                 let content = if req.capture_content {
                     let _pool = cidre::objc::AutoreleasePoolPage::push();
                     get_clipboard().map(|s| {
-                        let truncated = truncate(&s, 1000);
-                        if req.apply_pii {
-                            remove_pii(&truncated)
-                        } else {
-                            truncated
-                        }
+                        // PII removal dropped: Nibbin redaction is authoritative
+                        let _ = req.apply_pii;
+                        truncate(&s, 1000)
                     })
                 } else {
                     None
@@ -524,12 +521,8 @@ fn run_clipboard_poller(
         let content = if config.capture_clipboard_content {
             let _pool = cidre::objc::AutoreleasePoolPage::push();
             get_clipboard().map(|s| {
-                let truncated = truncate(&s, 1000);
-                if config.apply_pii_removal {
-                    remove_pii(&truncated)
-                } else {
-                    truncated
-                }
+                // PII removal dropped: Nibbin redaction is authoritative
+                truncate(&s, 1000)
             })
         } else {
             None
@@ -855,10 +848,7 @@ fn run_event_tap(
     while !stop.load(Ordering::Acquire) {
         cf::RunLoop::run_in_mode(cf::RunLoopMode::default(), 0.01, true);
 
-        // Release the lock BEFORE calling remove_pii — holding the mutex
-        // during an expensive regex blocks the event-tap callback on every
-        // KEY_DOWN, which can push the callback past the kernel's tap-timeout
-        // (~1 s) and trigger a burst-replay of queued events (phantom keystrokes).
+        // Release the lock before consuming the buffer.
         let drained = {
             let mut buf = state.text_buf.lock();
             if buf.should_flush() {
@@ -868,11 +858,8 @@ fn run_event_tap(
             }
         };
         if let Some(s) = drained {
-            let text = if state.config.apply_pii_removal {
-                remove_pii(&s)
-            } else {
-                s
-            };
+            // PII removal dropped: Nibbin redaction is authoritative
+            let text = s;
             let mut event =
                 UiEvent::text(Utc::now(), state.start.elapsed().as_millis() as u64, text);
             event.app_name = (**state.current_app.load()).clone();
@@ -901,14 +888,11 @@ fn run_event_tap(
     // the state box below (belt-and-suspenders — teardown already made it inert).
     drop(installed);
 
-    // Final flush — same lock discipline: release before PII removal.
+    // Final flush.
     let drained = { state.text_buf.lock().flush() };
     if let Some(s) = drained {
-        let text = if state.config.apply_pii_removal {
-            remove_pii(&s)
-        } else {
-            s
-        };
+        // PII removal dropped: Nibbin redaction is authoritative
+        let text = s;
         let mut event = UiEvent::text(Utc::now(), state.start.elapsed().as_millis() as u64, text);
         event.app_name = (**state.current_app.load()).clone();
         event.window_title = (**state.current_window.load()).clone();
@@ -1607,12 +1591,8 @@ fn get_element_at_position(x: f64, y: f64, config: &UiCaptureConfig) -> Option<E
         role,
         name: name.map(|s| truncate(&s, 200)),
         value: value.map(|s| {
-            let truncated = truncate(&s, 500);
-            if config.apply_pii_removal {
-                remove_pii(&truncated)
-            } else {
-                truncated
-            }
+            // PII removal dropped: Nibbin redaction is authoritative
+            truncate(&s, 500)
         }),
         description: description.map(|s| truncate(&s, 200)),
         automation_id: None,
@@ -1728,12 +1708,8 @@ fn get_focused_element_context(config: &UiCaptureConfig) -> Option<ElementContex
         role,
         name: name.map(|s| truncate(&s, 200)),
         value: value.map(|s| {
-            let truncated = truncate(&s, 1000); // Allow more text for input fields
-            if config.apply_pii_removal {
-                remove_pii(&truncated)
-            } else {
-                truncated
-            }
+            // PII removal dropped: Nibbin redaction is authoritative
+            truncate(&s, 1000) // Allow more text for input fields
         }),
         description: None,
         automation_id: None,
@@ -1778,7 +1754,9 @@ static CLIPBOARD_CRASH_CHECK: std::sync::Once = std::sync::Once::new();
 
 fn check_clipboard_crash_marker() {
     CLIPBOARD_CRASH_CHECK.call_once(|| {
-        let dir = screenpipe_core::paths::default_screenpipe_data_dir();
+        let dir = dirs::data_dir()
+            .unwrap_or_else(std::env::temp_dir)
+            .join("screenpipe");
         let inflight = dir.join(CLIPBOARD_INFLIGHT_FILE);
         let legacy_disabled = dir.join(CLIPBOARD_LEGACY_DISABLED_FILE);
 
@@ -1807,7 +1785,9 @@ fn get_clipboard() -> Option<String> {
         return None;
     }
 
-    let dir = screenpipe_core::paths::default_screenpipe_data_dir();
+    let dir = dirs::data_dir()
+        .unwrap_or_else(std::env::temp_dir)
+        .join("screenpipe");
     let inflight = dir.join(CLIPBOARD_INFLIGHT_FILE);
     // Best-effort marker — if write fails (e.g., disk full) we proceed; the worst
     // case is we don't detect a crash next startup.

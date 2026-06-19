@@ -3,6 +3,7 @@
  * stop early, and the always-reachable "delete everything".
  */
 import { bridge, type StudyStatus } from '../bridge.js';
+import type { StudyDepth } from '../../core/study-machine.js';
 import { button, el } from '../dom.js';
 
 function fmtRemaining(ms: number | null): string {
@@ -15,6 +16,9 @@ function fmtRemaining(ms: number | null): string {
 
 export function studyView(status: StudyStatus, onChanged: () => void): HTMLElement {
   const paused = status.state === 'PAUSED' || status.paused === true;
+  const study = status.study as { depth?: StudyDepth } | null;
+  const depth = study?.depth ?? 'lite';
+  const depthLabel = depth === 'detailed' ? 'Detailed — with screenshots' : 'Lite — no screenshots';
 
   const stateChip = el('span', { class: `chip ${paused ? 'warn' : 'active'}` }, [
     paused ? 'Paused' : 'Watching',
@@ -31,6 +35,7 @@ export function studyView(status: StudyStatus, onChanged: () => void): HTMLEleme
         ]),
         stateChip,
       ]),
+      el('p', { class: 'muted' }, [depthLabel]),
       el('p', { class: 'muted' }, [
         'The stop lives in the background process, not this window — closing the app changes nothing about day 14.',
       ]),
