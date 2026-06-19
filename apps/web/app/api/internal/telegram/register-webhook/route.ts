@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import { timingSafeEqual } from 'node:crypto';
 import { setTelegramWebhook, getTelegramWebhookInfo } from '@nibbin/channels';
 import { siteOrigin } from '../../../../../lib/site-url';
@@ -15,7 +15,7 @@ import { siteOrigin } from '../../../../../lib/site-url';
  *   URL without opening the Telegram dashboard.
  */
 
-function authorized(req: NextRequest): boolean {
+function authorized(req: Request): boolean {
   const secret = process.env.INTERNAL_API_SECRET;
   if (!secret) return false;
   const header = req.headers.get('authorization') ?? '';
@@ -25,7 +25,7 @@ function authorized(req: NextRequest): boolean {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-export async function POST(req: NextRequest): Promise<NextResponse> {
+export async function POST(req: Request): Promise<NextResponse> {
   if (!authorized(req)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   return NextResponse.json(result, { status: result.ok ? 200 : 502 });
 }
 
-export async function GET(req: NextRequest): Promise<NextResponse> {
+export async function GET(req: Request): Promise<NextResponse> {
   if (!authorized(req)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
