@@ -22,8 +22,21 @@
 -- service role can reach it.
 
 -- 1. Provenance column (nullable, additive; FK to plan_runs).
+--    `on delete set null`: both agent_specs.account_id and plan_runs.account_id
+--    cascade-delete from accounts; a bare (NO ACTION) FK here would abort the
+--    account-deletion cascade transaction (the documented M7 "FK landmine").
+--    Setting it null preserves the durable spec and merely drops the dangling
+--    provenance pointer when the source plan_run is collected.
 alter table public.agent_specs
-  add column if not exists source_plan_run_id uuid references public.plan_runs(id);
+  add column if not exists source_plan_run_id uuid references public.plan_runs(id) on delete set null;
+
+-- Idempotency (FIX 6): one crystallized recurring agent per source plan_run.
+-- A partial unique index (only when source_plan_run_id is not null, so the many
+-- template/Composer adopts with NULL provenance are unconstrained) stops a double
+-- "Make this recurring" from minting duplicate agents from the same run.
+create unique index if not exists agent_specs_source_plan_run_uniq
+  on public.agent_specs (account_id, source_plan_run_id)
+  where source_plan_run_id is not null;
 
 -- 2. Drop the v2 (18-arg) signature; recreate with the trailing provenance param.
 drop function if exists public.adopt_nibbin(
