@@ -145,7 +145,10 @@ jobs:
               apps/desktop/src-tauri/target/x86_64-apple-darwin/release/observerd
             file "$DEST/observerd"
           else
-            cargo build -p observerd --release --features os-keystore --manifest-path "$MANIFEST"
+            # Windows ships REAL capture: enable the `screenpipe` feature (the UIA
+            # adapter — verified working). macOS stays os-keystore-only above; its
+            # fork path isn't compiled yet, so enabling it there would break the build.
+            cargo build -p observerd --release --features os-keystore,screenpipe --manifest-path "$MANIFEST"
             cp apps/desktop/src-tauri/target/release/observerd.exe "$DEST/observerd.exe"
           fi
           ls -la "$DEST"
