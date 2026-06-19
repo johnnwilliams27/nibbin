@@ -21,7 +21,7 @@ use nibbin_redaction::ner::{DownNer, HeuristicNer};
 use nibbin_redaction::{
     snapshot_to_raw_events, NerClient, PersistSink, ProcessOutcome, RedactionPipeline,
 };
-use nibbin_store::{KeyProvider, ObserverStore, StaticTestKey};
+use nibbin_store::{is_soft_cap_error, KeyProvider, ObserverStore, StaticTestKey};
 use nibbin_study::{
     capture_allowed, deadline_passed, new_study, transition, CaptureDepth, StudyCommand, StudyKind,
     StudySnapshot,
@@ -239,21 +239,33 @@ impl Daemon {
             )?);
         }
         let store = self.store.as_mut().expect("opened above");
-        for (idx, item) in items.into_iter().enumerate() {
+        // cost-02 / H2: a soft-cap "store full" error from any append must STOP
+        // capture safely (set capture_blocked, return Ok) rather than crash the
+        // daemon or drop study data. Real write failures still propagate via `?`.
+        // We collect the signal here (store is borrowed) and apply it after the
+        // loop, once the store borrow has ended.
+        let mut soft_cap_hit = false;
+        'items: for (idx, item) in items.into_iter().enumerate() {
             if self.gate.is_paused() {
                 break; // C6: the flip kills forwarding mid-batch too
             }
             match item {
                 CaptureItem::Snapshot(snapshot) => {
                     for raw in snapshot_to_raw_events(&snapshot, "ses_local", &now_iso) {
-                        match self.pipeline.process(&raw, store)? {
-                            ProcessOutcome::HaltedNerUnavailable => {
+                        match self.pipeline.process(&raw, store) {
+                            Ok(ProcessOutcome::HaltedNerUnavailable) => {
                                 // fail-closed: suspend capture; the supervisor decides
                                 // when the sidecar is healthy enough to resume.
                                 self.source.stop();
                                 return Ok(());
                             }
-                            ProcessOutcome::Persisted | ProcessOutcome::BlockedCategory(_) => {}
+                            Ok(ProcessOutcome::Persisted)
+                            | Ok(ProcessOutcome::BlockedCategory(_)) => {}
+                            Err(e) if is_soft_cap_error(&e) => {
+                                soft_cap_hit = true;
+                                break 'items;
+                            }
+                            Err(e) => return Err(e),
                         }
                     }
                 }
@@ -287,9 +299,21 @@ impl Daemon {
                             review_state: ReviewState::Auto,
                         },
                     };
-                    store.append(&evt)?;
+                    match store.append(&evt) {
+                        Ok(()) => {}
+                        Err(e) if is_soft_cap_error(&e) => {
+                            soft_cap_hit = true;
+                            break 'items;
+                        }
+                        Err(e) => return Err(e),
+                    }
                 }
             }
+        }
+        // Fail-safe stop: surfaced to the UI via daemon.status; capture stays
+        // gated (capture_blocked) until recovery. No data was dropped/pruned.
+        if soft_cap_hit {
+            self.capture_blocked = Some("store full — capture stopped (soft cap)".into());
         }
         Ok(())
     }

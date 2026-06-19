@@ -47,13 +47,19 @@ mod real {
     use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
     use std::sync::Arc;
     use std::time::{Duration, Instant};
+    use windows::core::PCWSTR;
     use windows::Win32::Foundation::{HINSTANCE, LPARAM, LRESULT, WPARAM};
     use windows::Win32::System::Com::{CoInitializeEx, CoUninitialize, COINIT_APARTMENTTHREADED};
+    use windows::Win32::System::RemoteDesktop::{
+        WTSRegisterSessionNotification, WTSUnRegisterSessionNotification, NOTIFY_FOR_THIS_SESSION,
+    };
     use windows::Win32::System::Threading::GetCurrentThreadId;
     use windows::Win32::UI::WindowsAndMessaging::{
-        CallNextHookEx, GetForegroundWindow, GetMessageW, PostThreadMessageW, SetWindowsHookExW,
-        UnhookWindowsHookEx, HC_ACTION, HHOOK, MSG, WH_KEYBOARD_LL, WH_MOUSE_LL, WM_KEYDOWN,
+        CallNextHookEx, CreateWindowExW, DestroyWindow, GetForegroundWindow, GetMessageW,
+        PostThreadMessageW, SetWindowsHookExW, UnhookWindowsHookEx, HC_ACTION, HHOOK, HMENU,
+        HWND_MESSAGE, MSG, WH_KEYBOARD_LL, WH_MOUSE_LL, WINDOW_EX_STYLE, WINDOW_STYLE, WM_KEYDOWN,
         WM_LBUTTONDOWN, WM_MBUTTONDOWN, WM_QUIT, WM_RBUTTONDOWN, WM_SYSKEYDOWN,
+        WM_WTSSESSION_CHANGE, WTS_SESSION_LOCK, WTS_SESSION_UNLOCK,
     };
 
     // -----------------------------------------------------------------------
@@ -102,8 +108,27 @@ mod real {
     /// walker stops once this many nodes are produced (bounds CPU on huge trees).
     const MAX_ELEMENTS: usize = 10_000;
 
+    /// Recursively feed the dedup-relevant fields of an `AccessibilityNode`
+    /// (and its subtree) into a `Hasher`. Mirrors what a Snapshot actually
+    /// carries through redaction: `control_type`, `name`, `value`,
+    /// `is_password`, plus the child structure. `bounds` is deliberately NOT
+    /// hashed — it is `Option<ElementBounds>` containing `f64`, which is not
+    /// `Hash`, and pixel coordinates jittering should not defeat dedup. Direct
+    /// hashing (no JSON) avoids a per-tick `String` allocation and removes the
+    /// `unwrap_or_default()` fallback-collision risk the serialize path had.
+    fn hash_node<H: std::hash::Hasher>(n: &AccessibilityNode, h: &mut H) {
+        use std::hash::Hash;
+        n.control_type.hash(h);
+        n.name.hash(h);
+        n.value.hash(h);
+        n.is_password.hash(h);
+        for c in &n.children {
+            hash_node(c, h);
+        }
+    }
+
     /// H1 store-size lever: a stable fingerprint of one focused-window capture
-    /// (app + title + serialized accessibility tree). Two identical
+    /// (app + title + structurally-hashed accessibility tree). Two identical
     /// `(app, title, root)` inputs hash equal; any difference (including a
     /// same-tree-different-window switch) changes the hash. `poll()` skips
     /// re-emitting a Snapshot when this matches the last emitted one, so an
@@ -114,9 +139,8 @@ mod real {
         let mut s = std::collections::hash_map::DefaultHasher::new();
         app.hash(&mut s);
         title.hash(&mut s);
-        // AccessibilityNode derives Serialize; hashing its JSON gives a stable
-        // structural fingerprint without requiring Hash on every nested type.
-        serde_json::to_string(root).unwrap_or_default().hash(&mut s);
+        // Direct structural hash of the tree — no serde_json serialization.
+        hash_node(root, &mut s);
         s.finish()
     }
 
@@ -297,6 +321,34 @@ mod real {
                     0,
                 )
                 .ok();
+                // D4 secure-desktop lock-detection: create a MESSAGE-ONLY window
+                // (HWND_MESSAGE parent) on this hook thread and register it for
+                // WTS session notifications. The "Static" system class always
+                // exists, so no RegisterClass is needed. A message-only window
+                // receives WM_WTSSESSION_CHANGE; because LL-hook callbacks do NOT
+                // go through a WndProc, we inspect `msg.message` in the pump below
+                // (no WndProc/DispatchMessage needed). Failures here are
+                // non-fatal: capture still works, lock-skip just won't engage.
+                let mut class: Vec<u16> = "Static".encode_utf16().chain([0]).collect();
+                let mut wname: Vec<u16> = "NibbinWtsSink".encode_utf16().chain([0]).collect();
+                let wts_hwnd = CreateWindowExW(
+                    WINDOW_EX_STYLE(0),
+                    PCWSTR(class.as_mut_ptr()),
+                    PCWSTR(wname.as_mut_ptr()),
+                    WINDOW_STYLE(0),
+                    0,
+                    0,
+                    0,
+                    0,
+                    HWND_MESSAGE,
+                    HMENU(std::ptr::null_mut()),
+                    HINSTANCE(std::ptr::null_mut()),
+                    None,
+                )
+                .ok();
+                if let Some(h) = wts_hwnd {
+                    let _ = WTSRegisterSessionNotification(h, NOTIFY_FOR_THIS_SESSION);
+                }
                 // Rendezvous: hooks are installed and the TID is published, so
                 // start() can safely return knowing stop() will see a live TID.
                 // A send error means start() already gave up (timeout) — fall
@@ -304,10 +356,23 @@ mod real {
                 let _ = tid_tx.send(my_tid);
                 // Pump messages so the LL hook callbacks actually fire on this
                 // thread. GetMessageW returns FALSE (0) on WM_QUIT → loop ends.
+                // We also watch for WM_WTSSESSION_CHANGE (delivered to the
+                // message-only window above) to flip the global screen-lock flag.
                 let mut msg = MSG::default();
                 while GetMessageW(&mut msg, None, 0, 0).as_bool() {
+                    if msg.message == WM_WTSSESSION_CHANGE {
+                        match msg.wParam.0 as u32 {
+                            WTS_SESSION_LOCK => screenpipe_a11y::set_screen_locked(true),
+                            WTS_SESSION_UNLOCK => screenpipe_a11y::set_screen_locked(false),
+                            _ => {}
+                        }
+                    }
                     // LL hooks fire via the OS during this pump; no per-message
                     // dispatch needed for hook-only operation.
+                }
+                if let Some(h) = wts_hwnd {
+                    let _ = WTSUnRegisterSessionNotification(h);
+                    let _ = DestroyWindow(h);
                 }
                 if let Some(h) = kb {
                     let _ = UnhookWindowsHookEx(h);
@@ -377,11 +442,18 @@ mod real {
 
             let idle = is_idle(self.last_activity, now, Duration::from_secs(90));
 
+            // D4: explicit secure-desktop skip. When a WTS session-lock event
+            // has flipped the global flag, NEVER walk the tree (we must not
+            // capture the lock screen). Input counts may still accrue (counts
+            // only), so we fall through to the input-delta drain like the
+            // no-foreground / idle paths.
+            let locked = screenpipe_a11y::screen_is_locked();
+
             // No foreground window (locked / secure desktop / UAC prompt owns
             // the desktop) → no snapshot this tick, but input counts may still
             // have accrued, so we fall through to the input-delta drain.
             // Idle → skip the expensive capture_window_tree call this tick.
-            if !idle && !hwnd.is_invalid() {
+            if !locked && !idle && !hwnd.is_invalid() {
                 let (app_name, window_title, _pid) = get_window_info(hwnd);
 
                 // Provider couldn't be read this tick → gap, not an error.
@@ -497,7 +569,7 @@ mod real {
             // latency claim can be validated against a real number. The gate flip
             // itself is wait-free in nibbin-capture::gate; this measures the
             // hook-thread join + CoUninitialize portion.
-            eprintln!("capture teardown took {} ms", t0.elapsed().as_millis());
+            log::debug!("capture teardown took {} ms", t0.elapsed().as_millis());
         }
     }
     impl Drop for WindowsUiaCapture {
@@ -564,6 +636,41 @@ mod real {
                 != tree_fingerprint("notepad.exe", "B", &root);
             assert!(app_diff, "different app must change the fingerprint");
             assert!(title_diff, "different title must change the fingerprint");
+        }
+
+        /// A secure (password) field appearing in the tree → different
+        /// fingerprint, so a tick where a password box shows up is re-emitted
+        /// (and gets C4 secure-field suppression downstream).
+        #[test]
+        fn secure_field_appearing_hashes_differ() {
+            let mut base = node("Window", Some("Root"));
+            base.children = vec![node("Edit", Some("user"))];
+
+            let mut with_pw = node("Window", Some("Root"));
+            let mut pw = node("Edit", Some("user"));
+            pw.is_password = Some(true);
+            with_pw.children = vec![pw];
+
+            assert_ne!(
+                tree_fingerprint("app.exe", "t", &base),
+                tree_fingerprint("app.exe", "t", &with_pw),
+                "a secure-field appearing must change the fingerprint"
+            );
+        }
+
+        /// A changed `value` (e.g. text typed into a field) → different
+        /// fingerprint. Guards that `value` is part of the structural hash.
+        #[test]
+        fn changed_value_hashes_differ() {
+            let mut a = node("Edit", Some("field"));
+            a.value = Some("hello".to_string());
+            let mut b = node("Edit", Some("field"));
+            b.value = Some("world".to_string());
+            assert_ne!(
+                tree_fingerprint("app.exe", "t", &a),
+                tree_fingerprint("app.exe", "t", &b),
+                "a changed value must change the fingerprint"
+            );
         }
     }
 }
