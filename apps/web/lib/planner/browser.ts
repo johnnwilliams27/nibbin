@@ -14,10 +14,18 @@ import 'server-only';
  *    (`isPublicIp` from @nibbin/connectors), passed into the harness via
  *    PlannerDeps.isPublicIp.
  *
- * IMPORTANT: `playwright` is an OPTIONAL, NOT-INSTALLED dependency here. We load
- * it via a runtime dynamic import of a non-statically-analyzable specifier so
- * the build never tries to resolve it; if it isn't present, the driver is simply
- * unavailable. All tests use the in-memory MockBrowserDriver from @nibbin/runtime.
+ * IMPORTANT: the PROD engine deps (`playwright-core`, `@sparticuz/chromium`) are
+ * imported via dynamic `import()` of STATIC LITERAL specifiers (with
+ * `webpackIgnore` so webpack still leaves them external — no bundle bloat / no
+ * native-build break). The static literal is what lets Vercel's file tracer
+ * (`@vercel/nft`) SEE the specifier and trace each package (+ its transitive
+ * deps) INTO the serverless function — a computed specifier is invisible to nft,
+ * which is exactly why the function previously shipped without `playwright-core`
+ * ("browser unavailable" in prod). Only the full `playwright` package — an
+ * OPTIONAL, ABSENT-IN-PROD devDependency used solely as the local/CI fallback —
+ * stays a computed/obfuscated specifier, so nft never tries to bundle a package
+ * that isn't installed. All tests use the in-memory MockBrowserDriver from
+ * @nibbin/runtime.
  *
  * Egress posture (the load-bearing SSRF defense — P0/P1/P2):
  *  - The throwaway `safeFetch` probe in `navigate` is a cheap PRE-check only; it
@@ -248,27 +256,36 @@ function isServerlessRuntime(): boolean {
  *    drives the @sparticuz binary; the launch options come from loadBrowserRuntime).
  *  - Local/CI: full `playwright` (bundled chromium, as today); fall back to
  *    `playwright-core` if the full package isn't installed.
- * Each specifier is assembled at runtime so bundler/tsc static analysis can't try
- * to resolve it at build time.
+ * `playwright-core` is imported via a STATIC LITERAL specifier (kept external by
+ * `webpackIgnore`) SO nft traces it — and its transitive deps — into the
+ * serverless function; without the literal it was silently omitted ("browser
+ * unavailable" in prod). The full `playwright` package is ABSENT in prod, so its
+ * specifier stays computed — we do NOT want nft to try to bundle a missing
+ * package.
  */
 async function loadBrowserEngine(): Promise<PwModule | null> {
   const tryImport = async (spec: string): Promise<PwModule | null> => {
     try {
       const mod = (await import(/* webpackIgnore: true */ spec)) as unknown as PwModule;
       return mod && mod.chromium ? mod : null;
-    } catch {
+    } catch (err) {
+      // Failure path only (no logging on success): name the specifier + message so
+      // a `vercel logs` pull on the next deploy says exactly which import failed.
+      // No PII / no secrets — just the package specifier and the error message.
+      console.warn(
+        `[computer_use] engine import failed for "${spec}": ${err instanceof Error ? err.message : String(err)}`,
+      );
       return null;
     }
   };
-  const core = ['playwright', '-core'].join('');
   if (isServerlessRuntime()) {
-    // Serverless: prefer the bundled-browser-free engine; if it's somehow absent,
-    // try full playwright as a last resort (won't launch without a binary, but the
-    // null/throw path is handled the same way).
-    return (await tryImport(core)) ?? (await tryImport(['play', 'wright'].join('')));
+    // Serverless: prefer the bundled-browser-free engine (STATIC LITERAL so nft
+    // bundles it); if it's somehow absent, try full playwright as a last resort
+    // (won't launch without a binary, but the null/throw path is handled the same).
+    return (await tryImport('playwright-core')) ?? (await tryImport(['play', 'wright'].join('')));
   }
   // Local/CI: prefer full playwright (bundled chromium); fall back to core.
-  return (await tryImport(['play', 'wright'].join(''))) ?? (await tryImport(core));
+  return (await tryImport(['play', 'wright'].join(''))) ?? (await tryImport('playwright-core'));
 }
 
 /**
@@ -317,9 +334,11 @@ async function loadBrowserRuntime(loadEngine: () => Promise<PwModule | null>): P
   if (isDefaultLoader && isServerlessRuntime()) {
     try {
       // @sparticuz/chromium is an ESM-default module: the namespace's `.default`
-      // holds { args, executablePath(), … }. Assemble the specifier at runtime.
-      const spec = ['@sparticuz', '/chromium'].join('');
-      const ns = (await import(/* webpackIgnore: true */ spec)) as unknown as {
+      // holds { args, executablePath(), … }. STATIC LITERAL specifier (kept
+      // external by webpackIgnore) so nft sees it and traces it + its transitive
+      // deps into the function; its FILES are also force-included via
+      // next.config.mjs, but the literal lets nft follow the transitive paths too.
+      const ns = (await import(/* webpackIgnore: true */ '@sparticuz/chromium')) as unknown as {
         default?: { args: string[]; executablePath: () => Promise<string> };
         args?: string[];
         executablePath?: () => Promise<string>;
@@ -641,12 +660,20 @@ export class PlaywrightBrowserDriver implements BrowserDriver {
  * surfaces "browser unavailable" cleanly (never throws).
  */
 export async function buildBrowserDriver(): Promise<BrowserDriver | undefined> {
-  if (!browserEnabled()) return undefined;
+  if (!browserEnabled()) {
+    console.warn('[computer_use] disabled: COMPUTER_USE_ENABLED not set');
+    return undefined;
+  }
   // Probe the runtime-aware engine loader (full playwright locally; playwright-core
   // on serverless) — if nothing loads, the surface is unavailable. The actual
   // chromium launch (and the @sparticuz layer on serverless) stays lazy in
   // ensurePage(); this probe does NOT import @sparticuz.
   const engine = await loadBrowserEngine();
-  if (!engine) return undefined;
+  if (!engine) {
+    console.warn(
+      '[computer_use] engine load failed — playwright-core/@sparticuz not loadable in this runtime',
+    );
+    return undefined;
+  }
   return new PlaywrightBrowserDriver();
 }
