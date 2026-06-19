@@ -279,7 +279,7 @@ export default function Home() {
               </div>
             ))}
           </div>
-          <p className="priv-foot">Full detail in the data &amp; AI overview and privacy policy — published at launch.</p>
+          <p className="priv-foot">Full detail in the <a href="/data-ai">Data &amp; AI overview</a> and <a href="/privacy">Privacy Policy</a>.</p>
         </div>
       </section>
 
@@ -334,12 +334,10 @@ export default function Home() {
             <a href="#how">How it works</a>
             <a href="#pricing">Pricing</a>
             <a href="mailto:hello@nibbin.com">Contact</a>
-            <span className="soon" title="Available at launch">
-              Privacy
-            </span>
-            <span className="soon" title="Available at launch">
-              Terms
-            </span>
+            <a href="/privacy">Privacy</a>
+            <a href="/terms">Terms</a>
+            <a href="/data-ai">Data &amp; AI</a>
+            <a href="/subprocessors">Subprocessors</a>
           </div>
         </div>
       </footer>

@@ -1,7 +1,9 @@
-export { Button } from './Button';
-export { Card } from './Card';
-export { Badge } from './Badge';
-export { Spinner } from './Spinner';
-export { InlineFeedback } from './InlineFeedback';
-export { Select } from './Select';
-export type { SelectOption } from './Select';
+export { Button } from "./Button";
+export { Card } from "./Card";
+export { Badge } from "./Badge";
+export { Spinner } from "./Spinner";
+export { InlineFeedback } from "./InlineFeedback";
+export { Select } from "./Select";
+export type { SelectOption } from "./Select";
+export { Tooltip, InfoTooltip } from "./Tooltip";
+export type { TooltipProps, InfoTooltipProps } from "./Tooltip";

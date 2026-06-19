@@ -15,6 +15,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { openTrainingAction, closeTrainingAction } from './actions';
+import { Tooltip } from '../../../components/ui/Tooltip';
 import styles from './nibbins.module.css';
 
 export interface TrainingState {
@@ -77,9 +78,11 @@ export function TrainingToggle({
     if (typeof state.expiresAtMs === 'number') parts.push(expiryLabel(state.expiresAtMs));
     return (
       <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-        <span className={styles.streak} title="Training surfaces more drafts for your review — it never acts on its own.">
-          Training · {parts.join(' · ')}
-        </span>
+        <Tooltip content="Training surfaces more drafts for your review — it never acts on its own.">
+          <span className={styles.streak}>
+            Training · {parts.join(' · ')}
+          </span>
+        </Tooltip>
         <button type="button" className={styles.draftBtn} onClick={close} disabled={pending}>
           {pending ? 'Ending…' : 'End training'}
         </button>
@@ -90,15 +93,16 @@ export function TrainingToggle({
 
   return (
     <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>
-      <button
-        type="button"
-        className={styles.draftBtn}
-        onClick={open}
-        disabled={pending}
-        title={`Surface more drafts from ${name} for your review — speeds up graduation without changing any gate.`}
-      >
-        {pending ? 'Starting…' : 'Train faster'}
-      </button>
+      <Tooltip content={`Surface more drafts from ${name} for your review — speeds up graduation without changing any gate.`}>
+        <button
+          type="button"
+          className={styles.draftBtn}
+          onClick={open}
+          disabled={pending}
+        >
+          {pending ? 'Starting…' : 'Train faster'}
+        </button>
+      </Tooltip>
       {error && <span className={styles.err}>{error}</span>}
     </span>
   );

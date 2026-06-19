@@ -18,23 +18,52 @@ function usd(microUsd: number): string {
   return `$${(microUsd / 1_000_000).toFixed(6)}`;
 }
 
+/** A model's avg cost, or "N/A" when no pricing is pinned (e.g. Fable). */
+function avgCostLabel(m: PairResult['incumbent']): string {
+  return m.costKnown ? `${usd(m.avgCostMicroUsd)}/call` : 'N/A (no pinned price)';
+}
+
+/** Render the per-fixture score cell, including the raw samples when present. */
+function scoreCell(s: PairResult['incumbent']['scores'][number] | undefined): string {
+  if (!s) return '—';
+  const base = s.score.toFixed(2);
+  // Variance visibility: show the raw samples when multi-sample judging ran.
+  if (s.samples && s.samples.length > 1) {
+    return `${base} (${s.samples.map((x) => x.toFixed(2)).join(', ')})`;
+  }
+  return base;
+}
+
 function pairSection(p: PairResult): string {
   const lines: string[] = [];
-  lines.push(`### ${p.task} (${p.tier}) — ${p.kind} challenge`);
+  const splurge = p.reportOnly ? ' — REPORT-ONLY (splurge; never armed)' : '';
+  lines.push(`### ${p.task} (${p.tier}) — ${p.kind} challenge${splurge}`);
   lines.push('');
+  if (p.reportOnly) {
+    lines.push('> **Splurge — report-only.** Scored for insight (is a cheaper model adequate for this belief-earning moment?). NEVER armed into `DEFAULT_TASK_CANDIDATES` regardless of clearance (§6.3).');
+    lines.push('');
+  }
   lines.push(`- Rubric: \`${p.rubricVersion}\``);
-  lines.push(`- Incumbent \`${p.incumbent.model}\`: **${p.incumbent.aggregate.toFixed(3)}** (avg cost ${usd(p.incumbent.avgCostMicroUsd)}/call)`);
-  lines.push(`- Challenger \`${p.challenger.model}\`: **${p.challenger.aggregate.toFixed(3)}** (avg cost ${usd(p.challenger.avgCostMicroUsd)}/call)`);
-  const deltaSign = p.costDeltaMicroUsd <= 0 ? '' : '+';
-  lines.push(`- Est. cost delta (challenger − incumbent): ${deltaSign}${usd(p.costDeltaMicroUsd)}/call`);
+  lines.push(`- Incumbent \`${p.incumbent.model}\`: **${p.incumbent.aggregate.toFixed(3)}** (avg cost ${avgCostLabel(p.incumbent)})`);
+  lines.push(`- Challenger \`${p.challenger.model}\`: **${p.challenger.aggregate.toFixed(3)}** (avg cost ${avgCostLabel(p.challenger)})`);
+  if (p.costDeltaKnown) {
+    const deltaSign = p.costDeltaMicroUsd <= 0 ? '' : '+';
+    lines.push(`- Est. cost delta (challenger − incumbent): ${deltaSign}${usd(p.costDeltaMicroUsd)}/call`);
+  } else {
+    lines.push('- Est. cost delta (challenger − incumbent): N/A (challenger has no pinned price)');
+  }
   lines.push(`- **Cleared: ${p.cleared ? 'YES' : 'no'}** — ${p.reason}`);
+  if (p.reportOnly && p.cleared) {
+    lines.push('  - NOTE: "cleared" here is informational — this splurge pair is NOT armed.');
+  }
   lines.push('');
-  lines.push('| fixture | incumbent | challenger |');
+  const multi = p.incumbent.scores.some((s) => s.samples && s.samples.length > 1);
+  lines.push(multi ? '| fixture | incumbent (median; samples) | challenger (median; samples) |' : '| fixture | incumbent | challenger |');
   lines.push('| --- | --- | --- |');
   for (let i = 0; i < p.incumbent.scores.length; i++) {
     const inc = p.incumbent.scores[i];
     const ch = p.challenger.scores[i];
-    lines.push(`| ${inc.fixtureId} | ${inc.score.toFixed(2)} | ${ch ? ch.score.toFixed(2) : '—'} |`);
+    lines.push(`| ${inc.fixtureId} | ${scoreCell(inc)} | ${scoreCell(ch)} |`);
   }
   lines.push('');
   return lines.join('\n');
@@ -42,6 +71,8 @@ function pairSection(p: PairResult): string {
 
 export function renderMarkdown(run: EvalRun): string {
   const cleared = run.pairs.filter((p) => p.cleared);
+  // Only NON-reportOnly cleared pairs would actually be armed by --write.
+  const armable = cleared.filter((p) => !p.reportOnly);
   const head: string[] = [];
   head.push(`# Routing eval — ${run.date}`);
   head.push('');
@@ -58,11 +89,20 @@ export function renderMarkdown(run: EvalRun): string {
   head.push('');
   head.push('## Summary');
   head.push('');
-  head.push(`Cleared ${cleared.length} of ${run.pairs.length} pair(s).`);
-  if (cleared.length > 0) {
+  head.push(`Cleared ${cleared.length} of ${run.pairs.length} pair(s); ${armable.length} armable (splurge report-only pairs are excluded from arming).`);
+  if (armable.length > 0) {
     head.push('');
-    for (const p of cleared) {
+    head.push('Would arm (non-splurge cleared challengers):');
+    for (const p of armable) {
       head.push(`- \`${p.task}\` → arm \`[${p.incumbent.model}, ${p.challenger.model}]\` (incumbent first).`);
+    }
+  }
+  const clearedSplurge = cleared.filter((p) => p.reportOnly);
+  if (clearedSplurge.length > 0) {
+    head.push('');
+    head.push('Report-only (splurge — scored "cleared" but NEVER armed, §6.3):');
+    for (const p of clearedSplurge) {
+      head.push(`- \`${p.task}\` vs \`${p.challenger.model}\` — insight only.`);
     }
   }
   head.push('');

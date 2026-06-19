@@ -1,0 +1,81 @@
+/* Nibbin UI kit — Tooltip + InfoTooltip. Token-only, CSS-only hover/focus-within.
+   No JS required; works in server components. */
+
+/* ---- Tooltip wrapper ---- */
+.root {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* ---- Bubble (shared by both top and bottom) ---- */
+.bubble {
+  position: absolute;
+  z-index: 50;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: var(--canopy);
+  font-family: var(--sans);
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 500;
+  padding: 6px 10px;
+  border-radius: var(--r-input);
+  box-shadow: var(--shadow-2);
+  max-width: 240px;
+  white-space: normal;
+  word-break: break-word;
+  pointer-events: none;
+  /* Hidden by default */
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--dur-1) var(--ease-settle), visibility var(--dur-1) var(--ease-settle);
+}
+
+/* ---- Placement: top (default) ---- */
+.bubbleTop {
+  bottom: calc(100% + 6px);
+}
+
+/* ---- Placement: bottom ---- */
+.bubbleBottom {
+  top: calc(100% + 6px);
+}
+
+/* ---- Show on hover or keyboard focus within the wrapper ---- */
+.root:hover .bubble,
+.root:focus-within .bubble {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* ---- InfoTooltip trigger button ---- */
+.infoBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--r-pill);
+  background: var(--understory);
+  color: var(--ink-soft);
+  border: none;
+  padding: 0;
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: default;
+  flex-shrink: 0;
+}
+.infoBtn:focus-visible {
+  outline: 2px solid var(--moss);
+  outline-offset: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bubble {
+    transition: none;
+  }
+}

@@ -1,21 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { buildCreature } from '@nibbin/creatures';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Grovekeeper } from '../grovekeeper/Grovekeeper';
 import { NotificationBell } from './NotificationBell';
 import { HelpButton } from './HelpButton';
 import styles from './shell.module.css';
 
-/** The Grovekeeper creature as a small inline glyph (mount-gated — the engine
- *  mints unique gradient ids per render, so SSR + hydration can't match). */
-function KeeperGlyph({ size }: { size: number }) {
-  const svg = useMemo(() => buildCreature({ species: 'Keeper', size }), [size]);
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  if (!mounted) return null;
-  return <span className={styles.keeperGlyph} aria-hidden="true" dangerouslySetInnerHTML={{ __html: svg }} />;
-}
+const NAV_COLLAPSED_KEY = 'nibbin:navCollapsed';
 
 export type NavKey =
   | 'grove'
@@ -166,7 +158,42 @@ export function AppShell({ active, title, email, children, panel, onboarding }: 
   const [open, setOpen] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const [panelCollapsed, setPanelCollapsed] = useState(false);
+  const [navCollapsed, setNavCollapsed] = useState(false);
   const close = () => setOpen(false);
+
+  // Read persisted nav-collapsed state on mount (avoids SSR mismatch).
+  useEffect(() => {
+    try {
+      setNavCollapsed(localStorage.getItem(NAV_COLLAPSED_KEY) === 'true');
+    } catch {
+      // localStorage unavailable (private browsing, etc.) — stay expanded.
+    }
+  }, []);
+
+  // Auto-collapse the right-rail panel at the intermediate viewport width
+  // (881–1180px) where content + 380px panel + 220px sidebar would pinch.
+  useEffect(() => {
+    if (!panel) return;
+    const mq = window.matchMedia('(max-width: 1180px) and (min-width: 881px)');
+    function handleChange(e: MediaQueryListEvent | MediaQueryList) {
+      if (e.matches) setPanelCollapsed(true);
+    }
+    handleChange(mq);
+    mq.addEventListener('change', handleChange);
+    return () => mq.removeEventListener('change', handleChange);
+  }, [panel]);
+
+  function toggleNav() {
+    setNavCollapsed((v) => {
+      const next = !v;
+      try {
+        localStorage.setItem(NAV_COLLAPSED_KEY, String(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }
 
   return (
     <div className={styles.shell}>
@@ -175,8 +202,10 @@ export function AppShell({ active, title, email, children, panel, onboarding }: 
         <div className={styles.backdrop} onClick={() => setPanelOpen(false)} aria-hidden="true" />
       )}
 
-      <aside className={`${styles.sidebar} ${open ? styles.sidebarOpen : ''}`}>
-        <Link href="/app" className={styles.brand} onClick={close}>
+      <aside
+        className={`${styles.sidebar} ${open ? styles.sidebarOpen : ''} ${navCollapsed ? styles.sidebarCollapsed : ''}`}
+      >
+        <Link href="/app" className={styles.brand} onClick={close} title="Grove Home">
           Nibbin
         </Link>
         <nav className={styles.nav}>
@@ -189,9 +218,11 @@ export function AppShell({ active, title, email, children, panel, onboarding }: 
                 className={`${styles.navItem} ${styles.navItemQuiet}`}
                 aria-disabled="true"
                 tabIndex={-1}
+                title={navCollapsed ? item.label : undefined}
+                aria-label={navCollapsed ? item.label : undefined}
               >
                 <NavIcon k={item.key} />
-                {item.label}
+                <span className={styles.navLabel}>{item.label}</span>
               </span>
             ) : (
               <Link
@@ -200,16 +231,46 @@ export function AppShell({ active, title, email, children, panel, onboarding }: 
                 onClick={close}
                 className={`${styles.navItem} ${item.key === active ? styles.navItemActive : ''}`}
                 aria-current={item.key === active ? 'page' : undefined}
+                title={navCollapsed ? item.label : undefined}
+                aria-label={navCollapsed ? item.label : undefined}
               >
                 <NavIcon k={item.key} />
-                {item.label}
+                <span className={styles.navLabel}>{item.label}</span>
               </Link>
             ),
           )}
         </nav>
+
+        {/* Collapse / expand toggle — desktop only (hidden on mobile via CSS) */}
+        <button
+          type="button"
+          className={styles.navCollapseBtn}
+          aria-label={navCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+          title={navCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+          onClick={toggleNav}
+        >
+          {/* Chevron SVG — points left (collapse); rotated 180° via CSS when collapsed */}
+          <svg
+            className={styles.navCollapseBtnIcon}
+            viewBox="0 0 24 24"
+            width="18"
+            height="18"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.8}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+          <span className={styles.navCollapseBtnLabel}>Collapse navigation</span>
+        </button>
       </aside>
 
-      <div className={`${styles.main} ${panel ? styles.mainWithPanel : ''} ${onboarding ? styles.mainOnboarding : ''}`}>
+      <div
+        className={`${styles.main} ${panel ? styles.mainWithPanel : ''} ${onboarding ? styles.mainOnboarding : ''} ${navCollapsed ? styles.mainNavCollapsed : ''}`}
+      >
         <header className={styles.topbar}>
           <button
             className={styles.hamburger}
@@ -265,7 +326,9 @@ export function AppShell({ active, title, email, children, panel, onboarding }: 
           aria-label="Open Keeper panel"
           onClick={() => setPanelCollapsed(false)}
         >
-          <KeeperGlyph size={26} />
+          <span className={styles.keeperGlyph} aria-hidden="true">
+            <Grovekeeper size={26} />
+          </span>
         </button>
       )}
 
@@ -278,7 +341,11 @@ export function AppShell({ active, title, email, children, panel, onboarding }: 
           aria-expanded={panelOpen}
           onClick={() => setPanelOpen((v) => !v)}
         >
-          {panelOpen ? '✕' : <KeeperGlyph size={30} />}
+          {panelOpen ? '✕' : (
+            <span className={styles.keeperGlyph} aria-hidden="true">
+              <Grovekeeper size={32} />
+            </span>
+          )}
         </button>
       )}
     </div>

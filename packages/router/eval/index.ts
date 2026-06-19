@@ -11,6 +11,7 @@ export { fixturesForTask, FIXTURES_BY_TASK } from './fixtures/index';
 export {
   createLlmJudge,
   createMockJudge,
+  median,
   parseVerdict,
   seededUnit,
   JUDGE_MODEL,
@@ -21,7 +22,7 @@ export {
 } from './judge';
 export { createMockGenerate } from './mock-model';
 export { renderMarkdown, writeReport } from './report';
-export { runEval, type RunOptions } from './run';
+export { runEval, COMPREHENSIVE_SAMPLE_COUNT, type RunOptions } from './run';
 export {
   applyClearedPairs,
   armCandidatesSource,
