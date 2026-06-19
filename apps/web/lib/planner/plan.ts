@@ -31,6 +31,7 @@ import {
   type PlanSpec,
   type PlannerToolId,
 } from '@nibbin/runtime';
+import { isPublicIp } from '@nibbin/connectors';
 import type { Generate, Router } from '@nibbin/router';
 import { groveRouter } from '../grove/router';
 import { anthropicGenerate, recordModelCall } from '../llm/client';
@@ -129,6 +130,41 @@ function parsePlan(text: string): ParsedPlan | null {
 }
 
 /**
+ * Deterministic non-public-URL pre-check. If the intent references a URL whose
+ * host is NON-PUBLIC (localhost / .local / .internal, or a literal private/
+ * loopback/metadata IP), return the first such URL — so planForIntent can refuse
+ * with an accurate message BEFORE spending a frontier-budget unit on a request
+ * the egress guard will only block anyway.
+ *
+ * Host classification MIRRORS assertSafeNavigateUrl (packages/runtime/browser.ts):
+ * the localhost/.local/.internal suffix rejects + the `isLiteral && !isPublicIp`
+ * rule, reusing the SAME `isPublicIp` predicate (never re-implemented here).
+ * Conservative on parse: a token that isn't a valid http(s) URL is skipped.
+ */
+function firstNonPublicUrl(intent: string): string | null {
+  const matches = intent.match(/https?:\/\/[^\s<>"'`)\]}]+/gi);
+  if (!matches) return null;
+  for (const token of matches) {
+    let parsed: URL;
+    try {
+      parsed = new URL(token);
+    } catch {
+      continue;
+    }
+    const host = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, '');
+    if (host === '') continue;
+    if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') || host.endsWith('.internal')) {
+      return token;
+    }
+    const isLiteral = host.includes(':') || /^\d+(\.\d+){3}$/.test(host);
+    if (isLiteral && !isPublicIp(host)) {
+      return token;
+    }
+  }
+  return null;
+}
+
+/**
  * Synthesize a validated PlanSpec for an intent. `generateOverride`/`routerOverride`
  * are test seams (mirrors the Composer). No model key → {error}.
  */
@@ -142,6 +178,17 @@ export async function planForIntent(
 ): Promise<PlanResult> {
   const llm = generateOverride ?? anthropicGenerate();
   if (!llm) return { error: 'planning requires a model' };
+
+  // Deterministic refusal for a non-public URL in the request — short-circuit
+  // BEFORE the model route()/llm() call so the explanation is accurate (the
+  // browse tool DOES exist, it just won't reach internal addresses) AND a doomed
+  // request never spends a per-user daily frontier-budget unit.
+  if (firstNonPublicUrl(intent)) {
+    return {
+      error:
+        "I can only browse public web pages — I can't access internal or non-public addresses (like cloud-metadata, localhost, or private IPs).",
+    };
+  }
 
   const surfaceTools = availableConnectorTools(accountConnections);
   const utilities = availableUtilities();
