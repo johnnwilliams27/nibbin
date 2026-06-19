@@ -7,6 +7,50 @@ import { NotificationBell } from './NotificationBell';
 import { HelpButton } from './HelpButton';
 import styles from './shell.module.css';
 
+/** Inline sprout logomark from packages/shared/brand/nibbin-mark.svg.
+ *  Rendered at 28×28px; IDs suffixed to avoid clashes on the same page. */
+function BrandMark() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 72 72"
+      width="28"
+      height="28"
+      role="img"
+      aria-label="nibbin"
+    >
+      <defs>
+        <linearGradient id="nm2Stem" x1="0" y1="0.1" x2="1" y2="0.2">
+          <stop offset="0%" stopColor="#6E9136" />
+          <stop offset="52%" stopColor="#4C6E24" />
+          <stop offset="100%" stopColor="#34471A" />
+        </linearGradient>
+        <linearGradient id="nm2LeafL" x1="0.05" y1="0.05" x2="0.7" y2="1">
+          <stop offset="0%" stopColor="#7CA23E" />
+          <stop offset="100%" stopColor="#46651F" />
+        </linearGradient>
+        <linearGradient id="nm2LeafR" x1="0.1" y1="0" x2="0.7" y2="1">
+          <stop offset="0%" stopColor="#A6D45F" />
+          <stop offset="100%" stopColor="#5E8A2C" />
+        </linearGradient>
+        <filter id="nm2Shadow" x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur stdDeviation="1.3" />
+        </filter>
+      </defs>
+      <ellipse cx="38.5" cy="66.5" rx="11" ry="2.6" fill="#23291A" opacity=".18" filter="url(#nm2Shadow)" />
+      <path d="M32 66 C33 52 35 40 36 30 L40 30 C41.4 40 43.4 52 44.6 66 Z" fill="url(#nm2Stem)" stroke="#3C541C" strokeWidth="2.2" strokeLinejoin="round" />
+      <path d="M34.4 64 C35 52 36.2 41 37 31" fill="none" stroke="#CFE79C" strokeWidth="1.6" strokeLinecap="round" opacity=".5" />
+      <path d="M42.6 64 C42 52 40.9 41 39.7 31.5" fill="none" stroke="#26380F" strokeWidth="1.8" strokeLinecap="round" opacity=".32" />
+      <path d="M37.4 31 C26 32 14 27 11 16.5 C22 14 33 20.5 37.4 31 Z" fill="url(#nm2LeafL)" stroke="#3C541C" strokeWidth="2.2" strokeLinejoin="round" />
+      <path d="M35 29.5 C27 28 18 24 12.5 17.5" fill="none" stroke="#3C541C" strokeWidth="1.1" opacity=".38" />
+      <path d="M34 27 C26.5 25.5 19 22 14 18" fill="none" stroke="#CFE79C" strokeWidth="1" opacity=".5" />
+      <path d="M39 31 C49.5 28.5 57.5 20 59.5 10 C48.5 8.5 41 18 39 31 Z" fill="url(#nm2LeafR)" stroke="#3C541C" strokeWidth="2.2" strokeLinejoin="round" />
+      <path d="M41 29.5 C48 26.5 54 21.5 58 12" fill="none" stroke="#46651F" strokeWidth="1.1" opacity=".38" />
+      <path d="M41.5 27 C47.5 24 52.5 20 56 13" fill="none" stroke="#DCEEB4" strokeWidth="1" opacity=".55" />
+    </svg>
+  );
+}
+
 const NAV_COLLAPSED_KEY = 'nibbin:navCollapsed';
 
 export type NavKey =
@@ -15,6 +59,7 @@ export type NavKey =
   | 'connections'
   | 'hatch'
   | 'diagnosis'
+  | 'planner'
   | 'memory'
   | 'shop'
   | 'notifications'
@@ -56,6 +101,14 @@ function NavIcon({ k }: { k: NavKey }) {
       </>
     ),
     diagnosis: <path d="M22 12h-4l-3 9L9 3l-3 9H2" />,
+    planner: (
+      <>
+        <rect x="5" y="3" width="14" height="18" rx="2" />
+        <path d="M9 7h6" />
+        <path d="M9 11h6" />
+        <path d="M9 15h4" />
+      </>
+    ),
     memory: (
       <>
         <path d="M12 7v14" />
@@ -123,11 +176,12 @@ const NAV: { key: NavKey; label: string; href: string }[] = [
   { key: 'connections', label: 'Connections', href: '/app/connections' },
   { key: 'hatch', label: 'Hatch your own', href: '/app/hatch' },
   { key: 'diagnosis', label: 'Diagnosis', href: '/app/diagnosis' },
+  { key: 'planner', label: 'Planner', href: '/app/planner' },
   { key: 'memory', label: 'Memory', href: '/app/memory' },
   { key: 'shop', label: 'Agent Shop', href: '/app/shop' },
   { key: 'billing', label: 'Plan & credits', href: '/billing' },
   { key: 'settings', label: 'Settings', href: '/app/settings/profile' },
-  { key: 'help', label: 'Help & Getting Started', href: '/app/help' },
+  { key: 'help', label: 'Help Center', href: '/app/help' },
 ];
 
 export interface AppShellProps {
@@ -206,7 +260,11 @@ export function AppShell({ active, title, email, children, panel, onboarding }: 
         className={`${styles.sidebar} ${open ? styles.sidebarOpen : ''} ${navCollapsed ? styles.sidebarCollapsed : ''}`}
       >
         <Link href="/app" className={styles.brand} onClick={close} title="Grove Home">
-          Nibbin
+          {navCollapsed ? (
+            <BrandMark />
+          ) : (
+            <span className={styles.brandWord}>Nibbin</span>
+          )}
         </Link>
         <nav className={styles.nav}>
           {NAV.map((item) =>

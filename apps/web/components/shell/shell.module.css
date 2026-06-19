@@ -16,11 +16,12 @@
   width: 220px;
   background: var(--canopy);
   border-right: 1px solid var(--line);
-  padding: 22px 16px;
+  padding: 16px 12px;
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 14px;
   z-index: 30;
+  will-change: transform;
   transition: transform var(--dur-2) var(--ease-settle), width var(--dur-2) var(--ease-settle),
     padding var(--dur-2) var(--ease-settle);
 }
@@ -39,22 +40,28 @@
   letter-spacing: -0.02em;
   color: var(--moss-deep);
   text-decoration: none;
-  padding: 0 8px;
+  padding: 0 4px;
   white-space: nowrap;
   overflow: hidden;
-  transition: opacity var(--dur-2) var(--ease-settle), font-size var(--dur-2) var(--ease-settle);
-}
-
-/* Collapsed: shrink the wordmark to a single-letter mark, centred */
-.sidebarCollapsed .brand {
-  font-size: 18px;
-  padding: 0;
   display: flex;
   align-items: center;
+  transition: opacity var(--dur-2) var(--ease-settle);
+}
+
+.brandWord {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  color: var(--moss-deep);
+}
+
+/* Collapsed: show the sprout logomark centred in the 56px rail */
+.sidebarCollapsed .brand {
+  padding: 0;
   justify-content: center;
-  /* clip everything past the first character via a fixed width */
   width: 40px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 /* Collapsed nav button to toggle back open */
@@ -102,7 +109,7 @@
 .nav {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 
 .navItem {
@@ -515,8 +522,7 @@
     transform: none;
   }
   .sidebarCollapsed .brand {
-    font-size: 22px;
-    padding: 0 8px;
+    padding: 0 4px;
     width: auto;
     justify-content: flex-start;
   }
