@@ -2,6 +2,12 @@ import { defineConfig } from 'vitest/config';
 import { fileURLToPath } from 'node:url';
 
 export default defineConfig({
+  // Vite 6 uses oxc (rolldown) by default; Next.js tsconfig sets jsx:"preserve"
+  // which oxc refuses to emit. Tell the transformer to use the automatic React
+  // runtime so .tsx component files (e.g. ConnectorLogo) compile under vitest.
+  oxc: {
+    jsx: { runtime: 'automatic' },
+  },
   resolve: {
     alias: {
       // Next's build-time RSC guard throws on import outside react-server
@@ -22,7 +28,11 @@ export default defineConfig({
       'packages/*/test/**/*.test.ts',
       'apps/*/test/**/*.test.ts',
       'apps/*/lib/**/*.test.ts',
+      'apps/*/lib/**/*.test.tsx',
       'apps/*/app/**/*.test.ts',
+      'apps/*/app/**/*.test.tsx',
+      'apps/*/components/**/*.test.ts',
+      'apps/*/components/**/*.test.tsx',
       'tests/**/*.test.ts',
     ],
     // The RLS test files share one Postgres and each drops/recreates the public

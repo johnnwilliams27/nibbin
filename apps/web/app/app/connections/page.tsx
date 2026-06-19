@@ -8,6 +8,8 @@ import { CONNECTABLE_PROVIDERS, scopeSummary, isReadOnly } from '../../../lib/co
 import { beginConnectAction, disconnectAction } from './actions';
 import { AdoptButton } from '../../../components/adopt/AdoptButton';
 import { adoptFromShopOutcome } from '../shop/actions';
+import { ConnectorDirectory } from '../../../components/help/ConnectorDirectory';
+import { CONNECTORS } from '../../../lib/connections/catalog';
 import styles from './connections.module.css';
 
 export const metadata: Metadata = { title: 'Connections — Nibbin' };
@@ -111,6 +113,8 @@ export default async function ConnectionsPage({
           );
         })}
       </div>
+
+      <ConnectorDirectory connectors={CONNECTORS} heading="Browse all connectors" />
     </AppShell>
   );
 }
