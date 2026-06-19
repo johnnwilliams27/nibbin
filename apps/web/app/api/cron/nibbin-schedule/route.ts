@@ -9,7 +9,7 @@ import {
 } from '@nibbin/runtime';
 import { serviceClient } from '../../../../lib/supabase/service';
 import { isAuthorizedCronRequest } from '../../../../lib/connections/cron-auth';
-import { activeScheduledNibbins, triggerNibbinRun } from '../../../../lib/runtime/engine';
+import { dueScheduleOccurrences, seedCandidateNibbins, triggerNibbinRun } from '../../../../lib/runtime/engine';
 import { SupabaseTrainingStore } from '../../../../lib/runtime/stores';
 import { SCHEDULE_DEFS, nextOccurrence } from '../../../../lib/runtime/schedule';
 
@@ -17,7 +17,10 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 /** Cost/fairness bounds (design §"The cron route"). */
-export const NIBBIN_BATCH_LIMIT = 200;
+/** Max DUE (nibbin, schedule_key) rows claimed per tick (due-first scan cap). */
+export const DUE_SCAN_LIMIT = 200;
+/** Max never-before-seen scheduled nibbins discovered + seeded per tick. */
+export const SEED_DISCOVERY_LIMIT = 200;
 export const MAX_LAUNCHES_PER_TICK = 100;
 const FALLBACK_TZ = 'UTC';
 
@@ -29,16 +32,41 @@ export interface ScheduleStateRow {
 }
 
 /**
+ * A DUE occurrence: a `nibbin_schedule_state` row (next_run_at <= now) joined to
+ * its active nibbin. The due-first scan returns these ordered by `next_run_at`
+ * ASC (oldest-due first), so coverage is fair and no nibbin with a due
+ * occurrence is permanently starved behind a 200-row created_at window.
+ */
+export interface DueOccurrence {
+  nibbin: NibbinRef;
+  scheduleKey: string;
+}
+
+/**
  * The injectable seam. The route wires the Supabase-backed implementations; the
  * tests inject fakes so `runScheduleTick` is exercised WITHOUT a live DB/HTTP.
  * Every method that could fail does so per-nibbin inside a try/catch in the loop
  * — a load/claim error for one nibbin must NEVER fire it (fail-closed).
  */
 export interface ScheduleTickDeps {
-  /** Active nibbins (cross-account), already bounded by NIBBIN_BATCH_LIMIT. */
-  loadNibbins: () => Promise<NibbinRef[]>;
-  /** All schedule-state rows for the loaded nibbins (batch). */
-  loadStateRows: (nibbinIds: string[]) => Promise<ScheduleStateRow[]>;
+  /**
+   * Claim phase — DUE-FIRST. All due occurrences (`next_run_at <= now`) joined
+   * to their active nibbin, ordered by `next_run_at` ASC and bounded by
+   * `DUE_SCAN_LIMIT`. Uses the `nibbin_schedule_state_next_run_idx` index so the
+   * scan stays cheap and FAIR — no scheduled nibbin is permanently starved
+   * behind a created_at window (the old `.eq(status).order(created_at).limit`
+   * pre-limit bug). Returns at most `DUE_SCAN_LIMIT` rows; the route surfaces
+   * `scanCapped` when exactly that many come back (more due work exists).
+   */
+  loadDueOccurrences: (now: Date, limit: number) => Promise<DueOccurrence[]>;
+  /**
+   * Seed phase — bounded DISCOVERY. Active nibbins carrying a recognized
+   * `schedule` trigger that LACK any `nibbin_schedule_state` row, ordered
+   * newest-first so brand-new nibbins are seeded promptly (a delayed seed is
+   * benign — the nibbin enters the fair claim phase a tick later). Bounded by
+   * `SEED_DISCOVERY_LIMIT`; the route surfaces `seedCapped` at the limit.
+   */
+  loadSeedCandidates: (limit: number) => Promise<NibbinRef[]>;
   /** Resolve an account's IANA zone (owner's users.tz), 'UTC' fallback. Cached per tick by the route. */
   resolveTz: (accountId: string) => Promise<string>;
   /** Seed a FUTURE occurrence (insert … on conflict do nothing). Never fires. */
@@ -55,12 +83,18 @@ export interface ScheduleTickDeps {
 }
 
 export interface ScheduleTickResult {
+  /** Distinct nibbins considered this tick (due claims ∪ seed candidates). */
   scanned: number;
   fired: number;
   sampled: number;
   deferred: number;
   errors: string[];
+  /** Per-tick launch cap hit (some due rows deferred to next tick). */
   capped: boolean;
+  /** The due-first claim scan returned its full LIMIT — more due work exists. */
+  scanCapped: boolean;
+  /** The seed-discovery scan returned its full LIMIT — more new nibbins exist. */
+  seedCapped: boolean;
 }
 
 /** The schedule keys a spec's triggers ask for, that we actually understand. */
@@ -91,26 +125,8 @@ export async function runScheduleTick(deps: ScheduleTickDeps): Promise<ScheduleT
   let sampled = 0;
   let deferred = 0;
   let capped = false;
-
-  let nibbins: NibbinRef[];
-  try {
-    nibbins = await deps.loadNibbins();
-  } catch (e) {
-    return { scanned: 0, fired: 0, sampled: 0, deferred: 0, errors: [`loadNibbins: ${(e as Error).message}`], capped: false };
-  }
-  // Keep only nibbins that actually carry a recognized schedule trigger.
-  const scheduled = nibbins.filter((n) => scheduleKeysOf(n).length > 0);
-  const scanned = scheduled.length;
-
-  // Batch-load state once. A load failure here is fail-closed: with no state we
-  // cannot claim, so we only seed (never fire) and try again next tick.
-  let stateByKey = new Map<string, ScheduleStateRow>();
-  try {
-    const rows = await deps.loadStateRows(scheduled.map((n) => n.id));
-    stateByKey = new Map(rows.map((r) => [`${r.nibbinId}|${r.scheduleKey}`, r]));
-  } catch (e) {
-    errors.push(`loadStateRows: ${(e as Error).message}`);
-  }
+  let scanCapped = false;
+  let seedCapped = false;
 
   // Resolve each account's tz once per tick.
   const tzCache = new Map<string, string>();
@@ -129,56 +145,96 @@ export async function runScheduleTick(deps: ScheduleTickDeps): Promise<ScheduleT
 
   const launchesLeft = (): boolean => fired + sampled < MAX_LAUNCHES_PER_TICK;
 
-  // ── Base cadence ────────────────────────────────────────────────────────
-  for (const nibbin of scheduled) {
+  // Every nibbin we touch this tick — the training pass iterates this union, and
+  // `firedBase` records which ones already launched a base run (FIX 3: never
+  // double-spend a training budget unit on a nibbin that base-fired this tick;
+  // its sampled run would only hit the runner's cooldown after the unit is
+  // already consumed).
+  const consideredById = new Map<string, NibbinRef>();
+  const firedBase = new Set<string>();
+
+  // ── Claim phase — DUE-FIRST (uses the next_run_at index) ──────────────────
+  let due: DueOccurrence[] = [];
+  try {
+    due = await deps.loadDueOccurrences(now, DUE_SCAN_LIMIT);
+    if (due.length >= DUE_SCAN_LIMIT) scanCapped = true;
+  } catch (e) {
+    errors.push(`loadDueOccurrences: ${(e as Error).message}`);
+  }
+
+  for (const { nibbin, scheduleKey: key } of due) {
+    consideredById.set(nibbin.id, nibbin);
+    if (!SCHEDULE_DEFS[key]) continue; // unrecognized key — skip, never throw
+    try {
+      const tz = await tzFor(nibbin.accountId);
+      const next = nextOccurrence(key, tz, now);
+      if (!next) continue;
+
+      if (!launchesLeft()) {
+        // Cap hit: do NOT claim (leaving the row due) so it fires next tick.
+        deferred += 1;
+        capped = true;
+        continue;
+      }
+
+      const claimed = await deps.claimAndAdvance(nibbin.id, key, now, next);
+      if (!claimed) continue; // a concurrent tick won the claim — exactly-once
+
+      await deps.triggerRun(nibbin.id, { kind: 'schedule', key });
+      fired += 1;
+      firedBase.add(nibbin.id);
+    } catch (e) {
+      errors.push(`${nibbin.id}/${key}: ${(e as Error).message}`);
+    }
+  }
+
+  // ── Seed phase — bounded discovery of never-seen scheduled nibbins ────────
+  let seedCandidates: NibbinRef[] = [];
+  try {
+    seedCandidates = await deps.loadSeedCandidates(SEED_DISCOVERY_LIMIT);
+    if (seedCandidates.length >= SEED_DISCOVERY_LIMIT) seedCapped = true;
+  } catch (e) {
+    errors.push(`loadSeedCandidates: ${(e as Error).message}`);
+  }
+
+  for (const nibbin of seedCandidates) {
+    consideredById.set(nibbin.id, nibbin);
+    const keys = scheduleKeysOf(nibbin);
+    if (keys.length === 0) continue;
     let tz: string;
     try {
       tz = await tzFor(nibbin.accountId);
     } catch {
       tz = FALLBACK_TZ;
     }
-    for (const key of scheduleKeysOf(nibbin)) {
+    for (const key of keys) {
       try {
         const next = nextOccurrence(key, tz, now);
-        if (!next) continue; // unknown/unsupported key — skip, never throw
-        const state = stateByKey.get(`${nibbin.id}|${key}`);
-
-        if (!state) {
-          // First sight: seed a FUTURE occurrence; adoption already did a first run.
-          await deps.seed(nibbin, key, next);
-          continue;
-        }
-
-        if (state.nextRunAt.getTime() > now.getTime()) continue; // not due
-
-        if (!launchesLeft()) {
-          // Cap hit: do NOT claim (leaving the row due) so it fires next tick.
-          deferred += 1;
-          capped = true;
-          continue;
-        }
-
-        const claimed = await deps.claimAndAdvance(nibbin.id, key, now, next);
-        if (!claimed) continue; // a concurrent tick won the claim — exactly-once
-
-        await deps.triggerRun(nibbin.id, { kind: 'schedule', key });
-        fired += 1;
+        if (!next) continue;
+        // First sight: seed a FUTURE occurrence; adoption already did a first
+        // run, and the next tick's claim phase picks it up fairly when due.
+        await deps.seed(nibbin, key, next);
       } catch (e) {
         errors.push(`${nibbin.id}/${key}: ${(e as Error).message}`);
       }
     }
   }
 
+  const scanned = consideredById.size;
+
   // ── Training sampling (≤1 extra per nibbin per tick, consume-then-fire) ───
-  // Sampling is best-effort EXTRA cadence: once the per-tick cap is reached we
-  // simply stop sampling. We do NOT count skipped samples as `deferred` (only
-  // un-launched DUE base rows are owed a next-tick fire; a skipped sample is
-  // not — it would just resample next tick if still open).
-  for (const nibbin of scheduled) {
+  // Sampling is best-effort EXTRA cadence over the nibbins seen this tick: once
+  // the per-tick cap is reached we stop. We do NOT count skipped samples as
+  // `deferred` (only un-launched DUE base rows are owed a next-tick fire; a
+  // skipped sample just resamples next tick if still open). FIX 3: a nibbin that
+  // base-fired this tick is SKIPPED — sampling it would consume a budget unit
+  // and then bounce off the runner's per-nibbin cooldown (wasted unit).
+  for (const nibbin of consideredById.values()) {
     if (!launchesLeft()) {
       capped = true;
       break;
     }
+    if (firedBase.has(nibbin.id)) continue; // already base-fired this tick — don't waste a unit
     try {
       const window = await deps.trainingActiveWindow(nibbin.accountId, nibbin.id, now.getTime());
       if (!window) continue;
@@ -196,7 +252,7 @@ export async function runScheduleTick(deps: ScheduleTickDeps): Promise<ScheduleT
     }
   }
 
-  return { scanned, fired, sampled, deferred, errors, capped };
+  return { scanned, fired, sampled, deferred, errors, capped, scanCapped, seedCapped };
 }
 
 /** Resolve an account's IANA zone from the owner membership's users.tz. */
@@ -225,20 +281,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const trainingStore = new SupabaseTrainingStore(svc);
 
   const deps: ScheduleTickDeps = {
-    loadNibbins: () => activeScheduledNibbins(svc, NIBBIN_BATCH_LIMIT),
-    loadStateRows: async (nibbinIds) => {
-      if (nibbinIds.length === 0) return [];
-      const { data, error } = await svc
-        .from('nibbin_schedule_state')
-        .select('nibbin_id, schedule_key, next_run_at')
-        .in('nibbin_id', nibbinIds);
-      if (error) throw new Error(error.message);
-      return (data ?? []).map((r) => ({
-        nibbinId: r.nibbin_id as string,
-        scheduleKey: r.schedule_key as string,
-        nextRunAt: new Date(r.next_run_at as string),
-      }));
-    },
+    loadDueOccurrences: (now, limit) => dueScheduleOccurrences(svc, now, limit),
+    loadSeedCandidates: (limit) => seedCandidateNibbins(svc, limit),
     resolveTz: (accountId) => resolveAccountTz(svc, accountId),
     seed: async (nibbin, scheduleKey, nextRunAt) => {
       const { error } = await svc.rpc('schedule_seed', {
@@ -269,6 +313,12 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   if (result.capped) {
     console.warn(`[nibbin-schedule] per-tick launch cap hit: ${result.deferred} deferred to next tick`);
   }
-  const { scanned, fired, sampled, deferred, errors } = result;
-  return NextResponse.json({ scanned, fired, sampled, deferred, errors });
+  if (result.scanCapped) {
+    console.warn(`[nibbin-schedule] due-scan cap (${DUE_SCAN_LIMIT}) hit: more due occurrences exist — they claim next tick (oldest-due first)`);
+  }
+  if (result.seedCapped) {
+    console.warn(`[nibbin-schedule] seed-discovery cap (${SEED_DISCOVERY_LIMIT}) hit: more new scheduled nibbins exist — seeded over subsequent ticks`);
+  }
+  const { scanned, fired, sampled, deferred, errors, scanCapped, seedCapped } = result;
+  return NextResponse.json({ scanned, fired, sampled, deferred, errors, scanCapped, seedCapped });
 }

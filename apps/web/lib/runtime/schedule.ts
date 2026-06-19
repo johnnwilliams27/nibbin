@@ -110,6 +110,30 @@ function daysBackToWeekday(from: number, weekday: number): number {
 }
 
 /**
+ * The UTC instant at local `hour:00` on the calendar day that is `deltaDays`
+ * away (in the TARGET ZONE) from the day `anchor` falls on. This steps by
+ * CALENDAR DAY in-zone — NOT by a fixed 86_400_000 ms — so it is correct across
+ * DST transitions (a spring-forward day is only 23h; a fixed-ms step would land
+ * on the wrong local day in the 00:00–00:59 window the morning after). We read
+ * the anchor's y/m/d in-zone, add `deltaDays` to the DATE field (JS `Date.UTC`
+ * normalizes month/year rollover), then re-resolve the wall-clock target to a
+ * UTC instant via the verified two-pass `instantForLocal`.
+ */
+function localDayAt(tz: string, anchor: Date, deltaDays: number, hour: number): Date {
+  const p = partsInZone(anchor, tz);
+  // Normalize the y/m/d arithmetic via Date.UTC (handles month/year rollover
+  // and negative days); we only use the resulting calendar date, never its zone.
+  const shifted = new Date(Date.UTC(p.year, p.month - 1, p.day + deltaDays));
+  return instantForLocal(
+    tz,
+    shifted.getUTCFullYear(),
+    shifted.getUTCMonth() + 1,
+    shifted.getUTCDate(),
+    hour,
+  );
+}
+
+/**
  * The most recent instant at or before `now` that the schedule should have
  * fired (in the account's zone). Returns null for an unknown key.
  */
@@ -127,27 +151,24 @@ export function latestOccurrence(key: string, tz: string, now: Date): Date | nul
   const hour = def.hour ?? 0;
 
   if (def.cadence === 'daily') {
-    // Today at hour:00 local; if that's still in the future, step back one day.
-    let cand = instantForLocal(tz, p.year, p.month, p.day, hour);
+    // Today at hour:00 local; if that's still in the future, step back ONE
+    // CALENDAR DAY in-zone (not a fixed 24h, which would cross a DST-lost hour).
+    let cand = localDayAt(tz, now, 0, hour);
     if (cand.getTime() > now.getTime()) {
-      const back = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-      const bp = partsInZone(back, tz);
-      cand = instantForLocal(tz, bp.year, bp.month, bp.day, hour);
+      cand = localDayAt(tz, now, -1, hour);
     }
     return cand;
   }
 
-  // weekly: the most recent `weekday` at hour:00 local at or before now.
+  // weekly: the most recent `weekday` at hour:00 local at or before now. Step
+  // back to that weekday by CALENDAR DAYS in-zone.
   const weekday = def.weekday ?? 0;
   const back = daysBackToWeekday(p.weekday, weekday);
-  const dayInstant = new Date(now.getTime() - back * 24 * 60 * 60 * 1000);
-  const dp = partsInZone(dayInstant, tz);
-  let cand = instantForLocal(tz, dp.year, dp.month, dp.day, hour);
+  let cand = localDayAt(tz, now, -back, hour);
   if (cand.getTime() > now.getTime()) {
-    // The target weekday is today but hour:00 hasn't arrived — go back a full week.
-    const prev = new Date(dayInstant.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const pp = partsInZone(prev, tz);
-    cand = instantForLocal(tz, pp.year, pp.month, pp.day, hour);
+    // The target weekday is today but hour:00 hasn't arrived — go back a full
+    // week (7 calendar days in-zone).
+    cand = localDayAt(tz, now, -back - 7, hour);
   }
   return cand;
 }
@@ -171,14 +192,11 @@ export function nextOccurrence(key: string, tz: string, now: Date): Date | null 
   const hour = def.hour ?? 0;
 
   if (def.cadence === 'daily') {
-    // One local day after `latest` (re-resolve through the zone for DST).
-    const nextDay = new Date(latest.getTime() + 24 * 60 * 60 * 1000);
-    const np = partsInZone(nextDay, tz);
-    return instantForLocal(tz, np.year, np.month, np.day, hour);
+    // One CALENDAR DAY after `latest`, in-zone (not +24h, which crosses the
+    // DST-lost hour on the morning after spring-forward).
+    return localDayAt(tz, latest, 1, hour);
   }
 
-  // weekly: one local week after `latest`.
-  const nextWeek = new Date(latest.getTime() + 7 * 24 * 60 * 60 * 1000);
-  const np = partsInZone(nextWeek, tz);
-  return instantForLocal(tz, np.year, np.month, np.day, hour);
+  // weekly: 7 CALENDAR DAYS after `latest`, in-zone.
+  return localDayAt(tz, latest, 7, hour);
 }

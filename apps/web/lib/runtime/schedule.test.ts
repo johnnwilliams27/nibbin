@@ -123,6 +123,73 @@ describe('hourly', () => {
   });
 });
 
+describe('DST spring-forward (regression — fixed-ms day stepping broke exactly-once)', () => {
+  // 2026-03-08 02:00 EST → 03:00 EDT in America/New_York (a 23-hour day). The
+  // CALENDAR day after (Mar 9), in the 00:00–00:59 local window, a fixed 24h
+  // step crosses the lost hour and lands on the WRONG local day, so
+  // nextOccurrence could return an instant in the PAST → re-claim/re-fire storm.
+  it('daily.morning across spring-forward: latest <= now < next, on the correct local days', () => {
+    // now = 2026-03-09T04:30:00Z = Mar 9 00:30 EDT (the dangerous window).
+    const now = new Date('2026-03-09T04:30:00Z');
+    const latest = latestOccurrence('daily.morning', 'America/New_York', now)!;
+    const next = nextOccurrence('daily.morning', 'America/New_York', now)!;
+    // Spring-forward occurs at 02:00 local ON Mar 8 2026, so by 08:00 NY is
+    // already EDT (-04:00): Mar 8 08:00 EDT = 12:00Z.
+    expect(latest.toISOString()).toBe('2026-03-08T12:00:00.000Z');
+    // Mar 9 08:00 EDT = 12:00Z.
+    expect(next.toISOString()).toBe('2026-03-09T12:00:00.000Z');
+    expect(latest.getTime()).toBeLessThanOrEqual(now.getTime());
+    expect(next.getTime()).toBeGreaterThan(now.getTime());
+    expect(hourInZone(latest, 'America/New_York')).toBe(8);
+    expect(hourInZone(next, 'America/New_York')).toBe(8);
+  });
+
+  it('weekly.monday across a spring-forward week: latest <= now < next, both Monday 08:00 local', () => {
+    // Spring-forward is Sun Mar 8 2026. The following Monday is Mar 9. Evaluate
+    // mid-week (Wed Mar 11) — the most recent Monday occurrence is Mar 9 (post
+    // transition), next is Mar 16.
+    const now = new Date('2026-03-11T15:00:00Z');
+    const latest = latestOccurrence('weekly.monday', 'America/New_York', now)!;
+    const next = nextOccurrence('weekly.monday', 'America/New_York', now)!;
+    expect(latest.toISOString()).toBe('2026-03-09T12:00:00.000Z'); // Mon Mar 9 08:00 EDT
+    expect(next.toISOString()).toBe('2026-03-16T12:00:00.000Z'); // Mon Mar 16 08:00 EDT
+    expect(weekdayInZone(latest, 'America/New_York')).toBe('Mon');
+    expect(weekdayInZone(next, 'America/New_York')).toBe('Mon');
+    expect(hourInZone(latest, 'America/New_York')).toBe(8);
+    expect(hourInZone(next, 'America/New_York')).toBe(8);
+    expect(latest.getTime()).toBeLessThanOrEqual(now.getTime());
+    expect(next.getTime()).toBeGreaterThan(now.getTime());
+  });
+
+  it('brute-force: across the spring-forward morning, next > now at every 5-min tick', () => {
+    // Sweep 2026-03-09 00:00Z → 14:00Z in 5-min steps for the DST-sensitive keys.
+    const start = Date.parse('2026-03-09T00:00:00Z');
+    const end = Date.parse('2026-03-09T14:00:00Z');
+    for (const key of ['daily.morning', 'daily.afternoon', 'daily.evening', 'weekly.monday']) {
+      for (let t = start; t <= end; t += 5 * 60 * 1000) {
+        const now = new Date(t);
+        const latest = latestOccurrence(key, 'America/New_York', now)!;
+        const next = nextOccurrence(key, 'America/New_York', now)!;
+        expect(latest.getTime()).toBeLessThanOrEqual(now.getTime());
+        expect(next.getTime()).toBeGreaterThan(now.getTime());
+      }
+    }
+  });
+});
+
+describe('DST fall-back (autumn) stays correct', () => {
+  it('daily.morning across fall-back: latest <= now < next', () => {
+    // 2026-11-01 02:00 EDT → 01:00 EST (a 25-hour day). Check the morning after.
+    const now = new Date('2026-11-02T05:30:00Z'); // Mon Nov 2 00:30 EST
+    const latest = latestOccurrence('daily.morning', 'America/New_York', now)!;
+    const next = nextOccurrence('daily.morning', 'America/New_York', now)!;
+    expect(latest.getTime()).toBeLessThanOrEqual(now.getTime());
+    expect(next.getTime()).toBeGreaterThan(now.getTime());
+    expect(hourInZone(latest, 'America/New_York')).toBe(8);
+    expect(hourInZone(next, 'America/New_York')).toBe(8);
+  });
+});
+
 describe('next is always strictly after now and after latest', () => {
   it('holds for each key across zones', () => {
     const now = new Date('2026-06-19T12:00:00Z');
