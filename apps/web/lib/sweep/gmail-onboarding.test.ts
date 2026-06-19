@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { SweepDerived } from './types';
+import { isSensitiveSample } from './derive';
 
 import {
   buildSentQuery,
@@ -161,6 +162,30 @@ describe('isSensitiveThread — P3.9 pre-filter', () => {
         expect(isSensitiveThread(m, ['to', 'cc', 'bcc'])).toBe(false);
       });
     });
+  });
+});
+
+// Pass-1 body content-scan: the header gate (isSensitiveThread) only sees
+// To/Cc/Bcc/Subject. A sent message with benign headers can still paste a
+// secret value in the BODY. Pass 1 runs the fetched body through
+// isSensitiveSample and skips the message on a hit, so the body is never sent
+// to the LLM. These cases lock the contract that detector enforces on bodies.
+describe('Pass-1 body content-scan (isSensitiveSample on the message body)', () => {
+  it('flags a body that pastes a card number even when headers look benign', () => {
+    expect(isSensitiveSample('Hi! As promised here is the card: 4111 1111 1111 1111. Thanks!')).toBe(true);
+  });
+  it('flags a body containing an SSN or a long account/routing number', () => {
+    expect(isSensitiveSample('My SSN is 123-45-6789 for the form.')).toBe(true);
+    expect(isSensitiveSample('Wire to account 000123456789, routing below.')).toBe(true);
+  });
+  it('flags a body with a labelled secret (password/otp/cvv)', () => {
+    expect(isSensitiveSample('the password: hunter2xyz if you need it')).toBe(true);
+  });
+  it('does NOT over-skip benign prose that merely mentions sensitive topics', () => {
+    // Topic words alone (no secret value) must not trip the body gate — that is
+    // the header gate's job; over-skipping here would gut voice-learning recall.
+    expect(isSensitiveSample('Thanks for the note about the bank holiday next week.')).toBe(false);
+    expect(isSensitiveSample('Following up on our legal and tax discussion — call me.')).toBe(false);
   });
 });
 
