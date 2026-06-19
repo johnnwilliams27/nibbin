@@ -22,6 +22,16 @@ import type { AgentSpec, PlanSpec, PlannerTool, TriggerDef } from './types';
 
 export const KEEPER_NODE = 'keeper';
 
+/**
+ * Hard cap on the number of primitive steps a composed spec may carry (Part A —
+ * multi-primitive composition). A composed Nibbin is a small, legible agent: a
+ * handful of ordered primitives, not an unbounded pipeline. The Composer never
+ * proposes more than this, and a user-edited spec that exceeds it is rejected
+ * fail-closed at adopt time. The bound is load-bearing for legibility + cost
+ * (each step is its own gated read/draft sequence), so it is a structural check.
+ */
+export const MAX_COMPOSED_STEPS = 4;
+
 const EVENT_SOURCE = /^(connector|nibbin):[a-z0-9-]+(:[a-z0-9._-]+)?$/;
 const SCHEDULE_KEY = /^[a-z]+(\.[a-z0-9_-]+)?$/;
 
@@ -202,6 +212,8 @@ export function validateTriggerGraph(specs: AgentSpec[]): string[] {
  *    floors, positive ceilings;
  *  - the trigger graph across the account's existing specs + this one is
  *    acyclic (no Nibbin-triggers-Nibbin cycle, §6.2);
+ *  - (multi-primitive, Part A) the spec carries at most MAX_COMPOSED_STEPS
+ *    steps, and no two steps are byte-identical (same capability + same inputs);
  *  - every `step.capability` is a CAPABILITY_REGISTRY id;
  *  - every step's capability is in `toolsAllowlist` (so the runner's allowlist
  *    gate admits it — a step the allowlist would kill is rejected here);
@@ -236,6 +248,28 @@ export function validateComposedSpec(spec: AgentSpec, accountConnections: string
   const allowlist = new Set(spec.toolsAllowlist);
   const steps = spec.steps ?? [];
   if (steps.length === 0) at('a composed spec must have at least one step');
+
+  // Cross-step structural checks (Part A — multi-primitive). The interpreter
+  // runs steps[] linearly, so a multi-primitive spec is safe per-step; these
+  // bound the SHAPE: a composed Nibbin stays a small ordered handful, and the
+  // exact same step is never run twice (a duplicate is either Composer noise or
+  // a user double-add — never intentional, and it would double-draft).
+  if (steps.length > MAX_COMPOSED_STEPS) {
+    at(`a composed spec may have at most ${MAX_COMPOSED_STEPS} steps, got ${steps.length}`);
+  }
+  const seen = new Set<string>();
+  let dupIdx = -1;
+  for (const step of steps) {
+    dupIdx += 1;
+    // Identity = capability id + its bound inputs (order-independent JSON). Two
+    // steps that differ only in params are allowed (e.g. two nudges at different
+    // staleDays); a byte-identical repeat is rejected.
+    const key = `${step.capability}::${stableStringify(step.inputs ?? {})}`;
+    if (seen.has(key)) {
+      at(`step ${dupIdx} is a duplicate of an earlier identical step "${step.capability}" — remove the repeat`);
+    }
+    seen.add(key);
+  }
 
   let idx = -1;
   for (const step of steps) {
@@ -606,6 +640,18 @@ function coerceUtilityField(
     throw new Error(`utility ${utilId} arg "${key}" must be one of ${(field.values ?? []).join(', ')}`);
   }
   return raw;
+}
+
+/** Deterministic JSON for the duplicate-step identity key: object keys are
+ *  sorted recursively so two steps with the same params in a different key order
+ *  hash identically (a duplicate is a duplicate regardless of key order). */
+function stableStringify(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null';
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
+  const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) =>
+    a < b ? -1 : a > b ? 1 : 0,
+  );
+  return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${stableStringify(v)}`).join(',')}}`;
 }
 
 /** Mirror of the interpreter's assertSafeReadPath, as a reason string (null =
