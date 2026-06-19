@@ -27,11 +27,20 @@ export interface JudgeRequest {
   promptSummary: string;
   /** The candidate model's raw output text. */
   output: string;
+  /**
+   * How many independent judge passes to take per output, then reduce to the
+   * MEDIAN (variance reduction — the maximal lever, §"Judge — 3-sample median").
+   * Default 1. The REAL comprehensive run sets this to 3. The MOCK judge IGNORES
+   * it (it is deterministic — sampling adds nothing), so CI stays free + stable.
+   */
+  sampleCount?: number;
 }
 
 export interface JudgeVerdict {
   score: number;
   rationale: string;
+  /** The raw per-sample scores when sampleCount > 1 (length 1 otherwise). */
+  samples?: number[];
 }
 
 export type Judge = (req: JudgeRequest) => Promise<JudgeVerdict>;
@@ -39,6 +48,18 @@ export type Judge = (req: JudgeRequest) => Promise<JudgeVerdict>;
 function clamp01(n: number): number {
   if (!Number.isFinite(n)) return 0;
   return Math.min(1, Math.max(0, n));
+}
+
+/**
+ * Median of a non-empty list of numbers. Even length → mean of the two middle
+ * values (the standard median; with 3 samples it's simply the middle one). Used
+ * to reduce judge variance: robust to a single outlier in a way the mean is not.
+ */
+export function median(xs: number[]): number {
+  if (xs.length === 0) return 0;
+  const sorted = [...xs].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
 }
 
 /** Parse the judge's STRICT-JSON verdict; fail-closed to score 0. */
@@ -55,9 +76,14 @@ export function parseVerdict(text: string): JudgeVerdict {
   }
 }
 
-/** The REAL Opus judge, built over the package's Anthropic client. */
+/**
+ * The REAL Opus judge, built over the package's Anthropic client. When
+ * `sampleCount > 1`, it runs that many independent judge passes for the SAME
+ * output and reports the MEDIAN score (variance reduction). The rationale of the
+ * median-scoring sample is kept; the raw samples ride along for report visibility.
+ */
 export function createLlmJudge(generate: Generate): Judge {
-  return async (req) => {
+  const scoreOnce = async (req: JudgeRequest): Promise<JudgeVerdict> => {
     const result = await generate({
       model: JUDGE_MODEL,
       system: [{ text: JUDGE_SYSTEM_PROMPT, cache: true }],
@@ -74,6 +100,24 @@ export function createLlmJudge(generate: Generate): Judge {
       temperature: 0,
     });
     return parseVerdict(result.text);
+  };
+
+  return async (req) => {
+    const n = Math.max(1, Math.floor(req.sampleCount ?? 1));
+    if (n === 1) {
+      const v = await scoreOnce(req);
+      return { ...v, samples: [v.score] };
+    }
+    const verdicts: JudgeVerdict[] = [];
+    for (let i = 0; i < n; i++) verdicts.push(await scoreOnce(req));
+    const samples = verdicts.map((v) => v.score);
+    const med = median(samples);
+    // Attach the rationale of the sample whose score is the median (or the
+    // closest one for even counts) — a representative one-liner, no content echoed.
+    const rep = verdicts.reduce((best, v) =>
+      Math.abs(v.score - med) < Math.abs(best.score - med) ? v : best,
+    );
+    return { score: med, rationale: rep.rationale, samples };
   };
 }
 
@@ -103,8 +147,10 @@ export function seededUnit(seed: string): number {
  */
 export function createMockJudge(): Judge {
   return async (req) => {
+    // sampleCount is intentionally IGNORED: the mock is deterministic, so N
+    // identical samples reduce to the same score. CI stays free + byte-stable.
     const u = seededUnit(`${req.rubric.version}|${req.output}`);
     const score = Math.round((0.8 + u * 0.19) * 100) / 100;
-    return { score, rationale: `mock seeded score (${req.rubric.version})` };
+    return { score, rationale: `mock seeded score (${req.rubric.version})`, samples: [score] };
   };
 }
