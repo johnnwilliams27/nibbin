@@ -16,10 +16,10 @@
  * the flag is off) — these test the validation LOGIC it calls, plus the
  * launch↔close lifecycle against a FAKE Pw module.
  */
-import { describe, expect, it } from 'vitest';
-import { isPublicIp, isQuarantined } from '@nibbin/connectors';
+import { describe, expect, it, vi } from 'vitest';
+import { EgressDeniedError, isPublicIp, isQuarantined, type SafeResponse } from '@nibbin/connectors';
 import { assertSafeNavigateUrl, validateComputerUseArgs, validateTarget } from '@nibbin/runtime';
-import { isRequestEgressAllowed, PlaywrightBrowserDriver } from './browser';
+import { isRequestEgressAllowed, PlaywrightBrowserDriver, type SafeFetchFn } from './browser';
 
 /* ── assertSafeNavigateUrl at web.fetch parity (the runtime guard, REAL isPublicIp) ── */
 
@@ -103,6 +103,9 @@ interface FakeCounters {
   launches: number;
   closes: number;
   routePatterns: string[];
+  /** the handler registered via context.route('**', …) — captured so a test
+   *  can drive the interceptor with a fake route without a real Chromium. */
+  routeHandler?: (route: unknown) => void | Promise<void>;
 }
 
 function fakePwModule(
@@ -122,8 +125,9 @@ function fakePwModule(
   };
   const context = {
     newPage: async () => page,
-    route: async (pattern: string) => {
+    route: async (pattern: string, handler: (route: unknown) => void | Promise<void>) => {
       counters.routePatterns.push(pattern);
+      counters.routeHandler = handler;
     },
   };
   const browser = {
@@ -141,6 +145,171 @@ function fakePwModule(
     },
   };
 }
+
+/** A fake Playwright Route with fulfill/abort/continue spies + a request() whose
+ *  url()/method()/postData()/headers() are configurable — drives the new
+ *  fetch-and-fulfill interceptor without a real browser. */
+function fakeRoute(req: { url: string; method?: string; postData?: string | null; headers?: Record<string, string> }) {
+  const fulfill = vi.fn(async (_opts: { status?: number; headers?: Record<string, string>; body?: Buffer | string }) => {});
+  const abort = vi.fn(async () => {});
+  const cont = vi.fn(async () => {});
+  return {
+    fulfill,
+    abort,
+    continue: cont,
+    request: () => ({
+      url: () => req.url,
+      method: () => req.method ?? 'GET',
+      postData: () => req.postData ?? null,
+      headers: () => req.headers ?? {},
+    }),
+  };
+}
+
+function fakeSafeResponse(over: Partial<SafeResponse> = {}): SafeResponse {
+  const body = over.body ?? Buffer.from('<html>ok</html>');
+  return {
+    status: over.status ?? 200,
+    headers: over.headers ?? { 'content-type': 'text/html' },
+    body,
+    url: over.url ?? 'https://example.com/',
+    text: () => body.toString('utf8'),
+    json: () => JSON.parse(body.toString('utf8')) as unknown,
+  };
+}
+
+/** Boot a driver against the fake Pw module and return the captured interceptor
+ *  handler (installed lazily on first verb). */
+async function bootInterceptor(
+  counters: FakeCounters,
+  fetchImpl: SafeFetchFn,
+): Promise<(route: unknown) => void | Promise<void>> {
+  const driver = new PlaywrightBrowserDriver(
+    isPublicIp,
+    async () => fakePwModule(counters) as never,
+    fetchImpl,
+  );
+  await driver.extract(); // triggers ensurePage() → installs the route handler
+  if (!counters.routeHandler) throw new Error('interceptor was not installed');
+  return counters.routeHandler;
+}
+
+/* ── the fetch-and-fulfill interceptor (P2 rebind window closed) ─────────────── */
+
+describe('fetch-and-fulfill interceptor — pinned safeFetch, fail-closed', () => {
+  it('an http(s) request to a public host → safeFetch is called and route.fulfill serves the bytes (no continue/abort)', async () => {
+    const counters: FakeCounters = { launches: 0, closes: 0, routePatterns: [] };
+    const fetchImpl = vi.fn<SafeFetchFn>(async () => fakeSafeResponse({ status: 200, body: Buffer.from('PINNED BODY') }));
+    const handler = await bootInterceptor(counters, fetchImpl);
+
+    const route = fakeRoute({ url: 'https://example.com/page' });
+    await handler(route);
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(route.fulfill).toHaveBeenCalledTimes(1);
+    const fulfillArg = route.fulfill.mock.calls[0]![0] as { status: number; body: Buffer };
+    expect(fulfillArg.status).toBe(200);
+    expect(fulfillArg.body.toString('utf8')).toBe('PINNED BODY');
+    expect(route.abort).not.toHaveBeenCalled();
+    expect(route.continue).not.toHaveBeenCalled();
+  });
+
+  it('a request whose safeFetch throws EgressDeniedError(private-ip) → route.abort(), never fulfilled', async () => {
+    const counters: FakeCounters = { launches: 0, closes: 0, routePatterns: [] };
+    const fetchImpl = vi.fn<SafeFetchFn>(async () => {
+      throw new EgressDeniedError('private-ip', 'rebind to 169.254.169.254');
+    });
+    const handler = await bootInterceptor(counters, fetchImpl);
+
+    const route = fakeRoute({ url: 'https://rebind.example/' });
+    await handler(route);
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(route.abort).toHaveBeenCalledTimes(1);
+    expect(route.fulfill).not.toHaveBeenCalled();
+    expect(route.continue).not.toHaveBeenCalled();
+  });
+
+  it('a size/timeout cut on the pinned fetch also FAILS CLOSED → route.abort()', async () => {
+    const counters: FakeCounters = { launches: 0, closes: 0, routePatterns: [] };
+    for (const reason of ['size', 'timeout']) {
+      const fetchImpl = vi.fn<SafeFetchFn>(async () => {
+        throw new EgressDeniedError(reason, `cut: ${reason}`);
+      });
+      const handler = await bootInterceptor(counters, fetchImpl);
+      const route = fakeRoute({ url: 'https://huge.example/' });
+      await handler(route);
+      expect(route.abort).toHaveBeenCalledTimes(1);
+      expect(route.fulfill).not.toHaveBeenCalled();
+    }
+  });
+
+  it('a data:/about: URL → route.continue() and safeFetch is NOT called (no SSRF vector)', async () => {
+    const counters: FakeCounters = { launches: 0, closes: 0, routePatterns: [] };
+    const fetchImpl = vi.fn<SafeFetchFn>(async () => fakeSafeResponse());
+    const handler = await bootInterceptor(counters, fetchImpl);
+
+    for (const url of ['data:text/html,<p>hi</p>', 'about:blank']) {
+      const route = fakeRoute({ url });
+      await handler(route);
+      expect(route.continue).toHaveBeenCalledTimes(1);
+      expect(route.fulfill).not.toHaveBeenCalled();
+      expect(route.abort).not.toHaveBeenCalled();
+    }
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('credential headers (cookie/authorization) are STRIPPED from what safeFetch receives; benign headers forwarded', async () => {
+    const counters: FakeCounters = { launches: 0, closes: 0, routePatterns: [] };
+    const fetchImpl = vi.fn<SafeFetchFn>(async () => fakeSafeResponse());
+    const handler = await bootInterceptor(counters, fetchImpl);
+
+    const route = fakeRoute({
+      url: 'https://example.com/',
+      method: 'POST',
+      postData: '{"q":1}',
+      headers: {
+        cookie: 'session=secret',
+        Authorization: 'Bearer LEAK',
+        'proxy-authorization': 'Basic LEAK',
+        'user-agent': 'NibbinBot',
+        accept: 'text/html',
+        'content-type': 'application/json',
+      },
+    });
+    await handler(route);
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    const init = fetchImpl.mock.calls[0]![1] as { method: string; headers: Record<string, string>; body?: string };
+    expect(init.method).toBe('POST');
+    expect(init.body).toBe('{"q":1}');
+    // credentials dropped
+    expect(init.headers).not.toHaveProperty('cookie');
+    expect(init.headers).not.toHaveProperty('authorization');
+    expect(init.headers).not.toHaveProperty('proxy-authorization');
+    // benign forwarded (lowercased)
+    expect(init.headers['user-agent']).toBe('NibbinBot');
+    expect(init.headers['accept']).toBe('text/html');
+    expect(init.headers['content-type']).toBe('application/json');
+    // http option only set for http: (this is https:)
+    const httpOpt = fetchImpl.mock.calls[0]![3] as { allowHttp?: boolean } | undefined;
+    expect(httpOpt?.allowHttp).toBeUndefined();
+    expect(route.fulfill).toHaveBeenCalledTimes(1);
+  });
+
+  it('an http: request passes allowHttp to safeFetch (parity with the navigate probe)', async () => {
+    const counters: FakeCounters = { launches: 0, closes: 0, routePatterns: [] };
+    const fetchImpl = vi.fn<SafeFetchFn>(async () => fakeSafeResponse());
+    const handler = await bootInterceptor(counters, fetchImpl);
+
+    const route = fakeRoute({ url: 'http://plain.example/' });
+    await handler(route);
+
+    const httpOpt = fetchImpl.mock.calls[0]![3] as { allowHttp?: boolean };
+    expect(httpOpt.allowHttp).toBe(true);
+    expect(route.fulfill).toHaveBeenCalledTimes(1);
+  });
+});
 
 describe('PlaywrightBrowserDriver — launch ↔ close lifecycle (fake Pw)', () => {
   it('launches lazily on first use and closes exactly once; installs the route interceptor', async () => {

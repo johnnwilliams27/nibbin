@@ -32,8 +32,10 @@
     "stripe": "^22.2.0",
     "typescript": "^5.7.0"
   },
+  "//devDependencies": "playwright is a DEV-ONLY dep for the gated live integration test (browser.live.test.ts). Production never installs devDeps and the runtime loads it via a non-static dynamic import, so a missing package simply leaves the browser surface unavailable. Install with PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 so CI never fetches ~200 MB of browser binaries.",
   "devDependencies": {
     "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0"
+    "@types/react-dom": "^19.0.0",
+    "playwright": "^1.61.0"
   }
 }
