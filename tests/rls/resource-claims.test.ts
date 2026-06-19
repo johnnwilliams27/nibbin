@@ -20,7 +20,6 @@ describe.skipIf(!dbAvailable)('Conflict detection: resource_claims at the DB lay
   const anon = { kind: 'anon' } as const;
 
   let accountId = '';
-  let outsiderAccount = '';
   let nibbinA = '';
   let nibbinB = '';
   let runA = '';
@@ -74,9 +73,9 @@ describe.skipIf(!dbAvailable)('Conflict detection: resource_claims at the DB lay
     accountId = await h.as(owner, async (c) =>
       (await c.query(`select public.create_account_with_owner('RCGrove') as id`)).rows[0].id,
     );
-    outsiderAccount = await h.as(outsider, async (c) =>
-      (await c.query(`select public.create_account_with_owner('RCOther') as id`)).rows[0].id,
-    );
+    // Make the outsider a real member of a DIFFERENT account (stronger RLS
+    // isolation than an account-less user).
+    await h.as(outsider, (c) => c.query(`select public.create_account_with_owner('RCOther')`));
     await h.as(service, (c) =>
       c.query(`insert into public.credit_ledger (account_id, delta, reason, source_id) values ($1, 100, 'grant', 'seed')`, [accountId]),
     );
