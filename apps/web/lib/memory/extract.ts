@@ -145,13 +145,36 @@ export async function writeMemoryFromDecision(args: {
       origin: 'pipeline',
     });
     const t0 = Date.now();
-    const result = await llm({
-      model: decisionR.model,
-      system: [{ text: EXTRACT_PROMPT, cache: true }],
-      messages: [{ role: 'user', content: `Decision: ${args.decision}\n\nDraft:\n${draftText}` }],
-      maxTokens: 400,
-      temperature: 0.2,
-    });
+    // NARROW try/catch around JUST the model call (gate finding P3): a genuine
+    // provider throw must be ledgered as an error so a failing model is no longer
+    // invisible — but a downstream DB/embed-write failure (the broad catch below)
+    // must NOT be mis-attributed as a model error. Content-free, zero-token
+    // failure row, mirroring the other surfaces; then re-throw into the broad
+    // best-effort catch so the write path still bails silently.
+    let result: Awaited<ReturnType<typeof llm>>;
+    try {
+      result = await llm({
+        model: decisionR.model,
+        system: [{ text: EXTRACT_PROMPT, cache: true }],
+        messages: [{ role: 'user', content: `Decision: ${args.decision}\n\nDraft:\n${draftText}` }],
+        maxTokens: 400,
+        temperature: 0.2,
+      });
+    } catch (modelErr) {
+      await recordModelCall({
+        accountId: args.accountId,
+        userId: args.userId,
+        runId: args.runId,
+        tier: decisionR.tier,
+        task: 'memory_extract',
+        model: decisionR.model,
+        usage: { inputTokens: 0, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 0 },
+        degraded: decisionR.degraded,
+        latencyMs: Date.now() - t0,
+        outcome: 'error',
+      });
+      throw modelErr;
+    }
     await recordModelCall({
       accountId: args.accountId,
       userId: args.userId,

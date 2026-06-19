@@ -232,13 +232,35 @@ export async function refreshLearnedNote(accountId: string, nibbinId: string): P
       recentDraftTitles: ev.recentDraftTitles,
     });
     const t0 = Date.now();
-    const result = await llm({
-      model: decision.model,
-      system: [{ text: SYSTEM, cache: true }],
-      messages: [{ role: 'user', content: input }],
-      maxTokens: 200,
-      temperature: 0.6,
-    });
+    // NARROW try/catch around JUST the model call (gate finding P3): a genuine
+    // provider throw is ledgered as an error (a failing model is no longer
+    // invisible), while a downstream persist failure (the broad catch below) is
+    // NOT mis-attributed as a model error. Content-free, zero-token failure row,
+    // then re-throw into the broad best-effort catch (this runs off the render
+    // path, so the caller still never sees the throw).
+    let result: Awaited<ReturnType<typeof llm>>;
+    try {
+      result = await llm({
+        model: decision.model,
+        system: [{ text: SYSTEM, cache: true }],
+        messages: [{ role: 'user', content: input }],
+        maxTokens: 200,
+        temperature: 0.6,
+      });
+    } catch (modelErr) {
+      await recordModelCall({
+        accountId,
+        userId: null,
+        tier: decision.tier,
+        task: 'nibbin_note',
+        model: decision.model,
+        usage: { inputTokens: 0, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 0 },
+        degraded: decision.degraded,
+        latencyMs: Date.now() - t0,
+        outcome: 'error',
+      });
+      throw modelErr;
+    }
     await recordModelCall({
       accountId,
       userId: null,
