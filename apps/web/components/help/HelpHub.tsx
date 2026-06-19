@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { HelpContent } from "../../lib/help/types";
 import type { ConnectorEntry } from "../../lib/connections/catalog";
 import type { ChecklistState } from "../../lib/help/checklist";
@@ -20,7 +20,7 @@ export function HelpHub({
   checklist: ChecklistState;
 }) {
   const [query, setQuery] = useState("");
-  const sections = filterHelp(query, content);
+  const sections = useMemo(() => filterHelp(query, content), [query, content]);
   return (
     <div className={styles.hub}>
       <GettingStartedChecklist state={checklist} />

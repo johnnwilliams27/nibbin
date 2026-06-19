@@ -1,4 +1,4 @@
-import type { HelpContent } from "./types";
+﻿import type { HelpContent } from "./types";
 
 export function filterHelp(query: string, content: HelpContent): HelpContent {
   const q = query.trim().toLowerCase();
@@ -190,14 +190,14 @@ export const HELP_CONTENT: HelpContent = [
         id: "fs-daemon",
         q: "What is the Observer / daemon?",
         body:
-          "The Observer (internally called observerd) is the background piece of the desktop app that does the capturing. A few things about it:\n• It is dormant by default — it only runs during an active study or Quick Scan.\n• It enforces the 14-day hard stop itself, with an anti-rollback clock that can’t be cheated by changing the system date.\n• It is the piece the global pause hotkey stops near-instantly.\n• It runs inside the app — uninstalling the app removes it.\n\nIf the observer goes offline mid-study, the Field Study view shows a health note with a Retry option. A short poll cycle gives it a moment to reconnect before reporting the status.",
+          "The Observer (internally called observerd) is the background piece of the desktop app that does the capturing. A few things about it:\n• It is dormant by default — it only runs during an active study or Quick Scan.\n• It enforces the 14-day hard stop itself, with an anti-rollback clock that can’t be cheated.\n• It is the piece the global pause hotkey stops near-instantly.\n• It runs inside the app — uninstalling the app removes it.\n\nIf the observer goes offline mid-study, the Field Study view shows a health note with a Retry option. A short poll cycle gives it a moment to reconnect before reporting the status.",
         keywords: ["observer", "daemon", "observerd", "background", "hard stop", "anti-rollback", "dormant"],
       },
       {
         id: "fs-delete-study",
         q: "How do I delete a study and what happens after?",
         body:
-          "You have two delete paths:\n\n1. Delete the raw study data on your device — tap “Delete everything” in Preferences or from the packet-review screen. The app verifies the data is gone before confirming. This is always available, in any state, even mid-study.\n\n2. Delete a past diagnosis from the web — open Your diagnosis, find the study card, tap the delete option, and confirm. This removes the diagnosis from your grove.\n\nAfter you choose “Delete instead” on the packet-review screen (instead of uploading), the raw data is wiped on your device and nothing is sent to Nibbin. Your account receives a deletion receipt confirming what was removed.",
+          "You have two delete paths:\n\n1. Delete the raw study data on your device — tap “Delete everything” in Preferences or from the packet-review screen. The app verifies the data is gone before confirming. This is always available, in any state, even mid-study.\n\n2. Delete a past diagnosis from the web — open Your diagnosis, find the study card, tap the delete option, and confirm. This removes the diagnosis from your grove.\n\nAfter you choose “Delete instead” on the packet-review screen (instead of uploading), the raw data is wiped on your device and nothing is sent to Nibbin. No data leaves your machine, so no server receipt is issued for this path.",
         keywords: ["delete", "delete everything", "wipe", "receipt", "diagnosis", "raw data", "purge"],
       },
     ],
@@ -249,7 +249,7 @@ export const HELP_CONTENT: HelpContent = [
         id: "priv-verified-deletion",
         q: "How is my data deleted, and is there proof?",
         body:
-          "Raw study data is verifiably deleted after your diagnosis packet is safely uploaded. An independent verifier confirms the raw data is gone, and the deletion is user-visible in the app.\n\nIf you choose “Delete instead” at packet review, the raw data is wiped and nothing is uploaded — your account receives a deletion receipt confirming what was removed.\n\nFor account deletion: go to Settings → Account, type your account name, and start the 30-day cancelable countdown. Your tools disconnect immediately. After 30 days, everything is permanently removed and you receive a receipt.",
+          "Raw study data is verifiably deleted after your diagnosis packet is safely uploaded. An independent verifier confirms the raw data is gone, and the deletion is user-visible in the app.\n\nIf you choose “Delete instead” at packet review, the raw data is wiped locally and nothing is sent to Nibbin. Because nothing leaves your device, there is no server-side receipt for this path — the deletion is verified on-device only.\n\nFor account deletion: go to Settings → Account, type your account name, and start the 30-day cancelable countdown. Your tools disconnect immediately. After 30 days, everything is permanently removed and account deletion is verified and recorded.",
         keywords: ["delete", "verified deletion", "receipt", "proof", "raw data", "account deletion", "30 days"],
       },
       {
@@ -406,10 +406,17 @@ export const HELP_CONTENT: HelpContent = [
         keywords: ["privacy", "connected data", "token", "vault", "gmail", "sweep", "retained"],
       },
       {
+        id: "conn-clearbit-note",
+        q: "Are connector logos loaded from a third party?",
+        body:
+          "Yes — when you view the connector directory, company logos are loaded from Clearbit (logo.clearbit.com), a third-party logo service. No Nibbin account data is sent; the request is a plain image fetch using the integration’s brand domain.",
+        keywords: ["clearbit", "logos", "third party", "directory", "privacy"],
+      },
+      {
         id: "conn-directory",
         q: "Is there a full list of available connectors?",
         body:
-          "The Connections page itself shows everything that is connectable today (Gmail) and what’s coming soon (Google Calendar, Stripe). A browsable directory of the full connector roadmap is rendered separately below the help center — it lists all planned integrations with their current status. The directory is the right place to check what’s live vs on the way.",
+          "A browsable directory of the full connector roadmap is rendered below the connections articles on both the Help page and the Connections page. It lists Gmail as available now and everything else as coming soon. The directory is the right place to check what you can connect today versus what is on the way.",
         keywords: ["directory", "connector list", "full list", "integrations", "roadmap", "coming soon"],
       },
     ],
@@ -440,7 +447,7 @@ export const HELP_CONTENT: HelpContent = [
         id: "mem-how-used",
         q: "How do Nibbins use memory when drafting?",
         body:
-          "When a Nibbin drafts something for you, it pulls the relevant pieces of Grove Memory — your pricing, your voice, your hard rules — into context. Semantic retrieval finds the most relevant notes from both Grove Memory and agent memory.\n\nThe result: drafts that sound like you, reference your actual rates, and never break the lines you’ve set. Hard rules are treated as non-negotiable — a Nibbin will never draft something that breaks one, even if instructed to.\n\nSaved memory takes effect immediately from the next draft. If you update your pricing today, tomorrow’s draft reflects it.",
+          "When a Nibbin drafts something for you, it pulls the relevant pieces of Grove Memory — your pricing, your voice, your hard rules — into context. Semantic retrieval finds the most relevant notes from both Grove Memory and agent memory.\n\nThe result: drafts that sound like you, reference your actual rates, and never break the lines you’ve set. Hard rules are treated as non-negotiable — your Nibbins are instructed never to break them in a draft.\n\nSaved memory takes effect immediately from the next draft. If you update your pricing today, tomorrow’s draft reflects it.",
         keywords: ["how used", "drafting", "pricing", "hard rules", "non-negotiable", "relevant", "context"],
       },
       {
@@ -468,7 +475,7 @@ export const HELP_CONTENT: HelpContent = [
         id: "mem-hard-rules",
         q: "What are hard rules, and how do I set them?",
         body:
-          "Hard rules are lines your Nibbins can never break in a draft, no matter what. Add them in /app/memory → Hard rules — one rule per line. Examples:\n• “Never promise a delivery date without checking with me.”\n• “Always address clients by first name.”\n• “Never mention a discount without my explicit approval.”\n\nHard rules are treated as non-negotiable at the model level. A Nibbin will refuse to draft something that breaks one, even if the task seems to call for it. Update them anytime; changes take effect from the next draft.",
+          "Hard rules are lines your Nibbins can never break in a draft, no matter what. Add them in /app/memory → Hard rules — one rule per line. Examples:\n• “Never promise a delivery date without checking with me.”\n• “Always address clients by first name.”\n• “Never mention a discount without my explicit approval.”\n\nHard rules are treated as non-negotiable — your Nibbins are instructed never to break them in a draft. Update them anytime; changes take effect from the next draft.",
         keywords: ["hard rules", "non-negotiable", "never break", "rules", "policies", "lines"],
       },
     ],
@@ -534,7 +541,7 @@ export const HELP_CONTENT: HelpContent = [
         id: "ch-start-work-from-chat",
         q: "Can I start work from Telegram?",
         body:
-          "Yes — this is channel-initiated work. When your Keeper proposes a task, it sends you a plan preview in Telegram showing what it intends to do. Approve it there and the plan runs. You can type “cancel” at any point to stop it mid-run.\n\nAll side effects are still approval-gated — nothing runs autonomously just because it was started from chat.",
+          "Yes — this is channel-initiated work. When your Keeper proposes a task, it sends you a plan preview in Telegram showing what it intends to do. Approve it there and the plan runs. You can type “cancel” at any point to stop it mid-run.\n\nAll side effects are still approval-gated — nothing runs autonomously just because it was started from chat.\n\nNote: channel-initiated work is rolling out gradually and may not be available on all accounts yet. Telegram messaging and draft approvals are available to all connected accounts.",
         keywords: ["channel-initiated", "start work", "telegram", "plan", "preview", "cancel", "approve", "chat"],
       },
     ],
@@ -634,7 +641,7 @@ export const HELP_CONTENT: HelpContent = [
         id: "faq-how-long-study",
         q: "How long does a Field Study last?",
         body:
-          "A full Field Study runs 14 days and then hard-stops automatically — enforced by the observer daemon, not the UI, with an anti-rollback clock. A Quick Scan auto-stops after about 6 hours.",
+          "A full Field Study runs 14 days and then hard-stops automatically — enforced by the observer daemon with an anti-rollback clock that can't be cheated. A Quick Scan auto-stops after about 6 hours.",
         keywords: ["how long", "14 days", "hard stop", "duration", "quick scan", "6 hours"],
       },
       {
@@ -655,7 +662,7 @@ export const HELP_CONTENT: HelpContent = [
         id: "faq-delete-account",
         q: "How do I delete my account?",
         body:
-          "Go to Settings → Account. Type your account name to confirm, and start the 30-day cancelable countdown. Your tools disconnect immediately. You can cancel the deletion any time within those 30 days. After 30 days, everything is permanently removed and you receive a receipt.",
+          "Go to Settings → Account. Type your account name to confirm, and start the 30-day cancelable countdown. Your tools disconnect immediately. You can cancel the deletion any time within those 30 days. After 30 days, everything is permanently removed and account deletion is verified and recorded.",
         keywords: ["delete account", "account deletion", "30 days", "permanent", "cancel", "receipt"],
       },
       {

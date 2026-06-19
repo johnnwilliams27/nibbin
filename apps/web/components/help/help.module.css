@@ -105,7 +105,7 @@
   background: var(--understory);
   margin-top: 1px;
 }
-.stepDone .mark { background: var(--moss); color: #fff; border-color: var(--moss); }
+.stepDone .mark { background: var(--moss); color: var(--canopy); border-color: var(--moss); }
 
 .stepBody { flex: 1; min-width: 0; }
 .stepLabel { font-size: 14px; font-weight: 600; line-height: 1.3; }

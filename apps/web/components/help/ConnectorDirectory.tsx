@@ -1,6 +1,6 @@
 'use client';
-import { useState } from 'react';
-import { CONNECTORS, type ConnectorEntry } from '../../lib/connections/catalog';
+import { useMemo, useState } from 'react';
+import type { ConnectorEntry } from '../../lib/connections/catalog';
 import { groupConnectors, sortConnectors } from '../../lib/connections/catalog-view';
 import { ConnectorLogo } from './ConnectorLogo';
 import { Badge } from '../ui';
@@ -13,19 +13,22 @@ const STATUS_LABEL: Record<ConnectorEntry['status'], { label: string; tone: 'mos
 };
 
 export function ConnectorDirectory({
-  connectors = CONNECTORS,
+  connectors,
   heading = 'All connectors',
   showSort = true,
 }: {
-  connectors?: ConnectorEntry[];
+  connectors: ConnectorEntry[];
   heading?: string;
   showSort?: boolean;
 }) {
   const [mode, setMode] = useState<'available' | 'alpha'>('available');
-  const groups =
-    mode === 'available'
-      ? groupConnectors(connectors)
-      : [{ category: 'All', items: sortConnectors(connectors, 'alpha') }];
+  const groups = useMemo(
+    () =>
+      mode === 'available'
+        ? groupConnectors(connectors)
+        : [{ category: 'All', items: sortConnectors(connectors, 'alpha') }],
+    [connectors, mode],
+  );
 
   return (
     <section className={styles.directory}>
