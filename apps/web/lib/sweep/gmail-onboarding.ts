@@ -122,6 +122,15 @@ export interface SweepResult {
 export async function gmailOnboardingSweep(
   accountId: string,
   connectionId: string,
+  /**
+   * The claim row id from `claim_gmail_sweep`. When provided, the sweep marks
+   * `derived_written_at` on the row immediately after writing grove_memory /
+   * grove_state — before returning. This lets `claim_gmail_sweep`'s stale-reclaim
+   * detect that a previously-crashed invocation already produced derived notes and
+   * auto-finalize the row to `complete` rather than re-running the full sweep
+   * (L1 idempotency hardening).
+   */
+  claimId?: string,
 ): Promise<SweepResult> {
   const deadline = Date.now() + BUDGET_MS;
   const svc = serviceClient();
@@ -170,7 +179,9 @@ export async function gmailOnboardingSweep(
       // getMessageBody's swallow-and-skip.
       let meta: MessageMetaLike;
       try { meta = await client.getMessageMetadata(id); } catch { continue; }
-      if (isSensitiveThread(meta, ['to', 'cc'])) continue;
+      // RT-3: Bcc now fetched by getMessageMetadata; screen it alongside To/Cc so
+      // a bank/doctor/lawyer Bcc'd on a sent message is caught before the body fetch.
+      if (isSensitiveThread(meta, ['to', 'cc', 'bcc'])) continue;
       const body = await client.getMessageBody(id); // swallows failures
       if (body) {
         batchBodies.push(body);
@@ -233,6 +244,23 @@ export async function gmailOnboardingSweep(
     recurringContactCount: 0, // contact dedup is not implemented in v1
   });
 
+  // ── TOCTOU consent re-check (RT-3/LS-2) ────────────────────────────────
+  // The derive phase takes up to ~45 s. Re-read sweep_consent_at from the DB
+  // immediately before writing any derived notes; abort (fail-closed, no write)
+  // if the user withdrew consent while the sweep was in flight.
+  const { data: freshConsent } = await svc
+    .from('connections')
+    .select('sweep_consent_at')
+    .eq('id', connectionId)
+    .eq('account_id', accountId)
+    .maybeSingle();
+  if (!freshConsent || freshConsent.sweep_consent_at == null) {
+    // Consent was revoked mid-sweep. Return with whatever we read — the caller
+    // will still finalize the row (marking it complete/partial so the claim is
+    // closed), but nothing is written to grove_memory or grove_state.
+    return { status, messagesRead: totalRead, derived };
+  }
+
   // ── Write to grove_memory (service role) ────────────────────────────────
   if (derived.voiceSamples.length > 0 || derived.faqCandidates.length > 0 || derived.inferredFacts.length > 0) {
     const { data: memRow } = await svc
@@ -265,6 +293,20 @@ export async function gmailOnboardingSweep(
         { account_id: accountId, answers: { ...answers, _profile: updatedProfile } },
         { onConflict: 'account_id' },
       );
+  }
+
+  // ── Provenance marker (L1 idempotency) ─────────────────────────────────
+  // Mark derived_written_at AFTER the grove writes succeed. If a hard process-kill
+  // occurs between here and the route's finalize UPDATE, claim_gmail_sweep's
+  // stale-reclaim will detect the marker and auto-finalize the row to 'complete'
+  // instead of re-running the full sweep (re-spending model budget). Best-effort:
+  // a failure here does NOT abort — the row just lacks the marker and the reclaim
+  // would re-run (the pre-existing behaviour); this is not worse than before.
+  if (claimId) {
+    await svc
+      .from('gmail_sweep_log')
+      .update({ derived_written_at: new Date().toISOString() })
+      .eq('id', claimId);
   }
 
   // #112: the gmail_sweep_log row is no longer written here. The route claims a

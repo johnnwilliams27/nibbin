@@ -65,7 +65,9 @@ export async function POST(request: NextRequest): Promise<Response> {
   }
 
   try {
-    const result = await gmailOnboardingSweep(accountId, connectionId);
+    // Pass claimId so the sweep can set derived_written_at after grove writes,
+    // enabling the stale-reclaim to detect and no-op rather than re-running.
+    const result = await gmailOnboardingSweep(accountId, connectionId, claimId);
     // Finalize the claim row. The expensive sweep has already run, so this is
     // pure bookkeeping — but a SILENTLY-dropped failure here would leave the row
     // stuck 'running', and the 15-min stale-reclaim would then re-run the whole

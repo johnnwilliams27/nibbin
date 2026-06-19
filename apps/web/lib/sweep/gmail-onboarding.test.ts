@@ -126,6 +126,41 @@ describe('isSensitiveThread — P3.9 pre-filter', () => {
     it('does not flag ordinary sent client mail', () => {
       expect(isSensitiveThread(sent('client@example.com', 'Re: your session next week'), ['to', 'cc'])).toBe(false);
     });
+
+    // RT-3 (Bcc gap): a sensitive recipient in Bcc must also be caught.
+    describe('Bcc gap — RT-3 hardening', () => {
+      const withBcc = (to: string, subject: string, bcc: string) => ({
+        id: 'x',
+        threadId: 'y',
+        payload: { headers: [
+          { name: 'From', value: 'me@myself.com' },
+          { name: 'To', value: to },
+          { name: 'Cc', value: '' },
+          { name: 'Bcc', value: bcc },
+          { name: 'Subject', value: subject },
+        ] },
+      });
+
+      it('flags a sensitive recipient who is only Bcc-ed when bcc is screened', () => {
+        // The bank is Bcc'd; screening To+Cc only would miss it.
+        // Use "bank.example.com" — the dot separator causes the normalizer to split
+        // "bank" into its own token so the whole-word check fires correctly.
+        const m = withBcc('client@example.com', 'Re: project update', 'alerts@bank.example.com');
+        expect(isSensitiveThread(m, ['to', 'cc'])).toBe(false);          // old guard: misses it
+        expect(isSensitiveThread(m, ['to', 'cc', 'bcc'])).toBe(true);   // new guard: catches it
+      });
+
+      it('also flags a Bcc-ed legal/medical address', () => {
+        const m = withBcc('client@example.com', 'Re: the matter', 'intake@attorney.example.com');
+        expect(isSensitiveThread(m, ['to', 'cc'])).toBe(false);
+        expect(isSensitiveThread(m, ['to', 'cc', 'bcc'])).toBe(true);   // 'attorney' → caught
+      });
+
+      it('does not flag ordinary Bcc recipients', () => {
+        const m = withBcc('client@example.com', 'Re: next steps', 'assistant@mycompany.com');
+        expect(isSensitiveThread(m, ['to', 'cc', 'bcc'])).toBe(false);
+      });
+    });
   });
 });
 
