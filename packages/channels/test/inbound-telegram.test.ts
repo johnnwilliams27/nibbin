@@ -31,4 +31,46 @@ describe('telegram inbound', () => {
     expect(verifyTelegramSecret('', '')).toBe(false);
     expect(verifyTelegramSecret('', null)).toBe(false);
   });
+
+  // Task 4: plan-session callback parsing
+  describe('plan-session callbacks (Task 4)', () => {
+    const planCases: Array<['ps:go' | 'ps:cancel' | 'pw:approve' | 'pw:reject']> = [
+      ['ps:go'], ['ps:cancel'], ['pw:approve'], ['pw:reject'],
+    ];
+
+    it.each(planCases)('parses %s callback as planAction (no inReplyTo or action)', (data) => {
+      const m = parseTelegramUpdate(
+        { callback_query: { message: { chat: { id: 42 } }, data } },
+        999,
+      );
+      expect(m).not.toBeNull();
+      expect(m?.planAction).toBe(data);
+      expect(m?.externalId).toBe('42');
+      expect(m?.text).toBe(data);
+      expect(m?.receivedAt).toBe(999);
+      // Must NOT set legacy fields
+      expect(m?.inReplyTo).toBeUndefined();
+      expect(m?.action).toBeUndefined();
+    });
+
+    it('still parses a legacy <uuid>:approve callback via the legacy path', () => {
+      const m = parseTelegramUpdate(
+        { callback_query: { message: { chat: { id: 55 } }, data: 'req-uuid-123:approve' } },
+        1,
+      );
+      expect(m?.inReplyTo).toBe('req-uuid-123');
+      expect(m?.action).toBe('approve');
+      expect(m?.planAction).toBeUndefined();
+    });
+
+    it('still parses a legacy :deny callback via the legacy path', () => {
+      const m = parseTelegramUpdate(
+        { callback_query: { message: { chat: { id: 55 } }, data: 'req-uuid-456:deny' } },
+        1,
+      );
+      expect(m?.inReplyTo).toBe('req-uuid-456');
+      expect(m?.action).toBe('deny');
+      expect(m?.planAction).toBeUndefined();
+    });
+  });
 });

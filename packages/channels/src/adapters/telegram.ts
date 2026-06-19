@@ -5,10 +5,16 @@ export interface TelegramConfig {
   fetchImpl?: typeof fetch;
 }
 
+const PLAN_ID_RE = /^p[sw]:/;
+
 function button(a: ChannelAction, requestId?: string) {
   if (a.kind === 'open' && a.deepLink) return { text: a.label, url: a.deepLink };
-  // callback buttons carry "<requestId>:<kind>" so the inbound webhook routes
-  // the press through the existing approval gate (Plan 05). Never a secret.
+  // Plan-session callbacks carry an explicit callbackData (e.g. 'ps:go').
+  // Prefer explicit callbackData; fall back to id-prefix detection; else legacy.
+  if (a.callbackData) return { text: a.label, callback_data: a.callbackData };
+  if (PLAN_ID_RE.test(a.id)) return { text: a.label, callback_data: a.id };
+  // Legacy: callback buttons carry "<requestId>:<kind>" so the inbound webhook
+  // routes the press through the existing approval gate (Plan 05). Never a secret.
   return { text: a.label, callback_data: `${requestId ?? ''}:${a.kind}` };
 }
 

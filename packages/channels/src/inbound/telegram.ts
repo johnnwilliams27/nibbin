@@ -20,12 +20,22 @@ interface TelegramUpdate {
   message?: { chat?: { id?: unknown }; text?: unknown };
 }
 
+const PLAN_ACTIONS = new Set(['ps:go', 'ps:cancel', 'pw:approve', 'pw:reject']);
+
 export function parseTelegramUpdate(update: unknown, now: number): InboundChannelMessage | null {
   const u = update as TelegramUpdate;
   if (u?.callback_query) {
     const chatId = u.callback_query.message?.chat?.id;
     const data = String(u.callback_query.data ?? '');
     if (chatId == null) return null;
+    // Plan-session callbacks: route as planAction, no legacy fields set.
+    if (PLAN_ACTIONS.has(data)) {
+      return {
+        channel: 'telegram', externalId: String(chatId), text: data, receivedAt: now,
+        planAction: data as 'ps:go' | 'ps:cancel' | 'pw:approve' | 'pw:reject',
+      };
+    }
+    // Legacy: "<requestId>:<action>" format for agent-run approvals.
     const [requestId, action] = data.split(':');
     return {
       channel: 'telegram', externalId: String(chatId), text: data, receivedAt: now,
