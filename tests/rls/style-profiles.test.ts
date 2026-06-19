@@ -87,11 +87,12 @@ describe.skipIf(!dbAvailable)('style_profiles RLS (§4A)', () => {
       expect(rowsB).toHaveLength(0); // B has no profile row seeded
     });
 
-    it('anon sees nothing', async () => {
-      const rows = await h.as(anon, async (c) =>
-        (await c.query(`select account_id from public.style_profiles`)).rows,
-      );
-      expect(rows).toHaveLength(0);
+    it('anon sees nothing (table privileges revoked from anon)', async () => {
+      // anon has `revoke all` on the table, so a SELECT is denied outright
+      // (stricter than an RLS-filtered empty result).
+      await expect(
+        h.as(anon, async (c) => c.query(`select account_id from public.style_profiles`)),
+      ).rejects.toThrow();
     });
   });
 
@@ -149,7 +150,7 @@ describe.skipIf(!dbAvailable)('style_profiles RLS (§4A)', () => {
     it('service_role can upsert', async () => {
       await expect(
         h.as(service, async (c) =>
-          c.query(`select public.upsert_style_profile($1, '{"formality":0.6}'::jsonb, '{"edits_analyzed":5,"confidence":0.5,"last_updated":null,"derived_from":[]}'::jsonb)`, [accountA]),
+          c.query(`select public.upsert_style_profile($1, '{"formality":0.6}'::jsonb, '{"edits_analyzed":5,"confidence":0.5,"last_updated":null,"derived_from":[]}'::jsonb, 0)`, [accountA]),
         ),
       ).resolves.toBeDefined();
     });
@@ -157,7 +158,7 @@ describe.skipIf(!dbAvailable)('style_profiles RLS (§4A)', () => {
     it('authenticated cannot call upsert_style_profile', async () => {
       await expect(
         h.as(asA, async (c) =>
-          c.query(`select public.upsert_style_profile($1, '{}'::jsonb, '{}'::jsonb)`, [accountA]),
+          c.query(`select public.upsert_style_profile($1, '{}'::jsonb, '{}'::jsonb, 0)`, [accountA]),
         ),
       ).rejects.toThrow();
     });
@@ -165,7 +166,7 @@ describe.skipIf(!dbAvailable)('style_profiles RLS (§4A)', () => {
     it('anon cannot call upsert_style_profile', async () => {
       await expect(
         h.as(anon, async (c) =>
-          c.query(`select public.upsert_style_profile($1, '{}'::jsonb, '{}'::jsonb)`, [accountA]),
+          c.query(`select public.upsert_style_profile($1, '{}'::jsonb, '{}'::jsonb, 0)`, [accountA]),
         ),
       ).rejects.toThrow();
     });

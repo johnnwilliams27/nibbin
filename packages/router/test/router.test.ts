@@ -27,6 +27,7 @@ describe('tier table (§6.3)', () => {
     ['formatting', 't0'],
     ['field_notes_copy', 't0'],
     ['journal_phrasing', 't0'],
+    ['style_extraction', 't0'],
     ['specialist_draft', 't1'],
     ['scan_synthesis', 't1'],
     ['training_feedback', 't1'],
@@ -69,8 +70,9 @@ describe('tier table (§6.3)', () => {
 
   it('the table covers every task except chat', () => {
     // 15 base tasks + sweep_pass1/sweep_pass2 (Spec 4 history sweep)
-    // + memory_extract (§12A agent memory) + plan_synthesis (Slice 3a) = 19.
-    expect(Object.keys(TIER_FOR_TASK)).toHaveLength(19);
+    // + memory_extract (§12A agent memory) + plan_synthesis (Slice 3a)
+    // + style_extraction (§4A style profile) = 20.
+    expect(Object.keys(TIER_FOR_TASK)).toHaveLength(20);
   });
 });
 
