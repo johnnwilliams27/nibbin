@@ -16,6 +16,7 @@ import 'server-only';
 import { groveRouter } from '../grove/router';
 import { loadGroveMemoryBlock } from '../grove/memory';
 import { memoryBlockFor } from '../memory/retrieve';
+import { loadStyleProfileBlock } from '../style/inject';
 import { anthropicGenerate, recordModelCall } from './client';
 import { DRAFTING_SYSTEM_PROMPT } from './prompts';
 import type { ModelDrafter } from '@nibbin/runtime';
@@ -63,10 +64,16 @@ export function modelDrafterFor(accountId: string): ModelDrafter | undefined {
         // embedding subprocessor (Voyage); never `context` or connector content.
         // Future programs must keep `intent` free of interpolated evidence.
         const mem = await memoryBlockFor(runId, intent);
+        // §4A Style/Taste Profile: inject the account's learned voice as a
+        // fourth, uncached system block. Best-effort — null when no profile or
+        // confidence is below the injection threshold. NOT cached: it varies
+        // per account and changes as more edits are analysed.
+        const styleBlock = await loadStyleProfileBlock(accountId);
         const system = [
           { text: DRAFTING_SYSTEM_PROMPT, cache: true },
           ...(memory ? [{ text: memory, cache: true }] : []),
           ...(mem ? [{ text: mem, cache: false }] : []),
+          ...(styleBlock ? [{ text: styleBlock, cache: false }] : []),
         ];
         const t0 = Date.now();
         const result = await llm({

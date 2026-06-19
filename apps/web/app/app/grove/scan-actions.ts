@@ -400,7 +400,13 @@ export async function decideDraftAction(
   const distance =
     decision === 'edited' && editedText !== undefined ? Math.max(1, editDistance(original, editedText)) : 0;
 
-  const result = await decideDraft(supabase, accountId, user.id, runId, decision, distance);
+  // §4A: pass original + edited text so decideDraft can fire style extraction
+  // in the same after() block. Only populated for edited decisions.
+  const editContext =
+    decision === 'edited' && editedText !== undefined && original
+      ? { originalDraft: original, editedDraft: editedText }
+      : undefined;
+  const result = await decideDraft(supabase, accountId, user.id, runId, decision, distance, editContext);
 
   const messages: KeeperMessage[] = [];
   if (result.firstApproval) {
