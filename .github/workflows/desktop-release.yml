@@ -124,6 +124,32 @@ jobs:
         if: steps.cfg.outputs.sign_windows == 'true'
         run: cargo install trusted-signing-cli --version 0.11.0 --locked
 
+      # Build the observerd daemon and stage it where tauri's bundle.resources
+      # (["binaries/observerd*"]) expects it, so the installer ships the daemon
+      # the app registers as a LaunchAgent (macOS) / HKCU Run entry (Windows).
+      # Built with os-keystore (the bundled daemon uses the real OS keystore key,
+      # not the test key). macOS bundles `--target universal-apple-darwin`, so the
+      # daemon is lipo'd universal too; binaries/ is gitignored (staged here only).
+      - name: Build + stage observerd (bundled daemon)
+        shell: bash
+        run: |
+          set -euo pipefail
+          MANIFEST=apps/desktop/src-tauri/Cargo.toml
+          DEST=apps/desktop/src-tauri/app/binaries
+          mkdir -p "$DEST"
+          if [ "${{ matrix.platform }}" = "macos-latest" ]; then
+            cargo build -p observerd --release --features os-keystore --manifest-path "$MANIFEST" --target aarch64-apple-darwin
+            cargo build -p observerd --release --features os-keystore --manifest-path "$MANIFEST" --target x86_64-apple-darwin
+            lipo -create -output "$DEST/observerd" \
+              apps/desktop/src-tauri/target/aarch64-apple-darwin/release/observerd \
+              apps/desktop/src-tauri/target/x86_64-apple-darwin/release/observerd
+            file "$DEST/observerd"
+          else
+            cargo build -p observerd --release --features os-keystore --manifest-path "$MANIFEST"
+            cp apps/desktop/src-tauri/target/release/observerd.exe "$DEST/observerd.exe"
+          fi
+          ls -la "$DEST"
+
       - name: Build installers (tauri-action, build only)
         uses: tauri-apps/tauri-action@84b9d35b5fc46c1e45415bdb6144030364f7ebc5 # v0 (action-v0.6.2)
         env:

@@ -15,9 +15,13 @@ pub fn observerd_binary_name() -> &'static str {
 pub fn observerd_path<R: Runtime>(app: &AppHandle<R>) -> anyhow::Result<PathBuf> {
     let name = observerd_binary_name();
     if let Ok(dir) = app.path().resource_dir() {
-        let p = dir.join(name);
-        if p.exists() {
-            return Ok(p);
+        // `bundle.resources: ["binaries/observerd*"]` ships the daemon under
+        // <resourceDir>/binaries/ (the glob preserves the path); also accept the
+        // resource root for forward-compat with a flattened (map-form) bundle.
+        for cand in [dir.join("binaries").join(name), dir.join(name)] {
+            if cand.exists() {
+                return Ok(cand);
+            }
         }
     }
     // dev fallback: target/<profile>/observerd next to the app binary
