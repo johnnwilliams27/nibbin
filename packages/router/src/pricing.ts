@@ -28,7 +28,16 @@ function rates(input: number, output: number): ModelRates {
   };
 }
 
-/** Longest-prefix match so dated snapshots resolve to their family. */
+/**
+ * Longest-prefix match so dated snapshots resolve to their family.
+ *
+ * NOTE on `claude-fable-5`: no public per-token rate is pinned here yet, so it
+ * is DELIBERATELY absent. The eval harness evaluates Fable as a quality/peer
+ * challenger; its cost-delta line renders "N/A" (see `costMicroUsdOrNull`) and
+ * its quality clearance is still valid. We do NOT invent a price — add a row
+ * here only when an authoritative Fable rate exists (and that change re-kinds
+ * any Fable pair where it proves cheaper than the incumbent).
+ */
 const MODEL_RATES: ReadonlyArray<[prefix: string, rates: ModelRates]> = [
   ['claude-haiku-4-5', rates(1, 5)],
   ['claude-sonnet-4-6', rates(3, 15)],
@@ -42,18 +51,28 @@ export interface TokenUsage {
   outputTokens: number;
 }
 
-export function ratesForModel(model: string): ModelRates {
+/**
+ * The rates for a model, or `null` when no pricing is pinned. Non-throwing —
+ * for callers (the eval harness) that must tolerate an unpriced model (Fable)
+ * gracefully rather than crash.
+ */
+export function ratesForModelOrNull(model: string): ModelRates | null {
   for (const [prefix, r] of MODEL_RATES) {
     if (model.startsWith(prefix)) return r;
   }
-  // Fail loud: an unknown model id means the pin changed without a pricing
-  // row — silently costing it at zero would corrupt the margin measurement.
+  return null;
+}
+
+export function ratesForModel(model: string): ModelRates {
+  const r = ratesForModelOrNull(model);
+  if (r) return r;
+  // Fail loud: in the COGS ledger an unknown model id means the pin changed
+  // without a pricing row — silently costing it at zero would corrupt the
+  // margin measurement. (The eval harness uses costMicroUsdOrNull instead.)
   throw new Error(`no pricing pinned for model ${model} — add it to MODEL_RATES with the change that repins the model`);
 }
 
-/** Exact integer micro-USD for one call. */
-export function costMicroUsd(model: string, usage: TokenUsage): number {
-  const r = ratesForModel(model);
+function computeMicroUsd(r: ModelRates, usage: TokenUsage): number {
   const usd =
     (usage.inputTokens * r.inputPerMTok +
       usage.cacheWriteTokens * r.cacheWritePerMTok +
@@ -61,4 +80,20 @@ export function costMicroUsd(model: string, usage: TokenUsage): number {
       usage.outputTokens * r.outputPerMTok) /
     1_000_000;
   return Math.round(usd * 1_000_000);
+}
+
+/** Exact integer micro-USD for one call. Fails loud on an unpinned model. */
+export function costMicroUsd(model: string, usage: TokenUsage): number {
+  return computeMicroUsd(ratesForModel(model), usage);
+}
+
+/**
+ * Exact integer micro-USD for one call, or `null` when the model has no pinned
+ * price (graceful degradation for the eval harness — an unknown model like
+ * `claude-fable-5` yields a cost-delta of "N/A", never a crash). Quality
+ * clearance does not depend on cost, so a null here is purely informational.
+ */
+export function costMicroUsdOrNull(model: string, usage: TokenUsage): number | null {
+  const r = ratesForModelOrNull(model);
+  return r ? computeMicroUsd(r, usage) : null;
 }

@@ -30,6 +30,11 @@ import type { EvalRun } from './types';
 export function clearedEntries(run: EvalRun): Array<[string, string[]]> {
   const byTask = new Map<string, string[]>();
   for (const p of run.pairs) {
+    // HARD splurge guard (§6.3): reportOnly pairs (diagnosis_synthesis,
+    // nibbin_note) are NEVER armed into DEFAULT_TASK_CANDIDATES even if they
+    // "clear" — the report surfaces their scores, but the belief-earning
+    // moments stay incumbent-pinned. This is independent of the score.
+    if (p.reportOnly) continue;
     if (!p.cleared) continue;
     // First cleared pair for the task seeds the set with the incumbent (the
     // safe default / guaranteed fallback). All pairs for a task share an

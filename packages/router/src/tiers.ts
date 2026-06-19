@@ -96,9 +96,27 @@ export const UNBUDGETED_T2_TASKS: ReadonlySet<RoutedTask> = new Set<RoutedTask>(
  */
 export const DEFAULT_TASK_CANDIDATES: Partial<Record<RoutedTask, readonly string[]>> = {
   // Eval-cleared 2026-06-19 — see docs/eval/routing-*.md
-  custom_spec_draft: ['claude-sonnet-4-6', 'claude-haiku-4-5-20251001'],
+  specialist_draft: ['claude-haiku-4-5-20251001', 'claude-sonnet-4-6'],
+  // Eval-cleared 2026-06-19 — see docs/eval/routing-*.md
+  scan_synthesis: ['claude-haiku-4-5-20251001', 'claude-sonnet-4-6'],
+  // Eval-cleared 2026-06-19 — see docs/eval/routing-*.md
+  onboarding_understanding: ['claude-haiku-4-5-20251001', 'claude-sonnet-4-6'],
+  // Eval-cleared 2026-06-19 — see docs/eval/routing-*.md
+  training_feedback: ['claude-haiku-4-5-20251001', 'claude-sonnet-4-6'],
+  // Eval-cleared 2026-06-19 — see docs/eval/routing-*.md
+  map_labeling: ['claude-haiku-4-5-20251001', 'claude-sonnet-4-6'],
+  // Eval-cleared 2026-06-19 — see docs/eval/routing-*.md
+  sweep_pass1: ['claude-haiku-4-5-20251001', 'claude-sonnet-4-6'],
+  // Eval-cleared 2026-06-19 — see docs/eval/routing-*.md
+  sweep_pass2: ['claude-haiku-4-5-20251001', 'claude-sonnet-4-6'],
+  // Eval-cleared 2026-06-19 — see docs/eval/routing-*.md
+  memory_extract: ['claude-haiku-4-5-20251001', 'claude-sonnet-4-6'],
+  // Eval-cleared 2026-06-19 — see docs/eval/routing-*.md
+  custom_spec_draft: ['claude-sonnet-4-6', 'claude-haiku-4-5-20251001', 'claude-opus-4-8'],
   // Eval-cleared 2026-06-19 — see docs/eval/routing-*.md
   complex_plan: ['claude-sonnet-4-6', 'claude-opus-4-8'],
+  // Eval-cleared 2026-06-19 — see docs/eval/routing-*.md
+  plan_synthesis: ['claude-sonnet-4-6', 'claude-opus-4-8'],
 };
 
 /**
