@@ -3,6 +3,7 @@
     { "path": "/api/cron/account-purge", "schedule": "0 4 * * *" },
     { "path": "/api/cron/connector-poll", "schedule": "*/5 * * * *" },
     { "path": "/api/cron/nibbin-schedule", "schedule": "*/5 * * * *" },
-    { "path": "/api/cron/gmail-watch-renew", "schedule": "0 10 * * *" }
+    { "path": "/api/cron/gmail-watch-renew", "schedule": "0 10 * * *" },
+    { "path": "/api/cron/plan-run-reaper", "schedule": "*/15 * * * *" }
   ]
 }
