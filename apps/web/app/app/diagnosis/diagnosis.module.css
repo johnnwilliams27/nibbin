@@ -495,3 +495,100 @@
   font-size: 13px;
   margin: 0 0 10px;
 }
+
+/* ── Part B — edit the proposed plan before adopting ─────────────────────── */
+.editSteps {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 12px;
+}
+.editStep {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  padding: 10px 12px;
+}
+.editStepHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.editStepLabel {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--ink);
+  flex: 1;
+}
+.editStepNum {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+.editStepBtn {
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1;
+  padding: 4px 7px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--paper-deep);
+  color: var(--ink);
+  cursor: pointer;
+}
+.editStepBtn:hover:not(:disabled) {
+  border-color: var(--moss);
+}
+.editStepBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.editParams {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+.editParam {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.editParamLabel {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+  min-width: 110px;
+}
+.editParamInput {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--ink);
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  width: 90px;
+}
+.editParamInput:focus {
+  outline: none;
+  border-color: var(--moss);
+}
+.editParamBounds {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-soft);
+}
+.buildSelect {
+  font-family: var(--display);
+  font-size: 14px;
+  color: var(--ink);
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+.buildSelect:focus {
+  outline: none;
+  border-color: var(--moss);
+}

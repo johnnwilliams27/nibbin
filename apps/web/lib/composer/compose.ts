@@ -50,6 +50,61 @@ export interface ComposerProposal {
 }
 export type ComposerResult = ComposerProposal | { error: string };
 
+/* ── Part B — review-before-adopt editing ──────────────────────────────────── */
+
+/**
+ * The named cadences a user may pick for a composed Nibbin's schedule trigger.
+ * Each is a valid SCHEDULE_KEY (`/^[a-z]+(\.[a-z0-9_-]+)?$/`). The `user`
+ * (whenever-you-ask) trigger is always present and is not user-removable.
+ */
+export const COMPOSER_CADENCES = ['daily.morning', 'daily.evening', 'weekly.monday', 'hourly'] as const;
+export type ComposerCadence = (typeof COMPOSER_CADENCES)[number];
+
+/** One editable scalar param on a step (the ONLY per-step thing a user may
+ *  tweak): the primitive's inputSchema field, surfaced with its bounds. */
+export interface EditableParam {
+  key: string;
+  type: 'number' | 'enum';
+  value: number | string;
+  min?: number;
+  max?: number;
+  values?: string[];
+}
+
+/** One step in the editable plan, as the review UI sees it. */
+export interface EditableStep {
+  capability: string;
+  /** Friendly one-line label for the step (from PRIMITIVE_NAME). */
+  label: string;
+  /** The scalar params the user may tweak (empty for paramless primitives). */
+  params: EditableParam[];
+}
+
+/** The full editable surface for a proposal, derived from a validated spec. */
+export interface EditablePlan {
+  displayName: string;
+  cadence: ComposerCadence;
+  steps: EditableStep[];
+}
+
+/**
+ * One step's user edit: the capability id (must match a step in the reviewed
+ * proposal — the user can REORDER and REMOVE steps, but never INTRODUCE a new
+ * capability id the proposal didn't contain) + the scalar param values.
+ */
+export interface ComposerStepEdit {
+  capability: string;
+  inputs?: Record<string, unknown>;
+}
+
+/** The user's edit of a composed proposal (Part B). The client sends only this
+ *  — never a raw AgentSpec — and the server re-derives the trusted envelope. */
+export interface ComposerEdit {
+  displayName?: string;
+  cadence?: string;
+  steps: ComposerStepEdit[];
+}
+
 /** One chosen primitive + its scalar params (the LLM/deterministic pick). */
 interface ComposedStepDraft {
   capability: string;
@@ -628,4 +683,133 @@ export async function composeSpec(
 
 function capabilityFor(id: string, prims: CapabilityDescriptor[]): CapabilityDescriptor | undefined {
   return prims.find((p) => p.id === id);
+}
+
+/* ── Part B — editing helpers (the user edits WITHIN the validated surface) ─── */
+
+/** The cadence the spec's schedule trigger currently uses (the first schedule
+ *  trigger), defaulting to the standard daily.morning. */
+function cadenceOf(spec: AgentSpec): ComposerCadence {
+  const sched = spec.triggers.find((t) => t.kind === 'schedule')?.schedule;
+  return (COMPOSER_CADENCES as readonly string[]).includes(sched ?? '')
+    ? (sched as ComposerCadence)
+    : 'daily.morning';
+}
+
+/**
+ * Derive the EDITABLE surface for a validated composed spec (Part B). This is
+ * what the review UI renders + lets the user tweak: the name, the cadence, and
+ * — per step — ONLY the scalar params the primitive's inputSchema declares
+ * (staleDays/withinDays/topSenders/minDaysLate), with their bounds. The user
+ * can never see or touch a read path or effectArgs (primitives own those), so
+ * editing can only ever stay within the validated surface.
+ */
+export function editablePlanFromSpec(spec: AgentSpec): EditablePlan {
+  const steps: EditableStep[] = (spec.steps ?? []).map((step) => {
+    const cap = capability(step.capability);
+    const schema = cap?.inputSchema ?? {};
+    const params: EditableParam[] = [];
+    for (const [key, field] of Object.entries(schema)) {
+      if (field.type === 'number') {
+        const v = step.inputs?.[key];
+        params.push({
+          key,
+          type: 'number',
+          value: typeof v === 'number' ? v : (field.default as number | undefined) ?? field.min ?? 0,
+          min: field.min,
+          max: field.max,
+        });
+      } else if (field.type === 'enum') {
+        const v = step.inputs?.[key];
+        params.push({
+          key,
+          type: 'enum',
+          value: typeof v === 'string' ? v : (field.default as string | undefined) ?? (field.values ?? [''])[0],
+          values: field.values,
+        });
+      }
+      // string params are not user-editable scalars in the review UI (none of
+      // the shipped primitives expose one; if added later, surface deliberately).
+    }
+    return { capability: step.capability, label: PRIMITIVE_NAME[step.capability] ?? step.capability, params };
+  });
+  return { displayName: spec.displayName, cadence: cadenceOf(spec), steps };
+}
+
+/**
+ * Apply a user's edit to a reviewed proposal (Part B) and re-derive a FULLY
+ * server-built AgentSpec, then re-validate fail-closed. This is the trust
+ * boundary for editing:
+ *
+ *  - the user may REORDER and REMOVE steps and tweak each step's scalar params
+ *    + the name + the cadence — nothing else;
+ *  - every edited step's capability MUST be one the reviewed proposal already
+ *    contained (an edit can never INTRODUCE a capability the Composer didn't
+ *    propose), and MUST be an available primitive;
+ *  - inputs are sanitized to the primitive's schema (sanitizeInputs drops
+ *    unknown keys + wrong types; the validator re-coerces/bounds-checks);
+ *  - the trusted envelope (toolsAllowlist, requiredConnectors, triggers,
+ *    curriculum, credit) is rebuilt server-side from the registry — the client
+ *    NEVER supplies it;
+ *  - the cadence must be one of COMPOSER_CADENCES (an unknown one is refused);
+ *  - `validateComposedSpec` runs fail-closed (≥1 step, ≤cap, no duplicate, every
+ *    connector granted, allowlist ⊇ yielded tools, acyclic) — an edit that fails
+ *    is refused, returned as `{ error }`.
+ *
+ * Deterministic: no model call. Returns the re-derived spec + a fresh summary.
+ */
+export function applyComposerEdit(
+  reviewedSpec: AgentSpec,
+  edit: ComposerEdit,
+  workflowLabel: string,
+  accountConnections: string[],
+  existing: AgentSpec[] = [],
+): ComposerResult {
+  const prims = availablePrimitives(accountConnections);
+
+  // The capabilities the reviewed proposal contained — the user may only choose
+  // among THESE (reorder/remove), never introduce a new one.
+  const allowedCaps = new Set((reviewedSpec.steps ?? []).map((s) => s.capability));
+
+  if (!Array.isArray(edit.steps) || edit.steps.length === 0) {
+    return { error: 'An agent needs at least one step. Add a step back before saving.' };
+  }
+
+  const caps: CapabilityDescriptor[] = [];
+  const draftSteps: ComposedStepDraft[] = [];
+  for (const s of edit.steps) {
+    if (typeof s?.capability !== 'string' || !allowedCaps.has(s.capability)) {
+      return { error: 'That step isn’t part of this proposal — you can reorder or remove steps, not add new ones.' };
+    }
+    const cap = capabilityFor(s.capability, prims);
+    if (!cap) {
+      return { error: 'That step needs a connection you don’t have. Reconnect it or remove the step.' };
+    }
+    caps.push(cap);
+    draftSteps.push({ capability: cap.id, inputs: s.inputs && typeof s.inputs === 'object' ? s.inputs : {} });
+  }
+
+  const cadence: ComposerCadence = (COMPOSER_CADENCES as readonly string[]).includes(edit.cadence ?? '')
+    ? (edit.cadence as ComposerCadence)
+    : cadenceOf(reviewedSpec);
+
+  const draft: ComposedDraft = {
+    displayName: (edit.displayName ?? reviewedSpec.displayName) || DEFAULT_NAME,
+    steps: draftSteps,
+    personaPolicy: reviewedSpec.personaPolicy,
+  };
+
+  // Rebuild the trusted envelope server-side, then OVERRIDE the schedule trigger
+  // with the chosen cadence (the `user` trigger is always kept).
+  const spec = assembleSpec(caps, draft, { label: workflowLabel } as DiagnosisWorkflow);
+  spec.triggers = [
+    { kind: 'schedule', schedule: cadence, cooldownSecs: 3600 },
+    { kind: 'user' },
+  ];
+
+  const problems = validateComposedSpec(spec, accountConnections, existing);
+  if (problems.length > 0) {
+    return { error: `That edit didn’t pass validation: ${problems.join('; ')}` };
+  }
+  return { spec, summary: summarize(caps, spec, { label: workflowLabel } as DiagnosisWorkflow) };
 }

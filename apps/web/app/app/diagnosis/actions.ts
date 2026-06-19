@@ -6,7 +6,14 @@ import { appSession } from '../../../lib/auth/app-session';
 import { serviceClient } from '../../../lib/supabase/service';
 import { adoptComposedSpec, adoptTemplate } from '../../../lib/runtime/adopt';
 import { activeConnections } from '../../../lib/runtime/engine';
-import { composeSpec } from '../../../lib/composer/compose';
+import {
+  composeSpec,
+  applyComposerEdit,
+  editablePlanFromSpec,
+  COMPOSER_CADENCES,
+  type ComposerEdit,
+  type EditablePlan,
+} from '../../../lib/composer/compose';
 import type { DiagnosisMap, DiagnosisWorkflow } from '../../../lib/diagnosis/types';
 import type { AdoptOutcome } from '../../../components/adopt/types';
 import type { AgentSpec } from '@nibbin/runtime';
@@ -82,6 +89,16 @@ export type ComposerReviewResult =
        * so it is confined to a valid menu-primitive spec regardless.
        */
       spec: AgentSpec;
+      /**
+       * The EDITABLE surface (Part B): the steps + per-step scalar params + the
+       * cadence the user may tweak before adopting. Derived from `spec`; the
+       * client edits this and sends back a `ComposerEdit`, which the server
+       * re-derives + re-validates fail-closed. The user can only ever reorder /
+       * remove steps + tweak schema-bounded scalars + name/cadence.
+       */
+      editable: EditablePlan;
+      /** The named cadences the user may choose for the schedule trigger. */
+      cadenceOptions: readonly string[];
     }
   | { ok: false; error: string };
 
@@ -136,7 +153,36 @@ export async function synthesizeForWorkflow(
     // (e.g. calendar→email) lists both (Google Calendar and Gmail).
     connectorsNeeded: spec.requiredConnectors.map(connectorLabel),
     spec,
+    editable: editablePlanFromSpec(spec),
+    cadenceOptions: COMPOSER_CADENCES,
   };
+}
+
+/**
+ * Re-validate a user's EDIT of a composed proposal WITHOUT adopting (Part B) —
+ * the client calls this when the user changes a step's params / removes /
+ * reorders / changes the cadence, so the review card can show the refreshed
+ * plan + reject an invalid edit BEFORE the confirm step. Pure re-derivation +
+ * fail-closed validation; no model call, no write.
+ *
+ * `reviewedSpec` is client-supplied, but that is safe: `applyComposerEdit`
+ * rebuilds the trusted envelope from the registry and re-validates fail-closed,
+ * so the edit is confined to reordered/removed primitives + schema-bounded
+ * params regardless of transport.
+ */
+export async function previewComposerEdit(
+  reviewedSpec: AgentSpec,
+  edit: ComposerEdit,
+  workflowLabel: string,
+): Promise<{ ok: true; spec: AgentSpec; summary: string; editable: EditablePlan } | { ok: false; error: string }> {
+  const { accountId } = await appSession();
+  const svc = serviceClient();
+  const connections = await activeConnections(svc, accountId);
+  const providers = connections.map((c) => c.provider);
+
+  const result = applyComposerEdit(reviewedSpec, edit, workflowLabel, providers);
+  if ('error' in result) return { ok: false, error: result.error };
+  return { ok: true, spec: result.spec, summary: result.summary, editable: editablePlanFromSpec(result.spec) };
 }
 
 /**
@@ -144,6 +190,14 @@ export async function synthesizeForWorkflow(
  * the review step (synthesizeForWorkflow) — it is NOT recomposed here, so the
  * user hatches exactly what they approved (a 2nd composeSpec at temperature 0.3
  * could drift, e.g. a different staleDays, and would double the model spend).
+ *
+ * Part B — when the user EDITED the proposal (`edit` present), the edit is
+ * applied + re-validated SERVER-SIDE via `applyComposerEdit`: the trusted
+ * envelope (allowlist/connectors/triggers) is rebuilt from the registry and the
+ * spec is re-validated fail-closed. The user can only reorder/remove steps +
+ * tweak schema-bounded scalar params + name/cadence; an edit that fails
+ * validation is REFUSED (never adopted). `edit` is client-supplied, but that is
+ * safe for the same reason the raw spec is.
  *
  * The spec is client-supplied, but that is safe: `adoptComposedSpec` re-runs
  * `validateComposedSpec` (capability∈registry, schema-checked primitive params,
@@ -157,14 +211,30 @@ export async function synthesizeForWorkflow(
 export async function adoptSynthesized(
   spec: AgentSpec,
   chosenName?: string,
+  edit?: ComposerEdit,
+  workflowLabel?: string,
 ): Promise<AdoptOutcome> {
   const { user, accountId } = await appSession();
 
   try {
-    const name = (chosenName ?? spec.displayName).trim() || spec.displayName;
-    // adoptComposedSpec re-validates `spec` fail-closed against the account's
+    // Part B: apply the user's edit + re-validate fail-closed server-side. An
+    // edit that fails validation aborts adoption (never silently falls back to
+    // the un-edited spec — the user must fix it).
+    let toAdopt = spec;
+    if (edit) {
+      const svc = serviceClient();
+      const connections = await activeConnections(svc, accountId);
+      const providers = connections.map((c) => c.provider);
+      const reconciled = applyComposerEdit(spec, edit, workflowLabel ?? spec.displayName, providers);
+      if ('error' in reconciled) {
+        return { ok: false, redirectTo: '/app/diagnosis?error=edit' };
+      }
+      toAdopt = reconciled.spec;
+    }
+    const name = (chosenName ?? toAdopt.displayName).trim() || toAdopt.displayName;
+    // adoptComposedSpec re-validates the spec fail-closed against the account's
     // live connections + the registry BEFORE any DB write (the trust boundary).
-    const adopted = await adoptComposedSpec(accountId, user.id, spec, name);
+    const adopted = await adoptComposedSpec(accountId, user.id, toAdopt, name);
     if (adopted.missingConnectors.length > 0) {
       return {
         ok: false,
