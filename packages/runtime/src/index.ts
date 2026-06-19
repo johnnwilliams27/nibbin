@@ -24,6 +24,7 @@ export * from './interpreter';
 export * from './utilities';
 export * from './events';
 export * from './validate';
+export * from './crystallize';
 export * from './school';
 export * from './stores';
 export * from './runner';

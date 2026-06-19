@@ -121,6 +121,25 @@ export interface AgentSpec {
   personaPolicy?: PersonaPolicy;
 }
 
+/* ── Crystallization (Slice 4): a done plan_run → a durable B-spec ───────────
+ *
+ * `crystallizeTranscript` deterministically extracts the executable
+ * `CapabilityStep[]` from a successful Planner transcript (NEVER LLM-authored);
+ * `crystallizabilityGate` refuses runs that can't safely recur (fail-closed).
+ * The result is either the ordered steps or a specific refusal reason.
+ */
+export type CrystalRefusal =
+  | 'not_done'            // run did not reach `done`
+  | 'no_action'           // produced no approved connector action (read-only/research)
+  | 'utility_in_path'     // used web.*/scratchpad/memory.retrieve/ask_human (runtime reasoning, not a B-step)
+  | 'branching'           // observation-dependent branching the linear extract can't represent
+  | 'ungeneralizable'     // a raw atomic pick whose args can't be reduced to a reusable step
+  | 'invalid_spec';       // the extracted steps failed validateComposedSpec
+
+export type CrystalResult =
+  | { ok: true; steps: CapabilityStep[] }
+  | { ok: false; reason: CrystalRefusal; detail?: string };
+
 /* ── Runs ─────────────────────────────────────────────────────────────────── */
 
 export type RunStatus =
