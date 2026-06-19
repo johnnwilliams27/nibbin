@@ -122,27 +122,29 @@ describe('respondToRequest — pause + resume', () => {
     expect(second.kind).toBe('done');
   });
 
-  it('approving a held draft executes it via the runner effect path; rejecting does not', async () => {
-    const store = new InMemoryPlanRunStore();
-    const executed: string[] = [];
-    const runner = runnerDeps();
-    runner.effects = { async execute(req) { executed.push(req.capability); } };
-    // Seed a run paused on an approval (a held draft), as the harness would.
-    await store.create({
-      runId: 'run-appr',
+  // A draft-class capability IN the plan's allowlist: legitimate to approval-
+  // execute. `email.draft` is sideEffect:'draft' in the registry.
+  const APPROVAL_PLAN = plan({ toolsAllowlist: ['email.read', 'email.draft', 'done'] });
+
+  function seedApproval(store: InMemoryPlanRunStore, tool: string, runId = 'run-appr', requestId = 'req-appr') {
+    return store.create({
+      runId,
       accountId: ACCOUNT,
-      plan: plan(),
+      plan: APPROVAL_PLAN,
       transcript: [{ idx: 0, pick: { tool: 'email.draft', args: {} } }],
       scratchpad: {},
       status: 'needs_input',
       pending: {
-        requestId: 'req-appr',
+        requestId,
         kind: 'approval',
         question: 'Send this reply?',
-        context: { tool: 'email.send', connectionId: 'conn-gmail', effectArgs: { to: 'a@b.com' } },
+        context: { tool, connectionId: 'conn-gmail', effectArgs: { to: 'a@b.com' } },
       },
     });
-    const d: PlannerDeps = {
+  }
+
+  function approvalDeps(store: InMemoryPlanRunStore, runner: RunnerDeps): PlannerDeps {
+    return {
       planner: { async pick() { return { done: true, artifact: { summary: 'sent' } }; } },
       runner,
       connectors: ['gmail'],
@@ -150,9 +152,68 @@ describe('respondToRequest — pause + resume', () => {
       accountId: ACCOUNT,
       persist: { save: (s) => store.save(s) },
     };
+  }
+
+  it('approving a held DRAFT-class cap executes it via the runner effect path', async () => {
+    const store = new InMemoryPlanRunStore();
+    const executed: string[] = [];
+    const runner = runnerDeps();
+    runner.effects = { async execute(req) { executed.push(req.capability); } };
+    await seedApproval(store, 'email.draft');
+    const d = approvalDeps(store, runner);
     const out = await respondToRequest('run-appr', ACCOUNT, USER, { requestId: 'req-appr', approval: 'approved' }, () => d, store);
     expect(out.kind).toBe('done');
-    expect(executed).toEqual(['email.send']);
+    expect(executed).toEqual(['email.draft']);
+  });
+
+  // FIX 9 (reject branch): a `rejected` approval does NOT execute, appends a
+  // "rejected" observation, and the loop continues to completion.
+  it('rejecting a held draft does NOT execute; appends a rejected observation; loop continues', async () => {
+    const store = new InMemoryPlanRunStore();
+    const executed: string[] = [];
+    const runner = runnerDeps();
+    runner.effects = { async execute(req) { executed.push(req.capability); } };
+    await seedApproval(store, 'email.draft');
+    const d = approvalDeps(store, runner);
+    const out = await respondToRequest('run-appr', ACCOUNT, USER, { requestId: 'req-appr', approval: 'rejected' }, () => d, store);
+    expect(out.kind).toBe('done'); // the loop continued and the picker called done
+    expect(executed).toEqual([]); // nothing executed on reject
+    const after = await store.load('run-appr', ACCOUNT);
+    const draftTurn = after!.transcript.find((t) => 'tool' in t.pick && t.pick.tool === 'email.draft');
+    expect(draftTurn?.observation).toMatch(/rejected/i);
+  });
+
+  // FIX 1: a held write-class tool (and/or off-surface) is REFUSED on approval.
+  it('refuses approval-execute of a WRITE-class held tool (email.send): nothing executed, run failed', async () => {
+    const store = new InMemoryPlanRunStore();
+    const executed: string[] = [];
+    const runner = runnerDeps();
+    runner.effects = { async execute(req) { executed.push(req.capability); } };
+    // email.send is sideEffect:'write' AND not in APPROVAL_PLAN's allowlist.
+    await seedApproval(store, 'email.send');
+    const d = approvalDeps(store, runner);
+    const out = await respondToRequest('run-appr', ACCOUNT, USER, { requestId: 'req-appr', approval: 'approved' }, () => d, store);
+    expect(out.kind).toBe('failed');
+    expect(executed).toEqual([]);
+    const after = await store.load('run-appr', ACCOUNT);
+    expect(after!.status).toBe('failed');
+  });
+
+  // FIX 2: a double-resume of the same approval executes the effect AT MOST ONCE.
+  it('double-resume of the same approval executes at most once', async () => {
+    const store = new InMemoryPlanRunStore();
+    const executed: string[] = [];
+    const runner = runnerDeps();
+    runner.effects = { async execute(req) { executed.push(req.capability); } };
+    await seedApproval(store, 'email.draft');
+    const d = approvalDeps(store, runner);
+    // drive two resolves concurrently against the same pending request
+    const [a, b] = await Promise.all([
+      respondToRequest('run-appr', ACCOUNT, USER, { requestId: 'req-appr', approval: 'approved' }, () => d, store),
+      respondToRequest('run-appr', ACCOUNT, USER, { requestId: 'req-appr', approval: 'approved' }, () => d, store),
+    ]);
+    expect([a.kind, b.kind]).toContain('done');
+    expect(executed).toEqual(['email.draft']); // exactly one send
   });
 
   it('a foreign account cannot load or resume another account run', async () => {

@@ -118,6 +118,42 @@ $$;
 
 grant execute on function public.plan_run_save(uuid, jsonb, jsonb, text, jsonb, jsonb) to service_role;
 
+-- Atomic compare-and-set for the pause→resume transition (FIX 2 — the approval
+-- double-execute TOCTOU). Flip the row from 'needs_input' to 'running' ONLY
+-- when it is still needs_input AND the pending request matches p_request_id.
+-- Returns true to the single caller that won the transition; false to any
+-- concurrent resume (which must NOT execute the held draft). Account-scoped:
+-- a foreign account_id can never win the CAS.
+create function public.plan_run_resolve(
+  p_run uuid,
+  p_account uuid,
+  p_request_id text
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_rows integer;
+begin
+  update public.plan_runs
+     set status     = 'running',
+         pending     = null,
+         updated_at  = now()
+   where id = p_run
+     and account_id = p_account
+     and status = 'needs_input'
+     and pending ->> 'requestId' = p_request_id;
+
+  get diagnostics v_rows = row_count;
+  -- exactly one row flipped → this caller won the CAS.
+  return v_rows = 1;
+end;
+$$;
+
+grant execute on function public.plan_run_resolve(uuid, uuid, text) to service_role;
+
 -- ── RLS: account members read their own; all writes service-role only ────────
 
 alter table public.plan_runs enable row level security;

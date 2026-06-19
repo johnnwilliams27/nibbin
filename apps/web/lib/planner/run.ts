@@ -21,8 +21,10 @@ import {
   type Connection,
 } from '@nibbin/connectors';
 import {
+  capability,
   runPlan,
   STANDARD_UTILITIES,
+  type PendingRequest,
   type PlanOutcome,
   type PlanRunState,
   type PlanTurn,
@@ -55,12 +57,40 @@ export interface PlanRunStore {
   create(state: PlanRunState): Promise<void>;
   load(runId: string, accountId: string): Promise<PlanRunState | null>;
   save(state: PlanRunState): Promise<void>;
+  /**
+   * Atomic compare-and-set for the pause→resume transition (FIX 2): flip the
+   * row from `needs_input` (with the matching pending requestId) to `running`,
+   * returning 'won' only to the caller that observed the row still pending.
+   * A concurrent resume sees 'already_resolved' and must NOT execute. This is
+   * the TOCTOU guard — two callers can both `load` the still-pending row, but
+   * only one wins the CAS.
+   */
+  resolvePending(runId: string, accountId: string, requestId: string): Promise<'won' | 'already_resolved'>;
+  /** How many runs the account currently has in `status='running'` (FIX 4 —
+   *  the concurrency cap). */
+  countRunning(accountId: string): Promise<number>;
 }
 
 /** The human's answer to a pending request. */
 export type PlanResponse =
   | { requestId: string; value: string }
   | { requestId: string; approval: 'approved' | 'rejected' };
+
+/** The killed-outcome reason union (mirrors PlanOutcome's killed branch). */
+type KillReason = Extract<PlanOutcome, { kind: 'killed' }>['reason'];
+
+/** The structured terminal record runPlan persists into `artifact` for a
+ *  failed/killed run (FIX 11), so an idempotent re-read echoes the true reason. */
+type TerminalArtifact =
+  | { terminal: 'failed'; error: string }
+  | { terminal: 'killed'; reason: KillReason };
+
+function terminalRecord(artifact: unknown): TerminalArtifact | null {
+  if (artifact && typeof artifact === 'object' && 'terminal' in artifact) {
+    return artifact as TerminalArtifact;
+  }
+  return null;
+}
 
 /** Resolve a PlanOutcome from a terminal state (idempotent re-read). */
 function terminalOutcome(state: PlanRunState): PlanOutcome {
@@ -69,10 +99,18 @@ function terminalOutcome(state: PlanRunState): PlanOutcome {
       return { kind: 'done', runId: state.runId, artifact: state.artifact };
     case 'needs_input':
       return { kind: 'needs_input', runId: state.runId, request: state.pending! };
-    case 'failed':
-      return { kind: 'failed', runId: state.runId, error: 'run failed' };
-    case 'killed':
-      return { kind: 'killed', runId: state.runId, reason: 'no_progress' };
+    case 'failed': {
+      // FIX 11: echo the persisted terminal error, not a hardcoded string.
+      const rec = terminalRecord(state.artifact);
+      const error = rec && rec.terminal === 'failed' ? rec.error : 'run failed';
+      return { kind: 'failed', runId: state.runId, error };
+    }
+    case 'killed': {
+      // FIX 11: echo the persisted kill reason, not a hardcoded 'no_progress'.
+      const rec = terminalRecord(state.artifact);
+      const reason = rec && rec.terminal === 'killed' ? rec.reason : 'no_progress';
+      return { kind: 'killed', runId: state.runId, reason };
+    }
     default:
       return { kind: 'failed', runId: state.runId, error: 'run is still running' };
   }
@@ -104,11 +142,38 @@ export async function respondToRequest(
     return terminalOutcome(state);
   }
 
-  // Append the human's response as the observation on the pending turn, then
-  // clear the pause. The runner's effect path executes an APPROVED draft.
+  // FIX 2 (TOCTOU): two concurrent resolves can both `load` the still-pending
+  // row above. The atomic CAS lets only ONE flip needs_input→running for this
+  // requestId; the loser must NOT execute — it re-reads + returns the terminal
+  // outcome. (The idempotency claim in resolveResponse is the second line of
+  // defense if a caller ever slips past this.)
+  const cas = await store.resolvePending(runId, accountId, response.requestId);
+  if (cas === 'already_resolved') {
+    const fresh = await store.load(runId, accountId);
+    return fresh ? terminalOutcome(fresh) : { kind: 'failed', runId, error: 'run not found' };
+  }
+
+  // We won the CAS; the row is now `running`. Capture the pending request (its
+  // held-draft context) BEFORE clearing the pause, then resolve the response.
+  const pending = state.pending;
+  state.pending = undefined;
+  state.status = 'running';
   const lastTurn = lastPendingTurn(state.transcript);
-  const observation = await resolveResponse(state, response, depsFor);
-  if (lastTurn) lastTurn.observation = observation;
+  const resolved = await resolveResponse(state, pending, response, depsFor);
+
+  // FIX 1: an approval that fails the re-asserted surface check (capability not
+  // in the provisioned allowlist, or a write-class capability) terminates the
+  // run as `failed` — it is NEVER executed.
+  if (resolved.kind === 'fail') {
+    if (lastTurn) lastTurn.observation = resolved.observation;
+    state.pending = undefined;
+    state.status = 'failed';
+    state.artifact = { terminal: 'failed', error: resolved.observation };
+    await store.save(state);
+    return { kind: 'failed', runId, error: resolved.observation };
+  }
+
+  if (lastTurn) lastTurn.observation = resolved.observation;
 
   state.pending = undefined;
   state.status = 'running';
@@ -127,44 +192,90 @@ function lastPendingTurn(transcript: PlanTurn[]): PlanTurn | undefined {
   return undefined;
 }
 
+/** The result of resolving a human response. `continue` resumes the loop with
+ *  the observation appended; `fail` terminates the run (FIX 1: an approval that
+ *  fails the re-asserted surface check is never executed). */
+type Resolved = { kind: 'continue'; observation: string } | { kind: 'fail'; observation: string };
+
 /**
- * Turn the human response into the next observation. For an approval: execute
- * the held draft via the runner's effect executor (reusing the runner's effect
- * path) on 'approved', or note the rejection on 'rejected'. For a value/auth/
- * decision: the free-text answer is the observation.
+ * Turn the human response into the next observation. For an approval: re-assert
+ * the provisioned surface + draft-class (FIX 1), then execute the held draft
+ * through the runner's effect executor — routed through the idempotency store
+ * so a double-resume is at-most-once (FIX 2) — on 'approved', or note the
+ * rejection on 'rejected'. For a value/auth/decision: the free-text answer is
+ * the observation.
  */
 async function resolveResponse(
   state: PlanRunState,
+  pending: PendingRequest,
   response: PlanResponse,
   depsFor: (state: PlanRunState) => PlannerDeps,
-): Promise<string> {
+): Promise<Resolved> {
   if ('approval' in response) {
-    const ctx = state.pending?.context ?? {};
+    const ctx = pending.context ?? {};
     if (response.approval === 'rejected') {
-      return 'human rejected the draft';
+      return { kind: 'continue', observation: 'human rejected the draft' };
     }
-    // Approved: execute the held draft through the runner's effect executor
-    // (the same path /approvals and the runner's execute branch use), with a
-    // stable idempotency key so a double-resume can never double-send.
+
     const deps = depsFor(state);
     const capabilityId = String(ctx.tool ?? '');
+
+    // FIX 1 (fail-closed re-assertion at execute time — the human approval IS
+    // the authorization, but it can only ever execute the SAME surface the plan
+    // was provisioned for, and only a draft-class capability):
+    //  1. the capability must be in the plan's provisioned toolsAllowlist;
+    //  2. the capability's descriptor must NOT be a 'write' (only a draft-class
+    //     capability may be approval-executed — mirrors validatePick /
+    //     validateComposedSpec's "raw write rejected" rule).
+    // A plan run can never hold a write-grant row (it is ephemeral / no nibbin),
+    // so the allowlist + draft-class assertion is the correct gate — NOT hasGrant.
+    if (!state.plan.toolsAllowlist.includes(capabilityId)) {
+      return { kind: 'fail', observation: `refused: "${capabilityId}" is not in this plan's provisioned surface` };
+    }
+    const desc = capability(capabilityId);
+    if (!desc) {
+      return { kind: 'fail', observation: `refused: "${capabilityId}" is not a registry capability` };
+    }
+    if (desc.sideEffect === 'write') {
+      return { kind: 'fail', observation: `refused: "${capabilityId}" is a raw write-class capability — only a draft-class capability may be approval-executed` };
+    }
+
+    // Approved + re-asserted: execute the held draft through the runner's effect
+    // executor — but route it through the idempotency store the same way the
+    // runner's execute branch does (FIX 2), so even if two resolves slip past
+    // the CAS in plan_run_resolve, the claim makes the send at-most-once.
     const connectionId = typeof ctx.connectionId === 'string' ? ctx.connectionId : undefined;
     const effectArgs = (ctx.effectArgs ?? {}) as Record<string, unknown>;
-    const idempotencyKey = `plan:${state.runId}:${state.pending?.requestId ?? 'req'}`;
+    const idempotencyKey = `plan:${state.runId}:${pending.requestId}`;
     try {
+      const claim = await deps.runner.idempotency.claim({
+        accountId: state.accountId,
+        runId: state.runId,
+        stepIdx: state.transcript.length,
+        capability: capabilityId,
+        idempotencyKey,
+      });
+      if (claim === 'unknown_outcome') {
+        return { kind: 'continue', observation: `human approved, but a prior ${capabilityId} attempt's outcome is unknown — not retrying` };
+      }
+      if (claim === 'already_executed') {
+        return { kind: 'continue', observation: `human approved — ${capabilityId} was already executed (deduped)` };
+      }
+      // claim === 'claimed' → we own the send.
       await deps.runner.effects.execute({
         connectionId,
         capability: capabilityId,
         args: effectArgs,
         idempotencyKey,
       });
-      return `human approved — executed ${capabilityId}`;
+      await deps.runner.idempotency.markExecuted(state.accountId, idempotencyKey);
+      return { kind: 'continue', observation: `human approved — executed ${capabilityId}` };
     } catch (err) {
-      return `human approved, but execution failed: ${err instanceof Error ? err.message : String(err)}`;
+      return { kind: 'continue', observation: `human approved, but execution failed: ${err instanceof Error ? err.message : String(err)}` };
     }
   }
   // value | auth | decision → the free-text answer is the observation.
-  return `human answered: ${response.value}`;
+  return { kind: 'continue', observation: `human answered: ${response.value}` };
 }
 
 /* ── Utility dispatch (web + memory) ─────────────────────────────────────────
@@ -251,6 +362,9 @@ export function plannerDrafterFor(
   userId: string,
   generateOverride?: Generate,
   routerOverride?: Router,
+  // FIX 8: the plan run id so each picker call's COGS row is attributable to the
+  // run (otherwise run_id is null). Optional — absent in pure-unit seams.
+  runId?: string,
 ): PlannerDrafter {
   const llm = generateOverride ?? anthropicGenerate();
   return {
@@ -291,6 +405,7 @@ export function plannerDrafterFor(
         await recordModelCall({
           accountId,
           userId,
+          runId: runId ?? null,
           tier: decision.tier,
           task: 'plan_synthesis',
           model: result.model,
@@ -311,7 +426,7 @@ export function plannerDrafterFor(
  * utility dispatch. The synthetic plan nibbin runs at the `student` stage so
  * every side effect is approval-gated — no auto-send.
  */
-export async function buildPlannerRunDeps(accountId: string, userId: string): Promise<PlannerDeps> {
+export async function buildPlannerRunDeps(accountId: string, userId: string, runId?: string): Promise<PlannerDeps> {
   const svc = serviceClient();
   const connections = await activeConnections(svc, accountId);
   const connMap: Record<string, string | undefined> = {};
@@ -322,7 +437,7 @@ export async function buildPlannerRunDeps(accountId: string, userId: string): Pr
   const accountCreatedAtMs = accRow ? new Date(accRow.created_at as string).getTime() : 0;
 
   return {
-    planner: plannerDrafterFor(accountId, userId),
+    planner: plannerDrafterFor(accountId, userId, undefined, undefined, runId),
     runner: {
       runs: new SupabaseRunStore(svc),
       routines: new SupabaseRoutineStore(svc),
@@ -365,6 +480,26 @@ export class InMemoryPlanRunStore implements PlanRunStore {
 
   async save(state: PlanRunState): Promise<void> {
     this.rows.set(state.runId, structuredClone(state));
+  }
+
+  async resolvePending(runId: string, accountId: string, requestId: string): Promise<'won' | 'already_resolved'> {
+    const row = this.rows.get(runId);
+    if (!row || row.accountId !== accountId) return 'already_resolved';
+    // CAS: only win when still needs_input for THIS pending requestId.
+    if (row.status !== 'needs_input' || row.pending?.requestId !== requestId) {
+      return 'already_resolved';
+    }
+    row.status = 'running';
+    row.pending = undefined;
+    return 'won';
+  }
+
+  async countRunning(accountId: string): Promise<number> {
+    let n = 0;
+    for (const row of this.rows.values()) {
+      if (row.accountId === accountId && row.status === 'running') n += 1;
+    }
+    return n;
   }
 }
 
@@ -428,5 +563,30 @@ export class SupabasePlanRunStore implements PlanRunStore {
       p_artifact: state.artifact ?? null,
     });
     if (error) throw new Error(`plan_run_save failed: ${error.message}`);
+  }
+
+  async resolvePending(runId: string, accountId: string, requestId: string): Promise<'won' | 'already_resolved'> {
+    // Atomic CAS in SQL (FIX 2): flips needs_input→running only when the row is
+    // still needs_input for the matching pending requestId. A 0-row result means
+    // a concurrent resolve already won — the caller must not execute.
+    const svc = serviceClient();
+    const { data, error } = await svc.rpc('plan_run_resolve', {
+      p_run: runId,
+      p_account: accountId,
+      p_request_id: requestId,
+    });
+    if (error) throw new Error(`plan_run_resolve failed: ${error.message}`);
+    return data === true ? 'won' : 'already_resolved';
+  }
+
+  async countRunning(accountId: string): Promise<number> {
+    const svc = serviceClient();
+    const { count, error } = await svc
+      .from('plan_runs')
+      .select('id', { count: 'exact', head: true })
+      .eq('account_id', accountId)
+      .eq('status', 'running');
+    if (error) throw new Error(`countRunning failed: ${error.message}`);
+    return count ?? 0;
   }
 }

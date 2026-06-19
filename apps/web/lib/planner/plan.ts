@@ -35,8 +35,10 @@ import { anthropicGenerate, recordModelCall } from '../llm/client';
 import { webSearchEnabled } from './websearch';
 
 /** A frontier plan run hatches with a tight token budget + a conservative
- *  iteration ceiling (design §7) — bounded by construction. */
-const PLAN_CEILINGS = { maxSteps: 60, maxTokens: 8000, maxWallClockMs: 60_000, maxIterations: 12 };
+ *  iteration ceiling (design §7) — bounded by construction. The canonical
+ *  server-side ceilings: startPlanRun RE-STAMPS these onto any posted plan
+ *  (FIX 3a) so a client can never widen them. */
+export const PLAN_CEILINGS = { maxSteps: 60, maxTokens: 8000, maxWallClockMs: 60_000, maxIterations: 12 } as const;
 const PLAN_SYNTHESIS_MAX_TOKENS = 700;
 
 export interface PlanPreview {
