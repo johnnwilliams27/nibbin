@@ -54,15 +54,26 @@ export type RetuneResult =
 /* ── Helpers ────────────────────────────────────────────────────────────────── */
 
 /**
- * Load every non-sleeping spec for this account — the same set the adoption
- * path uses for the cross-account trigger-graph cycle check.
+ * Load every non-sleeping spec for this account EXCEPT the Nibbin being retuned —
+ * the cross-account set for the trigger-graph cycle check. We exclude the current
+ * Nibbin so the validated graph is `[...other live specs, candidate]`, i.e. the
+ * graph as it will exist AFTER the retune (the candidate REPLACES the current
+ * spec). Including the current spec would double-count it alongside its own
+ * near-identical replacement — harmless today (no spec uses `nibbin:*` triggers,
+ * so the edge map is empty) but a latent footgun once Nibbin-to-Nibbin triggers
+ * exist; excluding it is the semantically correct set.
  */
-async function accountSpecs(svc: SupabaseClient, accountId: string): Promise<AgentSpec[]> {
+async function accountSpecs(
+  svc: SupabaseClient,
+  accountId: string,
+  excludeNibbinId: string,
+): Promise<AgentSpec[]> {
   const { data, error } = await svc
     .from('agent_specs')
-    .select('*, nibbins!inner(status)')
+    .select('*, nibbins!inner(id, status)')
     .eq('account_id', accountId)
-    .neq('nibbins.status', 'sleeping');
+    .neq('nibbins.status', 'sleeping')
+    .neq('nibbins.id', excludeNibbinId);
   if (error) throw new Error(`spec load failed: ${error.message}`);
   const rowsTyped = (data ?? []) as Parameters<typeof specFromRow>[0][];
   return rowsTyped.map((row) => specFromRow(row));
@@ -178,7 +189,7 @@ export async function retuneNibbin(
   // check (same set the adoption path uses).
   let existing: AgentSpec[];
   try {
-    existing = await accountSpecs(svc, accountId);
+    existing = await accountSpecs(svc, accountId, id);
   } catch (err) {
     return {
       ok: false,
