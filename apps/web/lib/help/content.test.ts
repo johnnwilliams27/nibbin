@@ -23,6 +23,9 @@ describe('HELP_CONTENT', () => {
     const all = JSON.stringify(HELP_CONTENT);
     expect(all.includes('100ms')).toBe(false);
   });
+  it('contains the required secure-fields phrase', () => {
+    expect(JSON.stringify(HELP_CONTENT)).toContain("by construction, never by reading the picture");
+  });
 });
 
 describe('filterHelp', () => {
