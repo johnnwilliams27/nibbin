@@ -5,6 +5,11 @@
   background: var(--paper);
   padding: 48px 24px 80px;
 }
+@media (max-width: 640px) {
+  .wrap {
+    padding: 24px 0 48px;
+  }
+}
 
 .inner {
   max-width: 980px;

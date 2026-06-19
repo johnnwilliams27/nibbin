@@ -248,3 +248,15 @@
     transition: none;
   }
 }
+
+@media (max-width: 640px) {
+  .title {
+    font-size: 24px;
+  }
+  .heroItem {
+    flex-wrap: wrap;
+  }
+  .statValue {
+    font-size: 22px;
+  }
+}

@@ -15,6 +15,12 @@
   margin-bottom: 22px;
   align-items: center;
 }
+@media (max-width: 640px) {
+  .chipline {
+    gap: 14px;
+    padding: 12px 14px;
+  }
+}
 .chipItem {
   font-family: var(--mono);
   font-size: 10.5px;
