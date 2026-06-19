@@ -126,6 +126,11 @@ export interface BrowserDriver {
   /** Commit an already-APPROVED write verb (click/type). Called by the executor
    *  on approval — never by the picker, never speculatively. */
   commit(verb: 'click' | 'type', target: BrowserTarget, value?: string): Promise<void>;
+  /** Tear down any underlying browser process. Called in a `finally` around the
+   *  run (and on terminal/pause outcomes) so a lazily-launched Chromium is never
+   *  orphaned. Must be idempotent + best-effort (never throw). Optional so the
+   *  in-memory mock + scripts need not implement it. */
+  close?(): Promise<void>;
 }
 
 /* ── SSRF guard for navigate (reuse web.fetch's host validation, design) ─────── */
@@ -227,6 +232,11 @@ export class MockBrowserDriver implements BrowserDriver {
   }
   async commit(verb: 'click' | 'type', target: BrowserTarget, value?: string): Promise<void> {
     this.commits.push({ verb, target, value });
+  }
+  /** Count of close() calls — a test asserts the harness closes the driver. */
+  closeCount = 0;
+  async close(): Promise<void> {
+    this.closeCount += 1;
   }
 }
 

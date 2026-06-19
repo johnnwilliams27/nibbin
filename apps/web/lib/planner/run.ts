@@ -53,7 +53,7 @@ import {
 } from '../runtime/stores';
 import { webSearch, webFetch } from './websearch';
 import { buildBrowserDriver, browserIsPublicIp } from './browser';
-import { isComputerUseCapability } from '@nibbin/runtime';
+import { isComputerUseCapability, validateTarget } from '@nibbin/runtime';
 
 export interface PlanRunStore {
   create(state: PlanRunState): Promise<void>;
@@ -240,6 +240,16 @@ async function resolveResponse(
       if (!deps.browser) {
         return { kind: 'continue', observation: `human approved, but the browser is no longer available — ${capabilityId} not committed` };
       }
+      // Re-validate the held target fail-closed before committing (P3 — defense
+      // in depth): the target was validated when the draft was proposed, but we
+      // re-assert the schema at commit so a tampered/garbled persisted context
+      // can never reach driver.commit with an out-of-schema target.
+      let safeTarget: ReturnType<typeof validateTarget>;
+      try {
+        safeTarget = validateTarget(cu.target ?? {});
+      } catch (err) {
+        return { kind: 'fail', observation: `refused: held browser target failed re-validation — ${err instanceof Error ? err.message : String(err)}` };
+      }
       const idempotencyKey = `plan:${state.runId}:${pending.requestId}`;
       try {
         const claim = await deps.runner.idempotency.claim({
@@ -251,7 +261,7 @@ async function resolveResponse(
         });
         if (claim === 'unknown_outcome') return { kind: 'continue', observation: `human approved, but a prior ${capabilityId} attempt's outcome is unknown — not retrying` };
         if (claim === 'already_executed') return { kind: 'continue', observation: `human approved — ${capabilityId} was already committed (deduped)` };
-        await deps.browser.commit(cu.verb, (cu.target ?? {}) as never, cu.value);
+        await deps.browser.commit(cu.verb, safeTarget, cu.value);
         await deps.runner.idempotency.markExecuted(state.accountId, idempotencyKey);
         return { kind: 'continue', observation: `human approved — committed browser ${cu.verb}` };
       } catch (err) {

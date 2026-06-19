@@ -246,7 +246,7 @@ export async function planForIntent(
     ceilings: usesComputerUse ? { ...COMPUTER_USE_CEILINGS } : PLAN_CEILINGS,
   };
 
-  const problems = validatePlanSpec(plan, accountConnections, { webSearchEnabled: webSearchEnabled() });
+  const problems = validatePlanSpec(plan, accountConnections, { webSearchEnabled: webSearchEnabled(), browserEnabled: browserEnabled() });
   if (problems.length > 0) {
     return { error: `Proposed plan did not pass validation: ${problems.join('; ')}` };
   }

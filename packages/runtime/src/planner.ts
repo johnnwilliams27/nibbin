@@ -141,6 +141,31 @@ function lastUtilityObservation(transcript: PlanTurn[]): string | undefined {
   return undefined;
 }
 
+/** The most recent computer_use (browser) turn's observation — the no-progress
+ *  baseline for the CU read path. `lastUtilityObservation` only matches UTILITY
+ *  picks, so a browser-only loop would never trip no-progress against it; this
+ *  compares a CU read to the prior CU read so distinct-but-unproductive browser
+ *  churn (e.g. scrolling at the page bottom, or re-extracting content that keeps
+ *  returning the same text) trips NO_PROGRESS_KILL_AT before exhausting
+ *  maxIterations. */
+function lastBrowserObservation(transcript: PlanTurn[]): string | undefined {
+  for (let i = transcript.length - 1; i >= 0; i--) {
+    const t = transcript[i];
+    if ('tool' in t.pick && typeof t.pick.tool === 'string' && capability(t.pick.tool)?.family === 'computer_use') {
+      return t.observation;
+    }
+  }
+  return undefined;
+}
+
+/** A quarantine wrap carries a per-wrap RANDOM tag, so two reads of the SAME
+ *  page text are never byte-identical. For the no-progress comparison we
+ *  normalize the random tag out, so "same page text" reads compare equal (and
+ *  thus count as no progress) even though their wrappers differ. */
+function normalizeBrowserObservation(obs: string | undefined): string | undefined {
+  return obs?.replace(/:[0-9a-f]{24}\b/g, ':<tag>');
+}
+
 /** A synthetic NibbinRef for dispatchStep: `student` stage so EVERY side effect
  *  is approval-gated (gateSideEffect(student) → draft). Ephemeral — never an
  *  actual nibbins row; this is a runtime shell carrying the plan's allowlist +
@@ -533,8 +558,15 @@ export async function runPlan(
         if (cu.verb === 'navigate') {
           // SSRF guard — the SAME literal-host check web.fetch applies (private/
           // loopback/metadata rejected). The Playwright adapter additionally
-          // routes egress through safeFetch's resolve+pin rebind defense.
-          assertSafeNavigateUrl(cu.url, deps.isPublicIp ?? (() => true));
+          // routes egress through safeFetch's resolve+pin rebind defense AND a
+          // per-request Chromium interceptor.
+          //
+          // FAIL-CLOSED default (P2): a security guard must NOT default to
+          // allow-all. With a live browser driver present, `isPublicIp` is
+          // REQUIRED — its absence is a misconfiguration, so we use a deny-all
+          // predicate (every literal IP is treated as non-public). apps/web always
+          // injects the connectors predicate; this only bites a misconfigured wiring.
+          assertSafeNavigateUrl(cu.url, deps.isPublicIp ?? (() => false));
           result = await deps.browser.navigate(cu.url);
         } else if (cu.verb === 'extract') {
           result = await deps.browser.extract(cu.target);
@@ -556,8 +588,13 @@ export async function runPlan(
       }
 
       const observation = `${cu.verb}: ${result.content.wrapped}`;
-      const priorUtilObs = lastUtilityObservation(state.transcript);
-      const progressed = observation.trim() !== '' && observation !== priorUtilObs;
+      // No-progress baseline for the CU read path: compare against the prior
+      // BROWSER observation (not the prior utility one) so a browser-only loop
+      // can trip no-progress (FIX P3). The random quarantine tag is normalized
+      // out so the comparison is on the page CONTENT, not the per-wrap tag —
+      // otherwise two reads of the same page text would always look "different".
+      const priorBrowserObs = normalizeBrowserObservation(lastBrowserObservation(state.transcript));
+      const progressed = observation.trim() !== '' && normalizeBrowserObservation(observation) !== priorBrowserObs;
       state.transcript.push({ idx: idx++, pick, observation: cap(observation) });
       noProgress = progressed ? 0 : noProgress + 1;
       if (noProgress >= NO_PROGRESS_KILL_AT) return await killed('no_progress');

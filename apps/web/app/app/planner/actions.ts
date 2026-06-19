@@ -28,6 +28,7 @@ import { serviceClient } from '../../../lib/supabase/service';
 import { activeConnections } from '../../../lib/runtime/engine';
 import { planForIntent, PLAN_CEILINGS, type PlanPreview } from '../../../lib/planner/plan';
 import { webSearchEnabled } from '../../../lib/planner/websearch';
+import { browserEnabled } from '../../../lib/planner/browser';
 import { connectorsForSteps, crystallize, isStandardCadence, type CrystalPreview } from '../../../lib/planner/crystallize';
 import { adoptComposedSpec } from '../../../lib/runtime/adopt';
 import type { AdoptOutcome } from '../../../components/adopt/types';
@@ -105,7 +106,7 @@ export async function startPlanRun(plan: PlanSpec): Promise<PlanOutcome | { erro
     ? { ...plan, weightClass: 'computer_use', ceilings: { ...COMPUTER_USE_CEILINGS } }
     : { ...plan, weightClass: 'frontier', ceilings: { ...PLAN_CEILINGS } };
 
-  const problems = validatePlanSpec(safePlan, connections, { webSearchEnabled: webSearchEnabled() });
+  const problems = validatePlanSpec(safePlan, connections, { webSearchEnabled: webSearchEnabled(), browserEnabled: browserEnabled() });
   if (problems.length > 0) {
     return { error: `That plan can't run as written: ${problems.join('; ')}` };
   }
@@ -135,9 +136,26 @@ export async function startPlanRun(plan: PlanSpec): Promise<PlanOutcome | { erro
 
   const deps = await buildPlannerRunDeps(accountId, user.id, state.runId);
   // Persist under the created run id (deps.persist writes to plan_runs).
-  const outcome = await runPlan(safePlan, { ...deps, newRunId: () => state.runId });
+  // Close the (lazily-launched) browser in a `finally` so a paused or terminal
+  // run never orphans a Chromium process; resume re-launches it lazily.
+  let outcome: PlanOutcome;
+  try {
+    outcome = await runPlan(safePlan, { ...deps, newRunId: () => state.runId });
+  } finally {
+    await closeBrowserQuietly(deps);
+  }
   await nudgeIfNeedsInput(accountId, outcome);
   return outcome;
+}
+
+/** Best-effort browser teardown — close the lazily-launched Chromium on a paused
+ *  or terminal run so no process is orphaned. Never throws into the caller. */
+async function closeBrowserQuietly(deps: { browser?: { close?: () => Promise<void> } }): Promise<void> {
+  try {
+    await deps.browser?.close?.();
+  } catch (err) {
+    console.error('[planner] browser close failed (best-effort)', err instanceof Error ? err.message : err);
+  }
 }
 
 /** Resume a paused run with the human's response (account-scoped). */
@@ -146,7 +164,12 @@ export async function respondToPlanRun(runId: string, response: PlanResponse): P
   // Build the live deps once, then hand respondToRequest a synchronous factory
   // that returns it (the deps don't depend on the rehydrated state shape).
   const deps = await buildPlannerRunDeps(accountId, user.id, runId);
-  const outcome = await respondToRequest(runId, accountId, user.id, response, () => deps);
+  let outcome: PlanOutcome;
+  try {
+    outcome = await respondToRequest(runId, accountId, user.id, response, () => deps);
+  } finally {
+    await closeBrowserQuietly(deps);
+  }
   await nudgeIfNeedsInput(accountId, outcome);
   return outcome;
 }

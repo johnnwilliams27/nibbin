@@ -328,6 +328,10 @@ export const MAX_PLAN_TOKENS = 20_000;
  *    utility id (an off-surface entry rejects the whole plan);
  *  - a `web.*` utility may appear only when a search provider is configured
  *    (`opts.webSearchEnabled`), since web egress is the load-bearing surface;
+ *  - a `computer_use.*` (browser) verb may appear only when the browser surface
+ *    is enabled (`opts.browserEnabled`), so a stale/persisted cu plan can't sit
+ *    "valid" and silently flip live the moment the flag is turned on
+ *    (defense-in-depth — the driver is also gated at run time);
  *  - every required connector is granted on this account;
  *  - every connector capability is powered by a granted required connector;
  *  - ceilings positive + `maxIterations` within `MAX_PLAN_ITERATIONS`.
@@ -335,7 +339,7 @@ export const MAX_PLAN_TOKENS = 20_000;
 export function validatePlanSpec(
   plan: PlanSpec,
   accountConnections: string[],
-  opts: { webSearchEnabled: boolean },
+  opts: { webSearchEnabled: boolean; browserEnabled?: boolean },
 ): string[] {
   const problems: string[] = [];
   const at = (msg: string) => problems.push(`plan: ${msg}`);
@@ -374,8 +378,17 @@ export function validatePlanSpec(
     // A computer_use verb needs NO OAuth connector (it is driven by the injected
     // BrowserDriver). It is valid purely on being a registered computer_use
     // capability id — its safety is the verb+target schema (validatePick) +
-    // approval-gating + the SSRF guard, not a connector grant.
-    if (isComputerUseCapability(id)) continue;
+    // approval-gating + the SSRF guard, not a connector grant. BUT it is offered
+    // only when the browser surface is enabled: a cu verb in the allowlist while
+    // COMPUTER_USE_ENABLED is off rejects the whole plan (defense-in-depth, so a
+    // persisted cu plan can't be "valid" and silently flip live when the flag
+    // turns on). `browserEnabled` defaults to false (fail-closed) when omitted.
+    if (isComputerUseCapability(id)) {
+      if (opts.browserEnabled !== true) {
+        at(`tool "${id}" requires the browser (computer_use) surface to be enabled`);
+      }
+      continue;
+    }
 
     const cap = capability(id);
     if (!cap) {

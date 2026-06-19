@@ -11,7 +11,7 @@
  *  - the computer_use ceilings bound the run (maxIterations / weight class).
  */
 import { describe, expect, it } from 'vitest';
-import { isQuarantined } from '@nibbin/connectors';
+import { isQuarantined, quarantine } from '@nibbin/connectors';
 import {
   runPlan,
   validatePick,
@@ -28,6 +28,7 @@ import {
   MemoryIdempotencyStore,
   MemoryRoutineStore,
   MemoryRunStore,
+  type BrowserReadResult,
   type PlanSpec,
   type PlannerDeps,
   type PlannerDrafter,
@@ -272,18 +273,18 @@ describe('navigate SSRF guard (same egress posture as web.fetch)', () => {
 describe('computer_use ceilings + weight class', () => {
   it('validatePlanSpec requires the computer_use weight class for a browser plan', () => {
     const wrong = cuPlan({ weightClass: 'frontier' });
-    const problems = validatePlanSpec(wrong, [], { webSearchEnabled: false });
+    const problems = validatePlanSpec(wrong, [], { webSearchEnabled: false, browserEnabled: true });
     expect(problems.join(' ')).toMatch(/computer_use.*weight class/);
   });
 
   it('validatePlanSpec accepts a well-formed computer_use plan with NO connector grant', () => {
-    const problems = validatePlanSpec(cuPlan(), [], { webSearchEnabled: false });
+    const problems = validatePlanSpec(cuPlan(), [], { webSearchEnabled: false, browserEnabled: true });
     expect(problems).toEqual([]);
   });
 
   it('validatePlanSpec rejects maxIterations over the computer_use bound', () => {
     const over = cuPlan({ ceilings: { ...COMPUTER_USE_CEILINGS, maxIterations: COMPUTER_USE_CEILINGS.maxIterations + 1 } });
-    const problems = validatePlanSpec(over, [], { webSearchEnabled: false });
+    const problems = validatePlanSpec(over, [], { webSearchEnabled: false, browserEnabled: true });
     expect(problems.join(' ')).toMatch(/maxIterations/);
   });
 
@@ -312,5 +313,43 @@ describe('computer_use ceilings + weight class', () => {
     const outcome = await runPlan(cuPlan(), deps([same, same, same, same], browser));
     expect(outcome.kind).toBe('killed');
     if (outcome.kind === 'killed') expect(['repetition', 'no_progress']).toContain(outcome.reason);
+  });
+
+  it('DISTINCT-but-unproductive browser reads trip no_progress (P3 #7)', async () => {
+    // A driver that returns IDENTICAL content+source regardless of the verb's
+    // target — distinct picks (so the repetition kill never fires) that never
+    // advance. Before the fix, the CU read path compared against the prior
+    // UTILITY observation (always undefined here), so no_progress never tripped
+    // and the loop ran to max_iterations. Now it compares against the prior
+    // BROWSER observation (tag-normalized) and trips no_progress first.
+    class StaticBrowser extends MockBrowserDriver {
+      private make(): BrowserReadResult {
+        return { kind: 'read', content: quarantine('the same page text every time', 'browser:static') };
+      }
+      async navigate(): Promise<BrowserReadResult> { return this.make(); }
+      async extract(): Promise<BrowserReadResult> { return this.make(); }
+      async scroll(): Promise<BrowserReadResult> { return this.make(); }
+      async screenshot(): Promise<BrowserReadResult> { return this.make(); }
+    }
+    const browser = new StaticBrowser();
+    // distinct selectors → distinct picks (no repetition kill) but identical obs
+    let n = 0;
+    const drafter: PlannerDrafter = {
+      async pick() {
+        n += 1;
+        return { tool: 'computer_use.extract', args: { target: { selector: `#row-${n}` } } };
+      },
+    };
+    const outcome = await runPlan(cuPlan(), deps([], browser, { planner: drafter }));
+    expect(outcome.kind).toBe('killed');
+    if (outcome.kind === 'killed') expect(outcome.reason).toBe('no_progress');
+  });
+
+  it('rejects a computer_use plan when the browser surface is disabled (P3 #6)', () => {
+    // browserEnabled omitted → defaults fail-closed (false); a cu verb in the
+    // allowlist rejects the whole plan so a stale plan can't silently flip live.
+    const problems = validatePlanSpec(cuPlan(), [], { webSearchEnabled: false });
+    expect(problems.join(' ')).toMatch(/computer_use.*surface to be enabled|requires the browser/);
+    expect(problems.join(' ')).toMatch(/enabled/);
   });
 });
