@@ -36,6 +36,7 @@ import {
 import type { Generate, Router } from '@nibbin/router';
 import { serviceClient } from '../supabase/service';
 import { embedQuery } from '../llm/embed';
+import { writeAgentMemory } from '../memory/write';
 import { anthropicGenerate, recordModelCall } from '../llm/client';
 import { groveRouter } from '../grove/router';
 import {
@@ -52,6 +53,8 @@ import {
   SupabaseEventSink,
 } from '../runtime/stores';
 import { webSearch, webFetch } from './websearch';
+import { buildBrowserDriver, browserIsPublicIp } from './browser';
+import { isComputerUseCapability, validateTarget } from '@nibbin/runtime';
 
 export interface PlanRunStore {
   create(state: PlanRunState): Promise<void>;
@@ -220,6 +223,53 @@ async function resolveResponse(
     const deps = depsFor(state);
     const capabilityId = String(ctx.tool ?? '');
 
+    // ── computer_use (browser) write approval ──────────────────────────────────
+    // A click/type held draft commits through the BrowserDriver, NOT the connector
+    // effect executor. Re-assert the SAME surface boundary fail-closed: the
+    // capability must be in the plan's provisioned allowlist AND be a computer_use
+    // verb; the held action (verb/target/value) is replayed via driver.commit only
+    // now (never speculatively). Idempotency-guarded so a double-resume commits at
+    // most once.
+    if (isComputerUseCapability(capabilityId)) {
+      if (!state.plan.toolsAllowlist.includes(capabilityId)) {
+        return { kind: 'fail', observation: `refused: "${capabilityId}" is not in this plan's provisioned surface` };
+      }
+      const cu = (ctx.computerUse ?? {}) as { verb?: string; target?: Record<string, unknown>; value?: string };
+      if (cu.verb !== 'click' && cu.verb !== 'type') {
+        return { kind: 'fail', observation: `refused: held browser action "${String(cu.verb)}" is not a committable write verb` };
+      }
+      if (!deps.browser) {
+        return { kind: 'continue', observation: `human approved, but the browser is no longer available — ${capabilityId} not committed` };
+      }
+      // Re-validate the held target fail-closed before committing (P3 — defense
+      // in depth): the target was validated when the draft was proposed, but we
+      // re-assert the schema at commit so a tampered/garbled persisted context
+      // can never reach driver.commit with an out-of-schema target.
+      let safeTarget: ReturnType<typeof validateTarget>;
+      try {
+        safeTarget = validateTarget(cu.target ?? {});
+      } catch (err) {
+        return { kind: 'fail', observation: `refused: held browser target failed re-validation — ${err instanceof Error ? err.message : String(err)}` };
+      }
+      const idempotencyKey = `plan:${state.runId}:${pending.requestId}`;
+      try {
+        const claim = await deps.runner.idempotency.claim({
+          accountId: state.accountId,
+          runId: state.runId,
+          stepIdx: state.transcript.length,
+          capability: capabilityId,
+          idempotencyKey,
+        });
+        if (claim === 'unknown_outcome') return { kind: 'continue', observation: `human approved, but a prior ${capabilityId} attempt's outcome is unknown — not retrying` };
+        if (claim === 'already_executed') return { kind: 'continue', observation: `human approved — ${capabilityId} was already committed (deduped)` };
+        await deps.browser.commit(cu.verb, safeTarget, cu.value);
+        await deps.runner.idempotency.markExecuted(state.accountId, idempotencyKey);
+        return { kind: 'continue', observation: `human approved — committed browser ${cu.verb}` };
+      } catch (err) {
+        return { kind: 'continue', observation: `human approved, but the browser action failed: ${err instanceof Error ? err.message : String(err)}` };
+      }
+    }
+
     // FIX 1 (fail-closed re-assertion at execute time — the human approval IS
     // the authorization, but it can only ever execute the SAME surface the plan
     // was provisioned for, and only a draft-class capability):
@@ -284,13 +334,31 @@ async function resolveResponse(
  * returns an observation the picker only ever sees QUARANTINED (web.* already
  * quarantine; memory rows are derived, account-scoped, and wrapped here).
  */
-export function buildUtilityDispatch(accountId: string): UtilityDispatch {
+export function buildUtilityDispatch(accountId: string, userId: string, runId?: string): UtilityDispatch {
   return {
     async webSearch(query) {
       return await webSearch(query);
     },
     async webFetch(url) {
       return await webFetch(url);
+    },
+    // memory.write — persist a durable DERIVED fact. Redaction-before-persist +
+    // dedup + account-scope live in writeAgentMemory (#135 stance); the LLM
+    // controls only text/kind/confidence — account_id/userId/source are set here
+    // by trusted code. The observation is plain (an outcome string, not feed
+    // content), so no quarantine wrap is needed.
+    async memoryWrite(text, kind, confidence) {
+      const k = kind === 'fact' || kind === 'preference' || kind === 'entity' ? kind : 'fact';
+      const res = await writeAgentMemory({
+        accountId,
+        userId,
+        text,
+        kind: k,
+        confidence,
+        sourceRunId: runId ?? null,
+      });
+      if (res.ok) return `remembered (${res.status}): "${res.text}"`;
+      return `did not remember: ${res.reason}`;
     },
     async memoryRetrieve(query, k) {
       try {
@@ -482,7 +550,13 @@ export async function buildPlannerRunDeps(accountId: string, userId: string, run
     connectors: connections.map((c) => c.provider),
     connMap,
     accountId,
-    utilities: buildUtilityDispatch(accountId),
+    utilities: buildUtilityDispatch(accountId, userId, runId),
+    // computer_use (browser): the driver is built only when COMPUTER_USE_ENABLED
+    // is set AND Playwright is installed (else undefined → the harness surfaces a
+    // clean "browser unavailable" observation). isPublicIp is the SAME predicate
+    // web.fetch uses, powering the navigate SSRF guard in the harness.
+    browser: await buildBrowserDriver(),
+    isPublicIp: browserIsPublicIp,
     persist: { save: (s) => new SupabasePlanRunStore().save(s) },
   };
 }

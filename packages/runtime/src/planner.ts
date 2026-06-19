@@ -31,6 +31,13 @@ import { capability } from './capabilities';
 import { dispatchStep, hashArgs, REPETITION_KILL_AT, type RunnerDeps } from './runner';
 import { interpretSpec } from './interpreter';
 import { validatePick, type PlannerPickInput } from './validate';
+import {
+  assertSafeNavigateUrl,
+  describeTarget,
+  validateComputerUseArgs,
+  type BrowserDriver,
+  type ComputerUseVerb,
+} from './browser';
 import { plannerTool } from './utilities';
 import type {
   AgentSpec,
@@ -66,6 +73,9 @@ export type PlannerPick = PlannerPickInput;
 export interface UtilityDispatch {
   /** memory.retrieve → the RAG memory_entries (account-scoped, top-k). */
   memoryRetrieve?(query: string, k: number): Promise<string>;
+  /** memory.write → persist a derived fact (redact→embed→dedup→store), account-
+   *  scoped + service-role; returns an observation describing the outcome. */
+  memoryWrite?(text: string, kind: string, confidence?: number): Promise<string>;
   /** web.search → redact→egress→quarantine (apps/web/lib/planner/websearch). */
   webSearch?(query: string): Promise<string>;
   /** web.fetch → SSRF-guarded fetch→quarantine. */
@@ -87,6 +97,15 @@ export interface PlannerDeps {
   accountId: string;
   /** Utility dispatch (web/memory). Absent web.* handlers → a clean error obs. */
   utilities?: UtilityDispatch;
+  /**
+   * The computer_use (browser) driver. Absent → a computer_use pick returns a
+   * clean "unavailable" observation (it never throws into the loop). The
+   * injected `isPublicIp` is the connectors-package predicate the navigate SSRF
+   * guard uses (the runtime stays pure — apps/web passes @nibbin/connectors).
+   */
+  browser?: BrowserDriver;
+  /** Public-IP predicate for the navigate SSRF guard (apps/web → connectors). */
+  isPublicIp?: (addr: string) => boolean;
   /** Persist the run state on each pause/checkpoint (Task 3). */
   persist?: PlanRunPersist;
   /** Injectable id factory (tests). */
@@ -104,6 +123,12 @@ export const MAX_WEB_CALLS = 4;
 
 /** The egressing utility ids (web.*) — counted against MAX_WEB_CALLS. */
 const WEB_UTILITY_IDS: ReadonlySet<string> = new Set(['web.search', 'web.fetch']);
+
+/** Per-run cap on durable memory writes (memory.write). Bounds memory growth
+ *  per plan run so a loop can't spam memory_entries — a write past the cap does
+ *  NOT persist; it returns a "budget exhausted" observation. The dedup on the
+ *  natural key (apps/web write path) bounds it further across runs. */
+export const MAX_MEMORY_WRITES = 3;
 
 /** Longest observation we keep in the transcript (mirrors the read quarantine cap). */
 const OBSERVATION_MAX_CHARS = 4000;
@@ -123,6 +148,31 @@ function lastUtilityObservation(transcript: PlanTurn[]): string | undefined {
     }
   }
   return undefined;
+}
+
+/** The most recent computer_use (browser) turn's observation — the no-progress
+ *  baseline for the CU read path. `lastUtilityObservation` only matches UTILITY
+ *  picks, so a browser-only loop would never trip no-progress against it; this
+ *  compares a CU read to the prior CU read so distinct-but-unproductive browser
+ *  churn (e.g. scrolling at the page bottom, or re-extracting content that keeps
+ *  returning the same text) trips NO_PROGRESS_KILL_AT before exhausting
+ *  maxIterations. */
+function lastBrowserObservation(transcript: PlanTurn[]): string | undefined {
+  for (let i = transcript.length - 1; i >= 0; i--) {
+    const t = transcript[i];
+    if ('tool' in t.pick && typeof t.pick.tool === 'string' && capability(t.pick.tool)?.family === 'computer_use') {
+      return t.observation;
+    }
+  }
+  return undefined;
+}
+
+/** A quarantine wrap carries a per-wrap RANDOM tag, so two reads of the SAME
+ *  page text are never byte-identical. For the no-progress comparison we
+ *  normalize the random tag out, so "same page text" reads compare equal (and
+ *  thus count as no progress) even though their wrappers differ. */
+function normalizeBrowserObservation(obs: string | undefined): string | undefined {
+  return obs?.replace(/:[0-9a-f]{24}\b/g, ':<tag>');
 }
 
 /** A synthetic NibbinRef for dispatchStep: `student` stage so EVERY side effect
@@ -166,6 +216,58 @@ function stepSpecFor(tool: string, args: Record<string, unknown>, plan: PlanSpec
   };
 }
 
+/**
+ * Replay each resumed connector turn through the SAME interpreter program the
+ * live loop runs (interpretSpec ∘ stepSpecFor) and increment the repetition map
+ * for every `read` step it yields, keyed `read:<capability>:<hashArgs(path)>` —
+ * byte-for-byte the key dispatchStep uses live (runner.ts). This makes a resumed
+ * run's repetition state faithful to a non-resumed run for BOTH atomic reads and
+ * primitives (whose internal reads were previously dropped on resume). Feed is
+ * undefined: the deterministic, feed-independent reads (the ones that recur when
+ * the same pick repeats, e.g. a mailbox list sweep) are reached; feed-dependent
+ * per-record reads are unique and never the repetition driver.
+ *
+ * Defensive: a primitive impl can throw (missing connection, etc.). A resume
+ * must never fail because the rebuild couldn't replay a turn — on any throw we
+ * stop draining THAT turn (its counted reads so far stand) and move on; the
+ * live loop will re-validate + re-dispatch the next pick under the real gates.
+ */
+async function rebuildReadRepetition(
+  transcript: PlanTurn[],
+  plan: PlanSpec,
+  connMap: Record<string, string | undefined>,
+  nowMs: number,
+  repetition: Map<string, number>,
+  nibbin: NibbinRef,
+): Promise<void> {
+  for (const t of transcript) {
+    if (!('tool' in t.pick) || typeof t.pick.tool !== 'string') continue;
+    const tool = t.pick.tool;
+    // Only connector capabilities reach the interpreter; utilities/sentinels are
+    // primed elsewhere (and have no capability descriptor). A computer_use verb
+    // is NOT a connector capability (driven by the BrowserDriver, no interpreter
+    // program) — primed by the `cu:` key loop, skipped here.
+    const desc = capability(tool);
+    if (plannerTool(tool) || !desc || desc.family === 'computer_use') continue;
+    const args = (t.pick as { args?: Record<string, unknown> }).args ?? {};
+    try {
+      const program = interpretSpec(stepSpecFor(tool, args, plan), connMap, nowMs);
+      const gen = program({ nibbin, trigger: { kind: 'user' } });
+      for (;;) {
+        const next = await gen.next(undefined);
+        if (next.done) break;
+        const step = next.value;
+        if (step.kind === 'read') {
+          const repKey = `read:${step.capability}:${hashArgs(step.path)}`;
+          repetition.set(repKey, (repetition.get(repKey) ?? 0) + 1);
+        }
+      }
+    } catch {
+      // see doc comment — a failed replay of one turn must not abort the resume.
+    }
+  }
+}
+
 export async function runPlan(
   plan: PlanSpec,
   deps: PlannerDeps,
@@ -187,31 +289,45 @@ export async function runPlan(
   const nibbin = syntheticNibbin(plan, runId);
   nibbin.accountId = deps.accountId;
   const ceilings = plan.ceilings;
+  const startedAt = deps.runner.now();
   const repetition = new Map<string, number>();
   // Rebuild the repetition map from the resumed transcript so a resumed loop
-  // can't bypass the repetition kill by forgetting prior reads.
-  for (const t of state.transcript) {
-    if ('tool' in t.pick && typeof t.pick.tool === 'string') {
-      const c = capability(t.pick.tool);
-      if (c && c.sideEffect === 'read' && c.kind !== 'primitive') {
-        const path = (t.pick as { args: Record<string, unknown> }).args.path;
-        repetition.set(`read:${t.pick.tool}:${hashArgs(path)}`, (repetition.get(`read:${t.pick.tool}:${hashArgs(path)}`) ?? 0) + 1);
-      }
-    }
-  }
+  // can't bypass the repetition kill by forgetting prior moves.
+  //
+  // A connector pick (atomic read OR primitive) is counted EXACTLY as the live
+  // loop counts it: dispatchStep keys repetition on each `read` step it gates,
+  // as `read:<capability>:<hashArgs(path)>` (runner.ts). So we replay the same
+  // interpreter program the live loop runs (interpretSpec ∘ stepSpecFor) and
+  // increment the same key for every `read` step it yields. This restores a
+  // primitive's INTERNAL read counts across a resume — the old rebuild filtered
+  // primitives out (`c.kind !== 'primitive'`), so a primitive repeated across a
+  // resume could exceed REPETITION_KILL_AT without being killed. Replaying with
+  // an undefined feed reaches the deterministic, feed-independent reads (e.g. a
+  // primitive's mailbox-list sweep) — exactly the reads that accumulate to the
+  // kill when the same primitive is picked again; per-message meta reads are
+  // unique and never the repetition driver, so not reaching them is faithful.
+  await rebuildReadRepetition(state.transcript, plan, deps.connMap, startedAt, repetition, nibbin);
   // Prime the utility repetition map + the web-egress counter from the resumed
   // transcript so a resumed loop can't bypass either guard by forgetting prior
   // utility calls (especially repeated web.* egress).
   let webCalls = 0;
+  let memoryWrites = 0;
   for (const t of state.transcript) {
-    if ('tool' in t.pick && typeof t.pick.tool === 'string' && plannerTool(t.pick.tool)) {
-      const args = (t.pick as { args: Record<string, unknown> }).args ?? {};
-      const repKey = `util:${t.pick.tool}:${hashArgs(args)}`;
+    if (!('tool' in t.pick) || typeof t.pick.tool !== 'string') continue;
+    const tool = t.pick.tool;
+    const args = (t.pick as { args: Record<string, unknown> }).args ?? {};
+    if (plannerTool(tool)) {
+      const repKey = `util:${tool}:${hashArgs(args)}`;
       repetition.set(repKey, (repetition.get(repKey) ?? 0) + 1);
-      if (WEB_UTILITY_IDS.has(t.pick.tool)) webCalls += 1;
+      if (WEB_UTILITY_IDS.has(tool)) webCalls += 1;
+      if (tool === 'memory.write') memoryWrites += 1;
+    } else if (capability(tool)?.family === 'computer_use') {
+      // Prime the computer_use repetition key so a resumed loop can't bypass the
+      // repetition kill by forgetting prior browser picks (mirrors util:/read:).
+      const repKey = `cu:${tool}:${hashArgs(args)}`;
+      repetition.set(repKey, (repetition.get(repKey) ?? 0) + 1);
     }
   }
-  const startedAt = deps.runner.now();
   let idx = state.transcript.length;
   let tokens = 0;
   let noProgress = 0;
@@ -350,6 +466,26 @@ export async function runPlan(
         observation = deps.utilities?.memoryRetrieve
           ? await deps.utilities.memoryRetrieve(String(args.query), k)
           : 'memory retrieval is unavailable';
+      } else if (tool === 'memory.write') {
+        // Bounded per-run (MAX_MEMORY_WRITES) so a loop can't spam memory. A
+        // write past the cap does NOT persist. The apps/web handler redacts
+        // (derived-not-raw) BEFORE persist, dedups, and is account-scoped +
+        // service-role — the LLM controls only the proposed text/kind/confidence.
+        const text = typeof args.text === 'string' ? args.text.trim() : '';
+        if (text === '') {
+          // Guard a missing/empty text BEFORE spending the budget or calling the
+          // handler — otherwise `String(undefined)` ("undefined") would persist as
+          // a junk memory row. Refuse cleanly; no write, no budget consumed.
+          observation = 'memory.write needs a non-empty `text` — nothing remembered';
+        } else if (memoryWrites >= MAX_MEMORY_WRITES) {
+          observation = 'memory write budget exhausted for this run — no further writes';
+        } else {
+          memoryWrites += 1;
+          const confidence = typeof args.confidence === 'number' ? args.confidence : undefined;
+          observation = deps.utilities?.memoryWrite
+            ? await deps.utilities.memoryWrite(text, String(args.kind), confidence)
+            : 'memory write is unavailable';
+        }
       } else if (tool === 'web.search') {
         if (webCalls >= MAX_WEB_CALLS) {
           observation = 'web budget exhausted for this run — no further web calls';
@@ -379,6 +515,117 @@ export async function runPlan(
       const obsIsProgress = observation.trim() !== '' && observation !== priorUtilObs;
       progressed = scratchChanged || obsIsProgress;
 
+      state.transcript.push({ idx: idx++, pick, observation: cap(observation) });
+      noProgress = progressed ? 0 : noProgress + 1;
+      if (noProgress >= NO_PROGRESS_KILL_AT) return await killed('no_progress');
+      await persist();
+      continue;
+    }
+
+    // ── a computer_use (browser) verb ────────────────────────────────────────
+    // The verb was already validated fail-closed by validatePick (verb ∈ surface
+    // + target schema). reads (navigate/extract/screenshot/scroll) → quarantined
+    // observation, surfaced as DATA. writes (click/type) → pause as a resumable
+    // needs_input(approval); the driver NEVER auto-commits — apps/web replays the
+    // verb via driver.commit() only after the human approves (the same approval
+    // gate the connector-draft path uses). Bounded by the same repetition guard.
+    const cuCap = capability(tool);
+    if (cuCap?.family === 'computer_use') {
+      const verb = cuCap.verb as ComputerUseVerb;
+      // Repetition guard keyed on (tool, args) — same as utilities, so a picker
+      // can't spin on the same navigate/extract.
+      const repKey = `cu:${tool}:${hashArgs(args)}`;
+      const seen = (repetition.get(repKey) ?? 0) + 1;
+      repetition.set(repKey, seen);
+      if (seen >= REPETITION_KILL_AT) return await killed('repetition');
+
+      // Re-derive the validated args (validatePick already accepted them).
+      let cu;
+      try {
+        cu = validateComputerUseArgs(verb, args);
+      } catch (err) {
+        // Should be unreachable (validatePick gates this) — fail cleanly.
+        return await fail(`invalid computer_use args: ${err instanceof Error ? err.message : String(err)}`);
+      }
+
+      if (!deps.browser) {
+        state.transcript.push({ idx: idx++, pick, observation: cap('the browser is unavailable for this run') });
+        noProgress += 1;
+        if (noProgress >= NO_PROGRESS_KILL_AT) return await killed('no_progress');
+        await persist();
+        continue;
+      }
+
+      // ── WRITE verbs (click/type): pause for approval; commit NOTHING now ─────
+      if (cu.verb === 'click' || cu.verb === 'type') {
+        const draftResult =
+          cu.verb === 'click'
+            ? await deps.browser.click(cu.target)
+            : await deps.browser.type(cu.target, cu.value);
+        const request: PendingRequest = {
+          requestId: newRequestId(),
+          kind: 'approval',
+          question: `Approve browser action: ${draftResult.summary}?`,
+          context: {
+            tool,
+            computerUse: {
+              verb: cu.verb,
+              target: cu.target,
+              ...(cu.verb === 'type' ? { value: cu.value } : {}),
+            },
+            summary: draftResult.summary,
+          },
+        };
+        state.transcript.push({ idx: idx++, pick });
+        state.status = 'needs_input';
+        state.pending = request;
+        await persist();
+        return { kind: 'needs_input', runId, request };
+      }
+
+      // ── READ verbs (navigate/extract/screenshot/scroll): quarantined obs ─────
+      let result;
+      try {
+        if (cu.verb === 'navigate') {
+          // SSRF guard — the SAME literal-host check web.fetch applies (private/
+          // loopback/metadata rejected). The Playwright adapter additionally
+          // routes egress through safeFetch's resolve+pin rebind defense AND a
+          // per-request Chromium interceptor.
+          //
+          // FAIL-CLOSED default (P2): a security guard must NOT default to
+          // allow-all. With a live browser driver present, `isPublicIp` is
+          // REQUIRED — its absence is a misconfiguration, so we use a deny-all
+          // predicate (every literal IP is treated as non-public). apps/web always
+          // injects the connectors predicate; this only bites a misconfigured wiring.
+          assertSafeNavigateUrl(cu.url, deps.isPublicIp ?? (() => false));
+          result = await deps.browser.navigate(cu.url);
+        } else if (cu.verb === 'extract') {
+          result = await deps.browser.extract(cu.target);
+        } else if (cu.verb === 'screenshot') {
+          result = await deps.browser.screenshot(cu.target);
+        } else {
+          result = await deps.browser.scroll(cu.target);
+        }
+      } catch (err) {
+        // A blocked navigate (SSRF) or a driver error → a clean quarantined-shaped
+        // observation; never throw into the loop.
+        const why = err instanceof Error ? err.message : String(err);
+        const tgt = cu.verb === 'navigate' ? cu.url : describeTarget(cu.target ?? {});
+        state.transcript.push({ idx: idx++, pick, observation: cap(`${cu.verb} (${tgt}) was rejected: ${why}`) });
+        noProgress += 1;
+        if (noProgress >= NO_PROGRESS_KILL_AT) return await killed('no_progress');
+        await persist();
+        continue;
+      }
+
+      const observation = `${cu.verb}: ${result.content.wrapped}`;
+      // No-progress baseline for the CU read path: compare against the prior
+      // BROWSER observation (not the prior utility one) so a browser-only loop
+      // can trip no-progress (FIX P3). The random quarantine tag is normalized
+      // out so the comparison is on the page CONTENT, not the per-wrap tag —
+      // otherwise two reads of the same page text would always look "different".
+      const priorBrowserObs = normalizeBrowserObservation(lastBrowserObservation(state.transcript));
+      const progressed = observation.trim() !== '' && normalizeBrowserObservation(observation) !== priorBrowserObs;
       state.transcript.push({ idx: idx++, pick, observation: cap(observation) });
       noProgress = progressed ? 0 : noProgress + 1;
       if (noProgress >= NO_PROGRESS_KILL_AT) return await killed('no_progress');

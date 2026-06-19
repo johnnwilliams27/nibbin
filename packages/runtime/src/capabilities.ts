@@ -42,6 +42,16 @@ export interface CapabilityDescriptor {
   verb: string;
   sideEffect: 'read' | 'draft' | 'write';
   requiredConnector: string;
+  /**
+   * Capability FAMILY. Absent/undefined = a connector capability (OAuth-backed,
+   * lives behind a registry connector). `'computer_use'` = the browser /
+   * computer-use surface (design §4 / R9): driven by an injected BrowserDriver,
+   * NOT an OAuth connector — so it has no registry `requiredConnector` and the
+   * Planner validators recognize it as a distinct class. It runs in the
+   * `computer_use` weight class (10×) and its `requiredConnector` is the
+   * pseudo-provider `BROWSER_PSEUDO_CONNECTOR` (never a registry connector).
+   */
+  family?: 'computer_use';
   /** routine-matching identity prefix for draft/write capabilities (School §4.7). */
   patternKeyPrefix?: string;
   /**
@@ -76,6 +86,21 @@ export type PrimitiveImpl = (
   connMap: Record<string, string | undefined>,
   nowMs: number,
 ) => ProgramFn;
+
+/**
+ * The pseudo-provider for the `computer_use` family. It is NEVER a registry
+ * connector (CONNECTOR_REGISTRY.has(BROWSER_PSEUDO_CONNECTOR) === false): the
+ * browser surface is driven by an injected BrowserDriver, not OAuth. The
+ * Planner validators key on `family === 'computer_use'`, not on this provider
+ * being granted — so a computer_use plan needs NO connector grant. Defined as a
+ * non-kebab string so it can never collide with a real connector id.
+ */
+export const BROWSER_PSEUDO_CONNECTOR = '@computer_use';
+
+/** True when a capability id is a registered computer_use verb. */
+export function isComputerUseCapability(id: string): boolean {
+  return capability(id)?.family === 'computer_use';
+}
 
 /** The capabilities today's programs + grants reference. The durable abstraction
  *  Composer/Planner compose from (spec §4: (resource, verb) → side-effect). */
@@ -189,6 +214,21 @@ export const CAPABILITY_REGISTRY: Record<string, CapabilityDescriptor> = {
     inputSchema: {},
     effectiveTools: ['calendar.read', 'payments.read', 'email.read'],
   },
+
+  // ── computer_use family (design §4 / R9) — the browser surface ──────────────
+  // A unified `target` (selector | coords, OCR fallback) over six verbs, driven
+  // by an injected BrowserDriver (NOT an OAuth connector). reads:
+  // navigate/extract/screenshot/scroll → quarantined; writes: click/type →
+  // approval-gated drafts. No arbitrary-JS/eval verb exists. Runs at the
+  // `computer_use` weight class (10×). `requiredConnector` is the pseudo-provider
+  // BROWSER_PSEUDO_CONNECTOR so these never resolve to a registry connector; the
+  // Planner validators key on `family === 'computer_use'`.
+  'computer_use.navigate':   { id: 'computer_use.navigate',   resource: 'browser', verb: 'navigate',   sideEffect: 'read',  requiredConnector: BROWSER_PSEUDO_CONNECTOR, family: 'computer_use' },
+  'computer_use.extract':    { id: 'computer_use.extract',    resource: 'browser', verb: 'extract',    sideEffect: 'read',  requiredConnector: BROWSER_PSEUDO_CONNECTOR, family: 'computer_use' },
+  'computer_use.screenshot': { id: 'computer_use.screenshot', resource: 'browser', verb: 'screenshot', sideEffect: 'read',  requiredConnector: BROWSER_PSEUDO_CONNECTOR, family: 'computer_use' },
+  'computer_use.scroll':     { id: 'computer_use.scroll',     resource: 'browser', verb: 'scroll',     sideEffect: 'read',  requiredConnector: BROWSER_PSEUDO_CONNECTOR, family: 'computer_use' },
+  'computer_use.click':      { id: 'computer_use.click',      resource: 'browser', verb: 'click',      sideEffect: 'write', requiredConnector: BROWSER_PSEUDO_CONNECTOR, family: 'computer_use', patternKeyPrefix: 'computer_use.click' },
+  'computer_use.type':       { id: 'computer_use.type',       resource: 'browser', verb: 'type',       sideEffect: 'write', requiredConnector: BROWSER_PSEUDO_CONNECTOR, family: 'computer_use', patternKeyPrefix: 'computer_use.type' },
 };
 
 /**

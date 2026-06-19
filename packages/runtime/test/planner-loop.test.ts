@@ -13,6 +13,7 @@ import {
   MemoryRoutineStore,
   MemoryRunStore,
   type PlanSpec,
+  type PlanRunState,
   type PlannerDeps,
   type PlannerDrafter,
   type PlannerPick,
@@ -327,6 +328,184 @@ describe('runPlan — tool-shape done/ask_human (FIX 6)', () => {
     if (outcome.kind === 'done') {
       expect(outcome.artifact).toBe('all set');
     }
+  });
+});
+
+describe('runPlan — resume rebuilds repetition for primitive-internal reads', () => {
+  // A primitive (reply.new-inquiry) sweeps the mailbox: each pick yields the
+  // SAME deterministic list reads (in:inbox, in:sent). The live loop counts
+  // those reads in dispatchStep keyed read:<cap>:<hash(path)>; REPETITION_KILL_AT
+  // is 3, so the 3rd identical primitive pick is killed. On RESUME, the rebuild
+  // must restore those internal read counts — otherwise a resumed loop could
+  // repeat the primitive past the kill threshold (the bug: the old rebuild
+  // filtered primitives out with `c.kind !== 'primitive'`).
+  function primitivePlan(): PlanSpec {
+    return plan({
+      goal: 'reply to new inquiries',
+      toolsAllowlist: ['email.read', 'email.draft', 'reply.new-inquiry', 'done'],
+      requiredConnectors: ['gmail'],
+    });
+  }
+  const primitivePick: PlannerPick = { tool: 'reply.new-inquiry', args: {} };
+
+  function priorTurns(n: number): PlanRunState {
+    // n identical primitive turns already persisted (each made the same internal
+    // mailbox-list reads). The reader returns no messages, so the primitive
+    // yields only its two deterministic list reads per turn — exactly what the
+    // rebuild replays with an undefined feed.
+    const transcript = Array.from({ length: n }, (_v, i) => ({
+      idx: i,
+      pick: primitivePick,
+      observation: 'ran reply.new-inquiry',
+    }));
+    return {
+      runId: 'plan-resume-1',
+      accountId: ACCOUNT,
+      plan: primitivePlan(),
+      transcript,
+      scratchpad: {},
+      status: 'running' as const,
+    };
+  }
+
+  it('a resumed run with N-1 identical primitive picks is killed by repetition on the next identical pick', async () => {
+    // REPETITION_KILL_AT = 3 → two prior identical primitive picks (their list
+    // reads rebuilt to count 2), then the SAME pick again → the inbox list read
+    // hits 3 in dispatchStep → killed (NOT allowed to continue / drift to done).
+    const { d } = deps([primitivePick, { done: true, artifact: {} }]);
+    const outcome = await runPlan(primitivePlan(), d, priorTurns(2));
+    expect(outcome.kind).toBe('killed');
+    if (outcome.kind === 'killed') expect(outcome.reason).toBe('repetition');
+  });
+
+  it('matches the non-resumed run: 3 identical primitive picks from scratch are also killed by repetition', async () => {
+    // Faithfulness check — the resumed kill above mirrors a cold run.
+    const { d } = deps([primitivePick, primitivePick, primitivePick, { done: true, artifact: {} }]);
+    const outcome = await runPlan(primitivePlan(), d);
+    expect(outcome.kind).toBe('killed');
+    if (outcome.kind === 'killed') expect(outcome.reason).toBe('repetition');
+  });
+});
+
+describe('runPlan — memory.write dispatch + per-run write budget', () => {
+  const writePlan = () =>
+    plan({
+      toolsAllowlist: ['memory.write', 'done'],
+      requiredConnectors: [],
+      ceilings: { maxSteps: 60, maxTokens: 8000, maxWallClockMs: 60_000, maxIterations: 20 },
+    });
+
+  it('routes memory.write to the injected handler and surfaces its observation', async () => {
+    const seen: { text: string; kind: string; confidence?: number }[] = [];
+    const utilities = {
+      async memoryWrite(text: string, kind: string, confidence?: number) {
+        seen.push({ text, kind, confidence });
+        return `remembered (created): "${text}"`;
+      },
+    };
+    const { d } = deps(
+      [{ tool: 'memory.write', args: { text: 'prefers a warm sign-off', kind: 'preference', confidence: 0.8 } }, { done: true, artifact: {} }],
+      { utilities },
+    );
+    const outcome = await runPlan(writePlan(), { ...d, connectors: [] });
+    expect(outcome.kind).toBe('done');
+    expect(seen).toEqual([{ text: 'prefers a warm sign-off', kind: 'preference', confidence: 0.8 }]);
+  });
+
+  it('caps memory writes per run (MAX_MEMORY_WRITES = 3): the 4th does not persist', async () => {
+    let calls = 0;
+    const utilities = {
+      async memoryWrite(text: string) {
+        calls += 1;
+        return `remembered (created): "${text}"`;
+      },
+    };
+    // four DISTINCT writes (so repetition never fires) — only the budget stops it.
+    const picks: PlannerPick[] = [1, 2, 3, 4].map((n) => ({ tool: 'memory.write', args: { text: `fact number ${n}`, kind: 'fact' } }));
+    const { d } = deps([...picks, { done: true, artifact: {} }], { utilities });
+    const outcome = await runPlan(writePlan(), { ...d, connectors: [] });
+    expect(outcome.kind).toBe('done');
+    expect(calls).toBe(3); // the 4th hit the budget, no handler call
+  });
+
+  it('handles a missing memoryWrite handler gracefully (no throw)', async () => {
+    const { d } = deps(
+      [{ tool: 'memory.write', args: { text: 'x derived fact', kind: 'fact' } }, { done: true, artifact: {} }],
+      { utilities: {} },
+    );
+    const outcome = await runPlan(writePlan(), { ...d, connectors: [] });
+    expect(outcome.kind).toBe('done');
+  });
+
+  it('refuses a missing/empty `text` pick — NO write, no budget consumed', async () => {
+    // A pick with no `text` must NOT reach the handler (otherwise String(undefined)
+    // → the literal "undefined" would persist as a junk memory row).
+    let calls = 0;
+    const utilities = {
+      async memoryWrite(text: string) {
+        calls += 1;
+        return `remembered (created): "${text}"`;
+      },
+    };
+    const { d } = deps(
+      [
+        { tool: 'memory.write', args: { kind: 'fact' } }, // missing text
+        { tool: 'memory.write', args: { text: '   ', kind: 'fact' } }, // whitespace-only
+        { done: true, artifact: {} },
+      ],
+      { utilities },
+    );
+    const outcome = await runPlan(writePlan(), { ...d, connectors: [] });
+    expect(outcome.kind).toBe('done');
+    expect(calls).toBe(0); // neither invalid pick inserted
+  });
+});
+
+describe('runPlan — memory-write budget is primed across RESUME', () => {
+  // Mirror the cold-run cap test (MAX_MEMORY_WRITES = 3) + the resume pattern:
+  // a run RESUMED from a transcript that already holds 3 prior memory.write turns
+  // must BLOCK a further write — the budget priming (memoryWrites counter rebuilt
+  // from the resumed transcript) survives a resume.
+  const writePlan = () =>
+    plan({
+      toolsAllowlist: ['memory.write', 'done'],
+      requiredConnectors: [],
+      ceilings: { maxSteps: 60, maxTokens: 8000, maxWallClockMs: 60_000, maxIterations: 20 },
+    });
+
+  function priorWrites(n: number): PlanRunState {
+    const transcript = Array.from({ length: n }, (_v, i) => ({
+      idx: i,
+      pick: { tool: 'memory.write', args: { text: `prior fact ${i}`, kind: 'fact' } } as PlannerPick,
+      observation: `remembered (created): "prior fact ${i}"`,
+    }));
+    return {
+      runId: 'plan-mem-resume-1',
+      accountId: ACCOUNT,
+      plan: writePlan(),
+      transcript,
+      scratchpad: {},
+      status: 'running' as const,
+    };
+  }
+
+  it('a resume from MAX_MEMORY_WRITES (3) prior writes blocks a further write', async () => {
+    let calls = 0;
+    const utilities = {
+      async memoryWrite(text: string) {
+        calls += 1;
+        return `remembered (created): "${text}"`;
+      },
+    };
+    // The next pick is a NEW distinct write — repetition never fires; only the
+    // resume-primed budget can stop it.
+    const { d } = deps(
+      [{ tool: 'memory.write', args: { text: 'one more fact', kind: 'fact' } }, { done: true, artifact: {} }],
+      { utilities },
+    );
+    const outcome = await runPlan(writePlan(), { ...d, connectors: [] }, priorWrites(3));
+    expect(outcome.kind).toBe('done');
+    expect(calls).toBe(0); // budget already exhausted by the 3 resumed writes
   });
 });
 

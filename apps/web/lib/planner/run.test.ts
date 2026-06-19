@@ -228,3 +228,87 @@ describe('respondToRequest — pause + resume', () => {
     expect(still?.status).toBe('needs_input');
   });
 });
+
+/* ── computer_use (browser) approval → commit via the BrowserDriver ──────────── */
+
+describe('respondToRequest — computer_use write approval commits via the driver', () => {
+  const CU_PLAN = plan({
+    toolsAllowlist: ['computer_use.navigate', 'computer_use.click', 'done'],
+    requiredConnectors: [],
+    weightClass: 'computer_use',
+  });
+
+  /** A held click draft, mirroring what the harness pauses with. */
+  function seedClickApproval(store: InMemoryPlanRunStore, target: Record<string, unknown>) {
+    return store.create({
+      runId: 'run-cu',
+      accountId: ACCOUNT,
+      plan: CU_PLAN,
+      transcript: [{ idx: 0, pick: { tool: 'computer_use.click', args: { target } } }],
+      scratchpad: {},
+      status: 'needs_input',
+      pending: {
+        requestId: 'req-cu',
+        kind: 'approval',
+        question: 'Approve browser action: click selector "button#go"?',
+        context: { tool: 'computer_use.click', computerUse: { verb: 'click', target }, summary: 'click selector "button#go"' },
+      },
+    });
+  }
+
+  function cuDeps(store: InMemoryPlanRunStore, commits: { verb: string; value?: string }[]): PlannerDeps {
+    const runner = runnerDeps();
+    return {
+      planner: { async pick() { return { done: true, artifact: { summary: 'done' } }; } },
+      runner,
+      connectors: [],
+      connMap: {},
+      accountId: ACCOUNT,
+      persist: { save: (s) => store.save(s) },
+      // a minimal mock driver: records commits, never auto-acts
+      browser: {
+        async navigate() { return { kind: 'read', content: quarantine('p', 'browser:x') }; },
+        async extract() { return { kind: 'read', content: quarantine('p', 'browser:x') }; },
+        async screenshot() { return { kind: 'read', content: quarantine('p', 'browser:x') }; },
+        async scroll() { return { kind: 'read', content: quarantine('p', 'browser:x') }; },
+        async click() { return { kind: 'draft', summary: 'click' }; },
+        async type() { return { kind: 'draft', summary: 'type' }; },
+        async commit(verb, _t, value) { commits.push({ verb, value }); },
+      },
+      isPublicIp: () => true,
+    };
+  }
+
+  it('approving a held click commits it via driver.commit; the loop continues to done', async () => {
+    const store = new InMemoryPlanRunStore();
+    const commits: { verb: string; value?: string }[] = [];
+    await seedClickApproval(store, { selector: 'button#go' });
+    const d = cuDeps(store, commits);
+    const out = await respondToRequest('run-cu', ACCOUNT, USER, { requestId: 'req-cu', approval: 'approved' }, () => d, store);
+    expect(out.kind).toBe('done');
+    expect(commits).toEqual([{ verb: 'click', value: undefined }]);
+  });
+
+  it('rejecting a held click commits NOTHING', async () => {
+    const store = new InMemoryPlanRunStore();
+    const commits: { verb: string; value?: string }[] = [];
+    await seedClickApproval(store, { selector: 'button#go' });
+    const d = cuDeps(store, commits);
+    const out = await respondToRequest('run-cu', ACCOUNT, USER, { requestId: 'req-cu', approval: 'rejected' }, () => d, store);
+    expect(out.kind).toBe('done');
+    expect(commits).toEqual([]);
+  });
+
+  it('double-resume commits the browser write at most once (idempotency)', async () => {
+    const store = new InMemoryPlanRunStore();
+    const commits: { verb: string; value?: string }[] = [];
+    await seedClickApproval(store, { selector: 'button#go' });
+    const d = cuDeps(store, commits);
+    const [a, b] = await Promise.all([
+      respondToRequest('run-cu', ACCOUNT, USER, { requestId: 'req-cu', approval: 'approved' }, () => d, store),
+      respondToRequest('run-cu', ACCOUNT, USER, { requestId: 'req-cu', approval: 'approved' }, () => d, store),
+    ]);
+    expect([a.kind, b.kind]).toContain('done');
+    expect(commits).toEqual([{ verb: 'click', value: undefined }]); // exactly one commit
+  });
+});

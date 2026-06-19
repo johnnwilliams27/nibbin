@@ -271,7 +271,7 @@ export type KillReason =
 /** The fixed utility tools the harness dispatches in-process (distinct from
  *  connector capabilities). A plan's `toolsAllowlist` may include these ids. */
 export type PlannerToolId =
-  | 'scratchpad.write' | 'scratchpad.read' | 'memory.retrieve'
+  | 'scratchpad.write' | 'scratchpad.read' | 'memory.retrieve' | 'memory.write'
   | 'web.search' | 'web.fetch' | 'ask_human' | 'done';
 
 export interface PlannerTool {
@@ -288,10 +288,17 @@ export interface PlanSpec {
   goal: string;
   /** narrative, for preview only — never executed */
   intendedSteps: string[];
-  /** connector capability ids + PlannerToolId — the provisioned surface */
+  /** connector capability ids + PlannerToolId + computer_use.* — the provisioned surface */
   toolsAllowlist: string[];
   requiredConnectors: string[];
-  weightClass: 'frontier';
+  /**
+   * `frontier` for a free-orchestration plan over vetted connector/utility
+   * tools; `computer_use` (10×) when the plan provisions any computer_use.*
+   * (browser) verb (design §3 table: "computer_use (free orchestration /
+   * browser)"). validatePlanSpec REQUIRES `computer_use` whenever the allowlist
+   * contains a computer_use capability.
+   */
+  weightClass: 'frontier' | 'computer_use';
   ceilings: RunCeilings & { maxIterations: number };
   personaPolicy?: PersonaPolicy;
 }

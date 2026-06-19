@@ -17,8 +17,23 @@ import 'server-only';
  * call returns a clean quarantined "unavailable" observation (never throws into
  * the loop).
  */
-import { quarantine, type QuarantinedContent } from '@nibbin/connectors';
+import {
+  quarantine,
+  safeFetch,
+  EgressDeniedError,
+  isPublicIp,
+  type QuarantinedContent,
+  type UnsafeTestOverrides,
+} from '@nibbin/connectors';
 import { applyBattery } from '@nibbin/redaction';
+
+/**
+ * TEST-ONLY seam for `webFetch`. Production callers (run.ts) call
+ * `webFetch(url)` with one argument; the suite passes a controlled DNS
+ * `lookup`/`isPublicIp` so a rebinding hostname can be exercised without real
+ * network access. Forwarded straight to `safeFetch`'s `unsafeTestOverrides`.
+ */
+export type WebFetchTestSeams = UnsafeTestOverrides;
 
 /** The dedicated egress allowlist for web.search providers (hosts only). */
 const SEARCH_PROVIDER_HOSTS = ['api.tavily.com', 'api.search.brave.com'];
@@ -84,22 +99,25 @@ export async function webSearch(query: string): Promise<string> {
   }
 }
 
-/** Reject private / loopback / link-local / metadata hosts (SSRF). */
+/**
+ * Reject private / loopback / link-local / metadata hosts by the LITERAL host
+ * string (a cheap, fail-closed pre-filter). This is NOT the full defense — a
+ * public hostname that *resolves* to a private IP (DNS rebinding) passes this
+ * check; `safeFetch` below resolves every answer and pins the connection to a
+ * validated public address, which is the actual rebind defense. We keep this
+ * literal pre-filter so an obviously-internal target is refused before we even
+ * touch DNS, and so the hostname-suffix forms (`localhost`, `.local`, etc.)
+ * that `isPublicIp` doesn't classify are still rejected.
+ */
 function isPrivateHost(host: string): boolean {
   const h = host.toLowerCase();
   if (h === 'localhost' || h.endsWith('.localhost') || h.endsWith('.local') || h.endsWith('.internal')) return true;
-  // IPv6 loopback / unique-local
-  if (h === '[::1]' || h.startsWith('[fc') || h.startsWith('[fd') || h.startsWith('[fe80')) return true;
-  // IPv4 ranges
-  const m = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
-  if (m) {
-    const [a, b] = [Number(m[1]), Number(m[2])];
-    if (a === 127 || a === 10 || a === 0) return true;
-    if (a === 172 && b >= 16 && b <= 31) return true;
-    if (a === 192 && b === 168) return true;
-    if (a === 169 && b === 254) return true; // link-local / cloud metadata
-    if (a >= 224) return true; // multicast / reserved
-  }
+  // Strip IPv6 brackets so a literal IP can be classified by the connector
+  // base's audited predicate (closes octal/IPv4-mapped/etc. parser-disagreement
+  // bypasses the old hand-rolled regex missed).
+  const bare = h.replace(/^\[|\]$/g, '');
+  const isLiteral = bare.includes(':') || /^\d+(\.\d+){3}$/.test(bare);
+  if (isLiteral) return !isPublicIp(bare);
   return false;
 }
 
@@ -107,8 +125,16 @@ function isPrivateHost(host: string): boolean {
  * web.fetch — SSRF-guarded fetch of a public http(s) URL → quarantined,
  * length-capped result. Never throws; rejects unsafe URLs with a quarantined
  * observation.
+ *
+ * DNS-rebinding defense: the literal-host pre-filter alone is insufficient — a
+ * public hostname can resolve to a private IP. The network call is delegated to
+ * `safeFetch` (the connector base's audited egress proxy), which resolves the
+ * hostname, rejects the request if ANY answer is non-public, and PINS the TCP
+ * connect to the validated address so a second resolution at connect time
+ * cannot rebind to an internal IP. It also re-validates on every redirect hop
+ * (replacing the old `redirect:'error'`).
  */
-export async function webFetch(url: string): Promise<string> {
+export async function webFetch(url: string, testSeams?: WebFetchTestSeams): Promise<string> {
   let parsed: URL;
   try {
     parsed = new URL(url);
@@ -121,21 +147,42 @@ export async function webFetch(url: string): Promise<string> {
   if (parsed.username || parsed.password) {
     return obs('web fetch rejected: credentials in the URL are not allowed', 'web:fetch');
   }
-  if (isPrivateHost(parsed.host) || isPrivateHost(parsed.hostname)) {
+  // Cheap literal pre-filter (fail-closed before touching DNS). Classify on
+  // `hostname` (port-stripped, IPv6 still bracketed) so a `host:port` is not
+  // mistaken for an IPv6 literal by the colon heuristic.
+  if (isPrivateHost(parsed.hostname)) {
     return obs('web fetch rejected: that host is not reachable', 'web:fetch');
   }
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
-    const res = await fetch(parsed.toString(), {
-      redirect: 'error', // a redirect could escape the SSRF guard — refuse it
-      signal: controller.signal,
-    });
-    if (!res.ok) return obs(`web fetch returned ${res.status}`, `web:fetch:${parsed.host}`);
-    const raw = (await res.text()).slice(0, FETCH_MAX_BYTES);
+    const res = await safeFetch(
+      parsed.toString(),
+      { signal: controller.signal },
+      { maxResponseBytes: FETCH_MAX_BYTES, timeoutMs: TIMEOUT_MS },
+      // The planner fetches arbitrary public web pages, so allow http: in
+      // addition to https: (preserving web.fetch's existing scheme behavior).
+      // This widens ONLY the protocol — every private-IP / rebind / pinning
+      // guard in safeFetch stays in force. `testSeams` is undefined in
+      // production (run.ts calls webFetch(url) with one arg); the suite uses it
+      // to drive a controlled DNS resolution (rebinding) without real network.
+      {
+        ...(parsed.protocol === 'http:' ? { allowHttp: true } : {}),
+        ...(testSeams ?? {}),
+      },
+    );
+    if (res.status < 200 || res.status >= 300) {
+      return obs(`web fetch returned ${res.status}`, `web:fetch:${parsed.host}`);
+    }
+    const raw = res.text().slice(0, FETCH_MAX_BYTES);
     return obs(raw, `web:fetch:${parsed.host}`);
-  } catch {
+  } catch (err) {
+    // A blocked rebind / private target surfaces as EgressDeniedError — never
+    // throw into the loop; return the same clean quarantined "unavailable" obs.
+    if (err instanceof EgressDeniedError) {
+      return obs('web fetch rejected: that host is not reachable', `web:fetch:${parsed.host}`);
+    }
     return obs('web fetch is unavailable (the page could not be reached)', `web:fetch:${parsed.host}`);
   } finally {
     clearTimeout(timer);

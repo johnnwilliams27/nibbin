@@ -104,6 +104,53 @@ export interface BudgetStore {
   used(userId: string, dayKey: string): Promise<number>;
 }
 
+/**
+ * Reinforcement weighting parameters (§4B "quality-within-budget"). Thin and
+ * deterministic — NOT ML. Defaults live in tiers.ts (`DEFAULT_REINFORCEMENT`).
+ */
+export interface ReinforcementParams {
+  /** Min decided (human-rated) calls before a candidate is actionable. */
+  minDecidedCalls: number;
+  /** Min approved-unedited rate to be quality-eligible at all (0..1). */
+  qualityBar: number;
+  /** P8 tie-break band: rates within this of the best are "as good" (0..1). */
+  qualityTolerance: number;
+  /** Hard exclusion: drop a candidate refusing/erroring above this (0..1). */
+  maxRefusalErrorRate: number;
+}
+
+/**
+ * One model's measured performance for a (task, tier) over the policy window,
+ * derived from the Slice-A `model_task_performance` substrate. Rates are
+ * pre-divided in the read layer; `avgCostMicroUsd` is the P8 cost signal.
+ * `decidedCalls` is the human-rated subset that gates the min-volume floor.
+ */
+export interface PerfStat {
+  /** Total calls in the window (volume; not all are human-decided). */
+  calls: number;
+  /** Calls that carried a run_id + an approval (the quality denominator). */
+  decidedCalls: number;
+  /** approved_unedited / decidedCalls, 0..1. 0 when decidedCalls is 0. */
+  approvedUneditedRate: number;
+  /** (refusals + errors) / calls, 0..1. The degradation/churn signal. */
+  refusalErrorRate: number;
+  /** Average cost per call in micro-USD — the cost-aware (P8) tie-break. */
+  avgCostMicroUsd: number;
+}
+
+/**
+ * A read-only snapshot the router consults to reinforce among eval-cleared
+ * candidates. Synchronous + pure: `route()` stays cheap and deterministic; the
+ * caller (apps/web) refreshes the snapshot out-of-band from
+ * `model_task_performance`. Returns undefined when there is no row for the
+ * (model, task, tier) — the router treats that as "no data", which falls back
+ * to the configured default. A router with NO source (the default) never
+ * reweights — behavior is exactly the static config.
+ */
+export interface PerformanceSource {
+  getPerformance(model: string, task: RoutedTask, tier: Tier): PerfStat | undefined;
+}
+
 export interface RouterConfig {
   /** Model id per tier — hot-reloadable via Router.reconfigure (ENVIRONMENT). */
   models: Record<Tier, string>;
@@ -112,6 +159,20 @@ export interface RouterConfig {
    * here). Hot-reloadable; model changes gate on the eval suite.
    */
   taskModels: Partial<Record<RoutedTask, string>>;
+  /**
+   * Per-task ORDERED candidate sets — the eval-cleared allowlist reinforcement
+   * may shift traffic among. A task absent here (or with one entry) is seeded
+   * from the configured model and never reweights. Hot-reloadable.
+   */
+  taskCandidates: Partial<Record<RoutedTask, readonly string[]>>;
+  /** Quality-within-budget weighting params (min-volume floor, cost tie-break). */
+  reinforcement: ReinforcementParams;
+  /**
+   * Optional performance snapshot the policy reads. Absent (the default) ⇒ no
+   * reinforcement, exactly the static config. Injected as a fake in tests; in
+   * apps/web it is backed by `model_task_performance` (staff/service read).
+   */
+  performance?: PerformanceSource;
   /** T2-from-chat grants per user per day. */
   dailyFrontierBudget: number;
   budgetStore: BudgetStore;
@@ -123,6 +184,9 @@ export interface RouterConfig {
 export interface RouterOverrides {
   models?: Partial<Record<Tier, string>>;
   taskModels?: Partial<Record<RoutedTask, string>>;
+  taskCandidates?: Partial<Record<RoutedTask, readonly string[]>>;
+  reinforcement?: Partial<ReinforcementParams>;
+  performance?: PerformanceSource;
   dailyFrontierBudget?: number;
   budgetStore?: BudgetStore;
   now?: () => Date;
@@ -130,7 +194,12 @@ export interface RouterOverrides {
 
 export interface Router {
   route(req: RouteRequest): Promise<RouteDecision>;
-  /** Hot-reload models/budget without dropping budget state. */
-  reconfigure(patch: Pick<RouterOverrides, 'models' | 'taskModels' | 'dailyFrontierBudget'>): void;
+  /** Hot-reload models/candidates/budget without dropping budget state. */
+  reconfigure(
+    patch: Pick<
+      RouterOverrides,
+      'models' | 'taskModels' | 'taskCandidates' | 'reinforcement' | 'dailyFrontierBudget'
+    >,
+  ): void;
   readonly config: Readonly<RouterConfig>;
 }
