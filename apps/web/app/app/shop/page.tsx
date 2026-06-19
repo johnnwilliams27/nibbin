@@ -4,9 +4,8 @@ import { buildCreature, type Stage } from '@nibbin/creatures';
 import { SHOP_TEMPLATES } from '@nibbin/runtime';
 import { TIERS, type Tier } from '@nibbin/shared';
 import { appSession } from '../../../lib/auth/app-session';
-import { AdoptButton } from '../../../components/adopt/AdoptButton';
-import { adoptFromShopOutcome } from './actions';
 import { AppShell } from '../../../components/shell/AppShell';
+import { ShopGrid, type ShopCard } from './ShopGrid';
 import styles from './shop.module.css';
 
 export const metadata: Metadata = { title: 'Agent Shop — Nibbin' };
@@ -58,6 +57,34 @@ export default async function ShopPage({
   const activeCount = (nibbins ?? []).filter((n) => n.status !== 'sleeping').length;
   const credits = balanceRow?.balance ?? 0;
 
+  // Build card data server-side so SVG generation and adopted-state lookup
+  // stay on the server; ShopGrid receives plain-serialisable props.
+  const cards: ShopCard[] = SHOP_TEMPLATES.map((t) => {
+    const adopted = adoptedByTemplate.get(t.key);
+    const stage: Stage = adopted?.stage ?? 'student';
+    const pill = STAGE_PILL[adopted?.stage ?? 'egg'];
+    const svg = buildCreature({
+      species: t.species,
+      stage,
+      color: t.color,
+      acc: t.accessory,
+      mark: t.marking,
+      size: 88,
+    });
+    return {
+      key: t.key,
+      displayName: t.spec.displayName,
+      tagline: t.tagline,
+      description: t.description,
+      measures: t.spec.curriculum.measures,
+      requiredConnectors: [...t.spec.requiredConnectors],
+      svg,
+      adopted: adopted
+        ? { name: adopted.name, stage: adopted.stage, pillLabel: pill.label, pillClassName: pill.className }
+        : null,
+    };
+  });
+
   return (
     <AppShell active="shop" title="Agent Shop" email={user.email}>
       <div className={styles.inner}>
@@ -84,53 +111,8 @@ export default async function ShopPage({
             grove means <a href="/billing">moving up a plan</a>.
           </p>
         )}
-        <div className={styles.grid}>
-          {SHOP_TEMPLATES.map((t) => {
-            const adopted = adoptedByTemplate.get(t.key);
-            const stage: Stage = adopted?.stage ?? 'student';
-            const pill = STAGE_PILL[adopted?.stage ?? 'egg'];
-            const svg = buildCreature({
-              species: t.species,
-              stage,
-              color: t.color,
-              acc: t.accessory,
-              mark: t.marking,
-              size: 88,
-            });
-            return (
-              <article key={t.key} className={styles.card}>
-                <div className={styles.cardTop}>
-                  {/* engine-only sprite — the single trusted SVG source */}
-                  <div className={styles.sprite} dangerouslySetInnerHTML={{ __html: svg }} />
-                  <div>
-                    <h2 className={styles.name}>{adopted?.name ?? t.spec.displayName}</h2>
-                    <p className={styles.tagline}>{t.tagline}</p>
-                  </div>
-                </div>
-                <p className={styles.description}>{t.description}</p>
-                <p className={styles.measures}>School measures: {t.spec.curriculum.measures}.</p>
-                <p className={styles.connectors}>Works from {t.spec.requiredConnectors.join(' · ')}</p>
-                <div className={styles.actions}>
-                  {adopted ? (
-                    <>
-                      <span className={`${styles.pill} ${styles[pill.className]}`}>{pill.label}</span>
-                      <p className={styles.adoptedNote}>
-                        {adopted.name} is in your grove — <a href="/app">say hello</a>.
-                      </p>
-                    </>
-                  ) : (
-                    <AdoptButton
-                      action={adoptFromShopOutcome}
-                      templateKey={t.key}
-                      label={`Adopt ${t.spec.displayName}`}
-                    />
-                  )}
-                </div>
-              </article>
-            );
-          })}
-        </div>
 
+        <ShopGrid cards={cards} />
       </div>
     </AppShell>
   );
