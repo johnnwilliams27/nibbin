@@ -89,8 +89,8 @@ impl ObserverStore {
         .context("opening store (wrong key?)")?;
         // Load the initial count once here; `append()` keeps it current via
         // increment, so this is the only full table scan in steady-state operation.
-        let cached_event_count = conn
-            .query_row("SELECT COUNT(*) FROM events", [], |r| r.get::<_, u64>(0))?;
+        let cached_event_count =
+            conn.query_row("SELECT COUNT(*) FROM events", [], |r| r.get::<_, u64>(0))?;
         Ok(Self {
             conn,
             root: root.to_path_buf(),
