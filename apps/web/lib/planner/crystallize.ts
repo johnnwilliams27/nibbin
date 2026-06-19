@@ -255,6 +255,7 @@ export async function crystallize(
   accountConnections: string[],
   generateOverride?: Generate,
   routerOverride?: Router,
+  existing: AgentSpec[] = [],
 ): Promise<CrystalizeResult> {
   const gate = crystallizabilityGate(planRun, accountConnections);
   if (!gate.ok) return { refused: true, reason: gate.reason };
@@ -296,8 +297,15 @@ export async function crystallize(
     personaPolicy: soft.personaPolicy ?? { tone: 'warm, plainspoken' },
   };
 
-  // Re-run the EXISTING fail-closed gate on the assembled spec.
-  const problems = validateComposedSpec(spec, accountConnections);
+  // Re-run the EXISTING fail-closed gate on the assembled spec. FIX 8: thread
+  // the account's `existing` specs so the propose-time check has parity with
+  // adopt-time (the cross-account trigger-graph cycle check). When `existing` is
+  // empty (preview-only callers) this is the single-spec check; the AUTHORITATIVE
+  // cross-account cycle check ALWAYS runs at adopt time inside adoptComposedSpec
+  // (validateComposedSpec(spec, [...have], existing) + an explicit
+  // validateTriggerGraph), so a crystallized spec can never adopt past a cycle
+  // even if a preview here didn't see the full set.
+  const problems = validateComposedSpec(spec, accountConnections, existing);
   if (problems.length > 0) {
     return { refused: true, reason: 'invalid_spec' };
   }
