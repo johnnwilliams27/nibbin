@@ -223,9 +223,10 @@
   overflow: hidden;
   /* Smooth collapse, per Plate 06 (Motion): slide off via transform + fade —
      never animate width. margin-right reclaims the layout space as it goes.
-     --dur-4 (650ms) for a slow, deliberate glide. */
-  transition: transform var(--dur-4) var(--ease-settle), opacity var(--dur-4) var(--ease-settle),
-    margin-right var(--dur-4) var(--ease-settle);
+     --dur-4 (650ms) for a slow, deliberate glide; --ease-snap for drawer feel. */
+  transition: transform var(--dur-4) var(--ease-snap, var(--ease-settle)),
+    opacity var(--dur-4) var(--ease-snap, var(--ease-settle)),
+    margin-right var(--dur-4) var(--ease-snap, var(--ease-settle));
 }
 
 /* The panel toggle button is desktop-hidden; only visible on mobile */
@@ -369,7 +370,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 24px;
+  padding: 14px var(--pad-page, 24px);
   background: color-mix(in srgb, var(--paper) 88%, transparent);
   backdrop-filter: blur(6px);
   border-bottom: 1px solid var(--line);
@@ -437,11 +438,11 @@
 
 .content {
   flex: 1;
-  padding: 28px 24px 64px;
+  padding: 28px var(--pad-page, 24px) 64px;
   max-width: 1040px;
   width: 100%;
   margin: 0 auto;
-  animation: shellFade var(--dur-3) var(--ease-settle);
+  animation: shellFade var(--dur-3) var(--ease-spring, var(--ease-settle));
 }
 @keyframes shellFade {
   from {
@@ -555,7 +556,7 @@
     box-shadow: var(--shadow-3);
     z-index: 28;
     transform: translateY(100%);
-    transition: transform var(--dur-3) var(--ease-settle);
+    transition: transform var(--dur-3) var(--ease-snap, var(--ease-settle));
     overflow-y: auto;
   }
   .panelOpen {

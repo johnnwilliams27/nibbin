@@ -46,6 +46,19 @@
   --dur-4: 650ms;
   --ease-settle: cubic-bezier(.16, 1, .3, 1);
   --ease-pop: cubic-bezier(.34, 1.45, .64, 1);
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-snap: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* Fluid type scale */
+  --type-hero: clamp(1.9rem, 1.2rem + 2.6vw, 3rem);
+  --type-h1: clamp(1.5rem, 1.1rem + 1.4vw, 2.1rem);
+  --type-h2: clamp(1.15rem, 1rem + 0.6vw, 1.5rem);
+  --type-2xs: 0.6875rem;
+  --type-3xs: 0.625rem;
+
+  /* Fluid spacing */
+  --pad-page: clamp(16px, 4vw, 32px);
+  --gap-fluid: clamp(12px, 2vw, 22px);
 
   /* Shape */
   --r-button: 4px;

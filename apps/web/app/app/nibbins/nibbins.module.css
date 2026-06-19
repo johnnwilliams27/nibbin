@@ -3,6 +3,15 @@
    scoped CSS module. Token-only (canonical sheet + globals.css landing aliases:
    --paper-deep, --sun, --card). */
 
+/* ── Page entrance ───────────────────────────────────────────────── */
+.pageEnter {
+  animation: nbFadeIn var(--dur-3, 240ms) var(--ease-spring, cubic-bezier(0.16,1,0.3,1)) both;
+}
+@keyframes nbFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+
 /* ── Content header ─────────────────────────────────────────────── */
 .pageHead {
   margin-bottom: 24px;
@@ -20,7 +29,7 @@
   font-family: var(--display);
   font-weight: 800;
   letter-spacing: -0.02em;
-  font-size: 28px;
+  font-size: var(--type-h1, clamp(1.5rem, 1.1rem + 1.4vw, 2.1rem));
   color: var(--ink);
   margin: 0 0 10px;
 }
@@ -35,30 +44,21 @@
 
 .roster {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-}
-@media (max-width: 860px) {
-  .roster {
-    grid-template-columns: 1fr;
-  }
-}
-@media (max-width: 640px) {
-  .roster {
-    gap: 12px;
-  }
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--gap-fluid, 14px);
 }
 
 .agent {
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: var(--r-card);
   padding: 18px;
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  transition: transform var(--dur-1) var(--ease-spring, ease),
+    box-shadow var(--dur-1) var(--ease-spring, ease);
 }
 .agent:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 16px 30px -22px rgba(35, 41, 26, 0.4);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-2);
 }
 
 .top {
@@ -264,11 +264,12 @@
   border-radius: 4px;
   cursor: pointer;
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--canopy);
   color: var(--ink-soft);
   text-decoration: none;
   display: inline-block;
-  transition: transform 0.15s ease, background 0.2s ease;
+  transition: transform var(--dur-1) var(--ease-spring, ease),
+    background var(--dur-2) var(--ease-settle);
 }
 .abtn:hover {
   background: var(--paper-deep);
@@ -538,3 +539,13 @@
 }
 .deleteConfirmYes:hover { background: #c74d2f; border-color: #c74d2f; }
 .deleteConfirmYes:disabled { opacity: 0.5; cursor: default; }
+
+@media (prefers-reduced-motion: reduce) {
+  .agent,
+  .abtn {
+    transition: none;
+  }
+  .pageEnter {
+    animation: none;
+  }
+}

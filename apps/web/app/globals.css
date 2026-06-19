@@ -41,10 +41,44 @@ a {
   outline-offset: 2px;
 }
 
+/* ---- Fluid page gutter ---- */
 .wrap {
   max-width: 1100px;
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 0 var(--pad-page, 24px);
+}
+
+/* ---- Global motion layer ---- */
+@keyframes nbFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.nbFadeIn {
+  animation: nbFadeIn var(--dur-3, 240ms) var(--ease-spring, cubic-bezier(0.16,1,0.3,1)) both;
+}
+
+/* Card hover helper — apply to card elements that want lift-on-hover */
+.nbCardHover {
+  transition: transform var(--dur-1) var(--ease-spring), box-shadow var(--dur-1) var(--ease-spring);
+}
+.nbCardHover:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-2);
+}
+
+/* Tabular numbers — apply via class to numeric/stat displays only */
+.nums {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* Reduced-motion: collapse all durations to a near-instant no-op */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 .eyebrow {

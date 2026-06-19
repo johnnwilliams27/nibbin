@@ -1,6 +1,14 @@
 /* Day-14 diagnosis reveal. Token-only; cards/badges/buttons from the UI kit,
    visual scale matched to the dashboard. */
 
+.pageEnter {
+  animation: nbFadeIn var(--dur-3, 240ms) var(--ease-spring, cubic-bezier(0.16,1,0.3,1)) both;
+}
+@keyframes nbFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+
 .header {
   margin-bottom: 18px;
 }
@@ -16,7 +24,7 @@
   font-family: var(--display);
   font-weight: 800;
   letter-spacing: -0.02em;
-  font-size: 30px;
+  font-size: var(--type-h1, clamp(1.5rem, 1.1rem + 1.4vw, 2.1rem));
   margin: 6px 0 4px;
   color: var(--ink);
 }
@@ -321,10 +329,14 @@
 }
 .historyCard {
   padding: 14px 18px;
-  transition: border-color 0.15s ease;
+  transition: border-color var(--dur-1) var(--ease-settle),
+    transform var(--dur-1) var(--ease-spring, ease),
+    box-shadow var(--dur-1) var(--ease-spring, ease);
 }
 .historyLink:hover .historyCard {
   border-color: var(--moss);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-2);
 }
 .historyHead {
   display: flex;
@@ -608,4 +620,13 @@
 .buildSelect:focus {
   outline: none;
   border-color: var(--moss);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .historyCard {
+    transition: none;
+  }
+  .pageEnter {
+    animation: none;
+  }
 }
