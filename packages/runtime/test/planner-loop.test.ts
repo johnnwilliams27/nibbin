@@ -13,6 +13,7 @@ import {
   MemoryRoutineStore,
   MemoryRunStore,
   type PlanSpec,
+  type PlanRunState,
   type PlannerDeps,
   type PlannerDrafter,
   type PlannerPick,
@@ -327,6 +328,62 @@ describe('runPlan — tool-shape done/ask_human (FIX 6)', () => {
     if (outcome.kind === 'done') {
       expect(outcome.artifact).toBe('all set');
     }
+  });
+});
+
+describe('runPlan — resume rebuilds repetition for primitive-internal reads', () => {
+  // A primitive (reply.new-inquiry) sweeps the mailbox: each pick yields the
+  // SAME deterministic list reads (in:inbox, in:sent). The live loop counts
+  // those reads in dispatchStep keyed read:<cap>:<hash(path)>; REPETITION_KILL_AT
+  // is 3, so the 3rd identical primitive pick is killed. On RESUME, the rebuild
+  // must restore those internal read counts — otherwise a resumed loop could
+  // repeat the primitive past the kill threshold (the bug: the old rebuild
+  // filtered primitives out with `c.kind !== 'primitive'`).
+  function primitivePlan(): PlanSpec {
+    return plan({
+      goal: 'reply to new inquiries',
+      toolsAllowlist: ['email.read', 'email.draft', 'reply.new-inquiry', 'done'],
+      requiredConnectors: ['gmail'],
+    });
+  }
+  const primitivePick: PlannerPick = { tool: 'reply.new-inquiry', args: {} };
+
+  function priorTurns(n: number): PlanRunState {
+    // n identical primitive turns already persisted (each made the same internal
+    // mailbox-list reads). The reader returns no messages, so the primitive
+    // yields only its two deterministic list reads per turn — exactly what the
+    // rebuild replays with an undefined feed.
+    const transcript = Array.from({ length: n }, (_v, i) => ({
+      idx: i,
+      pick: primitivePick,
+      observation: 'ran reply.new-inquiry',
+    }));
+    return {
+      runId: 'plan-resume-1',
+      accountId: ACCOUNT,
+      plan: primitivePlan(),
+      transcript,
+      scratchpad: {},
+      status: 'running' as const,
+    };
+  }
+
+  it('a resumed run with N-1 identical primitive picks is killed by repetition on the next identical pick', async () => {
+    // REPETITION_KILL_AT = 3 → two prior identical primitive picks (their list
+    // reads rebuilt to count 2), then the SAME pick again → the inbox list read
+    // hits 3 in dispatchStep → killed (NOT allowed to continue / drift to done).
+    const { d } = deps([primitivePick, { done: true, artifact: {} }]);
+    const outcome = await runPlan(primitivePlan(), d, priorTurns(2));
+    expect(outcome.kind).toBe('killed');
+    if (outcome.kind === 'killed') expect(outcome.reason).toBe('repetition');
+  });
+
+  it('matches the non-resumed run: 3 identical primitive picks from scratch are also killed by repetition', async () => {
+    // Faithfulness check — the resumed kill above mirrors a cold run.
+    const { d } = deps([primitivePick, primitivePick, primitivePick, { done: true, artifact: {} }]);
+    const outcome = await runPlan(primitivePlan(), d);
+    expect(outcome.kind).toBe('killed');
+    if (outcome.kind === 'killed') expect(outcome.reason).toBe('repetition');
   });
 });
 
