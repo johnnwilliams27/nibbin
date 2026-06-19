@@ -40,12 +40,20 @@ export function modelDrafterFor(accountId: string): ModelDrafter | undefined {
 
   return {
     async draft({ runId, intent, context, maxTokens }) {
+      // Captured so the graceful-failure ledger row (catch) records the model/
+      // tier route() actually resolved (Slice A) — not a placeholder.
+      let resolvedModel = 'unknown';
+      let resolvedTier: 't0' | 't1' | 't2' = 't1';
+      let resolvedDegraded = false;
       try {
         const decision = await groveRouter.route({
           userId: `account:${accountId}`,
           task: 'specialist_draft',
           origin: 'pipeline',
         });
+        resolvedModel = decision.model;
+        resolvedTier = decision.tier;
+        resolvedDegraded = decision.degraded;
         const memory = await groveBlock();
         // Agent/user memory (§12A): retrieved per draft (semantic + FTS +
         // recency), injected as a third system block after Grove Memory.
@@ -60,6 +68,7 @@ export function modelDrafterFor(accountId: string): ModelDrafter | undefined {
           ...(memory ? [{ text: memory, cache: true }] : []),
           ...(mem ? [{ text: mem, cache: false }] : []),
         ];
+        const t0 = Date.now();
         const result = await llm({
           model: decision.model,
           system,
@@ -75,6 +84,9 @@ export function modelDrafterFor(accountId: string): ModelDrafter | undefined {
           task: 'specialist_draft',
           model: result.model,
           usage: result.usage,
+          degraded: decision.degraded,
+          latencyMs: Date.now() - t0,
+          outcome: 'ok',
         });
         const text = result.text.trim();
         if (text === '') return null;
@@ -86,6 +98,21 @@ export function modelDrafterFor(accountId: string): ModelDrafter | undefined {
         return { text, tokens: u.inputTokens + u.cacheWriteTokens + u.cacheReadTokens + u.outputTokens };
       } catch (err) {
         console.error('[drafting] model call failed — deterministic fallback', err instanceof Error ? err.message : err);
+        // Ledger the previously-invisible graceful failure (Slice A): a row with
+        // outcome='error', zero tokens, NO prompt/response content, on the model/
+        // tier route() resolved (placeholder only if route() itself threw).
+        await recordModelCall({
+          accountId,
+          userId: null,
+          runId,
+          tier: resolvedTier,
+          task: 'specialist_draft',
+          model: resolvedModel,
+          usage: { inputTokens: 0, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 0 },
+          outcome: 'error',
+          degraded: resolvedDegraded,
+          latencyMs: null,
+        });
         return null;
       }
     },

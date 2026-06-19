@@ -98,6 +98,32 @@ describe('keeperChat routes through §6.3 before replying', () => {
     expect(fallback.message.card.transcript.length).toBeGreaterThan(0);
   });
 
+  it('a degraded-then-failed chat call records dispatchedDegraded=true even though decision resets to the floor', async () => {
+    // gate finding P3: chat.ts resets `decision` to the scripted floor (degraded
+    // false) on a failed model call, so the failure-ledger must NOT read
+    // decision.degraded. dispatchedDegraded captures the route's degraded flag
+    // BEFORE the reset, so a degraded-then-failed turn is ledgered as degraded.
+    const router = createRouter({ dailyFrontierBudget: 0 }); // forces T2→T1 degrade
+    const reply = await keeperChat(T2_TEXT, ctx, {
+      route: (r) => router.route(r),
+      generate: async () => null, // dispatched, then failed/empty
+    });
+    expect(reply.decision.degraded).toBe(false); // floor reported to the user
+    expect(reply.dispatchedDegraded).toBe(true); // but the route WAS degraded
+  });
+
+  it('a non-degraded dispatch reports dispatchedDegraded=false; no dispatch reports false', async () => {
+    const router = createRouter({ dailyFrontierBudget: 5 });
+    const ok = await keeperChat(T2_TEXT, ctx, {
+      route: (r) => router.route(r),
+      generate: async () => 'On it.',
+    });
+    expect(ok.dispatchedDegraded).toBe(false);
+
+    const noDispatch = await keeperChat('hello', ctx, { route: (r) => router.route(r) });
+    expect(noDispatch.dispatchedDegraded).toBe(false);
+  });
+
   it('an empty model completion is billed at the dispatched tier, not the scripted floor (COGS truth)', async () => {
     // gate finding logic-skeptic P2: a real T2 call that returns "" must
     // record COGS at t2, even though the user-facing decision degrades to

@@ -47,6 +47,15 @@ export interface KeeperChatReply {
   dispatchedTier: import('@nibbin/router').Tier | null;
   /** The model id actually called, or null — pairs with dispatchedTier. */
   dispatchedModel: string | null;
+  /**
+   * Whether the route that was ACTUALLY dispatched was degraded (budget forced
+   * T2→T1), captured BEFORE the empty/failed-completion fallback resets
+   * `decision` to the scripted floor (which is always degraded:false). The
+   * failure-ledger keys on THIS, not `decision.degraded`, so a degraded-then-
+   * failed chat turn is recorded as degraded:true (gate finding P3). False when
+   * no model was dispatched.
+   */
+  dispatchedDegraded: boolean;
 }
 
 export const CHAT_INPUT_MAX = 2000;
@@ -89,6 +98,7 @@ export async function keeperChat(
   // empty-completion fallback rewrites `decision`, so COGS keys on the truth.
   let dispatchedTier: import('@nibbin/router').Tier | null = null;
   let dispatchedModel: string | null = null;
+  let dispatchedDegraded = false;
   if (deps.generate) {
     decision = await deps.route({
       userId: ctx.userId,
@@ -99,6 +109,7 @@ export async function keeperChat(
     });
     dispatchedTier = decision.tier;
     dispatchedModel = decision.model;
+    dispatchedDegraded = decision.degraded;
     reply = await deps.generate(decision.model, text);
   }
   if (reply === null || reply === undefined || reply.trim() === '') {
@@ -125,5 +136,6 @@ export async function keeperChat(
     expression: 'presenting',
     dispatchedTier,
     dispatchedModel,
+    dispatchedDegraded,
   };
 }

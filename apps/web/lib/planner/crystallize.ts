@@ -207,11 +207,18 @@ export async function proposeCrystalSoftFields(
 ): Promise<SoftFields> {
   const llm = generateOverride ?? anthropicGenerate();
   if (!llm) return fallbackSoft(goal);
+  // Captured so the graceful-failure ledger row records the model/tier route()
+  // resolved (Slice A). plan_synthesis is a §6.3 T2 task.
+  let resolvedModel = 'unknown';
+  let resolvedTier: 't0' | 't1' | 't2' = 't2';
   try {
     const router = routerOverride ?? groveRouter;
     const decision = await router.route({ userId, task: 'plan_synthesis', origin: 'chat' });
     if (decision.degraded) return fallbackSoft(goal);
+    resolvedModel = decision.model;
+    resolvedTier = decision.tier;
     const stepText = steps.map((s) => `- ${describeStep(s)}`).join('\n');
+    const t0 = Date.now();
     const result = await llm({
       model: decision.model,
       system: [{ text: SOFT_SYSTEM_PROMPT, cache: true }],
@@ -234,10 +241,24 @@ export async function proposeCrystalSoftFields(
       task: 'plan_synthesis',
       model: result.model,
       usage: result.usage,
+      degraded: decision.degraded,
+      latencyMs: Date.now() - t0,
+      outcome: 'ok',
     });
     return parseSoft(result.text, goal);
   } catch (err) {
     console.error('[crystallize] soft-layer failed — deterministic defaults stand', err instanceof Error ? err.message : err);
+    // Ledger the graceful failure (Slice A): zero tokens, no content.
+    await recordModelCall({
+      accountId,
+      userId,
+      tier: resolvedTier,
+      task: 'plan_synthesis',
+      model: resolvedModel,
+      usage: { inputTokens: 0, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 0 },
+      outcome: 'error',
+      latencyMs: null,
+    });
     return fallbackSoft(goal);
   }
 }

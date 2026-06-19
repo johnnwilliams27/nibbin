@@ -140,9 +140,13 @@ async function buildAnswer(
   // cost, honest degradation, no tokens debited).
   const llm = anthropicGenerate();
   let lastCall: { model: string; usage: TokenUsage } | null = null;
+  // Slice A signals captured in the closure (mirrors keeperChatAction).
+  let lastLatencyMs: number | null = null;
+  let failedCall: { model: string } | null = null;
 
   const generate = llm
     ? async (model: string, userText: string): Promise<string | null> => {
+        const t0 = Date.now();
         try {
           const result = await llm({
             model,
@@ -155,6 +159,7 @@ async function buildAnswer(
             temperature: 0.7,
           });
           lastCall = { model: result.model, usage: result.usage };
+          lastLatencyMs = Date.now() - t0;
           return result.text;
         } catch (err) {
           // Provider outage → scripted floor; the turn never fails the user.
@@ -162,6 +167,7 @@ async function buildAnswer(
             '[keeper/channel] model call failed — scripted floor',
             err instanceof Error ? err.message : err,
           );
+          failedCall = { model };
           return null;
         }
       }
@@ -189,6 +195,28 @@ async function buildAnswer(
       usage: call.usage,
       origin: 'chat',
       channel,
+      degraded: reply.decision.degraded,
+      latencyMs: lastLatencyMs,
+      outcome: 'ok',
+    });
+  } else if (failedCall !== null) {
+    // The dispatched chat call failed gracefully (scripted floor served) —
+    // ledger the previously-invisible failure (Slice A): zero tokens, no content.
+    const fc = failedCall as { model: string };
+    await recordModelCall({
+      accountId,
+      userId: null,
+      tier: reply.dispatchedTier ?? reply.decision.tier,
+      task: 'chat',
+      model: fc.model,
+      usage: { inputTokens: 0, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 0 },
+      origin: 'chat',
+      channel,
+      outcome: 'error',
+      // dispatchedDegraded, NOT decision.degraded — chat.ts resets decision to
+      // the scripted floor (degraded:false) on a failed call (gate finding P3).
+      degraded: reply.dispatchedDegraded,
+      latencyMs: null,
     });
   }
 

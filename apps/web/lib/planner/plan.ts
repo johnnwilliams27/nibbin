@@ -145,6 +145,10 @@ export async function planForIntent(
   const surfaceIds = new Set<string>([...surfaceTools.map((c) => c.id), ...utilities]);
 
   let parsed: ParsedPlan | null = null;
+  // Captured so the graceful-failure ledger row records the model/tier route()
+  // resolved (Slice A). plan_synthesis is a §6.3 T2 task.
+  let resolvedModel = 'unknown';
+  let resolvedTier: 't0' | 't1' | 't2' = 't2';
   try {
     const router = routerOverride ?? groveRouter;
     // Interactive, user-initiated → origin:'chat' draws the per-user daily
@@ -152,6 +156,9 @@ export async function planForIntent(
     // no model is available for this reasoning call → clean error (no fallback).
     const decision = await router.route({ userId, task: 'plan_synthesis', origin: 'chat' });
     if (decision.degraded) return { error: 'planning requires a model' };
+    resolvedModel = decision.model;
+    resolvedTier = decision.tier;
+    const t0 = Date.now();
     const result = await llm({
       model: decision.model,
       system: [{ text: PLAN_SYSTEM_PROMPT, cache: true }],
@@ -173,10 +180,24 @@ export async function planForIntent(
       task: 'plan_synthesis',
       model: result.model,
       usage: result.usage,
+      degraded: decision.degraded,
+      latencyMs: Date.now() - t0,
+      outcome: 'ok',
     });
     parsed = parsePlan(result.text);
   } catch (err) {
     console.error('[planner] plan synthesis failed', err instanceof Error ? err.message : err);
+    // Ledger the graceful failure (Slice A): zero tokens, no content.
+    await recordModelCall({
+      accountId,
+      userId,
+      tier: resolvedTier,
+      task: 'plan_synthesis',
+      model: resolvedModel,
+      usage: { inputTokens: 0, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 0 },
+      outcome: 'error',
+      latencyMs: null,
+    });
     return { error: 'planning requires a model' };
   }
 
