@@ -19,9 +19,34 @@ use std::path::{Path, PathBuf};
 pub struct ObserverStore {
     conn: Connection,
     root: PathBuf,
+    /// Soft cap on `events` rows (see `EVENT_SOFT_CAP`). A field (not the const
+    /// directly) so tests can drive the fail-safe path with a tiny cap instead
+    /// of inserting millions of rows. Production always uses `EVENT_SOFT_CAP`.
+    event_soft_cap: u64,
 }
 
 const DB_FILE: &str = "observer.db";
+
+/// Generous soft cap on the number of `events` rows. With #151's tree-dedup a
+/// real 14-day study stays far below this; the cap exists only to catch a
+/// runaway (e.g. a stuck capture loop). When reached, `append()` FAILS SAFE —
+/// it stops writing and returns a distinct error so the daemon can surface
+/// `capture_blocked` — it NEVER prunes or silently drops study data (cost-02 /
+/// H2).
+pub const EVENT_SOFT_CAP: u64 = 5_000_000;
+
+/// Marker substring embedded in the soft-cap error message. The daemon matches
+/// on this (rather than a typed error, to stay inside the existing
+/// `anyhow`-based `PersistSink::append` contract) to distinguish a fail-safe
+/// "store full" stop from a genuine write failure.
+pub const SOFT_CAP_MARKER: &str = "store soft cap reached";
+
+/// True if `err` is the fail-safe soft-cap signal from `append()` (vs. a real
+/// I/O / DB error). Lets the daemon turn it into a graceful `capture_blocked`
+/// stop instead of crashing.
+pub fn is_soft_cap_error(err: &anyhow::Error) -> bool {
+    err.to_string().contains(SOFT_CAP_MARKER)
+}
 
 impl ObserverStore {
     pub fn open(root: &Path, key: &dyn KeyProvider) -> Result<Self, anyhow::Error> {
@@ -50,11 +75,25 @@ impl ObserverStore {
         Ok(Self {
             conn,
             root: root.to_path_buf(),
+            event_soft_cap: EVENT_SOFT_CAP,
         })
     }
 
     pub fn root(&self) -> &Path {
         &self.root
+    }
+
+    /// Test hook: override the soft cap so the fail-safe path can be exercised
+    /// without inserting `EVENT_SOFT_CAP` rows. Not for production use.
+    #[cfg(test)]
+    fn set_soft_cap_for_test(&mut self, cap: u64) {
+        self.event_soft_cap = cap;
+    }
+
+    fn event_count(&self) -> Result<u64, anyhow::Error> {
+        Ok(self
+            .conn
+            .query_row("SELECT COUNT(*) FROM events", [], |r| r.get::<_, u64>(0))?)
     }
 
     pub fn list_events(&self) -> Result<Vec<ObserverEvent>, anyhow::Error> {
@@ -145,6 +184,13 @@ impl ObserverStore {
 
 impl PersistSink for ObserverStore {
     fn append(&mut self, event: &ObserverEvent) -> Result<(), anyhow::Error> {
+        // cost-02 / H2 fail-safe: if the store has reached the soft cap, STOP
+        // (do NOT insert) and return a distinct error so the daemon surfaces
+        // `capture_blocked`. We never prune or drop study data silently.
+        let cap = self.event_soft_cap;
+        if self.event_count()? >= cap {
+            anyhow::bail!("{SOFT_CAP_MARKER} ({cap} events)");
+        }
         self.conn.execute(
             "INSERT INTO events (id, ts, json) VALUES (?1, ?2, ?3)",
             rusqlite::params![event.id, event.ts, serde_json::to_string(event)?],
@@ -263,6 +309,30 @@ mod tests {
         let events = store.list_events().unwrap();
         assert_eq!(events.len(), 1);
         assert_eq!(events[0].id, "e2");
+    }
+
+    #[test]
+    fn append_past_soft_cap_fails_safe_without_dropping() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = ObserverStore::open(dir.path(), &key()).unwrap();
+        // Tiny cap so we hit the fail-safe path in two appends, not millions.
+        store.set_soft_cap_for_test(2);
+
+        store.append(&event("e1")).unwrap();
+        store.append(&event("e2")).unwrap();
+
+        // Third append is at the cap → fail-safe: returns the soft-cap error,
+        // recognized by is_soft_cap_error, and does NOT insert.
+        let err = store.append(&event("e3")).unwrap_err();
+        assert!(
+            super::is_soft_cap_error(&err),
+            "expected the soft-cap error, got: {err}"
+        );
+        assert!(err.to_string().contains(super::SOFT_CAP_MARKER));
+
+        // The two already-stored events are untouched (nothing pruned/dropped).
+        let events = store.list_events().unwrap();
+        assert_eq!(events.len(), 2, "soft cap must never drop existing events");
     }
 
     #[test]
