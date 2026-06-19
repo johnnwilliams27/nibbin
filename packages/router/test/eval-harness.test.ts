@@ -295,28 +295,40 @@ export const NEXT = 1;
   });
 });
 
-/* ── Activation: the 2026-06-19 eval cleared + armed 2 candidate sets ─────────
- * route() stays unchanged while NIBBIN_REINFORCEMENT is off (the separate
- * `route-unchanged` test proves it — incumbent is listed FIRST, so the default
- * resolution returns today's model). These assert the armed state itself. ──── */
+/* ── Activation: the 2026-06-19 COMPREHENSIVE eval armed 11 candidate sets ─────
+ * route() stays unchanged while NIBBIN_REINFORCEMENT/the perf source is off (the
+ * separate `route-unchanged` test proves it — the incumbent is listed FIRST, so
+ * the default resolution returns today's model). These assert the armed state
+ * itself. Splurges (diagnosis_synthesis, nibbin_note) are NEVER armed. ──────── */
 
 describe('eval-cleared candidate sets are armed (incumbent-first; see docs/eval/routing-2026-06-19.md)', () => {
-  it('custom_spec_draft armed [Sonnet, Haiku] — cost win (Haiku within tolerance, ~3x cheaper)', () => {
-    expect(DEFAULT_TASK_CANDIDATES.custom_spec_draft).toEqual([
-      'claude-sonnet-4-6',
-      'claude-haiku-4-5-20251001',
-    ]);
+  const H = 'claude-haiku-4-5-20251001';
+  const S = 'claude-sonnet-4-6';
+  const O = 'claude-opus-4-8';
+  const T1_ARMED = [
+    'specialist_draft', 'scan_synthesis', 'onboarding_understanding', 'training_feedback',
+    'map_labeling', 'sweep_pass1', 'sweep_pass2', 'memory_extract',
+  ] as const;
+
+  it('all 8 T1 tasks armed [Haiku, Sonnet] — Sonnet quality headroom, Haiku incumbent first', () => {
+    for (const t of T1_ARMED) expect(DEFAULT_TASK_CANDIDATES[t]).toEqual([H, S]);
   });
-  it('complex_plan armed [Sonnet, Opus] — quality headroom (Opus >= Sonnet)', () => {
-    expect(DEFAULT_TASK_CANDIDATES.complex_plan).toEqual([
-      'claude-sonnet-4-6',
-      'claude-opus-4-8',
-    ]);
+  it('custom_spec_draft armed [Sonnet, Haiku, Opus] — cost win + quality headroom', () => {
+    expect(DEFAULT_TASK_CANDIDATES.custom_spec_draft).toEqual([S, H, O]);
   });
-  it('every armed set lists the incumbent (today config) FIRST — the safe default', () => {
-    // Both armed tasks are t2 (DEFAULT_MODELS.t2 = sonnet), so incumbent === sonnet.
-    for (const set of Object.values(DEFAULT_TASK_CANDIDATES)) {
-      expect(set?.[0]).toBe('claude-sonnet-4-6');
+  it('complex_plan + plan_synthesis armed [Sonnet, Opus] — quality headroom (cheaper Haiku did NOT clear)', () => {
+    expect(DEFAULT_TASK_CANDIDATES.complex_plan).toEqual([S, O]);
+    expect(DEFAULT_TASK_CANDIDATES.plan_synthesis).toEqual([S, O]);
+  });
+  it('splurges are NEVER armed (report-only) — diagnosis_synthesis + nibbin_note stay Opus-pinned', () => {
+    expect(DEFAULT_TASK_CANDIDATES.diagnosis_synthesis).toBeUndefined();
+    expect(DEFAULT_TASK_CANDIDATES.nibbin_note).toBeUndefined();
+  });
+  it('11 tasks armed; every set lists the configured incumbent FIRST (the safe default)', () => {
+    expect(Object.keys(DEFAULT_TASK_CANDIDATES)).toHaveLength(11);
+    for (const t of T1_ARMED) expect(DEFAULT_TASK_CANDIDATES[t]?.[0]).toBe(H); // T1 incumbent = Haiku
+    for (const t of ['custom_spec_draft', 'complex_plan', 'plan_synthesis'] as const) {
+      expect(DEFAULT_TASK_CANDIDATES[t]?.[0]).toBe(S); // T2 incumbent = Sonnet
     }
   });
 });
