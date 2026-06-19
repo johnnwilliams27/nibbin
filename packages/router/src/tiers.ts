@@ -19,6 +19,7 @@ export const TIER_FOR_TASK: Record<Exclude<RoutedTask, 'chat'>, Tier> = {
   sweep_pass1: 't1',
   sweep_pass2: 't1',
   memory_extract: 't1',
+  style_extraction: 't0',
   diagnosis_synthesis: 't2',
   custom_spec_draft: 't2',
   nibbin_note: 't2',

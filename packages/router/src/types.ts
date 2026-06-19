@@ -20,6 +20,7 @@ export type RoutedTask =
   | 'formatting'
   | 'field_notes_copy'
   | 'journal_phrasing'
+  | 'style_extraction'
   // T1 — mid (Sonnet-class)
   | 'specialist_draft'
   | 'scan_synthesis'

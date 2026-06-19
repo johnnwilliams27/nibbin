@@ -20,6 +20,8 @@ import { SupabaseEventSink } from './stores';
 import { maybePromote } from './engine';
 import { maybeDriftNudge } from './drift';
 import { writeMemoryFromDecision } from '../memory/extract';
+import { extractStyleFromEdit } from '../style/extract';
+import { updateStyleProfile } from '../style/update';
 
 export type DraftDecision = 'approved' | 'edited' | 'rejected';
 
@@ -112,6 +114,8 @@ export async function decideDraft(
   runId: string,
   decision: DraftDecision,
   distance: number,
+  /** Optional: original + edited draft text for §4A style extraction (edited-only). */
+  editContext?: { originalDraft: string; editedDraft: string },
 ): Promise<DecisionResult> {
   // the run's nibbin (for promotion) — read before the status flips
   const svc = serviceClient();
@@ -145,6 +149,28 @@ export async function decideDraft(
           nibbinId: run.nibbin_id as string,
           decision,
         });
+        // §4A: extract style attributes from the edit signal. Runs in the same
+        // after() block so it never adds latency to the decision response.
+        // Fail-safe: extractStyleFromEdit + updateStyleProfile both swallow
+        // their own errors; a style failure NEVER affects the decision outcome.
+        if (editContext) {
+          void (async () => {
+            try {
+              const extracted = await extractStyleFromEdit({
+                accountId,
+                userId,
+                runId,
+                originalDraft: editContext.originalDraft,
+                editedDraft: editContext.editedDraft,
+              });
+              if (extracted) {
+                await updateStyleProfile({ accountId, runId, extracted });
+              }
+            } catch {
+              /* style extraction is best-effort — swallow silently */
+            }
+          })();
+        }
       });
     } catch {
       /* not in a request context (e.g. a test/script) — memory is best-effort, skip */

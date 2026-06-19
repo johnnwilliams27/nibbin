@@ -2,12 +2,13 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import styles from './settings.module.css';
 
-export type SettingsTab = 'profile' | 'security' | 'privacy' | 'account' | 'billing';
+export type SettingsTab = 'profile' | 'security' | 'privacy' | 'style' | 'account' | 'billing';
 
 const TABS: { key: SettingsTab; label: string; href: string }[] = [
   { key: 'profile', label: 'Profile', href: '/app/settings/profile' },
   { key: 'security', label: 'Security', href: '/app/settings/security' },
   { key: 'privacy', label: 'Data & Privacy', href: '/app/settings/privacy' },
+  { key: 'style', label: 'My Voice', href: '/app/settings/style' },
   { key: 'account', label: 'Account', href: '/app/settings/account' },
   { key: 'billing', label: 'Plan & credits', href: '/billing' },
 ];
@@ -31,6 +32,12 @@ function TabIcon({ k }: { k: SettingsTab }) {
       <>
         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
         <path d="m9 12 2 2 4-4" />
+      </>
+    ),
+    style: (
+      <>
+        <path d="M12 20h9" />
+        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
       </>
     ),
     account: (
