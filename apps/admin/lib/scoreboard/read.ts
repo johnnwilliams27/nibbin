@@ -52,6 +52,34 @@ export interface ScoreboardRow extends PerformanceRow {
   degradationRate: number | null;
 }
 
+/** The count columns the rate math divides on — if any is missing/non-numeric
+ *  the RPC shape has drifted and the derived rates would be NaN. */
+const REQUIRED_NUMERIC_KEYS = [
+  'calls',
+  'decided_calls',
+  'approved_unedited',
+  'edited',
+  'rejected',
+  'refusals',
+  'errors',
+  'degraded_calls',
+] as const;
+
+/**
+ * Shape guard for one RPC row (replaces an unchecked `as PerformanceRow[]`):
+ * a row is valid iff it is an object whose count columns are all finite numbers
+ * and whose model/task/tier are strings. A drifted view shape thus yields a
+ * clean rejection (loadScoreboard throws), never NaN rates from a bad cast.
+ */
+function isPerformanceRow(row: unknown): row is PerformanceRow {
+  if (!row || typeof row !== 'object') return false;
+  const r = row as Record<string, unknown>;
+  if (typeof r.model !== 'string' || typeof r.task !== 'string' || typeof r.tier !== 'string') {
+    return false;
+  }
+  return REQUIRED_NUMERIC_KEYS.every((k) => typeof r[k] === 'number' && Number.isFinite(r[k]));
+}
+
 /** Null-safe ratio: numerator / denominator, or null when the denominator is 0. */
 function rate(numerator: number, denominator: number): number | null {
   return denominator > 0 ? numerator / denominator : null;
@@ -79,6 +107,16 @@ export function deriveRates(row: PerformanceRow): ScoreboardRow {
 export async function loadScoreboard(admin: SupabaseClient): Promise<ScoreboardRow[]> {
   const { data, error } = await admin.rpc('model_task_performance_read');
   if (error) throw new Error(`model_task_performance_read failed: ${error.message}`);
-  const rows = (Array.isArray(data) ? data : []) as PerformanceRow[];
+  const raw = Array.isArray(data) ? data : [];
+  // Validate the RPC shape instead of an unchecked cast: a drifted view (renamed
+  // or retyped count column) yields a clean error here, never NaN rates from
+  // arithmetic on undefined.
+  const rows: PerformanceRow[] = [];
+  for (const row of raw) {
+    if (!isPerformanceRow(row)) {
+      throw new Error('model_task_performance_read returned an unexpected row shape');
+    }
+    rows.push(row);
+  }
   return rows.map(deriveRates);
 }

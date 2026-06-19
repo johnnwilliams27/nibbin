@@ -175,4 +175,15 @@ describe('loadScoreboard — staff-gated RPC read', () => {
     } as unknown as SupabaseClient;
     await expect(loadScoreboard(admin)).resolves.toEqual([]);
   });
+
+  it('throws on a drifted RPC row shape instead of deriving NaN rates', async () => {
+    // A renamed/retyped count column (here decided_calls missing) would make the
+    // rate math NaN under an unchecked cast. The shape guard rejects it cleanly.
+    const drifted = { ...FULL_ROW } as Record<string, unknown>;
+    delete drifted.decided_calls;
+    const admin = {
+      rpc: async () => ({ data: [drifted], error: null }),
+    } as unknown as SupabaseClient;
+    await expect(loadScoreboard(admin)).rejects.toThrow(/unexpected row shape/);
+  });
 });

@@ -437,6 +437,10 @@ export async function composeSpec(
           model: resolvedModel,
           usage: { inputTokens: 0, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 0 },
           outcome: 'error',
+          // Explicit for consistency with the other 11 ledger sites: a degraded
+          // decision throws `frontier_budget_exhausted` and returns BEFORE the
+          // model call, so a failure that reaches here is never degraded.
+          degraded: false,
           latencyMs: null,
         });
       }
