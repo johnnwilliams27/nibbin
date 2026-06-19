@@ -9,6 +9,7 @@ import { NibbinEditor } from './NibbinEditor';
 import { BackToDrafts } from './BackToDrafts';
 import { TrainingToggle, type TrainingState } from './TrainingToggle';
 import { refreshNibbinNote } from './actions';
+import { RetuneDialog } from './RetuneDialog';
 import styles from './nibbins.module.css';
 
 export const metadata: Metadata = { title: 'Your Nibbins — Nibbin' };
@@ -49,6 +50,7 @@ const STAGE_PILL_CLASS: Record<Stage, string> = {
 interface SpecRow {
   display_name: string | null;
   template_key: string | null;
+  version: number | null;
 }
 interface NibbinRow {
   id: string;
@@ -87,6 +89,11 @@ interface TrainingRow {
 function specOf(n: NibbinRow): SpecRow | null {
   const s = n.agent_specs;
   return Array.isArray(s) ? (s[0] ?? null) : s;
+}
+
+/** The spec version number, or null if not available yet. */
+function specVersionOf(n: NibbinRow): number | null {
+  return specOf(n)?.version ?? null;
 }
 
 /** The agent's "job" line: spec display name, falling back to a humanised
@@ -222,7 +229,7 @@ export default async function NibbinsPage() {
       supabase
         .from('nibbins')
         .select(
-          'id, name, species, stage, status, palette, accessory, marking, stage_changed_at, hatched_at, learned_note, learned_note_runs, agent_specs(display_name, template_key)',
+          'id, name, species, stage, status, palette, accessory, marking, stage_changed_at, hatched_at, learned_note, learned_note_runs, agent_specs(display_name, template_key, version)',
         )
         .eq('account_id', accountId)
         .eq('kind', 'specialist')
@@ -367,6 +374,8 @@ export default async function NibbinsPage() {
           const jobLower = jobOf(n).toLowerCase();
           const learnedText = n.learned_note ?? learnedFallback(n.name, jobLower, d);
 
+          const specVersion = specVersionOf(n);
+
           return (
             <div className={styles.agent} key={n.id}>
               <div className={styles.top}>
@@ -382,6 +391,11 @@ export default async function NibbinsPage() {
                 <span className={`${styles.stagepill} ${STAGE_PILL_CLASS[n.stage]}`}>
                   {STAGE_LABEL[n.stage]}
                 </span>
+                {specVersion !== null && (
+                  <span className={styles.vBadge} title={`Spec version ${specVersion}`}>
+                    v{specVersion}
+                  </span>
+                )}
               </div>
 
               <div className={styles.school}>
@@ -461,6 +475,7 @@ export default async function NibbinsPage() {
                       marking: n.marking,
                     }}
                   />
+                  <RetuneDialog nibbinId={n.id} nibbinName={n.name} />
                   <a className={styles.abtn} href="/app/shop">
                     Adopt more →
                   </a>
