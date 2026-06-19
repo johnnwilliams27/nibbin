@@ -22,6 +22,16 @@ import type { AgentSpec, PlanSpec, PlannerTool, TriggerDef } from './types';
 
 export const KEEPER_NODE = 'keeper';
 
+/**
+ * Hard cap on the number of primitive steps a composed spec may carry (Part A —
+ * multi-primitive composition). A composed Nibbin is a small, legible agent: a
+ * handful of ordered primitives, not an unbounded pipeline. The Composer never
+ * proposes more than this, and a user-edited spec that exceeds it is rejected
+ * fail-closed at adopt time. The bound is load-bearing for legibility + cost
+ * (each step is its own gated read/draft sequence), so it is a structural check.
+ */
+export const MAX_COMPOSED_STEPS = 4;
+
 const EVENT_SOURCE = /^(connector|nibbin):[a-z0-9-]+(:[a-z0-9._-]+)?$/;
 const SCHEDULE_KEY = /^[a-z]+(\.[a-z0-9_-]+)?$/;
 
@@ -202,6 +212,8 @@ export function validateTriggerGraph(specs: AgentSpec[]): string[] {
  *    floors, positive ceilings;
  *  - the trigger graph across the account's existing specs + this one is
  *    acyclic (no Nibbin-triggers-Nibbin cycle, §6.2);
+ *  - (multi-primitive, Part A) the spec carries at most MAX_COMPOSED_STEPS
+ *    steps, and no two steps are byte-identical (same capability + same inputs);
  *  - every `step.capability` is a CAPABILITY_REGISTRY id;
  *  - every step's capability is in `toolsAllowlist` (so the runner's allowlist
  *    gate admits it — a step the allowlist would kill is rejected here);
@@ -237,6 +249,42 @@ export function validateComposedSpec(spec: AgentSpec, accountConnections: string
   const steps = spec.steps ?? [];
   if (steps.length === 0) at('a composed spec must have at least one step');
 
+  // Cross-step structural checks (Part A — multi-primitive). The interpreter
+  // runs steps[] linearly, so a multi-primitive spec is safe per-step; these
+  // bound the SHAPE: a composed Nibbin stays a small ordered handful, and the
+  // exact same step is never run twice (a duplicate is either Composer noise or
+  // a user double-add — never intentional, and it would double-draft).
+  if (steps.length > MAX_COMPOSED_STEPS) {
+    at(`a composed spec may have at most ${MAX_COMPOSED_STEPS} steps, got ${steps.length}`);
+  }
+  const seen = new Set<string>();
+  let dupIdx = -1;
+  for (const step of steps) {
+    dupIdx += 1;
+    // Identity = capability id + its bound inputs (order-independent JSON). Two
+    // steps that differ only in params are allowed (e.g. two nudges at different
+    // staleDays); a byte-identical repeat is rejected.
+    const key = `${step.capability}::${stableStringify(step.inputs ?? {})}`;
+    if (seen.has(key)) {
+      at(`step ${dupIdx} is a duplicate of an earlier identical step "${step.capability}" — remove the repeat`);
+    }
+    seen.add(key);
+  }
+
+  // FIX 1 (red-team P2): the FULL connector union across every step, derived
+  // server-side from each step's effectiveTools → home connectors (NEVER from
+  // LLM output). The per-step `cap.requiredConnector` check below only sees each
+  // capability's HOME connector; a cross-resource primitive (e.g.
+  // nudge.unconfirmed-event homed on google-calendar but drafting on gmail via
+  // email.draft) touches connectors its home alone doesn't name. We accumulate
+  // the union here and, after the loop, assert it is BOTH ⊆ granted AND fully
+  // listed in spec.requiredConnectors — so a raw-spec path (adoptSynthesized
+  // with edit undefined) can never omit a non-home connector from
+  // requiredConnectors and slip through on an account missing it. Reuses
+  // `uniqueConnectorsFor` (the same registry tool→connector mapping validateSpec
+  // and validatePlanSpec use) — do not reimplement divergently.
+  const derivedConnectors = new Set<string>();
+
   let idx = -1;
   for (const step of steps) {
     idx += 1;
@@ -245,14 +293,41 @@ export function validateComposedSpec(spec: AgentSpec, accountConnections: string
       at(`step ${idx} capability "${step.capability}" is not a registry capability`);
       continue;
     }
+
+    // FIX 2 (red-team P3): every composed step's capability must be a primitive
+    // OR a pure read — asserted by KIND, not merely by the draft/write branch
+    // below. The interpreter's generic non-primitive draft/write path reads
+    // effectArgs straight from `step.inputs`; for composed specs it is
+    // unreachable ONLY because the draft/write branch below rejects atomic
+    // side-effecting steps. Asserting kind-or-read here is the load-bearing
+    // guard: a capability mis-tagged off `'primitive'` (or a future atomic
+    // side-effecting cap) can never reopen raw-effectArgs injection, regardless
+    // of what the draft/write branch does. A pure read (sideEffect==='read') is
+    // safe — it carries no effectArgs, only a path the read-path guard checks.
+    if (cap.kind !== 'primitive' && cap.sideEffect !== 'read') {
+      at(
+        `step ${idx} capability "${cap.id}" is a ${cap.sideEffect} step that is not a primitive — every composed step must be a primitive or a read (composed side effects must ride a primitive that owns its effectArgs)`,
+      );
+    }
+
+    // FIX 1: contribute this step's connectors to the union. For a primitive,
+    // its effectiveTools map to the real connectors it touches; for an atomic,
+    // its own home connector. (computer_use's pseudo-connector is not a registry
+    // connector, so the powered-by registry mapping naturally drops it — those
+    // never appear in composed specs.)
+    const stepTools = cap.effectiveTools && cap.effectiveTools.length > 0
+      ? cap.effectiveTools
+      : [cap.id];
+    for (const provider of uniqueConnectorsFor(stepTools)) derivedConnectors.add(provider);
+
     // This per-step check intentionally validates ONLY the capability's "home"
     // connector (cap.requiredConnector). For a cross-resource primitive
     // (e.g. nudge.unconfirmed-event reads gcal but drafts on gmail) the home
     // connector is just one of several it touches; full multi-connector
-    // completeness is enforced SEPARATELY by the `requiredConnectors ⊆
-    // accountConnections` loop above and by validateSpec's tool→connector loop
-    // (every effectiveTool must be powered by a required connector). Do NOT
-    // remove that loop thinking this per-step check covers it — it does not.
+    // completeness is enforced by the derived-connector union assertion AFTER
+    // this loop (every effectiveTool's connector must be granted AND in
+    // requiredConnectors) and by validateSpec's tool→connector loop. Do NOT
+    // remove either thinking this per-step check covers it — it does not.
     if (!granted.has(cap.requiredConnector)) {
       at(`step ${idx} needs connector "${cap.requiredConnector}", not connected`);
     }
@@ -299,6 +374,25 @@ export function validateComposedSpec(spec: AgentSpec, accountConnections: string
       const path = (step.inputs as Record<string, unknown> | undefined)?.path;
       const pathProblem = unsafeReadPathReason(path);
       if (pathProblem) at(`step ${idx} read path ${pathProblem}`);
+    }
+  }
+
+  // FIX 1: assert the FULL derived connector union (above) is both granted on
+  // this account AND declared in spec.requiredConnectors. The granted check
+  // closes the cross-resource hole (a primitive's non-home connector — e.g.
+  // gmail for nudge.unconfirmed-event — must be connected, not just its home
+  // google-calendar). The requiredConnectors check closes the raw-spec omission
+  // (a primitive touching gmail must LIST gmail, so the invariant "connectors ⊆
+  // granted for the FULL union" holds for the persisted spec, not just at adopt
+  // time). Fail-closed; message style matches the file (`... not connected` /
+  // `powered by`).
+  const required = new Set(spec.requiredConnectors);
+  for (const provider of derivedConnectors) {
+    if (!granted.has(provider)) {
+      at(`a composed step is powered by connector "${provider}" which is not connected on this account`);
+    }
+    if (!required.has(provider)) {
+      at(`a composed step is powered by connector "${provider}" which is missing from requiredConnectors`);
     }
   }
 
@@ -606,6 +700,18 @@ function coerceUtilityField(
     throw new Error(`utility ${utilId} arg "${key}" must be one of ${(field.values ?? []).join(', ')}`);
   }
   return raw;
+}
+
+/** Deterministic JSON for the duplicate-step identity key: object keys are
+ *  sorted recursively so two steps with the same params in a different key order
+ *  hash identically (a duplicate is a duplicate regardless of key order). */
+function stableStringify(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null';
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
+  const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) =>
+    a < b ? -1 : a > b ? 1 : 0,
+  );
+  return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${stableStringify(v)}`).join(',')}}`;
 }
 
 /** Mirror of the interpreter's assertSafeReadPath, as a reason string (null =

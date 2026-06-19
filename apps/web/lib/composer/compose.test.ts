@@ -90,6 +90,19 @@ const DAILY_OVERVIEW_WF: DiagnosisWorkflow = {
   recommendedNibbin: 'brief',
 };
 
+/** A "morning ops" workflow that BOTH wants a daily brief AND mentions chasing
+ *  overdue invoices → deterministic 2-primitive spec (digest.morning THEN
+ *  nudge.overdue-invoice) when all three connectors are granted. */
+const MORNING_OPS_WF: DiagnosisWorkflow = {
+  key: 'daily.ops',
+  label: 'Running the morning and chasing overdue invoices',
+  category: 'other',
+  hoursPerWeek: 2,
+  frequency: 'daily',
+  friction: 'You want a morning brief to start the day, then chase any overdue invoices that are past due.',
+  recommendedNibbin: 'brief',
+};
+
 function fakeResult(text: string): GenerateResult {
   return {
     text,
@@ -196,6 +209,72 @@ describe('composeSpec', () => {
     expect(result.spec.steps?.[0]?.capability).not.toBe('digest.morning');
     // Whatever it picked must be a gmail-only primitive that passes validation.
     expect(validateComposedSpec(result.spec, ['gmail'])).toEqual([]);
+  });
+
+  it('no-key fallback proposes a VALID 2-primitive spec for a multi-resource morning-ops workflow', async () => {
+    const result = await composeSpec('acct-1', 'user-1', MORNING_OPS_WF, ['google-calendar', 'stripe', 'gmail']);
+    if ('error' in result) throw new Error(result.error);
+    // Ordered: present the brief first, then draft the overdue-invoice nudge.
+    expect(result.spec.steps?.map((s) => s.capability)).toEqual(['digest.morning', 'nudge.overdue-invoice']);
+    // UNION of both primitives' tools + connectors, derived server-side.
+    expect([...result.spec.requiredConnectors].sort()).toEqual(['gmail', 'google-calendar', 'stripe']);
+    expect(result.spec.toolsAllowlist).toContain('invoice.nudge');
+    expect(result.spec.toolsAllowlist).toContain('calendar.read');
+    expect(validateComposedSpec(result.spec, ['google-calendar', 'stripe', 'gmail'])).toEqual([]);
+    expect(result.summary.length).toBeGreaterThan(0);
+  });
+
+  it('stays SINGLE-primitive for the morning-ops workflow when stripe is not granted (fail-safe)', async () => {
+    // Without stripe, nudge.overdue-invoice isn't available, so the multi-step
+    // warrant is skipped — a valid single-primitive brief... but digest.morning
+    // needs stripe too, so it falls back to an available gmail primitive.
+    const result = await composeSpec('acct-1', 'user-1', MORNING_OPS_WF, ['gmail']);
+    if ('error' in result) throw new Error(result.error);
+    expect(result.spec.steps?.length).toBe(1);
+    expect(validateComposedSpec(result.spec, ['gmail'])).toEqual([]);
+  });
+
+  it('accepts a MULTI-STEP model pick on the menu and validates fail-closed', async () => {
+    const generate: Generate = vi.fn(async () =>
+      fakeResult(
+        JSON.stringify({
+          displayName: 'Morning ops',
+          steps: [
+            { capability: 'digest.morning', inputs: {} },
+            { capability: 'nudge.overdue-invoice', inputs: { minDaysLate: 5 } },
+          ],
+          personaPolicy: { tone: 'gentle' },
+        }),
+      ),
+    );
+    const result = await composeSpec(
+      'acct-1', 'user-1', MORNING_OPS_WF, ['google-calendar', 'stripe', 'gmail'], [], generate, testRouter(),
+    );
+    if ('error' in result) throw new Error(result.error);
+    expect(result.spec.steps?.map((s) => s.capability)).toEqual(['digest.morning', 'nudge.overdue-invoice']);
+    expect(result.spec.steps?.[1]?.inputs?.minDaysLate).toBe(5);
+    expect(validateComposedSpec(result.spec, ['google-calendar', 'stripe', 'gmail'])).toEqual([]);
+  });
+
+  it('falls back deterministically when a model multi-step pick has an off-menu step', async () => {
+    const generate: Generate = vi.fn(async () =>
+      fakeResult(
+        JSON.stringify({
+          displayName: 'Bad ops',
+          steps: [
+            { capability: 'digest.morning', inputs: {} },
+            { capability: 'send.everything', inputs: {} },
+          ],
+        }),
+      ),
+    );
+    const result = await composeSpec(
+      'acct-1', 'user-1', MORNING_OPS_WF, ['google-calendar', 'stripe', 'gmail'], [], generate, testRouter(),
+    );
+    if ('error' in result) throw new Error(result.error);
+    // The whole draft is rejected; the deterministic morning-ops proposal stands.
+    expect(result.spec.steps?.every((s) => s.capability !== 'send.everything')).toBe(true);
+    expect(validateComposedSpec(result.spec, ['google-calendar', 'stripe', 'gmail'])).toEqual([]);
   });
 
   it('accepts a model pick on the menu and still validates fail-closed', async () => {

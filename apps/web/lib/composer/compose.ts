@@ -27,6 +27,7 @@ import {
   CAPABILITY_REGISTRY,
   capability,
   validateComposedSpec,
+  MAX_COMPOSED_STEPS,
   type AgentSpec,
   type CapabilityDescriptor,
   type CapabilityStep,
@@ -49,10 +50,77 @@ export interface ComposerProposal {
 }
 export type ComposerResult = ComposerProposal | { error: string };
 
-interface ComposedDraft {
+/* ── Part B — review-before-adopt editing ──────────────────────────────────── */
+
+/**
+ * The named cadences a user may pick for a composed Nibbin's schedule trigger.
+ * Each is a valid SCHEDULE_KEY (`/^[a-z]+(\.[a-z0-9_-]+)?$/`). The `user`
+ * (whenever-you-ask) trigger is always present and is not user-removable.
+ */
+export const COMPOSER_CADENCES = ['daily.morning', 'daily.evening', 'weekly.monday', 'hourly'] as const;
+export type ComposerCadence = (typeof COMPOSER_CADENCES)[number];
+
+/** One editable scalar param on a step (the ONLY per-step thing a user may
+ *  tweak): the primitive's inputSchema field, surfaced with its bounds. */
+export interface EditableParam {
+  key: string;
+  type: 'number' | 'enum';
+  value: number | string;
+  min?: number;
+  max?: number;
+  values?: string[];
+}
+
+/** One step in the editable plan, as the review UI sees it. */
+export interface EditableStep {
+  capability: string;
+  /** Friendly one-line label for the step (from PRIMITIVE_NAME). */
+  label: string;
+  /** The scalar params the user may tweak (empty for paramless primitives). */
+  params: EditableParam[];
+}
+
+/** The full editable surface for a proposal, derived from a validated spec. */
+export interface EditablePlan {
   displayName: string;
+  cadence: ComposerCadence;
+  steps: EditableStep[];
+}
+
+/**
+ * One step's user edit: the capability id (must match a step in the reviewed
+ * proposal — the user can REORDER and REMOVE steps, but never INTRODUCE a new
+ * capability id the proposal didn't contain) + the scalar param values.
+ */
+export interface ComposerStepEdit {
+  capability: string;
+  inputs?: Record<string, unknown>;
+}
+
+/** The user's edit of a composed proposal (Part B). The client sends only this
+ *  — never a raw AgentSpec — and the server re-derives the trusted envelope. */
+export interface ComposerEdit {
+  displayName?: string;
+  cadence?: string;
+  steps: ComposerStepEdit[];
+}
+
+/** One chosen primitive + its scalar params (the LLM/deterministic pick). */
+interface ComposedStepDraft {
   capability: string;
   inputs: Record<string, unknown>;
+}
+
+/**
+ * A composed proposal: an ORDERED list of 1..MAX_COMPOSED_STEPS primitive picks
+ * (Part A — multi-primitive). A single-primitive agent is just `steps.length===1`.
+ * The model/deterministic path only ever chooses primitive ids + scalar params +
+ * order here; the trusted fields (allowlist, connectors, triggers, credit) are
+ * derived server-side in `assembleSpec`.
+ */
+interface ComposedDraft {
+  displayName: string;
+  steps: ComposedStepDraft[];
   personaPolicy?: PersonaPolicy;
 }
 
@@ -86,9 +154,9 @@ function availablePrimitives(accountConnections: string[]): CapabilityDescriptor
   );
 }
 
-export const COMPOSER_SYSTEM_PROMPT = `You are the Composer for Nibbin — you turn one observed workflow into a small, safe agent by choosing ONE capability from a fixed menu and its parameters. You may ONLY pick a capability id from the menu and set its listed parameters within their bounds. You never write code, URLs, email addresses, or message text — the capability already knows how to do its job. Output STRICT JSON only, no prose, no markdown fences, shaped exactly:
-{"displayName": string (<= 40 chars, sentence case, warm, e.g. "Overdue follow-ups"), "capability": string (a menu id), "inputs": object (only the listed params), "personaPolicy": {"tone": string}}
-Pick the capability whose job best fits the workflow. If unsure, pick the first menu item with its default params.`;
+export const COMPOSER_SYSTEM_PROMPT = `You are the Composer for Nibbin — you turn one observed workflow into a small, safe agent by choosing capabilities from a fixed menu and their parameters. You may ONLY pick capability ids from the menu and set their listed parameters within their bounds. You never write code, URLs, email addresses, or message text — each capability already knows how to do its job. Output STRICT JSON only, no prose, no markdown fences, shaped exactly:
+{"displayName": string (<= 40 chars, sentence case, warm, e.g. "Morning ops"), "steps": [{"capability": string (a menu id), "inputs": object (only that capability's listed params)}], "personaPolicy": {"tone": string}}
+Most workflows need ONE step — pick the single capability whose job best fits. Use MULTIPLE steps (in the order they should run, max 4) ONLY when the workflow clearly spans more than one job — e.g. a "morning ops" routine that first presents a brief and then drafts an overdue-invoice nudge. Never repeat the exact same step. If unsure, return a single step with the best-fit capability and its default params.`;
 
 /** One-line, plain description of what each primitive does — shown to the LLM
  *  so it can match a workflow to the right capability. Keyed by primitive id. */
@@ -124,7 +192,24 @@ function menuText(prims: CapabilityDescriptor[]): string {
     .join('\n');
 }
 
-/** Tolerant JSON parse: strips markdown fences, takes the first {...} block. */
+/** One raw step object → a ComposedStepDraft, or null if not well-shaped. */
+function parseStep(raw: unknown): ComposedStepDraft | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const o = raw as Record<string, unknown>;
+  if (typeof o.capability !== 'string') return null;
+  return {
+    capability: o.capability,
+    inputs: o.inputs && typeof o.inputs === 'object' ? (o.inputs as Record<string, unknown>) : {},
+  };
+}
+
+/**
+ * Tolerant JSON parse: strips markdown fences, takes the first {...} block.
+ * Accepts the multi-step shape (`steps: [...]`) and, for robustness, the legacy
+ * single-step shape (`capability` + `inputs` at the top level). Returns null if
+ * no well-shaped step can be extracted. Caps at MAX_COMPOSED_STEPS picks (the
+ * validator re-checks, but we never pass through an over-long list).
+ */
 function parseDraft(text: string): ComposedDraft | null {
   try {
     const stripped = text.replace(/```json\s*|```/g, '').trim();
@@ -132,11 +217,19 @@ function parseDraft(text: string): ComposedDraft | null {
     const end = stripped.lastIndexOf('}');
     if (start === -1 || end === -1 || end < start) return null;
     const obj = JSON.parse(stripped.slice(start, end + 1)) as Record<string, unknown>;
-    if (typeof obj.capability !== 'string') return null;
+
+    let steps: ComposedStepDraft[] = [];
+    if (Array.isArray(obj.steps)) {
+      steps = obj.steps.map(parseStep).filter((s): s is ComposedStepDraft => s !== null);
+    } else if (typeof obj.capability === 'string') {
+      // Legacy single-step shape.
+      const one = parseStep(obj);
+      if (one) steps = [one];
+    }
+    if (steps.length === 0) return null;
     return {
       displayName: typeof obj.displayName === 'string' ? obj.displayName : '',
-      capability: obj.capability,
-      inputs: obj.inputs && typeof obj.inputs === 'object' ? (obj.inputs as Record<string, unknown>) : {},
+      steps: steps.slice(0, MAX_COMPOSED_STEPS),
       personaPolicy:
         obj.personaPolicy && typeof obj.personaPolicy === 'object'
           ? (obj.personaPolicy as PersonaPolicy)
@@ -147,27 +240,42 @@ function parseDraft(text: string): ComposedDraft | null {
   }
 }
 
-/** Assemble a full AgentSpec from a chosen primitive + params. The trusted
- *  fields (allowlist, connectors, triggers, curriculum, credit profile) are set
- *  here, never by the model. */
+/**
+ * Assemble a full AgentSpec from an ordered list of chosen primitives + params
+ * (Part A — multi-primitive). The trusted fields (allowlist, connectors,
+ * triggers, curriculum, credit profile) are derived server-side from the
+ * registry, never from the model:
+ *  - `toolsAllowlist` = the UNION of every step's effectiveTools (the atomic
+ *    tools the primitives yield — the runner gates on those);
+ *  - `requiredConnectors` = the UNIQUE set of connectors those tools need across
+ *    ALL steps (so a 2-primitive ops agent declares every connector it touches).
+ *
+ * `caps[i]` is the resolved descriptor for `draft.steps[i]` (same order/length).
+ */
 function assembleSpec(
-  cap: CapabilityDescriptor,
+  caps: CapabilityDescriptor[],
   draft: ComposedDraft,
   workflow: DiagnosisWorkflow,
 ): AgentSpec {
-  const step: CapabilityStep = { capability: cap.id, inputs: sanitizeInputs(cap, draft.inputs) };
+  const steps: CapabilityStep[] = caps.map((cap, i) => ({
+    capability: cap.id,
+    inputs: sanitizeInputs(cap, draft.steps[i].inputs),
+  }));
+  // UNION the per-step tool/connector sets, order-stable + de-duped.
+  const toolSet = new Set<string>();
+  const connSet = new Set<string>();
+  for (const cap of caps) {
+    for (const t of cap.effectiveTools ?? [cap.id]) toolSet.add(t);
+    for (const c of connectorsFor(cap)) connSet.add(c);
+  }
   const displayName = (draft.displayName || DEFAULT_NAME).trim().slice(0, 40) || DEFAULT_NAME;
   const tone = typeof draft.personaPolicy?.tone === 'string' ? draft.personaPolicy.tone.slice(0, 80) : 'warm, plainspoken';
   return {
     templateKey: null,
     version: 1,
     displayName,
-    // Allowlist = the atomic tools the primitive yields (the runner gates on
-    // those, not the primitive id). requiredConnectors = the UNIQUE set of
-    // connectors those tools need, derived server-side from the registry — so a
-    // cross-resource primitive declares both connectors (never from the LLM).
-    toolsAllowlist: cap.effectiveTools ? [...cap.effectiveTools] : [cap.id],
-    requiredConnectors: connectorsFor(cap),
+    toolsAllowlist: [...toolSet],
+    requiredConnectors: [...connSet],
     triggers: [
       { kind: 'schedule', schedule: 'daily.morning', cooldownSecs: 3600 },
       { kind: 'user' },
@@ -178,9 +286,21 @@ function assembleSpec(
       routineMinApprovals: 5,
     },
     creditProfile: { weightClass: 'standard', ceilings: DEFAULT_CEILINGS },
-    steps: [step],
+    steps,
     personaPolicy: { tone },
   };
+}
+
+/** Resolve every step's descriptor against the AVAILABLE menu; returns null if
+ *  any step names an off-menu/unavailable id (fail-closed → deterministic). */
+function capsForDraft(draft: ComposedDraft, prims: CapabilityDescriptor[]): CapabilityDescriptor[] | null {
+  const caps: CapabilityDescriptor[] = [];
+  for (const s of draft.steps) {
+    const cap = capabilityFor(s.capability, prims);
+    if (!cap) return null;
+    caps.push(cap);
+  }
+  return caps.length > 0 ? caps : null;
 }
 
 /** Keep only schema-declared params with the right primitive type — the
@@ -273,23 +393,106 @@ function mapWorkflowToPrimitive(workflow: DiagnosisWorkflow, prims: CapabilityDe
 }
 
 /**
+ * When the deterministic path should propose a SECOND primitive after the
+ * primary one (Part A — multi-primitive). Conservative by design: the no-model
+ * fallback is single-primitive by default; it only adds a step when the
+ * workflow text clearly describes a "morning ops"-style routine that BOTH
+ * presents a brief AND chases overdue invoices, and BOTH primitives are
+ * available (all their connectors granted). Returns the ordered extra step ids
+ * to append after `primaryId`, or [] for the single-primitive default.
+ *
+ * The order matters: the read-only brief runs first (digest.morning), then the
+ * drafting nudge (nudge.overdue-invoice) — present, then act.
+ */
+function deterministicExtraSteps(
+  workflow: DiagnosisWorkflow,
+  primaryId: string,
+  prims: CapabilityDescriptor[],
+): string[] {
+  const has = (id: string) => prims.some((p) => p.id === id);
+  const text = `${workflow.label} ${workflow.friction ?? ''}`.toLowerCase();
+  // A morning brief that ALSO mentions chasing overdue invoices/payments →
+  // brief THEN invoice nudge. Only when the primary IS the brief and the
+  // invoice primitive is also runnable.
+  const mentionsOverdueMoney =
+    /overdue|past due|unpaid|chase.*(invoice|payment)|(invoice|payment).*(overdue|chase|late|follow)/.test(text);
+  if (primaryId === 'digest.morning' && mentionsOverdueMoney && has('nudge.overdue-invoice')) {
+    return ['nudge.overdue-invoice'];
+  }
+  return [];
+}
+
+/**
  * The deterministic fallback proposal — the best-fit AVAILABLE primitive for
- * this workflow with default params. Used with no model key or on any
- * parse/validation failure of the model output, so synthesis always works
+ * this workflow with default params, OPTIONALLY followed by a second primitive
+ * when the workflow clearly warrants it (Part A). Used with no model key or on
+ * any parse/validation failure of the model output, so synthesis always works
  * (CI-safe). Returns null when no primitive is available.
  */
 function deterministicDraft(workflow: DiagnosisWorkflow, prims: CapabilityDescriptor[]): ComposedDraft | null {
   const id = mapWorkflowToPrimitive(workflow, prims);
   if (!id) return null;
-  return { capability: id, inputs: {}, displayName: PRIMITIVE_NAME[id] ?? DEFAULT_NAME, personaPolicy: { tone: 'warm, plainspoken' } };
+  const extraIds = deterministicExtraSteps(workflow, id, prims);
+  const stepIds = [id, ...extraIds].slice(0, MAX_COMPOSED_STEPS);
+  return {
+    steps: stepIds.map((capId) => ({ capability: capId, inputs: {} })),
+    displayName: (extraIds.length > 0 ? 'Morning ops' : PRIMITIVE_NAME[id]) ?? DEFAULT_NAME,
+    personaPolicy: { tone: 'warm, plainspoken' },
+  };
+}
+
+/**
+ * A human plan for the review card. For a single-primitive spec this is the
+ * familiar one-sentence summary. For a multi-primitive spec (Part A) it lists
+ * the steps in order ("First, …. Then, …."), then names every connection the
+ * agent needs across all steps.
+ */
+function summarize(caps: CapabilityDescriptor[], spec: AgentSpec, workflow: DiagnosisWorkflow): string {
+  if (caps.length === 1) return summarizeStep(caps[0], spec, 0, workflow);
+  const allConns = [...new Set(spec.requiredConnectors)].map(connectorLabel).join(', ');
+  const parts = caps.map((cap, i) => stepClause(cap, spec, i));
+  const ordered = parts
+    .map((clause, i) => (i === 0 ? `First, ${clause}` : `Then, ${clause}`))
+    .join(' ');
+  return `${ordered} It works on “${workflow.label}”, drafts only for your approval until it earns more, and needs your ${allConns} connection${spec.requiredConnectors.length > 1 ? 's' : ''}.`;
+}
+
+/** A short verb-phrase clause for one step in a multi-step plan (no tail). */
+function stepClause(cap: CapabilityDescriptor, spec: AgentSpec, idx: number): string {
+  const p = spec.steps?.[idx]?.inputs ?? {};
+  switch (cap.id) {
+    case 'nudge.overdue-email': {
+      const staleDays = (p.staleDays as number | undefined) ?? 3;
+      return `watch your inbox for threads you haven't answered in ${staleDays} days and draft a warm follow-up.`;
+    }
+    case 'nudge.overdue-invoice': {
+      const minDaysLate = (p.minDaysLate as number | undefined) ?? 0;
+      const window = minDaysLate > 0 ? `more than ${minDaysLate} days past due` : `that have slipped past due`;
+      return `watch your Stripe invoices for ones ${window} and draft a gentle payment nudge.`;
+    }
+    case 'nudge.unconfirmed-event': {
+      const withinDays = (p.withinDays as number | undefined) ?? 7;
+      return `watch your calendar for guests who haven't confirmed in the next ${withinDays} days and draft a friendly confirmation.`;
+    }
+    case 'reply.new-inquiry':
+      return `watch your inbox for a new first-contact inquiry and draft a warm first reply.`;
+    case 'digest.inbox-cleanup': {
+      const topSenders = (p.topSenders as number | undefined) ?? 5;
+      return `scan your inbox for newsletter pile-ups and show a top-${topSenders} keep-or-clear list (read-only).`;
+    }
+    case 'digest.morning':
+      return `pull your day together — next on the calendar, fresh mail, and any overdue invoices — into one short brief (read-only).`;
+    default:
+      return `automate “${cap.id}”.`;
+  }
 }
 
 /** A human sentence for the review card, keyed by primitive id. Reads naturally
- *  for all four primitives and names the connection(s) it needs. */
-function summarize(cap: CapabilityDescriptor, spec: AgentSpec, workflow: DiagnosisWorkflow): string {
+ *  for all six primitives and names the connection(s) it needs. */
+function summarizeStep(cap: CapabilityDescriptor, spec: AgentSpec, idx: number, workflow: DiagnosisWorkflow): string {
   const conns = connectorsFor(cap).map(connectorLabel).join(' and ');
   const tail = `It works on “${workflow.label}”, drafts only until it earns more, and needs your ${conns} connection.`;
-  const p = spec.steps?.[0]?.inputs ?? {};
+  const p = spec.steps?.[idx]?.inputs ?? {};
   switch (cap.id) {
     case 'nudge.overdue-email': {
       const staleDays = (p.staleDays as number | undefined) ?? 3;
@@ -413,9 +616,10 @@ export async function composeSpec(
         outcome: 'ok',
       });
       const parsed = parseDraft(result.text);
-      // Accept the model's pick ONLY if it names an available primitive; else
-      // fall back deterministically (never trust an off-menu id).
-      if (parsed && prims.some((p) => p.id === parsed.capability)) {
+      // Accept the model's pick ONLY if EVERY step names an available primitive;
+      // else fall back deterministically (never trust an off-menu id). A single
+      // off-menu step rejects the whole draft.
+      if (parsed && parsed.steps.length > 0 && parsed.steps.every((s) => prims.some((p) => p.id === s.capability))) {
         draft = parsed;
       }
     } catch (err) {
@@ -447,35 +651,168 @@ export async function composeSpec(
     }
   }
 
-  let cap = capabilityFor(draft.capability, prims);
-  if (!cap) {
-    // Model named an off-menu/unknown id that slipped the earlier guard — fall
-    // back to the deterministic primitive.
+  let caps = capsForDraft(draft, prims);
+  if (!caps) {
+    // A step named an off-menu/unknown id that slipped the earlier guard — fall
+    // back to the deterministic primitive(s).
     draft = baseline;
-    cap = capabilityFor(draft.capability, prims);
+    caps = capsForDraft(draft, prims);
   }
-  if (!cap) return { error: 'No buildable capability for this workflow.' };
+  if (!caps) return { error: 'No buildable capability for this workflow.' };
 
-  let spec = assembleSpec(cap, draft, workflow);
+  let spec = assembleSpec(caps, draft, workflow);
   let problems = validateComposedSpec(spec, accountConnections, existing);
   if (problems.length > 0) {
-    // The model's params produced an invalid spec — retry once with the
-    // deterministic default params before giving up (fail-closed).
+    // The model's picks/params produced an invalid spec (e.g. >cap steps, a
+    // duplicate, a bad param) — retry once with the deterministic default
+    // proposal before giving up (fail-closed).
     const safe = baseline;
-    const safeCap = capabilityFor(safe.capability, prims);
-    if (safeCap) {
-      spec = assembleSpec(safeCap, safe, workflow);
+    const safeCaps = capsForDraft(safe, prims);
+    if (safeCaps) {
+      spec = assembleSpec(safeCaps, safe, workflow);
       problems = validateComposedSpec(spec, accountConnections, existing);
       if (problems.length === 0) {
-        return { spec, summary: summarize(safeCap, spec, workflow) };
+        return { spec, summary: summarize(safeCaps, spec, workflow) };
       }
     }
     return { error: `Proposed agent did not pass validation: ${problems.join('; ')}` };
   }
 
-  return { spec, summary: summarize(cap, spec, workflow) };
+  return { spec, summary: summarize(caps, spec, workflow) };
 }
 
 function capabilityFor(id: string, prims: CapabilityDescriptor[]): CapabilityDescriptor | undefined {
   return prims.find((p) => p.id === id);
+}
+
+/* ── Part B — editing helpers (the user edits WITHIN the validated surface) ─── */
+
+/** The cadence the spec's schedule trigger currently uses (the first schedule
+ *  trigger), defaulting to the standard daily.morning. */
+function cadenceOf(spec: AgentSpec): ComposerCadence {
+  const sched = spec.triggers.find((t) => t.kind === 'schedule')?.schedule;
+  return (COMPOSER_CADENCES as readonly string[]).includes(sched ?? '')
+    ? (sched as ComposerCadence)
+    : 'daily.morning';
+}
+
+/**
+ * Derive the EDITABLE surface for a validated composed spec (Part B). This is
+ * what the review UI renders + lets the user tweak: the name, the cadence, and
+ * — per step — ONLY the scalar params the primitive's inputSchema declares
+ * (staleDays/withinDays/topSenders/minDaysLate), with their bounds. The user
+ * can never see or touch a read path or effectArgs (primitives own those), so
+ * editing can only ever stay within the validated surface.
+ */
+export function editablePlanFromSpec(spec: AgentSpec): EditablePlan {
+  const steps: EditableStep[] = (spec.steps ?? []).map((step) => {
+    const cap = capability(step.capability);
+    const schema = cap?.inputSchema ?? {};
+    const params: EditableParam[] = [];
+    for (const [key, field] of Object.entries(schema)) {
+      if (field.type === 'number') {
+        const v = step.inputs?.[key];
+        params.push({
+          key,
+          type: 'number',
+          value: typeof v === 'number' ? v : (field.default as number | undefined) ?? field.min ?? 0,
+          min: field.min,
+          max: field.max,
+        });
+      } else if (field.type === 'enum') {
+        const v = step.inputs?.[key];
+        params.push({
+          key,
+          type: 'enum',
+          value: typeof v === 'string' ? v : (field.default as string | undefined) ?? (field.values ?? [''])[0],
+          values: field.values,
+        });
+      }
+      // string params are not user-editable scalars in the review UI (none of
+      // the shipped primitives expose one; if added later, surface deliberately).
+    }
+    return { capability: step.capability, label: PRIMITIVE_NAME[step.capability] ?? step.capability, params };
+  });
+  return { displayName: spec.displayName, cadence: cadenceOf(spec), steps };
+}
+
+/**
+ * Apply a user's edit to a reviewed proposal (Part B) and re-derive a FULLY
+ * server-built AgentSpec, then re-validate fail-closed. This is the trust
+ * boundary for editing:
+ *
+ *  - the user may REORDER and REMOVE steps and tweak each step's scalar params
+ *    + the name + the cadence — nothing else;
+ *  - every edited step's capability MUST be one the reviewed proposal already
+ *    contained (an edit can never INTRODUCE a capability the Composer didn't
+ *    propose), and MUST be an available primitive;
+ *  - inputs are sanitized to the primitive's schema (sanitizeInputs drops
+ *    unknown keys + wrong types; the validator re-coerces/bounds-checks);
+ *  - the trusted envelope (toolsAllowlist, requiredConnectors, triggers,
+ *    curriculum, credit) is rebuilt server-side from the registry — the client
+ *    NEVER supplies it;
+ *  - the cadence must be one of COMPOSER_CADENCES; an unknown one is NOT
+ *    refused — it falls back to (defaults to) the reviewed spec's current
+ *    cadence (`cadenceOf(reviewedSpec)`), so an off-menu cadence can never
+ *    widen the schedule, it just leaves it unchanged;
+ *  - `validateComposedSpec` runs fail-closed (≥1 step, ≤cap, no duplicate, every
+ *    connector granted, allowlist ⊇ yielded tools, acyclic) — an edit that fails
+ *    is refused, returned as `{ error }`.
+ *
+ * Deterministic: no model call. Returns the re-derived spec + a fresh summary.
+ */
+export function applyComposerEdit(
+  reviewedSpec: AgentSpec,
+  edit: ComposerEdit,
+  workflowLabel: string,
+  accountConnections: string[],
+  existing: AgentSpec[] = [],
+): ComposerResult {
+  const prims = availablePrimitives(accountConnections);
+
+  // The capabilities the reviewed proposal contained — the user may only choose
+  // among THESE (reorder/remove), never introduce a new one.
+  const allowedCaps = new Set((reviewedSpec.steps ?? []).map((s) => s.capability));
+
+  if (!Array.isArray(edit.steps) || edit.steps.length === 0) {
+    return { error: 'An agent needs at least one step. Add a step back before saving.' };
+  }
+
+  const caps: CapabilityDescriptor[] = [];
+  const draftSteps: ComposedStepDraft[] = [];
+  for (const s of edit.steps) {
+    if (typeof s?.capability !== 'string' || !allowedCaps.has(s.capability)) {
+      return { error: 'That step isn’t part of this proposal — you can reorder or remove steps, not add new ones.' };
+    }
+    const cap = capabilityFor(s.capability, prims);
+    if (!cap) {
+      return { error: 'That step needs a connection you don’t have. Reconnect it or remove the step.' };
+    }
+    caps.push(cap);
+    draftSteps.push({ capability: cap.id, inputs: s.inputs && typeof s.inputs === 'object' ? s.inputs : {} });
+  }
+
+  const cadence: ComposerCadence = (COMPOSER_CADENCES as readonly string[]).includes(edit.cadence ?? '')
+    ? (edit.cadence as ComposerCadence)
+    : cadenceOf(reviewedSpec);
+
+  const draft: ComposedDraft = {
+    displayName: (edit.displayName ?? reviewedSpec.displayName) || DEFAULT_NAME,
+    steps: draftSteps,
+    personaPolicy: reviewedSpec.personaPolicy,
+  };
+
+  // Rebuild the trusted envelope server-side, then OVERRIDE the schedule trigger
+  // with the chosen cadence (the `user` trigger is always kept).
+  const spec = assembleSpec(caps, draft, { label: workflowLabel } as DiagnosisWorkflow);
+  spec.triggers = [
+    { kind: 'schedule', schedule: cadence, cooldownSecs: 3600 },
+    { kind: 'user' },
+  ];
+
+  const problems = validateComposedSpec(spec, accountConnections, existing);
+  if (problems.length > 0) {
+    return { error: `That edit didn’t pass validation: ${problems.join('; ')}` };
+  }
+  return { spec, summary: summarize(caps, spec, { label: workflowLabel } as DiagnosisWorkflow) };
 }
