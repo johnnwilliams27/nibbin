@@ -6,6 +6,14 @@ import styles from './planner.module.css';
 
 export const metadata: Metadata = { title: 'Ask a Nibbin — Nibbin' };
 export const dynamic = 'force-dynamic';
+// The planner Server Actions (startPlanRun / respondToPlanRun in ./actions.ts) run
+// the ReAct loop INLINE in the request. A computer_use plan can launch serverless
+// Chromium (@sparticuz) and its loop wall-clock ceiling is 90s
+// (COMPUTER_USE_CEILINGS.maxWallClockMs). 120s gives headroom over that ceiling for
+// the (~2–5s) Chromium cold-start + teardown while staying well inside Vercel's
+// limit. Server Actions inherit the hosting route segment's maxDuration, so it is
+// set here (the page that renders the action-bearing components).
+export const maxDuration = 120;
 
 export default async function PlannerPage() {
   const { user } = await appSession();
