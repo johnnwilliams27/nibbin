@@ -69,6 +69,39 @@
   max-width: 56ch;
 }
 
+/* Step 1 — freeform text input */
+.choreText {
+  width: 100%;
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.5;
+  padding: 12px 14px;
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--ink);
+  resize: vertical;
+  margin-bottom: 16px;
+  box-sizing: border-box;
+}
+.choreText:focus {
+  outline: none;
+  border-color: var(--moss);
+}
+.choreText::placeholder {
+  color: var(--ink-soft);
+  font-style: italic;
+}
+
+.starterLabel {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+  margin-bottom: 8px;
+}
+
 /* Step 1 — chore cards */
 .choreGrid {
   display: grid;
@@ -184,6 +217,26 @@
   font-size: 13.5px;
   color: var(--moss-deep);
   font-weight: 500;
+}
+
+.thinking {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin-top: 12px;
+  animation: pulse 1.6s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+.fallbackNote {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-soft);
+  margin-top: 10px;
+  font-style: italic;
 }
 .error {
   background: #fbeae6;

@@ -57,9 +57,17 @@ function EggCreature({ species, color }: { species: SpeciesName; color: string }
 export function HatchWizard({ chores, apps }: { chores: ChoreOption[]; apps: string[] }) {
   const [step, setStep] = useState(1);
   const [chore, setChore] = useState<number | null>(null);
+  /**
+   * The primary input: free text from the user. Starter card clicks fill this
+   * text (they no longer advance the step automatically — clicking a card is a
+   * quick-fill, not a selection gate). `choreText` is what gets passed to the
+   * server action; the `chore` index is kept for the fallback path only.
+   */
+  const [choreText, setChoreText] = useState('');
   const [selApps, setSelApps] = useState<Set<string>>(new Set());
   const [name, setName] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [synthesizing, setSynthesizing] = useState(false);
   const [result, setResult] = useState<HatchResult | null>(null);
 
   // Optional hatch-time appearance. Defaults match the playful egg; only sent
@@ -72,22 +80,29 @@ export function HatchWizard({ chores, apps }: { chores: ChoreOption[]; apps: str
 
   const enrolled = result?.ok === true;
 
+  /** Step 1 is valid when the user has typed something OR selected a starter card. */
+  const step1Valid = choreText.trim().length > 0 || chore !== null;
+
   async function onEnroll() {
-    if (chore === null || name.trim().length === 0 || submitting || enrolled) return;
+    const hasFreeText = choreText.trim().length > 0;
+    if ((!hasFreeText && chore === null) || name.trim().length === 0 || submitting || enrolled) return;
     setSubmitting(true);
+    setSynthesizing(hasFreeText);
     setResult(null);
     try {
       const res = await hatchNibbin({
-        chore,
+        chore: chore ?? 0,
         apps: [...selApps],
         name,
         appearance: customizing ? { species, palette, accessory, marking } : undefined,
+        choreText: hasFreeText ? choreText.trim() : undefined,
       });
       setResult(res);
     } catch {
       setResult({ ok: false, error: 'Something went wrong hatching your egg. Try again.' });
     } finally {
       setSubmitting(false);
+      setSynthesizing(false);
     }
   }
 
@@ -105,17 +120,38 @@ export function HatchWizard({ chores, apps }: { chores: ChoreOption[]; apps: str
             <InfoTooltip content="Your Nibbin will watch how you handle this task and draft work for your approval — the more specific you are, the faster it learns." />
           </h2>
           <p className={styles.sub}>
-            Pick the thing you&rsquo;re tired of doing. Plain words are fine — no flowcharts, no
-            settings.
+            Describe the thing you&rsquo;re tired of doing — plain words are fine. Or pick a starter
+            below to fill it in.
           </p>
+
+          {/* Primary freeform input */}
+          <textarea
+            className={styles.choreText}
+            placeholder="e.g. Remind clients who haven't paid their invoice after 3 days…"
+            maxLength={400}
+            rows={3}
+            value={choreText}
+            onChange={(e) => {
+              setChoreText(e.target.value);
+              // Clear the starter-card selection when the user types their own text.
+              if (e.target.value.length > 0) setChore(null);
+            }}
+            aria-label="Describe the chore you want handled"
+          />
+
+          {/* Starter cards — clicking fills the textarea as a quick-fill */}
+          <p className={styles.starterLabel}>Or start with one of these:</p>
           <div className={styles.choreGrid}>
             {chores.map((c, i) => (
               <button
                 key={c.label}
                 type="button"
-                className={`${styles.chore} ${chore === i ? styles.choreSel : ''}`}
-                aria-pressed={chore === i}
-                onClick={() => setChore(i)}
+                className={`${styles.chore} ${chore === i && choreText.trim().length === 0 ? styles.choreSel : ''}`}
+                aria-pressed={chore === i && choreText.trim().length === 0}
+                onClick={() => {
+                  setChore(i);
+                  setChoreText('');
+                }}
               >
                 {c.label}
                 <small>{c.small}</small>
@@ -127,7 +163,7 @@ export function HatchWizard({ chores, apps }: { chores: ChoreOption[]; apps: str
             <button
               type="button"
               className={`${styles.btn} ${styles.btnSolid}`}
-              disabled={chore === null}
+              disabled={!step1Valid}
               onClick={() => setStep(2)}
             >
               Next →
@@ -307,7 +343,13 @@ export function HatchWizard({ chores, apps }: { chores: ChoreOption[]; apps: str
                 disabled={name.trim().length === 0 || enrolled || submitting}
                 onClick={onEnroll}
               >
-                {enrolled ? '✓ Enrolled' : submitting ? 'Enrolling…' : 'Enroll in Agent School'}
+                {enrolled
+                  ? '✓ Enrolled'
+                  : synthesizing
+                    ? 'Building your Nibbin…'
+                    : submitting
+                      ? 'Enrolling…'
+                      : 'Enroll in Agent School'}
               </button>
             </div>
             {/* Surface the failure right under the action that triggered it
@@ -329,12 +371,21 @@ export function HatchWizard({ chores, apps }: { chores: ChoreOption[]; apps: str
               its first work for your approval. Nothing is ever sent without you until it graduates.
             </p>
 
+            {synthesizing && !enrolled && (
+              <div className={styles.thinking} role="status" aria-live="polite">
+                Crafting a custom Nibbin from your description…
+              </div>
+            )}
+
             {enrolled && (
               <div className={styles.enrolled} role="status">
                 🎒 <b>{result?.name ?? name.trim()}</b> is enrolled in Agent School. It&rsquo;s
                 watching how you handle this chore now — expect its first drafts in your Today feed
                 within a few days.
               </div>
+            )}
+            {enrolled && result?.fallbackNote && (
+              <p className={styles.fallbackNote}>{result.fallbackNote}</p>
             )}
           </div>
           <div className={styles.nav}>
