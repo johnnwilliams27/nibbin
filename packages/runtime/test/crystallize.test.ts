@@ -64,6 +64,22 @@ describe('crystallizeTranscript — steps from the trace', () => {
     expect(out).toEqual({ ok: false, reason: 'ungeneralizable', detail: expect.any(String) });
   });
 
+  it('drops a leading decorative listing read that a following primitive subsumes (FIX 2)', () => {
+    // A listing read (no embedded id) followed by a primitive that owns its own
+    // read of the same connector. The read is dead weight — the linear
+    // interpreter would discard it — so the extract is JUST the primitive.
+    const out = crystallizeTranscript(
+      runWith([
+        { idx: 0, pick: { tool: 'email.read', args: { path: '/messages?q=is:unread' } }, observation: 'read 3' },
+        { idx: 1, pick: { tool: 'nudge.overdue-email', args: { staleDays: 3 } }, observation: 'drafted' },
+        { idx: 2, pick: { done: true, artifact: {} } },
+      ]),
+    );
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    expect(out.steps).toEqual([{ capability: 'nudge.overdue-email', inputs: { staleDays: 3 } }]);
+  });
+
   it('marks a utility pick in the path as utility_in_path', () => {
     const out = crystallizeTranscript(
       runWith([
@@ -79,6 +95,28 @@ describe('crystallizeTranscript — steps from the trace', () => {
 describe('crystallizabilityGate — fail-closed', () => {
   it('accepts a primitive draft → {ok:true, steps}', () => {
     const out = crystallizabilityGate(runWith(primitiveDoneTranscript()), ['gmail']);
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    expect(out.steps).toEqual([{ capability: 'nudge.overdue-email', inputs: { staleDays: 3 } }]);
+  });
+
+  it('crystallizes a listing-read → primitive run to JUST the primitive (dead read dropped, FIX 2)', () => {
+    const readPlan: PlanSpec = {
+      ...PLAN,
+      toolsAllowlist: ['email.read', 'nudge.overdue-email', 'done'],
+    };
+    const out = crystallizabilityGate(
+      runWith(
+        [
+          { idx: 0, pick: { tool: 'email.read', args: { path: '/messages?q=is:unread' } }, observation: 'read 3' },
+          { idx: 1, pick: { tool: 'nudge.overdue-email', args: { staleDays: 3 } }, observation: 'drafted' },
+          { idx: 2, pick: { done: true, artifact: {} } },
+        ],
+        'done',
+        readPlan,
+      ),
+      ['gmail'],
+    );
     expect(out.ok).toBe(true);
     if (!out.ok) return;
     expect(out.steps).toEqual([{ capability: 'nudge.overdue-email', inputs: { staleDays: 3 } }]);

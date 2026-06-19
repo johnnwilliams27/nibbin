@@ -58,12 +58,47 @@ function readPathEmbedsResourceId(path: unknown): boolean {
 }
 
 /**
+ * The set of `requiredConnector`s a primitive's reads touch — i.e. the resource
+ * families a following primitive "owns its own read of". `nudge.overdue-email`
+ * reads gmail; `digest.morning` reads gmail+gcal+stripe. A leading atomic read
+ * of any of these connectors is subsumed by (and therefore made decorative by)
+ * the primitive.
+ */
+function primitiveReadConnectors(cap: ReturnType<typeof capability>): Set<string> {
+  const conns = new Set<string>();
+  if (!cap || cap.kind !== 'primitive') return conns;
+  for (const t of cap.effectiveTools ?? []) {
+    const dep = capability(t);
+    if (dep && dep.sideEffect === 'read') conns.add(dep.requiredConnector);
+  }
+  return conns;
+}
+
+/**
  * Deterministically extract the executable CapabilityStep[] from a plan run's
  * transcript. Returns the ordered steps, or the FIRST refusal marker
  * (utility_in_path / ungeneralizable). `done`/`ask_human` turns are ignored for
  * step extraction (the gate inspects them separately).
+ *
+ * A LEADING atomic READ that a following primitive subsumes is DROPPED, not
+ * emitted (design §2): the primitive re-reads + re-detects on its own, so the
+ * recurrence stays correct + egg-gated; emitting the read would leave a dead
+ * step whose result the linear interpreter discards — a misleading extract. We
+ * collect the reads first, then drop the ones a later same-connector primitive
+ * owns. (A raw atomic read NOT subsumed by any following primitive is still kept
+ * as a listing step; the gate's no_action check then refuses a read-only run.)
  */
 export function crystallizeTranscript(planRun: PlanRunState): CrystalResult {
+  // First pass: which connectors do downstream primitives read on their own?
+  const primitiveReadConns = new Set<string>();
+  for (const turn of planRun.transcript) {
+    const pick = turn.pick;
+    if (!isToolPick(pick)) continue;
+    if (plannerTool(pick.tool)) continue;
+    const cap = capability(pick.tool);
+    for (const c of primitiveReadConnectors(cap)) primitiveReadConns.add(c);
+  }
+
   const steps: CapabilityStep[] = [];
   for (const turn of planRun.transcript) {
     const pick = turn.pick;
@@ -108,6 +143,14 @@ export function crystallizeTranscript(planRun: PlanRunState): CrystalResult {
         reason: 'ungeneralizable',
         detail: `read path "${String(path)}" embeds a run-specific resource id — not reusable`,
       };
+    }
+    // Drop a decorative read a downstream primitive owns: the primitive re-reads
+    // this same connector itself, so the human's observation-dependent decision
+    // is carried by the primitive, not this dead leading read. Emitting it would
+    // leave a step the linear interpreter discards. (A read NOT subsumed by any
+    // primitive is kept; the no_action gate then refuses the read-only run.)
+    if (primitiveReadConns.has(cap.requiredConnector)) {
+      continue;
     }
     steps.push({ capability: tool, inputs: { path } });
   }
