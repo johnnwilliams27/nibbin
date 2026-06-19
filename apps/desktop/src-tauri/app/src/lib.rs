@@ -17,8 +17,9 @@ use tauri_plugin_global_shortcut::GlobalShortcutExt;
 
 /// C6 — the global pause hotkey. The handler appends a pause command to the
 /// daemon's control channel; the daemon's atomic gate kills forwarding. The
-/// hotkey→file→gate path is timed in the bring-up checklist (<100ms budget;
-/// the gate itself is wait-free, see nibbin-capture::gate).
+/// gate flip is wait-free, but the end-to-end hotkey→file→daemon-poll→gate path
+/// is bounded by the daemon's poll interval (~250ms) — not a sub-100ms number
+/// (see nibbin-capture::gate; gate #22).
 const PAUSE_SHORTCUT: &str = "CmdOrCtrl+Shift+.";
 
 /// The hosted web origin embedded in the Grove tab. Pinned at build time;

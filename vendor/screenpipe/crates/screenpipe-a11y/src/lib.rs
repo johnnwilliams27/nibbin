@@ -85,6 +85,12 @@ pub use platform::{
 #[cfg(target_os = "windows")]
 pub use platform::windows_uia::{get_window_info, UiaContext};
 
+// Screen-lock state (compat shim). Re-exported at the crate root so the Nibbin
+// capture adapter can call `screenpipe_a11y::set_screen_locked(..)` from its
+// WTS session-notification handler and `screenpipe_a11y::screen_is_locked()`
+// from poll() to skip capturing the secure desktop (D4 / CB4).
+pub use local_compat::{screen_is_locked, set_screen_locked};
+
 /// Prelude for convenient imports
 pub mod prelude {
     pub use crate::activity_feed::{ActivityFeed, ActivityKind, CaptureParams};

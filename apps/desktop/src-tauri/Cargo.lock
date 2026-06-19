@@ -2371,6 +2371,7 @@ name = "nibbin-capture"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "log",
  "nibbin-redaction",
  "screenpipe-a11y",
  "windows 0.58.0",

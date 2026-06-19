@@ -44,6 +44,9 @@ mod lock_state {
     pub fn screen_is_locked() -> bool {
         SCREEN_LOCKED.load(Ordering::SeqCst)
     }
+    // Set on WTS session lock/unlock (WM_WTSSESSION_CHANGE) by the Nibbin
+    // capture adapter's input-hook thread; read by the capture loop to skip the
+    // secure desktop. Also exercised by the windows_uia tests.
     pub fn set_screen_locked(v: bool) {
         SCREEN_LOCKED.store(v, Ordering::SeqCst);
     }

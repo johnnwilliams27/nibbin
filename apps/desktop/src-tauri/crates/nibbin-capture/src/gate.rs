@@ -1,4 +1,7 @@
-//! C6 — "Pause everything with one hotkey", kill in <100ms.
+//! C6 — "Pause everything with one hotkey". The gate flip itself is wait-free
+//! (sub-millisecond); the end-to-end hotkey→capture-stop is bounded by the
+//! daemon's poll interval (~250ms), so the user-facing promise is "one hotkey",
+//! not a sub-100ms latency number (gate #22 — don't publish <100ms end-to-end).
 //!
 //! The gate is a single AtomicBool. The hotkey handler calls `pause()` (one
 //! store, nanoseconds); the capture loop checks `is_paused()` before
@@ -37,9 +40,10 @@ mod tests {
     use super::*;
     use std::time::{Duration, Instant};
 
-    /// C6's budget is <100ms from hotkey to dead capture. The gate itself is
-    /// nanoseconds; this test proves a running forward-loop observes the flip
-    /// well inside the budget even under contention.
+    /// The gate flip is wait-free (nanoseconds): this test proves a running
+    /// forward-loop observes `pause()` well inside 100ms even under contention.
+    /// This covers only the in-process gate mechanism — the end-to-end
+    /// hotkey→capture-stop also includes the daemon poll interval (~250ms).
     #[test]
     fn pause_observed_under_100ms() {
         let gate = CaptureGate::new();
