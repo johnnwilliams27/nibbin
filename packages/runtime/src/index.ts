@@ -21,6 +21,7 @@ export * from './primitives/reply-new-inquiry';
 export * from './primitives/digest-inbox-cleanup';
 export * from './primitives/digest-morning';
 export * from './interpreter';
+export * from './browser';
 export * from './utilities';
 export * from './events';
 export * from './validate';
