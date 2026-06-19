@@ -21,6 +21,11 @@ export default defineConfig({
       '@nibbin/drip': fileURLToPath(new URL('./packages/drip/src/index.ts', import.meta.url)),
       '@nibbin/email': fileURLToPath(new URL('./packages/email/src/index.ts', import.meta.url)),
       '@nibbin/channels': fileURLToPath(new URL('./packages/channels/src/index.ts', import.meta.url)),
+      // Versioning slice 1 (Task 2): retune-actions.ts imports validateComposedSpec +
+      // validateTriggerGraph directly from @nibbin/runtime; @nibbin/connectors is a
+      // transitive dep of validate.ts. Both were missing from the alias map.
+      '@nibbin/runtime': fileURLToPath(new URL('./packages/runtime/src/index.ts', import.meta.url)),
+      '@nibbin/connectors': fileURLToPath(new URL('./packages/connectors/src/index.ts', import.meta.url)),
     },
   },
   test: {
