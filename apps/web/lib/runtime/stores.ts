@@ -15,11 +15,14 @@ import type {
   GrantStore,
   IdempotencyClaim,
   IdempotencyStore,
+  OpenTrainingRequest,
   ProductEvent,
   ResumeOutcome,
   RoutineStore,
   RunStore,
   StepRecord,
+  TrainingStore,
+  TrainingWindow,
 } from '@nibbin/runtime';
 import type { SendRecordStore } from '@nibbin/connectors';
 import { isProductEventName } from '@nibbin/runtime';
@@ -123,6 +126,106 @@ export class SupabaseRoutineStore implements RoutineStore {
       .in('run_id', runIds);
     if (e2) throw new Error(`routine approval count failed: ${e2.message}`);
     return count ?? 0;
+  }
+}
+
+/**
+ * Training Mode (§18.1) store. STRICTLY ADDITIVE to School: it never touches the
+ * gate path. `open`/`close` ride the membership-checked training_open /
+ * training_close RPCs (caller's session — RLS holds); `recordSample` rides the
+ * service-only training_sample RPC (the scheduler consumes a budget unit; a
+ * client can never accelerate its own sampling). `active` is an RLS-scoped read
+ * of the single open, in-time-box row — account-scoped by RLS so one account's
+ * window can never be read against another's agent.
+ */
+function rowToWindow(r: {
+  id: string;
+  account_id: string;
+  nibbin_id: string;
+  started_at: string;
+  expires_at: string;
+  max_runs: number;
+  runs_used: number;
+  novelty: boolean;
+  ended_at: string | null;
+  ended_reason: string | null;
+}): TrainingWindow {
+  return {
+    id: r.id,
+    accountId: r.account_id,
+    nibbinId: r.nibbin_id,
+    startedAtMs: new Date(r.started_at).getTime(),
+    expiresAtMs: new Date(r.expires_at).getTime(),
+    maxRuns: r.max_runs,
+    runsUsed: r.runs_used,
+    novelty: r.novelty,
+    ...(r.ended_at ? { endedAtMs: new Date(r.ended_at).getTime() } : {}),
+    ...(r.ended_reason ? { endedReason: r.ended_reason as TrainingWindow['endedReason'] } : {}),
+  };
+}
+
+export class SupabaseTrainingStore implements TrainingStore {
+  constructor(private readonly svc: Service) {}
+
+  async active(accountId: string, nibbinId: string, nowMs: number): Promise<TrainingWindow | null> {
+    const { data, error } = await this.svc
+      .from('training_sessions')
+      .select('id, account_id, nibbin_id, started_at, expires_at, max_runs, runs_used, novelty, ended_at, ended_reason')
+      .eq('account_id', accountId)
+      .eq('nibbin_id', nibbinId)
+      .is('ended_at', null)
+      .gt('expires_at', new Date(nowMs).toISOString())
+      .maybeSingle();
+    if (error) throw new Error(`training active lookup failed: ${error.message}`);
+    if (!data) return null;
+    const w = rowToWindow(data);
+    // double-check the budget bound client-side (the row should be auto-closed,
+    // but a stale read must never sample over budget).
+    return w.runsUsed >= w.maxRuns ? null : w;
+  }
+
+  async open(req: OpenTrainingRequest, _nowMs: number): Promise<TrainingWindow> {
+    const { data, error } = await this.svc.rpc('training_open', {
+      p_nibbin: req.nibbinId,
+      p_duration_secs: Math.round(req.durationMs / 1000),
+      p_max_runs: req.maxRuns,
+      p_novelty: req.novelty,
+    });
+    if (error) throw new Error(`training_open failed: ${error.message}`);
+    const row = (Array.isArray(data) ? data[0] : data) as Parameters<typeof rowToWindow>[0] | null;
+    if (!row) throw new Error('training_open returned nothing');
+    return rowToWindow(row);
+  }
+
+  async recordSample(window: TrainingWindow, nowMs: number): Promise<TrainingWindow> {
+    const { data, error } = await this.svc.rpc('training_sample', { p_nibbin: window.nibbinId });
+    if (error) throw new Error(`training_sample failed: ${error.message}`);
+    // training_sample returns runs_remaining (or NULL when it did NOT sample).
+    const remaining = (Array.isArray(data) ? data[0] : data) as number | null;
+    if (remaining === null) {
+      // window closed/over-budget/expired — reflect a spent window to the caller.
+      return { ...window, runsUsed: window.maxRuns, endedAtMs: nowMs, endedReason: 'budget' };
+    }
+    const runsUsed = window.maxRuns - remaining;
+    const atBudget = runsUsed >= window.maxRuns;
+    return {
+      ...window,
+      runsUsed,
+      ...(atBudget ? { endedAtMs: nowMs, endedReason: 'budget' as const } : {}),
+    };
+  }
+
+  async close(
+    accountId: string,
+    nibbinId: string,
+    reason: TrainingWindow['endedReason'],
+    _nowMs: number,
+  ): Promise<void> {
+    const { error } = await this.svc.rpc('training_close', {
+      p_nibbin: nibbinId,
+      p_reason: reason ?? 'user',
+    });
+    if (error) throw new Error(`training_close failed: ${error.message}`);
   }
 }
 

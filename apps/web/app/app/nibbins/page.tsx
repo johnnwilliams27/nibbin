@@ -6,6 +6,7 @@ import { AppShell } from '../../../components/shell/AppShell';
 import { NoteRefresher } from './NoteRefresher';
 import { NibbinEditor } from './NibbinEditor';
 import { BackToDrafts } from './BackToDrafts';
+import { TrainingToggle, type TrainingState } from './TrainingToggle';
 import { refreshNibbinNote } from './actions';
 import styles from './nibbins.module.css';
 
@@ -74,6 +75,12 @@ interface ApprovalRow {
   decision: string;
   edit_distance: number;
   decided_at: string;
+}
+interface TrainingRow {
+  nibbin_id: string;
+  expires_at: string;
+  max_runs: number;
+  runs_used: number;
 }
 
 function specOf(n: NibbinRow): SpecRow | null {
@@ -208,30 +215,54 @@ export default async function NibbinsPage() {
   // its spec, mirroring app/page.tsx + shop) and one runs query for the whole
   // account; approvals are joined to the account's runs. We aggregate per nibbin
   // in app code so each card reflects real run/approval history.
-  const [{ data: nibbinsData }, { data: runsData }, { data: approvalsData }] = await Promise.all([
-    supabase
-      .from('nibbins')
-      .select(
-        'id, name, species, stage, status, palette, accessory, marking, stage_changed_at, hatched_at, learned_note, learned_note_runs, agent_specs(display_name, template_key)',
-      )
-      .eq('account_id', accountId)
-      .eq('kind', 'specialist')
-      .order('hatched_at', { ascending: true }),
-    supabase
-      .from('runs')
-      .select('id, nibbin_id, status, created_at')
-      .eq('account_id', accountId)
-      .order('created_at', { ascending: false }),
-    supabase
-      .from('approvals')
-      .select('run_id, decision, edit_distance, decided_at')
-      .eq('account_id', accountId)
-      .order('decided_at', { ascending: false }),
-  ]);
+  const nowIso = new Date().toISOString();
+  const [{ data: nibbinsData }, { data: runsData }, { data: approvalsData }, { data: trainingData }] =
+    await Promise.all([
+      supabase
+        .from('nibbins')
+        .select(
+          'id, name, species, stage, status, palette, accessory, marking, stage_changed_at, hatched_at, learned_note, learned_note_runs, agent_specs(display_name, template_key)',
+        )
+        .eq('account_id', accountId)
+        .eq('kind', 'specialist')
+        .order('hatched_at', { ascending: true }),
+      supabase
+        .from('runs')
+        .select('id, nibbin_id, status, created_at')
+        .eq('account_id', accountId)
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('approvals')
+        .select('run_id, decision, edit_distance, decided_at')
+        .eq('account_id', accountId)
+        .order('decided_at', { ascending: false }),
+      // §18.1: the open (unended, in-time-box) training window per agent, if any.
+      // RLS scopes this to the account — a window can't leak across accounts.
+      supabase
+        .from('training_sessions')
+        .select('nibbin_id, expires_at, max_runs, runs_used')
+        .eq('account_id', accountId)
+        .is('ended_at', null)
+        .gt('expires_at', nowIso),
+    ]);
 
   const nibbins = (nibbinsData ?? []) as unknown as NibbinRow[];
   const runs = (runsData ?? []) as RunRow[];
   const approvals = (approvalsData ?? []) as ApprovalRow[];
+  const training = (trainingData ?? []) as TrainingRow[];
+
+  // Index the open training window per nibbin (budget-bounded; only rows still
+  // under budget surface as active).
+  const trainingByNibbin = new Map<string, TrainingState>();
+  for (const t of training) {
+    const remaining = t.max_runs - t.runs_used;
+    if (remaining <= 0) continue; // budget spent → not active
+    trainingByNibbin.set(t.nibbin_id, {
+      active: true,
+      runsRemaining: remaining,
+      expiresAtMs: new Date(t.expires_at).getTime(),
+    });
+  }
 
   // Index runs by nibbin, and approvals by the nibbin their run belongs to.
   const runsByNibbin = new Map<string, RunRow[]>();
@@ -399,6 +430,13 @@ export default async function NibbinsPage() {
                   )}
                 </span>
                 <span style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  {(n.stage === 'student' || n.stage === 'senior') && (
+                    <TrainingToggle
+                      nibbinId={n.id}
+                      name={n.name}
+                      state={trainingByNibbin.get(n.id) ?? { active: false }}
+                    />
+                  )}
                   {(n.stage === 'senior' || n.stage === 'grad') && (
                     <BackToDrafts nibbinId={n.id} name={n.name} />
                   )}

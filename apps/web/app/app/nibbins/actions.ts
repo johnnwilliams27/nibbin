@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { MIN_WINDOW_MS, MAX_WINDOW_MS, MAX_TRAINING_RUNS } from '@nibbin/runtime';
 import { appSession } from '../../../lib/auth/app-session';
 import { serviceClient } from '../../../lib/supabase/service';
 import { refreshLearnedNote } from '../../../lib/nibbins/learned-note';
@@ -74,6 +75,70 @@ export async function updateNibbinAppearance(
 
   revalidatePath('/app/nibbins');
   revalidatePath('/app');
+  return { ok: true };
+}
+
+export interface TrainingResult {
+  ok: boolean;
+  error?: string;
+}
+
+/**
+ * Opt an agent into Training Mode (§18.1) — a time-boxed, budget-bounded window
+ * during which the scheduler MAY sample more triggers so the agent surfaces more
+ * drafts-for-approval and accumulates School's promotion signal faster. STRICTLY
+ * ADDITIVE: it grants no autonomy and changes no gate — every produced draft
+ * still rides the unchanged School gate, and promotion still requires the full
+ * threshold. Calls the membership-checked training_open RPC under the caller's
+ * session; the SQL clamps the bounds (we also clamp here for an honest UI).
+ */
+export async function openTrainingAction(
+  nibbinId: string,
+  opts?: { durationMs?: number; maxRuns?: number; novelty?: boolean },
+): Promise<TrainingResult> {
+  const id = nibbinId?.trim();
+  if (!id) return { ok: false, error: 'Missing nibbin.' };
+
+  let supabase;
+  try {
+    ({ supabase } = await appSession());
+  } catch {
+    return { ok: false, error: 'You need to be signed in.' };
+  }
+
+  // Conservative defaults: a 7-day window, 50 extra runs (clamped to bounds).
+  const durationMs = Math.min(Math.max(opts?.durationMs ?? 7 * 24 * 60 * 60 * 1000, MIN_WINDOW_MS), MAX_WINDOW_MS);
+  const maxRuns = Math.min(Math.max(Math.floor(opts?.maxRuns ?? 50), 1), MAX_TRAINING_RUNS);
+
+  const { error } = await supabase.rpc('training_open', {
+    p_nibbin: id,
+    p_duration_secs: Math.round(durationMs / 1000),
+    p_max_runs: maxRuns,
+    p_novelty: opts?.novelty ?? false,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath('/app/nibbins');
+  return { ok: true };
+}
+
+/** Opt an agent out of Training Mode — one click, immediate. Member-checked
+ *  training_close RPC under the caller's session. */
+export async function closeTrainingAction(nibbinId: string): Promise<TrainingResult> {
+  const id = nibbinId?.trim();
+  if (!id) return { ok: false, error: 'Missing nibbin.' };
+
+  let supabase;
+  try {
+    ({ supabase } = await appSession());
+  } catch {
+    return { ok: false, error: 'You need to be signed in.' };
+  }
+
+  const { error } = await supabase.rpc('training_close', { p_nibbin: id, p_reason: 'user' });
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath('/app/nibbins');
   return { ok: true };
 }
 
