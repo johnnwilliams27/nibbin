@@ -73,13 +73,14 @@ export function buildGateDeps(svc: ReturnType<typeof serviceClient>): TurnGateDe
         // Fail closed: if the RPC errors, deny the turn rather than allow
         // an ungated call (AS-§11 / N15).
         console.error('[channels] channel_turn_take rpc failed — failing closed', error.message);
-        return { granted: false, turns: 0, channelSpent: 0 };
+        return { granted: false, turns: 0, channelSpent: 0, warn: false };
       }
       const row = Array.isArray(data) ? data[0] : data;
       return {
         granted: Boolean(row?.granted),
         turns: Number(row?.turns ?? 0),
         channelSpent: Number(row?.channel_spent ?? 0),
+        warn: Boolean(row?.warn),
       };
     },
 

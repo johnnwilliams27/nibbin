@@ -137,7 +137,7 @@ describe.skipIf(!dbAvailable)('channel budgets RLS + channel_turn_take (N15)', (
         const row = await h.as(service, async (c) =>
           (
             await c.query(
-              `select granted, turns, channel_spent from public.channel_turn_take($1, $2, $3, 'sms', $4)`,
+              `select granted, turns, channel_spent, warn from public.channel_turn_take($1, $2, $3, 'sms', $4)`,
               [accountB, DAY, LIMIT, CAP],
             )
           ).rows[0],
@@ -149,6 +149,8 @@ describe.skipIf(!dbAvailable)('channel budgets RLS + channel_turn_take (N15)', (
       for (let i = 0; i < LIMIT; i++) {
         expect(results[i].granted).toBe(true);
         expect(Number(results[i].turns)).toBe(i + 1);
+        // No soft-warn expected (spend is 0, cap is huge)
+        expect(results[i].warn).toBe(false);
       }
       // The (LIMIT+1)th call is denied
       expect(results[LIMIT].granted).toBe(false);
@@ -193,7 +195,7 @@ describe.skipIf(!dbAvailable)('channel budgets RLS + channel_turn_take (N15)', (
       const row = await h.as(service, async (c) =>
         (
           await c.query(
-            `select granted, turns, channel_spent from public.channel_turn_take($1, $2, 100, 'sms', $3)`,
+            `select granted, turns, channel_spent, warn from public.channel_turn_take($1, $2, 100, 'sms', $3)`,
             [accountA, DAY, LOW_CAP],
           )
         ).rows[0],
@@ -239,7 +241,7 @@ describe.skipIf(!dbAvailable)('channel budgets RLS + channel_turn_take (N15)', (
       const row = await h.as(service, async (c) =>
         (
           await c.query(
-            `select granted from public.channel_turn_take($1, $2, 10, 'sms', 500000)`,
+            `select granted, warn from public.channel_turn_take($1, $2, 10, 'sms', 500000)`,
             [accountB, DAY],
           )
         ).rows[0],

@@ -47,7 +47,7 @@ afterEach(() => {
 type RpcArgs = Record<string, unknown>;
 
 function makeMockSvc(rpcResult: { data: unknown; error: null | { message: string } } = {
-  data: { granted: true, turns: 1, channel_spent: 0 },
+  data: { granted: true, turns: 1, channel_spent: 0, warn: false },
   error: null,
 }) {
   const calls: Array<{ method: string; args: RpcArgs }> = [];
@@ -150,5 +150,32 @@ describe('buildGateDeps — take() spend-cap routing', () => {
     expect(result.granted).toBe(false);
     expect(result.turns).toBe(0);
     expect(result.channelSpent).toBe(0);
+    expect(result.warn).toBe(false);
+  });
+
+  it('surfaces warn:true when the rpc row returns warn=true', async () => {
+    const svc = makeMockSvc({
+      data: { granted: true, turns: 5, channel_spent: 160_001, warn: true },
+      error: null,
+    });
+    const deps = buildGateDeps(svc);
+
+    const result = await deps.take(ACCOUNT_ID, 'sms');
+
+    expect(result.granted).toBe(true);
+    expect(result.warn).toBe(true);
+  });
+
+  it('surfaces warn:false when the rpc row returns warn=false', async () => {
+    const svc = makeMockSvc({
+      data: { granted: true, turns: 1, channel_spent: 0, warn: false },
+      error: null,
+    });
+    const deps = buildGateDeps(svc);
+
+    const result = await deps.take(ACCOUNT_ID, 'telegram');
+
+    expect(result.granted).toBe(true);
+    expect(result.warn).toBe(false);
   });
 });
