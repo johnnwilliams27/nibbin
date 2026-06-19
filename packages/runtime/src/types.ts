@@ -242,7 +242,7 @@ export interface StepRecord {
 
 export type RunResult =
   | { kind: 'awaiting_approval'; runId: string; draft: DraftStep }
-  | { kind: 'completed'; runId: string }
+  | { kind: 'completed'; runId: string; resourceConflict?: { capability: string; resourceType: string; resourceId: string; holderNibbin: string } }
   | { kind: 'executed'; runId: string; effect: { capability: string; idempotencyKey: string } }
   | { kind: 'killed'; runId: string; reason: KillReason }
   | { kind: 'failed'; runId: string; error: string };

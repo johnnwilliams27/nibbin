@@ -17,6 +17,8 @@ import type {
   IdempotencyStore,
   OpenTrainingRequest,
   ProductEvent,
+  ResourceClaimResult,
+  ResourceClaimStore,
   ResumeOutcome,
   RoutineStore,
   RunStore,
@@ -294,6 +296,40 @@ export class SupabaseIdempotencyStore implements IdempotencyStore {
       .eq('account_id', accountId)
       .eq('idempotency_key', idempotencyKey);
     if (error) throw new Error(`idempotency mark failed: ${error.message}`);
+  }
+}
+
+/**
+ * Resource-claim store (Slice 1, §18.3) — the service-role implementation of the
+ * conflict-detection claim. Calls the `claim_resource` RPC before an irreversible
+ * send. On any infra error it THROWS (never returns granted=false): the runner
+ * catches and fails open, so conflict detection degrading never drops a
+ * legitimate send.
+ */
+export class SupabaseResourceClaimStore implements ResourceClaimStore {
+  constructor(private readonly svc: Service) {}
+
+  async claim(req: {
+    accountId: string;
+    nibbinId: string;
+    runId: string;
+    resourceType: string;
+    resourceId: string;
+  }): Promise<ResourceClaimResult> {
+    const { data, error } = await this.svc.rpc('claim_resource', {
+      p_account: req.accountId,
+      p_nibbin: req.nibbinId,
+      p_run: req.runId,
+      p_resource_type: req.resourceType,
+      p_resource_id: req.resourceId,
+    });
+    if (error) throw new Error(`claim_resource failed: ${error.message}`);
+    // claim_resource RETURNS TABLE → supabase-js surfaces it as a row array.
+    const row = (Array.isArray(data) ? data[0] : data) as
+      | { granted: boolean; holder_run: string; holder_nibbin: string }
+      | undefined;
+    if (!row) throw new Error('claim_resource returned no row');
+    return { granted: row.granted, holderRun: row.holder_run, holderNibbin: row.holder_nibbin };
   }
 }
 
