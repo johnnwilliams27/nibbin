@@ -9,15 +9,60 @@
  */
 import { useState, useTransition } from 'react';
 import { Button, Card } from '../../../components/ui';
-import { respondToPlanRun } from './actions';
+import { respondToPlanRun, proposeCrystal } from './actions';
+import { CrystalPreview } from './CrystalPreview';
+import type { CrystalProposeResult } from './actions';
+import type { CrystalActionRefusal } from './actions';
 import type { PlanOutcome } from '@nibbin/runtime';
 import styles from './planner.module.css';
+
+/** Friendly, calm explanation per refusal reason — the gate is the authority;
+ *  the UI never pre-judges, it just relays the reason in plain language. */
+const REFUSAL_COPY: Record<CrystalActionRefusal, string> = {
+  not_done: "This run didn't finish, so there's nothing to make recurring yet.",
+  no_action:
+    "This one only looked things up — there's nothing to repeat. It's better to re-run it when you need it.",
+  utility_in_path:
+    "This one needed live web lookups or a judgment call, so it's better to re-run it when you need it.",
+  branching:
+    "This run made decisions along the way that wouldn't repeat the same. It's better to re-run it when you need it.",
+  ungeneralizable:
+    "This run did something one-off that wouldn't make sense on a schedule. It's better to re-run it when you need it.",
+  invalid_spec: "This run can't safely become a recurring agent.",
+  not_found: "We couldn't find that run.",
+  bad_cadence: 'Pick a valid cadence.',
+  rate_limited: 'You just started something — give it a second before trying again.',
+  already_recurring: "You've already made this run recurring.",
+};
+
+type CrystalProposal = Exclude<CrystalProposeResult, { refused: true }>;
+type CrystalState =
+  | { phase: 'idle' }
+  | { phase: 'refused'; reason: CrystalActionRefusal }
+  | { phase: 'preview'; result: CrystalProposal };
 
 export function PlanRunView({ initial }: { initial: PlanOutcome }) {
   const [outcome, setOutcome] = useState<PlanOutcome>(initial);
   const [answer, setAnswer] = useState('');
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [crystal, setCrystal] = useState<CrystalState>({ phase: 'idle' });
+
+  function makeRecurring() {
+    setError(null);
+    startTransition(async () => {
+      try {
+        const result = await proposeCrystal(outcome.runId);
+        if ('refused' in result) {
+          setCrystal({ phase: 'refused', reason: result.reason });
+          return;
+        }
+        setCrystal({ phase: 'preview', result });
+      } catch {
+        setError('Something went wrong setting that up.');
+      }
+    });
+  }
 
   function resolve(response: Parameters<typeof respondToPlanRun>[1]) {
     setError(null);
@@ -34,10 +79,30 @@ export function PlanRunView({ initial }: { initial: PlanOutcome }) {
 
   if (outcome.kind === 'done') {
     return (
-      <Card className={styles.previewCard}>
-        <p className={styles.eyebrow}>Done</p>
-        <pre className={styles.turnObs}>{JSON.stringify(outcome.artifact, null, 2)}</pre>
-      </Card>
+      <>
+        <Card className={styles.previewCard}>
+          <p className={styles.eyebrow}>Done</p>
+          <pre className={styles.turnObs}>{JSON.stringify(outcome.artifact, null, 2)}</pre>
+          {crystal.phase === 'idle' ? (
+            <div className={styles.actions}>
+              <Button variant="secondary" onClick={makeRecurring} disabled={pending}>
+                {pending ? 'Thinking…' : 'Make this recurring'}
+              </Button>
+            </div>
+          ) : null}
+          {crystal.phase === 'refused' ? (
+            <p className={styles.sub}>{REFUSAL_COPY[crystal.reason]}</p>
+          ) : null}
+          {error ? <p className={styles.error}>{error}</p> : null}
+        </Card>
+        {crystal.phase === 'preview' ? (
+          <CrystalPreview
+            planRunId={outcome.runId}
+            preview={crystal.result.preview}
+            defaultName={crystal.result.spec.displayName}
+          />
+        ) : null}
+      </>
     );
   }
 
