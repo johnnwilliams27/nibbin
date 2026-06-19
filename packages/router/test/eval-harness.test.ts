@@ -242,6 +242,23 @@ export const NEXT = 1;
     expect(entries).toEqual([['custom_spec_draft', ['claude-sonnet-4-6', 'claude-haiku-4-5-20251001']]]);
   });
 
+  it('clearedEntries GROUPS multiple cleared challengers for one task into a single ordered set', () => {
+    // complex_plan challenged by BOTH Haiku (cost) and Opus (quality); both clear.
+    const run = fakeRun([
+      { task: 'complex_plan', kind: 'cost', challenger: { model: 'claude-haiku-4-5-20251001', aggregate: 0.88, scores: [], avgCostMicroUsd: 30 }, cleared: true },
+      { task: 'complex_plan', kind: 'quality', challenger: { model: 'claude-opus-4-8', aggregate: 0.95, scores: [], avgCostMicroUsd: 300 }, cleared: true },
+    ]);
+    const entries = clearedEntries(run);
+    // ONE entry for the task (no duplicate key), incumbent first then challengers in matrix order.
+    expect(entries).toEqual([
+      ['complex_plan', ['claude-sonnet-4-6', 'claude-haiku-4-5-20251001', 'claude-opus-4-8']],
+    ]);
+    // and it renders as a single 3-element literal.
+    const next = armCandidatesSource(SAMPLE, entries);
+    expect(next).toContain("complex_plan: ['claude-sonnet-4-6', 'claude-haiku-4-5-20251001', 'claude-opus-4-8'],");
+    expect(next.match(/complex_plan:/g)?.length).toBe(1);
+  });
+
   it('armCandidatesSource rewrites the object literal with incumbent-first pairs', () => {
     const entries = clearedEntries(fakeRun([{ cleared: true }]));
     const next = armCandidatesSource(SAMPLE, entries);

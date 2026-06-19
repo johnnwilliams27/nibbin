@@ -19,15 +19,30 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { EvalRun } from './types';
 
-/** task → [incumbent, challenger] for every cleared pair in the run. */
-export function clearedEntries(run: EvalRun): Array<[string, [string, string]]> {
-  return run.pairs
-    .filter((p) => p.cleared)
-    .map((p) => [p.task, [p.incumbent.model, p.challenger.model]] as [string, [string, string]]);
+/**
+ * task → [incumbent, ...clearedChallengers] for the run. A task may be
+ * challenged by MORE THAN ONE candidate (e.g. complex_plan carries both a
+ * cheaper Haiku cost-challenger AND an Opus quality-challenger); if several
+ * clear, they GROUP into ONE ordered set — incumbent first, then each cleared
+ * challenger in matrix order — never duplicate object keys. Reinforcement then
+ * picks cheapest-within-quality among the whole set.
+ */
+export function clearedEntries(run: EvalRun): Array<[string, string[]]> {
+  const byTask = new Map<string, string[]>();
+  for (const p of run.pairs) {
+    if (!p.cleared) continue;
+    // First cleared pair for the task seeds the set with the incumbent (the
+    // safe default / guaranteed fallback). All pairs for a task share an
+    // incumbent; subsequent pairs only append their challenger.
+    const set = byTask.get(p.task) ?? [p.incumbent.model];
+    if (!set.includes(p.challenger.model)) set.push(p.challenger.model);
+    byTask.set(p.task, set);
+  }
+  return [...byTask.entries()];
 }
 
 /** The generated body lines for the DEFAULT_TASK_CANDIDATES object. */
-function renderEntries(entries: Array<[string, [string, string]]>): string {
+function renderEntries(entries: Array<[string, string[]]>): string {
   if (entries.length === 0) {
     return [
       '  // Intentionally empty — every task resolves to its single configured model',
@@ -36,9 +51,9 @@ function renderEntries(entries: Array<[string, [string, string]]>): string {
     ].join('\n');
   }
   return entries
-    .map(([task, [incumbent, challenger]]) =>
+    .map(([task, models]) =>
       `  // Eval-cleared ${new Date().toISOString().slice(0, 10)} — see docs/eval/routing-*.md\n` +
-      `  ${task}: ['${incumbent}', '${challenger}'],`,
+      `  ${task}: [${models.map((m) => `'${m}'`).join(', ')}],`,
     )
     .join('\n');
 }
@@ -50,7 +65,7 @@ function renderEntries(entries: Array<[string, [string, string]]>): string {
  */
 export function armCandidatesSource(
   source: string,
-  entries: Array<[string, [string, string]]>,
+  entries: Array<[string, string[]]>,
 ): string {
   const marker = 'export const DEFAULT_TASK_CANDIDATES';
   const declStart = source.indexOf(marker);

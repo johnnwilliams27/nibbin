@@ -19,6 +19,7 @@ import type { CandidatePair } from './types';
 
 const HAIKU = 'claude-haiku-4-5-20251001';
 const SONNET = 'claude-sonnet-4-6';
+const OPUS = 'claude-opus-4-8';
 
 export const CANDIDATE_MATRIX: CandidatePair[] = [
   // ── T2 (Sonnet incumbent) challenged by the cheaper Haiku (cost win) ───────
@@ -56,6 +57,28 @@ export const CANDIDATE_MATRIX: CandidatePair[] = [
     tier: 't1',
     incumbent: HAIKU,
     challenger: SONNET,
+    kind: 'quality',
+  },
+  // ── planning quality CEILING: the belief-earning planning moments (Sonnet
+  //    incumbent) ALSO challenged by Opus for headroom + a pre-vetted premium
+  //    fallback (churn resilience). Opus is dearer than Sonnet, so it's a
+  //    'quality' challenger — it clears only at ≥ incumbent. complex_plan and
+  //    plan_synthesis thus carry BOTH a cheaper Haiku challenger (above) and an
+  //    Opus challenger; if both clear, the armed set is [Sonnet, Haiku, Opus]
+  //    (incumbent first) and reinforcement picks cheapest-within-quality among
+  //    them. diagnosis_synthesis stays Opus-pinned — never challenged. ─────────
+  {
+    task: 'complex_plan',
+    tier: 't2',
+    incumbent: SONNET,
+    challenger: OPUS,
+    kind: 'quality',
+  },
+  {
+    task: 'plan_synthesis',
+    tier: 't2',
+    incumbent: SONNET,
+    challenger: OPUS,
     kind: 'quality',
   },
 ];
