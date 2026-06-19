@@ -11,6 +11,7 @@
   },
   "//": "typescript + @types/node are runtime deps (not devDeps) so Vercel's production install (NODE_ENV=production) keeps them — Next's build-time TS setup check requires the typescript package present even with typescript.ignoreBuildErrors.",
   "dependencies": {
+    "@nibbin/channels": "*",
     "@nibbin/connectors": "*",
     "@nibbin/creatures": "*",
     "@nibbin/drip": "*",

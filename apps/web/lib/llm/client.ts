@@ -33,6 +33,8 @@ export interface ModelCallRecord {
   task: string;
   model: string;
   usage: TokenUsage;
+  origin?: 'chat' | 'pipeline';
+  channel?: string;
 }
 
 export async function recordModelCall(rec: ModelCallRecord): Promise<void> {
@@ -50,6 +52,8 @@ export async function recordModelCall(rec: ModelCallRecord): Promise<void> {
       cache_read_tokens: rec.usage.cacheReadTokens,
       output_tokens: rec.usage.outputTokens,
       cost_microusd: costMicroUsd(rec.model, rec.usage),
+      origin: rec.origin ?? null,
+      channel: rec.channel ?? null,
     });
     if (error) console.error('[cogs] model_calls insert failed', error.message);
   } catch (err) {

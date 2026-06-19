@@ -14,6 +14,7 @@ export default defineConfig({
       '@nibbin/keeper': fileURLToPath(new URL('./packages/keeper/src/index.ts', import.meta.url)),
       '@nibbin/drip': fileURLToPath(new URL('./packages/drip/src/index.ts', import.meta.url)),
       '@nibbin/email': fileURLToPath(new URL('./packages/email/src/index.ts', import.meta.url)),
+      '@nibbin/channels': fileURLToPath(new URL('./packages/channels/src/index.ts', import.meta.url)),
     },
   },
   test: {
