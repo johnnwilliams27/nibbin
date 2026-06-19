@@ -205,7 +205,9 @@ async function buildAnswer(
       origin: 'chat',
       channel,
       outcome: 'error',
-      degraded: reply.decision.degraded,
+      // dispatchedDegraded, NOT decision.degraded — chat.ts resets decision to
+      // the scripted floor (degraded:false) on a failed call (gate finding P3).
+      degraded: reply.dispatchedDegraded,
       latencyMs: null,
     });
   }

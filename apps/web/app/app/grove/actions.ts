@@ -206,7 +206,11 @@ export async function keeperChatAction(rawText: unknown): Promise<GroveChatPaylo
       model: fc.model,
       usage: { inputTokens: 0, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 0 },
       outcome: 'error',
-      degraded: reply.decision.degraded,
+      // dispatchedDegraded, NOT decision.degraded — chat.ts resets decision to
+      // the scripted floor (degraded:false) on a failed call, so reading
+      // decision.degraded would mis-record a degraded-then-failed turn as not
+      // degraded (gate finding P3).
+      degraded: reply.dispatchedDegraded,
       latencyMs: null,
     });
   }
