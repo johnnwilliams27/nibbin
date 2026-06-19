@@ -17,12 +17,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const insert = vi.fn();
 const updateEq = vi.fn();
-const update = vi.fn(() => ({ eq: updateEq }));
+const update = vi.fn((_patch: Record<string, unknown>) => ({ eq: updateEq }));
 const limit = vi.fn();
 
 // A chainable select builder: every filter returns `this`; `limit` resolves.
 function makeSelectChain() {
-  const chain: Record<string, unknown> = {};
+  const chain = {} as Record<string, (...a: unknown[]) => unknown> & { select: () => unknown };
   for (const m of ['select', 'eq', 'ilike', 'is']) chain[m] = vi.fn(() => chain);
   chain.limit = limit;
   return chain;

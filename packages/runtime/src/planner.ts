@@ -471,13 +471,19 @@ export async function runPlan(
         // write past the cap does NOT persist. The apps/web handler redacts
         // (derived-not-raw) BEFORE persist, dedups, and is account-scoped +
         // service-role — the LLM controls only the proposed text/kind/confidence.
-        if (memoryWrites >= MAX_MEMORY_WRITES) {
+        const text = typeof args.text === 'string' ? args.text.trim() : '';
+        if (text === '') {
+          // Guard a missing/empty text BEFORE spending the budget or calling the
+          // handler — otherwise `String(undefined)` ("undefined") would persist as
+          // a junk memory row. Refuse cleanly; no write, no budget consumed.
+          observation = 'memory.write needs a non-empty `text` — nothing remembered';
+        } else if (memoryWrites >= MAX_MEMORY_WRITES) {
           observation = 'memory write budget exhausted for this run — no further writes';
         } else {
           memoryWrites += 1;
           const confidence = typeof args.confidence === 'number' ? args.confidence : undefined;
           observation = deps.utilities?.memoryWrite
-            ? await deps.utilities.memoryWrite(String(args.text), String(args.kind), confidence)
+            ? await deps.utilities.memoryWrite(text, String(args.kind), confidence)
             : 'memory write is unavailable';
         }
       } else if (tool === 'web.search') {

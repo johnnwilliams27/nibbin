@@ -53,8 +53,11 @@ export type MemoryWriteResult =
 /**
  * Persist one agent-proposed derived memory. `accountId`/`scope`/`source` are
  * set by trusted code (this function), NEVER by the LLM — the LLM only ever
- * proposes `text` + `kind` (+ optional scope/confidence), all schema-checked by
- * the utility arg validator before they reach here.
+ * proposes `text` + `kind` (+ optional confidence), all schema-checked by the
+ * utility arg validator before they reach here. (The `scope`/`nibbinId` params
+ * exist for trusted in-process callers; the memory.write arg schema does NOT
+ * expose them, so a planner pick can never set scope — it always resolves to the
+ * account's 'user' scope via the fallback below.)
  *
  * A plan run is ephemeral (no nibbin), so an 'agent'-scoped write has no
  * nibbin_id to anchor to and the table's scope-integrity check (agent ⇒
