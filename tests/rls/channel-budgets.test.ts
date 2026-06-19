@@ -178,16 +178,19 @@ describe.skipIf(!dbAvailable)('channel budgets RLS + channel_turn_take (N15)', (
       const BIG_COST = 5_000_000; // 5 USD in microusd
       const LOW_CAP = 1_000_000;  // 1 USD cap
 
-      // Seed a model_calls row with a large cost for channel='sms' via service role
+      // Seed a model_calls row with a large cost for channel='sms' via service role.
+      // created_at is pinned to DAY: account_channel_cogs_day filters by
+      // (created_at at time zone 'utc')::date = p_day, so the seeded spend must
+      // fall on the same calendar day we pass to channel_turn_take.
       await h.as(service, async (c) => {
         await c.query(
           `insert into public.model_calls
              (account_id, user_id, tier, task, model,
               input_tokens, cache_write_tokens, cache_read_tokens, output_tokens,
-              cost_microusd, channel)
+              cost_microusd, channel, created_at)
            values ($1, $2, 't1', 'chat', 'claude-haiku-4-5-20251001',
-                   500, 0, 0, 200, $3, 'sms')`,
-          [accountA, UID_A, BIG_COST],
+                   500, 0, 0, 200, $3, 'sms', $4)`,
+          [accountA, UID_A, BIG_COST, `${DAY} 12:00:00+00`],
         );
       });
 
