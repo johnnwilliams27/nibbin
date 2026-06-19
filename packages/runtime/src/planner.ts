@@ -28,7 +28,7 @@
  */
 import type { QuarantinedContent } from '@nibbin/connectors';
 import { capability } from './capabilities';
-import { dispatchStep, hashArgs, type RunnerDeps } from './runner';
+import { dispatchStep, hashArgs, REPETITION_KILL_AT, type RunnerDeps } from './runner';
 import { interpretSpec } from './interpreter';
 import { validatePick, type PlannerPickInput } from './validate';
 import { plannerTool } from './utilities';
@@ -97,11 +97,32 @@ export interface PlannerDeps {
 /** Consecutive no-observation/no-scratchpad-change iterations before a no-progress kill. */
 export const NO_PROGRESS_KILL_AT = 3;
 
+/** Per-run cap on web egress (web.search + web.fetch). Provider spend is bounded
+ *  by design, not incidentally by the token budget (design §7). A web call past
+ *  the cap does NOT egress — it returns a quarantined "budget exhausted" obs. */
+export const MAX_WEB_CALLS = 4;
+
+/** The egressing utility ids (web.*) — counted against MAX_WEB_CALLS. */
+const WEB_UTILITY_IDS: ReadonlySet<string> = new Set(['web.search', 'web.fetch']);
+
 /** Longest observation we keep in the transcript (mirrors the read quarantine cap). */
 const OBSERVATION_MAX_CHARS = 4000;
 
 function cap(text: string, max = OBSERVATION_MAX_CHARS): string {
   return text.length > max ? `${text.slice(0, max)}…[truncated]` : text;
+}
+
+/** The most recent utility turn's observation (for the no-progress comparison —
+ *  a utility pick that yields the same observation as the last one is not
+ *  progress). Returns undefined when there is no prior utility turn. */
+function lastUtilityObservation(transcript: PlanTurn[]): string | undefined {
+  for (let i = transcript.length - 1; i >= 0; i--) {
+    const t = transcript[i];
+    if ('tool' in t.pick && typeof t.pick.tool === 'string' && plannerTool(t.pick.tool)) {
+      return t.observation;
+    }
+  }
+  return undefined;
 }
 
 /** A synthetic NibbinRef for dispatchStep: `student` stage so EVERY side effect
@@ -178,6 +199,18 @@ export async function runPlan(
       }
     }
   }
+  // Prime the utility repetition map + the web-egress counter from the resumed
+  // transcript so a resumed loop can't bypass either guard by forgetting prior
+  // utility calls (especially repeated web.* egress).
+  let webCalls = 0;
+  for (const t of state.transcript) {
+    if ('tool' in t.pick && typeof t.pick.tool === 'string' && plannerTool(t.pick.tool)) {
+      const args = (t.pick as { args: Record<string, unknown> }).args ?? {};
+      const repKey = `util:${t.pick.tool}:${hashArgs(args)}`;
+      repetition.set(repKey, (repetition.get(repKey) ?? 0) + 1);
+      if (WEB_UTILITY_IDS.has(t.pick.tool)) webCalls += 1;
+    }
+  }
   const startedAt = deps.runner.now();
   let idx = state.transcript.length;
   let tokens = 0;
@@ -188,11 +221,16 @@ export async function runPlan(
   };
   const fail = async (error: string): Promise<PlanOutcome> => {
     state.status = 'failed';
+    // FIX 11: persist the real terminal error so an idempotent re-read echoes
+    // the true reason, not a hardcoded placeholder.
+    state.artifact = { terminal: 'failed', error };
     await persist();
     return { kind: 'failed', runId, error };
   };
   const killed = async (reason: PlanKillReason): Promise<PlanOutcome> => {
     state.status = 'killed';
+    // FIX 11: persist the real kill reason for the idempotent re-read.
+    state.artifact = { terminal: 'killed', reason };
     await persist();
     return { kind: 'killed', runId, reason };
   };
@@ -231,7 +269,6 @@ export async function runPlan(
       pick = retry;
     }
 
-    const beforeLen = state.transcript.length;
     const beforeScratch = JSON.stringify(state.scratchpad);
 
     // ── done ──────────────────────────────────────────────────────────────
@@ -265,7 +302,44 @@ export async function runPlan(
     // ── a utility ───────────────────────────────────────────────────────────
     const util = plannerTool(tool);
     if (util) {
+      // FIX 6: a pick can arrive in the TOOL shape for done/ask_human (the
+      // model emitted {"tool":"done",...} instead of the flag-shape). Normalize
+      // it to the sentinel handling so a genuine finish/escalation is never
+      // silently dropped (it would otherwise fall through with an empty obs and
+      // the run would die at max_iterations).
+      if (tool === 'done') {
+        const artifact = (args.artifact ?? args.summary ?? args) as unknown;
+        state.transcript.push({ idx: idx++, pick });
+        state.status = 'done';
+        state.artifact = artifact;
+        await persist();
+        return { kind: 'done', runId, artifact };
+      }
+      if (tool === 'ask_human') {
+        const kind = (args.kind === 'auth' || args.kind === 'decision' || args.kind === 'value')
+          ? args.kind
+          : 'decision';
+        const question = typeof args.question === 'string' && args.question.trim() !== ''
+          ? args.question
+          : 'I need your input.';
+        const request: PendingRequest = { requestId: newRequestId(), kind, question, context: {} };
+        state.transcript.push({ idx: idx++, pick });
+        state.status = 'needs_input';
+        state.pending = request;
+        await persist();
+        return { kind: 'needs_input', runId, request };
+      }
+
+      // FIX 5/7: repetition guard for utilities keyed on (tool, hashArgs(args))
+      // — a picker can't spin on the same scratchpad.read or web.search. Web
+      // egress is additionally bounded per-run by MAX_WEB_CALLS (FIX 7).
+      const repKey = `util:${tool}:${hashArgs(args)}`;
+      const seen = (repetition.get(repKey) ?? 0) + 1;
+      repetition.set(repKey, seen);
+      if (seen >= REPETITION_KILL_AT) return await killed('repetition');
+
       let observation = '';
+      let progressed = false; // a non-empty, non-identical observation = progress
       if (tool === 'scratchpad.write') {
         state.scratchpad[String(args.key)] = String(args.value);
         observation = `saved "${String(args.key)}"`;
@@ -277,16 +351,36 @@ export async function runPlan(
           ? await deps.utilities.memoryRetrieve(String(args.query), k)
           : 'memory retrieval is unavailable';
       } else if (tool === 'web.search') {
-        observation = deps.utilities?.webSearch
-          ? await deps.utilities.webSearch(String(args.query))
-          : 'web search is unavailable';
+        if (webCalls >= MAX_WEB_CALLS) {
+          observation = 'web budget exhausted for this run — no further web calls';
+        } else {
+          webCalls += 1;
+          observation = deps.utilities?.webSearch
+            ? await deps.utilities.webSearch(String(args.query))
+            : 'web search is unavailable';
+        }
       } else if (tool === 'web.fetch') {
-        observation = deps.utilities?.webFetch
-          ? await deps.utilities.webFetch(String(args.url))
-          : 'web fetch is unavailable';
+        if (webCalls >= MAX_WEB_CALLS) {
+          observation = 'web budget exhausted for this run — no further web calls';
+        } else {
+          webCalls += 1;
+          observation = deps.utilities?.webFetch
+            ? await deps.utilities.webFetch(String(args.url))
+            : 'web fetch is unavailable';
+        }
       }
+
+      // FIX 5: real progress for the utility branch — the scratchpad changed,
+      // OR a non-empty observation that differs from the immediately-prior
+      // utility observation. (The old `transcript.length > beforeLen` was always
+      // true after the push, so noProgress never incremented for utilities.)
+      const scratchChanged = JSON.stringify(state.scratchpad) !== beforeScratch;
+      const priorUtilObs = lastUtilityObservation(state.transcript);
+      const obsIsProgress = observation.trim() !== '' && observation !== priorUtilObs;
+      progressed = scratchChanged || obsIsProgress;
+
       state.transcript.push({ idx: idx++, pick, observation: cap(observation) });
-      noProgress = state.transcript.length > beforeLen || JSON.stringify(state.scratchpad) !== beforeScratch ? 0 : noProgress + 1;
+      noProgress = progressed ? 0 : noProgress + 1;
       if (noProgress >= NO_PROGRESS_KILL_AT) return await killed('no_progress');
       await persist();
       continue;

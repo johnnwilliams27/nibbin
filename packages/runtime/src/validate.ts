@@ -310,6 +310,11 @@ export function validateComposedSpec(spec: AgentSpec, accountConnections: string
 /** Highest `maxIterations` a frontier plan may set (design §7 — bound the loop). */
 export const MAX_PLAN_ITERATIONS = 30;
 
+/** Hard ceiling on a plan's `maxTokens` — a crafted plan can't set 1e9 and turn
+ *  the token-budget kill into a no-op (design §7: the loop is bounded by
+ *  construction, not by an attacker-supplied number). */
+export const MAX_PLAN_TOKENS = 20_000;
+
 /**
  * Fail-closed validation of a synthesized PlanSpec, run at plan-preview before
  * the loop is ever provisioned. Returns problems (empty = valid):
@@ -371,6 +376,11 @@ export function validatePlanSpec(
 
   const c = plan.ceilings;
   if (c.maxSteps < 1 || c.maxTokens < 0 || c.maxWallClockMs < 1) at('per-run ceilings must be positive');
+  // Bound maxTokens (floor + hard ceiling): a crafted plan can't set maxTokens
+  // to 1e9 and neuter the token-budget kill. The server re-stamps the canonical
+  // ceilings anyway (actions.startPlanRun), but the validator is the trust gate.
+  if (!Number.isFinite(c.maxTokens) || c.maxTokens < 1) at('maxTokens must be a positive finite number');
+  else if (c.maxTokens > MAX_PLAN_TOKENS) at(`maxTokens ${c.maxTokens} exceeds the bound of ${MAX_PLAN_TOKENS}`);
   if (!Number.isInteger(c.maxIterations) || c.maxIterations < 1) at('maxIterations must be a positive integer');
   else if (c.maxIterations > MAX_PLAN_ITERATIONS) at(`maxIterations ${c.maxIterations} exceeds the bound of ${MAX_PLAN_ITERATIONS}`);
 
