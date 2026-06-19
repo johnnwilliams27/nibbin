@@ -144,3 +144,102 @@
   color: var(--ink);
   font-size: 14px;
 }
+
+/* ---- Propose-phase thinking indicator ---- */
+.thinkingRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--moss-wash);
+  animation: plannerFadeIn 0.25s var(--ease-spring, ease-out) both;
+}
+.thinkingLabel {
+  font-size: 14px;
+  color: var(--moss-deep);
+  font-weight: 500;
+}
+
+/* ---- Run-phase step-progress ---- */
+.runProgress {
+  margin-top: 18px;
+  padding: 18px 20px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  animation: plannerFadeIn 0.25s var(--ease-spring, ease-out) both;
+}
+.progressStepList {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.progressStepList li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+
+/* Active step: bold + moss accent */
+.stepActive {
+  color: var(--moss-deep);
+  font-weight: 600;
+}
+/* Done steps: muted with checkmark */
+.stepDone {
+  color: var(--ink-faint);
+}
+/* Upcoming steps: neutral */
+.stepPending {
+  color: var(--ink-soft);
+}
+
+/* Icon slots */
+.stepSpinner {
+  flex-shrink: 0;
+  line-height: 0;
+}
+.stepCheck {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--moss);
+}
+.stepDot {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--line);
+  margin-left: 6px;
+}
+
+/* Fade-in entrance used by both thinking row + run progress */
+@keyframes plannerFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thinkingRow,
+  .runProgress {
+    animation: none;
+  }
+}
