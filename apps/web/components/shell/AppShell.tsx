@@ -259,7 +259,9 @@ export function AppShell({ active, title, email, children, panel, onboarding }: 
         className={`${styles.sidebar} ${open ? styles.sidebarOpen : ''} ${navCollapsed ? styles.sidebarCollapsed : ''}`}
       >
         <Link href="/app" className={styles.brand} onClick={close} title="Grove Home">
-          {navCollapsed ? (
+          {/* On mobile the drawer is always full-width — always show the wordmark.
+              On desktop, respect the collapsed state (sprout when collapsed). */}
+          {navCollapsed && !open ? (
             <BrandMark />
           ) : (
             <span className={styles.brandWord}>Nibbin</span>

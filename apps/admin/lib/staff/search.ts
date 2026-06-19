@@ -80,7 +80,8 @@ export async function listAccounts(
     name: string;
     created_at: string;
     subscriptions: { tier: string; status: string }[] | { tier: string; status: string } | null;
-    memberships: { count: number }[] | null;
+    // Supabase returns the embedded count aggregate as [{ count: number }].
+    memberships: { count: number }[] | { count: number } | null;
   };
 
   let rows = accountRows as unknown as RawRow[];
@@ -103,9 +104,12 @@ export async function listAccounts(
 
   return rows.map((r) => {
     const sub = Array.isArray(r.subscriptions) ? r.subscriptions[0] : r.subscriptions;
-    const memberCount = Array.isArray(r.memberships)
-      ? r.memberships.reduce((acc, m) => acc + (m.count ?? 0), 0)
-      : 0;
+    // Supabase embedded count aggregate: memberships(count) → [{ count: N }].
+    // Read the first element's count; handle both array and object shapes.
+    const memberships = r.memberships;
+    const memberCount = Array.isArray(memberships)
+      ? (memberships[0]?.count ?? 0)
+      : (memberships?.count ?? 0);
     const microusd = spendMap.get(r.id);
     return {
       id: r.id,

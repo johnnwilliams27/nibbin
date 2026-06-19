@@ -20,6 +20,9 @@
 
   /* Tints (light surfaces — recessed row / chip backgrounds) */
   --moss-tint: #EFF4E4;
+  --coral-soft: #FFF7F4;   /* coral button resting bg */
+  --coral-tint: #FBEDE6;   /* coral hover bg / streak bg */
+  --coral-line: #F0C9B6;   /* coral border */
 
   /* Deeps (the only text-safe colors) */
   --moss-deep: #44601F;
@@ -46,7 +49,7 @@
   --dur-4: 650ms;
   --ease-settle: cubic-bezier(.16, 1, .3, 1);
   --ease-pop: cubic-bezier(.34, 1.45, .64, 1);
-  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: var(--ease-settle); /* alias — same curve, one source of truth */
   --ease-snap: cubic-bezier(0.32, 0.72, 0, 1);
 
   /* Fluid type scale */
