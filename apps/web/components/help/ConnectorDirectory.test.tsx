@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { groupConnectors, sortConnectors } from '../../lib/connections/catalog-view';
 import type { ConnectorEntry } from '../../lib/connections/catalog';
+import { ConnectorDirectory } from './ConnectorDirectory';
 
 // @testing-library/react is not installed in this repo; using behavior-focused tests
 // that assert groupConnectors/sortConnectors produce the expected grouped/ordered shape.
@@ -54,5 +56,17 @@ describe('ConnectorDirectory data helpers', () => {
   it('sortConnectors available mode: live before early_access', () => {
     const sorted = sortConnectors(FIXTURE.filter((c) => c.category === 'Email'), 'available');
     expect(sorted[0].status).toBe('live');
+  });
+});
+
+describe('ConnectorDirectory collapse-by-default', () => {
+  it('expands the first category and collapses the rest (bounding logo requests)', () => {
+    const html = renderToStaticMarkup(<ConnectorDirectory connectors={FIXTURE} />);
+    // Email is the first category (contains live Gmail) -> expanded by default
+    expect(html).toContain('Gmail');
+    // Messaging & Meetings is collapsed -> its connector is NOT rendered (no logo request)
+    expect(html).not.toContain('Slack');
+    // ...but every category header + count is still shown for browsing
+    expect(html).toContain('Messaging &amp; Meetings');
   });
 });
