@@ -186,6 +186,7 @@ export async function adoptComposedSpec(
   spec: AgentSpec,
   chosenName?: string,
   appearance?: AppearanceOverride,
+  opts?: { sourcePlanRunId?: string },
 ): Promise<AdoptResult> {
   const svc = serviceClient();
   const name = (chosenName ?? spec.displayName).trim().slice(0, 40) || spec.displayName;
@@ -260,6 +261,9 @@ export async function adoptComposedSpec(
     p_seed: Math.abs(hashCode(`${accountId}:custom:${name}`)) % 100_000,
     p_steps: spec.steps ?? [],
     p_persona_policy: spec.personaPolicy ?? {},
+    // Provenance (Slice 4): a crystallized spec records its source plan_run;
+    // Composer/template adopts pass undefined → null.
+    p_source_plan_run_id: opts?.sourcePlanRunId ?? null,
   });
   if (error) {
     if (error.message.includes('nibbin limit reached')) {

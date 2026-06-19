@@ -12,15 +12,16 @@ default = []
 # MIT commit 892199f742) behind this flag during macOS hardware bring-up.
 # On Windows it also pulls in the `windows` crate (gated to the windows target
 # below) so WindowsUiaCapture can drive per-tick UIA tree snapshots.
-screenpipe = ["dep:screenpipe-a11y", "dep:serde_json"]
+screenpipe = ["dep:screenpipe-a11y"]
 
 [dependencies]
 nibbin-redaction = { path = "../nibbin-redaction" }
 anyhow = { workspace = true }
 screenpipe-a11y = { path = "../../../../../vendor/screenpipe/crates/screenpipe-a11y", optional = true }
-# H1 tree-hash dedup serializes the AccessibilityNode tree to fingerprint it.
-# Only needed by the screenpipe Windows adapter; gated to that feature.
-serde_json = { workspace = true, optional = true }
+# Lightweight logging facade for debug-timing lines (e.g. the C6 teardown
+# latency). No logger is initialized here, so these become no-ops unless the
+# host process installs a logger — correct for a daemon-internal debug line.
+log = "0.4"
 
 # Windows UIA adapter (real capture) needs GetForegroundWindow + COM init.
 # Always-on (NOT feature-gated): `set_low_process_priority` (H3/P-CB6) calls
@@ -34,6 +35,8 @@ windows = { version = "0.58", features = [
     "Win32_Foundation",
     "Win32_System_Com",
     "Win32_System_Threading",
+    # WTSRegisterSessionNotification / WM_WTSSESSION_CHANGE (D4 lock-detection).
+    "Win32_System_RemoteDesktop",
     "Win32_UI_WindowsAndMessaging",
     "Win32_UI_Input_KeyboardAndMouse",
 ] }
