@@ -172,6 +172,15 @@
   align-items: center;
   gap: 12px;
 }
+@media (max-width: 400px) {
+  .allocRow {
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto;
+  }
+  .allocApp {
+    grid-column: 1 / -1;
+  }
+}
 .allocApp {
   font-size: 14px;
   color: var(--ink);
@@ -455,6 +464,14 @@
   text-transform: uppercase;
   color: var(--moss-deep);
   min-width: 140px;
+}
+@media (max-width: 640px) {
+  .buildMeta dt {
+    min-width: 90px;
+  }
+  .buildMeta > div {
+    flex-wrap: wrap;
+  }
 }
 .buildMeta dd {
   margin: 0;
