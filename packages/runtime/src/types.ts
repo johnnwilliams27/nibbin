@@ -271,7 +271,7 @@ export type KillReason =
 /** The fixed utility tools the harness dispatches in-process (distinct from
  *  connector capabilities). A plan's `toolsAllowlist` may include these ids. */
 export type PlannerToolId =
-  | 'scratchpad.write' | 'scratchpad.read' | 'memory.retrieve'
+  | 'scratchpad.write' | 'scratchpad.read' | 'memory.retrieve' | 'memory.write'
   | 'web.search' | 'web.fetch' | 'ask_human' | 'done';
 
 export interface PlannerTool {

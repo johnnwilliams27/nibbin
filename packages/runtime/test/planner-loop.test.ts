@@ -387,6 +387,128 @@ describe('runPlan — resume rebuilds repetition for primitive-internal reads', 
   });
 });
 
+describe('runPlan — memory.write dispatch + per-run write budget', () => {
+  const writePlan = () =>
+    plan({
+      toolsAllowlist: ['memory.write', 'done'],
+      requiredConnectors: [],
+      ceilings: { maxSteps: 60, maxTokens: 8000, maxWallClockMs: 60_000, maxIterations: 20 },
+    });
+
+  it('routes memory.write to the injected handler and surfaces its observation', async () => {
+    const seen: { text: string; kind: string; confidence?: number }[] = [];
+    const utilities = {
+      async memoryWrite(text: string, kind: string, confidence?: number) {
+        seen.push({ text, kind, confidence });
+        return `remembered (created): "${text}"`;
+      },
+    };
+    const { d } = deps(
+      [{ tool: 'memory.write', args: { text: 'prefers a warm sign-off', kind: 'preference', confidence: 0.8 } }, { done: true, artifact: {} }],
+      { utilities },
+    );
+    const outcome = await runPlan(writePlan(), { ...d, connectors: [] });
+    expect(outcome.kind).toBe('done');
+    expect(seen).toEqual([{ text: 'prefers a warm sign-off', kind: 'preference', confidence: 0.8 }]);
+  });
+
+  it('caps memory writes per run (MAX_MEMORY_WRITES = 3): the 4th does not persist', async () => {
+    let calls = 0;
+    const utilities = {
+      async memoryWrite(text: string) {
+        calls += 1;
+        return `remembered (created): "${text}"`;
+      },
+    };
+    // four DISTINCT writes (so repetition never fires) — only the budget stops it.
+    const picks: PlannerPick[] = [1, 2, 3, 4].map((n) => ({ tool: 'memory.write', args: { text: `fact number ${n}`, kind: 'fact' } }));
+    const { d } = deps([...picks, { done: true, artifact: {} }], { utilities });
+    const outcome = await runPlan(writePlan(), { ...d, connectors: [] });
+    expect(outcome.kind).toBe('done');
+    expect(calls).toBe(3); // the 4th hit the budget, no handler call
+  });
+
+  it('handles a missing memoryWrite handler gracefully (no throw)', async () => {
+    const { d } = deps(
+      [{ tool: 'memory.write', args: { text: 'x derived fact', kind: 'fact' } }, { done: true, artifact: {} }],
+      { utilities: {} },
+    );
+    const outcome = await runPlan(writePlan(), { ...d, connectors: [] });
+    expect(outcome.kind).toBe('done');
+  });
+
+  it('refuses a missing/empty `text` pick — NO write, no budget consumed', async () => {
+    // A pick with no `text` must NOT reach the handler (otherwise String(undefined)
+    // → the literal "undefined" would persist as a junk memory row).
+    let calls = 0;
+    const utilities = {
+      async memoryWrite(text: string) {
+        calls += 1;
+        return `remembered (created): "${text}"`;
+      },
+    };
+    const { d } = deps(
+      [
+        { tool: 'memory.write', args: { kind: 'fact' } }, // missing text
+        { tool: 'memory.write', args: { text: '   ', kind: 'fact' } }, // whitespace-only
+        { done: true, artifact: {} },
+      ],
+      { utilities },
+    );
+    const outcome = await runPlan(writePlan(), { ...d, connectors: [] });
+    expect(outcome.kind).toBe('done');
+    expect(calls).toBe(0); // neither invalid pick inserted
+  });
+});
+
+describe('runPlan — memory-write budget is primed across RESUME', () => {
+  // Mirror the cold-run cap test (MAX_MEMORY_WRITES = 3) + the resume pattern:
+  // a run RESUMED from a transcript that already holds 3 prior memory.write turns
+  // must BLOCK a further write — the budget priming (memoryWrites counter rebuilt
+  // from the resumed transcript) survives a resume.
+  const writePlan = () =>
+    plan({
+      toolsAllowlist: ['memory.write', 'done'],
+      requiredConnectors: [],
+      ceilings: { maxSteps: 60, maxTokens: 8000, maxWallClockMs: 60_000, maxIterations: 20 },
+    });
+
+  function priorWrites(n: number): PlanRunState {
+    const transcript = Array.from({ length: n }, (_v, i) => ({
+      idx: i,
+      pick: { tool: 'memory.write', args: { text: `prior fact ${i}`, kind: 'fact' } } as PlannerPick,
+      observation: `remembered (created): "prior fact ${i}"`,
+    }));
+    return {
+      runId: 'plan-mem-resume-1',
+      accountId: ACCOUNT,
+      plan: writePlan(),
+      transcript,
+      scratchpad: {},
+      status: 'running' as const,
+    };
+  }
+
+  it('a resume from MAX_MEMORY_WRITES (3) prior writes blocks a further write', async () => {
+    let calls = 0;
+    const utilities = {
+      async memoryWrite(text: string) {
+        calls += 1;
+        return `remembered (created): "${text}"`;
+      },
+    };
+    // The next pick is a NEW distinct write — repetition never fires; only the
+    // resume-primed budget can stop it.
+    const { d } = deps(
+      [{ tool: 'memory.write', args: { text: 'one more fact', kind: 'fact' } }, { done: true, artifact: {} }],
+      { utilities },
+    );
+    const outcome = await runPlan(writePlan(), { ...d, connectors: [] }, priorWrites(3));
+    expect(outcome.kind).toBe('done');
+    expect(calls).toBe(0); // budget already exhausted by the 3 resumed writes
+  });
+});
+
 describe('runPlan — per-run web-egress cap (FIX 7)', () => {
   it('the 5th distinct web call does not egress', async () => {
     let calls = 0;

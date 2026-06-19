@@ -39,6 +39,20 @@ export const STANDARD_UTILITIES: Record<PlannerToolId, PlannerTool> = {
       k: { type: 'number', required: false, min: 1, max: 10 },
     },
   },
+  // memory.write — persist ONE durable DERIVED fact/preference/entity for future
+  // retrieval (#135 stance: redaction-before-persist, per-account, service-role,
+  // dedup). The LLM proposes only `text` + `kind` (+ optional confidence); it can
+  // NEVER set account_id/scope-owner/source/SQL — trusted apps/web code does. No
+  // egress: a memory write stays inside the account's own store.
+  'memory.write': {
+    id: 'memory.write',
+    egress: false,
+    argSchema: {
+      text: { type: 'string', required: true },
+      kind: { type: 'enum', required: true, values: ['fact', 'preference', 'entity'] },
+      confidence: { type: 'number', required: false, min: 0, max: 1 },
+    },
+  },
   'web.search': {
     id: 'web.search',
     egress: true,
