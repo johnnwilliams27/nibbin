@@ -29,6 +29,7 @@ export type RoutedTask =
   | 'sweep_pass1'
   | 'sweep_pass2'
   | 'memory_extract'
+  | 'style_extraction'
   // T2 — frontier (Opus/Fable-class)
   | 'diagnosis_synthesis'
   | 'custom_spec_draft'
