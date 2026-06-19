@@ -110,9 +110,18 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         />
       );
     }
-  } catch {
-    // Auth failure or unexpected DB error — render children without the dock.
-    // The page-level auth guard will redirect/handle as appropriate.
+  } catch (err) {
+    // Auth/redirect errors: page-level guard handles the redirect; suppress
+    // silently. Other (e.g. transient DB) errors: log so they surface in server
+    // logs without breaking the page.
+    const isAuthError =
+      err instanceof Error &&
+      (err.message.includes('NEXT_REDIRECT') ||
+        err.message.includes('Auth session') ||
+        err.message.includes('not authenticated'));
+    if (!isAuthError) {
+      console.error('[AppLayout] KeeperDock suppressed error:', err);
+    }
     dock = null;
   }
 

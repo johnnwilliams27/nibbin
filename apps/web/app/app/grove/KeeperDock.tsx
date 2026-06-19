@@ -17,6 +17,19 @@
  * Collapse state is persisted in localStorage so the dock remembers its
  * position across page loads; defaults to COLLAPSED on first visit so the
  * dock never blocks freshly-loaded content.
+ *
+ * Single-instance invariant: exactly ONE <KeeperPanel> (and therefore ONE
+ * <KeeperChat>) is ever mounted. The same DOM node is repositioned via CSS
+ * media queries — desktop rail layout on >880px, bottom-sheet layout on ≤880px.
+ * Do NOT split this back into separate desktop/mobile <aside> elements, even if
+ * one were hidden with display:none — that keeps two React trees live with
+ * diverged message state and doubled side-effects.
+ *
+ * @param initialMessages  Baked at layout render; intentionally NOT refreshed on
+ *   SPA navigation. KeeperChat owns its own message log after mount. Do NOT add
+ *   a reset-on-unmount or key= that would re-seed the conversation on each route
+ *   change — the Keeper is a persistent companion, not a per-page widget.
+ * @param initialExpression  Same bake-once semantics as initialMessages.
  */
 
 import { useEffect, useState } from 'react';
@@ -27,22 +40,21 @@ import styles from './keeper-dock.module.css';
 const DOCK_OPEN_KEY = 'nibbin:keeperDockOpen';
 
 export function KeeperDock(props: KeeperPanelProps) {
-  // Collapsed/expanded for desktop rail; open/closed for mobile sheet.
-  // Both default false (collapsed/closed) to avoid blocking content on first
-  // load. We hydrate from localStorage in useEffect to prevent SSR mismatch.
-  const [expanded, setExpanded] = useState(false);
-  const [sheetOpen, setSheetOpen] = useState(false);
+  // Single open/closed boolean drives BOTH desktop rail and mobile sheet.
+  // Defaults false (collapsed/closed) to avoid blocking content on first load.
+  // Hydrated from localStorage in useEffect to prevent SSR mismatch.
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     try {
-      setExpanded(localStorage.getItem(DOCK_OPEN_KEY) === 'true');
+      setOpen(localStorage.getItem(DOCK_OPEN_KEY) === 'true');
     } catch {
       // localStorage unavailable — stay collapsed.
     }
   }, []);
 
-  function toggleExpanded() {
-    setExpanded((prev) => {
+  function toggle() {
+    setOpen((prev) => {
       const next = !prev;
       try {
         localStorage.setItem(DOCK_OPEN_KEY, String(next));
@@ -55,61 +67,60 @@ export function KeeperDock(props: KeeperPanelProps) {
 
   return (
     <>
-      {/* ── Desktop: fixed right rail ─────────────────────────────────────── */}
+      {/*
+       * Single panel container — ONE <KeeperPanel> / ONE <KeeperChat>.
+       * CSS positions it as a right rail on desktop (>880px) and as a
+       * bottom sheet on mobile (≤880px) via media queries on .panel /
+       * .panelOpen in keeper-dock.module.css.
+       */}
       <aside
-        className={`${styles.rail} ${expanded ? styles.railOpen : styles.railCollapsed}`}
+        className={`${styles.panel} ${open ? styles.panelOpen : styles.panelClosed}`}
         aria-label="Keeper panel"
-        aria-hidden={!expanded}
+        aria-hidden={!open}
       >
         <button
           className={styles.collapseBtn}
           type="button"
           aria-label="Collapse Keeper panel"
-          onClick={toggleExpanded}
+          onClick={toggle}
         >
           ›
         </button>
         <KeeperPanel {...props} />
       </aside>
 
-      {/* Desktop expand tab — right edge, visible when collapsed */}
+      {/* Mobile backdrop — rendered only when open; CSS hides it on desktop. */}
+      {open && (
+        <div
+          className={styles.backdrop}
+          aria-hidden="true"
+          onClick={toggle}
+        />
+      )}
+
+      {/* Desktop expand tab — right edge, visible when panel is closed.
+          Uses visibility/opacity (not display:none) so the dockTabIn animation
+          does not re-fire every time the panel is toggled. */}
       <button
-        className={`${styles.expandTab} ${expanded ? styles.expandTabHidden : ''}`}
+        className={`${styles.expandTab} ${open ? styles.expandTabHidden : ''}`}
         type="button"
         aria-label="Open Keeper panel"
-        onClick={toggleExpanded}
+        onClick={toggle}
       >
         <span className={styles.keeperGlyph} aria-hidden="true">
           <Grovekeeper size={26} />
         </span>
       </button>
 
-      {/* ── Mobile: backdrop + bottom sheet ──────────────────────────────── */}
-      {sheetOpen && (
-        <div
-          className={styles.backdrop}
-          aria-hidden="true"
-          onClick={() => setSheetOpen(false)}
-        />
-      )}
-
-      <aside
-        className={`${styles.sheet} ${sheetOpen ? styles.sheetOpen : ''}`}
-        aria-label="Keeper panel"
-        aria-hidden={!sheetOpen}
-      >
-        <KeeperPanel {...props} />
-      </aside>
-
-      {/* Mobile FAB */}
+      {/* Mobile FAB — CSS hides on desktop. */}
       <button
         className={styles.fab}
         type="button"
-        aria-label={sheetOpen ? 'Close Keeper' : 'Open Keeper'}
-        aria-expanded={sheetOpen}
-        onClick={() => setSheetOpen((v) => !v)}
+        aria-label={open ? 'Close Keeper' : 'Open Keeper'}
+        aria-expanded={open}
+        onClick={toggle}
       >
-        {sheetOpen ? (
+        {open ? (
           '✕'
         ) : (
           <span className={styles.keeperGlyph} aria-hidden="true">

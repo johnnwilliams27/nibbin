@@ -1,7 +1,19 @@
 /* KeeperDock — persistent layout-mounted Keeper dock.
    Token-only: all colors from packages/shared/tokens.css.
    Mirrors shell.module.css panel/panelExpand/panelToggle mechanics for the
-   fixed-position dock that lives in the App Router layout. */
+   fixed-position dock that lives in the App Router layout.
+
+   Single-instance layout strategy
+   ─────────────────────────────────
+   There is exactly ONE .panel element in the DOM (one <KeeperPanel>, one
+   <KeeperChat>). CSS repositions it for the two breakpoints:
+
+     >880px  — right rail: fixed right edge, 380px wide, full height under topbar.
+     ≤880px  — bottom sheet: fixed bottom, full width, 72dvh tall.
+
+   The desktop expand tab and mobile FAB are lightweight trigger-only elements
+   (no chat state) so it is fine for only one to be visible at a time via CSS.
+*/
 
 /* ── Shared ──────────────────────────────────────────────────────────────── */
 
@@ -15,9 +27,9 @@
   overflow: hidden;
 }
 
-/* ── Desktop right rail ─────────────────────────────────────────────────── */
+/* ── Single panel container (desktop default: right rail) ────────────────── */
 
-.rail {
+.panel {
   position: fixed;
   top: 60px; /* below the AppShell topbar */
   right: 0;
@@ -29,11 +41,12 @@
   flex-direction: column;
   z-index: 22;
   overflow: hidden;
+  /* Enter/exit transitions for the rail */
   transition: transform var(--dur-4) var(--ease-settle), opacity var(--dur-4) var(--ease-settle);
 }
 
-/* Collapsed: slide off to the right and fade out. */
-.railCollapsed {
+/* Closed (desktop): slide off to the right and fade out. */
+.panelClosed {
   transform: translateX(100%);
   opacity: 0;
   pointer-events: none;
@@ -41,10 +54,12 @@
     opacity var(--dur-4) cubic-bezier(0.65, 0, 0.35, 1);
 }
 
-.railOpen {
+.panelOpen {
   transform: translateX(0);
   opacity: 1;
 }
+
+/* ── Desktop controls ────────────────────────────────────────────────────── */
 
 /* Collapse button — top-right corner of the open rail. */
 .collapseBtn {
@@ -70,7 +85,9 @@
   color: var(--ink);
 }
 
-/* Expand tab — right edge, visible when rail is collapsed. */
+/* Expand tab — right edge, visible when panel is closed.
+   Uses visibility/opacity for hiding (not display:none) so the dockTabIn
+   animation only plays once on mount and does not re-fire on every toggle. */
 .expandTab {
   position: fixed;
   top: 50%;
@@ -89,12 +106,18 @@
   z-index: 22;
   box-shadow: var(--shadow-2);
   animation: dockTabIn var(--dur-2) var(--ease-settle);
+  animation-fill-mode: forwards;
 }
 .expandTab:hover {
   background: var(--understory);
 }
+
+/* Hide via visibility+opacity so display is not toggled (which would
+   re-trigger the dockTabIn animation on every panel open/close). */
 .expandTabHidden {
-  display: none;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
 }
 
 @keyframes dockTabIn {
@@ -121,20 +144,12 @@
   margin-left: -24px;
 }
 
-/* ── Mobile ─────────────────────────────────────────────────────────────── */
+/* ── Mobile: backdrop, bottom-sheet reposition, FAB ─────────────────────── */
 
-/* Hide desktop rail & expand tab on mobile; show FAB + sheet instead. */
-.rail,
-.expandTab {
-  /* Desktop only — both hidden on mobile by the @media block below */
-}
-
+/* Backdrop: hidden on desktop (via display:none baseline); CSS media makes it
+   a visible scrim on mobile. No design token exists for the dim overlay color,
+   so raw rgba is used (matches the shadow base color from tokens.css). */
 .backdrop {
-  display: none;
-}
-
-/* Bottom sheet — hidden on desktop. */
-.sheet {
   display: none;
 }
 
@@ -144,11 +159,42 @@
 }
 
 @media (max-width: 880px) {
-  /* Hide desktop rail and expand tab entirely on mobile. */
-  .rail {
-    display: none;
+  /* On mobile the panel becomes a bottom sheet — reposition the single
+     container. The desktop expand tab is hidden; FAB + backdrop take over. */
+  .panel {
+    /* Reset desktop rail positioning */
+    top: auto;
+    right: 0;
+    left: 0;
+    width: 100%;
+    height: 72dvh;
+    border-left: none;
+    border-top: 1px solid var(--line);
+    border-radius: var(--r-shell) var(--r-shell) 0 0;
+    box-shadow: var(--shadow-3);
+    z-index: 28;
+    bottom: 0;
+    /* Override rail transition with sheet-appropriate transition */
+    transition: transform var(--dur-3) var(--ease-settle);
   }
-  .expandTab {
+
+  /* Closed on mobile: slide down off-screen. */
+  .panelClosed {
+    transform: translateY(100%);
+    opacity: 1; /* sheet stays opaque when sliding away */
+    pointer-events: none;
+    transition: transform var(--dur-3) cubic-bezier(0.65, 0, 0.35, 1);
+  }
+
+  /* Open on mobile: slide up into view. */
+  .panelOpen {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  /* Collapse button is a desktop-rail affordance — hidden in sheet mode.
+     The FAB's ✕ label closes the sheet on mobile. */
+  .collapseBtn {
     display: none;
   }
 
@@ -161,28 +207,13 @@
     z-index: 25;
   }
 
-  /* Bottom sheet */
-  .sheet {
-    display: flex;
-    flex-direction: column;
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    top: auto;
-    width: 100%;
-    height: 72dvh;
-    background: var(--canopy);
-    border-top: 1px solid var(--line);
-    border-radius: var(--r-shell) var(--r-shell) 0 0;
-    box-shadow: var(--shadow-3);
-    z-index: 28;
-    transform: translateY(100%);
-    transition: transform var(--dur-3) var(--ease-settle);
-    overflow: hidden;
+  /* Desktop expand tab: hidden on mobile (panel is toggled via FAB). */
+  .expandTab {
+    display: none;
   }
-  .sheetOpen {
-    transform: translateY(0);
+  /* Reset the hidden state on mobile so it doesn't accidentally affect layout. */
+  .expandTabHidden {
+    display: none;
   }
 
   /* FAB — bottom-right circle */
@@ -226,8 +257,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .rail,
-  .sheet,
+  .panel,
   .fab {
     transition: none;
   }
@@ -242,7 +272,7 @@
    in this range via JS; the dock uses the collapsed-by-default behaviour
    (localStorage-driven) so JS isn't needed here. */
 @media (max-width: 1180px) and (min-width: 881px) {
-  .rail {
+  .panel {
     width: 320px;
   }
 }
