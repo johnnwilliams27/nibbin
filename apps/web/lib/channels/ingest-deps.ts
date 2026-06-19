@@ -5,9 +5,10 @@ import {
   type TurnGateDeps,
   type TurnGateConfig,
   type ChannelKind,
+  type ChannelAction,
 } from '@nibbin/channels';
 import { buildPorts } from './ports';
-import { handleInbound, type HandleInboundDeps } from './conversation';
+import { handleInbound, type HandleInboundDeps, type WorkSession } from './conversation';
 import { decideViaChannel } from '../runtime/decide';
 import { asUuid } from './ingest';
 import { anthropicGenerate, recordModelCall } from '../llm/client';
@@ -19,6 +20,11 @@ import {
 } from '@nibbin/keeper';
 import type { TokenUsage } from '@nibbin/router';
 import type { IngestDeps } from './ingest';
+import {
+  proposePlanForChannel,
+  startPlanRunForChannel,
+  respondToPlanRunForChannel,
+} from '../planner/channel';
 
 // ---------------------------------------------------------------------------
 // Environment helpers
@@ -257,6 +263,35 @@ async function buildReply(
   });
 }
 
+/**
+ * Reply with inline button actions (for plan propose / approval flows).
+ * Mirrors buildReply but populates the `actions` field on the outbound message
+ * so adapters (Telegram) can render inline keyboard buttons.
+ * No-ops with a logged warning if no live port exists for the channel.
+ */
+async function buildReplyWithActions(
+  channel: ChannelKind,
+  externalId: string,
+  body: string,
+  actions: ChannelAction[],
+): Promise<void> {
+  const { ports } = buildPorts(process.env as Record<string, string | undefined>);
+  const port = ports.get(channel);
+  if (!port) {
+    console.warn(`[channels] no live port for replyWithActions on ${channel} — no-op`);
+    return;
+  }
+  await port.deliver({
+    accountId: '',  // not used by the port adapters for replies
+    channel,
+    externalId,
+    kind: 'reply',
+    urgency: 'normal',
+    body,
+    actions,
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Public factory
 // ---------------------------------------------------------------------------
@@ -296,6 +331,20 @@ export function supabaseIngestDeps(): IngestDeps {
 
       const gateDeps = buildGateDeps(svc);
 
+      // ── userId: resolve linked_by from the verified binding ───────────────
+      // Mirrors decideViaChannel step (a)/(b): query notification_channels for
+      // the status='verified' row and extract linked_by. If null (no attributable
+      // actor), leave userId undefined — the work branch honest-degrades without
+      // an authenticated user id (never initiates work without a linked user).
+      const { data: binding } = await svc
+        .from('notification_channels')
+        .select('linked_by')
+        .eq('channel', verified.inbound.channel)
+        .eq('external_id', verified.inbound.externalId)
+        .eq('status', 'verified')
+        .maybeSingle();
+      const linkedBy = (binding?.linked_by as string | null | undefined) ?? null;
+
       const deps: HandleInboundDeps = {
         classify: classifyIntent,
 
@@ -308,6 +357,8 @@ export function supabaseIngestDeps(): IngestDeps {
 
         reply: buildReply,
 
+        replyWithActions: buildReplyWithActions,
+
         // P2-A: UUID-guard runId before it reaches decideViaChannel. A
         // non-UUID from attacker-influenced callback_data resolves to null
         // (treated as "couldn't action") instead of relying on a Postgres
@@ -318,6 +369,62 @@ export function supabaseIngestDeps(): IngestDeps {
             : Promise.resolve(null),
 
         workEnabled: process.env.CHANNELS_INITIATED_WORK_ENABLED === 'true',
+
+        // ── userId: linked_by from the verified binding ───────────────────
+        // undefined when no linked_by — the work branch never initiates work
+        // without an attributable actor (honest-degrade).
+        ...(linkedBy !== null ? { userId: linkedBy } : {}),
+
+        // ── session: channel_work_session store ───────────────────────────
+        session: {
+          async get(channel, externalId): Promise<WorkSession | null> {
+            const { data: row } = await svc
+              .from('channel_work_session')
+              .select('*')
+              .eq('channel', channel)
+              .eq('external_id', externalId)
+              .maybeSingle();
+            if (!row) return null;
+            return {
+              accountId: row.account_id as string,
+              channel: row.channel as string,
+              externalId: row.external_id as string,
+              kind: row.kind as 'proposed' | 'awaiting',
+              plan: row.plan ?? undefined,
+              planRunId: (row.plan_run_id as string | null) ?? undefined,
+              requestId: (row.request_id as string | null) ?? undefined,
+              requestKind: (row.request_kind as WorkSession['requestKind'] | null) ?? undefined,
+            };
+          },
+          async set(s: WorkSession): Promise<void> {
+            await svc.rpc('channel_work_session_set', {
+              p_account: s.accountId,
+              p_channel: s.channel,
+              p_external_id: s.externalId,
+              p_kind: s.kind,
+              p_plan: s.plan ?? null,
+              p_run: s.planRunId ?? null,
+              p_request_id: s.requestId ?? null,
+              p_request_kind: s.requestKind ?? null,
+            });
+          },
+          async clear(channel, externalId): Promise<void> {
+            await svc.rpc('channel_work_session_clear', {
+              p_channel: channel,
+              p_external_id: externalId,
+            });
+          },
+        },
+
+        // ── Planner delegates (Task 2 channel wrappers) ───────────────────
+        proposeWork: (accountId, userId, text) =>
+          proposePlanForChannel(accountId, userId, text),
+
+        startWork: (accountId, userId, plan) =>
+          startPlanRunForChannel(accountId, userId, plan),
+
+        respondWork: (accountId, userId, runId, response) =>
+          respondToPlanRunForChannel(accountId, userId, runId, response),
       };
 
       await handleInbound(
