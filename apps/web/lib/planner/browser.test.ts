@@ -354,6 +354,7 @@ describe('fetch-and-fulfill interceptor — pinned safeFetch, fail-closed', () =
     const fetchImpl = vi.fn<SafeFetchFn>(async () => fakeSafeResponse());
     const handler = await bootInterceptor(counters, fetchImpl);
 
+    // nosemgrep: javascript.lang.security.detect-insecure-websocket -- test vector: asserts the egress guard REJECTS the insecure ws:// scheme (not real usage)
     for (const url of ['file:///etc/passwd', 'ftp://example.com/x', 'ws://example.com/sock']) {
       const route = fakeRoute({ url });
       await handler(route);
