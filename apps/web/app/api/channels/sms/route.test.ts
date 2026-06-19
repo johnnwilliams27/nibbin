@@ -29,14 +29,15 @@ vi.mock('../../../../lib/channels/ingest-deps', () => ({
 
 vi.mock('../../../../lib/channels/sms-compliance', () => ({
   optOutSms: vi.fn(async () => undefined),
+  optInSms: vi.fn(async () => undefined),
 }));
 
 // ── Imports after mocks ───────────────────────────────────────────────────────
 
 import { POST } from './route';
-import { verifyTwilioSignature, SMS_STOP_REPLY, SMS_HELP_REPLY, type InboundResult } from '@nibbin/channels';
+import { verifyTwilioSignature, SMS_STOP_REPLY, SMS_HELP_REPLY, SMS_START_REPLY, type InboundResult } from '@nibbin/channels';
 import { ingestInbound } from '../../../../lib/channels/ingest';
-import { optOutSms } from '../../../../lib/channels/sms-compliance';
+import { optOutSms, optInSms } from '../../../../lib/channels/sms-compliance';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -66,6 +67,7 @@ beforeEach(() => {
   vi.mocked(verifyTwilioSignature).mockReturnValue(true);
   vi.mocked(ingestInbound).mockResolvedValue({ status: 'accepted' } as InboundResult);
   vi.mocked(optOutSms).mockResolvedValue(undefined);
+  vi.mocked(optInSms).mockResolvedValue(undefined);
 });
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -182,5 +184,48 @@ describe('POST /api/channels/sms — normal inbound messages', () => {
     expect(res.status).toBe(200);
     expect(vi.mocked(ingestInbound)).toHaveBeenCalledOnce();
     expect(vi.mocked(optOutSms)).not.toHaveBeenCalled();
+  });
+});
+
+describe('POST /api/channels/sms — START keyword (TCPA re-subscribe)', () => {
+  const START_VARIANTS = ['START', 'start', 'Start', 'YES', 'yes', 'UNSTOP', 'unstop'];
+
+  for (const kw of START_VARIANTS) {
+    it(`"${kw}" → calls optInSms, returns TwiML with start reply, does NOT ingest`, async () => {
+      const body = encodeParams({ From: '+15550000007', Body: kw });
+      const res = await POST(makeRequest(body));
+
+      expect(res.status).toBe(200);
+      expect(res.headers.get('content-type')).toBe('text/xml');
+
+      const text = await res.text();
+      expect(text).toContain(SMS_START_REPLY);
+      expect(text).toContain('<Response>');
+      expect(text).toContain('<Message>');
+
+      expect(vi.mocked(optInSms)).toHaveBeenCalledWith('+15550000007');
+      expect(vi.mocked(ingestInbound)).not.toHaveBeenCalled();
+      expect(vi.mocked(optOutSms)).not.toHaveBeenCalled();
+    });
+  }
+
+  it('START with leading/trailing spaces is still treated as re-subscribe', async () => {
+    const body = encodeParams({ From: '+15550000008', Body: '  START  ' });
+    const res = await POST(makeRequest(body));
+    expect(res.status).toBe(200);
+    const text = await res.text();
+    expect(text).toContain(SMS_START_REPLY);
+    expect(vi.mocked(optInSms)).toHaveBeenCalledWith('+15550000008');
+    expect(vi.mocked(ingestInbound)).not.toHaveBeenCalled();
+    expect(vi.mocked(optOutSms)).not.toHaveBeenCalled();
+  });
+
+  it('"start the meeting" is NOT a START keyword — falls through to ingest', async () => {
+    const body = encodeParams({ From: '+15550000009', Body: 'start the meeting' });
+    const res = await POST(makeRequest(body));
+
+    expect(res.status).toBe(200);
+    expect(vi.mocked(ingestInbound)).toHaveBeenCalledOnce();
+    expect(vi.mocked(optInSms)).not.toHaveBeenCalled();
   });
 });

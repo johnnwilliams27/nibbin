@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { parseTwilioInbound, verifyTwilioSignature, isStopKeyword, isHelpKeyword, SMS_STOP_REPLY, SMS_HELP_REPLY } from '@nibbin/channels';
+import { parseTwilioInbound, verifyTwilioSignature, isStopKeyword, isHelpKeyword, isStartKeyword, SMS_STOP_REPLY, SMS_HELP_REPLY, SMS_START_REPLY } from '@nibbin/channels';
 import { ingestInbound } from '../../../../lib/channels/ingest';
 import { supabaseIngestDeps } from '../../../../lib/channels/ingest-deps';
-import { optOutSms } from '../../../../lib/channels/sms-compliance';
+import { optOutSms, optInSms } from '../../../../lib/channels/sms-compliance';
 
 const twiml = (msg: string) =>
   new NextResponse(`<Response><Message>${msg}</Message></Response>`, {
@@ -29,6 +29,10 @@ export async function POST(req: Request): Promise<Response> {
   }
   if (isHelpKeyword(bodyText)) {
     return twiml(SMS_HELP_REPLY);
+  }
+  if (isStartKeyword(bodyText)) {
+    await optInSms(from);
+    return twiml(SMS_START_REPLY);
   }
 
   // ── Normal inbound — parse and ingest ────────────────────────────────────

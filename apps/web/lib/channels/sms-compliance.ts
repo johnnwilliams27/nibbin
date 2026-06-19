@@ -23,3 +23,25 @@ export async function optOutSms(externalId: string): Promise<void> {
     console.error('[sms-compliance] sms_opt_out rpc failed', error.message);
   }
 }
+
+/**
+ * Re-subscribe a phone number to SMS notifications (TCPA START compliance).
+ *
+ * Calls the `sms_opt_in` service-role RPC which:
+ *   1. Clears revoked_at and restores status to 'verified' for every revoked
+ *      SMS binding for this number (START is the consent signal — no new
+ *      nonce/verification needed; the number is already known).
+ *   2. Writes an `audit_log` row per restored binding (plus one if no revoked
+ *      binding existed, so the START attempt is always recorded).
+ *
+ * Must only be called AFTER Twilio signature verification.
+ */
+export async function optInSms(externalId: string): Promise<void> {
+  const svc = serviceClient();
+  const { error } = await svc.rpc('sms_opt_in', { p_external_id: externalId });
+  if (error) {
+    // Log but do not re-throw: a DB error must not prevent the TwiML START
+    // reply from reaching the sender.
+    console.error('[sms-compliance] sms_opt_in rpc failed', error.message);
+  }
+}
