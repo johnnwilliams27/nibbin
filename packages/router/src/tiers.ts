@@ -95,9 +95,10 @@ export const UNBUDGETED_T2_TASKS: ReadonlySet<RoutedTask> = new Set<RoutedTask>(
  * the eval suite) to turn reinforcement on for that task.
  */
 export const DEFAULT_TASK_CANDIDATES: Partial<Record<RoutedTask, readonly string[]>> = {
-  // Intentionally empty — every task resolves to its single configured model
-  // until the team adds an eval-cleared second candidate. This pins zero
-  // behavior change at ship: see the route-unchanged test.
+  // Eval-cleared 2026-06-19 — see docs/eval/routing-*.md
+  custom_spec_draft: ['claude-sonnet-4-6', 'claude-haiku-4-5-20251001'],
+  // Eval-cleared 2026-06-19 — see docs/eval/routing-*.md
+  complex_plan: ['claude-sonnet-4-6', 'claude-opus-4-8'],
 };
 
 /**
