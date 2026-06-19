@@ -12,3 +12,4 @@ export { gateTurn, type TurnGateDeps, type TurnGateConfig, type TurnGateResult }
 export { classifyIntent, type Intent } from './conversation/orchestrator';
 export { isStopKeyword, isHelpKeyword, isStartKeyword, SMS_CONSENT_COPY, SMS_HELP_REPLY, SMS_STOP_REPLY } from './compliance/copy';
 export { CHANNEL_SUBPROCESSORS, type SubprocessorEntry } from './compliance/subprocessors';
+export { setTelegramWebhook, getTelegramWebhookInfo, type SetWebhookOpts } from './admin/telegram-webhook';
