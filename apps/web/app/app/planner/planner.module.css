@@ -1,0 +1,146 @@
+/* Planner ad-hoc ask + plan preview + supervised run view.
+   Token-only; cards/badges/buttons from the UI kit. No coral. */
+
+.header {
+  margin-bottom: 18px;
+}
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--moss-deep);
+  font-weight: 600;
+}
+.title {
+  font-family: var(--display);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-size: 28px;
+  margin: 6px 0 4px;
+}
+.sub {
+  color: var(--ink-soft);
+  font-size: 14px;
+  max-width: 52ch;
+}
+
+.askRow {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 18px;
+}
+.askInput {
+  width: 100%;
+  min-height: 84px;
+  resize: vertical;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+}
+.askInput:focus {
+  outline: none;
+  border-color: var(--moss);
+  box-shadow: 0 0 0 3px var(--moss-wash);
+}
+
+.previewCard {
+  margin-top: 18px;
+}
+.previewGoal {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 18px;
+  margin: 0 0 10px;
+}
+.stepList {
+  margin: 0 0 12px;
+  padding-left: 18px;
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+.stepList li {
+  margin: 3px 0;
+}
+.surfaceLabel {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin: 12px 0 6px;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.assurance {
+  margin: 14px 0 4px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--moss-wash);
+  color: var(--moss-deep);
+  font-size: 13px;
+}
+.actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.transcript {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.turn {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  font-size: 14px;
+}
+.turnHead {
+  font-weight: 600;
+  color: var(--ink);
+}
+.turnObs {
+  margin-top: 6px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.pausePanel {
+  margin-top: 14px;
+}
+.pauseQ {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.respondRow {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.respondInput {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+.error {
+  margin-top: 12px;
+  color: var(--ink);
+  font-size: 14px;
+}

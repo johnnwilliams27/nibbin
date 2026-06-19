@@ -19,6 +19,7 @@ import type {
   KillReason,
   NibbinRef,
   ProgramStep,
+  RunCeilings,
   RunResult,
   RunTrigger,
 } from './types';
@@ -110,6 +111,177 @@ export function effectIdempotencyKey(nibbin: NibbinRef, draft: DraftStep, trigge
   return hashArgs([nibbin.id, draft.capability, draft.patternKey, draft.effectArgs, scope]);
 }
 
+/**
+ * The disposition of ONE gated step (the per-step gating extracted from
+ * executeRun's loop body so the Planner harness can reuse it verbatim — design
+ * §1: "the runner's gates are unchanged and still apply to every yielded
+ * step"). `dispatchStep` applies the same walls (allowlist, repetition,
+ * quarantine, token clamp, School gate, write-grant, idempotency) and records
+ * the step; it never decides the run's terminal status — the caller maps a
+ * `drafted`/`executed`/`kill` disposition to the run outcome (so `executeRun`'s
+ * behavior is byte-for-byte unchanged).
+ */
+export type StepDisposition =
+  | { kind: 'read_result'; feed: QuarantinedContent }
+  | { kind: 'composed'; feed?: QuarantinedContent }
+  | { kind: 'drafted'; draft: DraftStep }
+  | { kind: 'executed'; effect: { capability: string; idempotencyKey: string }; deduped: boolean }
+  | { kind: 'kill'; reason: KillReason }
+  | { kind: 'failed'; error: string };
+
+export interface DispatchCtx {
+  nibbin: NibbinRef;
+  trigger: RunTrigger;
+  runId: string;
+  idx: number;
+  tokensSoFar: number;
+  ceilings: RunCeilings;
+  repetition: Map<string, number>;
+  deps: RunnerDeps;
+}
+
+/**
+ * Gate ONE ProgramStep. Returns the disposition plus the advanced counters
+ * (`idxAfter`/`tokensAfter`) so the caller threads them into the next step.
+ * This is a pure extraction of executeRun's loop body — the same recordStep
+ * calls, the same gate logic, the same token clamp. It does NOT call
+ * deps.runs.finish (the caller owns terminal status), and it does NOT enforce
+ * the maxSteps/wall-clock guards (the caller owns the loop guards) — exactly
+ * the split executeRun already had between its loop head and body.
+ */
+export async function dispatchStep(
+  step: ProgramStep,
+  ctx: DispatchCtx,
+): Promise<StepDisposition & { idxAfter: number; tokensAfter: number }> {
+  const { nibbin, trigger, runId, deps, ceilings, repetition } = ctx;
+  const spec = nibbin.spec;
+  let idx = ctx.idx;
+  let tokens = ctx.tokensSoFar;
+  const done = (d: StepDisposition): StepDisposition & { idxAfter: number; tokensAfter: number } => ({
+    ...d,
+    idxAfter: idx,
+    tokensAfter: tokens,
+  });
+
+  if (step.kind === 'read') {
+    if (!spec.toolsAllowlist.includes(step.capability)) return done({ kind: 'kill', reason: 'allowlist' });
+    const repKey = `read:${step.capability}:${hashArgs(step.path)}`;
+    const seen = (repetition.get(repKey) ?? 0) + 1;
+    repetition.set(repKey, seen);
+    if (seen >= REPETITION_KILL_AT) return done({ kind: 'kill', reason: 'repetition' });
+
+    const out = await deps.reader.read(step.connectionId, step.capability, step.path);
+    if (!isQuarantined(out.wrapped)) return done({ kind: 'kill', reason: 'unquarantined' });
+
+    await deps.runs.recordStep(nibbin.accountId, runId, {
+      idx: idx++, kind: 'read', tool: step.capability, inputHash: hashArgs(step.path), tokens: 0,
+    });
+    return done({ kind: 'read_result', feed: out });
+  }
+
+  if (step.kind === 'compose') {
+    if (step.prompt && deps.model) {
+      const remaining = ceilings.maxTokens - tokens;
+      if (remaining <= 0) return done({ kind: 'kill', reason: 'max_tokens' });
+      const maxTokens = Math.min(step.prompt.maxTokens ?? 1024, remaining);
+      const drafted = await deps.model.draft({
+        runId,
+        nibbin,
+        intent: step.prompt.intent,
+        context: step.prompt.context,
+        maxTokens,
+      });
+      if (drafted !== null) {
+        tokens += drafted.tokens;
+        await deps.runs.recordStep(nibbin.accountId, runId, {
+          idx: idx++,
+          kind: 'compose',
+          tokens: drafted.tokens,
+          payload: { ...step.payload, model: true, ...(tokens > ceilings.maxTokens ? { overshoot: true } : {}) },
+        });
+        if (tokens > ceilings.maxTokens) return done({ kind: 'kill', reason: 'max_tokens' });
+        return done({ kind: 'composed', feed: quarantine(drafted.text, 'model') });
+      }
+      await deps.runs.recordStep(nibbin.accountId, runId, {
+        idx: idx++, kind: 'compose', tokens: 0, payload: { ...step.payload, model: false, fallback: true },
+      });
+      return done({ kind: 'composed' });
+    }
+    tokens += step.tokens ?? 0;
+    if (tokens > ceilings.maxTokens) return done({ kind: 'kill', reason: 'max_tokens' });
+    await deps.runs.recordStep(nibbin.accountId, runId, {
+      idx: idx++, kind: 'compose', tokens: step.tokens ?? 0, payload: step.payload,
+    });
+    return done({ kind: 'composed' });
+  }
+
+  // step.kind === 'draft': a proposed action. The Agent School gate — at the
+  // runtime layer, never the prompt layer — decides draft vs execute.
+  if (!spec.toolsAllowlist.includes(step.capability)) return done({ kind: 'kill', reason: 'allowlist' });
+
+  const routineApprovals = await deps.routines.approvedCount(nibbin.id, step.patternKey);
+  let gate = step.presentation
+    ? ({ action: 'draft', reason: 'stage' } as const)
+    : gateSideEffect(nibbin.stage, routineApprovals, spec.curriculum);
+
+  if (gate.action === 'deny') return done({ kind: 'kill', reason: 'stage' });
+
+  if (gate.action === 'execute') {
+    const granted = await deps.grants.hasGrant(nibbin.id, step.connectionId, step.capability);
+    if (!granted) gate = { action: 'draft', reason: 'stage' };
+  }
+
+  if (gate.action === 'draft') {
+    await deps.runs.recordStep(nibbin.accountId, runId, {
+      idx: idx++,
+      kind: 'draft',
+      tool: step.capability,
+      inputHash: hashArgs(step.effectArgs),
+      tokens: 0,
+      payload: {
+        title: step.title,
+        draft: step.draft,
+        patternKey: step.patternKey,
+        effectArgs: step.effectArgs,
+        connectionId: step.connectionId ?? null,
+        gate: gate.reason,
+      },
+    });
+    return done({ kind: 'drafted', draft: step });
+  }
+
+  // gate.action === 'execute' (Senior on routine, Graduate within spec)
+  const idempotencyKey = effectIdempotencyKey(nibbin, step, trigger, runId);
+  const claim = await deps.idempotency.claim({
+    accountId: nibbin.accountId,
+    runId,
+    stepIdx: idx,
+    capability: step.capability,
+    idempotencyKey,
+  });
+  if (claim === 'unknown_outcome') {
+    return done({ kind: 'failed', error: 'side effect outcome unknown from a prior attempt — not retrying' });
+  }
+  if (claim === 'claimed') {
+    await deps.effects.execute({
+      connectionId: step.connectionId,
+      capability: step.capability,
+      args: step.effectArgs,
+      idempotencyKey,
+    });
+    await deps.idempotency.markExecuted(nibbin.accountId, idempotencyKey);
+  }
+  await deps.runs.recordStep(nibbin.accountId, runId, {
+    idx: idx++,
+    kind: 'execute',
+    tool: step.capability,
+    inputHash: hashArgs(step.effectArgs),
+    tokens: 0,
+    payload: { patternKey: step.patternKey, idempotencyKey, deduped: claim === 'already_executed' },
+  });
+  return done({ kind: 'executed', effect: { capability: step.capability, idempotencyKey }, deduped: claim === 'already_executed' });
+}
+
 export async function executeRun(
   nibbin: NibbinRef,
   trigger: RunTrigger,
@@ -172,147 +344,31 @@ export async function executeRun(
       if (idx >= ceilings.maxSteps) return await kill('max_steps');
       if (deps.now() - startedAt > ceilings.maxWallClockMs) return await kill('wall_clock');
 
-      if (step.kind === 'read') {
-        if (!spec.toolsAllowlist.includes(step.capability)) return await kill('allowlist');
-        const repKey = `read:${step.capability}:${hashArgs(step.path)}`;
-        const seen = (repetition.get(repKey) ?? 0) + 1;
-        repetition.set(repKey, seen);
-        if (seen >= REPETITION_KILL_AT) return await kill('repetition');
-
-        const out = await deps.reader.read(step.connectionId, step.capability, step.path);
-        // §6.5: external content is data, never instructions. The runtime
-        // refuses tool output that lacks the quarantine markers.
-        if (!isQuarantined(out.wrapped)) return await kill('unquarantined');
-
-        await deps.runs.recordStep(nibbin.accountId, runId, {
-          idx: idx++, kind: 'read', tool: step.capability, inputHash: hashArgs(step.path), tokens: 0,
-        });
-        feed = out;
-        continue;
-      }
-
-      if (step.kind === 'compose') {
-        if (step.prompt && deps.model) {
-          // Pre-call ceiling (§6.2): the clamp happens BEFORE the call, so a
-          // run can never buy more tokens than its spec has left.
-          const remaining = ceilings.maxTokens - tokens;
-          if (remaining <= 0) return await kill('max_tokens');
-          const maxTokens = Math.min(step.prompt.maxTokens ?? 1024, remaining);
-          const drafted = await deps.model.draft({
-            runId,
-            nibbin,
-            intent: step.prompt.intent,
-            context: step.prompt.context,
-            maxTokens,
-          });
-          if (drafted !== null) {
-            tokens += drafted.tokens;
-            // Record the compose step BEFORE the overshoot check: the model
-            // call already happened and incurred COGS (model_calls row), so
-            // the run's own step ledger must carry it even when the run is
-            // then killed for exceeding the ceiling — otherwise the COGS row
-            // is an orphan with no reconcilable step (gate finding
-            // logic-skeptic P2).
-            await deps.runs.recordStep(nibbin.accountId, runId, {
-              idx: idx++,
-              kind: 'compose',
-              tokens: drafted.tokens,
-              payload: { ...step.payload, model: true, ...(tokens > ceilings.maxTokens ? { overshoot: true } : {}) },
-            });
-            if (tokens > ceilings.maxTokens) return await kill('max_tokens');
-            // Model output re-enters the program as quarantined content only
-            // (§6.5): it was derived from external data and is data itself,
-            // never instructions — same rule as connector reads.
-            feed = quarantine(drafted.text, 'model');
-            continue;
-          }
-          // Honest degradation: no model output → the program's deterministic
-          // fallback composes the draft; the step records the miss.
-          await deps.runs.recordStep(nibbin.accountId, runId, {
-            idx: idx++, kind: 'compose', tokens: 0, payload: { ...step.payload, model: false, fallback: true },
-          });
-          continue;
-        }
-        tokens += step.tokens ?? 0;
-        if (tokens > ceilings.maxTokens) return await kill('max_tokens');
-        await deps.runs.recordStep(nibbin.accountId, runId, {
-          idx: idx++, kind: 'compose', tokens: step.tokens ?? 0, payload: step.payload,
-        });
-        continue;
-      }
-
-      // step.kind === 'draft': a proposed action. The Agent School gate — at
-      // the runtime layer, never the prompt layer — decides draft vs execute.
-      if (!spec.toolsAllowlist.includes(step.capability)) return await kill('allowlist');
-
-      const routineApprovals = await deps.routines.approvedCount(nibbin.id, step.patternKey);
-      let gate = step.presentation
-        ? ({ action: 'draft', reason: 'stage' } as const)
-        : gateSideEffect(nibbin.stage, routineApprovals, spec.curriculum);
-
-      if (gate.action === 'deny') return await kill('stage');
-
-      // C8 structural grants (issue #26): without a per-Nibbin write-grant row
-      // for this capability+connection, even an earned stage falls back to a
-      // draft — autonomy never outruns granted access.
-      if (gate.action === 'execute') {
-        const granted = await deps.grants.hasGrant(nibbin.id, step.connectionId, step.capability);
-        if (!granted) gate = { action: 'draft', reason: 'stage' };
-      }
-
-      if (gate.action === 'draft') {
-        await deps.runs.recordStep(nibbin.accountId, runId, {
-          idx: idx++,
-          kind: 'draft',
-          tool: step.capability,
-          inputHash: hashArgs(step.effectArgs),
-          tokens: 0,
-          payload: {
-            title: step.title,
-            draft: step.draft,
-            patternKey: step.patternKey,
-            effectArgs: step.effectArgs,
-            connectionId: step.connectionId ?? null,
-            gate: gate.reason, // 'stage' (Student) or 'novelty' (Senior flagging)
-          },
-        });
-        await deps.runs.finish(runId, 'awaiting_approval');
-        return { kind: 'awaiting_approval', runId, draft: step };
-      }
-
-      // gate.action === 'execute' (Senior on routine, Graduate within spec)
-      const idempotencyKey = effectIdempotencyKey(nibbin, step, trigger, runId);
-      const claim = await deps.idempotency.claim({
-        accountId: nibbin.accountId,
-        runId,
-        stepIdx: idx,
-        capability: step.capability,
-        idempotencyKey,
+      // The per-step gates live in dispatchStep (shared with the Planner
+      // harness, design §1). It records the step and returns a disposition;
+      // executeRun maps that disposition to the run's terminal status exactly
+      // as before — no behavior change.
+      const disp = await dispatchStep(step, {
+        nibbin, trigger, runId, idx, tokensSoFar: tokens, ceilings, repetition, deps,
       });
-      if (claim === 'unknown_outcome') {
-        // a prior attempt may or may not have landed — at-most-once means stop
+      idx = disp.idxAfter;
+      tokens = disp.tokensAfter;
+
+      if (disp.kind === 'kill') return await kill(disp.reason);
+      if (disp.kind === 'failed') {
         await deps.runs.finish(runId, 'failed');
-        return { kind: 'failed', runId, error: 'side effect outcome unknown from a prior attempt — not retrying' };
+        return { kind: 'failed', runId, error: disp.error };
       }
-      if (claim === 'claimed') {
-        await deps.effects.execute({
-          connectionId: step.connectionId,
-          capability: step.capability,
-          args: step.effectArgs,
-          idempotencyKey,
-        });
-        await deps.idempotency.markExecuted(nibbin.accountId, idempotencyKey);
+      if (disp.kind === 'drafted') {
+        await deps.runs.finish(runId, 'awaiting_approval');
+        return { kind: 'awaiting_approval', runId, draft: disp.draft };
       }
-      await deps.runs.recordStep(nibbin.accountId, runId, {
-        idx: idx++,
-        kind: 'execute',
-        tool: step.capability,
-        inputHash: hashArgs(step.effectArgs),
-        tokens: 0,
-        payload: { patternKey: step.patternKey, idempotencyKey, deduped: claim === 'already_executed' },
-      });
-      await deps.runs.finish(runId, 'completed');
-      return { kind: 'executed', runId, effect: { capability: step.capability, idempotencyKey } };
+      if (disp.kind === 'executed') {
+        await deps.runs.finish(runId, 'completed');
+        return { kind: 'executed', runId, effect: disp.effect };
+      }
+      // read_result / composed → feed the (possibly quarantined) result back.
+      feed = disp.feed;
     }
 
     await deps.runs.finish(runId, 'completed');
