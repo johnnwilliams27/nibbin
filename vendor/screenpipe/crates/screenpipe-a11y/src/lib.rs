@@ -63,7 +63,7 @@ pub mod budget;
 pub mod config;
 pub mod events;
 pub mod incognito;
-pub mod local_compat;
+pub(crate) mod local_compat;
 pub mod platform;
 pub mod tree;
 pub mod url_filter;

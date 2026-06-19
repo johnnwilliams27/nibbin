@@ -359,6 +359,9 @@ impl Daemon {
                 // gap carries no content — only its duration.
                 self.record_gap(now)?;
                 self.gate.resume();
+                // RT-4: rebaseline input counters so paused-period input does
+                // not leak into the first post-resume InputBurst.
+                self.source.resume();
             }
             ControlCommand::StopEarly => {
                 self.apply(StudyCommand::StopEarly)?;
