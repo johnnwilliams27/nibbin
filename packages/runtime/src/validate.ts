@@ -9,8 +9,14 @@
  * Keeper" — such specs are rejected, not gated.
  */
 import { CONNECTOR_REGISTRY, capabilityCanSend } from '@nibbin/connectors';
-import { capability } from './capabilities';
+import { capability, isComputerUseCapability } from './capabilities';
 import { assertSafeReadPath, resolvePrimitiveInputs } from './interpreter';
+import {
+  COMPUTER_USE_CEILINGS,
+  isComputerUseVerb,
+  validateComputerUseArgs,
+  type ComputerUseVerb,
+} from './browser';
 import { plannerTool, EGRESS_UTILITY_IDS } from './utilities';
 import type { AgentSpec, PlanSpec, PlannerTool, TriggerDef } from './types';
 
@@ -336,7 +342,17 @@ export function validatePlanSpec(
 
   if (plan.kind !== 'plan') at('not a plan spec');
   if (!plan.goal.trim()) at('goal required');
-  if (plan.weightClass !== 'frontier') at('plan weightClass must be "frontier"');
+
+  // A plan that provisions ANY computer_use (browser) verb MUST run at the
+  // computer_use weight class (10×, design §3 table); a plan over only
+  // connector/utility tools runs at frontier. The weight class is load-bearing
+  // for budget, so it is a structural check, not a hint.
+  const usesComputerUse = plan.toolsAllowlist.some((id) => isComputerUseCapability(id));
+  if (usesComputerUse) {
+    if (plan.weightClass !== 'computer_use') at('a plan provisioning a computer_use verb must run at the "computer_use" weight class');
+  } else if (plan.weightClass !== 'frontier') {
+    at('plan weightClass must be "frontier" (or "computer_use" when it provisions a browser verb)');
+  }
 
   const granted = new Set(accountConnections);
   for (const provider of plan.requiredConnectors) {
@@ -355,6 +371,12 @@ export function validatePlanSpec(
       }
       continue;
     }
+    // A computer_use verb needs NO OAuth connector (it is driven by the injected
+    // BrowserDriver). It is valid purely on being a registered computer_use
+    // capability id — its safety is the verb+target schema (validatePick) +
+    // approval-gating + the SSRF guard, not a connector grant.
+    if (isComputerUseCapability(id)) continue;
+
     const cap = capability(id);
     if (!cap) {
       at(`tool "${id}" is neither a registry capability nor a known utility`);
@@ -374,15 +396,21 @@ export function validatePlanSpec(
     }
   }
 
+  // Ceilings: bound against the weight-class-appropriate maxima. A computer_use
+  // run is supervised + heavier per action, so it is bounded TIGHTER than a
+  // frontier plan (browser.COMPUTER_USE_CEILINGS); a frontier plan keeps the
+  // existing bounds. A crafted plan can't widen either.
   const c = plan.ceilings;
+  const tokenBound = usesComputerUse ? COMPUTER_USE_CEILINGS.maxTokens : MAX_PLAN_TOKENS;
+  const iterBound = usesComputerUse ? COMPUTER_USE_CEILINGS.maxIterations : MAX_PLAN_ITERATIONS;
   if (c.maxSteps < 1 || c.maxTokens < 0 || c.maxWallClockMs < 1) at('per-run ceilings must be positive');
-  // Bound maxTokens (floor + hard ceiling): a crafted plan can't set maxTokens
-  // to 1e9 and neuter the token-budget kill. The server re-stamps the canonical
-  // ceilings anyway (actions.startPlanRun), but the validator is the trust gate.
   if (!Number.isFinite(c.maxTokens) || c.maxTokens < 1) at('maxTokens must be a positive finite number');
-  else if (c.maxTokens > MAX_PLAN_TOKENS) at(`maxTokens ${c.maxTokens} exceeds the bound of ${MAX_PLAN_TOKENS}`);
+  else if (c.maxTokens > tokenBound) at(`maxTokens ${c.maxTokens} exceeds the bound of ${tokenBound}`);
   if (!Number.isInteger(c.maxIterations) || c.maxIterations < 1) at('maxIterations must be a positive integer');
-  else if (c.maxIterations > MAX_PLAN_ITERATIONS) at(`maxIterations ${c.maxIterations} exceeds the bound of ${MAX_PLAN_ITERATIONS}`);
+  else if (c.maxIterations > iterBound) at(`maxIterations ${c.maxIterations} exceeds the bound of ${iterBound}`);
+  if (usesComputerUse && c.maxWallClockMs > COMPUTER_USE_CEILINGS.maxWallClockMs) {
+    at(`maxWallClockMs ${c.maxWallClockMs} exceeds the computer_use bound of ${COMPUTER_USE_CEILINGS.maxWallClockMs}`);
+  }
 
   return problems;
 }
@@ -461,6 +489,24 @@ export function validatePick(
   // A connector capability pick.
   const cap = capability(tool);
   if (!cap) return { ok: false, reason: `tool "${tool}" is not a registry capability` };
+
+  // A computer_use (browser) verb: validate the verb + target schema fail-closed
+  // (design §5). NO connector grant is checked (it is driven by the injected
+  // BrowserDriver). The navigate URL's SSRF check is applied at dispatch time in
+  // the harness (it needs the injected isPublicIp); here we validate shape only.
+  // A click/type (write-class) is ALLOWED through here — unlike a raw connector
+  // write — because its commit is approval-gated and the driver never
+  // auto-commits; the picker is choosing to PROPOSE the action, not perform it.
+  if (cap.family === 'computer_use') {
+    const verb = cap.verb;
+    if (!isComputerUseVerb(verb)) return { ok: false, reason: `unknown computer_use verb "${verb}"` };
+    try {
+      validateComputerUseArgs(verb as ComputerUseVerb, args);
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, reason: err instanceof Error ? err.message : 'invalid computer_use args' };
+    }
+  }
 
   const granted = new Set(accountConnections);
   if (!granted.has(cap.requiredConnector)) {

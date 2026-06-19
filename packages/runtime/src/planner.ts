@@ -31,6 +31,13 @@ import { capability } from './capabilities';
 import { dispatchStep, hashArgs, REPETITION_KILL_AT, type RunnerDeps } from './runner';
 import { interpretSpec } from './interpreter';
 import { validatePick, type PlannerPickInput } from './validate';
+import {
+  assertSafeNavigateUrl,
+  describeTarget,
+  validateComputerUseArgs,
+  type BrowserDriver,
+  type ComputerUseVerb,
+} from './browser';
 import { plannerTool } from './utilities';
 import type {
   AgentSpec,
@@ -87,6 +94,15 @@ export interface PlannerDeps {
   accountId: string;
   /** Utility dispatch (web/memory). Absent web.* handlers → a clean error obs. */
   utilities?: UtilityDispatch;
+  /**
+   * The computer_use (browser) driver. Absent → a computer_use pick returns a
+   * clean "unavailable" observation (it never throws into the loop). The
+   * injected `isPublicIp` is the connectors-package predicate the navigate SSRF
+   * guard uses (the runtime stays pure — apps/web passes @nibbin/connectors).
+   */
+  browser?: BrowserDriver;
+  /** Public-IP predicate for the navigate SSRF guard (apps/web → connectors). */
+  isPublicIp?: (addr: string) => boolean;
   /** Persist the run state on each pause/checkpoint (Task 3). */
   persist?: PlanRunPersist;
   /** Injectable id factory (tests). */
@@ -194,8 +210,11 @@ async function rebuildReadRepetition(
     if (!('tool' in t.pick) || typeof t.pick.tool !== 'string') continue;
     const tool = t.pick.tool;
     // Only connector capabilities reach the interpreter; utilities/sentinels are
-    // primed elsewhere (and have no capability descriptor).
-    if (plannerTool(tool) || !capability(tool)) continue;
+    // primed elsewhere (and have no capability descriptor). A computer_use verb
+    // is NOT a connector capability (driven by the BrowserDriver, no interpreter
+    // program) — primed by the `cu:` key loop, skipped here.
+    const desc = capability(tool);
+    if (plannerTool(tool) || !desc || desc.family === 'computer_use') continue;
     const args = (t.pick as { args?: Record<string, unknown> }).args ?? {};
     try {
       const program = interpretSpec(stepSpecFor(tool, args, plan), connMap, nowMs);
@@ -259,11 +278,18 @@ export async function runPlan(
   // utility calls (especially repeated web.* egress).
   let webCalls = 0;
   for (const t of state.transcript) {
-    if ('tool' in t.pick && typeof t.pick.tool === 'string' && plannerTool(t.pick.tool)) {
-      const args = (t.pick as { args: Record<string, unknown> }).args ?? {};
-      const repKey = `util:${t.pick.tool}:${hashArgs(args)}`;
+    if (!('tool' in t.pick) || typeof t.pick.tool !== 'string') continue;
+    const tool = t.pick.tool;
+    const args = (t.pick as { args: Record<string, unknown> }).args ?? {};
+    if (plannerTool(tool)) {
+      const repKey = `util:${tool}:${hashArgs(args)}`;
       repetition.set(repKey, (repetition.get(repKey) ?? 0) + 1);
-      if (WEB_UTILITY_IDS.has(t.pick.tool)) webCalls += 1;
+      if (WEB_UTILITY_IDS.has(tool)) webCalls += 1;
+    } else if (capability(tool)?.family === 'computer_use') {
+      // Prime the computer_use repetition key so a resumed loop can't bypass the
+      // repetition kill by forgetting prior browser picks (mirrors util:/read:).
+      const repKey = `cu:${tool}:${hashArgs(args)}`;
+      repetition.set(repKey, (repetition.get(repKey) ?? 0) + 1);
     }
   }
   let idx = state.transcript.length;
@@ -433,6 +459,105 @@ export async function runPlan(
       const obsIsProgress = observation.trim() !== '' && observation !== priorUtilObs;
       progressed = scratchChanged || obsIsProgress;
 
+      state.transcript.push({ idx: idx++, pick, observation: cap(observation) });
+      noProgress = progressed ? 0 : noProgress + 1;
+      if (noProgress >= NO_PROGRESS_KILL_AT) return await killed('no_progress');
+      await persist();
+      continue;
+    }
+
+    // ── a computer_use (browser) verb ────────────────────────────────────────
+    // The verb was already validated fail-closed by validatePick (verb ∈ surface
+    // + target schema). reads (navigate/extract/screenshot/scroll) → quarantined
+    // observation, surfaced as DATA. writes (click/type) → pause as a resumable
+    // needs_input(approval); the driver NEVER auto-commits — apps/web replays the
+    // verb via driver.commit() only after the human approves (the same approval
+    // gate the connector-draft path uses). Bounded by the same repetition guard.
+    const cuCap = capability(tool);
+    if (cuCap?.family === 'computer_use') {
+      const verb = cuCap.verb as ComputerUseVerb;
+      // Repetition guard keyed on (tool, args) — same as utilities, so a picker
+      // can't spin on the same navigate/extract.
+      const repKey = `cu:${tool}:${hashArgs(args)}`;
+      const seen = (repetition.get(repKey) ?? 0) + 1;
+      repetition.set(repKey, seen);
+      if (seen >= REPETITION_KILL_AT) return await killed('repetition');
+
+      // Re-derive the validated args (validatePick already accepted them).
+      let cu;
+      try {
+        cu = validateComputerUseArgs(verb, args);
+      } catch (err) {
+        // Should be unreachable (validatePick gates this) — fail cleanly.
+        return await fail(`invalid computer_use args: ${err instanceof Error ? err.message : String(err)}`);
+      }
+
+      if (!deps.browser) {
+        state.transcript.push({ idx: idx++, pick, observation: cap('the browser is unavailable for this run') });
+        noProgress += 1;
+        if (noProgress >= NO_PROGRESS_KILL_AT) return await killed('no_progress');
+        await persist();
+        continue;
+      }
+
+      // ── WRITE verbs (click/type): pause for approval; commit NOTHING now ─────
+      if (cu.verb === 'click' || cu.verb === 'type') {
+        const draftResult =
+          cu.verb === 'click'
+            ? await deps.browser.click(cu.target)
+            : await deps.browser.type(cu.target, cu.value);
+        const request: PendingRequest = {
+          requestId: newRequestId(),
+          kind: 'approval',
+          question: `Approve browser action: ${draftResult.summary}?`,
+          context: {
+            tool,
+            computerUse: {
+              verb: cu.verb,
+              target: cu.target,
+              ...(cu.verb === 'type' ? { value: cu.value } : {}),
+            },
+            summary: draftResult.summary,
+          },
+        };
+        state.transcript.push({ idx: idx++, pick });
+        state.status = 'needs_input';
+        state.pending = request;
+        await persist();
+        return { kind: 'needs_input', runId, request };
+      }
+
+      // ── READ verbs (navigate/extract/screenshot/scroll): quarantined obs ─────
+      let result;
+      try {
+        if (cu.verb === 'navigate') {
+          // SSRF guard — the SAME literal-host check web.fetch applies (private/
+          // loopback/metadata rejected). The Playwright adapter additionally
+          // routes egress through safeFetch's resolve+pin rebind defense.
+          assertSafeNavigateUrl(cu.url, deps.isPublicIp ?? (() => true));
+          result = await deps.browser.navigate(cu.url);
+        } else if (cu.verb === 'extract') {
+          result = await deps.browser.extract(cu.target);
+        } else if (cu.verb === 'screenshot') {
+          result = await deps.browser.screenshot(cu.target);
+        } else {
+          result = await deps.browser.scroll(cu.target);
+        }
+      } catch (err) {
+        // A blocked navigate (SSRF) or a driver error → a clean quarantined-shaped
+        // observation; never throw into the loop.
+        const why = err instanceof Error ? err.message : String(err);
+        const tgt = cu.verb === 'navigate' ? cu.url : describeTarget(cu.target ?? {});
+        state.transcript.push({ idx: idx++, pick, observation: cap(`${cu.verb} (${tgt}) was rejected: ${why}`) });
+        noProgress += 1;
+        if (noProgress >= NO_PROGRESS_KILL_AT) return await killed('no_progress');
+        await persist();
+        continue;
+      }
+
+      const observation = `${cu.verb}: ${result.content.wrapped}`;
+      const priorUtilObs = lastUtilityObservation(state.transcript);
+      const progressed = observation.trim() !== '' && observation !== priorUtilObs;
       state.transcript.push({ idx: idx++, pick, observation: cap(observation) });
       noProgress = progressed ? 0 : noProgress + 1;
       if (noProgress >= NO_PROGRESS_KILL_AT) return await killed('no_progress');
