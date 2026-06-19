@@ -177,7 +177,7 @@ export async function hatchNibbin(input: {
     return {
       ok: true,
       name: fallbackResult.name,
-      fallbackNote: "We started with a close match — your Nibbin will still learn your exact chore as it watches.",
+      fallbackNote: "We started with a close match — your Nibbin will adapt to your exact chore as it watches.",
     };
   }
 

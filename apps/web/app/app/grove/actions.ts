@@ -84,7 +84,7 @@ async function emitOnboardingLeaves(accountId: string): Promise<void> {
         p_source_id: `field_study_nudge:${accountId}`,
         p_title: NEXT_STEP.fieldStudy.title,
         p_body: NEXT_STEP.fieldStudy.detail,
-        p_payload: { ctaPath: '/app/diagnosis', ctaLabel: NEXT_STEP.fieldStudy.cta },
+        p_payload: { ctaPath: '/app', ctaLabel: NEXT_STEP.fieldStudy.cta },
       }),
     ]);
   } catch {

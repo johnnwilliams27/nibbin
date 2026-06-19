@@ -58,7 +58,7 @@ export function NibbinControls({ nibbinId, name, status, pausedReason }: Props) 
     setError(null);
     startTransition(async () => {
       const res = await sleepNibbinAction(nibbinId);
-      if (!res.ok) { setError(res.error ?? "Couldn't archive."); return; }
+      if (!res.ok) { setError(res.error ?? "Couldn't delete."); return; }
       setConfirmDelete(false);
       router.refresh();
     });
@@ -105,7 +105,7 @@ export function NibbinControls({ nibbinId, name, status, pausedReason }: Props) 
       ) : (
         <>
           <span className={styles.draftConfirmTxt}>
-            Archive {name}? Any in-progress runs will be stopped. This can&rsquo;t be undone.
+            Delete {name}? It&rsquo;s archived, not erased &mdash; it stops working and leaves your roster.
           </span>
           <button
             type="button"
@@ -113,7 +113,7 @@ export function NibbinControls({ nibbinId, name, status, pausedReason }: Props) 
             onClick={handleDelete}
             disabled={pending}
           >
-            {pending ? 'Archiving…' : 'Yes, archive'}
+            {pending ? 'Deleting…' : 'Delete'}
           </button>
           <button
             type="button"

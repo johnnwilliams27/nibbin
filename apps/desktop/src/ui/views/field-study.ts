@@ -543,7 +543,9 @@ export function fieldStudyView(_rerender: () => void): HTMLElement {
   const nav = el('nav', { class: 'nav subnav' });
   const mount = el('div', {});
   // D6: unsubscribe handle for the study:status live-tick listener.
+  // Also track the in-flight promise so teardown can cancel even if .then() hasn't fired yet.
   let unsubscribeStatus: (() => void) | null = null;
+  let unsubscribeStatusPromise: Promise<() => void> | null = null;
 
   const subs: [Sub, string][] = [
     ['home', 'Field study'],
@@ -654,7 +656,8 @@ export function fieldStudyView(_rerender: () => void): HTMLElement {
   // interaction. Only triggers a non-polling repaint (fast path). Unsubscribed
   // when this view is torn down (the returned root is removed from the DOM and
   // render() calls fieldStudyView fresh on each tab switch).
-  void bridge.onEvent('study:status', () => { void paint(false); }).then((unsub) => {
+  unsubscribeStatusPromise = bridge.onEvent('study:status', () => { void paint(false); });
+  void unsubscribeStatusPromise.then((unsub) => {
     unsubscribeStatus = unsub;
   });
 
@@ -662,8 +665,14 @@ export function fieldStudyView(_rerender: () => void): HTMLElement {
   // (render() in main.ts rebuilds this view on each tab switch; the old root is
   // simply discarded, but we clean up the event listener to prevent ghost ticks.)
   (root as HTMLElement & { __nibbinCleanup__?: () => void }).__nibbinCleanup__ = () => {
-    unsubscribeStatus?.();
-    unsubscribeStatus = null;
+    if (unsubscribeStatus !== null) {
+      unsubscribeStatus();
+      unsubscribeStatus = null;
+    } else if (unsubscribeStatusPromise !== null) {
+      // Promise resolved after teardown was called — ensure the listener is removed.
+      void unsubscribeStatusPromise.then((unsub) => unsub());
+    }
+    unsubscribeStatusPromise = null;
   };
 
   return root;
