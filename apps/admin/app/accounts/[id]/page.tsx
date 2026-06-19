@@ -90,6 +90,51 @@ export default async function AccountDetail({
   const { data: cogsRows } = await admin.rpc('account_model_cogs', { p_account: id, p_days: 30 });
   const cogs = Array.isArray(cogsRows) ? (cogsRows[0] ?? null) : null;
 
+  // Per-model/task breakdown over 30 days, ordered by cost desc.
+  const windowStart = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const { data: breakdownRows } = await admin
+    .from('model_calls')
+    .select('model, task, input_tokens, cache_write_tokens, cache_read_tokens, output_tokens, cost_microusd')
+    .eq('account_id', id)
+    .gte('created_at', windowStart);
+
+  // Aggregate in JS (group by model+task, sum tokens + cost, count calls).
+  type BreakdownKey = string;
+  const breakdownMap = new Map<
+    BreakdownKey,
+    {
+      model: string;
+      task: string | null;
+      calls: number;
+      input_tokens: number;
+      output_tokens: number;
+      cost_microusd: number;
+    }
+  >();
+  for (const row of breakdownRows ?? []) {
+    const key = `${row.model}|${row.task ?? ''}`;
+    const prev = breakdownMap.get(key) ?? {
+      model: row.model as string,
+      task: row.task as string | null,
+      calls: 0,
+      input_tokens: 0,
+      output_tokens: 0,
+      cost_microusd: 0,
+    };
+    breakdownMap.set(key, {
+      ...prev,
+      calls: prev.calls + 1,
+      input_tokens:
+        prev.input_tokens +
+        Number(row.input_tokens) +
+        Number(row.cache_write_tokens) +
+        Number(row.cache_read_tokens),
+      output_tokens: prev.output_tokens + Number(row.output_tokens),
+      cost_microusd: prev.cost_microusd + Number(row.cost_microusd),
+    });
+  }
+  const breakdown = [...breakdownMap.values()].sort((a, b) => b.cost_microusd - a.cost_microusd);
+
   // §6.12 / TTFAD: the account's product events → activation funnel + the time
   // from account creation to the first approved draft (the north-star metric).
   const { data: pevents } = await admin
@@ -151,33 +196,64 @@ export default async function AccountDetail({
       <section className={styles.panel}>
         <h2 className={styles.h2}>Model COGS — last 30 days</h2>
         {cogs && Number(cogs.calls) > 0 ? (
-          <section className={styles.statsRow}>
-            <div className={styles.stat}>
-              <span className={styles.statLabel}>Cost</span>
-              <span className={styles.statValue}>${(Number(cogs.cost_microusd) / 1_000_000).toFixed(4)}</span>
-            </div>
-            <div className={styles.stat}>
-              <span className={styles.statLabel}>Model calls</span>
-              <span className={styles.statValue}>{Number(cogs.calls)}</span>
-            </div>
-            <div className={styles.stat}>
-              <span className={styles.statLabel}>Cache hit rate</span>
-              <span className={styles.statValue}>
-                {(() => {
-                  const read = Number(cogs.cache_read_tokens);
-                  const promptTokens = Number(cogs.input_tokens) + Number(cogs.cache_write_tokens) + read;
-                  return promptTokens === 0 ? '—' : `${Math.round((read / promptTokens) * 100)}%`;
-                })()}
-              </span>
-            </div>
-            <div className={styles.stat}>
-              <span className={styles.statLabel}>Tokens (in / out)</span>
-              <span className={styles.statValue}>
-                {Number(cogs.input_tokens) + Number(cogs.cache_write_tokens) + Number(cogs.cache_read_tokens)} /{' '}
-                {Number(cogs.output_tokens)}
-              </span>
-            </div>
-          </section>
+          <>
+            <section className={styles.statsRow}>
+              <div className={styles.stat}>
+                <span className={styles.statLabel}>Cost</span>
+                <span className={styles.statValue}>${(Number(cogs.cost_microusd) / 1_000_000).toFixed(4)}</span>
+              </div>
+              <div className={styles.stat}>
+                <span className={styles.statLabel}>Model calls</span>
+                <span className={styles.statValue}>{Number(cogs.calls)}</span>
+              </div>
+              <div className={styles.stat}>
+                <span className={styles.statLabel}>Cache hit rate</span>
+                <span className={styles.statValue}>
+                  {(() => {
+                    const read = Number(cogs.cache_read_tokens);
+                    const promptTokens = Number(cogs.input_tokens) + Number(cogs.cache_write_tokens) + read;
+                    return promptTokens === 0 ? '—' : `${Math.round((read / promptTokens) * 100)}%`;
+                  })()}
+                </span>
+              </div>
+              <div className={styles.stat}>
+                <span className={styles.statLabel}>Tokens (in / out)</span>
+                <span className={styles.statValueSmall}>
+                  {Number(cogs.input_tokens) + Number(cogs.cache_write_tokens) + Number(cogs.cache_read_tokens)} /{' '}
+                  {Number(cogs.output_tokens)}
+                </span>
+              </div>
+            </section>
+            {breakdown.length > 0 && (
+              <>
+                <h2 className={styles.h2} style={{ marginTop: '20px' }}>Per-model breakdown</h2>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th>Model</th>
+                      <th>Task</th>
+                      <th>Calls</th>
+                      <th>Tokens in</th>
+                      <th>Tokens out</th>
+                      <th>Cost (USD)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {breakdown.map((r) => (
+                      <tr key={`${r.model}|${r.task ?? ''}`}>
+                        <td className={styles.mono}>{r.model}</td>
+                        <td className={styles.mono}>{r.task ?? '—'}</td>
+                        <td>{r.calls}</td>
+                        <td>{r.input_tokens.toLocaleString()}</td>
+                        <td>{r.output_tokens.toLocaleString()}</td>
+                        <td className={styles.mono}>${(r.cost_microusd / 1_000_000).toFixed(4)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
+            )}
+          </>
         ) : (
           <p className={styles.muted}>No model calls in the window — this account is running on the scripted/deterministic floor.</p>
         )}
@@ -188,11 +264,11 @@ export default async function AccountDetail({
         <section className={styles.statsRow}>
           <div className={styles.stat}>
             <span className={styles.statLabel}>Account created</span>
-            <span className={styles.statValue}>{new Date(account.created_at).toISOString().slice(0, 16).replace('T', ' ')}</span>
+            <span className={styles.statValueSmall}>{new Date(account.created_at).toISOString().slice(0, 16).replace('T', ' ')}</span>
           </div>
           <div className={styles.stat}>
             <span className={styles.statLabel}>First approved draft</span>
-            <span className={styles.statValue}>
+            <span className={styles.statValueSmall}>
               {firstApprovedAt ? new Date(firstApprovedAt).toISOString().slice(0, 16).replace('T', ' ') : '—'}
             </span>
           </div>

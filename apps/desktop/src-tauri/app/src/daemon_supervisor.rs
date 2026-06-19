@@ -1,6 +1,20 @@
 use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager, Runtime};
 
+/// Returns true if the daemon wrote a heartbeat recently (within the last
+/// 5 seconds). Used to guard against double-spawning on Windows.
+fn daemon_is_running(store: &Path) -> bool {
+    let heartbeat = store.join("daemon.status");
+    if let Ok(meta) = std::fs::metadata(&heartbeat) {
+        if let Ok(modified) = meta.modified() {
+            if let Ok(age) = std::time::SystemTime::now().duration_since(modified) {
+                return age.as_secs() < 5;
+            }
+        }
+    }
+    false
+}
+
 pub fn observerd_binary_name() -> &'static str {
     if cfg!(windows) {
         "observerd.exe"
@@ -72,7 +86,10 @@ pub fn run_command_line(observerd: &Path, store: &Path) -> String {
 
 #[cfg(windows)]
 pub fn register_windows(observerd: &Path, store: &Path) -> anyhow::Result<()> {
+    use std::os::windows::process::CommandExt;
     use std::process::Command;
+
+    // Register for autostart at next login.
     let data = run_command_line(observerd, store);
     let status = Command::new("reg")
         .args([
@@ -88,6 +105,25 @@ pub fn register_windows(observerd: &Path, store: &Path) -> anyhow::Result<()> {
         ])
         .status()?;
     anyhow::ensure!(status.success(), "reg add (HKCU Run) failed");
+
+    // D8: also spawn immediately on first launch (or after a reinstall) so
+    // capture is available without a re-login. Guard: skip if a fresh heartbeat
+    // exists (daemon already running) to avoid double-spawning.
+    if !daemon_is_running(store) {
+        let store_str = store
+            .to_str()
+            .ok_or_else(|| anyhow::anyhow!("non-utf8 store path"))?
+            .to_string();
+        // CREATE_NO_WINDOW (0x08000000) prevents a console window flashing on
+        // Windows. The spawned process is detached — we don't wait for it.
+        Command::new(observerd)
+            .args(["--store", &store_str])
+            .creation_flags(0x0800_0000)
+            .spawn()
+            .ok(); // best-effort: a spawn failure here is non-fatal; the
+                   // daemon-health note will surface it on the next status poll.
+    }
+
     Ok(())
 }
 

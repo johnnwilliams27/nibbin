@@ -209,13 +209,18 @@ input:focus-visible {
   flex-wrap: wrap;
 }
 
-/* NIB-8: top tab bar anchored-chrome treatment. box-shadow draws the hairline
-   separator WITHOUT adding layout height (no border-bottom, no extra
-   padding/margin). The subtle background reads as chrome rather than content.
-   GROVE_TOP_PX=96 in lib.rs is not touched; this rule adds zero layout height. */
+/* D1/NIB-8: top tab bar is full-bleed — negative side margins cancel the
+   app-shell padding so the bar touches the window edges (matching the Grove
+   webview). background:var(--paper) unifies it with the body, removing the
+   canopy vs paper seam. The hairline separator is a box-shadow so it adds no
+   layout height. Padding restores the content-area inset inside the bar.
+   GROVE_TOP_PX=96 in lib.rs is unchanged — the bar's rendered height (48px
+   buttons + 1px shadow) already fits within that budget. */
 .nav.tabbar {
-  background: var(--canopy);
+  background: var(--paper);
   box-shadow: 0 1px 0 var(--line);
+  margin: -32px -24px 24px;
+  padding: 0 24px;
 }
 
 /* Top tabbar active state — kept subtle (understory + ink-soft border). */

@@ -38,6 +38,12 @@ async function refreshTabDot(): Promise<void> {
 }
 
 function render(): void {
+  // D6: clean up live-status listener on the outgoing field-study view before
+  // clearing the DOM so it doesn't ghost-tick after a tab switch.
+  const outgoing = app.querySelector('[data-view="field-study"]') as
+    | (HTMLElement & { __nibbinCleanup__?: () => void })
+    | null;
+  outgoing?.__nibbinCleanup__?.();
   clear(app);
   const nav = el('nav', { class: 'nav tabbar' });
   const tabs: [Tab, string][] = [['grove', 'Grove'], ['field-study', 'Field Study']];

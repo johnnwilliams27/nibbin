@@ -142,6 +142,15 @@ fn grove_hide(window: tauri::Window) -> Result<(), String> {
 
 pub fn run() {
     tauri::Builder::default()
+        // D8: single-instance guard — a second launch focuses the existing
+        // window instead of creating another app+tray (the main source of
+        // duplicate ghost tray icons).
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_deep_link::init())
         .plugin(
@@ -195,13 +204,23 @@ pub fn run() {
             // is surfaced honestly via read_status (daemon_health), never fatal.
             daemon_supervisor::ensure_daemon_running(&app.handle());
 
-            // tray: the study countdown is ALWAYS visible while a study runs
-            // (SPEC §5); the value is daemon-derived (daemon.status), the
-            // tray only displays it.
+            // D7: tray is declared ONLY here (programmatic); the static
+            // trayIcon block has been removed from tauri.conf.json so there
+            // is exactly one icon. The icon path mirrors what the config block
+            // previously referenced. tray: the study countdown is ALWAYS
+            // visible while a study runs (SPEC §5); the value is
+            // daemon-derived (daemon.status), the tray only displays it.
             let open = MenuItemBuilder::with_id("open", "Open Nibbin").build(app)?;
             let pause = MenuItemBuilder::with_id("pause", "Pause capture").build(app)?;
             let menu = MenuBuilder::new(app).items(&[&open, &pause]).build()?;
+            let icon = app
+                .default_window_icon()
+                .cloned()
+                .ok_or_else(|| tauri::Error::AssetNotFound("tray icon".into()))?;
             TrayIconBuilder::with_id("observer-tray")
+                .icon(icon)
+                .icon_as_template(true)
+                .tooltip("Nibbin")
                 .menu(&menu)
                 .on_menu_event(|app, event| match event.id().as_ref() {
                     "open" => {
@@ -258,6 +277,14 @@ pub fn run() {
 
             Ok(())
         })
-        .run(tauri::generate_context!())
+        // D7: clean up the tray on exit so it doesn't ghost after the process
+        // exits. Windows in particular leaves orphan tray icons without this.
+        .run(|app, event| {
+            if let tauri::RunEvent::Exit = event {
+                if let Some(tray) = app.tray_by_id("observer-tray") {
+                    let _ = tray.set_visible(false);
+                }
+            }
+        })
         .expect("error while running the Observer shell");
 }

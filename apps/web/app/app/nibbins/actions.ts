@@ -163,6 +163,74 @@ export async function closeTrainingAction(nibbinId: string): Promise<TrainingRes
   return { ok: true };
 }
 
+export interface PauseResumeResult {
+  ok: boolean;
+  error?: string;
+}
+
+/** Pause an active nibbin at the user's request. Calls the member-checked
+ *  nibbin_pause RPC under the caller's session. */
+export async function pauseNibbinAction(nibbinId: string): Promise<PauseResumeResult> {
+  const id = nibbinId?.trim();
+  if (!id) return { ok: false, error: 'Missing nibbin.' };
+
+  let supabase;
+  try {
+    ({ supabase } = await appSession());
+  } catch {
+    return { ok: false, error: 'You need to be signed in.' };
+  }
+
+  const { error } = await supabase.rpc('nibbin_pause', { p_nibbin: id });
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath('/app/nibbins');
+  return { ok: true };
+}
+
+/** Resume a user-paused nibbin. Calls the member-checked nibbin_resume RPC
+ *  under the caller's session. System pauses (anomaly/cap/connection) are
+ *  refused by the RPC — only reason='user' is accepted. */
+export async function resumeNibbinAction(nibbinId: string): Promise<PauseResumeResult> {
+  const id = nibbinId?.trim();
+  if (!id) return { ok: false, error: 'Missing nibbin.' };
+
+  let supabase;
+  try {
+    ({ supabase } = await appSession());
+  } catch {
+    return { ok: false, error: 'You need to be signed in.' };
+  }
+
+  const { error } = await supabase.rpc('nibbin_resume', { p_nibbin: id });
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath('/app/nibbins');
+  return { ok: true };
+}
+
+/** Archive ("soft-delete") a nibbin: sets status to sleeping and kills any
+ *  in-flight runs. The nibbin is never hard-deleted. Calls the member-checked
+ *  nibbin_sleep RPC under the caller's session. */
+export async function sleepNibbinAction(nibbinId: string): Promise<PauseResumeResult> {
+  const id = nibbinId?.trim();
+  if (!id) return { ok: false, error: 'Missing nibbin.' };
+
+  let supabase;
+  try {
+    ({ supabase } = await appSession());
+  } catch {
+    return { ok: false, error: 'You need to be signed in.' };
+  }
+
+  const { error } = await supabase.rpc('nibbin_sleep', { p_nibbin: id });
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath('/app/nibbins');
+  revalidatePath('/app');
+  return { ok: true };
+}
+
 export interface DemoteResult {
   ok: boolean;
   error?: string;

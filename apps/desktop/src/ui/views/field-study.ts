@@ -9,6 +9,7 @@ import type { StudyKind, StudyDepth } from '../../core/study-machine.js';
 import { button, el } from '../dom.js';
 import { syncStudy, type SyncState } from '../sync-study.js';
 import { EVER_COMPLETED_KEY } from '../tab-dot.js';
+import { sectionLoader } from '../section-loader.js';
 import { consentView } from './consent.js';
 import { notesView } from './notes.js';
 import { preferencesView } from './preferences.js';
@@ -537,10 +538,14 @@ function navIcon(sub: Sub): SVGSVGElement {
 }
 
 export function fieldStudyView(_rerender: () => void): HTMLElement {
-  const root = el('div', {});
+  const root = el('div', { 'data-view': 'field-study' });
   let sub: Sub = 'home';
   const nav = el('nav', { class: 'nav subnav' });
   const mount = el('div', {});
+  // D6: unsubscribe handle for the study:status live-tick listener.
+  // Also track the in-flight promise so teardown can cancel even if .then() hasn't fired yet.
+  let unsubscribeStatus: (() => void) | null = null;
+  let unsubscribeStatusPromise: Promise<() => void> | null = null;
 
   const subs: [Sub, string][] = [
     ['home', 'Field study'],
@@ -578,6 +583,13 @@ export function fieldStudyView(_rerender: () => void): HTMLElement {
    *   (sub-nav clicks, control actions) to avoid poll latency mid-session.
    */
   async function paint(usePolling = false): Promise<void> {
+    // D2: show a loader immediately so the active sub-tab is never blank
+    // while we wait for the daemon status poll (~2.4 s on first mount).
+    // The loader is replaced synchronously once the status resolves.
+    if (sub === 'home') {
+      mount.replaceChildren(sectionLoader('Loading…'));
+    }
+
     // On mount: poll a few times to give a cold-starting daemon a chance
     // to write its status file (eliminates the first-paint race without
     // any Rust changes). Subsequent calls skip polling to stay responsive.
@@ -638,5 +650,30 @@ export function fieldStudyView(_rerender: () => void): HTMLElement {
   // Use polling on first mount to distinguish a cold-starting daemon
   // (first-paint race) from one that is genuinely offline.
   void paint(true);
+
+  // D6: subscribe to the ~1/s study:status event emitted by the Tauri shell
+  // so the running-study countdown/status updates live without requiring user
+  // interaction. Only triggers a non-polling repaint (fast path). Unsubscribed
+  // when this view is torn down (the returned root is removed from the DOM and
+  // render() calls fieldStudyView fresh on each tab switch).
+  unsubscribeStatusPromise = bridge.onEvent('study:status', () => { void paint(false); });
+  void unsubscribeStatusPromise.then((unsub) => {
+    unsubscribeStatus = unsub;
+  });
+
+  // Teardown: expose a cleanup hook on the root element so callers can call it.
+  // (render() in main.ts rebuilds this view on each tab switch; the old root is
+  // simply discarded, but we clean up the event listener to prevent ghost ticks.)
+  (root as HTMLElement & { __nibbinCleanup__?: () => void }).__nibbinCleanup__ = () => {
+    if (unsubscribeStatus !== null) {
+      unsubscribeStatus();
+      unsubscribeStatus = null;
+    } else if (unsubscribeStatusPromise !== null) {
+      // Promise resolved after teardown was called — ensure the listener is removed.
+      void unsubscribeStatusPromise.then((unsub) => unsub());
+    }
+    unsubscribeStatusPromise = null;
+  };
+
   return root;
 }

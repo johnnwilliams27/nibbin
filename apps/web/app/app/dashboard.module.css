@@ -1,5 +1,13 @@
 /* Home dashboard layout. Token-only; cards/badges come from the UI kit. */
 
+.pageEnter {
+  animation: nbFadeIn var(--dur-3, 240ms) var(--ease-spring, cubic-bezier(0.16,1,0.3,1)) both;
+}
+@keyframes nbFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+
 .header {
   margin-bottom: 22px;
 }
@@ -15,7 +23,7 @@
   font-family: var(--display);
   font-weight: 800;
   letter-spacing: -0.02em;
-  font-size: 30px;
+  font-size: var(--type-h1, clamp(1.5rem, 1.1rem + 1.4vw, 2.1rem));
   margin: 6px 0 4px;
   color: var(--ink);
 }
@@ -87,7 +95,7 @@
 .stats {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: var(--gap-fluid, 12px);
   margin: 18px 0;
 }
 .stat {
@@ -133,11 +141,17 @@
 /* ---- Nibbin report cards ---- */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--gap-fluid, 12px);
 }
 .nibbinCard {
   padding: 18px;
+  transition: transform var(--dur-1) var(--ease-spring, var(--ease-settle)),
+    box-shadow var(--dur-1) var(--ease-spring, var(--ease-settle));
+}
+.nibbinCard:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-2);
 }
 .nibbinHead {
   display: flex;
@@ -244,15 +258,16 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .dlBtn {
+  .dlBtn,
+  .nibbinCard {
     transition: none;
+  }
+  .pageEnter {
+    animation: none;
   }
 }
 
 @media (max-width: 640px) {
-  .title {
-    font-size: 24px;
-  }
   .heroItem {
     flex-wrap: wrap;
   }

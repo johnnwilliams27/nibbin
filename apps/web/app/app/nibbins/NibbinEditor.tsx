@@ -8,7 +8,8 @@
  * server action, which routes through the security-definer RPC. The canonical
  * Grovekeeper is never rendered here, so every nibbin shown is editable.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import {
   buildCreature,
@@ -47,7 +48,12 @@ const STAGE_LABEL: Record<Stage, string> = {
 
 export function NibbinEditor({ nibbin }: { nibbin: EditableNibbin }) {
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const [name, setName] = useState(nibbin.name);
   const [species, setSpecies] = useState<SpeciesName>(nibbin.species as SpeciesName);
   const [palette, setPalette] = useState(nibbin.palette ?? PALETTES[0].c);
@@ -103,7 +109,7 @@ export function NibbinEditor({ nibbin }: { nibbin: EditableNibbin }) {
         Edit
       </button>
 
-      {open && (
+      {open && mounted && createPortal(
         <div
           className={styles.overlay}
           role="dialog"
@@ -220,7 +226,8 @@ export function NibbinEditor({ nibbin }: { nibbin: EditableNibbin }) {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );
