@@ -38,6 +38,9 @@ grant usage, create on schema public to nibbin_owner;
 -- verified no-op (nibbin_owner, the non-superuser migration role, cannot create
 -- extensions — same trust boundary as production).
 create extension if not exists vector;
+-- pgcrypto: Supabase always has this pre-installed; the stub adds it to the
+-- throwaway Postgres so gen_random_bytes() works in security-definer RPCs.
+create extension if not exists pgcrypto;
 
 create schema if not exists auth;
 

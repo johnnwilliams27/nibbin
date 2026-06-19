@@ -84,7 +84,7 @@ function sanitizeEffectArgs(args: Record<string, unknown>): Record<string, unkno
  * path; this is the generic guard (no per-capability schema) that closes the
  * SSRF / path-traversal surface. Throws so the run fails cleanly.
  */
-function assertSafeReadPath(path: unknown, capability: string): asserts path is string {
+export function assertSafeReadPath(path: unknown, capability: string): asserts path is string {
   if (typeof path !== 'string' || path.length === 0) {
     throw new Error(`read step ${capability} missing inputs.path`);
   }
