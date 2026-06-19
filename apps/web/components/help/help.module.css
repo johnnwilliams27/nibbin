@@ -5,3 +5,15 @@
   background: var(--understory); color: var(--ink-soft);
   font-family: var(--mono); font-size: 11px; font-weight: 600;
 }
+
+.directory { margin-top: 24px; }
+.directoryHead { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+.sort { font-size: 13px; color: var(--ink-soft); display: inline-flex; gap: 6px; align-items: center; }
+.group { margin-top: 16px; }
+.group h3 { font-family: var(--display); font-size: 15px; margin: 16px 0 8px; }
+.grid { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.card { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border: 1px solid var(--understory); border-radius: var(--r-card); background: var(--paper); }
+.cardBody { flex: 1; min-width: 0; }
+.cardName { font-weight: 600; font-size: 14px; }
+.cardDesc { margin: 2px 0 0; font-size: 12px; color: var(--ink-soft); }
+@media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
