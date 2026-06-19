@@ -27,6 +27,7 @@ export * from './events';
 export * from './validate';
 export * from './crystallize';
 export * from './school';
+export * from './training';
 export * from './stores';
 export * from './runner';
 export * from './planner';
