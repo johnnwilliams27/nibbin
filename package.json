@@ -15,7 +15,8 @@
     "build": "npm run build -w apps/web && npm run build -w apps/admin",
     "grovemap": "node tools/grovemap/grovemap.mjs",
     "drip:worker": "tsx packages/drip/src/run.ts",
-    "evals": "vitest run --config vitest.evals.config.ts"
+    "evals": "vitest run --config vitest.evals.config.ts",
+    "eval:routing": "tsx packages/router/eval/run.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
