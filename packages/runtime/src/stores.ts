@@ -284,3 +284,73 @@ export class MemoryIdempotencyStore implements IdempotencyStore {
     claim.executed = true;
   }
 }
+
+/* ── §18.3 Multi-agent conflict detection ─────────────────────────────────── */
+
+export interface ResourceClaimResult {
+  granted: boolean;
+  /** The run that currently holds the resource (our own run_id on grant). */
+  holderRun: string;
+  /** The nibbin that currently holds the resource. */
+  holderNibbin: string;
+}
+
+/**
+ * Store interface for resource claims (Slice 1, §18.3). The service-role
+ * Supabase implementation calls `claim_resource`; the in-memory implementation
+ * mirrors the SQL semantics for unit tests. Absent (undefined) = conflict
+ * detection not wired (safe: fail-open — the send still fires).
+ */
+export interface ResourceClaimStore {
+  /**
+   * Atomically claim a resource before an irreversible send.
+   *   granted=true  → this run holds the resource; proceed with the send.
+   *   granted=false → another active run holds it; skip the send.
+   * Idempotent for the same run (a retry returns granted=true again).
+   * Infra errors must NOT be surfaced as granted=false — callers catch and
+   * fail-open (proceed with the send despite the error).
+   */
+  claim(req: {
+    accountId: string;
+    nibbinId: string;
+    runId: string;
+    resourceType: string;
+    resourceId: string;
+  }): Promise<ResourceClaimResult>;
+}
+
+export class MemoryResourceClaimStore implements ResourceClaimStore {
+  /**
+   * active[`account:type:id`] = { runId, nibbinId } — mirrors the DB unique
+   * index on (account_id, resource_type, resource_id) where released_at is null.
+   */
+  private active = new Map<string, { runId: string; nibbinId: string }>();
+
+  async claim(req: {
+    accountId: string;
+    nibbinId: string;
+    runId: string;
+    resourceType: string;
+    resourceId: string;
+  }): Promise<ResourceClaimResult> {
+    const key = `${req.accountId}:${req.resourceType}:${req.resourceId}`;
+    const existing = this.active.get(key);
+    if (!existing) {
+      this.active.set(key, { runId: req.runId, nibbinId: req.nibbinId });
+      return { granted: true, holderRun: req.runId, holderNibbin: req.nibbinId };
+    }
+    // Idempotent re-claim for the same run.
+    if (existing.runId === req.runId) {
+      return { granted: true, holderRun: req.runId, holderNibbin: req.nibbinId };
+    }
+    // Another run holds it → conflict.
+    return { granted: false, holderRun: existing.runId, holderNibbin: existing.nibbinId };
+  }
+
+  /** Release all claims for a run (mirrors the ended_at trigger). */
+  release(runId: string): void {
+    for (const [key, holder] of this.active.entries()) {
+      if (holder.runId === runId) this.active.delete(key);
+    }
+  }
+}

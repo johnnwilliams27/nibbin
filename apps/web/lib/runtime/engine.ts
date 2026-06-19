@@ -40,6 +40,7 @@ import {
   SupabaseEventSink,
   SupabaseGrantStore,
   SupabaseIdempotencyStore,
+  SupabaseResourceClaimStore,
   SupabaseRoutineStore,
   SupabaseRunStore,
 } from './stores';
@@ -401,6 +402,10 @@ export async function triggerNibbinRun(nibbinId: string, trigger: RunTrigger): P
     effects: {
       execute: buildEffectsExecutor(byId, nibbin.accountId, accountCreatedAtMs),
     },
+    // §18.3 conflict detection: claim the resource before an irreversible send so
+    // two Nibbins on one account never both act on the same thread/invoice. Skips
+    // on a live conflict; fails open on infra error (the runner catches).
+    claims: new SupabaseResourceClaimStore(svc),
     // M6.5: the model seam. Absent ANTHROPIC_API_KEY this is undefined and
     // every compose stays deterministic — same honest no-model behavior the
     // keeper chat has (#25).

@@ -13,7 +13,7 @@
 import { createHash } from 'node:crypto';
 import { isQuarantined, quarantine, type QuarantinedContent } from '@nibbin/connectors';
 import { gateSideEffect } from './school';
-import type { GrantStore, RoutineStore, RunStore, IdempotencyStore } from './stores';
+import type { GrantStore, ResourceClaimStore, RoutineStore, RunStore, IdempotencyStore } from './stores';
 import type {
   DraftStep,
   KillReason,
@@ -72,6 +72,14 @@ export interface RunnerDeps {
   events: EventSink;
   /** Absent = v0 behavior: every compose is deterministic, zero tokens. */
   model?: ModelDrafter;
+  /**
+   * §18.3 multi-agent conflict detection (Slice 1). Absent = no conflict
+   * detection (fail-open: the send still fires). When present, `claim` is
+   * called BEFORE every irreversible auto-execute send; a live conflict
+   * (granted=false) skips the send and records a `resource_conflict` step
+   * instead. Infra errors in `claim` are caught and treated as fail-open.
+   */
+  claims?: ResourceClaimStore;
   now(): number;
 }
 
@@ -127,7 +135,41 @@ export type StepDisposition =
   | { kind: 'drafted'; draft: DraftStep }
   | { kind: 'executed'; effect: { capability: string; idempotencyKey: string }; deduped: boolean }
   | { kind: 'kill'; reason: KillReason }
-  | { kind: 'failed'; error: string };
+  | { kind: 'failed'; error: string }
+  /**
+   * §18.3 Slice 1: the irreversible send was skipped because another active
+   * run already holds this resource. The run is NOT killed — it continues and
+   * completes normally (the conflict is logged on the step). `holderNibbin` is
+   * the nibbin that is already handling the resource.
+   */
+  | { kind: 'resource_conflict'; capability: string; resourceType: string; resourceId: string; holderNibbin: string };
+
+/**
+ * Derive the resource claim identity from a DraftStep that is about to auto-
+ * execute. Returns `null` if no stable resource id can be derived from the
+ * effectArgs — in that case the caller skips the claim (fail-open: the send
+ * still fires, no false conflict). Resource identity keys:
+ *   email.*       : effectArgs.threadId | inReplyTo → resource_type='email'
+ *   invoice.nudge : effectArgs.invoiceId            → resource_type='invoice'
+ */
+export function deriveResourceClaim(step: DraftStep): { resourceType: string; resourceId: string } | null {
+  const args = step.effectArgs;
+  // email capabilities: threadId is the canonical per-thread identity.
+  // inReplyTo is also accepted (some connectors use this field instead).
+  if (step.capability === 'email.send' || step.capability === 'email.draft') {
+    const id =
+      (typeof args.threadId === 'string' && args.threadId) ||
+      (typeof args.inReplyTo === 'string' && args.inReplyTo);
+    if (id) return { resourceType: 'email', resourceId: id };
+  }
+  // invoice capability: invoiceId is stable per Stripe invoice.
+  if (step.capability === 'invoice.nudge') {
+    const id = typeof args.invoiceId === 'string' && args.invoiceId;
+    if (id) return { resourceType: 'invoice', resourceId: id };
+  }
+  // No derivable resource id → skip the claim (don't block the send).
+  return null;
+}
 
 export interface DispatchCtx {
   nibbin: NibbinRef;
@@ -251,6 +293,62 @@ export async function dispatchStep(
   }
 
   // gate.action === 'execute' (Senior on routine, Graduate within spec)
+  // §18.3 Slice 1: claim the resource BEFORE the idempotency claim. A
+  // conflict-skip must NOT create an idempotency row — otherwise a same-key
+  // event redelivery (missed-push reconcile / re-poll) would later read it as
+  // 'unknown_outcome' and permanently refuse the deferred send. Fail-open: a
+  // store THROW proceeds with the send; a genuine conflict (granted=false)
+  // skips the send and records the conflict on the step.
+  if (deps.claims) {
+    const derived = deriveResourceClaim(step);
+    if (derived) {
+      let claimResult: { granted: boolean; holderRun: string; holderNibbin: string } | null = null;
+      try {
+        claimResult = await deps.claims.claim({
+          accountId: nibbin.accountId,
+          nibbinId: nibbin.id,
+          runId,
+          resourceType: derived.resourceType,
+          resourceId: derived.resourceId,
+        });
+      } catch (err) {
+        // Infra error → fail-open: log and proceed with the send.
+        console.warn(
+          '[runner] claim_resource infra error (fail-open) — proceeding with send:',
+          err instanceof Error ? err.message : String(err),
+        );
+      }
+      if (claimResult !== null && !claimResult.granted) {
+        // Live conflict: another active run holds this resource. Skip the send.
+        // No idempotency row was created (we claim the resource first), so a
+        // later redelivery of the same event re-attempts the claim once the
+        // holder releases — the deferred send is not permanently dropped.
+        await deps.runs.recordStep(nibbin.accountId, runId, {
+          idx: idx++,
+          kind: 'execute',
+          tool: step.capability,
+          inputHash: hashArgs(step.effectArgs),
+          tokens: 0,
+          payload: {
+            patternKey: step.patternKey,
+            deduped: false,
+            resourceConflict: true,
+            resourceType: derived.resourceType,
+            resourceId: derived.resourceId,
+            holderNibbin: claimResult.holderNibbin,
+          },
+        });
+        return done({
+          kind: 'resource_conflict',
+          capability: step.capability,
+          resourceType: derived.resourceType,
+          resourceId: derived.resourceId,
+          holderNibbin: claimResult.holderNibbin,
+        });
+      }
+    }
+  }
+
   const idempotencyKey = effectIdempotencyKey(nibbin, step, trigger, runId);
   const claim = await deps.idempotency.claim({
     accountId: nibbin.accountId,
@@ -366,6 +464,21 @@ export async function executeRun(
       if (disp.kind === 'executed') {
         await deps.runs.finish(runId, 'completed');
         return { kind: 'executed', runId, effect: disp.effect };
+      }
+      if (disp.kind === 'resource_conflict') {
+        // The send was skipped; the run completes without double-acting.
+        await deps.runs.finish(runId, 'completed');
+        return {
+          kind: 'completed',
+          runId,
+          // surface the conflict in the completed outcome so callers can log/notify
+          resourceConflict: {
+            capability: disp.capability,
+            resourceType: disp.resourceType,
+            resourceId: disp.resourceId,
+            holderNibbin: disp.holderNibbin,
+          },
+        };
       }
       // read_result / composed → feed the (possibly quarantined) result back.
       feed = disp.feed;
