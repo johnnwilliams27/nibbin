@@ -22,7 +22,7 @@ function ConnectorGrid({ items }: { items: ConnectorEntry[] }) {
             <div className={styles.cardName}>{c.name}</div>
             <p className={styles.cardDesc}>{c.whatItDoes}</p>
           </div>
-          <Badge tone={STATUS_LABEL[c.status].tone}>{STATUS_LABEL[c.status].label}</Badge>
+          <Badge tone={STATUS_LABEL[c.status].tone} style={{ alignSelf: "flex-start" }}>{STATUS_LABEL[c.status].label}</Badge>
         </li>
       ))}
     </ul>
@@ -70,10 +70,16 @@ export function ConnectorDirectory({
         {showSort && (
           <label className={styles.sort}>
             Sort
-            <select value={mode} onChange={(e) => setMode(e.target.value as 'available' | 'alpha')}>
-              <option value="available">Available first, then A–Z</option>
-              <option value="alpha">A–Z</option>
-            </select>
+            <span className={styles.sortWrapper}>
+              <select
+                className={styles.sortSelect}
+                value={mode}
+                onChange={(e) => setMode(e.target.value as "available" | "alpha")}
+              >
+                <option value="available">Available first, then A–Z</option>
+                <option value="alpha">A–Z</option>
+              </select>
+            </span>
           </label>
         )}
       </header>
