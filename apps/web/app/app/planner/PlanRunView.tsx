@@ -31,6 +31,8 @@ const REFUSAL_COPY: Record<CrystalActionRefusal, string> = {
   invalid_spec: "This run can't safely become a recurring agent.",
   not_found: "We couldn't find that run.",
   bad_cadence: 'Pick a valid cadence.',
+  rate_limited: 'You just started something — give it a second before trying again.',
+  already_recurring: "You've already made this run recurring.",
 };
 
 type CrystalProposal = Exclude<CrystalProposeResult, { refused: true }>;

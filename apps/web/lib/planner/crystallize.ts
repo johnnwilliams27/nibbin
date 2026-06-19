@@ -123,7 +123,7 @@ function describeStep(step: CapabilityStep): string {
  * effectiveTools' atomic `requiredConnector` (server-side, from the registry,
  * never from the LLM). Mirrors the Composer's connectorsFor over the steps.
  */
-function connectorsForSteps(steps: CapabilityStep[]): string[] {
+export function connectorsForSteps(steps: CapabilityStep[]): string[] {
   const set = new Set<string>();
   for (const step of steps) {
     const cap = capability(step.capability);
@@ -251,6 +251,7 @@ export async function proposeCrystalSoftFields(
  */
 export async function crystallize(
   planRun: PlanRunState,
+  userId: string,
   accountConnections: string[],
   generateOverride?: Generate,
   routerOverride?: Router,
@@ -261,10 +262,9 @@ export async function crystallize(
 
   const soft = await proposeCrystalSoftFields(
     planRun.accountId,
-    // The plan run carries no userId; soft-layer attribution uses the account.
-    // (recordModelCall accepts a userId — the action passes the real one; here
-    // the account is the budget owner.)
-    planRun.accountId,
+    // The real user.id (threaded from the server action) is the per-user budget
+    // key + the recorded model_calls.user_id — NOT the account id.
+    userId,
     planRun.plan.goal,
     steps,
     generateOverride,

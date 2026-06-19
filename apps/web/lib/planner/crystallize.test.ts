@@ -65,7 +65,7 @@ describe('crystallize — soft-layer proposal + assembly', () => {
         }),
       ),
     );
-    const out = await crystallize(doneRun(), ['gmail'], generate, testRouter());
+    const out = await crystallize(doneRun(), 'user-1', ['gmail'], generate, testRouter());
     expect('refused' in out).toBe(false);
     if ('refused' in out) return;
     expect(out.spec.templateKey).toBeNull();
@@ -89,7 +89,7 @@ describe('crystallize — soft-layer proposal + assembly', () => {
         }),
       ),
     );
-    const out = await crystallize(doneRun(), ['gmail'], generate, testRouter());
+    const out = await crystallize(doneRun(), 'user-1', ['gmail'], generate, testRouter());
     if ('refused' in out) throw new Error('unexpected refusal');
     expect(out.spec.steps).toEqual([{ capability: 'nudge.overdue-email', inputs: { staleDays: 3 } }]);
     expect(out.spec.toolsAllowlist).not.toContain('email.send');
@@ -97,7 +97,7 @@ describe('crystallize — soft-layer proposal + assembly', () => {
 
   it('no-key soft-layer falls back to a deterministic name + no suggested cadence; still validates', async () => {
     // No generate override → anthropicGenerate() is mocked to null.
-    const out = await crystallize(doneRun(), ['gmail']);
+    const out = await crystallize(doneRun(), 'user-1', ['gmail']);
     if ('refused' in out) throw new Error('unexpected refusal');
     expect(out.spec.displayName.length).toBeGreaterThan(0);
     expect(out.preview.suggestedTrigger).toBeUndefined();
@@ -108,8 +108,24 @@ describe('crystallize — soft-layer proposal + assembly', () => {
 
   it('a refused gate returns {refused, reason} and never calls the LLM', async () => {
     const generate = vi.fn(async () => fakeResult('{}'));
-    const out = await crystallize(doneRun(undefined, 'failed'), ['gmail'], generate, testRouter());
+    const out = await crystallize(doneRun(undefined, 'failed'), 'user-1', ['gmail'], generate, testRouter());
     expect(out).toEqual({ refused: true, reason: 'not_done' });
     expect(generate).not.toHaveBeenCalled();
+  });
+
+  // FIX 3: the soft-layer call is keyed by the REAL user.id (per-user budget +
+  // model_calls.user_id), NOT the account id. The router.route call must carry
+  // the user.id passed to crystallize, distinct from the run's accountId.
+  it('routes the soft-layer call with the real user.id, not the account id (FIX 3)', async () => {
+    const route = vi.fn(async () => ({ degraded: false as const, model: 'claude-sonnet-4-6', tier: 'frontier' as const }));
+    const router = { route } as unknown as Router;
+    const generate = vi.fn(async () =>
+      fakeResult(JSON.stringify({ displayName: 'Overdue follow-ups', personaPolicy: { tone: 'warm' } })),
+    );
+    const run = doneRun(); // accountId is 'acct-1'
+    const out = await crystallize(run, 'user-real', ['gmail'], generate, router);
+    expect('refused' in out).toBe(false);
+    expect(route).toHaveBeenCalledTimes(1);
+    expect((route.mock.calls[0] as unknown[])[0]).toMatchObject({ userId: 'user-real' });
   });
 });

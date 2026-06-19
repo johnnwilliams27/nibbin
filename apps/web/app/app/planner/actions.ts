@@ -12,6 +12,7 @@
  * validated surface).
  */
 import {
+  crystallizabilityGate,
   runPlan,
   validatePlanSpec,
   type AgentSpec,
@@ -25,7 +26,7 @@ import { serviceClient } from '../../../lib/supabase/service';
 import { activeConnections } from '../../../lib/runtime/engine';
 import { planForIntent, PLAN_CEILINGS, type PlanPreview } from '../../../lib/planner/plan';
 import { webSearchEnabled } from '../../../lib/planner/websearch';
-import { crystallize, isStandardCadence, type CrystalPreview } from '../../../lib/planner/crystallize';
+import { connectorsForSteps, crystallize, isStandardCadence, type CrystalPreview } from '../../../lib/planner/crystallize';
 import { adoptComposedSpec } from '../../../lib/runtime/adopt';
 import type { AdoptOutcome } from '../../../components/adopt/types';
 import {
@@ -175,7 +176,7 @@ async function nudgeIfNeedsInput(accountId: string, outcome: PlanOutcome): Promi
 
 /** The refusal reasons surfaced to the preview UX — the gate's CrystalRefusal
  *  plus the action-layer guards (a foreign run id, a bad cadence). */
-export type CrystalActionRefusal = CrystalRefusal | 'not_found' | 'bad_cadence';
+export type CrystalActionRefusal = CrystalRefusal | 'not_found' | 'bad_cadence' | 'rate_limited' | 'already_recurring';
 
 export type CrystalProposeResult =
   | { spec: AgentSpec; preview: CrystalPreview }
@@ -189,13 +190,17 @@ export type CrystalAdoptResult = AdoptOutcome | { refused: true; reason: Crystal
  * leaks). The gate is the single authority on crystallizability. Does NOT adopt.
  */
 export async function proposeCrystal(planRunId: string): Promise<CrystalProposeResult> {
-  const { accountId } = await appSession();
+  const { user, accountId } = await appSession();
+  // FIX 4: proposeCrystal makes a budgeted soft-layer model call + hits the DB —
+  // guard the entry point the same way proposePlan/startPlanRun do.
+  const limited = rateGuard(accountId);
+  if (limited) return { refused: true, reason: 'rate_limited' };
   const store = new SupabasePlanRunStore();
   const planRun = await store.load(planRunId, accountId);
   if (!planRun) return { refused: true, reason: 'not_found' };
 
   const connections = await grantedProviders(accountId);
-  const result = await crystallize(planRun, connections);
+  const result = await crystallize(planRun, user.id, connections);
   if ('refused' in result) return { refused: true, reason: result.reason };
   return result;
 }
@@ -222,25 +227,63 @@ export async function adoptCrystal(
     return { refused: true, reason: 'bad_cadence' };
   }
 
+  // FIX 4: adoptCrystal both re-runs the budgeted soft-layer call (via
+  // crystallize) and writes to the DB — guard the entry point.
+  const limited = rateGuard(accountId);
+  if (limited) return { refused: true, reason: 'rate_limited' };
+
   // Account-scoped re-load: a foreign run id → null (never leak / never adopt).
   const store = new SupabasePlanRunStore();
   const planRun = await store.load(planRunId, accountId);
   if (!planRun) return { refused: true, reason: 'not_found' };
 
+  const connections = await grantedProviders(accountId);
+
+  // FIX 9: surface a structured reconnect when a required connector grant was
+  // revoked between run and adopt. We run the deterministic gate FIRST (cheap, no
+  // LLM) to learn the steps' required connectors, then check them against the
+  // live grants. If any is missing we return the "reconnect X" flow (mirroring
+  // BuildNibbinButton/adoptSynthesized) instead of letting it fall through to
+  // crystallize's generic `invalid_spec` refusal. (The gate refusing here is NOT
+  // a connector miss — those refusals are the genuine crystallizability ones.)
+  const gate = crystallizabilityGate(planRun, connections);
+  if (!gate.ok && gate.reason === 'invalid_spec') {
+    // The gate validates against current connections; an invalid_spec at adopt
+    // time is most often a revoked grant. Re-derive the steps' connectors from
+    // the connector-agnostic gate to tell the user which to reconnect.
+    const fullGate = crystallizabilityGate(planRun, planRun.plan.requiredConnectors);
+    if (fullGate.ok) {
+      const need = connectorsForSteps(fullGate.steps);
+      const have0 = new Set(connections);
+      const missing0 = need.filter((p) => !have0.has(p));
+      if (missing0.length > 0) {
+        return {
+          ok: false,
+          redirectTo: `/app/planner?needs=${encodeURIComponent(missing0.join(','))}`,
+        };
+      }
+    }
+  }
+
   // Re-derive deterministically from the SOURCE — the steps come from the trace,
   // never from a round-tripped client payload.
-  const connections = await grantedProviders(accountId);
-  const derived = await crystallize(planRun, connections);
+  const derived = await crystallize(planRun, user.id, connections);
   if ('refused' in derived) return { refused: true, reason: derived.reason };
 
   // Apply the user's name + chosen cadence onto the re-derived spec. The steps
   // are NOT touched (faithfulness); only the soft layer (name) + trigger change.
+  // FIX 7: clamp the (client-supplied) cooldown to the 1h floor so a crystallized
+  // recurring agent always carries at least the standard cooldown.
   const name = (chosenName ?? '').trim().slice(0, 40) || derived.spec.displayName;
   const spec: AgentSpec = {
     ...derived.spec,
     displayName: name,
     triggers: [
-      { kind: 'schedule', schedule: chosenTrigger.schedule, cooldownSecs: chosenTrigger.cooldownSecs ?? 3600 },
+      {
+        kind: 'schedule',
+        schedule: chosenTrigger.schedule,
+        cooldownSecs: Math.max(3600, chosenTrigger.cooldownSecs ?? 3600),
+      },
       { kind: 'user', debounceSecs: 0, cooldownSecs: 0 },
     ],
   };
@@ -269,7 +312,24 @@ export async function adoptCrystal(
       isFirstAdoption: adopted.isFirstAdoption,
       ctaPath: '/app',
     };
-  } catch {
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    // FIX 6: the partial unique index (account_id, source_plan_run_id) stops a
+    // double "Make this recurring" from minting duplicate agents. On the
+    // conflict, return a clean "already made recurring" outcome, not a crash.
+    if (/agent_specs_source_plan_run_uniq|duplicate key|unique constraint/i.test(msg)) {
+      return { refused: true, reason: 'already_recurring' };
+    }
+    // FIX 9 (belt-and-suspenders): a connector revoked in the write window makes
+    // adoptComposedSpec's validateComposedSpec throw "required connector … is not
+    // connected" — surface the structured reconnect rather than a generic error.
+    const revoked = derived.spec.requiredConnectors.filter((p) => msg.includes(`"${p}"`) && /not connected/i.test(msg));
+    if (revoked.length > 0) {
+      return {
+        ok: false,
+        redirectTo: `/app/planner?needs=${encodeURIComponent(revoked.join(','))}`,
+      };
+    }
     return { ok: false, redirectTo: '/app/planner?error=adopt' };
   }
 }
