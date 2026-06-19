@@ -123,6 +123,11 @@ describe('computer_use registry', () => {
     // tighter than a frontier plan (MAX_PLAN_ITERATIONS=30, MAX_PLAN_TOKENS=20k)
     expect(COMPUTER_USE_CEILINGS.maxIterations).toBeLessThanOrEqual(30);
     expect(COMPUTER_USE_CEILINGS.maxTokens).toBeLessThanOrEqual(20_000);
+    // the loop wall-clock ceiling MUST fit inside a 60s serverless function on
+    // ANY Vercel plan (Hobby = 60s hard cap), leaving headroom for one in-flight
+    // action + Chromium teardown — so the loop kill fires before the platform kill.
+    expect(COMPUTER_USE_CEILINGS.maxWallClockMs).toBe(50_000);
+    expect(COMPUTER_USE_CEILINGS.maxWallClockMs).toBeLessThan(60_000);
   });
 });
 
