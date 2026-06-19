@@ -508,3 +508,33 @@
   color: var(--ink-soft);
 }
 .draftNo:disabled { opacity: 0.5; cursor: default; }
+
+/* ── Nibbin delete (sleep / archive) button — destructive ──────────── */
+.deleteBtn {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 8px 13px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid #f0c9b6;
+  background: #fff7f4;
+  color: #b5452a;
+  display: inline-block;
+  transition: background 0.2s ease;
+}
+.deleteBtn:hover { background: #fbede6; }
+.deleteBtn:disabled { opacity: 0.5; cursor: default; }
+.deleteConfirmYes {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 8px 13px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid #e05c3a;
+  background: #e05c3a;
+  color: #fff;
+}
+.deleteConfirmYes:hover { background: #c74d2f; border-color: #c74d2f; }
+.deleteConfirmYes:disabled { opacity: 0.5; cursor: default; }

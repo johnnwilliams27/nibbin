@@ -8,6 +8,7 @@ import { NoteRefresher } from './NoteRefresher';
 import { NibbinEditor } from './NibbinEditor';
 import { BackToDrafts } from './BackToDrafts';
 import { TrainingToggle, type TrainingState } from './TrainingToggle';
+import { NibbinControls } from './NibbinControls';
 import { refreshNibbinNote } from './actions';
 import { RetuneDialog } from './RetuneDialog';
 import styles from './nibbins.module.css';
@@ -58,6 +59,7 @@ interface NibbinRow {
   species: string;
   stage: Stage;
   status: string;
+  paused_reason: string | null;
   palette: string | null;
   accessory: string | null;
   marking: string | null;
@@ -229,10 +231,11 @@ export default async function NibbinsPage() {
       supabase
         .from('nibbins')
         .select(
-          'id, name, species, stage, status, palette, accessory, marking, stage_changed_at, hatched_at, learned_note, learned_note_runs, agent_specs(display_name, template_key, version)',
+          'id, name, species, stage, status, paused_reason, palette, accessory, marking, stage_changed_at, hatched_at, learned_note, learned_note_runs, agent_specs(display_name, template_key, version)',
         )
         .eq('account_id', accountId)
         .eq('kind', 'specialist')
+        .neq('status', 'sleeping')
         .order('hatched_at', { ascending: true }),
       supabase
         .from('runs')
@@ -476,6 +479,12 @@ export default async function NibbinsPage() {
                     }}
                   />
                   <RetuneDialog nibbinId={n.id} nibbinName={n.name} />
+                  <NibbinControls
+                    nibbinId={n.id}
+                    name={n.name}
+                    status={n.status}
+                    pausedReason={n.paused_reason ?? null}
+                  />
                   <a className={styles.abtn} href="/app/shop">
                     Adopt more →
                   </a>
