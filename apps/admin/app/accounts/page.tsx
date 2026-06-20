@@ -176,34 +176,36 @@ export default async function AccountsPage({
           {listRows.length === 0 ? (
             <p className={styles.muted}>No accounts match the current filters.</p>
           ) : (
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Tier</th>
-                  <th>Status</th>
-                  <th>Members</th>
-                  <th>Created</th>
-                  <th>30d spend</th>
-                </tr>
-              </thead>
-              <tbody>
-                {listRows.map((r) => (
-                  <tr key={r.id}>
-                    <td>
-                      <a href={`/accounts/${r.id}`}>{r.name}</a>
-                      <br />
-                      <span className={styles.mono}>{r.id}</span>
-                    </td>
-                    <td>{r.tier ?? '—'}</td>
-                    <td>{r.sub_status ?? '—'}</td>
-                    <td>{r.member_count}</td>
-                    <td className={styles.mono}>{fmt(r.created_at)}</td>
-                    <td className={styles.mono}>{fmtSpend(r.spend_usd)}</td>
+            <div className={styles.tableWrap}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Tier</th>
+                    <th>Status</th>
+                    <th>Members</th>
+                    <th>Created</th>
+                    <th>30d spend</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {listRows.map((r) => (
+                    <tr key={r.id}>
+                      <td>
+                        <a href={`/accounts/${r.id}`}>{r.name}</a>
+                        <br />
+                        <span className={styles.mono}>{r.id}</span>
+                      </td>
+                      <td>{r.tier ?? '—'}</td>
+                      <td>{r.sub_status ?? '—'}</td>
+                      <td>{r.member_count}</td>
+                      <td className={styles.mono}>{fmt(r.created_at)}</td>
+                      <td className={styles.mono}>{fmtSpend(r.spend_usd)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </>
       )}

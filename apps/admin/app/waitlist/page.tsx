@@ -133,41 +133,43 @@ export default async function WaitlistPage({
       ) : rows.length === 0 ? (
         <p className={styles.muted}>No one on the waitlist yet.</p>
       ) : (
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>Email</th>
-              <th>Status</th>
-              <th>Source</th>
-              <th>Signed up</th>
-              <th>Confirmed</th>
-              <th>Invite</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.email}>
-                <td className={styles.mono}>{r.email}</td>
-                <td>{r.status}</td>
-                <td>{r.source ?? '—'}</td>
-                <td className={styles.mono}>{fmt(r.created_at)}</td>
-                <td className={styles.mono}>{fmt(r.confirmed_at)}</td>
-                <td>
-                  {r.invited_at ? (
-                    <span className={styles.muted}>Invited · {fmt(r.invited_at)}</span>
-                  ) : (
-                    <form action={inviteFromWaitlist} className={styles.inlineForm}>
-                      <input type="hidden" name="email" value={r.email} />
-                      <button className={styles.linkBtn} type="submit">
-                        Invite
-                      </button>
-                    </form>
-                  )}
-                </td>
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Email</th>
+                <th>Status</th>
+                <th>Source</th>
+                <th>Signed up</th>
+                <th>Confirmed</th>
+                <th>Invite</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.email}>
+                  <td className={styles.mono}>{r.email}</td>
+                  <td>{r.status}</td>
+                  <td>{r.source ?? '—'}</td>
+                  <td className={styles.mono}>{fmt(r.created_at)}</td>
+                  <td className={styles.mono}>{fmt(r.confirmed_at)}</td>
+                  <td>
+                    {r.invited_at ? (
+                      <span className={styles.muted}>Invited · {fmt(r.invited_at)}</span>
+                    ) : (
+                      <form action={inviteFromWaitlist} className={styles.inlineForm}>
+                        <input type="hidden" name="email" value={r.email} />
+                        <button className={styles.linkBtn} type="submit">
+                          Invite
+                        </button>
+                      </form>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </main>
   );

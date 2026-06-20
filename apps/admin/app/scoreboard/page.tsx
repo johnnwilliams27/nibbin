@@ -133,50 +133,52 @@ export default async function ScoreboardPage() {
         tasks.map((task) => (
           <section key={task} className={styles.panel}>
             <h2 className={styles.h2}>{task}</h2>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Model</th>
-                  <th>Tier</th>
-                  <th>Calls</th>
-                  <th>Decided</th>
-                  <th>Approved unedited</th>
-                  <th>Edited</th>
-                  <th>Rejected</th>
-                  <th>Avg edit dist.</th>
-                  <th>Refusal</th>
-                  <th>Error</th>
-                  <th>Degraded</th>
-                  <th>Avg cost</th>
-                  <th>Total cost</th>
-                  <th>Avg latency</th>
-                  <th>Last call</th>
-                </tr>
-              </thead>
-              <tbody>
-                {byTask.get(task)!.map((r) => (
-                  <tr key={`${r.model}:${r.tier}`}>
-                    <td className={styles.mono}>{r.model}</td>
-                    <td className={styles.mono}>{r.tier}</td>
-                    <td className={styles.mono}>{r.calls}</td>
-                    <td className={styles.mono}>{r.decided_calls}</td>
-                    <td className={styles.mono}>{pct(r.approvedUneditedRate)}</td>
-                    <td className={styles.mono}>{pct(r.editedRate)}</td>
-                    <td className={styles.mono}>{pct(r.rejectedRate)}</td>
-                    <td className={styles.mono}>
-                      {r.avg_edit_distance === null ? '—' : r.avg_edit_distance.toFixed(1)}
-                    </td>
-                    <td className={styles.mono}>{pct(r.refusalRate)}</td>
-                    <td className={styles.mono}>{pct(r.errorRate)}</td>
-                    <td className={styles.mono}>{pct(r.degradationRate)}</td>
-                    <td className={styles.mono}>{dollars(r.avg_cost_microusd)}</td>
-                    <td className={styles.mono}>{dollars(r.total_cost_microusd)}</td>
-                    <td className={styles.mono}>{r.avg_latency_ms === null ? '—' : `${r.avg_latency_ms}ms`}</td>
-                    <td className={styles.mono}>{relTime(r.last_call_at)}</td>
+            <div className={styles.tableWrap}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>Model</th>
+                    <th>Tier</th>
+                    <th>Calls</th>
+                    <th>Decided</th>
+                    <th>Approved unedited</th>
+                    <th>Edited</th>
+                    <th>Rejected</th>
+                    <th>Avg edit dist.</th>
+                    <th>Refusal</th>
+                    <th>Error</th>
+                    <th>Degraded</th>
+                    <th>Avg cost</th>
+                    <th>Total cost</th>
+                    <th>Avg latency</th>
+                    <th>Last call</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {byTask.get(task)!.map((r) => (
+                    <tr key={`${r.model}:${r.tier}`}>
+                      <td className={styles.mono}>{r.model}</td>
+                      <td className={styles.mono}>{r.tier}</td>
+                      <td className={styles.mono}>{r.calls}</td>
+                      <td className={styles.mono}>{r.decided_calls}</td>
+                      <td className={styles.mono}>{pct(r.approvedUneditedRate)}</td>
+                      <td className={styles.mono}>{pct(r.editedRate)}</td>
+                      <td className={styles.mono}>{pct(r.rejectedRate)}</td>
+                      <td className={styles.mono}>
+                        {r.avg_edit_distance === null ? '—' : r.avg_edit_distance.toFixed(1)}
+                      </td>
+                      <td className={styles.mono}>{pct(r.refusalRate)}</td>
+                      <td className={styles.mono}>{pct(r.errorRate)}</td>
+                      <td className={styles.mono}>{pct(r.degradationRate)}</td>
+                      <td className={styles.mono}>{dollars(r.avg_cost_microusd)}</td>
+                      <td className={styles.mono}>{dollars(r.total_cost_microusd)}</td>
+                      <td className={styles.mono}>{r.avg_latency_ms === null ? '—' : `${r.avg_latency_ms}ms`}</td>
+                      <td className={styles.mono}>{relTime(r.last_call_at)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </section>
         ))
       )}
@@ -191,34 +193,36 @@ export default async function ScoreboardPage() {
         <p className={styles.muted}>No capability data recorded in the last 30 days.</p>
       ) : (
         <section className={styles.panel}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Capability</th>
-                <th>Decided</th>
-                <th>Approved unedited %</th>
-                <th>Edited %</th>
-                <th>Rejected %</th>
-                <th>Avg edit dist.</th>
-                <th>Contributing accounts</th>
-              </tr>
-            </thead>
-            <tbody>
-              {capabilityRows.map((r: CapabilityScoreboardRow) => (
-                <tr key={r.capability}>
-                  <td className={styles.mono}>{r.capability}</td>
-                  <td className={styles.mono}>{Number(r.decided_calls)}</td>
-                  <td className={styles.mono}>{pct(r.approvedUneditedRate)}</td>
-                  <td className={styles.mono}>{pct(r.editedRate)}</td>
-                  <td className={styles.mono}>{pct(r.rejectedRate)}</td>
-                  <td className={styles.mono}>
-                    {r.avg_edit_distance === null ? '—' : r.avg_edit_distance.toFixed(1)}
-                  </td>
-                  <td className={styles.mono}>{Number(r.contributing_accounts)}</td>
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Capability</th>
+                  <th>Decided</th>
+                  <th>Approved unedited %</th>
+                  <th>Edited %</th>
+                  <th>Rejected %</th>
+                  <th>Avg edit dist.</th>
+                  <th>Contributing accounts</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {capabilityRows.map((r: CapabilityScoreboardRow) => (
+                  <tr key={r.capability}>
+                    <td className={styles.mono}>{r.capability}</td>
+                    <td className={styles.mono}>{Number(r.decided_calls)}</td>
+                    <td className={styles.mono}>{pct(r.approvedUneditedRate)}</td>
+                    <td className={styles.mono}>{pct(r.editedRate)}</td>
+                    <td className={styles.mono}>{pct(r.rejectedRate)}</td>
+                    <td className={styles.mono}>
+                      {r.avg_edit_distance === null ? '—' : r.avg_edit_distance.toFixed(1)}
+                    </td>
+                    <td className={styles.mono}>{Number(r.contributing_accounts)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
       )}
 
@@ -232,32 +236,34 @@ export default async function ScoreboardPage() {
         <p className={styles.muted}>No shop template data available.</p>
       ) : (
         <section className={styles.panel}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Template</th>
-                <th>Adoptions (nibbins)</th>
-                <th>Contributing accounts</th>
-                <th>Active %</th>
-                <th>Dormant</th>
-                <th>Maturity % (senior+)</th>
-                <th>Graduated</th>
-              </tr>
-            </thead>
-            <tbody>
-              {shopRows.map((r: ShopTemplateScoreboardRow) => (
-                <tr key={r.template_key}>
-                  <td className={styles.mono}>{r.template_key}</td>
-                  <td className={styles.mono}>{r.nibbins}</td>
-                  <td className={styles.mono}>{r.contributing_accounts}</td>
-                  <td className={styles.mono}>{pct(r.activeRate)}</td>
-                  <td className={styles.mono}>{r.dormant}</td>
-                  <td className={styles.mono}>{pct(r.maturityRate)}</td>
-                  <td className={styles.mono}>{r.graduated}</td>
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Template</th>
+                  <th>Adoptions (nibbins)</th>
+                  <th>Contributing accounts</th>
+                  <th>Active %</th>
+                  <th>Dormant</th>
+                  <th>Maturity % (senior+)</th>
+                  <th>Graduated</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {shopRows.map((r: ShopTemplateScoreboardRow) => (
+                  <tr key={r.template_key}>
+                    <td className={styles.mono}>{r.template_key}</td>
+                    <td className={styles.mono}>{r.nibbins}</td>
+                    <td className={styles.mono}>{r.contributing_accounts}</td>
+                    <td className={styles.mono}>{pct(r.activeRate)}</td>
+                    <td className={styles.mono}>{r.dormant}</td>
+                    <td className={styles.mono}>{pct(r.maturityRate)}</td>
+                    <td className={styles.mono}>{r.graduated}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
       )}
 

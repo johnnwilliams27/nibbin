@@ -227,30 +227,32 @@ export default async function AccountDetail({
             {breakdown.length > 0 && (
               <>
                 <h2 className={styles.h2} style={{ marginTop: '20px' }}>Per-model breakdown</h2>
-                <table className={styles.table}>
-                  <thead>
-                    <tr>
-                      <th>Model</th>
-                      <th>Task</th>
-                      <th>Calls</th>
-                      <th>Tokens in</th>
-                      <th>Tokens out</th>
-                      <th>Cost (USD)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {breakdown.map((r) => (
-                      <tr key={`${r.model}|${r.task ?? ''}`}>
-                        <td className={styles.mono}>{r.model}</td>
-                        <td className={styles.mono}>{r.task ?? '—'}</td>
-                        <td>{r.calls}</td>
-                        <td>{r.input_tokens.toLocaleString()}</td>
-                        <td>{r.output_tokens.toLocaleString()}</td>
-                        <td className={styles.mono}>${(r.cost_microusd / 1_000_000).toFixed(4)}</td>
+                <div className={styles.tableWrap}>
+                  <table className={styles.table}>
+                    <thead>
+                      <tr>
+                        <th>Model</th>
+                        <th>Task</th>
+                        <th>Calls</th>
+                        <th>Tokens in</th>
+                        <th>Tokens out</th>
+                        <th>Cost (USD)</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {breakdown.map((r) => (
+                        <tr key={`${r.model}|${r.task ?? ''}`}>
+                          <td className={styles.mono}>{r.model}</td>
+                          <td className={styles.mono}>{r.task ?? '—'}</td>
+                          <td>{r.calls}</td>
+                          <td>{r.input_tokens.toLocaleString()}</td>
+                          <td>{r.output_tokens.toLocaleString()}</td>
+                          <td className={styles.mono}>${(r.cost_microusd / 1_000_000).toFixed(4)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </>
             )}
           </>
@@ -335,63 +337,67 @@ export default async function AccountDetail({
 
       <section className={styles.panel}>
         <h2 className={styles.h2}>Recent credit ledger</h2>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>When</th>
-              <th>Δ</th>
-              <th>Reason</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(ledger ?? []).map((r, i) => (
-              <tr key={i}>
-                <td className={styles.mono}>{new Date(r.created_at).toISOString().slice(0, 19)}</td>
-                <td>{r.delta}</td>
-                <td>{r.reason}</td>
-              </tr>
-            ))}
-            {(ledger ?? []).length === 0 && (
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <thead>
               <tr>
-                <td colSpan={3} className={styles.muted}>
-                  No ledger entries.
-                </td>
+                <th>When</th>
+                <th>Δ</th>
+                <th>Reason</th>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {(ledger ?? []).map((r, i) => (
+                <tr key={i}>
+                  <td className={styles.mono}>{new Date(r.created_at).toISOString().slice(0, 19)}</td>
+                  <td>{r.delta}</td>
+                  <td style={{ whiteSpace: 'normal' }}>{r.reason}</td>
+                </tr>
+              ))}
+              {(ledger ?? []).length === 0 && (
+                <tr>
+                  <td colSpan={3} className={styles.muted}>
+                    No ledger entries.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <section className={styles.panel}>
         <h2 className={styles.h2}>Recent audit log</h2>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>When</th>
-              <th>Actor</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(audit ?? []).map((r, i) => (
-              <tr key={i}>
-                <td className={styles.mono}>{new Date(r.at).toISOString().slice(0, 19)}</td>
-                <td>
-                  {r.actor}
-                  {r.actor_id ? ` · ${r.actor_id}` : ''}
-                </td>
-                <td>{r.action}</td>
-              </tr>
-            ))}
-            {(audit ?? []).length === 0 && (
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <thead>
               <tr>
-                <td colSpan={3} className={styles.muted}>
-                  No audit entries.
-                </td>
+                <th>When</th>
+                <th>Actor</th>
+                <th>Action</th>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {(audit ?? []).map((r, i) => (
+                <tr key={i}>
+                  <td className={styles.mono}>{new Date(r.at).toISOString().slice(0, 19)}</td>
+                  <td className={styles.mono}>
+                    {r.actor}
+                    {r.actor_id ? ` · ${r.actor_id}` : ''}
+                  </td>
+                  <td>{r.action}</td>
+                </tr>
+              ))}
+              {(audit ?? []).length === 0 && (
+                <tr>
+                  <td colSpan={3} className={styles.muted}>
+                    No audit entries.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </section>
     </main>
   );
