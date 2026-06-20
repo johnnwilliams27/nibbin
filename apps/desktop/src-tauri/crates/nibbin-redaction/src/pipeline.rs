@@ -52,6 +52,14 @@ impl<N: NerClient> RedactionPipeline<N> {
         self.exclusions.merge(more);
     }
 
+    /// Replace the in-memory exclusion set entirely (used by remove_exclusion so
+    /// the removed entry is actually dropped from the live pipeline, not just
+    /// from disk). A MERGE after a disk-subtract would re-add the removed entry
+    /// from in-memory state; a REPLACE is correct here.
+    pub fn set_exclusions(&mut self, exclusions: UserExclusions) {
+        self.exclusions = exclusions;
+    }
+
     /// Re-arm after the sidecar supervisor reports healthy again.
     pub fn resume(&mut self) {
         self.halted_reason = None;
@@ -189,5 +197,31 @@ mod tests {
             ..Default::default()
         });
         assert_eq!(p.exclusions().hosts, vec!["a.com".to_string()]);
+    }
+
+    #[test]
+    fn set_exclusions_replaces_not_merges() {
+        // set_exclusions must REPLACE the in-memory set entirely so that a
+        // remove_exclusion that subtracts an entry from the persisted set and
+        // then calls set_exclusions actually drops the entry from the live
+        // pipeline. A merge would re-add the removed entry from in-memory state.
+        let mut p = RedactionPipeline::new(HeuristicNer);
+        p.add_exclusions(UserExclusions {
+            hosts: vec!["a.com".into(), "b.com".into()],
+            ..Default::default()
+        });
+        assert_eq!(p.exclusions().hosts.len(), 2);
+
+        // Simulate remove of "a.com": load → subtract → set.
+        let mut after_remove = p.exclusions().clone();
+        after_remove.hosts.retain(|x| x != "a.com");
+        p.set_exclusions(after_remove);
+
+        // "a.com" must be gone; "b.com" must remain.
+        assert_eq!(p.exclusions().hosts, vec!["b.com".to_string()]);
+        assert!(
+            !p.exclusions().hosts.contains(&"a.com".to_string()),
+            "a.com must not be present after set_exclusions"
+        );
     }
 }
