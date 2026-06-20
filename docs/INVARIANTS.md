@@ -12,7 +12,7 @@ Full claims register with engineering meanings: SPEC §2. Compressed:
 - C8 Connections read-only until a Nibbin adoption requests write scopes, explained plainly.
 - C9 Tokens in vault only, never app DB; one-click revoke; revocation cascades.
 - C10 Grovekeeper holds zero side-effect tools, permanently.
-- C11 No data sales; model training on user data is opt-in (off by default, one user switch turns it on, honored everywhere).
+- C11 No data sales; never train models on user content. Anonymized, aggregate, STRUCTURAL contribution (capability/model performance — never content, never per-user) is opt-out (default-on, one user switch — `accounts.model_contribution_enabled`), honored everywhere (the `model_task_performance` aggregate filters to contributing accounts).
 
 Runtime: Agent School gates side effects at the runtime layer, never the prompt layer.
 No autonomy laundering via delegation. Trigger graphs cycle-checked; Grovekeeper is a
