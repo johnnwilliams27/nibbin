@@ -76,7 +76,6 @@ export default async function DiagnosisPage({
   return (
     <AppShell active="diagnosis" title="Your diagnosis" email={user.email}>
       <header className={styles.header}>
-        <p className={styles.eyebrow}>The diagnosis</p>
         <h1 className={styles.title}>Where your week actually goes</h1>
         <p className={styles.subtitle}>Grown from your Field Study — only the map ever left your device.</p>
       </header>

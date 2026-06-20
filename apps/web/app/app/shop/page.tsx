@@ -90,7 +90,6 @@ export default async function ShopPage({
       <div className={styles.inner}>
         <header className={styles.header}>
           <div>
-            <p className={styles.eyebrow}>Agent shop</p>
             <h1 className={styles.title}>Room in the grove</h1>
           </div>
           <p className={styles.meter}>

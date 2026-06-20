@@ -61,7 +61,6 @@ export default async function StyleSettingsPage({
 
   return (
     <AppShell active="settings" title="Settings" email={user.email}>
-      <p className={styles.eyebrow}>Account</p>
       <h1 className={styles.heading}>Settings</h1>
       <SettingsNav active="style" />
 

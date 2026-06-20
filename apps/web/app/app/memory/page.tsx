@@ -194,7 +194,6 @@ export default async function MemoryPage({
 
   return (
     <AppShell active="memory" title="Grove Memory" email={user.email}>
-      <p className={styles.eyebrow}>Grove Memory</p>
       <h1 className={styles.h1}>What your grove knows</h1>
       <p className={styles.lede}>
         Everything here is shared with your Nibbins so their drafts sound like you — not a generic
