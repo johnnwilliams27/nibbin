@@ -37,7 +37,11 @@ export function StudyStart({ onStarted }: StudyStartProps) {
   const [error, setError] = useState<string | null>(null);
 
   // -------------------------------------------------------------------------
-  // Kind-dependent copy — verbatim from consent.ts lines 16-46
+  // Kind-dependent copy. The full-study claims are verbatim from consent.ts
+  // (lines 16-46) and must track docs/INVARIANTS.md. The quick_scan heading
+  // and intro are new copy specific to this web wizard (consent.ts had no
+  // kind-conditional heading). Do not paraphrase either variant — stronger or
+  // weaker phrasing is a claims-auditor defect.
   // -------------------------------------------------------------------------
 
   // "When it ends" differs by kind (consent.ts lines 16-19, verbatim both branches)
@@ -81,8 +85,17 @@ export function StudyStart({ onStarted }: StudyStartProps) {
       await desktopBridge.consent();
       await desktopBridge.start();
       // Re-fetch status (daemon processes 'start' asynchronously before the
-      // study row is fully populated — same comment as consent.ts line 95-96)
-      await desktopBridge.studyStatus();
+      // study row is fully populated — same comment as consent.ts line 95-96).
+      // Guard against a silent no-op: only call onStarted() when the daemon
+      // confirms the study actually advanced to a started state. If the status
+      // is still idle/offline, show an error rather than navigating to an
+      // in-progress view that has nothing to show.
+      const refreshed = await desktopBridge.studyStatus();
+      const started = !['NOT_STARTED', 'COMPLETE', 'DELETED', 'DAEMON_OFFLINE'].includes(refreshed.state);
+      if (!started) {
+        setError('Could not start — make sure the Nibbin desktop app is running and try again.');
+        return;
+      }
       onStarted();
     } catch {
       // Degrade silently per bridge pattern; surface a soft message so the
