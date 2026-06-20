@@ -161,6 +161,45 @@ jobs:
           fi
           ls -la "$DEST"
 
+      # macOS notarization rejects a .dmg whose bundled observerd sidecar isn't
+      # itself codesigned with the hardened runtime + a secure timestamp ("does
+      # not have the hardened runtime enabled" / "no secure timestamp").
+      # tauri-action signs the app bundle but NOT pre-existing sidecar binaries,
+      # so sign the staged universal observerd here, before bundling. Import the
+      # Apple cert into a throwaway keychain (tauri-action sets up its own keychain
+      # later for the app + notarization; the two don't conflict). No-op when the
+      # Apple secrets are absent (unsigned builds stay green).
+      - name: Codesign observerd sidecar (macOS, hardened runtime)
+        if: ${{ matrix.platform == 'macos-latest' }}
+        shell: bash
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${APPLE_CERTIFICATE:-}" ] || [ -z "${APPLE_SIGNING_IDENTITY:-}" ]; then
+            echo "Apple signing secrets absent — skipping sidecar codesign (unsigned build)." >&2
+            exit 0
+          fi
+          SIDECAR="apps/desktop/src-tauri/app/binaries/observerd"
+          KEYCHAIN_PATH="$RUNNER_TEMP/sidecar-signing.keychain-db"
+          KEYCHAIN_PWD="$(openssl rand -base64 24)"
+          security create-keychain -p "$KEYCHAIN_PWD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PWD" "$KEYCHAIN_PATH"
+          echo "$APPLE_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/sidecar-cert.p12"
+          security import "$RUNNER_TEMP/sidecar-cert.p12" -P "$APPLE_CERTIFICATE_PASSWORD" \
+            -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PWD" "$KEYCHAIN_PATH" >/dev/null
+          # Make the throwaway keychain visible to codesign without dropping the
+          # login keychain (append, don't replace, the search list).
+          security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | sed s/\"//g)
+          codesign --force --options runtime --timestamp \
+            --sign "$APPLE_SIGNING_IDENTITY" "$SIDECAR"
+          codesign --verify --strict --verbose=2 "$SIDECAR"
+          rm -f "$RUNNER_TEMP/sidecar-cert.p12"
+
       - name: Build installers (tauri-action, build only)
         uses: tauri-apps/tauri-action@84b9d35b5fc46c1e45415bdb6144030364f7ebc5 # v0 (action-v0.6.2)
         env:
