@@ -50,6 +50,42 @@ export type Tier = keyof typeof TIERS;
  */
 export const TOP_UP = { priceUsdCents: 1000, credits: 1000 } as const;
 
+/**
+ * Anti-runaway DOLLAR backstop for a SINGLE diagnosis-synthesis call, in
+ * micro-USD: 1_000_000 = $1.00. The diagnosis pipeline is the deliberate T2
+ * Opus splurge the router never degrades, so the caller-side controls ARE the
+ * budget. The PRIMARY bound is the input cap below (we truncate the packet so
+ * the call can never get expensive); this dollar figure is a log-only tripwire
+ * for pricing/usage drift — it does NOT fail a study (a real diagnosis is
+ * ~$0.06 output + capped input, so it should never fire).
+ */
+export const DIAGNOSIS_MAX_MICRO_USD = 1_000_000 as const;
+
+/**
+ * PRIMARY cost bound: cap the diagnosis packet at this many INPUT tokens. When a
+ * rich study would exceed it we TRUNCATE the packet (drop the overflow sections)
+ * rather than fail the study — the user still gets a diagnosis on what fits, and
+ * cost is deterministically bounded (input ≤ 100k → ~$0.50 at $5/MTok, plus the
+ * fixed 2,500-token output). Never reject a study for being too big.
+ */
+export const DIAGNOSIS_MAX_INPUT_TOKENS = 100_000 as const;
+
+/** Rough token estimate for budgeting (≈4 chars/token). Deliberately simple. */
+export function estimateTokens(text: string): number {
+  return Math.ceil(text.length / 4);
+}
+
+/**
+ * True when a recorded/projected per-diagnosis cost is within the hard cap.
+ * Pure + side-effect-free so it can guard either a projection (before spend)
+ * or a recorded usage (after spend). A non-finite or negative cost is treated
+ * as over-cap (fail-closed).
+ */
+export function withinDiagnosisCostCap(costMicroUsd: number): boolean {
+  if (!Number.isFinite(costMicroUsd) || costMicroUsd < 0) return false;
+  return costMicroUsd <= DIAGNOSIS_MAX_MICRO_USD;
+}
+
 const GRANT_AMOUNTS: ReadonlySet<number> = new Set(
   Object.values(TIERS).map((t) => t.monthlyCredits),
 );
