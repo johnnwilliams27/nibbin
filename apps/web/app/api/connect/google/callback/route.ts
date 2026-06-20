@@ -17,7 +17,11 @@ export async function GET(request: NextRequest): Promise<Response> {
   return handleConnectionCallback(request, {
     // Gmail's pending.provider is 'gmail' but the path segment is 'google'.
     // No expectedProvider guard here — the dedicated route only handles Gmail.
+    provider: 'gmail',
     postConnect: async (svc, pending, connectionId) => {
+      // siteOrigin() (not request.url) is used so the internal HMAC-bearing sweep
+      // worker POST targets our pinned origin — request.url derives from the
+      // attacker-influenceable Host header on Vercel (RT-2 / SSRF).
       await onGmailConnected(
         svc,
         siteOrigin(),

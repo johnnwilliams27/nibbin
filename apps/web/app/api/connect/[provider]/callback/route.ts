@@ -17,5 +17,5 @@ export async function GET(
   if (provider === 'google' || !isWiredProvider(provider)) {
     return NextResponse.redirect(new URL('/app/connections?error=unavailable', request.url));
   }
-  return handleConnectionCallback(request, { expectedProvider: provider });
+  return handleConnectionCallback(request, { expectedProvider: provider, provider });
 }

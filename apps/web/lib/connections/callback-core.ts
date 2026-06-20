@@ -124,6 +124,14 @@ export interface CallbackOpts {
    * redeeming a pending authorization on the wrong provider's callback.
    */
   expectedProvider?: string;
+  /**
+   * The provider id this route handles (e.g. 'gmail', 'google-calendar').
+   * When set, error redirects append `&provider=<id>` so the connections page
+   * can pre-fill the retry form with the correct provider instead of defaulting
+   * to 'gmail'. Only appended to error redirects; success redirects are
+   * unaffected. Never appended if the value is unknown.
+   */
+  provider?: string;
   /** Provider-specific post-connect work (e.g. Gmail sweep dispatch). */
   postConnect?: (svc: SupabaseClient, pending: PendingAuth, connectionId: string) => Promise<void>;
 }
@@ -152,7 +160,11 @@ export async function handleConnectionCallback(
   const oauthError = url.searchParams.get('error');
 
   if (oauthError || !code || !state) {
-    return NextResponse.redirect(new URL('/app/connections?error=declined', request.url));
+    const providerHint = opts.provider;
+    const declined = providerHint
+      ? `/app/connections?error=declined&provider=${encodeURIComponent(providerHint)}`
+      : '/app/connections?error=declined';
+    return NextResponse.redirect(new URL(declined, request.url));
   }
 
   const svc = serviceClient();
@@ -215,7 +227,20 @@ export async function handleConnectionCallback(
     }
   }
 
-  const { redirectTo } = completeResult!;
+  let { redirectTo } = completeResult!;
+
+  // Append &provider=<id> to error redirects so the connections page can
+  // pre-fill the retry form correctly. Only applied to error paths; success
+  // redirects are unaffected. Resolved from the route hint (opts.provider) or,
+  // as a fallback, the consumed pending row's provider (only if known).
+  if (redirectTo.includes('?error=') || redirectTo.includes('&error=')) {
+    const providerHint = opts.provider ?? createdPending?.provider;
+    if (providerHint) {
+      redirectTo = redirectTo.includes('?')
+        ? `${redirectTo}&provider=${encodeURIComponent(providerHint)}`
+        : `${redirectTo}?provider=${encodeURIComponent(providerHint)}`;
+    }
+  }
 
   if (!saveFailed && createdConnectionId && opts.postConnect && createdPending) {
     await opts.postConnect(svc, createdPending, createdConnectionId);

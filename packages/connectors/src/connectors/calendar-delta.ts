@@ -51,6 +51,15 @@ function isSyncTokenExpired(err: unknown): boolean {
 }
 
 /**
+ * Maximum number of pages fetched in a single cron invocation.
+ * Guards against a non-advancing nextPageToken from Google spinning a cron
+ * invocation indefinitely. On hitting the cap the items accumulated so far
+ * are returned with the best sync token seen — safe to persist and retry next
+ * cycle; an empty token is never persisted.
+ */
+const MAX_SYNC_PAGES = 50;
+
+/**
  * Accumulate all pages from listSync starting at `syncToken` (undefined for
  * baseline).  Returns all items across pages and the final nextSyncToken.
  * If the server returns an empty token on the last page, the caller's
@@ -63,12 +72,15 @@ async function accumulatePages(
   const allItems: CalendarSyncItem[] = [];
   let pageToken: string | undefined;
   let newSyncToken = syncToken ?? '';
+  let pages = 0;
 
   do {
     const res = await listSync(syncToken, pageToken);
     allItems.push(...(res.items ?? []));
     if (res.nextSyncToken) newSyncToken = res.nextSyncToken;
     pageToken = res.nextPageToken;
+    pages++;
+    if (pages >= MAX_SYNC_PAGES) break;
   } while (pageToken);
 
   return { allItems, newSyncToken };

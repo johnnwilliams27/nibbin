@@ -81,6 +81,29 @@ describe('fetchCalendarDelta', () => {
     ]);
   });
 
+  it('terminates at MAX_SYNC_PAGES (50) when nextPageToken never clears', async () => {
+    let calls = 0;
+    // Simulate a stuck Google response: every page returns a nextPageToken that
+    // never clears, so the loop would spin forever without the cap.
+    const r = await fetchCalendarDelta('c1', 'a1', { calendarSyncToken: 'tok1' }, {
+      listSync: async (_syncToken, _pageToken) => {
+        calls++;
+        return {
+          items: [{ id: `e${calls}` }],
+          // Keep returning a pageToken but never return a nextSyncToken — this
+          // would spin forever without the cap.
+          nextPageToken: 'stuck-page-token',
+        };
+      },
+    });
+    // Loop must have stopped at the cap, not run indefinitely.
+    expect(calls).toBe(50);
+    // Items accumulated up to the cap are kept (one per page = 50).
+    expect(r.events.length).toBe(50);
+    // Best token we had (tok1 from calendarSyncToken) is preserved — not empty.
+    expect(r.newSyncToken).toBe('tok1');
+  });
+
   it('recovers from 410 expired sync token: emits no events and returns a fresh token', async () => {
     // First call throws 410; subsequent baseline call returns a fresh token
     let call = 0;

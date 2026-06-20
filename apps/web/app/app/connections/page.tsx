@@ -22,7 +22,7 @@ const STATUS_TONE: Record<string, Tone> = { active: 'moss', pending: 'honey', pa
 export default async function ConnectionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ connected?: string; disconnected?: string; error?: string; needed?: string; resume?: string }>;
+  searchParams: Promise<{ connected?: string; disconnected?: string; error?: string; needed?: string; resume?: string; provider?: string }>;
 }) {
   let session;
   try {
@@ -67,7 +67,11 @@ export default async function ConnectionsPage({
         <h1 className={styles.title}>Accounts your Nibbins work from</h1>
       </header>
 
-      {sp.connected && <InlineFeedback tone="success">{sp.connected} is connected.</InlineFeedback>}
+      {sp.connected && (
+        <InlineFeedback tone="success">
+          {CONNECTABLE_PROVIDERS.find((p) => p.id === sp.connected)?.label ?? sp.connected} is connected.
+        </InlineFeedback>
+      )}
       {sp.disconnected && (
         <InlineFeedback tone="success">
           {CONNECTABLE_PROVIDERS.find((p) => p.id === sp.disconnected)?.label ?? 'Account'} disconnected — its access was revoked.
@@ -80,7 +84,7 @@ export default async function ConnectionsPage({
             <strong>{err.title}</strong> {err.body}
             {err.action !== 'none' && (
               <form action={beginConnectAction} style={{ display: 'inline', marginLeft: 8 }}>
-                <input type="hidden" name="provider" value={sp.needed?.split(',')[0] ?? 'gmail'} />
+                <input type="hidden" name="provider" value={sp.provider ?? sp.needed?.split(',')[0] ?? 'gmail'} />
                 <input type="hidden" name="returnTo" value="/app/connections" />
                 <button type="submit" style={{ textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'inherit', fontSize: 'inherit' }}>
                   {err.action === 'restart' ? 'Start again' : 'Try again'}
