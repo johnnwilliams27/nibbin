@@ -17,7 +17,7 @@ const STEPS = [
   {
     num: 'DAY ONE',
     h: 'Hatch with the Grovekeeper',
-    p: 'Answer a few plain questions about your work. The Keeper sets up your grove, connects your tools read-only, and runs a scan of the last 90 days.',
+    p: 'Answer a few plain questions about your work. The Keeper sets up your grove, connects your tools read-only, and runs a scan of the last 12 months.',
     dur: '10 minutes, start to first Nibbin',
   },
   {
@@ -63,7 +63,7 @@ const PRICING = [
     tier: 'Hatchling — Free',
     feat: false,
     cta: 'Start free',
-    items: ['Full 14-day Field Study + diagnosis', '2 Nibbins · 100 actions / month', 'The Grovekeeper + 90-day scan', 'All privacy guarantees, always'],
+    items: ['Full 14-day Field Study + diagnosis', '2 Nibbins · 100 actions / month', 'The Grovekeeper + 12-month scan', 'All privacy guarantees, always'],
   },
   {
     tier: 'Grove',
@@ -231,7 +231,7 @@ export default function Home() {
                   your grove and connects your tools — read-only until you say otherwise.
                 </div>
                 <div className="kp">
-                  <b>Finds the busywork.</b> It runs the 90-day scan, names what it finds in hours and dollars, and
+                  <b>Finds the busywork.</b> It runs the 12-month scan, names what it finds in hours and dollars, and
                   introduces the Nibbin for each job.
                 </div>
                 <div className="kp">
