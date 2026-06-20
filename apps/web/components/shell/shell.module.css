@@ -180,12 +180,24 @@
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  transition: margin-left var(--motion-reveal-dur) var(--motion-reveal);
+  transition: margin-left var(--motion-reveal-dur) var(--motion-reveal),
+    padding-right var(--motion-reveal-dur) var(--motion-reveal);
 }
 
 /* Desktop: slide main inward when nav is collapsed */
 .mainNavCollapsed {
   margin-left: 56px;
+}
+
+/* Keeper dock open → condense the body so the chat rail makes room instead of
+   covering content (same push behavior as the left nav). Desktop only: the
+   mobile dock is a bottom sheet that overlays, so no horizontal push there.
+   `html.keeper-dock-open` is toggled by KeeperDock; --keeper-dock-w matches the
+   rail width so the freed strip is exactly the rail. */
+@media (min-width: 881px) {
+  :global(html.keeper-dock-open) .main {
+    padding-right: var(--keeper-dock-w);
+  }
 }
 
 /* Onboarding: hard-bound the column to the viewport so the focal chat fills

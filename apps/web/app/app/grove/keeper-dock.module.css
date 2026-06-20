@@ -33,7 +33,7 @@
   position: fixed;
   top: 60px; /* below the AppShell topbar */
   right: 0;
-  width: 380px;
+  width: var(--keeper-dock-w); /* shared with the shell .main push margin */
   height: calc(100dvh - 60px);
   background: var(--canopy);
   border-left: 1px solid var(--line);
