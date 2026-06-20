@@ -2,7 +2,12 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { getStaff } from '../../lib/staff/session';
 import { adminClient } from '../../lib/supabase/admin';
-import { loadScoreboard, type ScoreboardRow } from '../../lib/scoreboard/read';
+import {
+  loadScoreboard,
+  loadCapabilityScoreboard,
+  type ScoreboardRow,
+  type CapabilityScoreboardRow,
+} from '../../lib/scoreboard/read';
 import styles from '../admin.module.css';
 
 export const metadata: Metadata = { title: 'Model performance — Nibbin admin' };
@@ -36,6 +41,7 @@ export default async function ScoreboardPage() {
 
   const admin = adminClient();
   const rows = await loadScoreboard(admin);
+  const capabilityRows = await loadCapabilityScoreboard(admin);
 
   // Audit the cross-account telemetry view (§6.10 everything-audited). It is
   // cross-account model telemetry, not one account's data → account_id null.
@@ -159,6 +165,47 @@ export default async function ScoreboardPage() {
             </table>
           </section>
         ))
+      )}
+
+      <h1 className={styles.h1}>Capability performance (fleet)</h1>
+      <p className={styles.muted}>
+        Per-capability human-decision outcomes across the fleet over the last 30 days. Anonymized
+        aggregate — only capabilities with ≥5 contributing accounts are shown.
+      </p>
+
+      {capabilityRows.length === 0 ? (
+        <p className={styles.muted}>No capability data recorded in the last 30 days.</p>
+      ) : (
+        <section className={styles.panel}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Capability</th>
+                <th>Decided</th>
+                <th>Approved unedited %</th>
+                <th>Edited %</th>
+                <th>Rejected %</th>
+                <th>Avg edit dist.</th>
+                <th>Contributing accounts</th>
+              </tr>
+            </thead>
+            <tbody>
+              {capabilityRows.map((r: CapabilityScoreboardRow) => (
+                <tr key={r.capability}>
+                  <td className={styles.mono}>{r.capability}</td>
+                  <td className={styles.mono}>{Number(r.decided_calls)}</td>
+                  <td className={styles.mono}>{pct(r.approvedUneditedRate)}</td>
+                  <td className={styles.mono}>{pct(r.editedRate)}</td>
+                  <td className={styles.mono}>{pct(r.rejectedRate)}</td>
+                  <td className={styles.mono}>
+                    {r.avg_edit_distance === null ? '—' : r.avg_edit_distance.toFixed(1)}
+                  </td>
+                  <td className={styles.mono}>{Number(r.contributing_accounts)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
       )}
     </main>
   );
