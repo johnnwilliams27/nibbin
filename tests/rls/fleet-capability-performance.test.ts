@@ -36,8 +36,8 @@ describe.skipIf(!dbAvailable)('Tier-2: capability_task_performance (k-anon + opt
     return row.nibbin_id as string;
   }
 
-  /** One draft of `cap` on `account`, decided `decision`. */
-  async function draft(account: string, nibbin: string, owner: string, cap: string, decision = 'approved', dist = 0) {
+  /** One run drafting `cap` (in `nSteps` draft steps), decided `decision`. */
+  async function draft(account: string, nibbin: string, owner: string, cap: string, decision = 'approved', dist = 0, nSteps = 1) {
     await h.as(service, async (c) => {
       const run = (
         await c.query(
@@ -46,10 +46,12 @@ describe.skipIf(!dbAvailable)('Tier-2: capability_task_performance (k-anon + opt
           [account, nibbin],
         )
       ).rows[0].id;
-      await c.query(
-        `insert into public.run_steps (run_id, account_id, idx, kind, tool, tokens) values ($1, $2, 0, 'draft', $3, 0)`,
-        [run, account, cap],
-      );
+      for (let k = 0; k < nSteps; k++) {
+        await c.query(
+          `insert into public.run_steps (run_id, account_id, idx, kind, tool, tokens) values ($1, $2, $3, 'draft', $4, 0)`,
+          [run, account, k, cap],
+        );
+      }
       await c.query(
         `insert into public.approvals (run_id, account_id, user_id, decision, edit_distance) values ($1, $2, $3, $4, $5)`,
         [run, account, owner, decision, dist],
@@ -94,6 +96,10 @@ describe.skipIf(!dbAvailable)('Tier-2: capability_task_performance (k-anon + opt
     // 4 opted-in → suppressed (proves the opt-out account doesn't count).
     for (let i = 0; i < 4; i++) await draft(accts[i], nibs[i], uids[i], 'cap.optout');
     await draft(accts[5], nibs[5], uids[5], 'cap.optout');
+    // cap.multidraft: A1..A5, each via a single run with TWO draft steps of the
+    // same capability. The run has ONE approval → decided_calls must be 5 (one
+    // per run), NOT 10 (one per draft step) — pins the fan-out collapse.
+    for (let i = 0; i < 5; i++) await draft(accts[i], nibs[i], uids[i], 'cap.multidraft', 'approved', 0, 2);
   });
 
   afterAll(async () => {
@@ -107,6 +113,17 @@ describe.skipIf(!dbAvailable)('Tier-2: capability_task_performance (k-anon + opt
     expect(Number(popular!.decided_calls)).toBe(5);
     expect(Number(popular!.approved_unedited)).toBe(5);
     expect(Number(popular!.contributing_accounts)).toBe(5);
+  });
+
+  it('credits a multi-draft run ONCE per capability (no fan-out double-count)', async () => {
+    const rs = await rows();
+    const md = cap(rs, 'cap.multidraft');
+    expect(md).toBeDefined();
+    // 5 runs, each with TWO draft steps of cap.multidraft + ONE approval.
+    // Run-collapsed → 5, NOT 10. (The pre-fix view would report 10.)
+    expect(Number(md!.decided_calls)).toBe(5);
+    expect(Number(md!.approved_unedited)).toBe(5);
+    expect(Number(md!.contributing_accounts)).toBe(5);
   });
 
   it('suppresses a capability below the k=5 cohort threshold', async () => {
@@ -129,9 +146,12 @@ describe.skipIf(!dbAvailable)('Tier-2: capability_task_performance (k-anon + opt
     ).rejects.toThrow(/permission denied/);
   });
 
-  it('the view itself is not readable by product roles', async () => {
+  it('the view itself is not readable by product roles (authenticated or anon)', async () => {
     await expect(
       h.as(owner1, (c) => c.query(`select * from public.capability_task_performance`)),
+    ).rejects.toThrow(/permission denied/);
+    await expect(
+      h.as(anon, (c) => c.query(`select * from public.capability_task_performance`)),
     ).rejects.toThrow(/permission denied/);
   });
 });

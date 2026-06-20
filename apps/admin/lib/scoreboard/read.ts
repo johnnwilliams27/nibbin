@@ -166,6 +166,9 @@ export function isCapabilityRow(row: unknown): row is CapabilityRow {
   if (!row || typeof row !== 'object') return false;
   const r = row as Record<string, unknown>;
   if (typeof r.capability !== 'string') return false;
+  // avg_edit_distance is number|null (rendered with .toFixed) — a drift that
+  // drops it to undefined would throw at render, so reject it here too.
+  if (r.avg_edit_distance !== null && typeof r.avg_edit_distance !== 'number') return false;
   return REQUIRED_CAPABILITY_NUMERIC_KEYS.every(
     (k) => typeof r[k] === 'number' && Number.isFinite(r[k]),
   );

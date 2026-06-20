@@ -47,5 +47,30 @@ Repo-wide `npm run lint` clean; apps/admin tsc clean; 21 scoreboard tests pass.
 Further fleet signals (demand gaps, shop adoption, blocker patterns), whether to ever auto-consume
 these into library/Composer defaults, and analytics-vs-contribution toggle separation.
 
-## Verdicts
-(appended after the reviewer pass)
+## Verdicts (real 3-reviewer pass; 1 Critical + 2 Important fixed)
+- **Red-team (opus): PASS** — explicitly cleared: no de-anonymization (k=5 on distinct accounts;
+  capability is a fixed registry id, not free text; a dominated ≥5 cell still reveals only
+  system-capability counts), opted-out accounts fully excluded from counts AND cohort, non-staff
+  cannot reach it (view revoked + service_role-only RPC + page `getStaff()` gate — triple). Flagged
+  the fan-out as P3.
+- **Logic-skeptic (opus): BLOCK→fixed** — P1 multi-draft fan-out (a run's single approval joined to
+  each draft step inflated counts/skewed avg). bigint-as-string guard = non-issue (model-scoreboard
+  precedent). k-anon/opt-out/time-anchor/null-safety all clear.
+- **Claims+cost (sonnet): BLOCK→fixed** — Critical fan-out (same), + Important: `isCapabilityRow`
+  didn't guard `avg_edit_distance` (drift → `.toFixed` throw), + Important: `run_steps(kind='draft')`
+  index gap at scale. RPC↔reader contract matches; grants/security_invoker/timestamp(410000) correct;
+  bounded staff-occasional cost, no LLM/N+1.
+
+### Fixes applied
+- **Fan-out (Critical/P1):** the view now collapses to `select distinct run_id, tool, account_id`
+  (one row per run+capability) BEFORE joining the unique approval — each capability credited once per
+  run, never per draft step. Mirrors `model_task_performance`. RLS regression added: a 5-account
+  capability with TWO draft steps per run asserts `decided_calls = 5`, not 10.
+- **Shape guard (Important):** `isCapabilityRow` now rejects an `avg_edit_distance` that is neither
+  number nor null (a drift fails cleanly instead of throwing at render).
+- **Index (Important):** added partial index `run_steps (run_id) where kind='draft'` for the view's
+  hot path.
+- Added the anon-direct-view-read denial test.
+
+**Gate verdict: PASS** after the fixes. Migration re-applied + valid on dev; repo lint clean;
+scoreboard unit tests 21/21.
