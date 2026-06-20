@@ -28,7 +28,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // ---------------------------------------------------------------------------
 
 const mockLlm = vi.fn();
-const mockAnthropicGenerate = vi.fn<[], typeof mockLlm | null>(() => mockLlm);
+const mockAnthropicGenerate = vi.fn<() => typeof mockLlm | null>(() => mockLlm);
 const mockRecordModelCall = vi.fn().mockResolvedValue(undefined);
 const mockRoute = vi.fn().mockResolvedValue({
   model: 'claude-haiku-test',
