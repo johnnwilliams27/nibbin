@@ -8,7 +8,15 @@
  */
 import { describe, it, expect } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { deriveRates, loadScoreboard, type PerformanceRow } from './read';
+import {
+  deriveRates,
+  loadScoreboard,
+  deriveCapabilityRates,
+  loadCapabilityScoreboard,
+  isCapabilityRow,
+  type PerformanceRow,
+  type CapabilityRow,
+} from './read';
 
 const FULL_ROW: PerformanceRow = {
   model: 'claude-haiku-4-5-20251001',
@@ -185,5 +193,119 @@ describe('loadScoreboard — staff-gated RPC read', () => {
       rpc: async () => ({ data: [drifted], error: null }),
     } as unknown as SupabaseClient;
     await expect(loadScoreboard(admin)).rejects.toThrow(/unexpected row shape/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Capability performance (fleet) — tests
+// ---------------------------------------------------------------------------
+
+const FULL_CAPABILITY_ROW: CapabilityRow = {
+  capability: 'draft_email',
+  decided_calls: 80,
+  approved_unedited: 60,
+  edited: 15,
+  rejected: 5,
+  avg_edit_distance: 2.3,
+  contributing_accounts: 12,
+};
+
+describe('deriveCapabilityRates — quality rates from raw capability counts', () => {
+  it('computes approved-unedited / edited / rejected rates over decided_calls', () => {
+    const r = deriveCapabilityRates(FULL_CAPABILITY_ROW);
+    expect(r.approvedUneditedRate).toBeCloseTo(60 / 80);
+    expect(r.editedRate).toBeCloseTo(15 / 80);
+    expect(r.rejectedRate).toBeCloseTo(5 / 80);
+  });
+
+  it('returns null quality rates when decided_calls is 0 (no divide-by-zero)', () => {
+    const noDecided: CapabilityRow = {
+      ...FULL_CAPABILITY_ROW,
+      decided_calls: 0,
+      approved_unedited: 0,
+      edited: 0,
+      rejected: 0,
+      avg_edit_distance: null,
+    };
+    const r = deriveCapabilityRates(noDecided);
+    expect(r.approvedUneditedRate).toBeNull();
+    expect(r.editedRate).toBeNull();
+    expect(r.rejectedRate).toBeNull();
+  });
+
+  it('passes through raw fields unchanged', () => {
+    const r = deriveCapabilityRates(FULL_CAPABILITY_ROW);
+    expect(r.capability).toBe('draft_email');
+    expect(r.avg_edit_distance).toBe(2.3);
+    expect(r.contributing_accounts).toBe(12);
+  });
+});
+
+describe('isCapabilityRow — shape guard', () => {
+  it('accepts a valid capability row', () => {
+    expect(isCapabilityRow(FULL_CAPABILITY_ROW)).toBe(true);
+  });
+
+  it('rejects a row missing the capability string', () => {
+    const drifted = { ...FULL_CAPABILITY_ROW } as Record<string, unknown>;
+    delete drifted.capability;
+    expect(isCapabilityRow(drifted)).toBe(false);
+  });
+
+  it('rejects a row where a required count column is missing', () => {
+    const drifted = { ...FULL_CAPABILITY_ROW } as Record<string, unknown>;
+    delete drifted.decided_calls;
+    expect(isCapabilityRow(drifted)).toBe(false);
+  });
+
+  it('rejects a row where a count column is a non-finite number (NaN)', () => {
+    const drifted = { ...FULL_CAPABILITY_ROW, approved_unedited: NaN };
+    expect(isCapabilityRow(drifted)).toBe(false);
+  });
+
+  it('rejects null and non-objects', () => {
+    expect(isCapabilityRow(null)).toBe(false);
+    expect(isCapabilityRow('string')).toBe(false);
+    expect(isCapabilityRow(42)).toBe(false);
+  });
+});
+
+describe('loadCapabilityScoreboard — staff-gated RPC read', () => {
+  it('maps the RPC rows through deriveCapabilityRates', async () => {
+    const admin = {
+      rpc: async () => ({ data: [FULL_CAPABILITY_ROW], error: null }),
+    } as unknown as SupabaseClient;
+    const rows = await loadCapabilityScoreboard(admin);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].approvedUneditedRate).toBeCloseTo(60 / 80);
+    expect(rows[0].capability).toBe('draft_email');
+  });
+
+  it('throws when the RPC rejects the caller (non-staff / insufficient_privilege)', async () => {
+    const admin = {
+      rpc: async () => ({
+        data: null,
+        error: { message: 'permission denied for function capability_task_performance_read' },
+      }),
+    } as unknown as SupabaseClient;
+    await expect(loadCapabilityScoreboard(admin)).rejects.toThrow(
+      /capability_task_performance_read failed/,
+    );
+  });
+
+  it('returns an empty array when the RPC returns no rows', async () => {
+    const admin = {
+      rpc: async () => ({ data: [], error: null }),
+    } as unknown as SupabaseClient;
+    await expect(loadCapabilityScoreboard(admin)).resolves.toEqual([]);
+  });
+
+  it('throws on a drifted RPC row shape instead of deriving NaN rates', async () => {
+    const drifted = { ...FULL_CAPABILITY_ROW } as Record<string, unknown>;
+    delete drifted.decided_calls;
+    const admin = {
+      rpc: async () => ({ data: [drifted], error: null }),
+    } as unknown as SupabaseClient;
+    await expect(loadCapabilityScoreboard(admin)).rejects.toThrow(/unexpected row shape/);
   });
 });
