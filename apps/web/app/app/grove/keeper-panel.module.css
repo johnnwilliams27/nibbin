@@ -38,12 +38,8 @@
   flex-shrink: 0;
 }
 
-/* avatarCreature: the avatar circle is 36px; keeper rendered at size=30.
-   The SVG viewBox is 420×500; the face/head occupies y≈140–320 (top ~36% of
-   height). We oversize the SVG to 70px wide so the face band (~25px) fills the
-   36px circle well, then shift it up so the face centres in the frame.
-   SVG height at 70px wide ≈ 83px; face centre at y≈230/500 ≈ 38px;
-   container centre = 18px → shift up 20px; centre horizontally: (36-70)/2 = -17px. */
+/* avatarCreature: 36px circle. Contain the whole keeper inside the circle
+   (scale to fit, centred) so the head/antennae never crop. */
 .avatarCreature {
   display: flex;
   align-items: center;
@@ -54,10 +50,9 @@
 }
 .avatarCreature :global(svg) {
   display: block;
-  width: 70px !important;
-  height: auto !important;
-  margin-top: -20px;
-  margin-left: -17px;
+  width: auto !important;
+  height: 82% !important;
+  margin: 0 !important;
 }
 
 .headerText {

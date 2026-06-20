@@ -337,30 +337,22 @@
   overflow: hidden;
 }
 
-/* panelExpand tab: button is 30×64px; keeper rendered at size=26 (26px wide).
-   Oversize to 78px wide so the face band (36% of SVG height) fills ~28px.
-   SVG aspect 420:500 → height at 78px wide ≈ 93px.
-   Face centre at y≈230/500 of that ≈ 43px; container centre ≈ 14px.
-   Shift up 29px; centre horizontally within 30px button. */
+/* panelExpand tab: 30×64px vertical tab. Contain the whole keeper to the tab
+   width (scale to fit, centred) so nothing crops. */
 .panelExpand .keeperGlyph :global(svg) {
   display: block;
-  width: 78px !important;
+  width: 84% !important;
   height: auto !important;
-  margin-top: -29px;
-  margin-left: -24px;
+  margin: 0 !important;
 }
 
-/* Mobile FAB: 52×52px circle; keeper rendered at size=32.
-   Oversize to 98px wide so the face band fills ~35px of the 52px circle.
-   SVG height at 98px wide ≈ 117px.
-   Face centre at y≈230/500 of that ≈ 54px; container centre ≈ 26px.
-   Shift up 28px; centre horizontally. */
+/* Mobile FAB: 52×52px circle. Contain the whole keeper inside the circle
+   (scale to fit, centred) so the head/antennae never crop. */
 .panelToggle .keeperGlyph :global(svg) {
   display: block;
-  width: 98px !important;
-  height: auto !important;
-  margin-top: -28px;
-  margin-left: -23px;
+  width: auto !important;
+  height: 82% !important;
+  margin: 0 !important;
 }
 
 .topbar {
