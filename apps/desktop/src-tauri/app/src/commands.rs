@@ -195,15 +195,13 @@ pub fn exclusions(app: AppHandle) -> Result<serde_json::Value, String> {
 }
 
 /// Remove a previously-added capture exclusion. Forwarded to the daemon via the
-/// control channel; the daemon rewrites `exclusions.json` atomically and updates
-/// its in-memory pipeline.
+/// control channel; the daemon subtracts the entry from `exclusions.json` atomically
+/// (save-first, REPLACE) and updates its live pipeline immediately — the removed
+/// entry stops blocking capture without a restart.
 ///
-/// Daemon support note: the `remove_exclusion` control command is not yet
-/// implemented in observerd — the daemon will log "unknown cmd" and skip it.
-/// When the daemon gains `RemoveExclusion` handling, no app-side change is needed;
-/// the JSON envelope format is already correct and consistent with `add_exclusion`.
-/// Until then, callers should call `exclusions()` after a short delay to confirm
-/// the change (the list won't change until daemon support lands).
+/// Fail-loud: if `exclusions.json` is unreadable the daemon sets capture_blocked
+/// rather than falling back to the in-memory set (fail-closed, matching
+/// AddExclusion's save-error behaviour).
 #[tauri::command]
 pub fn remove_exclusion(
     app: AppHandle,
