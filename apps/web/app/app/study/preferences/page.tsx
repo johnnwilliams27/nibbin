@@ -20,9 +20,11 @@ function exclusionSub(e: Exclusion): string | null {
 /**
  * Preferences route.
  *
- * NOTE on removeExclusion: the daemon stub may be a no-op. We show the remove
- * control with a disclosure that changes take effect on the daemon's next
- * restart, so it's honest about the current behaviour.
+ * NOTE on removeExclusion: the daemon does NOT yet implement RemoveExclusion —
+ * the control command is silently ignored (logged as "unknown cmd"). The remove
+ * button is therefore disabled with an honest disclosure so users aren't misled
+ * into thinking a removal was recorded. When the daemon gains RemoveExclusion
+ * support, remove the `disabled` prop and the disclosure note below.
  *
  * No "go to nibbin.com for account settings" — links go to in-app /app/settings.
  */
@@ -59,21 +61,10 @@ function PreferencesContent() {
     }
   }, [exclusionInput]);
 
-  const handleRemoveExclusion = useCallback(async (exclusion: Exclusion) => {
-    // removeExclusion may be a no-op until the daemon supports it — we call it
-    // optimistically and update local state, surfacing the restart note to the user.
-    await desktopBridge.removeExclusion(exclusion);
-    setExclusions((prev) =>
-      prev.filter(
-        (e) =>
-          !(
-            e.host === exclusion.host &&
-            e.bundleId === exclusion.bundleId &&
-            e.appName === exclusion.appName
-          ),
-      ),
-    );
-  }, []);
+  // handleRemoveExclusion is intentionally omitted: the daemon does not yet
+  // implement RemoveExclusion. The remove button is disabled with an honest
+  // disclosure. Re-add this handler (and enable the button) once the daemon
+  // gains RemoveExclusion support.
 
   const handleDeleteEverything = useCallback(async () => {
     setDeleting(true);
@@ -113,8 +104,9 @@ function PreferencesContent() {
                     <button
                       className={styles.removeBtn}
                       type="button"
-                      onClick={() => void handleRemoveExclusion(e)}
-                      title="Remove this exclusion"
+                      disabled
+                      title="Removing exclusions isn't available yet — coming in an update"
+                      aria-disabled="true"
                     >
                       Remove
                     </button>
@@ -123,7 +115,7 @@ function PreferencesContent() {
               })}
             </ul>
             <p style={{ fontSize: 12, color: 'var(--ink-faint)', marginBottom: 16 }}>
-              Removals take effect when the desktop app restarts.
+              Removing exclusions isn&apos;t available yet — coming in an update.
             </p>
           </>
         )}
