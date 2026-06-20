@@ -276,10 +276,131 @@
   margin-top: 10px;
 }
 
+/* ---- Start wizard (StudyStart) ---- */
+.startCard {
+  max-width: 640px;
+  margin-bottom: 20px;
+}
+.kindRow {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+.kindBtn {
+  flex: 1;
+  min-width: 160px;
+  padding: 14px 16px;
+  border: 2px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--paper);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color var(--dur-1) var(--ease-settle), background var(--dur-1) var(--ease-settle);
+  font: inherit;
+}
+.kindBtn:hover {
+  border-color: var(--moss);
+  background: var(--canopy);
+}
+.kindBtnSelected {
+  border-color: var(--moss);
+  background: var(--canopy);
+}
+.kindBtnLabel {
+  display: block;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--ink);
+  margin: 0 0 3px;
+}
+.kindBtnHint {
+  display: block;
+  font-size: 13px;
+  color: var(--ink-soft);
+  line-height: 1.4;
+}
+.taskLabelRow {
+  margin-bottom: 20px;
+}
+.taskLabelField {
+  font: inherit;
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-input);
+  background: var(--canopy);
+  color: var(--ink);
+  font-size: 14px;
+  box-sizing: border-box;
+}
+.taskLabelField:focus-visible {
+  outline: 2px solid var(--moss);
+  outline-offset: 1px;
+}
+.taskLabelHint {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin: 4px 0 0;
+}
+.depthRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.depthLabel {
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+.claimsIntro {
+  font-size: 14px;
+  color: var(--ink-soft);
+  margin: 0 0 14px;
+  line-height: 1.5;
+}
+.claimsList {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+.claimItem {
+  font-size: 14px;
+  color: var(--ink);
+  line-height: 1.55;
+}
+.claimItem strong {
+  font-weight: 700;
+  color: var(--ink);
+  display: inline;
+  margin-right: 4px;
+}
+.claimMuted {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin: 0 0 24px;
+  line-height: 1.5;
+}
+.startActions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.startError {
+  font-size: 13px;
+  color: var(--coral-deep);
+  margin: 8px 0 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .deleteBtn,
   .removeBtn,
-  .exclusionInput {
+  .exclusionInput,
+  .kindBtn {
     transition: none;
   }
 }

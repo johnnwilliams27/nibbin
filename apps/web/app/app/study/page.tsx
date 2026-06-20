@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { desktopBridge, type StudyStatus } from '../../../lib/desktop/bridge';
 import { ShellGate } from '../../../components/study/ShellGate';
+import { StudyStart } from '../../../components/study/StudyStart';
 import { Card, Badge, Button } from '../../../components/ui';
 import styles from '../../../components/study/study.module.css';
 
@@ -52,11 +53,24 @@ function stateLabel(state: string): string {
   return labels[state] ?? state;
 }
 
+/**
+ * Returns true when the study is idle and the start wizard should be shown.
+ * Covers NOT_STARTED and DAEMON_OFFLINE-with-no-study (the bridge fallback
+ * state when the daemon isn't running yet and there is no existing study).
+ */
+function isIdle(status: StudyStatus): boolean {
+  if (status.state === 'NOT_STARTED') return true;
+  if (status.state === 'DAEMON_OFFLINE' && status.study === null) return true;
+  return false;
+}
+
 function InProgressContent() {
   const [status, setStatus] = useState<StudyStatus>(INITIAL_STATUS);
   const [busy, setBusy] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     void desktopBridge.studyStatus().then(setStatus);
   }, []);
 
@@ -69,6 +83,11 @@ function InProgressContent() {
     return () => {
       unsub?.();
     };
+  }, []);
+
+  // Called by StudyStart after a successful start to re-read status and switch view
+  const handleStarted = useCallback(() => {
+    void desktopBridge.studyStatus().then(setStatus);
   }, []);
 
   const handlePause = useCallback(async () => {
@@ -98,6 +117,16 @@ function InProgressContent() {
     }
   }, []);
 
+  // Don't render until after first mount so isShell() (already checked by
+  // ShellGate) and studyStatus() have resolved to their real values.
+  if (!mounted) return null;
+
+  // --- Idle: show the start wizard ---
+  if (isIdle(status)) {
+    return <StudyStart onStarted={handleStarted} />;
+  }
+
+  // --- Active / paused / review / etc: show in-progress UI ---
   const isActive = status.state === 'ACTIVE';
   const isPaused = status.state === 'PAUSED';
   const tone = stateTone(status.state);
