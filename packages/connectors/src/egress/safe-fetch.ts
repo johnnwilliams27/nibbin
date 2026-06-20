@@ -199,6 +199,13 @@ export async function safeFetch(
       const next = new URL(location, current);
       if (next.hostname !== current.hostname) {
         for (const h of CREDENTIAL_HEADERS) delete headers[h];
+        // 307/308 preserve method+body by spec, but forwarding a body cross-host
+        // leaks the request payload to an unintended destination. Strip it.
+        if (status === 307 || status === 308) {
+          body = undefined;
+          delete headers['content-type'];
+          delete headers['content-length'];
+        }
       }
       if (status === 303 || ((status === 301 || status === 302) && method === 'POST')) {
         method = 'GET';

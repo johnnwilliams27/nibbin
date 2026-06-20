@@ -135,6 +135,22 @@ describe('safeFetch against in-process servers (test overrides only)', () => {
         res.statusCode = 302;
         res.setHeader('location', `http://host-b.test:${port}/echo`);
         res.end();
+      } else if (req.url === '/redirect-307-cross-host') {
+        res.statusCode = 307;
+        res.setHeader('location', `http://host-b.test:${port}/echo-body`);
+        res.end();
+      } else if (req.url === '/redirect-308-cross-host') {
+        res.statusCode = 308;
+        res.setHeader('location', `http://host-b.test:${port}/echo-body`);
+        res.end();
+      } else if (req.url === '/echo-body') {
+        let body = '';
+        req.on('data', (c: Buffer) => { body += c.toString(); });
+        req.on('end', () => {
+          res.setHeader('content-type', 'application/json');
+          res.end(JSON.stringify({ host, method: req.method, body: body || null, ct: req.headers['content-type'] ?? null }));
+        });
+        return;
       } else if (req.url === '/redirect-loop') {
         res.statusCode = 302;
         res.setHeader('location', `http://host-a.test:${port}/redirect-loop`);
@@ -186,6 +202,22 @@ describe('safeFetch against in-process servers (test overrides only)', () => {
     await expect(
       safeFetch(`http://host-a.test:${port}/redirect-loop`, {}, {}, overrides),
     ).rejects.toThrowError(/redirect/);
+  });
+
+  it('307/308 cross-host redirect strips body + content-type (body leak prevention)', async () => {
+    for (const path of ['/redirect-307-cross-host', '/redirect-308-cross-host']) {
+      const res = await safeFetch(
+        `http://host-a.test:${port}${path}`,
+        { method: 'POST', body: '{"sensitive":true}', headers: { 'content-type': 'application/json' } },
+        {},
+        overrides,
+      );
+      expect(res.status).toBe(200);
+      const json = res.json() as { body: string | null; ct: string | null; host: string };
+      expect(json.host).toBe('host-b.test');
+      expect(json.body).toBeNull(); // body must not reach the cross-host target
+      expect(json.ct).toBeNull();   // content-type must also be stripped
+    }
   });
 
   it('303 converts POST to GET and drops the body', async () => {

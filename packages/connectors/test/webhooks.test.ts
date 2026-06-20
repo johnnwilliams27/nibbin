@@ -16,6 +16,7 @@ import {
 } from '../src/webhooks/verify';
 import { MemoryWebhookEventStore, isWithinReplayWindow } from '../src/webhooks/idempotency';
 
+
 const hmac = (secret: string, payload: string) => createHmac('sha256', secret).update(payload).digest('hex');
 
 describe('generic HMAC-SHA256', () => {
@@ -168,6 +169,39 @@ describe('idempotency + replay windows (§6.9)', () => {
     expect(await store.recordOnce('gmail', 'k:nib-1')).toBe(false);
     // Provider-scoped, like recordOnce.
     expect(await store.hasRecord('square', 'k:nib-1')).toBe(false);
+  });
+
+  it('two-phase idempotency: seen-but-unprocessed event is retryable (#28)', async () => {
+    // Scenario: recordOnce succeeds, handler throws, event is redelivered.
+    // The event must be retryable (isProcessed=false) until markProcessed is called.
+    const store = new MemoryWebhookEventStore();
+
+    // First delivery — claimed successfully.
+    expect(await store.recordOnce('stripe', 'evt_retry')).toBe(true);
+    // Handler "throws" — markProcessed is never called.
+    expect(await store.isProcessed('stripe', 'evt_retry')).toBe(false);
+
+    // Redelivery: recordOnce returns false (already seen), but isProcessed is
+    // also false — the caller knows it can retry the handler.
+    expect(await store.recordOnce('stripe', 'evt_retry')).toBe(false);
+    expect(await store.isProcessed('stripe', 'evt_retry')).toBe(false);
+
+    // Handler succeeds on retry — mark processed.
+    await store.markProcessed('stripe', 'evt_retry');
+    expect(await store.isProcessed('stripe', 'evt_retry')).toBe(true);
+
+    // A third delivery is now a genuine duplicate.
+    expect(await store.recordOnce('stripe', 'evt_retry')).toBe(false);
+    expect(await store.isProcessed('stripe', 'evt_retry')).toBe(true);
+  });
+
+  it('markProcessed is provider-scoped (same event_id, different providers, independent)', async () => {
+    const store = new MemoryWebhookEventStore();
+    await store.recordOnce('stripe', 'evt_x');
+    await store.recordOnce('square', 'evt_x');
+    await store.markProcessed('stripe', 'evt_x');
+    expect(await store.isProcessed('stripe', 'evt_x')).toBe(true);
+    expect(await store.isProcessed('square', 'evt_x')).toBe(false);
   });
 
   it('replay window helper bounds both directions', () => {

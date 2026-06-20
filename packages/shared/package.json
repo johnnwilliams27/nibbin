@@ -6,6 +6,7 @@
   "description": "Shared schemas, types, credit math, and design tokens.",
   "exports": {
     ".": "./src/index.ts",
+    "./sentry-scrub": "./src/sentry-scrub.ts",
     "./tokens.css": "./tokens.css"
   },
   "scripts": {
