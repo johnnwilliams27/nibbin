@@ -10,6 +10,7 @@
     "paths": {
       "@nibbin/creatures": ["../../packages/creatures/src/index.ts"],
       "@nibbin/shared": ["../../packages/shared/src/index.ts"],
+      "@nibbin/shared/sentry-scrub": ["../../packages/shared/src/sentry-scrub.ts"],
       "@nibbin/drip": ["../../packages/drip/src/index.ts"],
       "@nibbin/email": ["../../packages/email/src/index.ts"]
     }

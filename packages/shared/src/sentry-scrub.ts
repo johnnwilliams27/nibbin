@@ -36,7 +36,7 @@ function scrubString(s: string): string {
   return s.replace(TOKEN_RE, '[Filtered]');
 }
 
-/** Minimal Sentry event shape — intentionally loose to avoid a hard dependency. */
+/** Minimal Sentry event shape — intentionally loose to avoid a hard @sentry dep. */
 interface SentryEventLike {
   request?: {
     url?: string;
@@ -53,7 +53,7 @@ interface SentryEventLike {
   };
 }
 
-export function sentryBeforeSend<T extends SentryEventLike>(event: T): T {
+function scrubEvent(event: SentryEventLike): SentryEventLike {
   // 1. Scrub request URL.
   if (event.request?.url) {
     event.request.url = scrubUrl(event.request.url);
@@ -93,3 +93,11 @@ export function sentryBeforeSend<T extends SentryEventLike>(event: T): T {
 
   return event;
 }
+
+/**
+ * Pass to Sentry.init as both beforeSend and beforeSendTransaction.
+ * Cast handles the fact that Sentry's ErrorEvent / TransactionEvent types
+ * are richer than our minimal SentryEventLike duck type.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const sentryBeforeSend = scrubEvent as (event: any) => any;
