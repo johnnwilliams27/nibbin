@@ -59,7 +59,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     try {
       // ── resolve provider-specific delta ──────────────────────────────────
       let events: ConnectorEvent[];
-      let advanceCursor: () => Promise<void>;
+      // Defaults to a no-op: the calendar branch leaves this unassigned when the
+      // sync token is empty (the empty-token guard), and "no-op" is exactly the
+      // intended "skip advancing the cursor this cycle" behavior — never crash.
+      let advanceCursor: () => Promise<void> = async () => {};
 
       if (connection.provider === 'gmail') {
         const client = new GmailClient(connection, vault);
