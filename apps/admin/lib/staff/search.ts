@@ -26,20 +26,17 @@ export interface AccountListFilters {
 }
 
 /**
- * Aggregate 30-day per-account LLM spend in a single query (efficient — one
- * scan of model_calls, NOT one RPC call per account row).
+ * Aggregate 30-day per-account LLM spend. The sum happens in Postgres
+ * (admin_account_llm_spend_30d RPC, GROUP BY account_id) so we transfer one row
+ * per account instead of one row per model call — bounded as usage grows.
  */
 async function fetchSpendMap(
   admin: SupabaseClient,
 ): Promise<Map<string, number>> {
-  const { data } = await admin
-    .from('model_calls')
-    .select('account_id, cost_microusd')
-    .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
+  const { data } = await admin.rpc('admin_account_llm_spend_30d');
   const map = new Map<string, number>();
-  for (const row of data ?? []) {
-    const prev = map.get(row.account_id) ?? 0;
-    map.set(row.account_id, prev + Number(row.cost_microusd));
+  for (const row of (data ?? []) as { account_id: string; total_microusd: number | string }[]) {
+    map.set(row.account_id, Number(row.total_microusd));
   }
   return map;
 }
