@@ -30,6 +30,7 @@ use serde::Deserialize;
 use std::path::{Path, PathBuf};
 
 mod exclusions;
+mod field_notes;
 
 /// Daemon clock. Tests pin it via NIBBIN_FAKE_NOW (ISO-8601); production is
 /// wall clock. The fake is read once per call so long-running tests can move
@@ -117,6 +118,19 @@ pub enum ControlCommand {
         #[serde(default)]
         app_name: Option<String>,
     },
+    /// Remove a previously-added exclusion (layer 4 → layer 2).
+    /// The daemon subtracts the entry from the persisted set, saves it
+    /// atomically (fail-loud on save failure, matching AddExclusion), then
+    /// replaces the in-memory pipeline set so the entry is dropped immediately
+    /// without waiting for a restart.
+    RemoveExclusion {
+        #[serde(default)]
+        host: Option<String>,
+        #[serde(default)]
+        bundle_id: Option<String>,
+        #[serde(default)]
+        app_name: Option<String>,
+    },
 }
 
 pub struct Daemon {
@@ -133,6 +147,8 @@ pub struct Daemon {
     /// set, capture_pass returns early and the reason is published to
     /// daemon.status. Cleared once the durable state is consistent again.
     capture_blocked: Option<String>,
+    /// Timestamp of the last field-notes generation pass (throttle gate).
+    last_field_notes_gen: Option<DateTime<Utc>>,
 }
 
 impl Daemon {
@@ -179,6 +195,7 @@ impl Daemon {
             control_offset,
             paused_at: None,
             capture_blocked,
+            last_field_notes_gen: None,
         })
     }
 
@@ -456,6 +473,38 @@ impl Daemon {
                 self.pipeline.add_exclusions(add);
                 self.capture_blocked = None;
             }
+            ControlCommand::RemoveExclusion {
+                host,
+                bundle_id,
+                app_name,
+            } => {
+                // Load the current on-disk set (authoritative source; avoids any
+                // in-memory drift from prior adds that didn't reach disk).
+                let mut current = exclusions::load_exclusions(&self.store_root)
+                    .unwrap_or_else(|_| self.pipeline.exclusions().clone());
+                // Subtract: retain entries that do NOT match the removal request.
+                if let Some(h) = &host {
+                    current.hosts.retain(|x| x != h);
+                }
+                if let Some(b) = &bundle_id {
+                    current.bundle_ids.retain(|x| x != b);
+                }
+                if let Some(a) = &app_name {
+                    current.app_names.retain(|x| x != a);
+                }
+                // Save-first (mirrors AddExclusion): persist BEFORE updating memory.
+                if let Err(e) = exclusions::save_exclusions(&self.store_root, &current) {
+                    // Fail-loud: block capture so the user is informed the removal
+                    // didn't persist, rather than silently acting on a transient state.
+                    self.capture_blocked = Some(format!("exclusion not saved: {e}"));
+                    return Err(e);
+                }
+                // Durable write succeeded → REPLACE the in-memory set so the removed
+                // entry is dropped from the live pipeline immediately (a merge would
+                // re-add the entry from in-memory state, defeating the removal).
+                self.pipeline.set_exclusions(current);
+                self.capture_blocked = None;
+            }
         }
         Ok(())
     }
@@ -528,9 +577,17 @@ impl Daemon {
         if ex.exists() {
             std::fs::remove_file(ex)?;
         }
+        // Also wipe field notes so the new study starts with a clean slate.
+        for name in ["field_notes.json", "field_notes.json.tmp"] {
+            let p = self.store_root.join(name);
+            if p.exists() {
+                std::fs::remove_file(p)?;
+            }
+        }
         // Recovery: wiping the store removes the (possibly corrupt) exclusions
         // file, so any prior block no longer applies.
         self.capture_blocked = None;
+        self.last_field_notes_gen = None;
         Ok(())
     }
 
@@ -556,6 +613,8 @@ impl Daemon {
             "daemon.status",
             "exclusions.json",
             "exclusions.json.tmp",
+            "field_notes.json",
+            "field_notes.json.tmp",
         ] {
             let p = self.store_root.join(extra);
             if p.exists() {
@@ -563,9 +622,10 @@ impl Daemon {
             }
         }
         self.control_offset = 0;
-        // Recovery: a delete-everything wipes the exclusions file, so any prior
-        // block no longer applies — restore a usable daemon.
+        // Recovery: a delete-everything wipes the exclusions and field-notes
+        // files, so any prior block no longer applies — restore a usable daemon.
         self.capture_blocked = None;
+        self.last_field_notes_gen = None;
         let receipt =
             nibbin_store::verify_raw_data_deleted(&self.store_root, &daemon_now().to_rfc3339());
         anyhow::ensure!(
@@ -575,6 +635,44 @@ impl Daemon {
         );
         self.apply(StudyCommand::DeletionVerified { receipt })?;
         Ok(())
+    }
+
+    /// Regenerate `field_notes.json` from the current study's redacted events,
+    /// throttled to at most once every 3 minutes. Derives notes locally from
+    /// post-pipeline events only — no network, no LLM, no raw content (C1).
+    /// Errors are logged but do NOT block capture (field notes are derived
+    /// metadata, not core study data).
+    pub fn maybe_generate_field_notes(&mut self) {
+        let now = daemon_now();
+        const THROTTLE_SECS: i64 = 180; // at most once every 3 minutes
+        if let Some(last) = self.last_field_notes_gen {
+            if (now - last).num_seconds() < THROTTLE_SECS {
+                return;
+            }
+        }
+        // Only generate when a store exists (i.e. capture has run at least once).
+        let store_db = self.store_root.join("observer.db");
+        if !store_db.exists() {
+            return;
+        }
+        // Open a read-only view of the store to list the redacted events.
+        let events = match ObserverStore::open(&self.store_root, key_provider().as_ref()) {
+            Ok(s) => match s.list_events() {
+                Ok(evts) => evts,
+                Err(e) => {
+                    eprintln!("field_notes: list_events failed: {e}");
+                    return;
+                }
+            },
+            Err(e) => {
+                eprintln!("field_notes: store open failed: {e}");
+                return;
+            }
+        };
+        match field_notes::generate_and_save(&self.store_root, &events, &now.to_rfc3339()) {
+            Ok(()) => self.last_field_notes_gen = Some(now),
+            Err(e) => eprintln!("field_notes: generate failed: {e}"),
+        }
     }
 
     /// Heartbeat file for the tray UI (countdown is daemon-derived).
