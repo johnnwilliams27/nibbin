@@ -184,9 +184,8 @@ pub fn exclusions(app: AppHandle) -> Result<serde_json::Value, String> {
         .map_err(|e| e.to_string())?
         .join("exclusions.json");
     match std::fs::read_to_string(&path) {
-        Ok(text) => serde_json::from_str::<serde_json::Value>(&text).map_err(|e| {
-            format!("exclusions.json is corrupt (fail-closed): {e}")
-        }),
+        Ok(text) => serde_json::from_str::<serde_json::Value>(&text)
+            .map_err(|e| format!("exclusions.json is corrupt (fail-closed): {e}")),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
             // First run — daemon hasn't written any exclusions yet.
             Ok(serde_json::json!({ "hosts": [], "bundle_ids": [], "app_names": [] }))
