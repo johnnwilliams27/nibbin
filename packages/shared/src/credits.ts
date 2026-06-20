@@ -50,6 +50,29 @@ export type Tier = keyof typeof TIERS;
  */
 export const TOP_UP = { priceUsdCents: 1000, credits: 1000 } as const;
 
+/**
+ * Anti-runaway hard ceiling for a SINGLE diagnosis-synthesis call, in
+ * micro-USD (1_000_000 = $1.00). The diagnosis pipeline is the deliberate T2
+ * Opus splurge that the router never degrades, so the caller-side controls ARE
+ * the budget: one call per packet, DIAGNOSIS_MAX_TOKENS output ceiling, and
+ * this cost cap. 50_000 µUSD = $0.05 — comfortably above a 2,500-output-token
+ * Opus completion at current rates, so it never trips a normal call; it only
+ * fires if pricing/usage drifts far out of band (a runaway). The FREE path
+ * REFUSES rather than spend past it; every path logs a breach loudly.
+ */
+export const DIAGNOSIS_MAX_MICRO_USD = 50_000 as const;
+
+/**
+ * True when a recorded/projected per-diagnosis cost is within the hard cap.
+ * Pure + side-effect-free so it can guard either a projection (before spend)
+ * or a recorded usage (after spend). A non-finite or negative cost is treated
+ * as over-cap (fail-closed).
+ */
+export function withinDiagnosisCostCap(costMicroUsd: number): boolean {
+  if (!Number.isFinite(costMicroUsd) || costMicroUsd < 0) return false;
+  return costMicroUsd <= DIAGNOSIS_MAX_MICRO_USD;
+}
+
 const GRANT_AMOUNTS: ReadonlySet<number> = new Set(
   Object.values(TIERS).map((t) => t.monthlyCredits),
 );
