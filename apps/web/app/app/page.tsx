@@ -70,8 +70,32 @@ function clock(iso: string): string {
 }
 
 /**
+ * Whether a study row should still count as "in progress" right now. The
+ * desktop posts status:'stopped' only on a best-effort basis — it never fires on
+ * the day-14 auto-stop / quick-scan backstop paths and is dropped when the
+ * device is offline. So the web self-heals rather than trusting that signal: a
+ * study whose ends_at has passed is over, and an open-ended row that has gone
+ * stale is treated as ended too. This is the authoritative lifecycle check.
+ */
+const STUDY_STALE_MS = 6 * 60 * 60 * 1000; // open-ended scans shouldn't linger past ~6h
+
+function isStudyActiveNow(study: { ends_at: string | null; started_at: string | null }): boolean {
+  if (study.ends_at) {
+    const endsMs = new Date(study.ends_at).getTime();
+    if (!Number.isNaN(endsMs)) return endsMs > Date.now();
+  }
+  // Open-ended (or unparseable ends_at): self-heal via started_at staleness.
+  if (study.started_at) {
+    const startedMs = new Date(study.started_at).getTime();
+    if (!Number.isNaN(startedMs)) return Date.now() - startedMs < STUDY_STALE_MS;
+  }
+  return true; // no usable timestamps — show (best effort)
+}
+
+/**
  * Human-readable countdown to an ends_at timestamp, computed server-side so
- * the server component stays static-safe. Returns "running" for null/past.
+ * the server component stays static-safe. Only called for studies that are
+ * still active (see isStudyActiveNow). Returns "running" when open-ended.
  * Examples: "12d 4h left", "3h 20m left", "45m left".
  */
 function studyCountdown(endsAt: string | null): string {
@@ -228,7 +252,7 @@ export default async function AppPage({ searchParams }: { searchParams: Promise<
       // Study visibility: is there a running field study right now?
       supabase
         .from('study_status')
-        .select('study_id, kind, label, ends_at')
+        .select('study_id, kind, label, ends_at, started_at')
         .eq('account_id', accountId)
         .eq('status', 'active')
         .maybeSingle(),
@@ -457,7 +481,7 @@ export default async function AppPage({ searchParams }: { searchParams: Promise<
       <div className={home.todayGrid}>
         {/* Study in progress: shown when the desktop Observer has an active study.
             Rendered as a full-width card before the two-column queue/done split. */}
-        {activeStudy && (
+        {activeStudy && isStudyActiveNow(activeStudy) && (
           <div className={home.tcard} style={{ gridColumn: '1 / -1' }}>
             <div className={home.tcardHead}>Field study in progress</div>
             <div className={home.feedItem}>
