@@ -11,6 +11,7 @@ import { fieldStudyView } from './views/field-study.js';
 import { groveView } from './views/grove.js';
 import { loginView } from './views/login.js';
 import { shouldShowDot, EVER_COMPLETED_KEY } from './tab-dot.js';
+import { reportStudyStatus } from './study-status-reporter.js';
 
 type Tab = 'grove' | 'field-study';
 const app = document.getElementById('app')!;
@@ -32,6 +33,10 @@ async function refreshTabDot(): Promise<void> {
     const everCompleted = localStorage.getItem(EVER_COMPLETED_KEY) !== null;
     const status = await bridge.studyStatus();
     fieldStudyDotVisible = shouldShowDot(everCompleted, status.state);
+    // Piggyback the freshly-fetched snapshot onto the stopped-reporter so a
+    // study that ended via any path (day-14 stop, delete-everything, offline)
+    // tells the web exactly once. Fire-and-forget, idempotent.
+    void reportStudyStatus(status);
   } catch {
     fieldStudyDotVisible = false;
   }
@@ -95,8 +100,33 @@ async function boot(): Promise<void> {
   }
   if (!session) { void bridge.groveHide(); clear(app); app.append(loginView(() => void boot())); return; }
   // Warm the tab dot before painting the tabbar so first render is correct.
+  // This boot-time fetch also feeds the stopped-reporter (inside refreshTabDot),
+  // catching a study that ended while the app was closed.
   await refreshTabDot();
   render();
+  startStudyStatusPoll();
+}
+
+let studyStatusPollStarted = false;
+
+/**
+ * Modest recurring poll (every ~50s) so a stop that happens while the app is
+ * open is reported promptly. boot()'s own fetch catches a stop that happened
+ * while the app was closed. Local IPC, so this is cheap. Started once.
+ */
+function startStudyStatusPoll(): void {
+  if (studyStatusPollStarted) return;
+  studyStatusPollStarted = true;
+  setInterval(() => {
+    void (async () => {
+      try {
+        const status = await bridge.studyStatus();
+        void reportStudyStatus(status);
+      } catch {
+        // IPC can transiently fail (daemon restart) — skip this tick silently.
+      }
+    })();
+  }, 50_000);
 }
 
 // The native shell calls this (via webview.eval) when the embedded Grove web app
