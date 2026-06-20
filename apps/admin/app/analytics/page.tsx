@@ -194,28 +194,30 @@ export default async function AnalyticsPage() {
         <p className={styles.muted}>No daily data recorded.</p>
       ) : (
         <section className={styles.panel}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Day</th>
-                <th>Accounts created</th>
-                <th>Runs</th>
-                <th>Approvals</th>
-                <th>Active accounts</th>
-              </tr>
-            </thead>
-            <tbody>
-              {daily.map((row) => (
-                <tr key={row.day}>
-                  <td className={styles.mono}>{row.day}</td>
-                  <td className={styles.mono}>{n(row.accounts_created)}</td>
-                  <td className={styles.mono}>{n(row.runs)}</td>
-                  <td className={styles.mono}>{n(row.approvals)}</td>
-                  <td className={styles.mono}>{n(row.active_accounts)}</td>
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Day</th>
+                  <th>Accounts created</th>
+                  <th>Runs</th>
+                  <th>Approvals</th>
+                  <th>Active accounts</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {daily.map((row) => (
+                  <tr key={row.day}>
+                    <td className={styles.mono}>{row.day}</td>
+                    <td className={styles.mono}>{n(row.accounts_created)}</td>
+                    <td className={styles.mono}>{n(row.runs)}</td>
+                    <td className={styles.mono}>{n(row.approvals)}</td>
+                    <td className={styles.mono}>{n(row.active_accounts)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
       )}
 
@@ -240,22 +242,24 @@ export default async function AnalyticsPage() {
           </div>
           {desktop.releases.length > 0 && (
             <section className={styles.panel}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th>Release</th>
-                    <th>Downloads</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {desktop.releases.map((r) => (
-                    <tr key={r.tag}>
-                      <td className={styles.mono}>{r.tag}</td>
-                      <td className={styles.mono}>{n(r.total)}</td>
+              <div className={styles.tableWrap}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th>Release</th>
+                      <th>Downloads</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {desktop.releases.map((r) => (
+                      <tr key={r.tag}>
+                        <td className={styles.mono}>{r.tag}</td>
+                        <td className={styles.mono}>{n(r.total)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </section>
           )}
         </>
