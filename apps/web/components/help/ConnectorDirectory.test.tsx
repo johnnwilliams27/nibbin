@@ -59,14 +59,18 @@ describe('ConnectorDirectory data helpers', () => {
   });
 });
 
-describe('ConnectorDirectory collapse-by-default', () => {
-  it('expands the first category and collapses the rest (bounding logo requests)', () => {
+describe('ConnectorDirectory tabbed navigation', () => {
+  it('defaults to the Popular tab and renders one section at a time', () => {
     const html = renderToStaticMarkup(<ConnectorDirectory connectors={FIXTURE} />);
-    // Email is the first category (contains live Gmail) -> expanded by default
+    // Popular is the default-active tab; Gmail (a curated-popular connector) renders.
+    expect(html).toContain('Popular');
     expect(html).toContain('Gmail');
-    // Messaging & Meetings is collapsed -> its connector is NOT rendered (no logo request)
-    expect(html).not.toContain('Slack');
-    // ...but every category header + count is still shown for browsing
+    // Category tabs appear across the top for navigation (labels present)...
+    expect(html).toContain('Email');
     expect(html).toContain('Messaging &amp; Meetings');
+    // ...but only the active (Popular) grid renders: a non-popular connector in a
+    // non-active category is NOT in the markup (one section at a time, bounding
+    // logo requests). iCloud Mail is in Email (not active) and not curated-popular.
+    expect(html).not.toContain('iCloud Mail');
   });
 });
