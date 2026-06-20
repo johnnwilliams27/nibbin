@@ -108,6 +108,33 @@ describe('recordModelCall — N17 pipeline-origin sites (COGS-by-origin complete
   });
 });
 
+describe('recordModelCall — model_contribution_enabled opt-out gate (#24)', () => {
+  beforeEach(() => {
+    mockFrom.mockClear();
+    mockInsert.mockClear();
+    mockInsert.mockResolvedValue({ error: null });
+  });
+
+  it('skips the model_calls insert when modelContributionEnabled is false', async () => {
+    await recordModelCall({ ...BASE_REC, modelContributionEnabled: false });
+    // No DB call should have been made.
+    expect(mockFrom).not.toHaveBeenCalled();
+    expect(mockInsert).not.toHaveBeenCalled();
+  });
+
+  it('records normally when modelContributionEnabled is true', async () => {
+    await recordModelCall({ ...BASE_REC, modelContributionEnabled: true });
+    expect(mockFrom).toHaveBeenCalledWith('model_calls');
+    expect(mockInsert).toHaveBeenCalledTimes(1);
+  });
+
+  it('records normally when modelContributionEnabled is omitted (back-compat default)', async () => {
+    await recordModelCall({ ...BASE_REC });
+    expect(mockFrom).toHaveBeenCalledWith('model_calls');
+    expect(mockInsert).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('recordModelCall — Slice A signals (outcome / degraded / latency_ms)', () => {
   beforeEach(() => {
     mockFrom.mockClear();
