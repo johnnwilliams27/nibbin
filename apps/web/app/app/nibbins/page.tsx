@@ -199,18 +199,18 @@ function gradLine(d: Derived): string {
  */
 function learnedFallback(name: string, job: string, d: Derived): string {
   if (d.completedCount < NOTE_MIN_COMPLETED) {
-    return 'Still watching how you work — first drafts are coming.';
+    return 'Just getting started — first drafts are on the way.';
   }
   if (d.matchPct !== null && d.matchPct >= 85) {
-    return `You approve ${name}'s drafts almost untouched — it's matched how you ${job}.`;
+    return `You send ${name}'s drafts as-is most of the time — it's got your ${job} style down.`;
   }
   if (d.cleanStreak >= 3) {
-    return `${name} is on a ${d.cleanStreak}-run clean streak — it's getting your ${job} right.`;
+    return `${name} has landed ${d.cleanStreak} drafts in a row without edits — it's finding your rhythm for ${job}.`;
   }
   if (d.matchPct !== null) {
-    return `${name} is still learning your voice — you approve about ${d.matchPct}% of its drafts as written.`;
+    return `${name} is getting there — about ${d.matchPct}% of its drafts go out without changes.`;
   }
-  return `${name} is settling into ${job} — still learning what you'd change.`;
+  return `${name} is picking up your preferences for ${job} — keep approving and it'll dial in.`;
 }
 
 export default async function NibbinsPage() {
@@ -371,7 +371,7 @@ export default async function NibbinsPage() {
             ['100 Runs', d.hundredRuns],
           ];
 
-          // "What {name} has learned about you" — the cached Opus note when
+          // "What {name} knows about your work" — the cached Opus note when
           // present, else an honest deterministic line grounded in real signals.
           // Stale/missing notes are regenerated in the background (NoteRefresher).
           const jobLower = jobOf(n).toLowerCase();
@@ -389,7 +389,9 @@ export default async function NibbinsPage() {
                 />
                 <div className={styles.id}>
                   <h4>{n.name}</h4>
-                  <div className={styles.job}>{jobOf(n)}</div>
+                  {jobOf(n).toLowerCase().trim() !== n.name.toLowerCase().trim() && (
+                    <div className={styles.job}>{jobOf(n)}</div>
+                  )}
                 </div>
                 <span className={styles.idBadges}>
                   <span className={`${styles.stagepill} ${STAGE_PILL_CLASS[n.stage]}`}>
@@ -442,18 +444,18 @@ export default async function NibbinsPage() {
               </div>
 
               <div className={styles.learned}>
-                <div className={styles.ll}>What {n.name} has learned about you</div>
+                <div className={styles.ll}>What {n.name} knows about your work</div>
                 <p>{learnedText}</p>
               </div>
 
               <div className={styles.foot}>
                 <span className={styles.footM}>
                   {n.stage === 'grad' ? (
-                    <>Access: <b>acting on its own</b>{' '}
+                    <>Access: <b>Acting on its own</b>{' '}
                       <InfoTooltip content="This Nibbin has graduated and can execute tasks without a draft step — you can step it back a grade any time." />
                     </>
                   ) : (
-                    <>Access: <b>draft-only until graduation</b>{' '}
+                    <>Access: <b>Draft-only until graduation</b>{' '}
                       <InfoTooltip content="Every action is prepared as a draft and waits for your approval. Nothing is sent or executed until you say yes." />
                     </>
                   )}
