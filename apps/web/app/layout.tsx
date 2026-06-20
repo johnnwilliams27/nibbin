@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { WebAnalytics } from './WebAnalytics';
 import { creatureCss } from '@nibbin/creatures';
 import { archivo, bricolage, plexMono } from './fonts';
 import './globals.css';
@@ -41,7 +42,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: "document.documentElement.classList.add('js')" }} />
         <style dangerouslySetInnerHTML={{ __html: creatureCss }} />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        {/* Cookieless web analytics for the public nibbin.com site only (drops
+            authenticated /app/* events). See WebAnalytics.tsx. */}
+        <WebAnalytics />
+      </body>
     </html>
   );
 }
