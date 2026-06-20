@@ -277,14 +277,17 @@ pub fn run() {
 
             Ok(())
         })
+        .build(tauri::generate_context!())
+        .expect("error while building the Observer shell")
         // D7: clean up the tray on exit so it doesn't ghost after the process
         // exits. Windows in particular leaves orphan tray icons without this.
+        // App::run takes the RunEvent callback; Builder::run takes the Context —
+        // so build() first (-> App), then run() the exit handler on it.
         .run(|app: &tauri::AppHandle, event: tauri::RunEvent| {
             if let tauri::RunEvent::Exit = event {
                 if let Some(tray) = app.tray_by_id("observer-tray") {
                     let _ = tray.set_visible(false);
                 }
             }
-        })
-        .expect("error while running the Observer shell");
+        });
 }
