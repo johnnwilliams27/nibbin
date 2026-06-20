@@ -71,9 +71,9 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-family: var(--mono);
+  font-family: var(--sans);
   font-size: 11px;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.02em;
   font-weight: 600;
   padding: 3px 10px;
   border-radius: var(--r-pill);
