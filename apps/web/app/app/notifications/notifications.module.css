@@ -124,17 +124,6 @@
   outline-offset: 2px;
 }
 
-.empty {
-  background: var(--canopy);
-  border: 1px solid var(--understory);
-  border-radius: var(--r-card);
-  padding: 28px;
-  font-family: var(--sans);
-  font-size: 14px;
-  line-height: 1.6;
-  color: var(--ink-soft);
-}
-
 .back {
   display: inline-block;
   margin-bottom: 20px;

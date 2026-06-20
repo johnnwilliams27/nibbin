@@ -298,19 +298,6 @@
   text-align: center;
   padding: 40px 24px;
 }
-.emptyTitle {
-  font-family: var(--display);
-  font-weight: 700;
-  font-size: 20px;
-  color: var(--ink);
-  margin: 12px 0 8px;
-}
-.emptyBody {
-  color: var(--ink-soft);
-  font-size: 14px;
-  max-width: 46ch;
-  margin: 0 auto 18px;
-}
 
 /* ── Configurator (rename + restyle) ───────────────────────────── */
 .editBtn {

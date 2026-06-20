@@ -165,7 +165,7 @@ export function DiagnosisReveal({
               </div>
               <div className={styles.wfMeta}>
                 <Badge tone={FREQ_TONE[w.frequency]}>{FREQ_LABEL[w.frequency]}</Badge>
-                <Badge tone="neutral">{w.category}</Badge>
+                <span className={styles.muted}>{w.category}</span>
                 {(w.automatable ?? 0) > 0 && (
                   <span className={styles.muted}>~{w.automatable}% automatable</span>
                 )}

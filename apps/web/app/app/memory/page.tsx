@@ -217,43 +217,36 @@ export default async function MemoryPage({
       )}
 
       <form action={saveGroveMemory} className={styles.form}>
-        {GROUPS.map((group) => {
-          // Check if this group has any filled fields (for open/closed state)
-          const groupHasContent = group.fields.some(
-            (fk) => (fieldValues[fk] ?? '').trim().length > 0,
-          );
+        {GROUPS.map((group, idx) => (
+          <details
+            key={group.heading}
+            className={styles.group}
+            open={isEmpty ? idx === 0 : true}
+          >
+            <summary className={styles.groupSummary}>
+              <span className={styles.groupHeading}>{group.heading}</span>
+              <span className={styles.groupHint}>{group.hint}</span>
+            </summary>
 
-          return (
-            <details
-              key={group.heading}
-              className={styles.group}
-              open={!isEmpty || groupHasContent}
-            >
-              <summary className={styles.groupSummary}>
-                <span className={styles.groupHeading}>{group.heading}</span>
-                <span className={styles.groupHint}>{group.hint}</span>
-              </summary>
-
-              <div className={styles.groupBody}>
-                {group.fields.map((fk) => {
-                  const meta = FIELD_META[fk];
-                  if (!meta) return null;
-                  return (
-                    <MemoryField
-                      key={fk}
-                      fieldKey={fk}
-                      label={meta.label}
-                      value={fieldValues[fk] ?? ''}
-                      placeholder={FIELD_PLACEHOLDERS[fk] ?? ''}
-                      rows={meta.rows}
-                      hint={meta.hint}
-                    />
-                  );
-                })}
-              </div>
-            </details>
-          );
-        })}
+            <div className={styles.groupBody}>
+              {group.fields.map((fk) => {
+                const meta = FIELD_META[fk];
+                if (!meta) return null;
+                return (
+                  <MemoryField
+                    key={fk}
+                    fieldKey={fk}
+                    label={meta.label}
+                    value={fieldValues[fk] ?? ''}
+                    placeholder={FIELD_PLACEHOLDERS[fk] ?? ''}
+                    rows={meta.rows}
+                    hint={meta.hint}
+                  />
+                );
+              })}
+            </div>
+          </details>
+        ))}
 
         <button className={styles.primary} type="submit">
           Save

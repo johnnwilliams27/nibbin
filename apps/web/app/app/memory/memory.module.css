@@ -29,14 +29,14 @@
 .saved {
   background: var(--moss-tint);
   color: var(--moss-deep);
-  border: 1px solid #cfe0b0;
+  border: 1px solid var(--line);
   border-radius: var(--r-input);
   padding: 10px 12px;
   font-size: 14px;
   margin: 0 0 16px;
 }
 .error {
-  background: #fbeae4;
+  background: var(--coral-tint);
   color: var(--coral-deep);
   border: 1px solid var(--coral-line);
   border-radius: var(--r-input);
@@ -180,7 +180,7 @@
 /* Filled state — visually distinct from empty placeholder */
 .textareaFilled {
   background: var(--canopy);
-  border-color: #b8ccaa;
+  border-color: var(--line);
 }
 .textareaFilled:focus {
   border-color: var(--moss);

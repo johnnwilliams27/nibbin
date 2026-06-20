@@ -284,10 +284,6 @@
   color: var(--ink-soft);
   font-size: 14px;
 }
-.empty {
-  text-align: center;
-  padding: 12px 8px;
-}
 
 /* Detail route header */
 .backLink {
