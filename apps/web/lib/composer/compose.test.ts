@@ -132,6 +132,29 @@ describe('composeSpec', () => {
     expect('error' in result).toBe(true);
   });
 
+  it('surfaces unfulfilled.reason=connector_not_connected when the preferred primitive exists but connector is absent', async () => {
+    // EMAIL_WF maps to nudge.overdue-email, which needs gmail — but no connectors granted.
+    const result = await composeSpec('acct-1', 'user-1', EMAIL_WF, []);
+    expect('error' in result).toBe(true);
+    if (!('error' in result)) return;
+    // The preferred primitive is in the registry (gmail just isn't granted), so
+    // the reason should be connector_not_connected and capability should be a known primitive id.
+    expect(result.unfulfilled).toBeDefined();
+    expect(result.unfulfilled?.reason).toBe('connector_not_connected');
+    expect(typeof result.unfulfilled?.capability).toBe('string');
+    expect(result.unfulfilled?.capability.length).toBeGreaterThan(0);
+  });
+
+  it('surfaces unfulfilled.capability as the preferred primitive id (connector_not_connected)', async () => {
+    // A payments workflow maps to nudge.overdue-invoice — stripe not granted.
+    const result = await composeSpec('acct-1', 'user-1', PAYMENTS_WF, []);
+    expect('error' in result).toBe(true);
+    if (!('error' in result)) return;
+    expect(result.unfulfilled?.reason).toBe('connector_not_connected');
+    // The preferred primitive for a payments workflow is nudge.overdue-invoice.
+    expect(result.unfulfilled?.capability).toBe('nudge.overdue-invoice');
+  });
+
   it('no-key fallback maps a payments workflow → nudge.overdue-invoice (validates)', async () => {
     const result = await composeSpec('acct-1', 'user-1', PAYMENTS_WF, ['stripe']);
     if ('error' in result) throw new Error(result.error);
