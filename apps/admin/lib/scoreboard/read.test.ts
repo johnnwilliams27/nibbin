@@ -14,8 +14,12 @@ import {
   deriveCapabilityRates,
   loadCapabilityScoreboard,
   isCapabilityRow,
+  deriveShopTemplateRates,
+  loadShopScoreboard,
+  isShopTemplateRow,
   type PerformanceRow,
   type CapabilityRow,
+  type ShopTemplateRow,
 } from './read';
 
 const FULL_ROW: PerformanceRow = {
@@ -307,5 +311,120 @@ describe('loadCapabilityScoreboard — staff-gated RPC read', () => {
       rpc: async () => ({ data: [drifted], error: null }),
     } as unknown as SupabaseClient;
     await expect(loadCapabilityScoreboard(admin)).rejects.toThrow(/unexpected row shape/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Shop template adoption (fleet) — tests
+// ---------------------------------------------------------------------------
+
+const FULL_SHOP_TEMPLATE_ROW: ShopTemplateRow = {
+  template_key: 'daily_journaler',
+  nibbins: 200,
+  contributing_accounts: 42,
+  active: 140,
+  dormant: 40,
+  senior_plus: 60,
+  graduated: 20,
+};
+
+describe('deriveShopTemplateRates — activeRate and maturityRate from raw counts', () => {
+  it('computes activeRate (active / nibbins) and maturityRate (senior_plus / nibbins)', () => {
+    const r = deriveShopTemplateRates(FULL_SHOP_TEMPLATE_ROW);
+    expect(r.activeRate).toBeCloseTo(140 / 200);
+    expect(r.maturityRate).toBeCloseTo(60 / 200);
+  });
+
+  it('returns null rates when nibbins is 0 (no divide-by-zero)', () => {
+    const empty: ShopTemplateRow = {
+      ...FULL_SHOP_TEMPLATE_ROW,
+      nibbins: 0,
+      active: 0,
+      dormant: 0,
+      senior_plus: 0,
+      graduated: 0,
+    };
+    const r = deriveShopTemplateRates(empty);
+    expect(r.activeRate).toBeNull();
+    expect(r.maturityRate).toBeNull();
+  });
+
+  it('passes through raw fields unchanged', () => {
+    const r = deriveShopTemplateRates(FULL_SHOP_TEMPLATE_ROW);
+    expect(r.template_key).toBe('daily_journaler');
+    expect(r.nibbins).toBe(200);
+    expect(r.contributing_accounts).toBe(42);
+    expect(r.dormant).toBe(40);
+    expect(r.graduated).toBe(20);
+  });
+});
+
+describe('isShopTemplateRow — shape guard', () => {
+  it('accepts a valid shop-template row', () => {
+    expect(isShopTemplateRow(FULL_SHOP_TEMPLATE_ROW)).toBe(true);
+  });
+
+  it('rejects a row missing the template_key string', () => {
+    const drifted = { ...FULL_SHOP_TEMPLATE_ROW } as Record<string, unknown>;
+    delete drifted.template_key;
+    expect(isShopTemplateRow(drifted)).toBe(false);
+  });
+
+  it('rejects a row where a required count column is missing', () => {
+    const drifted = { ...FULL_SHOP_TEMPLATE_ROW } as Record<string, unknown>;
+    delete drifted.nibbins;
+    expect(isShopTemplateRow(drifted)).toBe(false);
+  });
+
+  it('rejects a row where a count column is a non-finite number (NaN)', () => {
+    const drifted = { ...FULL_SHOP_TEMPLATE_ROW, active: NaN };
+    expect(isShopTemplateRow(drifted)).toBe(false);
+  });
+
+  it('rejects null and non-objects', () => {
+    expect(isShopTemplateRow(null)).toBe(false);
+    expect(isShopTemplateRow('string')).toBe(false);
+    expect(isShopTemplateRow(42)).toBe(false);
+  });
+});
+
+describe('loadShopScoreboard — staff-gated RPC read', () => {
+  it('maps the RPC rows through deriveShopTemplateRates', async () => {
+    const admin = {
+      rpc: async () => ({ data: [FULL_SHOP_TEMPLATE_ROW], error: null }),
+    } as unknown as SupabaseClient;
+    const rows = await loadShopScoreboard(admin);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].activeRate).toBeCloseTo(140 / 200);
+    expect(rows[0].maturityRate).toBeCloseTo(60 / 200);
+    expect(rows[0].template_key).toBe('daily_journaler');
+  });
+
+  it('throws when the RPC rejects the caller (non-staff / insufficient_privilege)', async () => {
+    const admin = {
+      rpc: async () => ({
+        data: null,
+        error: { message: 'permission denied for function shop_template_performance_read' },
+      }),
+    } as unknown as SupabaseClient;
+    await expect(loadShopScoreboard(admin)).rejects.toThrow(
+      /shop_template_performance_read failed/,
+    );
+  });
+
+  it('returns an empty array when the RPC returns no rows', async () => {
+    const admin = {
+      rpc: async () => ({ data: [], error: null }),
+    } as unknown as SupabaseClient;
+    await expect(loadShopScoreboard(admin)).resolves.toEqual([]);
+  });
+
+  it('throws on a drifted RPC row shape instead of deriving NaN rates', async () => {
+    const drifted = { ...FULL_SHOP_TEMPLATE_ROW } as Record<string, unknown>;
+    delete drifted.nibbins;
+    const admin = {
+      rpc: async () => ({ data: [drifted], error: null }),
+    } as unknown as SupabaseClient;
+    await expect(loadShopScoreboard(admin)).rejects.toThrow(/unexpected row shape/);
   });
 });
