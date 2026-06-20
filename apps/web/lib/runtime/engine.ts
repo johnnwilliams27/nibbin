@@ -142,7 +142,7 @@ export function specFromRow(row: SpecRow): AgentSpec {
 export async function loadNibbin(svc: SupabaseClient, nibbinId: string): Promise<NibbinRef> {
   const { data, error } = await svc
     .from('nibbins')
-    .select('id, account_id, name, stage, status, agent_specs!inner(*)')
+    .select('id, account_id, name, stage, stage_changed_at, status, agent_specs!inner(*)')
     .eq('id', nibbinId)
     .single();
   if (error || !data) throw new Error(`nibbin ${nibbinId} not found`);
@@ -152,6 +152,7 @@ export async function loadNibbin(svc: SupabaseClient, nibbinId: string): Promise
     accountId: data.account_id,
     name: data.name,
     stage: data.stage as StageName,
+    stageChangedAt: new Date(data.stage_changed_at as string).getTime(),
     status: data.status as NibbinRef['status'],
     spec: specFromRow(specRow),
   };
@@ -295,7 +296,7 @@ export function buildEffectsExecutor(
 export async function activeNibbinsForAccount(svc: SupabaseClient, accountId: string): Promise<NibbinRef[]> {
   const { data, error } = await svc
     .from('nibbins')
-    .select('id, account_id, name, stage, status, agent_specs!inner(*)')
+    .select('id, account_id, name, stage, stage_changed_at, status, agent_specs!inner(*)')
     .eq('account_id', accountId)
     // Only truly active Nibbins can dispatch — paused/sleeping ones are filtered
     // here at the source. dispatchForConnection still guards independently, so
@@ -309,6 +310,7 @@ export async function activeNibbinsForAccount(svc: SupabaseClient, accountId: st
       accountId: row.account_id as string,
       name: row.name as string,
       stage: row.stage as NibbinRef['stage'],
+      stageChangedAt: new Date(row.stage_changed_at as string).getTime(),
       status: row.status as NibbinRef['status'],
       spec: specFromRow(specRow),
     };
@@ -323,6 +325,7 @@ function nibbinRefFromJoin(row: Record<string, unknown>): NibbinRef {
     accountId: row.account_id as string,
     name: row.name as string,
     stage: row.stage as NibbinRef['stage'],
+    stageChangedAt: new Date(row.stage_changed_at as string).getTime(),
     status: row.status as NibbinRef['status'],
     spec: specFromRow(specRow),
   };
@@ -356,7 +359,7 @@ export async function dueScheduleOccurrences(
 ): Promise<DueScheduleOccurrence[]> {
   const { data, error } = await svc
     .from('nibbin_schedule_state')
-    .select('schedule_key, next_run_at, nibbins!inner(id, account_id, name, stage, status, agent_specs!inner(*))')
+    .select('schedule_key, next_run_at, nibbins!inner(id, account_id, name, stage, stage_changed_at, status, agent_specs!inner(*))')
     .lte('next_run_at', now.toISOString())
     .eq('nibbins.status', 'active')
     .order('next_run_at', { ascending: true })
@@ -382,7 +385,7 @@ export async function seedCandidateNibbins(svc: SupabaseClient, limit: number): 
   // once seeded it leaves this candidate set and enters the fair claim phase.)
   const { data, error } = await svc
     .from('nibbins')
-    .select('id, account_id, name, stage, status, agent_specs!inner(*)')
+    .select('id, account_id, name, stage, stage_changed_at, status, agent_specs!inner(*)')
     .eq('status', 'active')
     .filter('agent_specs.triggers', 'cs', '[{"kind":"schedule"}]')
     .order('created_at', { ascending: false })

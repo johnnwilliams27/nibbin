@@ -51,7 +51,7 @@ function testSpec(): AgentSpec {
 }
 
 function nibbin(stage: StageName): NibbinRef {
-  return { id: 'nib-1', accountId: ACCOUNT, name: 'Echo', stage, status: 'active', spec: testSpec() };
+  return { id: 'nib-1', accountId: ACCOUNT, name: 'Echo', stage, stageChangedAt: 0, status: 'active', spec: testSpec() };
 }
 
 /** A program that proposes one real side effect. */

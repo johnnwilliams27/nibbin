@@ -206,7 +206,7 @@ function harness(model?: ModelDrafter, mailbox?: (path: string) => string): Harn
 }
 
 function nib(s: AgentSpec, stage: NibbinRef['stage'] = 'student'): NibbinRef {
-  return { id: 'nib-c', accountId: ACCOUNT, name: 'Composed', stage, status: 'active', spec: s };
+  return { id: 'nib-c', accountId: ACCOUNT, name: 'Composed', stage, stageChangedAt: 0, status: 'active', spec: s };
 }
 
 const NOW = 1_700_000_000_000;

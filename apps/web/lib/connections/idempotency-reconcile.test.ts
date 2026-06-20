@@ -9,6 +9,7 @@ function makeNibbin(id = 'nib-1'): NibbinRef {
     accountId: 'acct-1',
     name: 'Scribe',
     stage: 'student',
+    stageChangedAt: 0,
     status: 'active',
     spec: {
       templateKey: 'scribe', version: 1, displayName: 'Scribe',

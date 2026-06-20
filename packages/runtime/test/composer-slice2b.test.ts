@@ -171,7 +171,7 @@ function harness(reader: (connectionId: string, path: string) => string): Harnes
 }
 
 function nib(s: AgentSpec): NibbinRef {
-  return { id: 'nib-2b', accountId: ACCOUNT, name: 'Composed', stage: 'student', status: 'active', spec: s };
+  return { id: 'nib-2b', accountId: ACCOUNT, name: 'Composed', stage: 'student', stageChangedAt: 0, status: 'active', spec: s };
 }
 
 const OVERDUE_INVOICE = 'in_overdue';

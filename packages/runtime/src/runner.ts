@@ -261,10 +261,21 @@ export async function dispatchStep(
   // runtime layer, never the prompt layer — decides draft vs execute.
   if (!spec.toolsAllowlist.includes(step.capability)) return done({ kind: 'kill', reason: 'allowlist' });
 
-  const routineApprovals = await deps.routines.approvedCount(nibbin.id, step.patternKey);
+  // §43: Re-read the nibbin's current stage+status immediately before the
+  // execute decision. nibbin_demote is "one click, instant" — the NibbinRef
+  // captured at admission may already be stale if a demotion or pause happened
+  // between begin() and this step. A stale stage must not grant autonomy.
+  const freshNibbin = await deps.runs.getNibbin(nibbin.id);
+  if (!freshNibbin || freshNibbin.status !== 'active') {
+    return done({ kind: 'drafted', draft: step });
+  }
+  const effectiveStage = freshNibbin.stage;
+  const effectiveStageChangedAt = freshNibbin.stageChangedAt;
+
+  const routineApprovals = await deps.routines.approvedCount(nibbin.id, step.patternKey, effectiveStageChangedAt);
   let gate = step.presentation
     ? ({ action: 'draft', reason: 'stage' } as const)
-    : gateSideEffect(nibbin.stage, routineApprovals, spec.curriculum);
+    : gateSideEffect(effectiveStage, routineApprovals, spec.curriculum);
 
   if (gate.action === 'deny') return done({ kind: 'kill', reason: 'stage' });
 
@@ -410,6 +421,8 @@ export async function executeRun(
     cooldownSecs: cooldown,
     anomalyMultiplier: 5,
     anomalyFloor: 10,
+    nibbinStage: nibbin.stage,
+    nibbinStageChangedAt: nibbin.stageChangedAt,
   });
   if (admission.kind !== 'started') {
     return admission.kind === 'queued_cap'

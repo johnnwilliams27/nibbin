@@ -20,10 +20,19 @@ export interface AdmissionRequest {
   cooldownSecs: number;
   anomalyMultiplier: number;
   anomalyFloor: number;
+  /** Seeded into the in-memory store so getNibbin returns fresh stage during a run (#43). */
+  nibbinStage?: import('./types').StageName;
+  nibbinStageChangedAt?: number;
 }
 
 /** run_resume re-faces every admission gate, so it can return any of these. */
 export type ResumeOutcome = 'started' | 'still_capped' | 'cooldown' | 'anomaly_paused' | 'nibbin_unavailable';
+
+export interface NibbinCurrentState {
+  stage: import('./types').StageName;
+  stageChangedAt: number;
+  status: 'active' | 'paused' | 'sleeping';
+}
 
 export interface RunStore {
   /** §6.2 admission: dedupe, cooldown, anomaly, pre-run budget check + charge. */
@@ -33,11 +42,23 @@ export interface RunStore {
   /** Terminal transitions; failed/killed auto-refund, capped per run. */
   finish(runId: string, status: 'awaiting_approval' | 'completed' | 'failed' | 'killed', modelMix?: Record<string, unknown>): Promise<void>;
   recordStep(accountId: string, runId: string, step: StepRecord): Promise<void>;
+  /**
+   * Re-read a Nibbin's current stage+status from the store. Used by the runner
+   * immediately before the execute branch to guard against a demotion or pause
+   * that happened after admission (#43). Returns null if the nibbin is not
+   * found (treat as unavailable → abort).
+   */
+  getNibbin(nibbinId: string): Promise<NibbinCurrentState | null>;
 }
 
 export interface RoutineStore {
-  /** Approved-unedited count for an identical pattern (§4.7 Senior autonomy). */
-  approvedCount(nibbinId: string, patternKey: string): Promise<number>;
+  /**
+   * Approved-unedited count for an identical pattern in the Nibbin's current
+   * stage tenure (§4.7 Senior autonomy, #44). `sinceMs` is `stageChangedAt`
+   * in Unix-ms — approvals decided before that instant don't count, so a
+   * demotion truly resets the pattern's climb.
+   */
+  approvedCount(nibbinId: string, patternKey: string, sinceMs: number): Promise<number>;
 }
 
 export interface GrantStore {
@@ -84,6 +105,9 @@ interface MemoryRun {
 export interface MemoryNibbinState {
   status: 'active' | 'paused' | 'sleeping';
   pausedReason?: 'anomaly' | 'cap' | 'connection' | 'user';
+  /** Stage tracking for mid-run re-check (#43). Defaults to 'student' if not set. */
+  stage?: import('./types').StageName;
+  stageChangedAt?: number;
 }
 
 export class MemoryRunStore implements RunStore {
@@ -126,6 +150,10 @@ export class MemoryRunStore implements RunStore {
 
   async begin(req: AdmissionRequest): Promise<AdmissionOutcome> {
     const state = this.nibbinState(req.nibbinId);
+    // Seed stage/stageChangedAt from admission so getNibbin reflects the current
+    // stage; tests that demote mid-run update these fields directly on the state.
+    if (req.nibbinStage !== undefined) state.stage = req.nibbinStage;
+    if (req.nibbinStageChangedAt !== undefined) state.stageChangedAt = req.nibbinStageChangedAt;
     if (state.status !== 'active') return { kind: 'nibbin_unavailable' };
 
     const at = this.now();
@@ -239,6 +267,18 @@ export class MemoryRunStore implements RunStore {
     if (!run) throw new Error(`unknown run ${runId}`);
     run.steps.push(step);
   }
+
+  async getNibbin(nibbinId: string): Promise<NibbinCurrentState | null> {
+    // nibbinState() auto-creates a default { status: 'active' } entry, mirroring
+    // how begin() treats an unseen nibbin. We never return null from the in-memory
+    // store (a real DB store returns null only if the row doesn't exist).
+    const state = this.nibbinState(nibbinId);
+    return {
+      stage: state.stage ?? 'student',
+      stageChangedAt: state.stageChangedAt ?? 0,
+      status: state.status,
+    };
+  }
 }
 
 export class MemoryGrantStore implements GrantStore {
@@ -255,15 +295,25 @@ export class MemoryGrantStore implements GrantStore {
 }
 
 export class MemoryRoutineStore implements RoutineStore {
-  private counts = new Map<string, number>();
+  /** Each approval stored with its decision timestamp so stage-scoping works. */
+  private approvals = new Map<string, number[]>();
 
-  approve(nibbinId: string, patternKey: string): void {
-    const key = `${nibbinId}:${patternKey}`;
-    this.counts.set(key, (this.counts.get(key) ?? 0) + 1);
+  private readonly now: () => number;
+
+  constructor(now: () => number = Date.now) {
+    this.now = now;
   }
 
-  async approvedCount(nibbinId: string, patternKey: string): Promise<number> {
-    return this.counts.get(`${nibbinId}:${patternKey}`) ?? 0;
+  approve(nibbinId: string, patternKey: string, atMs?: number): void {
+    const key = `${nibbinId}:${patternKey}`;
+    const list = this.approvals.get(key) ?? [];
+    list.push(atMs ?? this.now());
+    this.approvals.set(key, list);
+  }
+
+  async approvedCount(nibbinId: string, patternKey: string, sinceMs: number): Promise<number> {
+    const list = this.approvals.get(`${nibbinId}:${patternKey}`) ?? [];
+    return list.filter((t) => t >= sinceMs).length;
   }
 }
 

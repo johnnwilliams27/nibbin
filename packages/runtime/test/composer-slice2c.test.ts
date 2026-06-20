@@ -67,7 +67,7 @@ function spec(over: Partial<AgentSpec>): AgentSpec {
 }
 
 function nib(s: AgentSpec): NibbinRef {
-  return { id: 'nib-2c', accountId: ACCOUNT, name: 'Composed', stage: 'student', status: 'active', spec: s };
+  return { id: 'nib-2c', accountId: ACCOUNT, name: 'Composed', stage: 'student', stageChangedAt: 0, status: 'active', spec: s };
 }
 
 function gmailMeta(id: string, headers: Record<string, string>, internalDate: number): string {

@@ -44,7 +44,7 @@ function spec(overrides: Partial<AgentSpec> = {}): AgentSpec {
 }
 
 function nib(s: AgentSpec = spec()): NibbinRef {
-  return { id: 'nib-1', accountId: ACCOUNT, name: 'Echo', stage: 'student', status: 'active', spec: s };
+  return { id: 'nib-1', accountId: ACCOUNT, name: 'Echo', stage: 'student', stageChangedAt: 0, status: 'active', spec: s };
 }
 
 function harness(opts: { credits?: number; now?: () => number; quarantined?: boolean } = {}) {
@@ -257,7 +257,7 @@ describe('§6.2: trigger dedupe + cooldown + anomaly auto-pause', () => {
       expect((await executeRun(nib(), TRIGGER, program, h.deps)).kind).toBe('completed');
     }
     expect(await executeRun(nib(), TRIGGER, program, h.deps)).toMatchObject({ kind: 'not_started', why: 'anomaly_paused' });
-    expect(h.runs.nibbinState('nib-1')).toEqual({ status: 'paused', pausedReason: 'anomaly' });
+    expect(h.runs.nibbinState('nib-1')).toMatchObject({ status: 'paused', pausedReason: 'anomaly' });
     // and a paused Nibbin is unavailable until un-paused
     expect(await executeRun(nib(), TRIGGER, program, h.deps)).toMatchObject({ kind: 'not_started', why: 'nibbin_unavailable' });
   });
@@ -402,5 +402,177 @@ describe('§4.7: promotion math (rolling window)', () => {
     // newest-first: 25 clean approvals, then ancient rejections beyond the window
     const history: Decision[] = [...Array<Decision>(25).fill('approved'), ...Array<Decision>(10).fill('rejected')];
     expect(promotionCheck(history, curriculum).eligible).toBe(true);
+  });
+});
+
+describe('#43: stage/status re-checked mid-run — demoted Nibbin drafts not executes', () => {
+  function grantedHarness() {
+    const runs = new MemoryRunStore(() => Date.now());
+    runs.seedCredits(ACCOUNT, 1000);
+    const routines = new MemoryRoutineStore();
+    // 5 approvals recorded AFTER stageChangedAt=0, so they count for senior autonomy
+    for (let i = 0; i < 5; i++) routines.approve('nib-1', 'p1');
+    const grants = new MemoryGrantStore();
+    grants.grant('nib-1', CONN, 'email.draft');
+    const deps: RunnerDeps = {
+      runs,
+      routines,
+      grants,
+      idempotency: new MemoryIdempotencyStore(),
+      events: new MemoryEventSink(),
+      reader: { async read(_c, _cap, path) { return quarantine('{}', `test:${path}`); } },
+      effects: { async execute() {} },
+      now: () => Date.now(),
+    };
+    return { deps, runs };
+  }
+
+  const draftStep: ProgramFn = async function* () {
+    yield {
+      kind: 'draft',
+      capability: 'email.draft',
+      connectionId: CONN,
+      patternKey: 'p1',
+      title: 't',
+      draft: 'd',
+      effectArgs: { threadId: 't-1' },
+    };
+  };
+
+  it('a grad run executes normally when no demotion occurs', async () => {
+    const { deps } = grantedHarness();
+    const gradNib: NibbinRef = { id: 'nib-1', accountId: ACCOUNT, name: 'Echo', stage: 'grad', stageChangedAt: 0, status: 'active', spec: spec() };
+    const outcome = await executeRun(gradNib, TRIGGER, draftStep, deps);
+    expect(outcome.kind).toBe('executed');
+  });
+
+  it('a grad run demoted mid-run (store stage flipped to student) drafts instead of executing', async () => {
+    const { deps, runs } = grantedHarness();
+    const gradNib: NibbinRef = { id: 'nib-1', accountId: ACCOUNT, name: 'Echo', stage: 'grad', stageChangedAt: 0, status: 'active', spec: spec() };
+    // Simulate nibbin_demote firing between begin() and the execute decision:
+    // flip the in-memory stage to 'student' so getNibbin returns the stale-demoted state.
+    const program: ProgramFn = async function* () {
+      // Demote inside the program, simulating a concurrent demotion between steps
+      runs.nibbinState('nib-1').stage = 'student';
+      yield {
+        kind: 'draft',
+        capability: 'email.draft',
+        connectionId: CONN,
+        patternKey: 'p1',
+        title: 't',
+        draft: 'd',
+        effectArgs: { threadId: 't-1' },
+      };
+    };
+    const outcome = await executeRun(gradNib, TRIGGER, program, deps);
+    // Must draft-not-execute: the freshly-read stage is 'student'
+    expect(outcome.kind).toBe('awaiting_approval');
+  });
+
+  it('a nibbin paused mid-run (store status flipped to paused) also drafts instead of executing', async () => {
+    const { deps, runs } = grantedHarness();
+    const gradNib: NibbinRef = { id: 'nib-1', accountId: ACCOUNT, name: 'Echo', stage: 'grad', stageChangedAt: 0, status: 'active', spec: spec() };
+    const program: ProgramFn = async function* () {
+      // Simulate a concurrent pause between admission and execute
+      runs.nibbinState('nib-1').status = 'paused';
+      yield {
+        kind: 'draft',
+        capability: 'email.draft',
+        connectionId: CONN,
+        patternKey: 'p1',
+        title: 't',
+        draft: 'd',
+        effectArgs: { threadId: 't-1' },
+      };
+    };
+    const outcome = await executeRun(gradNib, TRIGGER, program, deps);
+    expect(outcome.kind).toBe('awaiting_approval');
+  });
+});
+
+describe('#44: routine-pattern trust resets on demotion (stage-scoped approvals)', () => {
+  const DEMOTION_AT = 1_000_000; // ms timestamp simulating when demotion happened
+
+  function stageHarness(now = () => Date.now()) {
+    const runs = new MemoryRunStore(now);
+    runs.seedCredits(ACCOUNT, 1000);
+    const routines = new MemoryRoutineStore(now);
+    const grants = new MemoryGrantStore();
+    grants.grant('nib-1', CONN, 'email.draft');
+    const deps: RunnerDeps = {
+      runs, routines, grants,
+      idempotency: new MemoryIdempotencyStore(),
+      events: new MemoryEventSink(),
+      reader: { async read(_c, _cap, path) { return quarantine('{}', `test:${path}`); } },
+      effects: { async execute() {} },
+      now,
+    };
+    return { deps, runs, routines };
+  }
+
+  it('approvals recorded BEFORE demotion do not count toward re-promotion autonomy', async () => {
+    let t = 0;
+    const { routines } = stageHarness(() => t);
+
+    // 5 approvals BEFORE demotion
+    t = DEMOTION_AT - 5000;
+    for (let i = 0; i < 5; i++) routines.approve('nib-1', 'p1');
+
+    // After demotion, stageChangedAt resets to DEMOTION_AT
+    const count = await routines.approvedCount('nib-1', 'p1', DEMOTION_AT);
+    // Pre-demotion approvals are excluded from current stage tenure
+    expect(count).toBe(0);
+  });
+
+  it('approvals recorded AFTER demotion count toward re-promotion autonomy', async () => {
+    let t = 0;
+    const { routines } = stageHarness(() => t);
+
+    // 3 approvals BEFORE demotion — should not count
+    t = DEMOTION_AT - 5000;
+    for (let i = 0; i < 3; i++) routines.approve('nib-1', 'p1');
+
+    // 4 approvals AFTER demotion — should count
+    t = DEMOTION_AT + 1000;
+    for (let i = 0; i < 4; i++) routines.approve('nib-1', 'p1');
+
+    const count = await routines.approvedCount('nib-1', 'p1', DEMOTION_AT);
+    expect(count).toBe(4);
+  });
+
+  it('a senior whose pattern was approved pre-demotion does not regain autonomy after re-promotion', async () => {
+    let t = 0;
+    const { deps, runs, routines } = stageHarness(() => t);
+
+    // Record 5 approvals for pattern p1 BEFORE demotion timestamp
+    t = DEMOTION_AT - 1000;
+    for (let i = 0; i < 5; i++) routines.approve('nib-1', 'p1');
+
+    // Re-promoted senior: stageChangedAt = DEMOTION_AT (simulates a re-promotion after demotion)
+    const seniorNibRePromoted: NibbinRef = {
+      id: 'nib-1',
+      accountId: ACCOUNT,
+      name: 'Echo',
+      stage: 'senior',
+      stageChangedAt: DEMOTION_AT, // stage reset at demotion time
+      status: 'active',
+      spec: spec(),
+    };
+
+    t = DEMOTION_AT + 2000; // now is after re-promotion
+    const outcome = await executeRun(seniorNibRePromoted, TRIGGER, async function* () {
+      yield {
+        kind: 'draft',
+        capability: 'email.draft',
+        connectionId: CONN,
+        patternKey: 'p1',
+        title: 't',
+        draft: 'd',
+        effectArgs: { threadId: 't-1' },
+      };
+    }, deps);
+    // Should draft, not execute: pre-demotion approvals excluded, count=0 < routineMinApprovals=5
+    expect(outcome.kind).toBe('awaiting_approval');
+    void runs; // suppress unused warning
   });
 });

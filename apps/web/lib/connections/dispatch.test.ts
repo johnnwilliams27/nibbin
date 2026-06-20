@@ -8,6 +8,7 @@ function makeNibbin(overrides: Partial<NibbinRef> = {}): NibbinRef {
     accountId: 'acct-1',
     name: 'Scribe',
     stage: 'student',
+    stageChangedAt: 0,
     status: 'active',
     spec: {
       templateKey: 'scribe',

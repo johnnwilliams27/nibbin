@@ -164,6 +164,8 @@ export interface NibbinRef {
   accountId: string;
   name: string;
   stage: StageName;
+  /** Unix-ms timestamp of the most recent stage change; used to scope routine-approval counts to the current stage tenure (§4.7 #44). */
+  stageChangedAt: number;
   status: 'active' | 'paused' | 'sleeping';
   spec: AgentSpec;
 }
