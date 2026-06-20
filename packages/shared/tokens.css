@@ -58,6 +58,9 @@
      gliding, NOT snappy. Don't drop this below --dur-4 without a reason. */
   --motion-reveal: var(--ease-settle);
   --motion-reveal-dur: var(--dur-4);
+  /* Keeper dock rail width — shared so the rail and the body's push margin
+     (shell .main padding-right when html.keeper-dock-open) stay in lockstep. */
+  --keeper-dock-w: 380px;
 
   /* Fluid type scale */
   --type-hero: clamp(1.9rem, 1.2rem + 2.6vw, 3rem);
