@@ -45,6 +45,12 @@ vi.mock('@nibbin/connectors', async () => {
         getProfile: vi.fn().mockResolvedValue({ emailAddress: 'test@g.com', historyId: '100' }),
       };
     }),
+    GoogleCalendarClient: vi.fn(function () {
+      return {
+        listEventsSync: vi.fn().mockResolvedValue({ items: [], nextSyncToken: 'cal-tok-1' }),
+      };
+    }),
+    fetchCalendarDelta: vi.fn().mockResolvedValue({ events: [], newSyncToken: 'cal-tok-1' }),
   };
 });
 
@@ -73,6 +79,10 @@ vi.mock('../../../../lib/connections/dispatch', () => ({
 vi.mock('../../../../lib/connections/gmail-delta', () => ({
   fetchGmailDelta: vi.fn().mockResolvedValue({ events: [], newHistoryId: '101' }),
   advanceGmailCursor: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../../../../lib/connections/calendar-delta', () => ({
+  advanceCalendarCursor: vi.fn().mockResolvedValue(undefined),
 }));
 
 // Builds a serviceClient stub whose connections query resolves to `rows` and
@@ -224,5 +234,76 @@ describe('GET /api/cron/connector-poll', () => {
 
     expect(client.__order).toHaveBeenCalledWith('created_at', { ascending: true });
     expect(client.__limit).toHaveBeenCalledWith(25);
+  });
+
+  it('processes a google-calendar connection and advances the calendar cursor when uncapped', async () => {
+    const { fetchCalendarDelta } = await import('@nibbin/connectors');
+    const { advanceCalendarCursor } = await import('../../../../lib/connections/calendar-delta');
+    const { dispatchForConnection } = await import('../../../../lib/connections/dispatch');
+    const { serviceClient } = await import('../../../../lib/supabase/service');
+
+    vi.mocked(serviceClient).mockReturnValueOnce(
+      makeServiceClient([{ id: 'cal-conn-1', account_id: 'acct-2', provider: 'google-calendar', status: 'active' }]),
+    );
+
+    vi.mocked(fetchCalendarDelta).mockResolvedValueOnce({
+      events: [{
+        provider: 'google-calendar',
+        connectionId: 'cal-conn-1',
+        accountId: 'acct-2',
+        kind: 'calendar.changed',
+        dedupeKey: 'google-calendar:cal-conn-1:evt-1',
+      }],
+      newSyncToken: 'tok-new',
+    });
+    vi.mocked(dispatchForConnection).mockResolvedValueOnce({ triggered: 1, capped: false, deferred: 0 });
+
+    const { GET } = await import('./route');
+    await GET(makeReq(`Bearer ${SECRET}`));
+
+    expect(advanceCalendarCursor).toHaveBeenCalledWith(expect.anything(), 'cal-conn-1', 'tok-new');
+  });
+
+  it('does NOT advance the calendar cursor when dispatch is capped', async () => {
+    const { fetchCalendarDelta } = await import('@nibbin/connectors');
+    const { advanceCalendarCursor } = await import('../../../../lib/connections/calendar-delta');
+    const { dispatchForConnection } = await import('../../../../lib/connections/dispatch');
+    const { serviceClient } = await import('../../../../lib/supabase/service');
+
+    vi.mocked(serviceClient).mockReturnValueOnce(
+      makeServiceClient([{ id: 'cal-conn-2', account_id: 'acct-3', provider: 'google-calendar', status: 'active' }]),
+    );
+
+    vi.mocked(fetchCalendarDelta).mockResolvedValueOnce({
+      events: [{
+        provider: 'google-calendar',
+        connectionId: 'cal-conn-2',
+        accountId: 'acct-3',
+        kind: 'calendar.changed',
+        dedupeKey: 'google-calendar:cal-conn-2:evt-2',
+      }],
+      newSyncToken: 'tok-new-2',
+    });
+    vi.mocked(dispatchForConnection).mockResolvedValueOnce({ triggered: 5, capped: true, deferred: 3 });
+
+    const { GET } = await import('./route');
+    await GET(makeReq(`Bearer ${SECRET}`));
+
+    expect(advanceCalendarCursor).not.toHaveBeenCalled();
+  });
+
+  it('skips unknown providers without error (continues loop)', async () => {
+    const { serviceClient } = await import('../../../../lib/supabase/service');
+
+    vi.mocked(serviceClient).mockReturnValueOnce(
+      makeServiceClient([{ id: 'other-conn', account_id: 'acct-4', provider: 'unknown-provider', status: 'active' }]),
+    );
+
+    const { GET } = await import('./route');
+    const res = await GET(makeReq(`Bearer ${SECRET}`));
+    const body = await res.json() as { processed: number; errors: string[] };
+    // skipped, not counted as processed, no errors
+    expect(body.processed).toBe(0);
+    expect(body.errors).toHaveLength(0);
   });
 });

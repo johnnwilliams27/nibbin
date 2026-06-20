@@ -54,6 +54,27 @@ export class GoogleCalendarClient extends HttpConnectorClient {
     return data;
   }
 
+  /**
+   * Incremental sync via Google's nextSyncToken (poll-friendly; no webhook).
+   * Pass `syncToken` from a previous response for delta results; omit on the
+   * first call to receive a full (baseline) page plus the initial sync token.
+   */
+  async listEventsSync(
+    calendarId: string,
+    syncToken?: string,
+    pageToken?: string,
+  ): Promise<{ items?: CalendarEvent[]; nextSyncToken?: string; nextPageToken?: string }> {
+    const params = new URLSearchParams({ singleEvents: 'true', maxResults: '250' });
+    if (syncToken) params.set('syncToken', syncToken);
+    if (pageToken) params.set('pageToken', pageToken);
+    const { data } = await this.readJson<{
+      items?: CalendarEvent[];
+      nextSyncToken?: string;
+      nextPageToken?: string;
+    }>(`/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${params}`);
+    return data;
+  }
+
   /** Push channel registration (webhook path; verified by channel token). */
   async watchEvents(calendarId: string, channelId: string, address: string, token: string): Promise<unknown> {
     const res = await this.request(`/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/watch`, {
