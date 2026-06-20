@@ -18,7 +18,7 @@ function makeConnection(overrides: Partial<Connection> = {}): Connection {
     id: 'conn-1',
     accountId: 'acct-1',
     provider: 'gmail',
-    method: 'oauth',
+    method: 'G',
     scopes: ['https://www.googleapis.com/auth/gmail.compose'],
     status: 'active',
     tokenRef: 'tok-1',
