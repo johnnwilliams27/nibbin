@@ -96,7 +96,7 @@ export const HELP_CONTENT: HelpContent = [
         id: "gs-connect-gmail",
         q: "How do I connect my tools?",
         body:
-          “Go to Connections (/app/connections) — “Accounts your Nibbins work from.” Gmail is live today. OAuth consent covers read + write scopes at connect, explained plainly; while a Nibbin is learning every side effect is drafted for your approval.\n\nGoogle Calendar and Stripe show “Coming soon.” When you adopt a Nibbin that needs a tool you haven’t connected yet, you’ll see “That Nibbin needs [x] and [y] connected to finish adopting.”\n\nNote: Gmail connections are currently gated behind a tester allowlist while Google OAuth verification is pending. If you’re not on the list yet, you’ll see a prompt to request access.”,
+          "Go to Connections (/app/connections) — “Accounts your Nibbins work from.” Gmail is live today. OAuth consent covers read + write scopes at connect, explained plainly; while a Nibbin is learning every side effect is drafted for your approval.\n\nGoogle Calendar and Stripe show “Coming soon.” When you adopt a Nibbin that needs a tool you haven’t connected yet, you’ll see “That Nibbin needs [x] and [y] connected to finish adopting.”\n\nNote: Gmail connections are currently gated behind a tester allowlist while Google OAuth verification is pending. If you’re not on the list yet, you’ll see a prompt to request access.",
         keywords: ["connect", "gmail", "connections", "tools", "oauth", "allowlist"],
       },
       {
@@ -381,7 +381,7 @@ export const HELP_CONTENT: HelpContent = [
         id: "conn-whats-live",
         q: "Which connections are available today?",
         body:
-          “Today, Gmail is the only connectable tool. When you connect Gmail, OAuth consent covers gmail.readonly + gmail.compose + gmail.send — explained plainly. While a Nibbin is in School every side effect is drafted for your approval; it only acts autonomously once it has earned trust.\n\nGoogle Calendar and Stripe show “Coming soon” on the Connections page — you can’t connect them yet. Brief, Tally, and Hopper need those connections to function fully.\n\nOther tools you might see mentioned in the Hatch Your Own picker (HoneyBook, Notion, QuickBooks, and others) are on the roadmap but not connectable today.”,
+          "Today, Gmail is the only connectable tool. When you connect Gmail, OAuth consent covers gmail.readonly + gmail.compose + gmail.send — explained plainly. While a Nibbin is in School every side effect is drafted for your approval; it only acts autonomously once it has earned trust.\n\nGoogle Calendar and Stripe show “Coming soon” on the Connections page — you can’t connect them yet. Brief, Tally, and Hopper need those connections to function fully.\n\nOther tools you might see mentioned in the Hatch Your Own picker (HoneyBook, Notion, QuickBooks, and others) are on the roadmap but not connectable today.",
         keywords: ["gmail", "live", "coming soon", "calendar", "stripe", "available", "today"],
       },
       {
@@ -395,8 +395,8 @@ export const HELP_CONTENT: HelpContent = [
         id: "conn-read-vs-write",
         q: "What is the difference between read access and write access?",
         body:
-          “Connect requests the scopes your Nibbins may use (read + write), with a plain-language explanation for each. Holding a write scope doesn’t authorize action — execution is gated by the earned-autonomy model.\n\nWhile a Nibbin is in School (Student, or Senior not yet on a proven routine) it drafts every side effect for your approval. Only a Graduate, or a Senior on a proven routine, may act autonomously. The access label in Connections shows either “Read-only access” (no write grant) or “Includes actions you approve · revoke anytime.”\n\nWrite access can be revoked in one click from the Connections page. Revoking cascades: all grants for that tool are suspended and the stored token is destroyed immediately.”,
-        keywords: [“write scopes”, “earned autonomy”, “grant”, “per nibbin”, “revoke”, “drafting”, “send”],
+          "Connect requests the scopes your Nibbins may use (read + write), with a plain-language explanation for each. Holding a write scope doesn’t authorize action — execution is gated by the earned-autonomy model.\n\nWhile a Nibbin is in School (Student, or Senior not yet on a proven routine) it drafts every side effect for your approval. Only a Graduate, or a Senior on a proven routine, may act autonomously. The access label in Connections shows either “Read-only access” (no write grant) or “Includes actions you approve · revoke anytime.”\n\nWrite access can be revoked in one click from the Connections page. Revoking cascades: all grants for that tool are suspended and the stored token is destroyed immediately.",
+        keywords: ["write scopes", "earned autonomy", "grant", "per nibbin", "revoke", "drafting", "send"],
       },
       {
         id: "conn-privacy-of-data",
