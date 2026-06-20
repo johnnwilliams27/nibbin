@@ -5,9 +5,10 @@
 -- usage grows). This RPC does the aggregation in Postgres and returns one row
 -- per account instead. The admin app uses the service-role client, but the
 -- function is security-definer + service_role-only so it never widens access.
-
-create index if not exists model_calls_created_at_idx
-  on public.model_calls (created_at);
+--
+-- No new index needed: model_calls already has model_calls_account_idx
+-- (account_id, created_at) — which covers this GROUP-BY-account + 30-day-range
+-- query — plus model_calls_created_idx (created_at).
 
 create or replace function public.admin_account_llm_spend_30d()
 returns table (account_id uuid, total_microusd numeric)
