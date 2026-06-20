@@ -53,6 +53,15 @@ export function KeeperDock(props: KeeperPanelProps) {
     }
   }, []);
 
+  // Toggle a global flag the shell reads to condense the body (push, not cover)
+  // when the dock is open on desktop — mirrors the left-nav margin behavior.
+  // See shell.module.css `html.keeper-dock-open .main`. Cleaned up on unmount.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.toggle('keeper-dock-open', open);
+    return () => root.classList.remove('keeper-dock-open');
+  }, [open]);
+
   function toggle() {
     setOpen((prev) => {
       const next = !prev;
