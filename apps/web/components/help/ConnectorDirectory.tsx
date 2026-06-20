@@ -52,12 +52,35 @@ export function ConnectorDirectory({
 }) {
   const connectedSet = useMemo(() => new Set(connectedIds), [connectedIds]);
   const [mode, setMode] = useState<'available' | 'alpha'>('available');
+  const [query, setQuery] = useState('');
+  const q = query.trim().toLowerCase();
+  const searching = q.length > 0;
+
+  // Matches by display name, category, and what-it-does so a search like
+  // "invoice" or "calendar" surfaces relevant connectors, not just name hits.
+  const matches = useMemo(() => {
+    if (!q) return [];
+    return sortConnectors(
+      connectors.filter(
+        (c) =>
+          c.name.toLowerCase().includes(q) ||
+          c.category.toLowerCase().includes(q) ||
+          c.whatItDoes.toLowerCase().includes(q),
+      ),
+      'available',
+    );
+  }, [connectors, q]);
+
+  // When searching, collapse to a single flat result list (no category
+  // accordions); otherwise group/sort per the Sort control.
   const groups = useMemo(
     () =>
-      mode === 'available'
-        ? groupConnectors(connectors)
-        : [{ category: 'All', items: sortConnectors(connectors, 'alpha') }],
-    [connectors, mode],
+      searching
+        ? [{ category: 'Results', items: matches }]
+        : mode === 'available'
+          ? groupConnectors(connectors)
+          : [{ category: 'All', items: sortConnectors(connectors, 'alpha') }],
+    [connectors, mode, searching, matches],
   );
 
   // Collapse categories by default so each category fetches its (third-party)
@@ -74,28 +97,43 @@ export function ConnectorDirectory({
       return next;
     });
 
-  const grouped = mode === 'available';
+  // When searching, never collapse — every result group is expanded.
+  const grouped = mode === 'available' && !searching;
 
   return (
     <section className={styles.directory}>
       <header className={styles.directoryHead}>
         <h2>{heading}</h2>
-        {showSort && (
-          <label className={styles.sort}>
-            Sort
-            <span className={styles.sortWrapper}>
-              <select
-                className={styles.sortSelect}
-                value={mode}
-                onChange={(e) => setMode(e.target.value as "available" | "alpha")}
-              >
-                <option value="available">Available first, then A–Z</option>
-                <option value="alpha">A–Z</option>
-              </select>
-            </span>
-          </label>
-        )}
+        <div className={styles.directoryControls}>
+          <input
+            type="search"
+            className={styles.connectorSearch}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search connectors…"
+            aria-label="Search connectors"
+          />
+          {showSort && (
+            <label className={styles.sort}>
+              Sort
+              <span className={styles.sortWrapper}>
+                <select
+                  className={styles.sortSelect}
+                  value={mode}
+                  onChange={(e) => setMode(e.target.value as "available" | "alpha")}
+                  disabled={searching}
+                >
+                  <option value="available">Available first, then A–Z</option>
+                  <option value="alpha">A–Z</option>
+                </select>
+              </span>
+            </label>
+          )}
+        </div>
       </header>
+      {searching && matches.length === 0 && (
+        <p className={styles.searchEmpty}>No connectors match “{query.trim()}”.</p>
+      )}
       {groups.map((g) => {
         const expanded = !grouped || open.has(g.category);
         return (

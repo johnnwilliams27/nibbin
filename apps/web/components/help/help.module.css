@@ -53,7 +53,19 @@
 }
 
 .directory { margin-top: 24px; }
-.directoryHead { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+.directoryHead { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.directoryControls { display: inline-flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.connectorSearch {
+  width: 220px; max-width: 100%;
+  padding: 7px 12px;
+  font-family: var(--sans); font-size: 13px;
+  border: 1px solid var(--understory); border-radius: var(--r-input);
+  background: var(--canopy); color: var(--ink); outline: none;
+  transition: border-color var(--dur-1) var(--ease-settle);
+}
+.connectorSearch::placeholder { color: var(--ink-faint); }
+.connectorSearch:focus { border-color: var(--ink-soft); }
+.searchEmpty { margin: 14px 2px 0; font-size: 14px; color: var(--ink-soft); }
 .sort { font-size: 13px; color: var(--ink-soft); display: inline-flex; gap: 6px; align-items: center; }
 .sortWrapper { position: relative; display: inline-flex; align-items: center; }
 .sortSelect {
