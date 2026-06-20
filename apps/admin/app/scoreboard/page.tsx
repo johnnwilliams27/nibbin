@@ -79,6 +79,9 @@ export default async function ScoreboardPage() {
           <a className={`${styles.navLink} ${styles.navActive}`} href="/scoreboard">
             Model performance
           </a>
+          <a className={styles.navLink} href="/analytics">
+            Analytics
+          </a>
         </span>
         <span className={styles.who}>
           {staff.email} · {staff.role}
