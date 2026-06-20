@@ -44,5 +44,20 @@ re-enabling lets the account flow back in.
 ## CI / local
 Migration `create or replace view` applied + valid on dev. Repo-wide `npm run lint` clean.
 
-## Verdicts
-(appended after the reviewer pass)
+## Verdicts (real 2-reviewer pass; 1 finding fixed)
+- **Red-team (opus): PASS after fix** — confirmed `model_task_performance` is the ONLY cross-account
+  contribution aggregate of `model_calls` (the two other readers are staff per-account billing/COGS,
+  correctly out of scope); both CTEs filter correctly; opted-out + null-account calls excluded;
+  columns byte-identical; grants survived the recreate (empirically verified). BLOCK'd on the dropped
+  `security_invoker`.
+- **Logic-skeptic (opus): PASS** — view byte-equivalent except the two filter JOINs; 16 columns
+  identical name/order/type (`0::bigint` is a no-op clarification); many-to-one join can't inflate
+  counts; null-exclusion consistent across both CTEs; test sound. Flagged the same `security_invoker`
+  drop as P3.
+
+### Fix applied
+- Restored `with (security_invoker = true)` on the view recreate (a plain CREATE OR REPLACE resets
+  reloptions to default `false`). Verified `reloptions = {security_invoker=true}` on dev. Both
+  reviewers confirmed this was the sole finding; the opt-out filter itself is correct + complete.
+
+**Gate verdict: PASS** after restoring `security_invoker`.

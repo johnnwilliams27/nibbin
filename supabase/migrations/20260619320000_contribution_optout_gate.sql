@@ -10,7 +10,11 @@
 -- the aggregate that feeds the reinforcement loop. Column list/order unchanged,
 -- so the model_task_performance_read RPC + pgPerformanceSource are unaffected.
 
-create or replace view public.model_task_performance as
+-- security_invoker = true preserved from the original view (20260618170000): a
+-- plain CREATE OR REPLACE without the WITH clause silently resets reloptions to
+-- default (security_invoker = false), so it must be respecified to keep the
+-- original posture (fail-closed if the view is ever granted to a product role).
+create or replace view public.model_task_performance with (security_invoker = true) as
  with volume as (
    select mc.model, mc.task, mc.tier,
      count(*) as calls,
