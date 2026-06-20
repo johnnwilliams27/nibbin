@@ -33,7 +33,7 @@ describe.skipIf(!dbAvailable)('Tier-2: shop_template_performance (k-anon + opt-o
       ).rows[0].id;
       await c.query(
         `insert into public.nibbins (account_id, spec_id, name, species, stage, status)
-         values ($1, $2, 'N', 'wisp', $3, $4)`,
+         values ($1, $2, 'N', 'Wisp', $3, $4)`,
         [account, spec, stage, status],
       );
     });
