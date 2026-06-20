@@ -1,7 +1,7 @@
 'use client';
 import { useMemo, useState } from 'react';
 import type { ConnectorEntry } from '../../lib/connections/catalog';
-import { groupConnectors, sortConnectors } from '../../lib/connections/catalog-view';
+import { groupConnectors, sortConnectors, popularConnectors } from '../../lib/connections/catalog-view';
 import { ConnectorLogo } from './ConnectorLogo';
 import { Badge } from '../ui';
 import styles from './help.module.css';
@@ -11,6 +11,8 @@ const STATUS_LABEL: Record<ConnectorEntry['status'], { label: string; tone: 'mos
   early_access: { label: 'Early access', tone: 'sky' },
   coming_soon: { label: 'Coming soon', tone: 'neutral' },
 };
+
+const POPULAR_KEY = '__popular__';
 
 function ConnectorGrid({ items, connectedIds }: { items: ConnectorEntry[]; connectedIds: Set<string> }) {
   return (
@@ -71,34 +73,25 @@ export function ConnectorDirectory({
     );
   }, [connectors, q]);
 
-  // When searching, collapse to a single flat result list (no category
-  // accordions); otherwise group/sort per the Sort control.
-  const groups = useMemo(
-    () =>
-      searching
-        ? [{ category: 'Results', items: matches }]
-        : mode === 'available'
-          ? groupConnectors(connectors)
-          : [{ category: 'All', items: sortConnectors(connectors, 'alpha') }],
-    [connectors, mode, searching, matches],
-  );
+  // Tabs across the top: Popular first (curated), then each non-empty category.
+  // Exactly one tab's grid shows at a time — no vertical accordion stack.
+  const tabs = useMemo(() => {
+    const t: { key: string; label: string; items: ConnectorEntry[] }[] = [];
+    const pop = popularConnectors(connectors);
+    if (pop.length) t.push({ key: POPULAR_KEY, label: 'Popular', items: pop });
+    for (const g of groupConnectors(connectors)) {
+      t.push({ key: g.category, label: g.category, items: g.items });
+    }
+    return t;
+  }, [connectors]);
 
-  // Collapse categories by default so each category fetches its (third-party)
-  // logos only when expanded — the first category opens so the section isn't empty.
-  const [open, setOpen] = useState<Set<string>>(() => {
-    const first = groupConnectors(connectors)[0]?.category;
-    return new Set(first ? [first] : []);
-  });
-  const toggle = (category: string) =>
-    setOpen((prev) => {
-      const next = new Set(prev);
-      if (next.has(category)) next.delete(category);
-      else next.add(category);
-      return next;
-    });
+  const [activeKey, setActiveKey] = useState<string>(POPULAR_KEY);
+  // Resolve the active tab; fall back to the first tab if the key ever goes stale.
+  const active = tabs.find((t) => t.key === activeKey) ?? tabs[0];
+  const isPopular = active?.key === POPULAR_KEY;
 
-  // When searching, never collapse — every result group is expanded.
-  const grouped = mode === 'available' && !searching;
+  // Popular keeps its curated order; category tabs respect the Sort control.
+  const activeItems = active ? (isPopular ? active.items : sortConnectors(active.items, mode)) : [];
 
   return (
     <section className={styles.directory}>
@@ -120,8 +113,10 @@ export function ConnectorDirectory({
                 <select
                   className={styles.sortSelect}
                   value={mode}
-                  onChange={(e) => setMode(e.target.value as "available" | "alpha")}
-                  disabled={searching}
+                  onChange={(e) => setMode(e.target.value as 'available' | 'alpha')}
+                  // Sort orders a category grid; no effect while searching
+                  // (always available-first) or on the curated Popular tab.
+                  disabled={searching || isPopular}
                 >
                   <option value="available">Available first, then A–Z</option>
                   <option value="alpha">A–Z</option>
@@ -131,33 +126,32 @@ export function ConnectorDirectory({
           )}
         </div>
       </header>
-      {searching && matches.length === 0 && (
-        <p className={styles.searchEmpty}>No connectors match “{query.trim()}”.</p>
-      )}
-      {groups.map((g) => {
-        const expanded = !grouped || open.has(g.category);
-        return (
-          <div key={g.category} className={styles.group}>
-            {grouped ? (
+
+      {searching ? (
+        matches.length === 0 ? (
+          <p className={styles.searchEmpty}>No connectors match “{query.trim()}”.</p>
+        ) : (
+          <ConnectorGrid items={matches} connectedIds={connectedSet} />
+        )
+      ) : (
+        <>
+          <nav className={styles.tabBar} aria-label="Connector categories">
+            {tabs.map((t) => (
               <button
+                key={t.key}
                 type="button"
-                className={styles.groupToggle}
-                aria-expanded={expanded}
-                onClick={() => toggle(g.category)}
+                className={`${styles.catTab} ${t.key === active?.key ? styles.catTabActive : ''}`}
+                aria-pressed={t.key === active?.key}
+                onClick={() => setActiveKey(t.key)}
               >
-                <span className={styles.groupChevron} aria-hidden="true">
-                  {expanded ? '▾' : '▸'}
-                </span>
-                <span className={styles.groupName}>{g.category}</span>
-                <span className={styles.groupCount}>{g.items.length}</span>
+                {t.label}
+                <span className={styles.catTabCount}>{t.items.length}</span>
               </button>
-            ) : (
-              <h3>{g.category}</h3>
-            )}
-            {expanded && <ConnectorGrid items={g.items} connectedIds={connectedSet} />}
-          </div>
-        );
-      })}
+            ))}
+          </nav>
+          {active && <ConnectorGrid items={activeItems} connectedIds={connectedSet} />}
+        </>
+      )}
     </section>
   );
 }
