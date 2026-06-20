@@ -9,10 +9,10 @@ import styles from '../../../../components/study/study.module.css';
 /**
  * Field notes route.
  *
- * NOTE: fieldNotes() currently returns [] — the daemon doesn't emit notes yet.
- * The EmptyState below is the designed experience for that case; it won't look
- * broken when notes are absent. Notes will appear here automatically once the
- * daemon starts emitting them.
+ * The daemon emits derived per-app notes (throttled ~3 min) by aggregating the
+ * last 24 hours of already-redacted events locally. fieldNotes() reads
+ * field_notes.json from the store root. EmptyState renders until the first
+ * batch arrives (typically within 3 minutes of a study starting).
  */
 function NotesContent() {
   const [notes, setNotes] = useState<FieldNote[]>([]);
