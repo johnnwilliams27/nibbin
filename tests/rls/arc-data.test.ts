@@ -227,7 +227,15 @@ describe.skipIf(!dbAvailable)('pgArcData over the M4 tables', () => {
   });
 
   it('flags: study running + a senior within reach', async () => {
-    expect(await port().flags(accountId)).toEqual({ studyActive: true, nearGraduation: true });
-    expect(await port().flags(emptyAccount)).toEqual({ studyActive: false, nearGraduation: false });
+    expect(await port().flags(accountId)).toEqual({
+      studyActive: true,
+      studyCompleted: false,
+      nearGraduation: true,
+    });
+    expect(await port().flags(emptyAccount)).toEqual({
+      studyActive: false,
+      studyCompleted: false,
+      nearGraduation: false,
+    });
   });
 });

@@ -51,7 +51,7 @@ export async function buildHalfTime(
   return {
     key: 'half_time',
     title: 'Half-time Report',
-    body: 'We’re a week in — halfway to your diagnosis. Here’s the shape of week one.',
+    body: "We're a week in — halfway to your diagnosis. Here's the shape of week one.",
     cards,
     celebration,
     ctaPath: '/app',
@@ -66,13 +66,13 @@ export async function buildMapPreview(accountId: string, data: ArcDataPort): Pro
     body:
       c.confidence >= 0.5
         ? 'Taking shape — I can see the edges of this one.'
-        : 'A faint sprout so far. I’m not sure yet, and I’d rather say so.',
+        : "A faint sprout so far. I'm not sure yet, and I'd rather say so.",
   }));
 
   const body =
     clusters.length > 0
-      ? 'Your workflow map has started sprouting. Here’s the low-confidence sketch — two more workflows are still germinating.'
-      : 'Your workflow map is still germinating. Nothing has broken ground that I’d show you yet — a few more days of watching and the first sprouts will be ready.';
+      ? "Your workflow map has started sprouting. Here's the low-confidence sketch — two more workflows are still germinating."
+      : "Your workflow map is still germinating. Nothing has broken ground that I'd show you yet — a few more days of watching and the first sprouts will be ready.";
 
   return {
     key: 'map_preview',
@@ -117,26 +117,40 @@ export async function buildDiagnosisReveal(
   const names = await data.names(accountId);
   const keeper = names.keeper ?? 'Your Grovekeeper';
 
-  if (!flags.studyActive) {
-    // No Observer: "your grove, one fortnight in" + the Field Study pitch retold.
+  if (flags.studyCompleted) {
+    // Study finished: diagnosis is ready to read.
     return {
       key: 'diagnosis_reveal',
-      title: 'Your grove, one fortnight in',
-      body: `Two weeks ago this was bare ground. ${keeper} here — I’ve written you a short letter about what your grove has learned so far, and what a two-week Field Study on your desk could add to the picture. It runs entirely on your machine; the only thing that ever leaves is the map.`,
+      title: 'Your diagnosis is ready',
+      body: `${keeper} here. The study is done, the map has grown in, and your diagnosis is ready — where your hours actually go, what they're worth, and which chores your grove can take off your hands. I've also written you a letter: here's what I learned about how you work.`,
       cards: [],
-      celebration: { heading: 'A fortnight of growth', body: 'Your grove made it through its first two weeks — that’s worth marking.' },
-      ctaPath: '/app',
-      ctaLabel: 'Read the letter',
+      celebration: { heading: 'The reveal', body: 'Fourteen days of quiet watching, grown into one map.' },
+      ctaPath: '/app/diagnosis',
+      ctaLabel: 'Open your diagnosis',
     };
   }
 
+  if (flags.studyActive) {
+    // Study still running on day 14: watching copy.
+    return {
+      key: 'diagnosis_reveal',
+      title: 'Still watching',
+      body: `${keeper} here. The Field Study on your desk is still running — the map is still filling in. I'll have your diagnosis ready once it's done; check your grove on that machine to see where things stand.`,
+      cards: [],
+      celebration: { heading: 'A fortnight of growth', body: "Your grove made it through its first two weeks — that's worth marking." },
+      ctaPath: '/app',
+      ctaLabel: 'See the grove',
+    };
+  }
+
+  // No study ever started (or aborted): pitch Field Study.
   return {
     key: 'diagnosis_reveal',
-    title: 'Your diagnosis is ready',
-    body: `${keeper} here. The study is done, the map has grown in, and your diagnosis is ready — where your hours actually go, what they’re worth, and which chores your grove can take off your hands. I’ve also written you a letter: here’s what I learned about how you work.`,
+    title: 'Your grove, one fortnight in',
+    body: `Two weeks ago this was bare ground. ${keeper} here — I've written you a short letter about what your grove has learned so far, and what a two-week Field Study on your desk could add to the picture. It runs entirely on your machine; the only thing that ever leaves is the map.`,
     cards: [],
-    celebration: { heading: 'The reveal', body: 'Fourteen days of quiet watching, grown into one map.' },
-    ctaPath: '/app/diagnosis',
-    ctaLabel: 'Open your diagnosis',
+    celebration: { heading: "A fortnight of growth", body: "Your grove made it through its first two weeks — that's worth marking." },
+    ctaPath: '/app',
+    ctaLabel: 'Read the letter',
   };
 }
