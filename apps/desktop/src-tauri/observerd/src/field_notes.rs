@@ -179,7 +179,7 @@ pub fn generate_and_save(
         .into_iter()
         .filter(|(_, b)| b.event_count >= MIN_EVENTS)
         .collect();
-    ranked.sort_by(|a, b| b.1.event_count.cmp(&a.1.event_count));
+    ranked.sort_by_key(|b| std::cmp::Reverse(b.1.event_count));
     ranked.truncate(MAX_NOTES);
 
     let notes: Vec<FieldNote> = ranked
@@ -211,18 +211,6 @@ pub fn generate_and_save(
     std::fs::write(&tmp, &json).context("writing field_notes.json.tmp")?;
     std::fs::rename(&tmp, root.join(FILE)).context("renaming field_notes.json.tmp")?;
     Ok(())
-}
-
-/// Load field notes. Missing file → empty list. Corrupt file → Err.
-pub fn load(root: &Path) -> anyhow::Result<Vec<FieldNote>> {
-    let path = root.join(FILE);
-    match std::fs::read_to_string(&path) {
-        Ok(text) => {
-            serde_json::from_str(&text).with_context(|| format!("{} is corrupt", path.display()))
-        }
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(vec![]),
-        Err(e) => Err(e).with_context(|| format!("reading {}", path.display())),
-    }
 }
 
 #[cfg(test)]
