@@ -123,12 +123,20 @@ function StudyCard() {
   }, []);
 
   // Event-driven live updates — no polling.
+  // Async-cleanup guard: if the component unmounts during the subscribe await,
+  // immediately call the returned unsubscribe function to prevent a listener leak.
   useEffect(() => {
     let unsub: (() => void) | null = null;
+    let cancelled = false;
     void desktopBridge.onStudyStateChange((s) => setStatus(s)).then((fn) => {
+      if (cancelled) {
+        fn();
+        return;
+      }
       unsub = fn;
     });
     return () => {
+      cancelled = true;
       unsub?.();
     };
   }, []);

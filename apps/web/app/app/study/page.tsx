@@ -54,33 +54,52 @@ function stateLabel(state: string): string {
 }
 
 /**
- * Returns true when the study is idle and the start wizard should be shown.
- * Covers NOT_STARTED and DAEMON_OFFLINE-with-no-study (the bridge fallback
- * state when the daemon isn't running yet and there is no existing study).
+ * Returns true when the study is in a genuinely idle terminal state and the
+ * start wizard should be shown. Only NOT_STARTED / COMPLETE / DELETED qualify
+ * — DAEMON_OFFLINE is a transient connectivity blip, not an idle state, so it
+ * must NOT show the wizard (that would flash or persistently show the wizard
+ * mid-study when the daemon briefly disconnects).
  */
 function isIdle(status: StudyStatus): boolean {
-  if (status.state === 'NOT_STARTED') return true;
-  if (status.state === 'DAEMON_OFFLINE' && status.study === null) return true;
-  return false;
+  return (
+    status.state === 'NOT_STARTED' ||
+    status.state === 'COMPLETE' ||
+    status.state === 'DELETED'
+  );
 }
 
 function InProgressContent() {
   const [status, setStatus] = useState<StudyStatus>(INITIAL_STATUS);
   const [busy, setBusy] = useState(false);
   const [mounted, setMounted] = useState(false);
+  // `loaded` becomes true after the first real studyStatus() resolves so we
+  // never show the wizard before we know the actual state (prevents the flash
+  // where NOT_STARTED placeholder shows for a frame before the fetch resolves).
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    void desktopBridge.studyStatus().then(setStatus);
+    void desktopBridge.studyStatus().then((s) => {
+      setStatus(s);
+      setLoaded(true);
+    });
   }, []);
 
-  // Event-driven live updates — no polling (avoids the per-second shutter bug)
+  // Event-driven live updates — no polling (avoids the per-second shutter bug).
+  // Async-cleanup guard: if the component unmounts during the subscribe await,
+  // immediately call the returned unsubscribe function to prevent a listener leak.
   useEffect(() => {
     let unsub: (() => void) | null = null;
+    let cancelled = false;
     void desktopBridge.onStudyStateChange((s) => setStatus(s)).then((fn) => {
+      if (cancelled) {
+        fn();
+        return;
+      }
       unsub = fn;
     });
     return () => {
+      cancelled = true;
       unsub?.();
     };
   }, []);
@@ -117,9 +136,21 @@ function InProgressContent() {
     }
   }, []);
 
-  // Don't render until after first mount so isShell() (already checked by
-  // ShellGate) and studyStatus() have resolved to their real values.
-  if (!mounted) return null;
+  // Don't render until after first mount (ShellGate already guards the shell
+  // check) and until the first studyStatus() has resolved (prevents the wizard
+  // from flashing before we know the real state).
+  if (!mounted || !loaded) return null;
+
+  // --- Daemon offline blip: show a reconnecting note, not the start wizard ---
+  if (status.state === 'DAEMON_OFFLINE') {
+    return (
+      <Card className={styles.statusCard}>
+        <p style={{ fontSize: 14, color: 'var(--ink-soft)', margin: 0 }}>
+          Reconnecting to the capture daemon…
+        </p>
+      </Card>
+    );
+  }
 
   // --- Idle: show the start wizard ---
   if (isIdle(status)) {
