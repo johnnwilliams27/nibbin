@@ -15,7 +15,8 @@
  * CSS module tokens, same confirm-button hierarchy, same error surface.
  */
 
-import { useState, useCallback, useTransition } from 'react';
+import { useState, useEffect, useCallback, useTransition } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { loadCurrentSpecForRetune, retuneNibbin } from './[id]/retune-actions';
 import type { CurrentSpec, RetuneEdit } from './[id]/retune-actions';
@@ -98,8 +99,13 @@ function StepRow({
 
 export function RetuneDialog({ nibbinId, nibbinName }: RetuneTriggerProps) {
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const [seeded, setSeeded] = useState<CurrentSpec | null>(null);
   const [displayName, setDisplayName] = useState('');
   const [steps, setSteps] = useState<EditableStep[]>([]);
@@ -197,7 +203,7 @@ export function RetuneDialog({ nibbinId, nibbinName }: RetuneTriggerProps) {
         </div>
       )}
 
-      {open && seeded && (
+      {open && seeded && mounted && createPortal(
         <div
           className={styles.overlay}
           role="dialog"
@@ -295,7 +301,8 @@ export function RetuneDialog({ nibbinId, nibbinName }: RetuneTriggerProps) {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );

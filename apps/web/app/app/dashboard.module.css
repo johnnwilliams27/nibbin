@@ -160,6 +160,10 @@
   gap: 10px;
   margin-bottom: 10px;
 }
+.nibbinSprite {
+  flex: 0 0 auto;
+  line-height: 0;
+}
 .nibbinName {
   font-family: var(--display);
   font-weight: 800;

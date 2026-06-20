@@ -17,9 +17,9 @@
   margin-bottom: 24px;
 }
 .eyebrow {
-  font-family: var(--mono);
+  font-family: var(--sans);
   font-size: 11px;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--moss-deep);
   font-weight: 600;
@@ -77,17 +77,17 @@
   color: var(--ink);
 }
 .id .job {
-  font-family: var(--mono);
+  font-family: var(--sans);
   font-size: 10.5px;
   color: var(--ink-soft);
   margin-top: 2px;
 }
 
 .stagepill {
-  font-family: var(--mono);
+  font-family: var(--sans);
   font-size: 9.5px;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
   padding: 4px 10px;
   border-radius: 20px;
@@ -131,10 +131,9 @@
   margin: 14px 0 4px;
 }
 .schoolLbl {
-  font-family: var(--mono);
+  font-family: var(--sans);
   font-size: 9.5px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  letter-spacing: 0.02em;
   color: var(--ink-soft);
   font-weight: 600;
   margin-bottom: 8px;
@@ -172,10 +171,9 @@
 }
 .ladderNames span {
   flex: 1;
-  font-family: var(--mono);
+  font-family: var(--sans);
   font-size: 8.5px;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
+  letter-spacing: 0.02em;
   color: var(--ink-soft);
   text-align: center;
 }
@@ -194,11 +192,10 @@
   align-items: center;
 }
 .badge {
-  font-family: var(--mono);
+  font-family: var(--sans);
   font-size: 9px;
   font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  letter-spacing: 0.02em;
   background: #fff;
   border: 1px solid var(--line);
   color: var(--ink-soft);
@@ -212,11 +209,10 @@
   background: #fcf6e8;
 }
 .streak {
-  font-family: var(--mono);
+  font-family: var(--sans);
   font-size: 9px;
   font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  letter-spacing: 0.02em;
   background: var(--coral-tint);
   border: 1px solid var(--coral-line);
   color: var(--coral-deep);
@@ -235,10 +231,9 @@
   margin-top: 12px;
 }
 .ll {
-  font-family: var(--mono);
+  font-family: var(--sans);
   font-size: 9px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  letter-spacing: 0.02em;
   color: var(--moss-deep);
   font-weight: 600;
   margin-bottom: 5px;
@@ -258,7 +253,7 @@
   flex-wrap: wrap;
 }
 .footM {
-  font-family: var(--mono);
+  font-family: var(--sans);
   font-size: 10.5px;
   color: var(--ink-soft);
 }
@@ -267,7 +262,7 @@
   font-weight: 600;
 }
 .abtn {
-  font-family: var(--mono);
+  font-family: var(--sans);
   font-size: 10.5px;
   font-weight: 600;
   padding: 8px 13px;
@@ -301,7 +296,7 @@
 
 /* ── Configurator (rename + restyle) ───────────────────────────── */
 .editBtn {
-  font: 600 12px/1 var(--mono, ui-monospace, monospace);
+  font: 600 12px/1 var(--sans);
   color: var(--moss-deep);
   background: #ecf2e0;
   border: 1px solid var(--line);
@@ -331,10 +326,10 @@
   background: #f4efe0; border-radius: 16px;
 }
 .panelTitle { font: 800 18px/1.2 var(--display); color: var(--ink); margin: 0; }
-.panelSub { font: 500 12px/1.3 var(--mono, monospace); color: var(--ink-soft); margin-top: 4px; }
+.panelSub { font: 500 12px/1.3 var(--sans); color: var(--ink-soft); margin-top: 4px; }
 .field { margin-bottom: 14px; }
 .label {
-  display: block; font: 700 11px/1 var(--mono, monospace);
+  display: block; font: 700 11px/1 var(--sans);
   letter-spacing: 0.04em; text-transform: uppercase;
   color: var(--ink-soft); margin-bottom: 7px;
 }
@@ -347,7 +342,7 @@
 .nameInput:focus { outline: 2px solid var(--moss); outline-offset: 1px; }
 .opts { display: flex; flex-wrap: wrap; gap: 6px; }
 .opt {
-  font: 600 12px/1 var(--mono, monospace);
+  font: 600 12px/1 var(--sans);
   color: var(--ink); background: #fff;
   border: 1px solid var(--line); border-radius: 999px;
   padding: 7px 11px; cursor: pointer;
@@ -372,16 +367,16 @@
   background: transparent; border: 1px solid var(--line);
   border-radius: 999px; padding: 11px 18px; cursor: pointer;
 }
-.err { color: var(--coral-deep); font: 500 12px/1.3 var(--mono, monospace); margin-top: 10px; }
+.err { color: var(--coral-deep); font: 500 12px/1.3 var(--sans); margin-top: 10px; }
 
 /* ── Retune dialog (Slice 1 — version badge + step editor) ─────── */
 
 /* Inline version badge: v{N} shown next to the stage pill and in the dialog. */
 .vBadge {
-  font-family: var(--mono);
+  font-family: var(--sans);
   font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
   background: #eef3fb;
   border: 1px solid #c5d5ef;
@@ -409,7 +404,7 @@
   padding: 9px 12px;
 }
 .stepLabel {
-  font-family: var(--mono);
+  font-family: var(--sans);
   font-size: 11px;
   font-weight: 600;
   color: var(--ink);
@@ -420,7 +415,7 @@
   flex-shrink: 0;
 }
 .stepBtn {
-  font: 600 12px/1 var(--mono, monospace);
+  font: 600 12px/1 var(--sans);
   color: var(--ink-soft);
   background: transparent;
   border: 1px solid var(--line);
@@ -444,7 +439,7 @@
 
 /* Inline success note — shown briefly before the dialog auto-closes. */
 .successNote {
-  font-family: var(--mono);
+  font-family: var(--sans);
   font-size: 11px;
   font-weight: 600;
   color: #3a7a2a;
@@ -457,7 +452,7 @@
 
 /* ── Back to drafts (CE5 — calm demotion, never destructive) ───── */
 .draftBtn {
-  font-family: var(--mono);
+  font-family: var(--sans);
   font-size: 10.5px;
   font-weight: 600;
   padding: 8px 13px;
@@ -482,7 +477,7 @@
   color: var(--ink-soft);
 }
 .draftYes {
-  font-family: var(--mono);
+  font-family: var(--sans);
   font-size: 10.5px;
   font-weight: 600;
   padding: 8px 13px;
@@ -495,7 +490,7 @@
 .draftYes:hover { background: var(--paper-deep); }
 .draftYes:disabled { opacity: 0.5; cursor: default; }
 .draftNo {
-  font-family: var(--mono);
+  font-family: var(--sans);
   font-size: 10.5px;
   font-weight: 600;
   padding: 8px 13px;
@@ -509,7 +504,7 @@
 
 /* ── Nibbin delete (sleep / archive) button — destructive ──────────── */
 .deleteBtn {
-  font-family: var(--mono);
+  font-family: var(--sans);
   font-size: 10.5px;
   font-weight: 600;
   padding: 8px 13px;
@@ -524,7 +519,7 @@
 .deleteBtn:hover { background: var(--coral-tint); }
 .deleteBtn:disabled { opacity: 0.5; cursor: default; }
 .deleteConfirmYes {
-  font-family: var(--mono);
+  font-family: var(--sans);
   font-size: 10.5px;
   font-weight: 600;
   padding: 8px 13px;

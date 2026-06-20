@@ -681,6 +681,11 @@ export default async function AppPage({ searchParams }: { searchParams: Promise<
               return (
                 <Card key={nibbin.id} className={dash.nibbinCard}>
                   <div className={dash.nibbinHead}>
+                    <span
+                      className={dash.nibbinSprite}
+                      aria-hidden="true"
+                      dangerouslySetInnerHTML={{ __html: creatureFor(nibbin, 40) }}
+                    />
                     <span className={dash.nibbinName}>{nibbin.name}</span>
                     <Badge tone={STAGE_TONE[nibbin.stage] ?? 'neutral'}>
                       {STAGE_LABEL[nibbin.stage] ?? nibbin.stage}
