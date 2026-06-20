@@ -88,10 +88,11 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
           connection.accountId,
           connection.webhookState,
           {
-            listSync: (syncToken) =>
-              client.listEventsSync('primary', syncToken).then((r) => ({
+            listSync: (syncToken, pageToken) =>
+              client.listEventsSync('primary', syncToken, pageToken).then((r) => ({
                 items: r.items,
                 nextSyncToken: r.nextSyncToken,
+                nextPageToken: r.nextPageToken,
               })),
           },
         );

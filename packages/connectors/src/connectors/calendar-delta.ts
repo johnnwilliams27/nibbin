@@ -19,12 +19,15 @@ export interface CalendarSyncItem {
 export interface CalendarDeltaDeps {
   /**
    * Wraps GoogleCalendarClient.listEventsSync for the 'primary' calendar.
-   * Accepts an optional syncToken (absent on first run) and returns the
-   * items array and the new nextSyncToken.
+   * Accepts an optional syncToken (absent on first run) and an optional
+   * pageToken for multi-page responses; returns the items array, the new
+   * nextSyncToken (only on the last page), and a nextPageToken when more
+   * pages follow.
    */
-  listSync: (syncToken?: string) => Promise<{
+  listSync: (syncToken?: string, pageToken?: string) => Promise<{
     items?: CalendarSyncItem[];
     nextSyncToken?: string;
+    nextPageToken?: string;
   }>;
 }
 
@@ -40,6 +43,37 @@ export interface CalendarConnectorEvent {
   dedupeKey: string;
 }
 
+/** True when an error signals an expired sync token (HTTP 410 Gone). */
+function isSyncTokenExpired(err: unknown): boolean {
+  if (typeof err !== 'object' || err === null) return false;
+  const e = err as { status?: unknown; code?: unknown; response?: { status?: unknown } };
+  return e.status === 410 || e.code === 410 || e.response?.status === 410;
+}
+
+/**
+ * Accumulate all pages from listSync starting at `syncToken` (undefined for
+ * baseline).  Returns all items across pages and the final nextSyncToken.
+ * If the server returns an empty token on the last page, the caller's
+ * fallback logic handles it.
+ */
+async function accumulatePages(
+  listSync: CalendarDeltaDeps['listSync'],
+  syncToken: string | undefined,
+): Promise<{ allItems: CalendarSyncItem[]; newSyncToken: string }> {
+  const allItems: CalendarSyncItem[] = [];
+  let pageToken: string | undefined;
+  let newSyncToken = syncToken ?? '';
+
+  do {
+    const res = await listSync(syncToken, pageToken);
+    allItems.push(...(res.items ?? []));
+    if (res.nextSyncToken) newSyncToken = res.nextSyncToken;
+    pageToken = res.nextPageToken;
+  } while (pageToken);
+
+  return { allItems, newSyncToken };
+}
+
 /**
  * Fetch the incremental calendar delta for one connection.
  *
@@ -48,9 +82,14 @@ export interface CalendarConnectorEvent {
  * initial poll doesn't flood Nibbins with historical events.
  *
  * Subsequent runs: emits one CalendarConnectorEvent per changed event id.
- * Deduplication within a single page is applied (a repeated id produces one
+ * Deduplication within a single batch is applied (a repeated id produces one
  * event).  The caller (poll route) applies cross-cycle dedup via the event
  * store keyed 'google-calendar'.
+ *
+ * 410 recovery: an expired sync token causes Google to return 410 Gone.
+ * Rather than stalling forever, we drop the expired token, perform a fresh
+ * baseline accumulation, emit NO events, and return the new token — matching
+ * Gmail's historyId recovery behaviour.
  */
 export async function fetchCalendarDelta(
   connectionId: string,
@@ -63,8 +102,25 @@ export async function fetchCalendarDelta(
       ? webhookState.calendarSyncToken
       : undefined;
 
-  const res = await deps.listSync(prior);
-  const newSyncToken = res.nextSyncToken ?? prior ?? '';
+  let allItems: CalendarSyncItem[];
+  let newSyncToken: string;
+
+  try {
+    ({ allItems, newSyncToken } = await accumulatePages(deps.listSync, prior));
+  } catch (err) {
+    // 410 Gone: sync token has expired; the gap is unrecoverable.
+    // Re-anchor to the current baseline and resume from now, emitting no events.
+    if (!isSyncTokenExpired(err)) throw err;
+    ({ allItems, newSyncToken } = await accumulatePages(deps.listSync, undefined));
+    // Guard: never persist an empty token after recovery.
+    if (!newSyncToken) return { events: [], newSyncToken: prior ?? '' };
+    return { events: [], newSyncToken };
+  }
+
+  // Guard: never persist an empty sync token.
+  if (!newSyncToken) {
+    return { events: [], newSyncToken: prior ?? '' };
+  }
 
   // First run: baseline only — emit nothing so historical events are not
   // replayed as "new" changes the first time a calendar connection is polled.
@@ -74,7 +130,7 @@ export async function fetchCalendarDelta(
 
   const seen = new Set<string>();
   const events: CalendarConnectorEvent[] = [];
-  for (const item of res.items ?? []) {
+  for (const item of allItems) {
     if (!item.id) continue;
     if (seen.has(item.id)) continue;
     seen.add(item.id);
