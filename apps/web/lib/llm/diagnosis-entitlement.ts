@@ -21,7 +21,7 @@ import 'server-only';
  * as "not free" and routed through the credit gate. A flag-read failure must
  * NEVER silently grant infinite free runs.
  */
-import { balance, canRun, chargeForRun, type LedgerEntry, WEIGHTS } from '@nibbin/shared';
+import { canRun, chargeForRun, WEIGHTS } from '@nibbin/shared';
 import { serviceClient } from '../supabase/service';
 
 /** Diagnosis rides the frontier weight (Opus T2 splurge). */
@@ -84,11 +84,10 @@ async function creditGate(accountId: string): Promise<DiagnosisEntitlement> {
       .select('delta')
       .eq('account_id', accountId);
     if (error) throw new Error(error.message);
-    const entries: LedgerEntry[] = (data ?? []).map((r) => ({
-      delta: (r as { delta: number }).delta,
-      reason: 'run',
-    }));
-    bal = balance(entries);
+    // Sum deltas directly. (Previously this built LedgerEntry rows with a
+    // hardcoded reason:'run' for every grant/topup/refund — harmless since the
+    // balance is just a sum, but a misleading label. Same number, honest data.)
+    bal = (data ?? []).reduce((sum, r) => sum + (r as { delta: number }).delta, 0);
   } catch (err) {
     // Fail-closed: if we cannot prove a sufficient balance, refuse. Never spend
     // on an unreadable ledger.

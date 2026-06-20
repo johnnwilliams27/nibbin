@@ -111,26 +111,37 @@ export const DIAGNOSIS_MAX_TOKENS = 2500;
 
 /**
  * Build the packet body, TRUNCATED to the input-token budget. Sections are added
- * in order until the next one would exceed DIAGNOSIS_MAX_INPUT_TOKENS; the rest
- * are dropped. A huge study still gets a diagnosis (on what fits) — we never fail
- * a study for being too big. Returns the body + how many sections were dropped.
+ * in order until the next would exceed DIAGNOSIS_MAX_INPUT_TOKENS; the rest are
+ * dropped. A huge study still gets a diagnosis (on what fits) — we never fail a
+ * study for being too big. Critically, if even the FIRST section alone exceeds
+ * the budget, its content is CLIPPED to fit (not sent whole) — so the input that
+ * reaches the model is a HARD bound, never an uncapped payload. Returns the body
+ * + how many sections were dropped (a clipped-but-kept first section is not a drop).
  */
 function buildTruncatedBody(
   sections: DiagnosisPacket['sections'],
 ): { body: string; dropped: number } {
   const kept: string[] = [];
-  let used = estimateTokens(DIAGNOSIS_SYSTEM_PROMPT) + estimateTokens('The synthesis packet:\n\n');
-  let dropped = 0;
+  const overhead =
+    estimateTokens(DIAGNOSIS_SYSTEM_PROMPT) + estimateTokens('The synthesis packet:\n\n');
+  let used = overhead;
   for (const s of sections) {
     const chunk = `## ${s.title}\n${s.content}`;
     const cost = estimateTokens(chunk) + 2; // +2 for the "\n\n" join
-    if (used + cost > DIAGNOSIS_MAX_INPUT_TOKENS && kept.length > 0) {
-      dropped = sections.length - kept.length;
-      break;
+    if (used + cost > DIAGNOSIS_MAX_INPUT_TOKENS) {
+      if (kept.length === 0) {
+        // First section alone exceeds the budget. Clip its content to what fits
+        // so the model never receives an uncapped payload AND the diagnosis is
+        // never empty. ~4 chars/token; leave a little headroom.
+        const remainingChars = Math.max(0, (DIAGNOSIS_MAX_INPUT_TOKENS - used) * 4);
+        kept.push(chunk.slice(0, remainingChars));
+      }
+      break; // stop adding; remaining sections (if any) are dropped
     }
     kept.push(chunk);
     used += cost;
   }
+  const dropped = sections.length - kept.length;
   return { body: kept.join('\n\n'), dropped };
 }
 

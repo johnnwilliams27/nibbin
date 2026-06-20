@@ -157,6 +157,23 @@ describe('diagnosisSynthesis', () => {
     warnSpy.mockRestore();
   });
 
+  it('CLIPS a single oversized first section — body sent to the model is hard-bounded, never uncapped', async () => {
+    resolveDiagnosisEntitlement.mockResolvedValue({ kind: 'charge' });
+    // One pathological 8M-char section — alone it dwarfs the 100k-token budget.
+    const giant = { sections: [{ title: 'Everything', content: 'x'.repeat(8_000_000) }] };
+    let receivedBody = '';
+    const generate: Generate = vi.fn(async (req: { messages: { content: string }[] }) => {
+      receivedBody = req.messages[0].content;
+      return fakeResult('A diagnosis on the part that fit.', 'claude-opus-4-8');
+    });
+    const out = await diagnosisSynthesis('acct-1', 'user-1', giant, generate);
+    expect(out).toMatchObject({ kind: 'ok' }); // ran, never refused
+    expect(generate).toHaveBeenCalledTimes(1);
+    // The body the model received is clipped to ~the input budget (~100k tokens
+    // ≈ 400k chars), not the raw 8M chars — the cap is a HARD bound.
+    expect(receivedBody.length).toBeLessThan(500_000);
+  });
+
   it('an empty packet or empty completion yields unavailable, never a hollow diagnosis', async () => {
     expect(await diagnosisSynthesis('a', 'u', { sections: [] }, vi.fn() as unknown as Generate)).toEqual({
       kind: 'unavailable',
