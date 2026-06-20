@@ -166,9 +166,11 @@ export function DiagnosisReveal({
               <div className={styles.wfMeta}>
                 <Badge tone={FREQ_TONE[w.frequency]}>{FREQ_LABEL[w.frequency]}</Badge>
                 <Badge tone="neutral">{w.category}</Badge>
-                {(w.automatable ?? 0) > 0 && <Badge tone="sky">~{w.automatable}% automatable</Badge>}
+                {(w.automatable ?? 0) > 0 && (
+                  <span className={styles.muted}>~{w.automatable}% automatable</span>
+                )}
                 {w.recommendedNibbin && (
-                  <Badge tone="moss">{NIBBIN_NAME[w.recommendedNibbin] ?? w.recommendedNibbin} can help</Badge>
+                  <span className={styles.muted}>{NIBBIN_NAME[w.recommendedNibbin] ?? w.recommendedNibbin} can help</span>
                 )}
               </div>
               {w.description && <p className={styles.wfDesc}>{w.description}</p>}
