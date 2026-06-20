@@ -121,7 +121,7 @@ describe('diagnosisSynthesis', () => {
   it('logs a LOUD cost-cap breach when a recorded call exceeds the hard cap', async () => {
     resolveDiagnosisEntitlement.mockResolvedValue({ kind: 'charge' });
     const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    // A wildly over-cap Opus usage: ~$1+ at $25/MTok output, far over $0.30.
+    // A wildly over-cap Opus usage (~$30 at $5/$25 per MTok), far over the $1 cap.
     const runaway: Generate = vi.fn(async () => ({
       text: 'a runaway completion',
       model: 'claude-opus-4-8',
@@ -131,6 +131,30 @@ describe('diagnosisSynthesis', () => {
     await diagnosisSynthesis('acct-1', 'user-1', PACKET, runaway);
     expect(errSpy).toHaveBeenCalledWith(expect.stringContaining('cost cap BREACHED'));
     errSpy.mockRestore();
+  });
+
+  it('TRUNCATES an oversized packet to fit — runs the diagnosis, never fails the study', async () => {
+    resolveDiagnosisEntitlement.mockResolvedValue({ kind: 'charge' });
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    // ~40 sections × ~20k chars ≈ 800k chars ≈ 200k tokens — over the 100k cap.
+    const huge = {
+      sections: Array.from({ length: 40 }, (_, i) => ({
+        title: `Section ${i}`,
+        content: 'x'.repeat(20_000),
+      })),
+    };
+    let receivedBody = '';
+    const generate: Generate = vi.fn(async (req: { messages: { content: string }[] }) => {
+      receivedBody = req.messages[0].content;
+      return fakeResult('A diagnosis on the part that fit.', 'claude-opus-4-8');
+    });
+    const out = await diagnosisSynthesis('acct-1', 'user-1', huge, generate);
+    expect(out).toMatchObject({ kind: 'ok' }); // ran, not refused
+    expect(generate).toHaveBeenCalledTimes(1);
+    // Body was trimmed: not all 40 sections made it in (~100k-token budget).
+    expect(receivedBody).not.toContain('Section 39');
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('truncated'));
+    warnSpy.mockRestore();
   });
 
   it('an empty packet or empty completion yields unavailable, never a hollow diagnosis', async () => {

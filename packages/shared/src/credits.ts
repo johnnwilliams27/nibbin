@@ -51,18 +51,29 @@ export type Tier = keyof typeof TIERS;
 export const TOP_UP = { priceUsdCents: 1000, credits: 1000 } as const;
 
 /**
- * Anti-runaway hard ceiling for a SINGLE diagnosis-synthesis call, in
- * micro-USD (1_000_000 = $1.00). The diagnosis pipeline is the deliberate T2
- * Opus splurge that the router never degrades, so the caller-side controls ARE
- * the budget: one call per packet, DIAGNOSIS_MAX_TOKENS output ceiling, and
- * this cost cap. 300_000 µUSD = $0.30 — comfortably above a real worst-case
- * Opus diagnosis (a 2,500-output-token completion at $25/MTok output plus a
- * full packet of cached input lands well under ~$0.15 at current rates), so it
- * never trips a normal call; it only fires if pricing/usage drifts ~2x+ out of
- * band (a runaway). The FREE path REFUSES rather than spend past it; every path
- * logs a recorded-cost breach loudly.
+ * Anti-runaway DOLLAR backstop for a SINGLE diagnosis-synthesis call, in
+ * micro-USD: 1_000_000 = $1.00. The diagnosis pipeline is the deliberate T2
+ * Opus splurge the router never degrades, so the caller-side controls ARE the
+ * budget. The PRIMARY bound is the input cap below (we truncate the packet so
+ * the call can never get expensive); this dollar figure is a log-only tripwire
+ * for pricing/usage drift — it does NOT fail a study (a real diagnosis is
+ * ~$0.06 output + capped input, so it should never fire).
  */
-export const DIAGNOSIS_MAX_MICRO_USD = 300_000 as const;
+export const DIAGNOSIS_MAX_MICRO_USD = 1_000_000 as const;
+
+/**
+ * PRIMARY cost bound: cap the diagnosis packet at this many INPUT tokens. When a
+ * rich study would exceed it we TRUNCATE the packet (drop the overflow sections)
+ * rather than fail the study — the user still gets a diagnosis on what fits, and
+ * cost is deterministically bounded (input ≤ 100k → ~$0.50 at $5/MTok, plus the
+ * fixed 2,500-token output). Never reject a study for being too big.
+ */
+export const DIAGNOSIS_MAX_INPUT_TOKENS = 100_000 as const;
+
+/** Rough token estimate for budgeting (≈4 chars/token). Deliberately simple. */
+export function estimateTokens(text: string): number {
+  return Math.ceil(text.length / 4);
+}
 
 /**
  * True when a recorded/projected per-diagnosis cost is within the hard cap.
