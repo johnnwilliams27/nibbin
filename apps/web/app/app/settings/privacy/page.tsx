@@ -133,8 +133,8 @@ export default async function PrivacySettingsPage({
           <h2 className={styles.sectionTitle}>Connections</h2>
           <p className={styles.sectionHint}>
             {summary.total === 0
-              ? 'No tools are connected yet. Connections start read-only — a Nibbin asks for write access separately, in plain words.'
-              : `You have ${summary.total} connected ${summary.total === 1 ? 'tool' : 'tools'}. Connections start read-only; write access is granted per Nibbin, by you.`}
+              ? 'No tools are connected yet. A connection may hold the keys to act, but nothing sends or changes until you approve that specific action — in plain words.'
+              : `You have ${summary.total} connected ${summary.total === 1 ? 'tool' : 'tools'}. A connection can hold the keys to act, but no Nibbin sends or changes anything until you approve it.`}
           </p>
           {summary.total > 0 && (
             <ul className={styles.connList}>

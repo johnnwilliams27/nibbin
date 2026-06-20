@@ -68,6 +68,25 @@ it('throws when user is not on tester allowlist', async () => {
   )).rejects.toThrow();
 });
 
+it('provider-generic: derives calendar write scopes from the registry (no Gmail hardcode)', async () => {
+  const saved: StorePendingInput[] = [];
+  const res = await beginWriteConnect(
+    { nibbinId: 'nib-cal', provider: 'google-calendar', accountId: 'a', userId: 'u', userEmail: 'john@gmail.com' },
+    {
+      config,
+      allowlistFor: async () => makeTesterAllowlist(['john@gmail.com']),
+      save: async (i) => { saved.push(i); },
+      nowMs: 1000,
+    },
+  );
+  const scope = new URL(res.url).searchParams.get('scope') ?? '';
+  expect(scope).toContain('https://www.googleapis.com/auth/calendar.readonly');
+  expect(scope).toContain('https://www.googleapis.com/auth/calendar.events');
+  // No Gmail scopes leak into a calendar write upgrade.
+  expect(scope).not.toContain('gmail');
+  expect(saved[0].scopes).toContain('https://www.googleapis.com/auth/calendar.events');
+});
+
 it('uses supplied plainLanguageReason when provided', async () => {
   const saved: StorePendingInput[] = [];
   await beginWriteConnect(

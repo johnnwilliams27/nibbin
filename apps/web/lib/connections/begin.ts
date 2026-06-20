@@ -1,5 +1,5 @@
 import 'server-only';
-import { beginAuthorization, getConnector, type TesterAllowlist } from '@nibbin/connectors';
+import { beginConnectAuthorization, getConnector, type TesterAllowlist } from '@nibbin/connectors';
 import type { GoogleOAuthConfig } from './google-oauth-env';
 import type { StorePendingInput } from './pending';
 
@@ -39,7 +39,10 @@ export async function beginConnect(args: BeginConnectArgs, deps: BeginConnectDep
       ? { email: args.userEmail ?? '', allowlist: await deps.allowlistFor(args.provider) }
       : undefined;
 
-  const pending = beginAuthorization({
+  // Connector Lever 1: connect requests read + declared write scopes in one
+  // consent. Execution of side effects stays gated by Agent School + approval
+  // + velocity at the runtime layer (C8 now an execution invariant).
+  const pending = beginConnectAuthorization({
     provider: args.provider,
     clientId: deps.config.clientId,
     redirectUri: deps.config.redirectUri,

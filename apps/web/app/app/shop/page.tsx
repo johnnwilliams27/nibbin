@@ -100,8 +100,8 @@ export default async function ShopPage({
         </header>
         <p className={styles.lede}>
           Every Nibbin starts in Agent School: it drafts everything, you approve, and trust is
-          earned through verified accuracy — never time served. Adopting asks only for read access;
-          anything more comes later, per Nibbin, explained plainly.
+          earned through verified accuracy — never time served. A Nibbin can never send or change
+          anything until you approve that specific action, explained plainly.
         </p>
 
         {params.limit === '1' && (

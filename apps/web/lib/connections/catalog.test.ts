@@ -13,8 +13,10 @@ describe('connector catalog', () => {
     const set = new Set(CONNECTOR_CATEGORIES);
     for (const c of CONNECTORS) expect(set.has(c.category)).toBe(true);
   });
-  it('marks exactly Gmail as live', () => {
-    expect(CONNECTORS.filter((c) => c.status === 'live').map((c) => c.id)).toEqual(['gmail']);
+  it('marks Gmail and Google Calendar as live (Connector Lever 1)', () => {
+    expect(CONNECTORS.filter((c) => c.status === 'live').map((c) => c.id).sort()).toEqual(
+      ['gmail', 'google-calendar'],
+    );
   });
   it('gives every non-rail a domain for logos', () => {
     const rails = new Set(['imap-smtp', 'caldav', 'generic-mcp', 'webhook-rail', 'csv-import']);

@@ -7,7 +7,7 @@ import { getOAuthConfigFor } from './oauth-config';
 import { consumePending, type PendingAuth } from './pending';
 import { completeConnection } from './complete';
 import { adoptTemplate } from '../runtime/adopt';
-import { createWriteGrant } from './grants';
+import { createWriteGrant, type WriteCapability } from './grants';
 import { CONNECTABLE_PROVIDERS } from './providers';
 
 /** True when `provider` is in the wired-connector allowlist. */
@@ -21,10 +21,15 @@ export function isWiredProvider(provider: string): boolean {
  */
 export function writeGrantSpecFor(
   provider: string,
-): { capability: 'email.draft' | 'email.send'; reason: string } | null {
+): { capability: WriteCapability; reason: string } | null {
   switch (provider) {
     case 'gmail':
       return { capability: 'email.draft', reason: 'Maya will create a Gmail draft for your review.' };
+    case 'google-calendar':
+      return {
+        capability: 'calendar.event-create',
+        reason: 'This Nibbin will create or update calendar events for your approval before anything is saved.',
+      };
     default:
       return null;
   }

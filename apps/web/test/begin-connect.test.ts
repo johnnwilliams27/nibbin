@@ -23,7 +23,8 @@ describe('beginConnect per-provider redirect', () => {
     );
     expect(url).toContain(encodeURIComponent('https://nibbin.com/api/connect/google-calendar/callback'));
     expect((saved[0] as { provider: string }).provider).toBe('google-calendar');
-    // read-only scope at connect (C8)
+    // Connector Lever 1: connect requests read + write scopes in one consent.
     expect(url).toContain(encodeURIComponent('calendar.readonly'));
+    expect(url).toContain(encodeURIComponent('calendar.events'));
   });
 });

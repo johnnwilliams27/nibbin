@@ -109,6 +109,13 @@ export const CAPABILITY_REGISTRY: Record<string, CapabilityDescriptor> = {
   'email.draft':   { id: 'email.draft',   resource: 'email',    verb: 'draft', sideEffect: 'draft', requiredConnector: 'gmail', patternKeyPrefix: 'email.draft' },
   'email.send':    { id: 'email.send',    resource: 'email',    verb: 'send',  sideEffect: 'write', requiredConnector: 'gmail', patternKeyPrefix: 'email.send' },
   'calendar.read': { id: 'calendar.read', resource: 'calendar', verb: 'get',   sideEffect: 'read',  requiredConnector: 'google-calendar' },
+  // Calendar write (Connector Lever 1). A 'write' side effect: the interpreter
+  // yields it as a gated DraftStep, the runner gates it through gateSideEffect
+  // (draft below Graduate / unproven routine) + a calendar.event-create write
+  // grant + idempotency before the effects executor ever calls createEvent.
+  // Same wall as email.send — event creation never auto-fires without a human
+  // yes until the Nibbin has earned it. No velocity caps (not a bulk-send rail).
+  'calendar.event-create': { id: 'calendar.event-create', resource: 'calendar', verb: 'create', sideEffect: 'write', requiredConnector: 'google-calendar', patternKeyPrefix: 'calendar.event-create' },
   'payments.read': { id: 'payments.read', resource: 'payments', verb: 'get',   sideEffect: 'read',  requiredConnector: 'stripe' },
   'invoice.nudge': { id: 'invoice.nudge', resource: 'invoice',  verb: 'nudge', sideEffect: 'draft', requiredConnector: 'stripe', patternKeyPrefix: 'invoice.nudge' },
 
