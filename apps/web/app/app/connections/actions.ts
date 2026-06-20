@@ -99,7 +99,7 @@ export async function beginWriteConnectAction(formData: FormData): Promise<void>
   const { url } = await beginWriteConnect(
     { nibbinId, provider, accountId, userId: user.id, userEmail: user.email ?? null },
     {
-      config: getGoogleOAuthConfig(),
+      config: getOAuthConfigFor(provider),
       allowlistFor: (p) => loadTesterAllowlist(p, svc),
       save: (input) => storePending(input, svc),
       nowMs: Date.now(),

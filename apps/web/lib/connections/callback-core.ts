@@ -234,7 +234,8 @@ export async function handleConnectionCallback(
   // redirects are unaffected. Resolved from the route hint (opts.provider) or,
   // as a fallback, the consumed pending row's provider (only if known).
   if (redirectTo.includes('?error=') || redirectTo.includes('&error=')) {
-    const providerHint = opts.provider ?? createdPending?.provider;
+    // cast: TS narrows the closure-assigned `createdPending` to `never` here.
+    const providerHint = opts.provider ?? (createdPending as PendingAuth | null)?.provider;
     if (providerHint) {
       redirectTo = redirectTo.includes('?')
         ? `${redirectTo}&provider=${encodeURIComponent(providerHint)}`
