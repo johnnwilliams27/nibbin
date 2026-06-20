@@ -29,6 +29,13 @@ describe('§6.12 product event taxonomy', () => {
     expect(isProductEventName('made_up_event')).toBe(false);
   });
 
+  it('includes fleet-learning events: capability_unfulfilled and connector_blocked', () => {
+    expect(PRODUCT_EVENT_NAMES).toContain('capability_unfulfilled');
+    expect(PRODUCT_EVENT_NAMES).toContain('connector_blocked');
+    expect(isProductEventName('capability_unfulfilled')).toBe(true);
+    expect(isProductEventName('connector_blocked')).toBe(true);
+  });
+
   it('the memory sink refuses unknown names (catches taxonomy drift in tests)', async () => {
     const sink = new MemoryEventSink();
     await expect(sink.emit({ name: 'nope' as never })).rejects.toThrow(/unknown product event/);

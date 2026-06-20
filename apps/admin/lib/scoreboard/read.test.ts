@@ -17,9 +17,15 @@ import {
   deriveShopTemplateRates,
   loadShopScoreboard,
   isShopTemplateRow,
+  loadDemandGaps,
+  isDemandGapRow,
+  loadConnectorBlockers,
+  isConnectorBlockerRow,
   type PerformanceRow,
   type CapabilityRow,
   type ShopTemplateRow,
+  type DemandGapRow,
+  type ConnectorBlockerRow,
 } from './read';
 
 const FULL_ROW: PerformanceRow = {
@@ -426,5 +432,191 @@ describe('loadShopScoreboard — staff-gated RPC read', () => {
       rpc: async () => ({ data: [drifted], error: null }),
     } as unknown as SupabaseClient;
     await expect(loadShopScoreboard(admin)).rejects.toThrow(/unexpected row shape/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Demand gap signals (fleet) — tests
+// ---------------------------------------------------------------------------
+
+const FULL_DEMAND_GAP_ROW: DemandGapRow = {
+  capability: 'x.popular',
+  reason: 'no_capability',
+  occurrences: 5,
+  contributing_accounts: 5,
+  last_seen: '2026-06-20T00:00:00Z',
+};
+
+describe('isDemandGapRow — shape guard', () => {
+  it('accepts a valid demand-gap row', () => {
+    expect(isDemandGapRow(FULL_DEMAND_GAP_ROW)).toBe(true);
+  });
+
+  it('accepts a row where last_seen is null', () => {
+    expect(isDemandGapRow({ ...FULL_DEMAND_GAP_ROW, last_seen: null })).toBe(true);
+  });
+
+  it('rejects a row missing the capability string', () => {
+    const drifted = { ...FULL_DEMAND_GAP_ROW } as Record<string, unknown>;
+    delete drifted.capability;
+    expect(isDemandGapRow(drifted)).toBe(false);
+  });
+
+  it('rejects a row missing the reason string', () => {
+    const drifted = { ...FULL_DEMAND_GAP_ROW } as Record<string, unknown>;
+    delete drifted.reason;
+    expect(isDemandGapRow(drifted)).toBe(false);
+  });
+
+  it('rejects a row where a required count column is missing', () => {
+    const drifted = { ...FULL_DEMAND_GAP_ROW } as Record<string, unknown>;
+    delete drifted.occurrences;
+    expect(isDemandGapRow(drifted)).toBe(false);
+  });
+
+  it('rejects a row where a count column is a non-finite number (NaN)', () => {
+    const drifted = { ...FULL_DEMAND_GAP_ROW, contributing_accounts: NaN };
+    expect(isDemandGapRow(drifted)).toBe(false);
+  });
+
+  it('rejects null and non-objects', () => {
+    expect(isDemandGapRow(null)).toBe(false);
+    expect(isDemandGapRow('string')).toBe(false);
+    expect(isDemandGapRow(42)).toBe(false);
+  });
+});
+
+describe('loadDemandGaps — staff-gated RPC read', () => {
+  it('maps the RPC rows and returns them (no derived rates needed)', async () => {
+    const admin = {
+      rpc: async () => ({ data: [FULL_DEMAND_GAP_ROW], error: null }),
+    } as unknown as SupabaseClient;
+    const rows = await loadDemandGaps(admin);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].capability).toBe('x.popular');
+    expect(rows[0].reason).toBe('no_capability');
+    expect(rows[0].occurrences).toBe(5);
+    expect(rows[0].contributing_accounts).toBe(5);
+    expect(rows[0].last_seen).toBe('2026-06-20T00:00:00Z');
+  });
+
+  it('throws when the RPC rejects the caller (non-staff / insufficient_privilege)', async () => {
+    const admin = {
+      rpc: async () => ({
+        data: null,
+        error: { message: 'permission denied for function demand_gap_signals_read' },
+      }),
+    } as unknown as SupabaseClient;
+    await expect(loadDemandGaps(admin)).rejects.toThrow(/demand_gap_signals_read failed/);
+  });
+
+  it('returns an empty array when the RPC returns no rows', async () => {
+    const admin = {
+      rpc: async () => ({ data: [], error: null }),
+    } as unknown as SupabaseClient;
+    await expect(loadDemandGaps(admin)).resolves.toEqual([]);
+  });
+
+  it('throws on a drifted RPC row shape', async () => {
+    const drifted = { ...FULL_DEMAND_GAP_ROW } as Record<string, unknown>;
+    delete drifted.occurrences;
+    const admin = {
+      rpc: async () => ({ data: [drifted], error: null }),
+    } as unknown as SupabaseClient;
+    await expect(loadDemandGaps(admin)).rejects.toThrow(/unexpected row shape/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Connector blocker signals (fleet) — tests
+// ---------------------------------------------------------------------------
+
+const FULL_CONNECTOR_BLOCKER_ROW: ConnectorBlockerRow = {
+  connector: 'gmail',
+  reason: 'auth_failed',
+  occurrences: 7,
+  contributing_accounts: 5,
+  last_seen: '2026-06-20T00:00:00Z',
+};
+
+describe('isConnectorBlockerRow — shape guard', () => {
+  it('accepts a valid connector-blocker row', () => {
+    expect(isConnectorBlockerRow(FULL_CONNECTOR_BLOCKER_ROW)).toBe(true);
+  });
+
+  it('accepts a row where last_seen is null', () => {
+    expect(isConnectorBlockerRow({ ...FULL_CONNECTOR_BLOCKER_ROW, last_seen: null })).toBe(true);
+  });
+
+  it('rejects a row missing the connector string', () => {
+    const drifted = { ...FULL_CONNECTOR_BLOCKER_ROW } as Record<string, unknown>;
+    delete drifted.connector;
+    expect(isConnectorBlockerRow(drifted)).toBe(false);
+  });
+
+  it('rejects a row missing the reason string', () => {
+    const drifted = { ...FULL_CONNECTOR_BLOCKER_ROW } as Record<string, unknown>;
+    delete drifted.reason;
+    expect(isConnectorBlockerRow(drifted)).toBe(false);
+  });
+
+  it('rejects a row where a required count column is missing', () => {
+    const drifted = { ...FULL_CONNECTOR_BLOCKER_ROW } as Record<string, unknown>;
+    delete drifted.contributing_accounts;
+    expect(isConnectorBlockerRow(drifted)).toBe(false);
+  });
+
+  it('rejects a row where a count column is a non-finite number (NaN)', () => {
+    const drifted = { ...FULL_CONNECTOR_BLOCKER_ROW, occurrences: NaN };
+    expect(isConnectorBlockerRow(drifted)).toBe(false);
+  });
+
+  it('rejects null and non-objects', () => {
+    expect(isConnectorBlockerRow(null)).toBe(false);
+    expect(isConnectorBlockerRow('string')).toBe(false);
+    expect(isConnectorBlockerRow(42)).toBe(false);
+  });
+});
+
+describe('loadConnectorBlockers — staff-gated RPC read', () => {
+  it('maps the RPC rows and returns them (no derived rates needed)', async () => {
+    const admin = {
+      rpc: async () => ({ data: [FULL_CONNECTOR_BLOCKER_ROW], error: null }),
+    } as unknown as SupabaseClient;
+    const rows = await loadConnectorBlockers(admin);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].connector).toBe('gmail');
+    expect(rows[0].reason).toBe('auth_failed');
+    expect(rows[0].occurrences).toBe(7);
+    expect(rows[0].contributing_accounts).toBe(5);
+    expect(rows[0].last_seen).toBe('2026-06-20T00:00:00Z');
+  });
+
+  it('throws when the RPC rejects the caller (non-staff / insufficient_privilege)', async () => {
+    const admin = {
+      rpc: async () => ({
+        data: null,
+        error: { message: 'permission denied for function connector_blocker_signals_read' },
+      }),
+    } as unknown as SupabaseClient;
+    await expect(loadConnectorBlockers(admin)).rejects.toThrow(
+      /connector_blocker_signals_read failed/,
+    );
+  });
+
+  it('returns an empty array when the RPC returns no rows', async () => {
+    const admin = {
+      rpc: async () => ({ data: [], error: null }),
+    } as unknown as SupabaseClient;
+    await expect(loadConnectorBlockers(admin)).resolves.toEqual([]);
+  });
+
+  it('throws on a drifted RPC row shape', async () => {
+    const drifted = { ...FULL_CONNECTOR_BLOCKER_ROW } as Record<string, unknown>;
+    delete drifted.connector;
+    const admin = {
+      rpc: async () => ({ data: [drifted], error: null }),
+    } as unknown as SupabaseClient;
+    await expect(loadConnectorBlockers(admin)).rejects.toThrow(/unexpected row shape/);
   });
 });

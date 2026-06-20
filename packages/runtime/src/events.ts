@@ -27,6 +27,10 @@ export const PRODUCT_EVENT_NAMES = [
   'diagnosis_viewed',
   'plan_upgraded',
   'topup_purchased',
+  /** Fleet-learning: the Composer wanted a capability it can't provide. */
+  'capability_unfulfilled',
+  /** Fleet-learning: a run couldn't proceed due to a connector blocker. */
+  'connector_blocked',
 ] as const;
 
 export type StaticProductEventName = (typeof PRODUCT_EVENT_NAMES)[number];
