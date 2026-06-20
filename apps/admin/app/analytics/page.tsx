@@ -225,13 +225,16 @@ export default async function AnalyticsPage() {
         <p className={styles.muted}>GitHub release stats unavailable.</p>
       ) : (
         <>
+          <p className={styles.muted}>
+            Cumulative installer download counts from GitHub releases (Windows = .msi + .exe combined).
+          </p>
           <div className={styles.statsRow}>
             <div className={styles.stat}>
-              <span className={styles.statLabel}>macOS</span>
+              <span className={styles.statLabel}>macOS (.dmg)</span>
               <span className={styles.statValue}>{n(desktop.byPlatform.macos)}</span>
             </div>
             <div className={styles.stat}>
-              <span className={styles.statLabel}>Windows</span>
+              <span className={styles.statLabel}>Windows (.msi + .exe)</span>
               <span className={styles.statValue}>{n(desktop.byPlatform.windows)}</span>
             </div>
           </div>

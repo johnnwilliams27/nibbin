@@ -246,12 +246,15 @@ export async function loadDesktopDownloads(): Promise<DesktopDownloads> {
       for (const asset of entry.assets) {
         const name = asset.name.toLowerCase();
         const count = asset.download_count;
+        // Count INSTALLER assets only — exclude Tauri sidecars (.sig, latest.json)
+        // so per-release "Downloads" matches the sum of the platform columns.
         if (name.endsWith('.dmg')) {
           byPlatform.macos += count;
+          releaseTotal += count;
         } else if (name.endsWith('.msi') || name.endsWith('.exe')) {
           byPlatform.windows += count;
+          releaseTotal += count;
         }
-        releaseTotal += count;
       }
       releases.push({ tag: entry.tag_name, total: releaseTotal });
     }

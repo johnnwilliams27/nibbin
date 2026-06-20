@@ -285,6 +285,30 @@ describe('loadDesktopDownloads — GitHub API fetch', () => {
     expect(result.releases[1]).toEqual({ tag: 'desktop-v0.1.0', total: 60 });
   });
 
+  it('excludes non-installer sidecars (.sig, latest.json) from platform + release totals', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => [
+          {
+            tag_name: 'desktop-v0.3.0',
+            assets: [
+              { name: 'Nibbin_0.3.0_x64.dmg', download_count: 10 },
+              { name: 'Nibbin_0.3.0_x64.dmg.sig', download_count: 999 },
+              { name: 'latest.json', download_count: 999 },
+            ],
+          },
+        ],
+      }),
+    );
+    const result = await loadDesktopDownloads();
+    expect(result.available).toBe(true);
+    if (!result.available) throw new Error('expected available');
+    expect(result.byPlatform.macos).toBe(10); // sidecars not counted
+    expect(result.releases[0]).toEqual({ tag: 'desktop-v0.3.0', total: 10 }); // not 2008
+  });
+
   it('returns { available: false } when fetch rejects (network error)', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network error')));
     const result = await loadDesktopDownloads();
