@@ -8,6 +8,7 @@ import 'server-only';
  * the SQL RPCs — nothing here can skip a gate.
  */
 import {
+  ConnectorRequestError,
   GmailClient,
   GoogleCalendarClient,
   HoneyBookClient,
@@ -26,6 +27,7 @@ import {
   stakesOf,
   type AgentSpec,
   type Decision,
+  type EventSink,
   type NibbinRef,
   type RunOutcome,
   type RunTrigger,
@@ -183,7 +185,19 @@ export function buildEffectsExecutor(
   accountId: string,
   accountCreatedAtMs: number,
   testDeps?: EffectsExecutorTestDeps,
+  /** Optional event sink for fleet-learning telemetry (best-effort, never changes run behavior). */
+  eventSink?: EventSink,
 ) {
+  /** Emit a connector_blocked event best-effort (structural ids only — no content/PII). */
+  async function emitConnectorBlocked(connector: string, reason: 'not_connected' | 'auth_failed' | 'velocity_cap'): Promise<void> {
+    if (!eventSink) return;
+    try {
+      await eventSink.emit({ name: 'connector_blocked', accountId, props: { connector, reason } });
+    } catch {
+      // best-effort — never change run behavior
+    }
+  }
+
   return async (args: {
     connectionId: string;
     capability: string;
@@ -196,14 +210,24 @@ export function buildEffectsExecutor(
 
     switch (args.capability) {
       case 'email.draft': {
-        if (testDeps) {
-          await testDeps.createDraft(rfc822);
-        } else {
-          const vault = new SupabaseTokenVault({
-            supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
-            serviceKey: process.env.SUPABASE_SECRET_KEY ?? '',
-          });
-          await new GmailClient(connection, vault).createDraft(rfc822);
+        try {
+          if (testDeps) {
+            await testDeps.createDraft(rfc822);
+          } else {
+            const vault = new SupabaseTokenVault({
+              supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
+              serviceKey: process.env.SUPABASE_SECRET_KEY ?? '',
+            });
+            await new GmailClient(connection, vault).createDraft(rfc822);
+          }
+        } catch (err) {
+          // Fleet-learning telemetry: emit connector_blocked on auth/connection-state errors.
+          // Re-throw so the runner's error handling is unchanged.
+          if (err instanceof ConnectorRequestError) {
+            const reason = err.kind === 'auth' ? 'auth_failed' : err.kind === 'connection-state' ? 'not_connected' : null;
+            if (reason) await emitConnectorBlocked(err.provider, reason);
+          }
+          throw err;
         }
         break;
       }
@@ -232,22 +256,33 @@ export function buildEffectsExecutor(
           decision = { allowed: row.allowed, reason: row.reason ?? undefined, retryAfterMs: row.retry_after_ms };
         }
         if (!decision.allowed) {
+          // Fleet-learning telemetry: velocity cap blocked a send. Best-effort.
+          await emitConnectorBlocked(connection.provider, 'velocity_cap');
           throw new Error(
             `send blocked by velocity cap (${decision.reason}); retry in ${decision.retryAfterMs}ms`,
           );
         }
-        if (testDeps) {
-          await testDeps.sendMessage(rfc822);
-        } else {
-          const vault = new SupabaseTokenVault({
-            supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
-            serviceKey: process.env.SUPABASE_SECRET_KEY ?? '',
-          });
-          // Velocity already atomically consumed above via send_velocity_consume RPC
-          // (which INSERTs the send_records row). Use sendMessageDirect so the
-          // in-process limiter does NOT insert a second send_records row — that
-          // double-consume would halve the effective cap (FIX 1, Spec 2 review).
-          await new GmailClient(connection, vault).sendMessageDirect(rfc822);
+        try {
+          if (testDeps) {
+            await testDeps.sendMessage(rfc822);
+          } else {
+            const vault = new SupabaseTokenVault({
+              supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
+              serviceKey: process.env.SUPABASE_SECRET_KEY ?? '',
+            });
+            // Velocity already atomically consumed above via send_velocity_consume RPC
+            // (which INSERTs the send_records row). Use sendMessageDirect so the
+            // in-process limiter does NOT insert a second send_records row — that
+            // double-consume would halve the effective cap (FIX 1, Spec 2 review).
+            await new GmailClient(connection, vault).sendMessageDirect(rfc822);
+          }
+        } catch (err) {
+          // Fleet-learning telemetry: emit connector_blocked on auth/connection-state errors.
+          if (err instanceof ConnectorRequestError) {
+            const reason = err.kind === 'auth' ? 'auth_failed' : err.kind === 'connection-state' ? 'not_connected' : null;
+            if (reason) await emitConnectorBlocked(err.provider, reason);
+          }
+          throw err;
         }
         break;
       }
@@ -386,21 +421,57 @@ export async function triggerNibbinRun(nibbinId: string, trigger: RunTrigger): P
   const { data: accRow } = await svc.from('accounts').select('created_at').eq('id', nibbin.accountId).single();
   const accountCreatedAtMs = accRow ? new Date(accRow.created_at as string).getTime() : 0;
 
+  const eventSink = new SupabaseEventSink(svc);
   return executeRun(nibbin, trigger, program, {
     runs: new SupabaseRunStore(svc),
     routines: new SupabaseRoutineStore(svc),
     grants: new SupabaseGrantStore(svc),
     idempotency: new SupabaseIdempotencyStore(svc),
-    events: new SupabaseEventSink(svc),
+    events: eventSink,
     reader: {
       async read(connectionId, _capability, path) {
         const connection = byId.get(connectionId);
         if (!connection) throw new Error(`connection ${connectionId} is not active on this account`);
-        return readerForConnection(connection, nowMs).read(path);
+        // Fleet-learning telemetry: emit connector_blocked when the connection
+        // is not active (structural id only — no content/PII). Best-effort.
+        if (connection.status !== 'active') {
+          try {
+            await eventSink.emit({
+              name: 'connector_blocked',
+              accountId: nibbin.accountId,
+              props: { connector: connection.provider, reason: 'not_connected' },
+            });
+          } catch {
+            // best-effort — never change run behavior
+          }
+        }
+        try {
+          return await readerForConnection(connection, nowMs).read(path);
+        } catch (err) {
+          // Fleet-learning telemetry: emit connector_blocked on ConnectorRequestError.
+          // Re-throw unconditionally so the runner's error handling is unchanged.
+          if (err instanceof ConnectorRequestError) {
+            const reason =
+              err.kind === 'auth' ? 'auth_failed' :
+              err.kind === 'connection-state' ? 'not_connected' : null;
+            if (reason) {
+              try {
+                await eventSink.emit({
+                  name: 'connector_blocked',
+                  accountId: nibbin.accountId,
+                  props: { connector: err.provider, reason },
+                });
+              } catch {
+                // best-effort
+              }
+            }
+          }
+          throw err;
+        }
       },
     },
     effects: {
-      execute: buildEffectsExecutor(byId, nibbin.accountId, accountCreatedAtMs),
+      execute: buildEffectsExecutor(byId, nibbin.accountId, accountCreatedAtMs, undefined, eventSink),
     },
     // §18.3 conflict detection: claim the resource before an irreversible send so
     // two Nibbins on one account never both act on the same thread/invoice. Skips

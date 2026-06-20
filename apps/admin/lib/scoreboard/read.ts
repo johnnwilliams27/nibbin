@@ -286,3 +286,122 @@ export async function loadShopScoreboard(
   }
   return rows.map(deriveShopTemplateRates);
 }
+
+// ---------------------------------------------------------------------------
+// Demand gap signals (fleet) — §demand_gap_signals_read RPC
+// ---------------------------------------------------------------------------
+
+/**
+ * One row of the demand_gap_signals aggregate view (raw counts; snake_case from
+ * Postgres). No derived rates needed — occurrences and contributing_accounts are
+ * rendered as counts only.
+ */
+export interface DemandGapRow {
+  capability: string;
+  reason: string;
+  occurrences: number;
+  contributing_accounts: number;
+  last_seen: string | null;
+}
+
+/** The count columns required on every demand-gap row. */
+const REQUIRED_DEMAND_GAP_NUMERIC_KEYS = ['occurrences', 'contributing_accounts'] as const;
+
+/**
+ * Shape guard for one demand_gap_signals_read RPC row.
+ * A row is valid iff capability + reason are strings, the two count columns are
+ * finite numbers (Postgres bigint arrives as JS number via the JS client), and
+ * last_seen is either null or a string. A drifted view shape yields a clean
+ * rejection (loadDemandGaps throws), never a silent bad cast.
+ */
+export function isDemandGapRow(row: unknown): row is DemandGapRow {
+  if (!row || typeof row !== 'object') return false;
+  const r = row as Record<string, unknown>;
+  if (typeof r.capability !== 'string' || typeof r.reason !== 'string') return false;
+  if (r.last_seen !== null && typeof r.last_seen !== 'string') return false;
+  return REQUIRED_DEMAND_GAP_NUMERIC_KEYS.every(
+    (k) => typeof r[k] === 'number' && Number.isFinite(r[k]),
+  );
+}
+
+/**
+ * Load the demand-gap-signals rows via the staff-gated RPC. The caller MUST be
+ * a staff service-role client (the RPC is granted to service_role only, matching
+ * shop_template_performance_read). Aggregate-only, anonymized, and k-anonymous
+ * (≥5 contributing accounts) — no per-user content.
+ */
+export async function loadDemandGaps(admin: SupabaseClient): Promise<DemandGapRow[]> {
+  const { data, error } = await admin.rpc('demand_gap_signals_read');
+  if (error) throw new Error(`demand_gap_signals_read failed: ${error.message}`);
+  const raw = Array.isArray(data) ? data : [];
+  const rows: DemandGapRow[] = [];
+  for (const row of raw) {
+    if (!isDemandGapRow(row)) {
+      throw new Error('demand_gap_signals_read returned an unexpected row shape');
+    }
+    rows.push(row);
+  }
+  return rows;
+}
+
+// ---------------------------------------------------------------------------
+// Connector blocker signals (fleet) — §connector_blocker_signals_read RPC
+// ---------------------------------------------------------------------------
+
+/**
+ * One row of the connector_blocker_signals aggregate view (raw counts; snake_case
+ * from Postgres). No derived rates needed — occurrences and contributing_accounts
+ * are rendered as counts only.
+ */
+export interface ConnectorBlockerRow {
+  connector: string;
+  reason: string;
+  occurrences: number;
+  contributing_accounts: number;
+  last_seen: string | null;
+}
+
+/** The count columns required on every connector-blocker row. */
+const REQUIRED_CONNECTOR_BLOCKER_NUMERIC_KEYS = [
+  'occurrences',
+  'contributing_accounts',
+] as const;
+
+/**
+ * Shape guard for one connector_blocker_signals_read RPC row.
+ * A row is valid iff connector + reason are strings, the two count columns are
+ * finite numbers, and last_seen is either null or a string. A drifted view
+ * shape yields a clean rejection (loadConnectorBlockers throws), never a silent
+ * bad cast.
+ */
+export function isConnectorBlockerRow(row: unknown): row is ConnectorBlockerRow {
+  if (!row || typeof row !== 'object') return false;
+  const r = row as Record<string, unknown>;
+  if (typeof r.connector !== 'string' || typeof r.reason !== 'string') return false;
+  if (r.last_seen !== null && typeof r.last_seen !== 'string') return false;
+  return REQUIRED_CONNECTOR_BLOCKER_NUMERIC_KEYS.every(
+    (k) => typeof r[k] === 'number' && Number.isFinite(r[k]),
+  );
+}
+
+/**
+ * Load the connector-blocker-signals rows via the staff-gated RPC. The caller
+ * MUST be a staff service-role client (the RPC is granted to service_role only,
+ * matching demand_gap_signals_read). Aggregate-only, anonymized, and k-anonymous
+ * (≥5 contributing accounts) — no per-user content.
+ */
+export async function loadConnectorBlockers(
+  admin: SupabaseClient,
+): Promise<ConnectorBlockerRow[]> {
+  const { data, error } = await admin.rpc('connector_blocker_signals_read');
+  if (error) throw new Error(`connector_blocker_signals_read failed: ${error.message}`);
+  const raw = Array.isArray(data) ? data : [];
+  const rows: ConnectorBlockerRow[] = [];
+  for (const row of raw) {
+    if (!isConnectorBlockerRow(row)) {
+      throw new Error('connector_blocker_signals_read returned an unexpected row shape');
+    }
+    rows.push(row);
+  }
+  return rows;
+}

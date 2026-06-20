@@ -6,9 +6,13 @@ import {
   loadScoreboard,
   loadCapabilityScoreboard,
   loadShopScoreboard,
+  loadDemandGaps,
+  loadConnectorBlockers,
   type ScoreboardRow,
   type CapabilityScoreboardRow,
   type ShopTemplateScoreboardRow,
+  type DemandGapRow,
+  type ConnectorBlockerRow,
 } from '../../lib/scoreboard/read';
 import styles from '../admin.module.css';
 
@@ -42,9 +46,13 @@ export default async function ScoreboardPage() {
   if (!staff) redirect('/login');
 
   const admin = adminClient();
-  const rows = await loadScoreboard(admin);
-  const capabilityRows = await loadCapabilityScoreboard(admin);
-  const shopRows = await loadShopScoreboard(admin);
+  const [rows, capabilityRows, shopRows, demandGapRows, connectorBlockerRows] = await Promise.all([
+    loadScoreboard(admin),
+    loadCapabilityScoreboard(admin),
+    loadShopScoreboard(admin),
+    loadDemandGaps(admin),
+    loadConnectorBlockers(admin),
+  ]);
 
   // Audit the cross-account telemetry view (§6.10 everything-audited). It is
   // cross-account model telemetry, not one account's data → account_id null.
@@ -246,6 +254,76 @@ export default async function ScoreboardPage() {
                   <td className={styles.mono}>{r.dormant}</td>
                   <td className={styles.mono}>{pct(r.maturityRate)}</td>
                   <td className={styles.mono}>{r.graduated}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
+
+      <h1 className={styles.h1}>Capability demand gaps (fleet)</h1>
+      <p className={styles.muted}>
+        Capabilities users needed but could not be fulfilled, across the fleet over the last 90 days.
+        Anonymized aggregate — only capabilities with ≥5 contributing accounts are shown.
+      </p>
+
+      {demandGapRows.length === 0 ? (
+        <p className={styles.muted}>No capability demand gap data available.</p>
+      ) : (
+        <section className={styles.panel}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Capability</th>
+                <th>Reason</th>
+                <th>Occurrences</th>
+                <th>Contributing accounts</th>
+                <th>Last seen</th>
+              </tr>
+            </thead>
+            <tbody>
+              {demandGapRows.map((r: DemandGapRow) => (
+                <tr key={`${r.capability}:${r.reason}`}>
+                  <td className={styles.mono}>{r.capability}</td>
+                  <td className={styles.mono}>{r.reason}</td>
+                  <td className={styles.mono}>{r.occurrences}</td>
+                  <td className={styles.mono}>{r.contributing_accounts}</td>
+                  <td className={styles.mono}>{relTime(r.last_seen)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
+
+      <h1 className={styles.h1}>Connector blockers (fleet)</h1>
+      <p className={styles.muted}>
+        Connectors that blocked runs and why, across the fleet over the last 90 days. Anonymized
+        aggregate — only connectors with ≥5 contributing accounts are shown.
+      </p>
+
+      {connectorBlockerRows.length === 0 ? (
+        <p className={styles.muted}>No connector blocker data available.</p>
+      ) : (
+        <section className={styles.panel}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Connector</th>
+                <th>Reason</th>
+                <th>Occurrences</th>
+                <th>Contributing accounts</th>
+                <th>Last seen</th>
+              </tr>
+            </thead>
+            <tbody>
+              {connectorBlockerRows.map((r: ConnectorBlockerRow) => (
+                <tr key={`${r.connector}:${r.reason}`}>
+                  <td className={styles.mono}>{r.connector}</td>
+                  <td className={styles.mono}>{r.reason}</td>
+                  <td className={styles.mono}>{r.occurrences}</td>
+                  <td className={styles.mono}>{r.contributing_accounts}</td>
+                  <td className={styles.mono}>{relTime(r.last_seen)}</td>
                 </tr>
               ))}
             </tbody>
