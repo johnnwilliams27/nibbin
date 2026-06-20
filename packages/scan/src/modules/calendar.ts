@@ -15,18 +15,38 @@ interface GcalEvent {
   attendees?: Array<{ email?: string; responseStatus?: string; self?: boolean }>;
 }
 
+/** Maximum pages the scan fetches; prevents infinite pagination on a 12-month window. */
+const MAX_SCAN_PAGES = 50;
+
 async function fetchEvents(ctx: ScanContext): Promise<GcalEvent[]> {
-  const params = new URLSearchParams({
+  const baseParams = new URLSearchParams({
     timeMin: new Date(ctx.window.startMs).toISOString(),
     timeMax: new Date(ctx.window.endMs).toISOString(),
     singleEvents: 'true',
     maxResults: '250',
     orderBy: 'startTime',
+    // Derived-not-raw: exclude summary (event titles) and attendee email/displayName;
+    // scan modules only need status, start/end, and attendee responseStatus/self.
+    fields: 'items(id,status,start,end,attendees(responseStatus,self)),nextPageToken',
   });
-  const res = parseQuarantinedJson<{ items?: GcalEvent[] }>(
-    await ctx.reader.read(`/calendar/v3/calendars/primary/events?${params}`),
-  );
-  return res?.items ?? [];
+
+  const all: GcalEvent[] = [];
+  let pageToken: string | undefined;
+  let pages = 0;
+
+  do {
+    const params = new URLSearchParams(baseParams);
+    if (pageToken) params.set('pageToken', pageToken);
+    const res = parseQuarantinedJson<{ items?: GcalEvent[]; nextPageToken?: string }>(
+      await ctx.reader.read(`/calendar/v3/calendars/primary/events?${params}`),
+    );
+    all.push(...(res?.items ?? []));
+    pageToken = res?.nextPageToken ?? undefined;
+    pages++;
+    if (pages >= MAX_SCAN_PAGES) break; // cap: never over-fetch a dense calendar
+  } while (pageToken);
+
+  return all;
 }
 
 function durationHours(e: GcalEvent): number {

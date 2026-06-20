@@ -123,4 +123,68 @@ describe('fetchCalendarDelta', () => {
     expect(r.events).toHaveLength(0);
     expect(r.newSyncToken).toBe('fresh');
   });
+
+  // FIX 1: syncToken and pageToken must be mutually exclusive across pages
+  it('passes syncToken ONLY on the first page, undefined on subsequent pages', async () => {
+    const capturedArgs: Array<{ syncToken: string | undefined; pageToken: string | undefined }> = [];
+    let call = 0;
+    await fetchCalendarDelta('c1', 'a1', { calendarSyncToken: 'tok1' }, {
+      listSync: async (syncToken, pageToken) => {
+        capturedArgs.push({ syncToken, pageToken });
+        call++;
+        if (call === 1) {
+          // First page: syncToken should be passed, no pageToken yet
+          return { items: [{ id: 'e1' }], nextPageToken: 'p2' };
+        }
+        // Second page: syncToken must be undefined — Google requires mutual exclusivity
+        return { items: [{ id: 'e2' }], nextSyncToken: 'tok2' };
+      },
+    });
+    // First call: syncToken present, pageToken absent
+    expect(capturedArgs[0]!.syncToken).toBe('tok1');
+    expect(capturedArgs[0]!.pageToken).toBeUndefined();
+    // Second call: syncToken must be undefined, pageToken set
+    expect(capturedArgs[1]!.syncToken).toBeUndefined();
+    expect(capturedArgs[1]!.pageToken).toBe('p2');
+  });
+
+  // FIX 4: empty sync token must never be persisted
+  it('returns null (not empty string) when prior is undefined and Google returns no nextSyncToken', async () => {
+    // Simulate first run (no prior token) where Google returns no nextSyncToken
+    const r = await fetchCalendarDelta('c1', 'a1', {}, {
+      listSync: async () => ({ items: [{ id: 'e1' }] }), // no nextSyncToken
+    });
+    // Must not yield an empty string — null signals "no advance" to the poll route
+    expect(r.newSyncToken).toBeNull();
+    expect(r.newSyncToken).not.toBe('');
+    expect(r.events).toHaveLength(0);
+  });
+
+  it('returns the prior token (not empty string) when already-synced run gets no nextSyncToken', async () => {
+    const r = await fetchCalendarDelta('c1', 'a1', { calendarSyncToken: 'existing-tok' }, {
+      listSync: async () => ({}), // no items, no nextSyncToken
+    });
+    // Falls back to prior, never persists empty string
+    expect(r.newSyncToken).toBe('existing-tok');
+    expect(r.newSyncToken).not.toBe('');
+  });
+
+  // FIX 5: fetchCalendarDelta delta-path page cap already tested above (MAX_SYNC_PAGES = 50)
+  // The scan-path page cap (MAX_SCAN_PAGES) is tested in calendar-findings.test.ts
+});
+
+describe('fetchCalendarDelta — calendar scan page cap (Fix 5)', () => {
+  // Re-export fetchEvents is not exposed directly; test indirectly via a ScanModule run
+  // The real cap test lives in packages/scan/test/calendar-findings.test.ts
+  it('sanity: accumulatePages already enforces MAX_SYNC_PAGES=50 for the delta path', async () => {
+    let calls = 0;
+    const r = await fetchCalendarDelta('c1', 'a1', { calendarSyncToken: 'tok1' }, {
+      listSync: async () => {
+        calls++;
+        return { items: [{ id: `e${calls}` }], nextPageToken: 'stuck' };
+      },
+    });
+    expect(calls).toBe(50);
+    expect(r.events).toHaveLength(50);
+  });
 });

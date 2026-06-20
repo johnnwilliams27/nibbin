@@ -98,7 +98,11 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         );
         // CalendarConnectorEvent is structurally compatible with ConnectorEvent
         events = calEvents as ConnectorEvent[];
-        advanceCursor = () => advanceCalendarCursor(svc, connection.id, newSyncToken);
+        // Guard: skip advancing when newSyncToken is null/empty — avoids persisting
+        // an invalid empty token that would cause a permanent 410 loop next cycle.
+        if (newSyncToken) {
+          advanceCursor = () => advanceCalendarCursor(svc, connection.id, newSyncToken);
+        }
       } else {
         continue;
       }

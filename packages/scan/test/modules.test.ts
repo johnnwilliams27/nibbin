@@ -7,7 +7,7 @@
 import { describe, expect, it } from 'vitest';
 import { CONNECTOR_REGISTRY, SCAN_WINDOW_MONTHS, quarantine, scanWindowEndingAt, type Connection, type Finding } from '@nibbin/connectors';
 import { TEMPLATE_FOR_SCAN_MODULE, getTemplate } from '@nibbin/runtime';
-import { ALL_SCAN_MODULES, fixtureReader, modulesForProvider, paymentsFeeLeakage, runScan } from '../src/index';
+import { ALL_SCAN_MODULES, fixtureReader, modulesForProvider, paymentsFeeLeakage, paymentsInvoiceLatency, crmDeliveryLatency, runScan } from '../src/index';
 
 const NOW = Date.UTC(2026, 5, 11, 12, 0, 0);
 
@@ -127,6 +127,57 @@ describe('the scan engine', () => {
     );
     expect(result.empty).toBe(true);
     expect(result.failures.length).toBeGreaterThan(0);
+  });
+});
+
+describe('hoursPerWeek window divisor (Fix 3)', () => {
+  it('paymentsInvoiceLatency uses the full 52-week window divisor, not a hardcoded 13', async () => {
+    // 52 invoices with 5-day draft lag; ~6 min each → hoursPerWeek = (52*6)/60/52 = 0.1
+    // With the old /13 divisor it would be (52*6)/60/13 = 0.4 — 4× inflated
+    const nowSecs = Math.floor(NOW / 1000);
+    const invoices = Array.from({ length: 52 }, (_, i) => ({
+      id: `inv-${i}`,
+      status: 'paid',
+      created: nowSecs - (i + 1) * 7 * 86_400,
+      status_transitions: { finalized_at: nowSecs - (i + 1) * 7 * 86_400 + 5 * 86_400 },
+    }));
+    const reader = {
+      read: async () => quarantine(JSON.stringify({ data: invoices }), 'stripe:c1:/v1/invoices'),
+    };
+    const conn = connection('stripe', 'conn-inv-lat');
+    const { SCAN_WINDOW_WEEKS } = await import('@nibbin/connectors');
+    const out = await paymentsInvoiceLatency.run({ connection: conn, window: scanWindowEndingAt(NOW), reader });
+    expect(out.length).toBeGreaterThan(0);
+    const f = out[0]!;
+    // Expected hoursPerWeek uses SCAN_WINDOW_WEEKS (~52), not 13
+    const expectedHpw = Math.round(((52 * 6) / 60 / SCAN_WINDOW_WEEKS) * 10) / 10;
+    expect(f.cost.hoursPerWeek).toBe(expectedHpw);
+    // Sanity: value at 52-week divisor is ~4× smaller than the old 13-week divisor
+    const inflatedHpw = Math.round(((52 * 6) / 60 / 13) * 10) / 10;
+    expect(f.cost.hoursPerWeek).toBeLessThan(inflatedHpw);
+  });
+
+  it('crmDeliveryLatency uses the full 52-week window divisor, not a hardcoded 13', async () => {
+    // 52 collections published 8 days after creation (> 7-day threshold)
+    const collections = Array.from({ length: 52 }, (_, i) => ({
+      id: `col-${i}`,
+      created_at: new Date(NOW - (20 + i * 6) * 86_400_000).toISOString(),
+      published_at: new Date(NOW - (12 + i * 6) * 86_400_000).toISOString(), // 8 days later
+    }));
+    const reader = {
+      read: async () => quarantine(JSON.stringify({ data: collections }), 'pixieset:c1:/v1/collections'),
+    };
+    const conn = connection('pixieset', 'conn-crm-lat');
+    const { SCAN_WINDOW_WEEKS } = await import('@nibbin/connectors');
+    const out = await crmDeliveryLatency.run({ connection: conn, window: scanWindowEndingAt(NOW), reader });
+    // The first finding (medianDays >= 7) contains hoursPerWeek
+    const latencyFinding = out.find((f) => f.module === 'crm.delivery-latency' && f.evidence && (f.evidence as Record<string, unknown>).published !== undefined);
+    expect(latencyFinding).toBeDefined();
+    // hoursPerWeek computed as (count*6)/60/SCAN_WINDOW_WEEKS — should not equal the 13-week value
+    const expectedHpw = Math.max(0.1, Math.round(((52 * 6) / 60 / SCAN_WINDOW_WEEKS) * 10) / 10);
+    const inflatedHpw = Math.round(((52 * 6) / 60 / 13) * 10) / 10;
+    expect(latencyFinding!.cost.hoursPerWeek).toBe(expectedHpw);
+    expect(latencyFinding!.cost.hoursPerWeek).toBeLessThan(inflatedHpw);
   });
 });
 

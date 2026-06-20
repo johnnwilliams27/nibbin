@@ -100,8 +100,10 @@ export function gcalFixtures(nowMs: number): Json {
 export function stripeFixtures(nowMs: number): { invoices: Json; balanceTransactions: Json } {
   const nowSecs = Math.floor(nowMs / 1000);
   const invoices: Json[] = [];
-  for (let i = 0; i < 14; i++) {
-    const created = nowSecs - (6 + i * 6) * 86_400;
+  // 30 paid invoices spread across the 12-month window (enough to keep
+  // hoursPerWeek non-zero at the full-window divisor: (30*6)/60/52 ≈ 0.06 → 0.1)
+  for (let i = 0; i < 30; i++) {
+    const created = nowSecs - (6 + i * 10) * 86_400;
     invoices.push({
       id: `in_paid_${i}`,
       status: 'paid',

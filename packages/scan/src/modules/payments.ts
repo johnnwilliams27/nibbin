@@ -4,7 +4,7 @@
  * Adapter: stripe (Connect, read_only scope — C8 holds at the provider).
  */
 import type { ScanContext, ScanModule } from '@nibbin/connectors';
-import { SCAN_WINDOW_MONTHS } from '@nibbin/connectors';
+import { SCAN_WINDOW_MONTHS, SCAN_WINDOW_WEEKS } from '@nibbin/connectors';
 import { DAY_MS, makeFinding, median, round1 } from '../findings';
 import { parseQuarantinedJson } from '../unwrap';
 
@@ -56,7 +56,7 @@ export const paymentsInvoiceLatency: ScanModule = {
         ctx.connection.id,
         `Invoices sit ${medianDays} days as drafts before they go out — every one of those days delays the payment clock.`,
         {
-          hoursPerWeek: round1((gaps.length * 6) / 60 / 13),
+          hoursPerWeek: round1((gaps.length * 6) / 60 / SCAN_WINDOW_WEEKS),
           basis: `${gaps.length} invoices in 12 months; median created→finalized gap ${medianDays} days; ~6 min of chasing each`,
         },
         { invoices: gaps.length, medianDays },

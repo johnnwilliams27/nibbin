@@ -38,6 +38,8 @@ export interface ScanWindow {
 export const SCAN_WINDOW_MONTHS = 12;
 /** 12 months expressed as days for the epoch-ms math (30.4375 d/mo avg). */
 export const SCAN_WINDOW_DAYS = Math.round(SCAN_WINDOW_MONTHS * 30.4375); // 365
+/** 12 months expressed as weeks — SSOT for hoursPerWeek divisors. */
+export const SCAN_WINDOW_WEEKS = Math.round(SCAN_WINDOW_DAYS / 7); // 52
 
 export function scanWindowEndingAt(endMs: number): ScanWindow {
   return { startMs: endMs - SCAN_WINDOW_DAYS * 86_400_000, endMs };

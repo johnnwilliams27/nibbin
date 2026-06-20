@@ -46,6 +46,9 @@ export class GoogleCalendarClient extends HttpConnectorClient {
       singleEvents: 'true',
       maxResults: '250',
       orderBy: 'startTime',
+      // Derived-not-raw: exclude summary (event titles) and attendee email/displayName;
+      // scan modules only need status, start/end for duration, and attendee responseStatus/self.
+      fields: 'items(id,status,start,end,attendees(responseStatus,self)),nextPageToken',
     });
     if (pageToken) params.set('pageToken', pageToken);
     const { data } = await this.readJson<{ items?: CalendarEvent[]; nextPageToken?: string }>(
@@ -64,7 +67,13 @@ export class GoogleCalendarClient extends HttpConnectorClient {
     syncToken?: string,
     pageToken?: string,
   ): Promise<{ items?: CalendarEvent[]; nextSyncToken?: string; nextPageToken?: string }> {
-    const params = new URLSearchParams({ singleEvents: 'true', maxResults: '250' });
+    const params = new URLSearchParams({
+      singleEvents: 'true',
+      maxResults: '250',
+      // Derived-not-raw: delta path only needs id + status for dispatch; exclude
+      // summary (event titles) and attendee email/displayName entirely.
+      fields: 'items(id,status),nextPageToken,nextSyncToken',
+    });
     if (syncToken) params.set('syncToken', syncToken);
     if (pageToken) params.set('pageToken', pageToken);
     const { data } = await this.readJson<{

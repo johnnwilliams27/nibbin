@@ -73,9 +73,13 @@ async function accumulatePages(
   let pageToken: string | undefined;
   let newSyncToken = syncToken ?? '';
   let pages = 0;
+  let isFirst = true;
 
   do {
-    const res = await listSync(syncToken, pageToken);
+    // Google Calendar requires syncToken and pageToken to be mutually exclusive:
+    // pass syncToken ONLY on the first page; subsequent pages use pageToken only.
+    const res = await listSync(isFirst ? syncToken : undefined, pageToken);
+    isFirst = false;
     allItems.push(...(res.items ?? []));
     if (res.nextSyncToken) newSyncToken = res.nextSyncToken;
     pageToken = res.nextPageToken;
@@ -108,7 +112,7 @@ export async function fetchCalendarDelta(
   accountId: string,
   webhookState: Record<string, unknown>,
   deps: CalendarDeltaDeps,
-): Promise<{ events: CalendarConnectorEvent[]; newSyncToken: string }> {
+): Promise<{ events: CalendarConnectorEvent[]; newSyncToken: string | null }> {
   const prior =
     typeof webhookState.calendarSyncToken === 'string'
       ? webhookState.calendarSyncToken
@@ -125,13 +129,13 @@ export async function fetchCalendarDelta(
     if (!isSyncTokenExpired(err)) throw err;
     ({ allItems, newSyncToken } = await accumulatePages(deps.listSync, undefined));
     // Guard: never persist an empty token after recovery.
-    if (!newSyncToken) return { events: [], newSyncToken: prior ?? '' };
+    if (!newSyncToken) return { events: [], newSyncToken: prior ?? null };
     return { events: [], newSyncToken };
   }
 
-  // Guard: never persist an empty sync token.
+  // Guard: never persist an empty sync token — null signals "no advance" to caller.
   if (!newSyncToken) {
-    return { events: [], newSyncToken: prior ?? '' };
+    return { events: [], newSyncToken: prior ?? null };
   }
 
   // First run: baseline only — emit nothing so historical events are not
