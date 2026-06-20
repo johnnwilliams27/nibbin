@@ -63,7 +63,6 @@ export default async function ConnectionsPage({
   return (
     <AppShell active="connections" title="Connections" email={user.email}>
       <header className={styles.header}>
-        <p className={styles.eyebrow}>Connections</p>
         <h1 className={styles.title}>Accounts your Nibbins work from</h1>
       </header>
 
@@ -99,7 +98,9 @@ export default async function ConnectionsPage({
                 <>
                   <p className={styles.access}>{scopeSummary(conn.scopes as string[] | null)}</p>
                   <p className={styles.accessNote}>
-                    {isReadOnly(conn.scopes as string[] | null) ? 'Read-only access' : 'Includes actions you approve'} · revoke anytime
+                    {isReadOnly(conn.scopes as string[] | null)
+                      ? 'Read-only today · sending or changes ask your OK first'
+                      : 'Can act with your approval · drafts wait for your yes'} · revoke anytime
                   </p>
                   <form action={disconnectAction} className={styles.disconnectRow}>
                     <input type="hidden" name="provider" value={id} />

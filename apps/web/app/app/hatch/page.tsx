@@ -24,7 +24,6 @@ export default async function HatchPage() {
     <AppShell active="hatch" title="Hatch Your Own" email={user.email}>
       <div className={styles.inner}>
         <header className={styles.header}>
-          <p className={styles.eyebrow}>Hatch your own</p>
           <h1 className={styles.title}>Build a Nibbin for one chore</h1>
           <p className={styles.lede}>
             Name the thing you&rsquo;re tired of doing and where it happens — we hatch a custom-named
