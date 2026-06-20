@@ -22,8 +22,8 @@
   gap: 14px;
   z-index: 30;
   will-change: transform;
-  transition: transform var(--dur-2) var(--ease-settle), width var(--dur-2) var(--ease-settle),
-    padding var(--dur-2) var(--ease-settle);
+  transition: transform var(--motion-reveal-dur) var(--motion-reveal), width var(--motion-reveal-dur) var(--motion-reveal),
+    padding var(--motion-reveal-dur) var(--motion-reveal);
 }
 
 /* Collapsed sidebar — icon-only rail */
@@ -180,7 +180,7 @@
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  transition: margin-left var(--dur-2) var(--ease-settle);
+  transition: margin-left var(--motion-reveal-dur) var(--motion-reveal);
 }
 
 /* Desktop: slide main inward when nav is collapsed */
