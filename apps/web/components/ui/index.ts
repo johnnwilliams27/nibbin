@@ -7,3 +7,5 @@ export { Select } from "./Select";
 export type { SelectOption } from "./Select";
 export { Tooltip, InfoTooltip } from "./Tooltip";
 export type { TooltipProps, InfoTooltipProps } from "./Tooltip";
+export { EmptyState } from "./EmptyState";
+export type { EmptyStateProps } from "./EmptyState";
