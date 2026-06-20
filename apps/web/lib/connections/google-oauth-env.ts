@@ -1,16 +1,8 @@
-const SITE = () => (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://nibbin.com').replace(/\/$/, '');
+import { getOAuthConfigFor, type OAuthClientConfig } from './oauth-config';
 
-export interface GoogleOAuthConfig {
-  clientId: string;
-  clientSecret: string;
-  redirectUri: string;
-}
+export type GoogleOAuthConfig = OAuthClientConfig;
 
+/** @deprecated use getOAuthConfigFor('gmail'). Kept so existing imports resolve. */
 export function getGoogleOAuthConfig(): GoogleOAuthConfig {
-  const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
-  if (!clientId || !clientSecret) {
-    throw new Error('Missing GOOGLE_OAUTH_CLIENT_ID / GOOGLE_OAUTH_CLIENT_SECRET (see apps/web/.env.local)');
-  }
-  return { clientId, clientSecret, redirectUri: `${SITE()}/api/connect/google/callback` };
+  return getOAuthConfigFor('gmail');
 }
