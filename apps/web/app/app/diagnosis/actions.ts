@@ -6,6 +6,7 @@ import { appSession } from '../../../lib/auth/app-session';
 import { serviceClient } from '../../../lib/supabase/service';
 import { adoptComposedSpec, adoptTemplate } from '../../../lib/runtime/adopt';
 import { activeConnections } from '../../../lib/runtime/engine';
+import { SupabaseEventSink } from '../../../lib/runtime/stores';
 import {
   composeSpec,
   applyComposerEdit,
@@ -138,7 +139,24 @@ export async function synthesizeForWorkflow(
   const providers = connections.map((c) => c.provider);
 
   const result = await composeSpec(accountId, user.id, workflow, providers);
-  if ('error' in result) return { ok: false, error: result.error };
+  if ('error' in result) {
+    // Fleet-learning telemetry: emit capability_unfulfilled best-effort when the
+    // Composer can't build a spec (structural ids only — no content/PII).
+    if (result.unfulfilled) {
+      const { capability: cap, reason } = result.unfulfilled;
+      try {
+        await new SupabaseEventSink(svc).emit({
+          name: 'capability_unfulfilled',
+          accountId,
+          userId: user.id,
+          props: { capability: cap, reason },
+        });
+      } catch {
+        // best-effort — never fail synthesis on telemetry
+      }
+    }
+    return { ok: false, error: result.error };
+  }
 
   const { spec, summary } = result;
   return {

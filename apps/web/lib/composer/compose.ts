@@ -48,7 +48,13 @@ export interface ComposerProposal {
   /** Human-readable plan for the review card. */
   summary: string;
 }
-export type ComposerResult = ComposerProposal | { error: string };
+export type ComposerResult =
+  | ComposerProposal
+  | {
+      error: string;
+      /** Structured demand-gap info for fleet-learning telemetry (structural ids only — no PII). */
+      unfulfilled?: { capability: string; reason: 'no_capability' | 'connector_not_connected' };
+    };
 
 /* ── Part B — review-before-adopt editing ──────────────────────────────────── */
 
@@ -550,7 +556,24 @@ export async function composeSpec(
 ): Promise<ComposerResult> {
   const prims = availablePrimitives(accountConnections);
   if (prims.length === 0) {
-    return { error: 'No agent can be built for this workflow yet — connect the account it needs first.' };
+    // Demand-gap telemetry: distinguish an ACTIVATION gap ("a capability exists
+    // but the connector isn't connected") from a ROADMAP gap ("no capability
+    // serves this workflow type"). Only email/payments/calendar have genuine
+    // primitives; other categories (social/docs/crm/other) have none. Emit
+    // STRUCTURAL values only — a registry primitive id, or the WorkflowCategory
+    // enum — never the free-ish workflow.key (which is only length-clamped).
+    const SERVED_CATEGORIES = new Set<string>(['email', 'payments', 'calendar']);
+    let unfulfilled: { capability: string; reason: 'no_capability' | 'connector_not_connected' };
+    if (SERVED_CATEGORIES.has(workflow.category)) {
+      const allPrims = Object.values(CAPABILITY_REGISTRY).filter((c) => c.kind === 'primitive');
+      unfulfilled = {
+        capability: mapWorkflowToPrimitive(workflow, allPrims) ?? workflow.category,
+        reason: 'connector_not_connected',
+      };
+    } else {
+      unfulfilled = { capability: workflow.category, reason: 'no_capability' };
+    }
+    return { error: 'No agent can be built for this workflow yet — connect the account it needs first.', unfulfilled };
   }
 
   // The no-model baseline: the best-fit AVAILABLE primitive for this workflow's
