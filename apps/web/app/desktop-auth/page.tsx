@@ -16,19 +16,20 @@ import { parseTokens } from '../../lib/desktop-auth/parse-tokens';
 
 /**
  * Capture + DELETE the init-script handoff SYNCHRONOUSLY at module load, before
- * any other script (or our own async effect) can read it off `window`. The live
- * access+refresh tokens live on the global for as short a window as possible.
+ * any other script (or our own async effect) can read it off `window`. The
+ * access token lives on the global for as short a window as possible.
+ * The refresh token is kept native-side and never injected into the webview.
  */
-const HANDOFF: { access_token: string; refresh_token: string } | null = (() => {
+const HANDOFF: { access_token: string; expires_at: number } | null = (() => {
   if (typeof window === 'undefined') return null; // SSR
   const w = window as unknown as {
-    __NIBBIN_HANDOFF__?: { access_token?: string; refresh_token?: string };
+    __NIBBIN_HANDOFF__?: { access_token?: string; expires_at?: number };
   };
   const injected = w.__NIBBIN_HANDOFF__;
   // Clear the global immediately, whether or not it was well-formed.
   delete w.__NIBBIN_HANDOFF__;
-  if (injected?.access_token && injected?.refresh_token) {
-    return { access_token: injected.access_token, refresh_token: injected.refresh_token };
+  if (injected?.access_token) {
+    return { access_token: injected.access_token, expires_at: injected.expires_at ?? 0 };
   }
   return null;
 })();
@@ -38,8 +39,13 @@ export default function DesktopAuth() {
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    // PRIMARY: the init-script handoff, already captured + cleared at module load.
-    let tokens: { access_token: string; refresh_token: string } | null = HANDOFF;
+    // PRIMARY: the init-script handoff (access_token + expires_at only — the
+    // refresh token stays native-side; the webview session is valid for the
+    // access token's remaining TTL).
+    let tokens: { access_token: string; refresh_token: string } | null = null;
+    if (HANDOFF) {
+      tokens = { access_token: HANDOFF.access_token, refresh_token: '' };
+    }
     if (!tokens) {
       // FALLBACK: tokens in the URL fragment. Strip the hash from the address
       // bar / history FIRST, then parse — so the tokens are gone from the URL

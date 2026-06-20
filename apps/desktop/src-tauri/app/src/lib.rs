@@ -53,12 +53,15 @@ fn grove_bounds(window: &tauri::Window) -> (tauri::LogicalPosition<f64>, tauri::
 fn grove_setup() -> (String, Option<String>) {
     let base = web_url();
     if option_env!("NIBBIN_GROVE_HANDOFF").is_some() {
-        if let Some((access, refresh)) = auth::session_tokens() {
-            // JSON-encode the values so they embed safely in JS (no injection).
+        if let Some((access, expires_at)) = auth::session_tokens() {
+            // JSON-encode values so they embed safely in JS (no injection).
+            // The refresh token is never handed to the webview — it stays in
+            // the OS keychain. The webview session is valid for the access
+            // token's remaining TTL; the native side re-injects on expiry.
             let a = serde_json::to_string(&access).unwrap_or_else(|_| "\"\"".into());
-            let r = serde_json::to_string(&refresh).unwrap_or_else(|_| "\"\"".into());
+            let exp = expires_at.to_string();
             let script =
-                format!("window.__NIBBIN_HANDOFF__={{access_token:{a},refresh_token:{r}}};");
+                format!("window.__NIBBIN_HANDOFF__={{access_token:{a},expires_at:{exp}}};");
             return (format!("{base}/desktop-auth"), Some(script));
         }
     }
