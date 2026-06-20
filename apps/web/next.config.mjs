@@ -46,6 +46,29 @@ const nextConfig = {
     '/data-ai': ['../../reference/data-ai.html'],
     '/subprocessors': ['../../reference/subprocessors.html'],
   },
+  // Anti-clickjacking / framing headers for all routes. Content-Security-Policy
+  // frame-ancestors restricts which origins may embed nibbin.com in a frame or
+  // iframe; X-Frame-Options is the legacy equivalent for older browsers. Both
+  // say 'self' — only nibbin.com itself may frame its own pages (e.g. the admin
+  // panel). These are defense-in-depth: no user-visible behaviour changes.
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'Content-Security-Policy',
+            value: "frame-ancestors 'self'",
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'SAMEORIGIN',
+          },
+        ],
+      },
+    ];
+  },
+
   // CI gates typecheck and lint on every PR (npm run typecheck / lint / build),
   // so the deploy build must not re-run them — Vercel's production install omits
   // the root-level devDependencies (typescript, eslint, @types/node) that those

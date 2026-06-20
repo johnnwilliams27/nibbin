@@ -171,3 +171,76 @@ pub fn add_exclusion(
     .to_string();
     write_control(&app, &line).map_err(|e| e.to_string())
 }
+
+/// Return the current capture exclusions persisted by the daemon.
+///
+/// The daemon owns `exclusions.json` — it is written atomically (write-then-rename)
+/// so a partial read is never possible. Missing file (first run) → empty lists.
+/// A corrupt file returns an error (fail-closed: the UI must surface this rather
+/// than silently showing an empty list).
+#[tauri::command]
+pub fn exclusions(app: AppHandle) -> Result<serde_json::Value, String> {
+    let path = store_root(&app)
+        .map_err(|e| e.to_string())?
+        .join("exclusions.json");
+    match std::fs::read_to_string(&path) {
+        Ok(text) => serde_json::from_str::<serde_json::Value>(&text)
+            .map_err(|e| format!("exclusions.json is corrupt (fail-closed): {e}")),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            // First run — daemon hasn't written any exclusions yet.
+            Ok(serde_json::json!({ "hosts": [], "bundle_ids": [], "app_names": [] }))
+        }
+        Err(e) => Err(format!("could not read exclusions: {e}")),
+    }
+}
+
+/// Remove a previously-added capture exclusion. Forwarded to the daemon via the
+/// control channel; the daemon rewrites `exclusions.json` atomically and updates
+/// its in-memory pipeline.
+///
+/// Daemon support note: the `remove_exclusion` control command is not yet
+/// implemented in observerd — the daemon will log "unknown cmd" and skip it.
+/// When the daemon gains `RemoveExclusion` handling, no app-side change is needed;
+/// the JSON envelope format is already correct and consistent with `add_exclusion`.
+/// Until then, callers should call `exclusions()` after a short delay to confirm
+/// the change (the list won't change until daemon support lands).
+#[tauri::command]
+pub fn remove_exclusion(
+    app: AppHandle,
+    host: Option<String>,
+    bundle_id: Option<String>,
+    app_name: Option<String>,
+) -> Result<(), String> {
+    let line = serde_json::json!({
+        "cmd": "remove_exclusion",
+        "host": host,
+        "bundle_id": bundle_id,
+        "app_name": app_name,
+    })
+    .to_string();
+    write_control(&app, &line).map_err(|e| e.to_string())
+}
+
+/// Return derived field notes for the current day.
+///
+/// Field notes are a future feature (a curated, user-visible summary derived from
+/// the day's events by the Nibbin agent). There is currently no field-notes store
+/// in the daemon or ObserverStore — the daemon writes `daemon.status`, `study.json`,
+/// and the event SQLCipher DB only.
+///
+/// This command returns an empty list stub so the web bridge can call it safely
+/// today. When the daemon gains a `field_notes.json` output file (or the store
+/// gains a notes table), this handler should be updated to read from it.
+///
+/// Privacy: field notes are DERIVED data (never raw capture). No raw events or
+/// PII cross this boundary — the contract matches `review_events`.
+#[tauri::command]
+pub fn field_notes(_app: AppHandle) -> Result<Vec<serde_json::Value>, String> {
+    // Stub: no field-notes store exists yet.
+    // When the daemon begins writing `field_notes.json` to the store root,
+    // replace this body with:
+    //   let path = store_root(&_app)?.join("field_notes.json");
+    //   let text = std::fs::read_to_string(path).unwrap_or_else(|_| "[]".into());
+    //   serde_json::from_str(&text).map_err(|e| e.to_string())
+    Ok(vec![])
+}

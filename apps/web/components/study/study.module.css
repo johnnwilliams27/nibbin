@@ -1,0 +1,406 @@
+/* Field Study web routes — token-only styles. No hardcoded colour values. */
+
+/* ---- Page header ---- */
+.header {
+  margin-bottom: 18px;
+}
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--moss-deep);
+  font-weight: 600;
+  margin: 0 0 6px;
+}
+.title {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: var(--type-h1, clamp(1.5rem, 1.1rem + 1.4vw, 2.1rem));
+  color: var(--ink);
+  margin: 0;
+}
+
+/* ---- Status card (in-progress) ---- */
+.statusCard {
+  max-width: 560px;
+  margin-bottom: 20px;
+}
+.statusHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.statusTitle {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 18px;
+  color: var(--ink);
+  margin: 0;
+}
+.countdown {
+  font-family: var(--mono);
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+  margin: 0 0 4px;
+}
+.countdownLabel {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin: 0 0 16px;
+}
+.healthNote {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: rgba(217, 162, 27, 0.1);
+  border: 1px solid rgba(217, 162, 27, 0.24);
+  border-radius: var(--r-input);
+  font-size: 14px;
+  color: var(--honey-deep);
+  margin-bottom: 16px;
+}
+.controls {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ---- Review ---- */
+.reviewGroupHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.reviewGroupTitle {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--ink);
+  margin: 0;
+}
+.reviewGroupCount {
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+.eventRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.eventRow:last-child {
+  border-bottom: none;
+}
+.eventMain {
+  flex: 1;
+  min-width: 0;
+}
+.eventLabel {
+  font-size: 14px;
+  color: var(--ink);
+  margin: 0 0 3px;
+  overflow-wrap: anywhere;
+}
+.eventMeta {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-faint);
+  margin: 0;
+}
+.deleteBtn {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--r-button);
+  padding: 6px 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color var(--dur-1) var(--ease-settle), border-color var(--dur-1) var(--ease-settle);
+}
+.deleteBtn:hover {
+  color: var(--coral-deep);
+  border-color: var(--coral);
+}
+
+/* ---- Exclusion input unit ---- */
+.exclusionUnit {
+  margin-top: 16px;
+}
+.exclusionUnitTitle {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--ink);
+  margin: 0 0 4px;
+}
+.exclusionUnitHint {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin: 0 0 10px;
+}
+.exclusionRow {
+  display: flex;
+  gap: 8px;
+}
+.exclusionInput {
+  font: inherit;
+  flex: 1;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-input);
+  background: var(--canopy);
+  color: var(--ink);
+  font-size: 14px;
+}
+.exclusionInput:focus-visible {
+  outline: 2px solid var(--moss);
+  outline-offset: 1px;
+}
+
+/* ---- Exclusions list (preferences) ---- */
+.exclusionList {
+  list-style: none;
+  margin: 0 0 6px;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.exclusionItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-input);
+  background: var(--paper);
+}
+.exclusionName {
+  font-size: 14px;
+  color: var(--ink);
+  font-weight: 600;
+  margin: 0;
+}
+.exclusionSub {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-faint);
+  margin: 0;
+}
+.removeBtn {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--r-button);
+  padding: 4px 10px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color var(--dur-1) var(--ease-settle), border-color var(--dur-1) var(--ease-settle);
+}
+.removeBtn:hover {
+  color: var(--coral-deep);
+  border-color: var(--coral);
+}
+
+/* ---- Field notes ---- */
+.noteCard {
+  max-width: 560px;
+  margin-bottom: 12px;
+}
+.noteTs {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-faint);
+  margin: 0 0 6px;
+}
+.noteContent {
+  font-size: 14.5px;
+  color: var(--ink);
+  line-height: 1.55;
+  margin: 0;
+}
+
+/* ---- Settings link row ---- */
+.settingsLink {
+  margin-top: 24px;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+.settingsLink a {
+  color: var(--moss-deep);
+  font-weight: 600;
+  text-decoration: none;
+}
+.settingsLink a:hover {
+  text-decoration: underline;
+}
+
+/* ---- Danger zone ---- */
+.dangerZone {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+  max-width: 560px;
+}
+.dangerTitle {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 17px;
+  color: var(--coral-deep);
+  margin: 0 0 6px;
+}
+.dangerHint {
+  font-size: 14px;
+  color: var(--ink-soft);
+  margin: 0 0 14px;
+}
+.confirmRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+/* ---- Start wizard (StudyStart) ---- */
+.startCard {
+  max-width: 640px;
+  margin-bottom: 20px;
+}
+.kindRow {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+.kindBtn {
+  flex: 1;
+  min-width: 160px;
+  padding: 14px 16px;
+  border: 2px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--paper);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color var(--dur-1) var(--ease-settle), background var(--dur-1) var(--ease-settle);
+  font: inherit;
+}
+.kindBtn:hover {
+  border-color: var(--moss);
+  background: var(--canopy);
+}
+.kindBtnSelected {
+  border-color: var(--moss);
+  background: var(--canopy);
+}
+.kindBtnLabel {
+  display: block;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--ink);
+  margin: 0 0 3px;
+}
+.kindBtnHint {
+  display: block;
+  font-size: 13px;
+  color: var(--ink-soft);
+  line-height: 1.4;
+}
+.taskLabelRow {
+  margin-bottom: 20px;
+}
+.taskLabelField {
+  font: inherit;
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-input);
+  background: var(--canopy);
+  color: var(--ink);
+  font-size: 14px;
+  box-sizing: border-box;
+}
+.taskLabelField:focus-visible {
+  outline: 2px solid var(--moss);
+  outline-offset: 1px;
+}
+.taskLabelHint {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin: 4px 0 0;
+}
+.depthRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.depthLabel {
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+.claimsIntro {
+  font-size: 14px;
+  color: var(--ink-soft);
+  margin: 0 0 14px;
+  line-height: 1.5;
+}
+.claimsList {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+.claimItem {
+  font-size: 14px;
+  color: var(--ink);
+  line-height: 1.55;
+}
+.claimItem strong {
+  font-weight: 700;
+  color: var(--ink);
+  display: inline;
+  margin-right: 4px;
+}
+.claimMuted {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin: 0 0 24px;
+  line-height: 1.5;
+}
+.startActions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.startError {
+  font-size: 13px;
+  color: var(--coral-deep);
+  margin: 8px 0 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .deleteBtn,
+  .removeBtn,
+  .exclusionInput,
+  .kindBtn {
+    transition: none;
+  }
+}

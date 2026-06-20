@@ -14,7 +14,7 @@ import { loadGroveState } from '../../lib/grove/load';
 import { AppShell } from '../../components/shell/AppShell';
 import { Card, Badge, InlineFeedback } from '../../components/ui';
 import { OnboardingCanvas } from './grove/OnboardingCanvas';
-import { HideInDesktop } from './grove/HideInDesktop';
+import { DesktopOrStudyCard } from '../../components/study/DesktopOrStudyCard';
 import { decideRunAction } from './actions';
 import styles from './app.module.css';
 import dash from './dashboard.module.css';
@@ -634,36 +634,7 @@ export default async function AppPage({ searchParams }: { searchParams: Promise<
         </div>
       </div>
 
-      <HideInDesktop>
-        <Card id="download" className={dash.download}>
-          <div className={dash.downloadCopy}>
-            <p className={dash.heroEyebrow}>Get the desktop app</p>
-            <h2 className={dash.downloadTitle}>Your grove runs in the desktop app</h2>
-            <p className={dash.heroEmpty}>
-              That&apos;s where your Nibbins connect to your accounts and do the work. Install it on
-              the machine you work from.
-            </p>
-          </div>
-          <div className={dash.downloadRow}>
-            <a className={dash.dlBtn} href="/download/mac">
-              <span className={dash.dlIcon} aria-hidden="true">
-                <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
-                  <path d="M11.18 8.46c-.02-1.78 1.45-2.63 1.52-2.67-.83-1.21-2.12-1.38-2.58-1.4-1.1-.11-2.14.64-2.7.64-.55 0-1.41-.63-2.32-.61-1.2.02-2.3.69-2.91 1.76-1.24 2.15-.32 5.33.89 7.07.59.85 1.29 1.81 2.21 1.77.89-.04 1.22-.57 2.3-.57 1.07 0 1.37.57 2.31.55.95-.02 1.56-.87 2.14-1.72.67-.99.95-1.94.96-1.99-.02-.01-1.84-.71-1.86-2.8zM9.6 3.24c.49-.59.82-1.42.73-2.24-.71.03-1.56.47-2.06 1.06-.45.52-.85 1.36-.74 2.16.79.06 1.59-.4 2.07-.98z" />
-                </svg>
-              </span>
-              Download for macOS
-            </a>
-            <a className={dash.dlBtn} href="/download/windows">
-              <span className={dash.dlIcon} aria-hidden="true">
-                <svg viewBox="0 0 16 16" width="15" height="15" fill="currentColor">
-                  <path d="M0 2.4l6.5-.9v6.3H0V2.4zm0 11.2l6.5.9V8.2H0v5.4zM7.3 1.4L16 0v7.8H7.3V1.4zm0 13.2L16 16V8.2H7.3v6.4z" />
-                </svg>
-              </span>
-              Download for Windows
-            </a>
-          </div>
-        </Card>
-      </HideInDesktop>
+      <DesktopOrStudyCard />
 
       {(queuedCount ?? 0) > 0 && (
         <p className={dash.muted} role="status">

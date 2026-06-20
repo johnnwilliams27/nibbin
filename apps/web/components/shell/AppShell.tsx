@@ -65,7 +65,8 @@ export type NavKey =
   | 'notifications'
   | 'billing'
   | 'settings'
-  | 'help';
+  | 'help'
+  | 'study';
 
 /** Minimal line icons (Lucide-style) per nav item — inherit currentColor so they
  *  pick up the active/hover tint from `.navItem`. */
@@ -148,6 +149,12 @@ function NavIcon({ k }: { k: NavKey }) {
         <path d="M12 17h.01" />
       </>
     ),
+    study: (
+      <>
+        <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+        <circle cx="12" cy="12" r="3" />
+      </>
+    ),
   };
   return (
     <svg
@@ -181,6 +188,7 @@ const NAV: { key: NavKey; label: string; href: string }[] = [
   { key: 'billing', label: 'Plan & credits', href: '/billing' },
   { key: 'settings', label: 'Settings', href: '/app/settings/profile' },
   { key: 'help', label: 'Help Center', href: '/app/help' },
+  { key: 'study', label: 'Field Study', href: '/app/study' },
 ];
 
 export interface AppShellProps {

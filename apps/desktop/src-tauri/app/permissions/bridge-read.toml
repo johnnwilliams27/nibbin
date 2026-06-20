@@ -1,0 +1,94 @@
+# Bridge permissions for the embedded nibbin.com Grove webview.
+#
+# SECURITY RATIONALE — why write/control commands are included here:
+# ─────────────────────────────────────────────────────────────────
+# The trusted-origin model provides TWO independent layers of containment, making
+# the remote origin as safe as the local shell for these commands:
+#
+#   Layer 1 — capability origin lock (grove-remote.json):
+#     The grove-remote capability sets `local: false` and `remote.urls:
+#     ["https://nibbin.com/*"]` so these permissions are ONLY reachable from
+#     content served by https://nibbin.com. Any other origin — including
+#     attacker-controlled redirects, localhost, or the main webview — cannot
+#     exercise them.
+#
+#   Layer 2 — nav lock (lib.rs grove_show ~line 91):
+#     The Grove webview's on_navigation callback rejects any navigation whose
+#     host differs from the configured web origin. A redirect to a hostile host
+#     is blocked before it loads, so an attacker cannot hijack the webview and
+#     then invoke these commands.
+#
+# Together, the write commands below (send_control, create_study, review_delete,
+# review_keep, add_exclusion, remove_exclusion) are equivalent to the native
+# desktop UI clicking the same buttons — the daemon remains the SOLE enforcer
+# of C2/C3/C4/C5; no privacy invariant depends on the app-side commands being
+# restricted. The read commands (study_status, review_events, exclusions,
+# field_notes) carry only derived/redacted data (never raw capture).
+#
+# Each permission below targets a SINGLE Tauri command; no wildcard grants exist.
+# When a new command is approved for the remote bridge, add it here first,
+# then reference the new identifier in grove-remote.json's `permissions` array.
+
+# ── Read commands ─────────────────────────────────────────────────────────────
+
+[[permission]]
+identifier = "allow-study-status"
+description = "Enables the study_status command. Returns the current daemon snapshot (state/remaining_ms/paused/study metadata). Read-only; no raw capture data."
+commands.allow = ["study_status"]
+
+[[permission]]
+identifier = "allow-review-events"
+description = "Enables the review_events command. Returns the post-pipeline, already-redacted event list for the end-of-day review UI. Read-only; raw data never crosses the IPC boundary."
+commands.allow = ["review_events"]
+
+[[permission]]
+identifier = "allow-exclusions"
+description = "Enables the exclusions command. Returns the current capture exclusion lists (hosts/bundle_ids/app_names) persisted by the daemon. Read-only; no capture content."
+commands.allow = ["exclusions"]
+
+[[permission]]
+identifier = "allow-field-notes"
+description = "Enables the field_notes command. Returns derived daily field notes (derived summary, never raw capture). Returns an empty list until the daemon gains field-notes output support."
+commands.allow = ["field_notes"]
+
+[[permission]]
+identifier = "allow-access-token"
+description = "Enables the access_token command. Returns the Supabase access token for the signed-in user from the native keychain. Only exposed to the origin-locked + nav-locked nibbin.com webview (trusted-origin model — see SECURITY RATIONALE above)."
+commands.allow = ["access_token"]
+
+# ── Write / control commands ──────────────────────────────────────────────────
+# These commands mutate daemon or store state. They are safe to expose to the
+# nibbin.com webview because the two-layer containment model (see SECURITY
+# RATIONALE above) ensures they are ONLY reachable from the origin-locked,
+# nav-locked nibbin.com webview — equivalent to the native desktop UI.
+# The daemon remains the enforcer of all privacy invariants (C2/C3/C4/C5).
+
+[[permission]]
+identifier = "allow-send-control"
+description = "Enables the send_control command. Appends a lifecycle control message (consent/start/pause/resume/stop_early/finish_review/synthesis_complete/delete_everything) to the daemon's control.jsonl. Reachable ONLY from the origin-locked + nav-locked nibbin.com webview (trusted-origin model — see SECURITY RATIONALE above); the daemon enforces all C2/C3/C4/C5 invariants."
+commands.allow = ["send_control"]
+
+[[permission]]
+identifier = "allow-create-study"
+description = "Enables the create_study command. Mints a new study (full_study or quick_scan) via the daemon's control channel. Reachable ONLY from the origin-locked + nav-locked nibbin.com webview (trusted-origin model — see SECURITY RATIONALE above); the daemon validates the transition and guards C2."
+commands.allow = ["create_study"]
+
+[[permission]]
+identifier = "allow-review-delete"
+description = "Enables the review_delete command. Sets ReviewState::UserDeleted and purges the specified events from the encrypted local store. Reachable ONLY from the origin-locked + nav-locked nibbin.com webview (trusted-origin model — see SECURITY RATIONALE above). This is a user-directed deletion, consistent with C3 (user retains full delete control)."
+commands.allow = ["review_delete"]
+
+[[permission]]
+identifier = "allow-review-keep"
+description = "Enables the review_keep command. Sets ReviewState::UserKept on the specified events — no data is removed. Reachable ONLY from the origin-locked + nav-locked nibbin.com webview (trusted-origin model — see SECURITY RATIONALE above)."
+commands.allow = ["review_keep"]
+
+[[permission]]
+identifier = "allow-add-exclusion"
+description = "Enables the add_exclusion command. Forwards a new capture exclusion (host/bundle_id/app_name) to the daemon; the daemon persists it to exclusions.json and enforces it in-memory for the rest of the study. Reachable ONLY from the origin-locked + nav-locked nibbin.com webview (trusted-origin model — see SECURITY RATIONALE above)."
+commands.allow = ["add_exclusion"]
+
+[[permission]]
+identifier = "allow-remove-exclusion"
+description = "Enables the remove_exclusion command. Forwards a removal request to the daemon's control channel. Reachable ONLY from the origin-locked + nav-locked nibbin.com webview (trusted-origin model — see SECURITY RATIONALE above). NOTE: daemon-side handling for remove_exclusion is not yet implemented — the command is wired and will take effect once observerd gains RemoveExclusion support."
+commands.allow = ["remove_exclusion"]

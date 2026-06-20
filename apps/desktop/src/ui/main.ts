@@ -1,109 +1,58 @@
 /**
- * Observer shell UI — two-tab shell: Grove (web product, Stage C) and
- * Field Study (native Observer views). Auth gate (Stage B) boots first.
+ * Observer shell UI — full-window web app. Auth gate (native) boots first,
+ * then the Grove child webview covers the entire window. The native Field Study
+ * UI has been removed; the web app (including /app/study/*) is the complete UI.
  */
 import '@nibbin/shared/tokens.css';
 import './observer.css';
 import { bridge } from './bridge.js';
-import { clear, el } from './dom.js';
+import { clear } from './dom.js';
 import { mountUpdateBanner } from './update-banner.js';
-import { fieldStudyView } from './views/field-study.js';
 import { groveView } from './views/grove.js';
 import { loginView } from './views/login.js';
-import { shouldShowDot, EVER_COMPLETED_KEY } from './tab-dot.js';
 import { reportStudyStatus } from './study-status-reporter.js';
 
-type Tab = 'grove' | 'field-study';
 const app = document.getElementById('app')!;
-let tab: Tab = 'grove';
-
-let fieldStudyDotVisible = false;
 
 /**
- * Check the daemon status once and update `fieldStudyDotVisible`.
- *
- * The dot is a first-timer nudge: shown only when the user has never completed
- * a field study (no `nibbin.fieldStudyEverCompleted` flag in localStorage) AND
- * no study is currently running. Veterans between studies are not nudged.
- *
- * Fail-closed: any error hides the dot.
+ * Fetch study status once and report to the web if the study has left the
+ * active phase. This also fires the stopped-reporter so a study that ended
+ * while the app was closed tells the web immediately on next open.
+ * Fail-closed: any IPC error is swallowed silently.
  */
-async function refreshTabDot(): Promise<void> {
+async function fetchAndReportStudyStatus(): Promise<void> {
   try {
-    const everCompleted = localStorage.getItem(EVER_COMPLETED_KEY) !== null;
     const status = await bridge.studyStatus();
-    fieldStudyDotVisible = shouldShowDot(everCompleted, status.state);
-    // Piggyback the freshly-fetched snapshot onto the stopped-reporter so a
-    // study that ended via any path (day-14 stop, delete-everything, offline)
-    // tells the web exactly once. Fire-and-forget, idempotent.
     void reportStudyStatus(status);
   } catch {
-    fieldStudyDotVisible = false;
-  }
-}
-
-function render(): void {
-  // D6: clean up live-status listener on the outgoing field-study view before
-  // clearing the DOM so it doesn't ghost-tick after a tab switch.
-  const outgoing = app.querySelector('[data-view="field-study"]') as
-    | (HTMLElement & { __nibbinCleanup__?: () => void })
-    | null;
-  outgoing?.__nibbinCleanup__?.();
-  clear(app);
-  const nav = el('nav', { class: 'nav tabbar' });
-  const tabs: [Tab, string][] = [['grove', 'Grove'], ['field-study', 'Field Study']];
-  for (const [key, label] of tabs) {
-    const isFieldStudy = key === 'field-study';
-    // Build the tab label: for Field Study, wrap in a relative container so
-    // we can overlay the dot without affecting layout.
-    let tabContent: HTMLElement;
-    if (isFieldStudy && fieldStudyDotVisible && tab !== 'field-study') {
-      // Show a small needs-action dot when no study is running and the user
-      // is not already on the Field Study tab (don't dot the active tab).
-      const labelSpan = el('span', {}, [label]);
-      const dot = el('span', { class: 'tab-dot', 'aria-label': 'Field study available' });
-      tabContent = el('span', { class: 'tab-label-wrap' }, [labelSpan, dot]);
-    } else {
-      tabContent = el('span', {}, [label]);
-    }
-    const b = el('button', {});
-    b.append(tabContent);
-    b.addEventListener('click', () => { tab = key; render(); });
-    if (key === tab) b.setAttribute('aria-current', 'true');
-    nav.append(b);
-  }
-  app.append(nav);
-  if (tab === 'grove') {
-    // groveView is the native fallback (loading / offline); the embedded web
-    // product is a child webview shown over the content area. Pass a callback
-    // so the native fallback can offer a "Start a field study" CTA — the
-    // Grove→Field Study deep-link discovery affordance (NIB-2).
-    app.append(groveView(() => { tab = 'field-study'; render(); }));
-    void bridge.groveShow();
-  } else {
-    void bridge.groveHide();
-    app.append(fieldStudyView(render));
-    // Once the user opens the Field Study tab, hide the dot immediately.
-    fieldStudyDotVisible = false;
+    // IPC can transiently fail (daemon restart) — skip silently.
   }
 }
 
 async function boot(): Promise<void> {
   // A keychain/IPC failure must never blank the whole window: fall back to the
-  // signed-out screen so the user can re-authenticate. (Regression guard — an
-  // oversized session writeback once threw here and left the window blank.)
+  // signed-out screen so the user can re-authenticate.
   let session: Awaited<ReturnType<typeof bridge.authSession>> = null;
   try {
     session = await bridge.authSession();
   } catch (e) {
     console.error('authSession failed; showing login', e);
   }
-  if (!session) { void bridge.groveHide(); clear(app); app.append(loginView(() => void boot())); return; }
-  // Warm the tab dot before painting the tabbar so first render is correct.
-  // This boot-time fetch also feeds the stopped-reporter (inside refreshTabDot),
-  // catching a study that ended while the app was closed.
-  await refreshTabDot();
-  render();
+  if (!session) {
+    clear(app);
+    app.append(loginView(() => void boot()));
+    return;
+  }
+
+  // Boot-time fetch: catches a study that ended while the app was closed and
+  // posts the stopped signal so the web card reflects reality immediately.
+  void fetchAndReportStudyStatus();
+
+  // Show the native loading/offline placeholder under the grove webview, then
+  // bring the grove child webview to the front (full-window, no tab bar).
+  clear(app);
+  app.append(groveView(() => void boot()));
+  void bridge.groveShow();
   startStudyStatusPoll();
 }
 
@@ -111,27 +60,21 @@ let studyStatusPollStarted = false;
 
 /**
  * Modest recurring poll (every ~50s) so a stop that happens while the app is
- * open is reported promptly. boot()'s own fetch catches a stop that happened
+ * open is reported promptly. Boot's own fetch catches a stop that happened
  * while the app was closed. Local IPC, so this is cheap. Started once.
  */
 function startStudyStatusPoll(): void {
   if (studyStatusPollStarted) return;
   studyStatusPollStarted = true;
   setInterval(() => {
-    void (async () => {
-      try {
-        const status = await bridge.studyStatus();
-        void reportStudyStatus(status);
-      } catch {
-        // IPC can transiently fail (daemon restart) — skip this tick silently.
-      }
-    })();
+    void fetchAndReportStudyStatus();
   }, 50_000);
 }
 
 // The native shell calls this (via webview.eval) when the embedded Grove web app
 // signs out — the native session has already been cleared, so re-booting drops
-// to the login gate (clearing the tab bar + hiding the Grove webview).
+// to the login gate (hiding the Grove webview by clearing the DOM and re-running
+// the auth gate).
 (window as unknown as { __nibbinSignedOut__?: () => void }).__nibbinSignedOut__ = () => {
   void boot();
 };
@@ -141,4 +84,3 @@ void boot();
 // exists and, if so, show a dismissable banner. The network call is native
 // (Rust); a failure is silent (no banner).
 void mountUpdateBanner();
-void bridge.onEvent('study:paused-by-hotkey', () => render());

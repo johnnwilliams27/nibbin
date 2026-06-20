@@ -345,6 +345,72 @@
       "description": "Permission identifier",
       "oneOf": [
         {
+          "description": "Enables the access_token command. Returns the Supabase access token for the signed-in user from the native keychain. Only exposed to the origin-locked + nav-locked nibbin.com webview (trusted-origin model — see SECURITY RATIONALE above).",
+          "type": "string",
+          "const": "allow-access-token",
+          "markdownDescription": "Enables the access_token command. Returns the Supabase access token for the signed-in user from the native keychain. Only exposed to the origin-locked + nav-locked nibbin.com webview (trusted-origin model — see SECURITY RATIONALE above)."
+        },
+        {
+          "description": "Enables the add_exclusion command. Forwards a new capture exclusion (host/bundle_id/app_name) to the daemon; the daemon persists it to exclusions.json and enforces it in-memory for the rest of the study. Reachable ONLY from the origin-locked + nav-locked nibbin.com webview (trusted-origin model — see SECURITY RATIONALE above).",
+          "type": "string",
+          "const": "allow-add-exclusion",
+          "markdownDescription": "Enables the add_exclusion command. Forwards a new capture exclusion (host/bundle_id/app_name) to the daemon; the daemon persists it to exclusions.json and enforces it in-memory for the rest of the study. Reachable ONLY from the origin-locked + nav-locked nibbin.com webview (trusted-origin model — see SECURITY RATIONALE above)."
+        },
+        {
+          "description": "Enables the create_study command. Mints a new study (full_study or quick_scan) via the daemon's control channel. Reachable ONLY from the origin-locked + nav-locked nibbin.com webview (trusted-origin model — see SECURITY RATIONALE above); the daemon validates the transition and guards C2.",
+          "type": "string",
+          "const": "allow-create-study",
+          "markdownDescription": "Enables the create_study command. Mints a new study (full_study or quick_scan) via the daemon's control channel. Reachable ONLY from the origin-locked + nav-locked nibbin.com webview (trusted-origin model — see SECURITY RATIONALE above); the daemon validates the transition and guards C2."
+        },
+        {
+          "description": "Enables the exclusions command. Returns the current capture exclusion lists (hosts/bundle_ids/app_names) persisted by the daemon. Read-only; no capture content.",
+          "type": "string",
+          "const": "allow-exclusions",
+          "markdownDescription": "Enables the exclusions command. Returns the current capture exclusion lists (hosts/bundle_ids/app_names) persisted by the daemon. Read-only; no capture content."
+        },
+        {
+          "description": "Enables the field_notes command. Returns derived daily field notes (derived summary, never raw capture). Returns an empty list until the daemon gains field-notes output support.",
+          "type": "string",
+          "const": "allow-field-notes",
+          "markdownDescription": "Enables the field_notes command. Returns derived daily field notes (derived summary, never raw capture). Returns an empty list until the daemon gains field-notes output support."
+        },
+        {
+          "description": "Enables the remove_exclusion command. Forwards a removal request to the daemon's control channel. Reachable ONLY from the origin-locked + nav-locked nibbin.com webview (trusted-origin model — see SECURITY RATIONALE above). NOTE: daemon-side handling for remove_exclusion is not yet implemented — the command is wired and will take effect once observerd gains RemoveExclusion support.",
+          "type": "string",
+          "const": "allow-remove-exclusion",
+          "markdownDescription": "Enables the remove_exclusion command. Forwards a removal request to the daemon's control channel. Reachable ONLY from the origin-locked + nav-locked nibbin.com webview (trusted-origin model — see SECURITY RATIONALE above). NOTE: daemon-side handling for remove_exclusion is not yet implemented — the command is wired and will take effect once observerd gains RemoveExclusion support."
+        },
+        {
+          "description": "Enables the review_delete command. Sets ReviewState::UserDeleted and purges the specified events from the encrypted local store. Reachable ONLY from the origin-locked + nav-locked nibbin.com webview (trusted-origin model — see SECURITY RATIONALE above). This is a user-directed deletion, consistent with C3 (user retains full delete control).",
+          "type": "string",
+          "const": "allow-review-delete",
+          "markdownDescription": "Enables the review_delete command. Sets ReviewState::UserDeleted and purges the specified events from the encrypted local store. Reachable ONLY from the origin-locked + nav-locked nibbin.com webview (trusted-origin model — see SECURITY RATIONALE above). This is a user-directed deletion, consistent with C3 (user retains full delete control)."
+        },
+        {
+          "description": "Enables the review_events command. Returns the post-pipeline, already-redacted event list for the end-of-day review UI. Read-only; raw data never crosses the IPC boundary.",
+          "type": "string",
+          "const": "allow-review-events",
+          "markdownDescription": "Enables the review_events command. Returns the post-pipeline, already-redacted event list for the end-of-day review UI. Read-only; raw data never crosses the IPC boundary."
+        },
+        {
+          "description": "Enables the review_keep command. Sets ReviewState::UserKept on the specified events — no data is removed. Reachable ONLY from the origin-locked + nav-locked nibbin.com webview (trusted-origin model — see SECURITY RATIONALE above).",
+          "type": "string",
+          "const": "allow-review-keep",
+          "markdownDescription": "Enables the review_keep command. Sets ReviewState::UserKept on the specified events — no data is removed. Reachable ONLY from the origin-locked + nav-locked nibbin.com webview (trusted-origin model — see SECURITY RATIONALE above)."
+        },
+        {
+          "description": "Enables the send_control command. Appends a lifecycle control message (consent/start/pause/resume/stop_early/finish_review/synthesis_complete/delete_everything) to the daemon's control.jsonl. Reachable ONLY from the origin-locked + nav-locked nibbin.com webview (trusted-origin model — see SECURITY RATIONALE above); the daemon enforces all C2/C3/C4/C5 invariants.",
+          "type": "string",
+          "const": "allow-send-control",
+          "markdownDescription": "Enables the send_control command. Appends a lifecycle control message (consent/start/pause/resume/stop_early/finish_review/synthesis_complete/delete_everything) to the daemon's control.jsonl. Reachable ONLY from the origin-locked + nav-locked nibbin.com webview (trusted-origin model — see SECURITY RATIONALE above); the daemon enforces all C2/C3/C4/C5 invariants."
+        },
+        {
+          "description": "Enables the study_status command. Returns the current daemon snapshot (state/remaining_ms/paused/study metadata). Read-only; no raw capture data.",
+          "type": "string",
+          "const": "allow-study-status",
+          "markdownDescription": "Enables the study_status command. Returns the current daemon snapshot (state/remaining_ms/paused/study metadata). Read-only; no raw capture data."
+        },
+        {
           "description": "Default core plugins set.\n#### This default permission set includes:\n\n- `core:path:default`\n- `core:event:default`\n- `core:window:default`\n- `core:webview:default`\n- `core:app:default`\n- `core:image:default`\n- `core:resources:default`\n- `core:menu:default`\n- `core:tray:default`",
           "type": "string",
           "const": "core:default",

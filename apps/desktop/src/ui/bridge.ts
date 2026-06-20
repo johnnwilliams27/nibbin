@@ -76,6 +76,7 @@ export const bridge = {
   signOut: () => call<void>('sign_out', undefined, undefined),
   groveShow: () => call<void>('grove_show', undefined, undefined),
   groveHide: () => call<void>('grove_hide', undefined, undefined),
+  groveReload: () => call<void>('grove_reload', undefined, undefined),
   // Best-effort update check. The GitHub call runs natively in Rust (CSP-safe);
   // outside the shell (browser dev) it resolves to "no update".
   checkForUpdate: () =>
