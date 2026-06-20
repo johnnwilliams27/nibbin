@@ -153,7 +153,7 @@ describe('frontier budget (per user per day)', () => {
     expect(capped.degraded).toBe(true);
   });
 
-  it('resets on the next user-local day', async () => {
+  it('resets on the next UTC day', async () => {
     let now = new Date('2026-06-11T23:30:00Z');
     const router = createRouter({ dailyFrontierBudget: 1, now: () => now });
     await router.route(chat(T2_CHAT));
@@ -163,11 +163,11 @@ describe('frontier budget (per user per day)', () => {
     expect((await router.route(chat(T2_CHAT))).degraded).toBe(false);
   });
 
-  it('keys the day to the user timezone', () => {
-    const lateUtc = new Date('2026-06-11T23:30:00Z');
-    expect(dayKey(lateUtc)).toBe('2026-06-11');
-    expect(dayKey(lateUtc, 'Australia/Sydney')).toBe('2026-06-12');
-    expect(dayKey(lateUtc, 'not/a-zone')).toBe('2026-06-11'); // falls back to UTC, never throws
+  it('keys the budget day to UTC, never the user timezone (#24/#52)', () => {
+    // 23:30 UTC is already the next calendar day in Sydney, but the budget day
+    // must not shift — tz is user-editable and must never move the window.
+    expect(dayKey(new Date('2026-06-11T23:30:00Z'))).toBe('2026-06-11');
+    expect(dayKey(new Date('2026-06-12T00:30:00Z'))).toBe('2026-06-12');
   });
 
   it('pipeline t2 (the diagnosis splurge) never draws the chat budget and is never degraded', async () => {
