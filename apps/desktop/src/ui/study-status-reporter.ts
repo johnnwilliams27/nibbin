@@ -2,9 +2,8 @@
  * Idempotent "study stopped" reporter.
  *
  * The web shows a "Field study in progress / Watching" card while
- * `study_status.status='active'`. The desktop already POSTs `active` on start
- * (views/consent.ts) and `stopped` on the two explicit stop buttons
- * (views/study.ts stop_early, views/field-study.ts quick-scan stop).
+ * `study_status.status='active'`. The desktop POSTs `active` on study start and
+ * `stopped` via explicit daemon control signals or background poll transitions.
  *
  * THE GAP this closes: a study can leave the active phase by paths that send no
  * `stopped` signal — the daemon's day-14 hard stop / quick-scan backstop
@@ -12,10 +11,10 @@
  * being offline at stop time. Without a signal the web shows a stale card until
  * its own staleness fallback kicks in.
  *
- * This module watches `bridge.studyStatus()` snapshots (fed from main.ts on the
- * tab-dot refresh, a recurring poll, and at boot) and fires
- * `postStudyStatus({status:'stopped'})` exactly once per study when it
- * transitions OUT of the active phase (ACTIVE/PAUSED), regardless of path.
+ * This module watches `bridge.studyStatus()` snapshots (fed from main.ts on a
+ * recurring poll and at boot) and fires `postStudyStatus({status:'stopped'})`
+ * exactly once per study when it transitions OUT of the active phase
+ * (ACTIVE/PAUSED), regardless of path.
  *
  * Posting twice is harmless (the web upserts), but a module-level "already
  * reported" set prevents spamming the endpoint on every poll tick.
