@@ -55,12 +55,14 @@ export const TOP_UP = { priceUsdCents: 1000, credits: 1000 } as const;
  * micro-USD (1_000_000 = $1.00). The diagnosis pipeline is the deliberate T2
  * Opus splurge that the router never degrades, so the caller-side controls ARE
  * the budget: one call per packet, DIAGNOSIS_MAX_TOKENS output ceiling, and
- * this cost cap. 50_000 µUSD = $0.05 — comfortably above a 2,500-output-token
- * Opus completion at current rates, so it never trips a normal call; it only
- * fires if pricing/usage drifts far out of band (a runaway). The FREE path
- * REFUSES rather than spend past it; every path logs a breach loudly.
+ * this cost cap. 300_000 µUSD = $0.30 — comfortably above a real worst-case
+ * Opus diagnosis (a 2,500-output-token completion at $25/MTok output plus a
+ * full packet of cached input lands well under ~$0.15 at current rates), so it
+ * never trips a normal call; it only fires if pricing/usage drifts ~2x+ out of
+ * band (a runaway). The FREE path REFUSES rather than spend past it; every path
+ * logs a recorded-cost breach loudly.
  */
-export const DIAGNOSIS_MAX_MICRO_USD = 50_000 as const;
+export const DIAGNOSIS_MAX_MICRO_USD = 300_000 as const;
 
 /**
  * True when a recorded/projected per-diagnosis cost is within the hard cap.

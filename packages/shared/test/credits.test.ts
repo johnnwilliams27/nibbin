@@ -16,6 +16,8 @@ import {
   topUpsToCover,
   validateEntry,
   validateAppend,
+  DIAGNOSIS_MAX_MICRO_USD,
+  withinDiagnosisCostCap,
 } from '../src/credits';
 import type { LedgerEntry, WeightClass } from '../src/credits';
 
@@ -349,5 +351,25 @@ describe('top-up coverage math (at cap: explain, one-tap top-up)', () => {
   it('rejects negative or fractional deficits', () => {
     expect(() => topUpsToCover(-1)).toThrow();
     expect(() => topUpsToCover(0.5)).toThrow();
+  });
+});
+
+describe('diagnosis hard cost cap (anti-runaway)', () => {
+  it('the cap is a positive integer micro-USD ceiling', () => {
+    expect(Number.isSafeInteger(DIAGNOSIS_MAX_MICRO_USD)).toBe(true);
+    expect(DIAGNOSIS_MAX_MICRO_USD).toBeGreaterThan(0);
+  });
+
+  it('passes a cost at or under the cap, fails one over it', () => {
+    expect(withinDiagnosisCostCap(0)).toBe(true);
+    expect(withinDiagnosisCostCap(DIAGNOSIS_MAX_MICRO_USD)).toBe(true);
+    expect(withinDiagnosisCostCap(DIAGNOSIS_MAX_MICRO_USD - 1)).toBe(true);
+    expect(withinDiagnosisCostCap(DIAGNOSIS_MAX_MICRO_USD + 1)).toBe(false);
+  });
+
+  it('fails closed on non-finite or negative cost', () => {
+    expect(withinDiagnosisCostCap(Number.NaN)).toBe(false);
+    expect(withinDiagnosisCostCap(Number.POSITIVE_INFINITY)).toBe(false);
+    expect(withinDiagnosisCostCap(-1)).toBe(false);
   });
 });
