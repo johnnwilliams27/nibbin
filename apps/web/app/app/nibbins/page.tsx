@@ -334,7 +334,6 @@ export default async function NibbinsPage() {
     <AppShell active="nibbins" title="Your Nibbins" email={user.email}>
       <NoteRefresher staleIds={staleIds} action={refreshNibbinNote} />
       <div className={styles.pageHead}>
-        <p className={styles.eyebrow}>Agent School</p>
         <h1 className={styles.h1}>Your nibbins</h1>
         <div className={styles.intro}>
           Every Nibbin climbs Agent School the same way — egg, student, senior, graduate — and trust is

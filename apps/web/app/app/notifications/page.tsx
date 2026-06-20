@@ -76,7 +76,6 @@ export default async function NotificationsPage() {
   return (
     <AppShell active="notifications" title="Leaves" email={user.email}>
       <div className={styles.shell}>
-        <p className={styles.eyebrow}>From the grove</p>
         <h1 className={styles.heading}>Your leaves</h1>
         {leaves.length === 0 ? (
           <EmptyState

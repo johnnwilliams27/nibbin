@@ -63,7 +63,6 @@ export default async function ConnectionsPage({
   return (
     <AppShell active="connections" title="Connections" email={user.email}>
       <header className={styles.header}>
-        <p className={styles.eyebrow}>Connections</p>
         <h1 className={styles.title}>Accounts your Nibbins work from</h1>
       </header>
 
