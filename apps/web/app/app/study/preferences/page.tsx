@@ -20,12 +20,6 @@ function exclusionSub(e: Exclusion): string | null {
 /**
  * Preferences route.
  *
- * NOTE on removeExclusion: the daemon does NOT yet implement RemoveExclusion —
- * the control command is silently ignored (logged as "unknown cmd"). The remove
- * button is therefore disabled with an honest disclosure so users aren't misled
- * into thinking a removal was recorded. When the daemon gains RemoveExclusion
- * support, remove the `disabled` prop and the disclosure note below.
- *
  * No "go to nibbin.com for account settings" — links go to in-app /app/settings.
  */
 function PreferencesContent() {
@@ -33,6 +27,7 @@ function PreferencesContent() {
   const [exclusionInput, setExclusionInput] = useState('');
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
+  const [removingIndex, setRemovingIndex] = useState<number | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -61,10 +56,18 @@ function PreferencesContent() {
     }
   }, [exclusionInput]);
 
-  // handleRemoveExclusion is intentionally omitted: the daemon does not yet
-  // implement RemoveExclusion. The remove button is disabled with an honest
-  // disclosure. Re-add this handler (and enable the button) once the daemon
-  // gains RemoveExclusion support.
+  const handleRemoveExclusion = useCallback(async (exclusion: Exclusion, index: number) => {
+    setRemovingIndex(index);
+    try {
+      await desktopBridge.removeExclusion(exclusion);
+      // Optimistic update: remove from local state immediately.
+      // The daemon drains control commands live; the removal applies on the next
+      // capture cycle (not on restart) — the copy below reflects this honestly.
+      setExclusions((prev) => prev.filter((_, i) => i !== index));
+    } finally {
+      setRemovingIndex(null);
+    }
+  }, []);
 
   const handleDeleteEverything = useCallback(async () => {
     setDeleting(true);
@@ -91,33 +94,29 @@ function PreferencesContent() {
         </p>
 
         {loaded && exclusions.length > 0 && (
-          <>
-            <ul className={styles.exclusionList}>
-              {exclusions.map((e, i) => {
-                const sub = exclusionSub(e);
-                return (
-                  <li key={i} className={styles.exclusionItem}>
-                    <div>
-                      <p className={styles.exclusionName}>{exclusionLabel(e)}</p>
-                      {sub && <p className={styles.exclusionSub}>{sub}</p>}
-                    </div>
-                    <button
-                      className={styles.removeBtn}
-                      type="button"
-                      disabled
-                      title="Removing exclusions isn't available yet — coming in an update"
-                      aria-disabled="true"
-                    >
-                      Remove
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-            <p style={{ fontSize: 12, color: 'var(--ink-faint)', marginBottom: 16 }}>
-              Removing exclusions isn&apos;t available yet — coming in an update.
-            </p>
-          </>
+          <ul className={styles.exclusionList}>
+            {exclusions.map((e, i) => {
+              const sub = exclusionSub(e);
+              const isRemoving = removingIndex === i;
+              return (
+                <li key={i} className={styles.exclusionItem}>
+                  <div>
+                    <p className={styles.exclusionName}>{exclusionLabel(e)}</p>
+                    {sub && <p className={styles.exclusionSub}>{sub}</p>}
+                  </div>
+                  <button
+                    className={styles.removeBtn}
+                    type="button"
+                    disabled={isRemoving || removingIndex !== null}
+                    onClick={() => void handleRemoveExclusion(e, i)}
+                    title="Removed — applies on the next capture cycle"
+                  >
+                    {isRemoving ? 'Removing…' : 'Remove'}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
         )}
 
         {loaded && exclusions.length === 0 && (
