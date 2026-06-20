@@ -152,3 +152,65 @@ Pre-existing errors in unrelated files (conversation.ts, engine.ts, etc.) are pr
 ## Concerns
 
 None. The `cargo check -p observerd` and integration test suite (`-p nibbin-store`) are blocked by the known pre-existing OpenSSL/Strawberry-Perl toolchain gap on this machine — this is the documented constraint in the task brief. The CI "Observer daemon" job with the correct toolchain is the real validator for these crates.
+
+---
+
+## Adversarial Gate Fix-Up — 2026-06-20
+
+### Findings applied
+
+| # | Severity | Finding | Fix | File:line |
+|---|----------|---------|-----|-----------|
+| 1 | P1 (cost) | `maybe_generate_field_notes` called `list_events()` (unbounded SELECT) every 3 min — O(all events) over 14-day study | Added `list_events_since(cutoff_iso: &str)` using `WHERE ts >= ?1`; caller computes `daemon_now() - 24h` cutoff before opening store | `nibbin-store/src/lib.rs:133`; `observerd/src/lib.rs:659` |
+| 2 | P2 (red-team) | `RemoveExclusion` used `.unwrap_or_else(\|_\| self.pipeline.exclusions().clone())` on corrupt file — swallowing the error and overwriting with unverified state | Changed to `match ... { Err(e) => { self.capture_blocked = ...; return Err(e); } }` — fail-loud same shape as AddExclusion | `observerd/src/lib.rs:483` |
+| 3 | P2 (logic) | Throttle gate used `(now - last).num_seconds()` (wall-clock) — backward clock jump stalls generation | Changed `last_field_notes_gen` field type from `Option<DateTime<Utc>>` to `Option<std::time::Instant>`; gate uses `last_instant.elapsed() < THROTTLE_DURATION` | `observerd/src/lib.rs:151,648` |
+| 4 | P2 (claims) | `notes/page.tsx` comment said daemon doesn't emit notes yet | Updated to describe daemon's actual behaviour: per-app notes from last 24h, ~3 min throttle | `apps/web/app/app/study/notes/page.tsx:9` |
+| 5 | P2 (claims) | `fs-field-notes` help copy described wrong data model (total event count, pause count, days elapsed) | Rewritten to accurately describe per-app activity summaries: active duration, window count, nav count, input counts; example format added | `apps/web/lib/help/content.ts:169` |
+| 6 | P3 (claims) | `commands.rs` `remove_exclusion` doc said daemon didn't implement RemoveExclusion | Replaced with accurate doc: save-first REPLACE, fail-closed on corrupt file | `app/src/commands.rs:197` |
+| 7 | P3-2 (logic) | `RemoveExclusion` subtraction used exact string compare; enforcement uses lowercase | Changed all three retains to `x.to_lowercase() != needle.to_lowercase()` | `observerd/src/lib.rs:489` |
+| 8 | P3 (claims) | No end-to-end test for `RemoveExclusion` | Added `remove_exclusion_e2e.rs` with 3 tests: persistent-set subtract, pipeline unblocked after remove, case-insensitive removal | `observerd/tests/remove_exclusion_e2e.rs` |
+
+### `list_events_since` signature
+
+```rust
+pub fn list_events_since(&self, cutoff_iso: &str) -> Result<Vec<ObserverEvent>, anyhow::Error>
+```
+`SELECT json FROM events WHERE ts >= ?1 ORDER BY ts, id` — `ts` is ISO-8601 text, lexicographically ordered, so string compare is correct and the existing index on `ts` is used.
+
+### Monotonic throttle change
+
+Before: `last_field_notes_gen: Option<DateTime<Utc>>`; gate: `(now - last).num_seconds() < 180`
+After: `last_field_notes_gen: Option<std::time::Instant>`; gate: `last_instant.elapsed() < Duration::from_secs(180)`
+Reset points (`clear_store`, `delete_raw_and_verify`) already set `self.last_field_notes_gen = None` — no change needed there.
+
+### Corrected help copy (fs-field-notes body)
+
+> Field Notes is a sub-tab in the desktop app's Field Study view. It shows per-app activity summaries derived locally from your already-redacted events over the last 24 hours — for example, "~12m in Gmail — 3 windows, 4 navigations." Each summary is built from app names, event counts, approximate active time, and input counts (keys and clicks). No window titles, URL content, or raw text is included.
+>
+> Notes appear automatically within a few minutes of your study running and refresh every ~3 minutes. Nothing in Field Notes is uploaded — it's computed on your device only.
+
+### Commits
+
+| Hash | Description |
+|------|-------------|
+| `2dce6b78` | fix(P1): bound field_notes scan to 24h window via list_events_since |
+| `44e6bc0f` | fix(P2/P3): RemoveExclusion fail-closed, monotonic throttle, case-insensitive subtraction + e2e test |
+| `e8d8f9f0` | fix(P2/P3): update stale comments — notes page, help copy, commands.rs doc |
+
+### Test results
+
+**`cargo test -p nibbin-redaction`**: 9/9 pass (4 unit + 5 corpus). Clean.
+
+**`cargo test -p nibbin-store`**: BLOCKED — openssl-sys fails without Strawberry Perl (pre-existing known toolchain gap; same as before fix-up). The `list_events_since` method is straightforward SQL and exercised indirectly by observerd's integration tests in CI.
+
+**`cargo test -p observerd`**: BLOCKED by same OpenSSL gap.
+
+**`cargo fmt`**: CLEAN — ran on `apps/desktop/src-tauri`, no diffs.
+
+**`npm run lint`**: CLEAN — zero ESLint errors (the help copy edit required careful encoding: the original file uses curly apostrophes/em-dashes inside straight-quote string literals; the new body was constructed to match that convention).
+
+**`npx tsc -p apps/web`**: No errors in changed files (`notes/page.tsx`, `help/content.ts`). Pre-existing errors in `conversation.ts`, `engine.ts`, etc. are unrelated to this branch.
+
+### Concerns
+
+The `content.ts` help copy required byte-level care: the file uses UTF-8 curly apostrophes (`’`) and em-dashes (`—`) inside straight-quote-delimited TS strings. The replacement preserves this encoding convention. ESLint and tsc both pass cleanly on the changed file.
