@@ -70,9 +70,11 @@ function promptCard(step: OnboardingStep): KeeperMessage[] {
     case 'understand':
       return []; // standing question is rendered by turnForState via the understanding state
     case 'done':
-      return [
-        msg({ kind: 'celebration', title: copy.DONE.title, detail: copy.DONE.detail, transcript: `${copy.DONE.title}. ${copy.DONE.detail}` }),
-      ];
+      // The "that's everything I need" moment is delivered as a notification
+      // LEAF (emitted server-side in grove/actions emitOnboardingLeaves, using
+      // the same copy.DONE strings) — NOT as a chat bubble. Returning no message
+      // keeps the persistent Keeper chat from re-showing it on every page load.
+      return [];
   }
 }
 
