@@ -69,6 +69,24 @@ function clock(iso: string): string {
   return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 }
 
+/**
+ * Human-readable countdown to an ends_at timestamp, computed server-side so
+ * the server component stays static-safe. Returns "running" for null/past.
+ * Examples: "12d 4h left", "3h 20m left", "45m left".
+ */
+function studyCountdown(endsAt: string | null): string {
+  if (!endsAt) return 'running';
+  const ms = new Date(endsAt).getTime() - Date.now();
+  if (ms <= 0) return 'running';
+  const totalMinutes = Math.floor(ms / 60_000);
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+  if (days > 0) return `${days}d ${hours}h left`;
+  if (hours > 0) return `${hours}h ${minutes}m left`;
+  return `${minutes}m left`;
+}
+
 // ── Time-saved ESTIMATE (§not stored — derived from real run_steps) ──────────
 // There is no measured "minutes saved" field. We estimate it from the work the
 // run actually did: each automated step is treated as ~3 minutes of manual
@@ -195,18 +213,26 @@ export default async function AppPage({ searchParams }: { searchParams: Promise<
 
   // Every read below is gated by RLS on the user's own session — this is the
   // live demonstration that membership scoping holds at the database layer.
-  const [groveLoad, { data: account }, { count: activeConnectionCount }] = await Promise.all([
-    loadGroveState(supabase, accountId, user.id),
-    supabase.from('accounts').select('name').eq('id', accountId).single(),
-    // NIB-4: does the account have a working (active) connection yet? Drives the
-    // first-connection next-step affordance. RLS-scoped to the user's session;
-    // `pending` rows (half-finished OAuth) deliberately don't count.
-    supabase
-      .from('connections')
-      .select('id', { count: 'exact', head: true })
-      .eq('account_id', accountId)
-      .eq('status', 'active'),
-  ]);
+  const [groveLoad, { data: account }, { count: activeConnectionCount }, { data: activeStudy }] =
+    await Promise.all([
+      loadGroveState(supabase, accountId, user.id),
+      supabase.from('accounts').select('name').eq('id', accountId).single(),
+      // NIB-4: does the account have a working (active) connection yet? Drives the
+      // first-connection next-step affordance. RLS-scoped to the user's session;
+      // `pending` rows (half-finished OAuth) deliberately don't count.
+      supabase
+        .from('connections')
+        .select('id', { count: 'exact', head: true })
+        .eq('account_id', accountId)
+        .eq('status', 'active'),
+      // Study visibility: is there a running field study right now?
+      supabase
+        .from('study_status')
+        .select('study_id, kind, label, ends_at')
+        .eq('account_id', accountId)
+        .eq('status', 'active')
+        .maybeSingle(),
+    ]);
 
   const { state: grove, initialMessages, expression, credits } = groveLoad;
   const hasConnection = (activeConnectionCount ?? 0) > 0;
@@ -429,6 +455,26 @@ export default async function AppPage({ searchParams }: { searchParams: Promise<
       </p>
 
       <div className={home.todayGrid}>
+        {/* Study in progress: shown when the desktop Observer has an active study.
+            Rendered as a full-width card before the two-column queue/done split. */}
+        {activeStudy && (
+          <div className={home.tcard} style={{ gridColumn: '1 / -1' }}>
+            <div className={home.tcardHead}>Field study in progress</div>
+            <div className={home.feedItem}>
+              <div>
+                <div className={home.what}>
+                  <Badge tone="moss">Watching</Badge>{' '}
+                  <b>
+                    {activeStudy.kind === 'quick_scan' ? 'Quick scan' : 'Full field study'}
+                    {activeStudy.label ? ` — ${activeStudy.label}` : ''}
+                  </b>
+                </div>
+                <div className={home.meta}>{studyCountdown(activeStudy.ends_at ?? null)}</div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Left: the awaiting_approval queue as draft cards. The yes/no reuses
             the existing decide_run path (decideRunAction → decideDraft). */}
         <div className={home.tcard}>
