@@ -10,7 +10,7 @@
  * loop to exactly that surface and starts the supervised run.
  */
 import { useState, useTransition, useEffect, useRef } from 'react';
-import { Badge, Button, Card, Spinner } from '../../../components/ui';
+import { Button, Card, Spinner } from '../../../components/ui';
 import { proposePlan, startPlanRun } from './actions';
 import { PlanRunView } from './PlanRunView';
 import type { PlanOutcome, PlanSpec } from '@nibbin/runtime';
@@ -150,24 +150,12 @@ export function PlanComposer() {
           ) : null}
 
           <p className={styles.surfaceLabel}>What it can use</p>
-          <div className={styles.chips}>
-            {proposal.preview.surface.map((t) => (
-              <Badge key={t} tone="moss">
-                {t}
-              </Badge>
-            ))}
-          </div>
+          <p className={styles.sub}>{proposal.preview.surface.join(', ')}</p>
 
           {proposal.preview.connectorsNeeded.length > 0 ? (
             <>
               <p className={styles.surfaceLabel}>Connections it needs</p>
-              <div className={styles.chips}>
-                {proposal.preview.connectorsNeeded.map((c) => (
-                  <Badge key={c} tone="sky">
-                    {c}
-                  </Badge>
-                ))}
-              </div>
+              <p className={styles.sub}>{proposal.preview.connectorsNeeded.join(', ')}</p>
             </>
           ) : null}
 

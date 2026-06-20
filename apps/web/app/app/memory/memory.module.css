@@ -1,18 +1,6 @@
-.page {
-  max-width: 680px;
-  margin: 0 auto;
-  padding: 32px var(--pad-page, 20px) 80px;
-}
-.pageEnter {
-  animation: nbFadeIn var(--dur-3, 240ms) var(--ease-spring, cubic-bezier(0.16,1,0.3,1)) both;
-}
-@keyframes nbFadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: none; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .pageEnter { animation: none; }
-}
+/* Memory page — composed, guided layout. Token-only; no hard-coded values. */
+
+/* ── Page header ─────────────────────────────────────────────────────────── */
 .eyebrow {
   font-family: var(--mono);
   font-size: 11px;
@@ -20,6 +8,7 @@
   text-transform: uppercase;
   color: var(--moss-deep);
   font-weight: 600;
+  margin: 0;
 }
 .h1 {
   font-family: var(--display);
@@ -35,69 +24,181 @@
   line-height: 1.6;
   margin: 0 0 20px;
 }
+
+/* ── Status banners ──────────────────────────────────────────────────────── */
 .saved {
-  background: #eef5e3;
+  background: var(--moss-tint);
   color: var(--moss-deep);
-  border: 1px solid #cfe0b0;
+  border: 1px solid var(--line);
   border-radius: var(--r-input);
   padding: 10px 12px;
   font-size: 14px;
   margin: 0 0 16px;
 }
 .error {
-  background: #fbeae4;
+  background: var(--coral-tint);
   color: var(--coral-deep);
-  border: 1px solid #f0c4b6;
+  border: 1px solid var(--coral-line);
   border-radius: var(--r-input);
   padding: 10px 12px;
   font-size: 14px;
   margin: 0 0 16px;
 }
+
+/* ── First-run banner (shown when all fields empty) ──────────────────────── */
+.firstRun {
+  background: var(--understory);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  padding: 20px 24px;
+  margin: 0 0 28px;
+}
+.firstRunTitle {
+  font-family: var(--display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0 0 6px;
+}
+.firstRunBody {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+/* ── Form shell ──────────────────────────────────────────────────────────── */
 .form {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
 }
+
+/* ── Section groups (collapsible via <details>) ──────────────────────────── */
+.group {
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--canopy);
+  overflow: hidden;
+}
+
+/* Remove default marker and style the summary as our section header */
+.groupSummary {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 16px 18px;
+  cursor: pointer;
+  user-select: none;
+  /* Chevron via background image so no extra DOM node */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6l4 4 4-4' stroke='%235A6248' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: calc(100% - 18px) 50%;
+  transition: background-color var(--dur-1) var(--ease-settle);
+}
+.groupSummary::-webkit-details-marker {
+  display: none;
+}
+.groupSummary::marker {
+  display: none;
+}
+.groupSummary:hover {
+  background-color: var(--understory);
+}
+/* Rotate chevron when open */
+.group[open] > .groupSummary {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 10l4-4 4 4' stroke='%235A6248' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  border-bottom: 1px solid var(--line);
+}
+
+.groupHeading {
+  font-family: var(--display);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.3;
+}
+.groupHint {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
+/* Body — shown when <details> is open */
+.groupBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 4px 0 0;
+}
+
+/* ── Individual field ────────────────────────────────────────────────────── */
 .field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--understory);
 }
+.field:last-child {
+  border-bottom: none;
+}
+
 .label {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--ink);
+  letter-spacing: 0.01em;
 }
 .hint {
-  font-size: 12.5px;
+  font-size: 12px;
   color: var(--ink-soft);
   margin: 0 0 2px;
+  line-height: 1.5;
 }
+
+/* ── Textarea ────────────────────────────────────────────────────────────── */
 .textarea {
   font: inherit;
   font-size: 14px;
   line-height: 1.55;
-  padding: 10px 12px;
+  padding: 9px 11px;
   border: 1px solid var(--line);
   border-radius: var(--r-input);
-  background: var(--canopy);
+  background: var(--paper);
   color: var(--ink);
   resize: vertical;
+  transition: border-color var(--dur-1) var(--ease-settle),
+              background-color var(--dur-1) var(--ease-settle);
 }
 .textarea:focus {
   outline: none;
   border-color: var(--moss);
+  background: var(--canopy);
 }
+/* Filled state — visually distinct from empty placeholder */
+.textareaFilled {
+  background: var(--canopy);
+  border-color: var(--line);
+}
+.textareaFilled:focus {
+  border-color: var(--moss);
+}
+
+/* ── Save button ─────────────────────────────────────────────────────────── */
 .primary {
   align-self: flex-start;
   font: inherit;
   font-weight: 700;
-  padding: 11px 20px;
+  font-size: 14px;
+  padding: 10px 22px;
   border: none;
   border-radius: var(--r-button);
   background: var(--moss);
   color: #fff;
   cursor: pointer;
+  transition: background-color var(--dur-1) var(--ease-settle);
 }
 .primary:hover {
   background: var(--moss-deep);

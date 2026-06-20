@@ -11,6 +11,7 @@ import { createClient } from '../../../lib/supabase/server';
 import { ensureAccount } from '../../../lib/auth/bootstrap';
 import { upsertOwnProfile } from '../../../lib/auth/profile';
 import { AppShell } from '../../../components/shell/AppShell';
+import { EmptyState } from '../../../components/ui';
 import { markRead } from './actions';
 import styles from './notifications.module.css';
 
@@ -78,10 +79,10 @@ export default async function NotificationsPage() {
         <p className={styles.eyebrow}>From the grove</p>
         <h1 className={styles.heading}>Your leaves</h1>
         {leaves.length === 0 ? (
-          <div className={styles.empty}>
-            Nothing here yet. When your grove has something for you — Field Notes, a training
-            session, someone close to graduating — a leaf lands on this pile.
-          </div>
+          <EmptyState
+            title="Your pile is empty"
+            body="When your grove has something for you — a Field Note, a training session, someone close to graduating — a leaf lands here."
+          />
         ) : (
           leaves.map((leaf) => (
             <article key={leaf.id} className={`${styles.leaf} ${leaf.read_at ? '' : styles.leafUnread}`}>

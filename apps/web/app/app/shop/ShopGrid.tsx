@@ -6,6 +6,7 @@
  * server page so no additional fetch is needed for filtering.
  */
 import { useState } from 'react';
+import { EmptyState } from '../../../components/ui';
 import { AdoptButton } from '../../../components/adopt/AdoptButton';
 import { buildConnectorOptions, filterTemplates } from './filter';
 import type { FilterValue } from './filter';
@@ -62,7 +63,10 @@ export function ShopGrid({ cards }: { cards: ShopCard[] }) {
       </div>
 
       {visible.length === 0 ? (
-        <p className={styles.emptyState}>No templates require that connector yet.</p>
+        <EmptyState
+          title="Nothing here yet"
+          body="No templates need that connector just yet. More are on their way."
+        />
       ) : (
         <div className={styles.grid}>
           {visible.map((card) => (

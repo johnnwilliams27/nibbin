@@ -22,8 +22,8 @@
   gap: 14px;
   z-index: 30;
   will-change: transform;
-  transition: transform var(--dur-2) var(--ease-settle), width var(--dur-2) var(--ease-settle),
-    padding var(--dur-2) var(--ease-settle);
+  transition: transform var(--motion-reveal-dur) var(--motion-reveal), width var(--motion-reveal-dur) var(--motion-reveal),
+    padding var(--motion-reveal-dur) var(--motion-reveal);
 }
 
 /* Collapsed sidebar — icon-only rail */
@@ -180,7 +180,7 @@
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  transition: margin-left var(--dur-2) var(--ease-settle);
+  transition: margin-left var(--motion-reveal-dur) var(--motion-reveal);
 }
 
 /* Desktop: slide main inward when nav is collapsed */
@@ -223,10 +223,11 @@
   overflow: hidden;
   /* Smooth collapse, per Plate 06 (Motion): slide off via transform + fade —
      never animate width. margin-right reclaims the layout space as it goes.
-     --dur-4 (650ms) for a slow, deliberate glide; --ease-snap for drawer feel. */
-  transition: transform var(--dur-4) var(--ease-snap, var(--ease-settle)),
-    opacity var(--dur-4) var(--ease-snap, var(--ease-settle)),
-    margin-right var(--dur-4) var(--ease-snap, var(--ease-settle));
+     Shares --motion-reveal-dur / --motion-reveal with the nav and grove dock
+     so all chrome panels animate as one motion system. */
+  transition: transform var(--motion-reveal-dur) var(--motion-reveal),
+    opacity var(--motion-reveal-dur) var(--motion-reveal),
+    margin-right var(--motion-reveal-dur) var(--motion-reveal);
 }
 
 /* The panel toggle button is desktop-hidden; only visible on mobile */
@@ -262,13 +263,11 @@
   opacity: 0;
   margin-right: -380px;
   pointer-events: none;
-  /* Close uses an ease-in-out (not the base --ease-settle out-expo). Out-expo
-     front-loads the motion, so on collapse the panel faded to 0 in the first
-     ~150ms and looked like it snapped away; an even in-out spreads the fade +
-     slide across the full --dur-4 so the close glides like the open. */
-  transition: transform var(--dur-4) cubic-bezier(0.65, 0, 0.35, 1),
-    opacity var(--dur-4) cubic-bezier(0.65, 0, 0.35, 1),
-    margin-right var(--dur-4) cubic-bezier(0.65, 0, 0.35, 1);
+  /* Close mirrors the open via the same shared reveal tokens so both directions
+     read as one continuous motion — no separate in-out override needed. */
+  transition: transform var(--motion-reveal-dur) var(--motion-reveal),
+    opacity var(--motion-reveal-dur) var(--motion-reveal),
+    margin-right var(--motion-reveal-dur) var(--motion-reveal);
 }
 .panelExpand {
   position: fixed;

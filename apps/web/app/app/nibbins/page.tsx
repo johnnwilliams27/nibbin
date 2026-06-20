@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { buildCreature, type Accessory, type Marking, type SpeciesName, type Stage } from '@nibbin/creatures';
 import { appSession } from '../../../lib/auth/app-session';
 import { AppShell } from '../../../components/shell/AppShell';
+import { EmptyState } from '../../../components/ui';
 import { Tooltip, InfoTooltip } from '../../../components/ui/Tooltip';
 import { NoteRefresher } from './NoteRefresher';
 import { NibbinEditor } from './NibbinEditor';
@@ -296,16 +297,15 @@ export default async function NibbinsPage() {
   if (nibbins.length === 0) {
     return (
       <AppShell active="nibbins" title="Your Nibbins" email={user.email}>
-        <div className={`${styles.agent} ${styles.empty}`} style={{ maxWidth: 520, margin: '0 auto' }}>
-          <h2 className={styles.emptyTitle}>Your grove is quiet</h2>
-          <p className={styles.emptyBody}>
-            No Nibbins yet. Each one starts as an egg in Agent School — drafting everything for your
-            yes until it earns its way to working on its own. Adopt your first from the shop.
-          </p>
-          <a className={`${styles.abtn} ${styles.abtnGo}`} href="/app/shop">
-            Visit the Agent Shop →
-          </a>
-        </div>
+        <EmptyState
+          title="Your grove is quiet"
+          body="No Nibbins yet. Each one starts as an egg in Agent School — drafting everything for your yes until it earns its way to working on its own."
+          action={
+            <a className={`${styles.abtn} ${styles.abtnGo}`} href="/app/shop">
+              Visit the Agent Shop →
+            </a>
+          }
+        />
       </AppShell>
     );
   }

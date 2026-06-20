@@ -41,8 +41,8 @@
   flex-direction: column;
   z-index: 22;
   overflow: hidden;
-  /* Enter/exit transitions for the rail */
-  transition: transform var(--dur-4) var(--ease-settle), opacity var(--dur-4) var(--ease-settle);
+  /* Enter/exit transitions for the rail — shared motion grammar with nav collapse */
+  transition: transform var(--motion-reveal-dur) var(--motion-reveal), opacity var(--motion-reveal-dur) var(--motion-reveal);
 }
 
 /* Closed (desktop): slide off to the right and fade out. */
@@ -50,8 +50,8 @@
   transform: translateX(100%);
   opacity: 0;
   pointer-events: none;
-  transition: transform var(--dur-4) cubic-bezier(0.65, 0, 0.35, 1),
-    opacity var(--dur-4) cubic-bezier(0.65, 0, 0.35, 1);
+  transition: transform var(--motion-reveal-dur) var(--motion-reveal),
+    opacity var(--motion-reveal-dur) var(--motion-reveal);
 }
 
 .panelOpen {
@@ -170,8 +170,8 @@
     box-shadow: var(--shadow-3);
     z-index: 28;
     bottom: 0;
-    /* Override rail transition with sheet-appropriate transition */
-    transition: transform var(--dur-3) var(--ease-settle);
+    /* Override rail transition with sheet-appropriate transition — same tokens, Y axis */
+    transition: transform var(--motion-reveal-dur) var(--motion-reveal);
   }
 
   /* Closed on mobile: slide down off-screen. */
@@ -179,7 +179,7 @@
     transform: translateY(100%);
     opacity: 1; /* sheet stays opaque when sliding away */
     pointer-events: none;
-    transition: transform var(--dur-3) cubic-bezier(0.65, 0, 0.35, 1);
+    transition: transform var(--motion-reveal-dur) var(--motion-reveal);
   }
 
   /* Open on mobile: slide up into view. */

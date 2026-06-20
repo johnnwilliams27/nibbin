@@ -261,14 +261,6 @@
   color: var(--canopy);
 }
 
-.emptyState {
-  font-family: var(--sans);
-  font-size: 15px;
-  color: var(--ink-soft);
-  padding: 40px 0;
-  text-align: center;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .card,
   .adopt,
