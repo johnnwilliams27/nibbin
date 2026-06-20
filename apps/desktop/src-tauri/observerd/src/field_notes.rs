@@ -213,6 +213,26 @@ pub fn generate_and_save(
     Ok(())
 }
 
+/// Load field notes. Missing file → empty list. Corrupt file → Err.
+///
+/// Test-only: production reads `field_notes.json` directly (the embedded web
+/// UI fetches it), so this round-trip reader exists solely for the tests that
+/// assert what `generate_and_save` wrote. `#[cfg(test)]` keeps it out of the
+/// release build (where it would trip `dead_code` under `-D warnings`) while
+/// remaining available to the test module below — #224 deleted it outright,
+/// which broke test compilation (E0425) and left the daemon CI red.
+#[cfg(test)]
+pub fn load(root: &Path) -> anyhow::Result<Vec<FieldNote>> {
+    let path = root.join(FILE);
+    match std::fs::read_to_string(&path) {
+        Ok(text) => {
+            serde_json::from_str(&text).with_context(|| format!("{} is corrupt", path.display()))
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(vec![]),
+        Err(e) => Err(e).with_context(|| format!("reading {}", path.display())),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
