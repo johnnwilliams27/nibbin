@@ -147,8 +147,10 @@ pub struct Daemon {
     /// set, capture_pass returns early and the reason is published to
     /// daemon.status. Cleared once the durable state is consistent again.
     capture_blocked: Option<String>,
-    /// Timestamp of the last field-notes generation pass (throttle gate).
-    last_field_notes_gen: Option<DateTime<Utc>>,
+    /// Monotonic instant of the last field-notes generation pass (throttle gate).
+    /// Using Instant (not wall-clock DateTime) so a backward clock jump never
+    /// stalls generation indefinitely.
+    last_field_notes_gen: Option<std::time::Instant>,
 }
 
 impl Daemon {
@@ -480,17 +482,33 @@ impl Daemon {
             } => {
                 // Load the current on-disk set (authoritative source; avoids any
                 // in-memory drift from prior adds that didn't reach disk).
-                let mut current = exclusions::load_exclusions(&self.store_root)
-                    .unwrap_or_else(|_| self.pipeline.exclusions().clone());
+                // Fail-closed: a corrupt file must NOT be silently repaired by
+                // falling back to the in-memory set (that would overwrite the corrupt
+                // file with an unverified state). Block capture and surface the error,
+                // matching AddExclusion's save-error fail-loud shape.
+                let mut current = match exclusions::load_exclusions(&self.store_root) {
+                    Ok(ex) => ex,
+                    Err(e) => {
+                        self.capture_blocked = Some(format!("exclusions unreadable: {e}"));
+                        return Err(e);
+                    }
+                };
                 // Subtract: retain entries that do NOT match the removal request.
+                // Use the same case-insensitive comparison that enforcement uses
+                // (blocklist.rs host_matches lowercases both sides; bundle_id and
+                // app_name enforcement also lowercases). This ensures a removal
+                // reliably drops the entry regardless of stored capitalisation.
                 if let Some(h) = &host {
-                    current.hosts.retain(|x| x != h);
+                    let h_lc = h.to_lowercase();
+                    current.hosts.retain(|x| x.to_lowercase() != h_lc);
                 }
                 if let Some(b) = &bundle_id {
-                    current.bundle_ids.retain(|x| x != b);
+                    let b_lc = b.to_lowercase();
+                    current.bundle_ids.retain(|x| x.to_lowercase() != b_lc);
                 }
                 if let Some(a) = &app_name {
-                    current.app_names.retain(|x| x != a);
+                    let a_lc = a.to_lowercase();
+                    current.app_names.retain(|x| x.to_lowercase() != a_lc);
                 }
                 // Save-first (mirrors AddExclusion): persist BEFORE updating memory.
                 if let Err(e) = exclusions::save_exclusions(&self.store_root, &current) {
@@ -637,16 +655,18 @@ impl Daemon {
         Ok(())
     }
 
-    /// Regenerate `field_notes.json` from the current study's redacted events,
-    /// throttled to at most once every 3 minutes. Derives notes locally from
-    /// post-pipeline events only — no network, no LLM, no raw content (C1).
-    /// Errors are logged but do NOT block capture (field notes are derived
-    /// metadata, not core study data).
+    /// Regenerate `field_notes.json` from the last 24 hours of redacted events,
+    /// throttled to at most once every 3 minutes. Derives per-app notes locally
+    /// from post-pipeline events only — no network, no LLM, no raw content (C1).
+    /// The 24-hour window bounds the query to O(day's events) rather than
+    /// O(all study events), and makes the notes accurately reflect "the day's
+    /// activity." Errors are logged but do NOT block capture (field notes are
+    /// derived metadata, not core study data).
     pub fn maybe_generate_field_notes(&mut self) {
         let now = daemon_now();
-        const THROTTLE_SECS: i64 = 180; // at most once every 3 minutes
-        if let Some(last) = self.last_field_notes_gen {
-            if (now - last).num_seconds() < THROTTLE_SECS {
+        const THROTTLE_DURATION: std::time::Duration = std::time::Duration::from_secs(180);
+        if let Some(last_instant) = self.last_field_notes_gen {
+            if last_instant.elapsed() < THROTTLE_DURATION {
                 return;
             }
         }
@@ -656,11 +676,15 @@ impl Daemon {
             return;
         }
         // Open a read-only view of the store to list the redacted events.
+        // Bound the scan to the last 24 hours: field notes describe "the day's
+        // activity", and an unbounded scan grows O(all events) over the 14-day
+        // study window.
+        let cutoff = (now - chrono::Duration::hours(24)).to_rfc3339();
         let events = match ObserverStore::open(&self.store_root, key_provider().as_ref()) {
-            Ok(s) => match s.list_events() {
+            Ok(s) => match s.list_events_since(&cutoff) {
                 Ok(evts) => evts,
                 Err(e) => {
-                    eprintln!("field_notes: list_events failed: {e}");
+                    eprintln!("field_notes: list_events_since failed: {e}");
                     return;
                 }
             },
@@ -670,7 +694,7 @@ impl Daemon {
             }
         };
         match field_notes::generate_and_save(&self.store_root, &events, &now.to_rfc3339()) {
-            Ok(()) => self.last_field_notes_gen = Some(now),
+            Ok(()) => self.last_field_notes_gen = Some(std::time::Instant::now()),
             Err(e) => eprintln!("field_notes: generate failed: {e}"),
         }
     }
