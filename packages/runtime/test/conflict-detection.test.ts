@@ -59,7 +59,7 @@ function spec(overrides: Partial<AgentSpec> = {}): AgentSpec {
 }
 
 function seniorNib(id: string = NIB_A): NibbinRef {
-  return { id, accountId: ACCOUNT, name: 'Echo', stage: 'senior', status: 'active', spec: spec() };
+  return { id, accountId: ACCOUNT, name: 'Echo', stage: 'senior', stageChangedAt: 0, status: 'active', spec: spec() };
 }
 
 /**

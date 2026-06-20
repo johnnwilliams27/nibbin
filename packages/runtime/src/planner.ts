@@ -195,7 +195,7 @@ function syntheticNibbin(plan: PlanSpec, runId: string): NibbinRef {
     creditProfile: { weightClass: plan.weightClass, ceilings: plan.ceilings },
     personaPolicy: plan.personaPolicy,
   };
-  return { id: `plan:${runId}`, accountId: '', name: 'Planner run', stage: 'student', status: 'active', spec };
+  return { id: `plan:${runId}`, accountId: '', name: 'Planner run', stage: 'student', stageChangedAt: 0, status: 'active', spec };
 }
 
 /** A one-step spec the interpreter turns into ProgramStep(s) for a connector

@@ -42,7 +42,7 @@ function spec(maxTokens = 1000): AgentSpec {
 }
 
 function nib(s: AgentSpec): NibbinRef {
-  return { id: 'nib-m', accountId: ACCOUNT, name: 'Echo', stage: 'student', status: 'active', spec: s };
+  return { id: 'nib-m', accountId: ACCOUNT, name: 'Echo', stage: 'student', stageChangedAt: 0, status: 'active', spec: s };
 }
 
 function harness(model?: ModelDrafter) {

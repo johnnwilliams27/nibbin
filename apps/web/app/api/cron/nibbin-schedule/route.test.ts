@@ -45,6 +45,7 @@ function nibbin(over: Partial<NibbinRef> & { id: string; schedule?: string | nul
     accountId: over.accountId ?? `acct-${over.id}`,
     name: over.name ?? over.id,
     stage: over.stage ?? 'student',
+    stageChangedAt: over.stageChangedAt ?? 0,
     status: over.status ?? 'active',
     spec: over.spec ?? ({
       templateKey: 't',

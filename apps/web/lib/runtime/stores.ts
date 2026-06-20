@@ -15,6 +15,7 @@ import type {
   GrantStore,
   IdempotencyClaim,
   IdempotencyStore,
+  NibbinCurrentState,
   OpenTrainingRequest,
   ProductEvent,
   ResourceClaimResult,
@@ -104,14 +105,31 @@ export class SupabaseRunStore implements RunStore {
     });
     if (error) throw new Error(`run_steps insert failed: ${error.message}`);
   }
+
+  async getNibbin(nibbinId: string): Promise<NibbinCurrentState | null> {
+    const { data, error } = await this.svc
+      .from('nibbins')
+      .select('stage, stage_changed_at, status')
+      .eq('id', nibbinId)
+      .maybeSingle();
+    if (error) throw new Error(`getNibbin failed: ${error.message}`);
+    if (!data) return null;
+    return {
+      stage: data.stage as NibbinCurrentState['stage'],
+      stageChangedAt: new Date(data.stage_changed_at as string).getTime(),
+      status: data.status as NibbinCurrentState['status'],
+    };
+  }
 }
 
 export class SupabaseRoutineStore implements RoutineStore {
   constructor(private readonly svc: Service) {}
 
-  async approvedCount(nibbinId: string, patternKey: string): Promise<number> {
-    // drafts carry their pattern key in the step payload; an approval row with
-    // decision 'approved' (unedited) on that run counts toward routine trust
+  async approvedCount(nibbinId: string, patternKey: string, sinceMs: number): Promise<number> {
+    // Scope to the current stage tenure (#44): only approvals decided after
+    // stage_changed_at count. A demotion resets stage_changed_at, so any
+    // approvals from prior stages are excluded and the pattern's climb restarts.
+    const sinceIso = new Date(sinceMs).toISOString();
     const { data: steps, error } = await this.svc
       .from('run_steps')
       .select('run_id, runs!inner(nibbin_id)')
@@ -125,7 +143,8 @@ export class SupabaseRoutineStore implements RoutineStore {
       .from('approvals')
       .select('id', { count: 'exact', head: true })
       .eq('decision', 'approved')
-      .in('run_id', runIds);
+      .in('run_id', runIds)
+      .gte('decided_at', sinceIso);
     if (e2) throw new Error(`routine approval count failed: ${e2.message}`);
     return count ?? 0;
   }

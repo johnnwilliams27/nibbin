@@ -294,7 +294,7 @@ function harness(reader: (path: string) => string): Harness {
 }
 
 function nib(s: AgentSpec): NibbinRef {
-  return { id: 'nib-mp', accountId: ACCOUNT, name: 'Morning ops', stage: 'student', status: 'active', spec: s };
+  return { id: 'nib-mp', accountId: ACCOUNT, name: 'Morning ops', stage: 'student', stageChangedAt: 0, status: 'active', spec: s };
 }
 
 const CONN_MAP = { 'google-calendar': 'conn-gcal', stripe: 'conn-stripe', gmail: 'conn-gmail' };

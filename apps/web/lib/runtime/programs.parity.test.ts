@@ -84,6 +84,7 @@ function nib(): NibbinRef {
     accountId: ACCOUNT,
     name: 'Parity',
     stage: 'student',
+    stageChangedAt: 0,
     status: 'active',
     spec: templateSpec('echo'),
   };

@@ -46,7 +46,7 @@ function spec(steps: CapabilityStep[]): AgentSpec {
 }
 
 function nib(s: AgentSpec, stage: NibbinRef['stage'] = 'student'): NibbinRef {
-  return { id: 'nib-i', accountId: ACCOUNT, name: 'Composed', stage, status: 'active', spec: s };
+  return { id: 'nib-i', accountId: ACCOUNT, name: 'Composed', stage, stageChangedAt: 0, status: 'active', spec: s };
 }
 
 interface Harness {
