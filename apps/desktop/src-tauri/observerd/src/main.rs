@@ -43,6 +43,7 @@ fn main() -> anyhow::Result<()> {
         daemon.drain_control()?;
         daemon.tick()?;
         daemon.capture_pass()?;
+        daemon.maybe_generate_field_notes();
         daemon.write_status()?;
         if once {
             return Ok(());

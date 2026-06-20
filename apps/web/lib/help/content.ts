@@ -169,8 +169,8 @@ export const HELP_CONTENT: HelpContent = [
         id: "fs-field-notes",
         q: "What are Field Notes?",
         body:
-          "Field Notes is a sub-tab in the desktop app’s Field Study view. It shows on-device-only stats computed from your already-redacted events:\n• Total event count.\n• Active time so far.\n• Number of pauses.\n• Days elapsed in the study.\n• A “Where the day went” breakdown by app.\n\nNothing shown in Field Notes is uploaded. It’s computed and shown on your machine only — a live window into what the observer has seen, before any packet is built.",
-        keywords: ["field notes", "stats", "on device", "event count", "breakdown", "local"],
+          "Field Notes is a sub-tab in the desktop app’s Field Study view. It shows per-app activity summaries derived locally from your already-redacted events over the last 24 hours — for example, \"~12m in Gmail — 3 windows, 4 navigations.\" Each summary is built from app names, event counts, approximate active time, and input counts (keys and clicks). No window titles, URL content, or raw text is included.\n\nNotes appear automatically within a few minutes of your study running and refresh every ~3 minutes. Nothing in Field Notes is uploaded — it’s computed on your device only.",
+        keywords: ["field notes", "per-app", "on device", "active time", "breakdown", "local"],
       },
       {
         id: "fs-review-exclusions",
