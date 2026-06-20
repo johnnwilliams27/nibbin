@@ -1,0 +1,113 @@
+/* DesktopOrStudyCard — compact Field Study status card for the grove home.
+   Sits in the same slot as the "Get the desktop app" download card.
+   Token-only: no hardcoded colour values. */
+
+.studyCard {
+  margin-top: 22px;
+  padding: 18px 22px;
+}
+
+.studyHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.studyEyebrow {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--moss-deep);
+  font-weight: 600;
+  margin: 0;
+}
+
+/* Compact countdown — smaller than the full study page's 28px */
+.studyCountdown {
+  font-family: var(--mono);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+  margin: 0 0 12px;
+}
+
+.studyCountdownUnit {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ink-soft);
+  letter-spacing: 0;
+}
+
+/* Short body copy for the "not running" state */
+.studyPrompt {
+  font-size: 14px;
+  color: var(--ink-soft);
+  margin: 0 0 14px;
+  line-height: 1.5;
+}
+
+/* Controls row: Pause/Resume button + "Open study" link */
+.studyControls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Minimal ghost button — avoids importing Button to keep the dep light */
+.studyBtn {
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 700;
+  padding: 7px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-button);
+  background: var(--canopy);
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color var(--dur-1) var(--ease-settle),
+    background var(--dur-1) var(--ease-settle);
+}
+
+.studyBtn:hover:not(:disabled) {
+  border-color: var(--moss);
+  background: var(--understory);
+}
+
+.studyBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.studyBtnPrimary {
+  background: var(--moss);
+  color: #fff;
+  border-color: var(--moss);
+}
+
+.studyBtnPrimary:hover:not(:disabled) {
+  background: var(--moss-deep);
+  border-color: var(--moss-deep);
+}
+
+/* Text link — matches the dash.cta pattern */
+.studyLink {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--moss-deep);
+  text-decoration: none;
+}
+
+.studyLink:hover {
+  text-decoration: underline;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .studyBtn {
+    transition: none;
+  }
+}
