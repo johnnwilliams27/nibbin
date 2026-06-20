@@ -391,14 +391,16 @@ export default async function NibbinsPage() {
                   <h4>{n.name}</h4>
                   <div className={styles.job}>{jobOf(n)}</div>
                 </div>
-                <span className={`${styles.stagepill} ${STAGE_PILL_CLASS[n.stage]}`}>
-                  {STAGE_LABEL[n.stage]}
-                </span>
-                {specVersion !== null && (
-                  <span className={styles.vBadge} title={`Spec version ${specVersion}`}>
-                    v{specVersion}
+                <span className={styles.idBadges}>
+                  <span className={`${styles.stagepill} ${STAGE_PILL_CLASS[n.stage]}`}>
+                    {STAGE_LABEL[n.stage]}
                   </span>
-                )}
+                  {specVersion !== null && (
+                    <span className={styles.vBadge} title={`Spec version ${specVersion}`}>
+                      v{specVersion}
+                    </span>
+                  )}
+                </span>
               </div>
 
               <div className={styles.school}>
@@ -485,9 +487,6 @@ export default async function NibbinsPage() {
                     status={n.status}
                     pausedReason={n.paused_reason ?? null}
                   />
-                  <a className={styles.abtn} href="/app/shop">
-                    Adopt more →
-                  </a>
                 </span>
               </div>
             </div>

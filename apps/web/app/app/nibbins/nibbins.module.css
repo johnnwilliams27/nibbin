@@ -93,8 +93,18 @@
   border-radius: 20px;
   display: inline-block;
   white-space: nowrap;
+}
+
+/* STUDENT + vN badges grouped top-right so they stay on one line, aligned with
+   each other (previously the vN badge centred against the 2-line id block and
+   sat below the stage pill on mobile). */
+.idBadges {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   margin-left: auto;
   align-self: flex-start;
+  flex-shrink: 0;
 }
 .stEgg {
   background: #f4efe0;
