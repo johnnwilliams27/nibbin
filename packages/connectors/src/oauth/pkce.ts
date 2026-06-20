@@ -1,6 +1,7 @@
 /**
- * PKCE + state + nonce primitives (SPEC §6.5: "PKCE + state + nonce" on every
- * OAuth flow). All randomness from the CSPRNG; comparisons timing-safe.
+ * PKCE + state primitives (SPEC §6.5). All randomness from the CSPRNG;
+ * comparisons timing-safe. No nonce: the authorization-code flow does not
+ * request an id_token, so there is no nonce to validate or emit.
  */
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 
@@ -22,11 +23,7 @@ export function generateState(): string {
   return base64url(randomBytes(24));
 }
 
-export function generateNonce(): string {
-  return base64url(randomBytes(24));
-}
-
-/** Constant-time string equality (state/nonce checks). */
+/** Constant-time string equality (state checks). */
 export function timingSafeEqualString(a: string, b: string): boolean {
   const ab = Buffer.from(a, 'utf8');
   const bb = Buffer.from(b, 'utf8');
