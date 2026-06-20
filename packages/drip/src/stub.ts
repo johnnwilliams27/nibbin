@@ -7,7 +7,7 @@ import type { ArcDataPort } from './types';
 
 export function stubArcData(overrides?: Partial<ArcDataPort>): ArcDataPort {
   return {
-    flags: async () => ({ studyActive: false, nearGraduation: false }),
+    flags: async () => ({ studyActive: false, studyCompleted: false, nearGraduation: false }),
     nibbinDay: async () => [],
     unseenInsights: async () => [],
     journal: async () => [],

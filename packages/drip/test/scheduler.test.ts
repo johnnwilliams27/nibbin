@@ -7,7 +7,7 @@ import { arcDay, localDay, localHour, safeTz } from '../src/localtime';
 import { MIN_PUSH_SPACING_MS, planBeat } from '../src/scheduler';
 import type { ArcFlags, ArcState, SendRecord } from '../src/types';
 
-const NO_FLAGS: ArcFlags = { studyActive: false, nearGraduation: false };
+const NO_FLAGS: ArcFlags = { studyActive: false, studyCompleted: false, nearGraduation: false };
 
 function arc(over: Partial<ArcState> = {}): ArcState {
   return {

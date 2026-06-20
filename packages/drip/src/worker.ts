@@ -64,8 +64,13 @@ async function tickArc(deps: WorkerDeps, arc: ArcRow, result: TickResult): Promi
   // though the 14-day arc completed days ago.
   const events = await deps.data.earnedEvents(arc.accountId);
   for (const event of events) {
-    await deps.store.insertEarnedNotification(arc.accountId, event);
-    result.earnedNotifications += 1;
+    try {
+      const inserted = await deps.store.insertEarnedNotification(arc.accountId, event);
+      if (inserted) result.earnedNotifications += 1;
+    } catch (err) {
+      result.errors += 1;
+      deps.onError?.(arc.accountId, err);
+    }
   }
 
   // Beats are the drip; they stop with the arc.

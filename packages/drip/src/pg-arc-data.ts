@@ -38,8 +38,10 @@ export function pgArcData(pool: Pool): ArcDataPort {
         [accountId],
       );
       const near = await port.nearGraduation(accountId);
+      const latestStudyEvent = study.rows[0]?.name ?? null;
       return {
-        studyActive: study.rows[0]?.name === 'study_started',
+        studyActive: latestStudyEvent === 'study_started',
+        studyCompleted: latestStudyEvent === 'study_completed',
         nearGraduation: near !== null,
       };
     },
@@ -50,7 +52,7 @@ export function pgArcData(pool: Pool): ArcDataPort {
       // upstream, but coalesce again — this query must never throw on it.
       const r = await pool.query<{ name: string; runs: string; drafts_waiting: string }>(
         `with owner_tz as (
-           select case when u.tz is not null and u.tz in (select name from pg_timezone_names)
+           select case when u.tz is not null and lower(u.tz) in (select lower(name) from pg_timezone_names)
                        then u.tz else 'UTC' end as tz
              from drip_arcs a
              join memberships m on m.account_id = a.account_id
