@@ -6,6 +6,8 @@
  */
 import { bridge, type StudyStatus } from '../bridge.js';
 import type { StudyKind, StudyDepth } from '../../core/study-machine.js';
+import type { StudySnapshot } from '../../core/study-machine.js';
+import { postStudyStatus } from '../post-study-status.js';
 import { button, el } from '../dom.js';
 import { syncStudy, type SyncState } from '../sync-study.js';
 import { EVER_COMPLETED_KEY } from '../tab-dot.js';
@@ -446,7 +448,22 @@ function quickScanView(status: StudyStatus, onChanged: () => void): HTMLElement 
   const controls = el('div', { class: 'card' }, [el('h2', {}, ['Controls'])]);
   controls.append(
     el('div', { class: 'row' }, [
-      button('Stop scan', () => void bridge.sendControl('stop_early').then(onChanged), 'primary'),
+      button('Stop scan', () => {
+        void bridge.sendControl('stop_early').then(() => {
+          const snap = status.study as Partial<StudySnapshot> | null;
+          if (snap?.studyId && snap.startedAt) {
+            void postStudyStatus({
+              studyId: snap.studyId,
+              kind: snap.kind ?? 'quick_scan',
+              label: snap.label ?? null,
+              status: "stopped",
+              startedAt: snap.startedAt,
+              endsAt: snap.endsAt ?? null,
+            });
+          }
+          onChanged();
+        });
+      }, 'primary'),
     ]),
   );
   root.append(controls, deleteEverythingCard(onChanged));

@@ -53,3 +53,18 @@
   .panel { animation: none; }
   .bell, .leaf { transition: none; }
 }
+
+/* Mobile: the absolute dropdown gets clipped by the topbar/shell overflow and can
+   run off-screen. Pin it as a viewport-fitted fixed panel under the topbar so it
+   never cuts off; the list scrolls within the available height. */
+@media (max-width: 640px) {
+  .panel {
+    position: fixed;
+    top: calc(var(--topbar-h, 60px) + 6px);
+    right: 8px;
+    left: 8px;
+    width: auto;
+    max-width: none;
+  }
+  .list { max-height: calc(100dvh - var(--topbar-h, 60px) - 110px); }
+}

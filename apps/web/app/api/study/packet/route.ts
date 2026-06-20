@@ -1,25 +1,10 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { createClient } from '../../../../lib/supabase/server';
-import { getSupabaseUrl, getSupabasePublishableKey } from '../../../../lib/supabase/env';
 import { serviceClient } from '../../../../lib/supabase/service';
 import { ensureAccount } from '../../../../lib/auth/bootstrap';
 import { upsertOwnProfile } from '../../../../lib/auth/profile';
+import { clientForRequest } from '../../../../lib/auth/desktop-client';
 import { synthesizeDiagnosis, validateSynthesisPacket } from '../../../../lib/diagnosis/synthesize';
 import { labelDiagnosis } from '../../../../lib/diagnosis/label';
-
-// Desktop callers have no cookies — authenticate via Authorization: Bearer <jwt>.
-// The token-bound client runs RPCs (bootstrap_account) under the user's auth.uid().
-async function clientForRequest(req: NextRequest) {
-  const bearer = req.headers.get('authorization')?.match(/^Bearer ([A-Za-z0-9._-]+)$/)?.[1];
-  if (bearer) {
-    return createServerClient(getSupabaseUrl(), getSupabasePublishableKey(), {
-      global: { headers: { Authorization: `Bearer ${bearer}` } },
-      cookies: { getAll: () => [], setAll: () => {} },
-    });
-  }
-  return createClient();
-}
 
 /**
  * Study-packet ingest (SPEC §5, §8 M7). The Observer uploads the redacted,
@@ -118,6 +103,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     });
   } catch {
     // analytics is best-effort — never fail the ingest on it.
+  }
+
+  // Diagnosis-ready leaf: surface a nudge so the grove home can prompt the user
+  // to view their new field study map. Best-effort — never blocks the response.
+  try {
+    await svc.rpc('insert_system_notification', {
+      p_account: accountId,
+      p_kind: 'nudge',
+      p_source_id: 'diagnosis_ready:' + data.id,
+      p_title: 'Your field study map is ready',
+      p_body: 'Your workflow diagnosis is in your grove.',
+      p_payload: { ctaPath: '/app/diagnosis', ctaLabel: 'See your map' },
+    });
+  } catch {
+    // notification is best-effort — never fail the ingest on it.
   }
 
   return NextResponse.json({ ok: true, diagnosisId: data.id, totalHoursPerWeek: map.totalHoursPerWeek });
