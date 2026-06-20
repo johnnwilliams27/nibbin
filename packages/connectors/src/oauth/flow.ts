@@ -6,11 +6,19 @@
  * redeemed code to this client. (No `nonce`/`id_token` is requested or
  * consumed, so none is emitted — it would be dead scaffolding.)
  *
- * C8 by construction: `beginAuthorization` always requests the descriptor's
- * READ scopes. Write scopes exist on a separate code path
- * (`beginWriteScopeUpgrade`) that demands the adopting Nibbin's id and a
- * plain-language explanation — there is no parameter that widens a first
- * connect.
+ * Connect-time consent model (owner decision, Connector Lever 1): a first
+ * connect requests the descriptor's READ **and** declared WRITE scopes in a
+ * single consent (`beginConnectAuthorization`), so a Nibbin can act once the
+ * human approves the side effect. `beginAuthorization` (read-only) is retained
+ * for the rare read-only-only flow and as the base of the per-Nibbin upgrade
+ * path. The C8 safety line moved from *scope acquisition* to *execution*:
+ * every side effect is still gated by Agent School stage + approval + velocity
+ * at the runtime layer — widening what is REQUESTED at connect does not widen
+ * what may be EXECUTED without a human yes.
+ *
+ * `beginWriteScopeUpgrade` remains for the per-Nibbin incremental-consent path
+ * (used when a connection was made read-only, or to add a narrower subset); it
+ * demands the adopting Nibbin's id and a plain-language explanation.
  *
  * Google providers are pending verification (docs/STATE.md): connects are
  * gated to the tester allowlist and the 100-user cap until OAuth
@@ -144,13 +152,31 @@ function buildAuthorization(
 }
 
 /**
- * First connect — read-only scopes, always (C8). There is deliberately no
- * way to pass extra scopes here.
+ * Read-only authorization — requests exactly the descriptor's READ scopes.
+ * Retained for read-only-only connects and as the base of any flow that does
+ * not want write at connect time. There is deliberately no way to pass extra
+ * scopes here.
  */
 export function beginAuthorization(req: BeginAuthorizationRequest): PendingAuthorization {
   const { descriptor } = requireOAuthProvider(req.provider);
   enforcePlatformGate(descriptor, req);
   return buildAuthorization(descriptor, req, descriptor.scopes.read, false);
+}
+
+/**
+ * Connect-time authorization (owner decision, Connector Lever 1) — requests the
+ * descriptor's READ **and** declared WRITE scopes in one consent so a Nibbin
+ * can act on the connection after a human approves the side effect. Safety did
+ * not move here: execution of every side effect remains gated by Agent School
+ * stage + approval + velocity at the runtime layer. A provider that declares no
+ * write scopes degrades to a read-only request automatically.
+ */
+export function beginConnectAuthorization(req: BeginAuthorizationRequest): PendingAuthorization {
+  const { descriptor } = requireOAuthProvider(req.provider);
+  enforcePlatformGate(descriptor, req);
+  const scopes = [...descriptor.scopes.read, ...descriptor.scopes.write];
+  // Incremental consent so connects re-add prior grants cleanly when supported.
+  return buildAuthorization(descriptor, req, scopes, true);
 }
 
 /**

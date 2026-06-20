@@ -105,7 +105,7 @@ export const CONNECTORS: ConnectorEntry[] = [
     id: 'google-calendar',
     name: 'Google Calendar',
     category: 'Calendar & Scheduling',
-    status: 'coming_soon',
+    status: 'live',
     whatItDoes: 'Detect upcoming shoots or calls without confirmed prep items and nudge you to send a session brief.',
     domain: 'calendar.google.com',
   },

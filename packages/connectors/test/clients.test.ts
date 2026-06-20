@@ -8,6 +8,7 @@ import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { HttpConnectorClient, ConnectorRequestError } from '../src/connectors/base';
 import { GmailClient } from '../src/connectors/gmail';
+import { GoogleCalendarClient } from '../src/connectors/google-calendar';
 import { InstagramDmClient, IG_REPLY_GRANT } from '../src/connectors/instagram';
 import { MemoryTokenVault, SupabaseTokenVault, redactToken, type StoredToken } from '../src/vault';
 import { AggregatorGateway, AggregatorConnectorClient } from '../src/aggregator';
@@ -294,6 +295,64 @@ describe('aggregator adapter (method A)', () => {
     const q = await client.read('/conversations.history');
     expect(isQuarantined(q.wrapped)).toBe(true);
     expect((await vault.read(conn.id)).accessToken).toBe('nango-conn-42');
+  });
+});
+
+// FIX 2: GoogleCalendarClient must request fields= on every API call to exclude
+// raw PII (event titles / attendee emails) — derived-not-raw hardening.
+describe('GoogleCalendarClient — derived-not-raw fields restriction (Fix 2)', () => {
+  function makeCalConn() {
+    return connection({ provider: 'google-calendar', scopes: ['https://www.googleapis.com/auth/calendar.readonly'] });
+  }
+
+  it('listEvents includes fields= that excludes summary and attendee email', async () => {
+    const conn = makeCalConn();
+    const vault = await vaultWith({}, conn.id);
+    const client = new GoogleCalendarClient(conn, vault, overrides);
+
+    let capturedPath = '';
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.spyOn(client as any, 'readJson').mockImplementation(async (...args: unknown[]) => {
+      capturedPath = args[0] as string;
+      return { data: { items: [], nextPageToken: undefined }, quarantined: {} };
+    });
+
+    await client.listEvents('primary', new Date(0).toISOString(), new Date().toISOString());
+
+    const url = new URL(capturedPath, 'https://fixture.invalid');
+    const fields = url.searchParams.get('fields') ?? '';
+    // Must restrict to known-safe fields only — no summary, no attendee email
+    expect(fields).toBeTruthy();
+    expect(fields).not.toContain('summary');
+    expect(fields).not.toContain('email');
+    // Must include fields needed by scan modules
+    expect(fields).toContain('status');
+    expect(fields).toContain('responseStatus');
+  });
+
+  it('listEventsSync (delta path) includes fields= that excludes summary and attendee email', async () => {
+    const conn = makeCalConn();
+    const vault = await vaultWith({}, conn.id);
+    const client = new GoogleCalendarClient(conn, vault, overrides);
+
+    let capturedPath = '';
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.spyOn(client as any, 'readJson').mockImplementation(async (...args: unknown[]) => {
+      capturedPath = args[0] as string;
+      return { data: { items: [], nextSyncToken: 'tok1' }, quarantined: {} };
+    });
+
+    await client.listEventsSync('primary', 'sync-token-abc');
+
+    const url = new URL(capturedPath, 'https://fixture.invalid');
+    const fields = url.searchParams.get('fields') ?? '';
+    // Delta path only needs id + status for dispatch
+    expect(fields).toBeTruthy();
+    expect(fields).not.toContain('summary');
+    expect(fields).not.toContain('email');
+    expect(fields).toContain('status');
+    // Must include nextSyncToken in fields so pagination advance token is returned
+    expect(fields).toContain('nextSyncToken');
   });
 });
 

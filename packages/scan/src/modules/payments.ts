@@ -4,6 +4,7 @@
  * Adapter: stripe (Connect, read_only scope — C8 holds at the provider).
  */
 import type { ScanContext, ScanModule } from '@nibbin/connectors';
+import { SCAN_WINDOW_MONTHS, SCAN_WINDOW_WEEKS } from '@nibbin/connectors';
 import { DAY_MS, makeFinding, median, round1 } from '../findings';
 import { parseQuarantinedJson } from '../unwrap';
 
@@ -55,8 +56,8 @@ export const paymentsInvoiceLatency: ScanModule = {
         ctx.connection.id,
         `Invoices sit ${medianDays} days as drafts before they go out — every one of those days delays the payment clock.`,
         {
-          hoursPerWeek: round1((gaps.length * 6) / 60 / 13),
-          basis: `${gaps.length} invoices in 90 days; median created→finalized gap ${medianDays} days; ~6 min of chasing each`,
+          hoursPerWeek: round1((gaps.length * 6) / 60 / SCAN_WINDOW_WEEKS),
+          basis: `${gaps.length} invoices in 12 months; median created→finalized gap ${medianDays} days; ~6 min of chasing each`,
         },
         { invoices: gaps.length, medianDays },
       ),
@@ -106,7 +107,7 @@ export const paymentsFeeLeakage: ScanModule = {
     );
     const txns = res?.data ?? [];
     if (txns.length < 5) return [];
-    const feeDollarsMonth = Math.round(txns.reduce((s, t) => s + (t.fee ?? 0), 0) / 100 / 3);
+    const feeDollarsMonth = Math.round(txns.reduce((s, t) => s + (t.fee ?? 0), 0) / 100 / SCAN_WINDOW_MONTHS);
     if (feeDollarsMonth < 20) return [];
     return [
       makeFinding(
@@ -115,7 +116,7 @@ export const paymentsFeeLeakage: ScanModule = {
         `Processing fees are nibbling about $${feeDollarsMonth} a month off your payments.`,
         {
           dollarsPerMonth: feeDollarsMonth,
-          basis: `fees summed over ${txns.length} balance transactions in 90 days, divided by 3 months`,
+          basis: `fees summed over ${txns.length} balance transactions in 12 months, divided by ${SCAN_WINDOW_MONTHS} months`,
         },
         { transactions: txns.length, feeDollarsMonth },
       ),
@@ -141,8 +142,8 @@ export const paymentsRecurringRevenue: ScanModule = {
         ctx.connection.id,
         `${sharePct}% of your revenue comes from repeat clients — worth knowing who they are before they go quiet.`,
         {
-          dollarsPerMonth: Math.round((recurring.reduce((s, i) => s + (i.amount_paid ?? 0), 0) / 100) / 3),
-          basis: `${recurring.length} of ${paid.length} paid invoices ride a subscription; amounts from amount_paid over 3 months`,
+          dollarsPerMonth: Math.round((recurring.reduce((s, i) => s + (i.amount_paid ?? 0), 0) / 100) / SCAN_WINDOW_MONTHS),
+          basis: `${recurring.length} of ${paid.length} paid invoices ride a subscription; amounts from amount_paid over ${SCAN_WINDOW_MONTHS} months`,
         },
         { paidInvoices: paid.length, recurringInvoices: recurring.length, sharePct },
       ),

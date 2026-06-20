@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Connector scan engine (SPEC §4.4) — per-connector scan modules over the 90-day read-only lookback, finding cards, the scan_empty Keeper interview fallback.",
+  "description": "Connector scan engine (SPEC §4.4) — per-connector scan modules over the 12-month read-only lookback, finding cards, the scan_empty Keeper interview fallback.",
   "exports": {
     ".": "./src/index.ts"
   },

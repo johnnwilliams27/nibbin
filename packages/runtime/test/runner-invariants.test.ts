@@ -367,6 +367,93 @@ describe('§6.2: idempotency keys on side effects', () => {
   });
 });
 
+describe('C8 (Connector Lever 1): calendar.event-create is a gated side effect', () => {
+  const calSpec = (): AgentSpec =>
+    spec({
+      templateKey: 'cal',
+      toolsAllowlist: ['calendar.read', 'calendar.event-create'],
+      requiredConnectors: ['google-calendar'],
+    });
+  const calNib = (stage: NibbinRef['stage']): NibbinRef => ({
+    ...nib(calSpec()),
+    stage,
+  });
+  const createEvent: ProgramFn = async function* () {
+    yield {
+      kind: 'draft',
+      capability: 'calendar.event-create',
+      connectionId: CONN,
+      patternKey: 'cal-1',
+      title: 'Confirm shoot',
+      draft: 'Proposed event',
+      effectArgs: { calendarId: 'primary', event: { summary: 'Shoot' } },
+    };
+  };
+
+  it('a below-Graduate Nibbin DRAFTS the calendar event — it never auto-executes (gateSideEffect)', async () => {
+    const h = harness({ credits: 1000 });
+    // Even with the write grant present, a Student is gated to draft.
+    const grants = new MemoryGrantStore();
+    grants.grant('nib-1', CONN, 'calendar.event-create');
+    h.deps.grants = grants;
+    let executed = 0;
+    h.deps.effects = { async execute() { executed += 1; } };
+
+    const outcome = await executeRun(calNib('student'), TRIGGER, createEvent, h.deps);
+    expect(outcome.kind).toBe('awaiting_approval'); // drafted, awaiting human yes
+    expect(executed).toBe(0); // the side effect did NOT fire
+  });
+
+  it('an Egg cannot produce a calendar event at all', async () => {
+    const h = harness({ credits: 1000 });
+    const outcome = await executeRun(calNib('egg'), TRIGGER, createEvent, h.deps);
+    expect(outcome.kind).toBe('not_started'); // eggs observe; no output
+  });
+
+  it('a Graduate WITH the grant executes the calendar event (effects executor fires once)', async () => {
+    const h = harness({ credits: 1000 });
+    const grants = new MemoryGrantStore();
+    grants.grant('nib-1', CONN, 'calendar.event-create');
+    h.deps.grants = grants;
+    let executed = 0;
+    h.deps.effects = { async execute(req) { if (req.capability === 'calendar.event-create') executed += 1; } };
+
+    const outcome = await executeRun(calNib('grad'), TRIGGER, createEvent, h.deps);
+    expect(outcome.kind).toBe('executed');
+    expect(executed).toBe(1);
+  });
+
+  it('a Graduate WITHOUT the grant falls back to draft (write-grant gate)', async () => {
+    const h = harness({ credits: 1000 }); // empty MemoryGrantStore
+    let executed = 0;
+    h.deps.effects = { async execute() { executed += 1; } };
+    const outcome = await executeRun(calNib('grad'), TRIGGER, createEvent, h.deps);
+    expect(outcome.kind).toBe('awaiting_approval'); // no grant → draft, not execute
+    expect(executed).toBe(0);
+  });
+
+  it('a Senior WITH the grant AND a proven routine EXECUTES the calendar event (earned-autonomy)', async () => {
+    // A Senior on a proven routine (routineApprovals >= routineMinApprovals) is
+    // equivalent to Graduate for auto-execution — this is the intended earned-autonomy
+    // behavior. Lock it here so copy and code agree.
+    const h = harness({ credits: 1000 });
+    const grants = new MemoryGrantStore();
+    grants.grant('nib-1', CONN, 'calendar.event-create');
+    h.deps.grants = grants;
+    // Seed routineMinApprovals approvals for the pattern key 'cal-1'
+    const routines = new MemoryRoutineStore();
+    const threshold = calSpec().curriculum.routineMinApprovals; // 5
+    for (let i = 0; i < threshold; i++) routines.approve('nib-1', 'cal-1');
+    h.deps.routines = routines;
+    let executed = 0;
+    h.deps.effects = { async execute(req) { if (req.capability === 'calendar.event-create') executed += 1; } };
+
+    const outcome = await executeRun(calNib('senior'), TRIGGER, createEvent, h.deps);
+    expect(outcome.kind).toBe('executed');
+    expect(executed).toBe(1);
+  });
+});
+
 describe('§4.7: promotion math (rolling window)', () => {
   const curriculum = {
     measures: 't',

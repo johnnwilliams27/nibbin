@@ -1,6 +1,6 @@
 /**
  * @nibbin/scan — the connector scan (SPEC §4.4): per-connector scan modules
- * over the 90-day read-only lookback, the scan engine, the scan_empty Keeper
+ * over the 12-month read-only lookback, the scan engine, the scan_empty Keeper
  * interview fallback (§6.12), and the synthetic fixture corpus for seeded
  * accounts and tests.
  *

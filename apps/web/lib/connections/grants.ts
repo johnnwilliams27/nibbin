@@ -1,11 +1,21 @@
 import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+/**
+ * Write capabilities a Nibbin can hold on a connection. Each is gated at
+ * execution time by Agent School stage + approval + (for sends) velocity —
+ * holding the grant never bypasses the runtime side-effect gate.
+ *   email.draft        — compose a Gmail draft for human review
+ *   email.send         — send a (previously drafted/approved) email
+ *   calendar.event-create — create/modify a Calendar event (with approval)
+ */
+export type WriteCapability = 'email.draft' | 'email.send' | 'calendar.event-create';
+
 export interface CreateWriteGrantInput {
   accountId: string;
   nibbinId: string;
   connectionId: string;
-  capability: 'email.draft' | 'email.send';
+  capability: WriteCapability;
   grantedBy: string;
   plainLanguageReason: string;
 }
@@ -14,7 +24,8 @@ export type CapabilityTier =
   | 'read_only'       // no write grants
   | 'draft_only'      // email.draft active, email.send absent or revoked
   | 'one_click_send'  // email.send active (Senior)
-  | 'autonomous_send'; // email.send active + nibbin stage = 'grad'
+  | 'autonomous_send' // email.send active + nibbin stage = 'grad'
+  | 'event_create';   // calendar.event-create active (Calendar; gated by earned-autonomy model — drafts while learning, autonomous once trusted)
 
 /** Idempotent upsert — ON CONFLICT (nibbin_id, connection_id, capability) sets revoked_at = null */
 export async function createWriteGrant(
@@ -42,7 +53,7 @@ export async function grantWriteCapability(
   connectionId: string,
   accountId: string,
   userId: string,
-  capability: 'email.draft' | 'email.send',
+  capability: WriteCapability,
   plainLanguageReason: string,
   svc: SupabaseClient,
 ): Promise<void> {
@@ -56,7 +67,7 @@ export async function grantWriteCapability(
 export async function revokeWriteGrant(
   nibbinId: string,
   connectionId: string,
-  capability: 'email.draft' | 'email.send',
+  capability: WriteCapability,
   svc: SupabaseClient,
 ): Promise<void> {
   const { error } = await svc
@@ -105,6 +116,10 @@ export async function deriveCapabilityTier(
       .filter((r) => r.revoked_at === null || r.revoked_at === undefined)
       .map((r) => r.capability as string),
   );
+  // Calendar takes priority when held — a Nibbin with calendar.event-create
+  // is always in the event_create tier regardless of email grants present.
+  // This ensures the calendar grant is never hidden by the email ladder.
+  if (active.has('calendar.event-create')) return 'event_create';
   if (!active.has('email.draft')) return 'read_only';
   if (!active.has('email.send')) return 'draft_only';
   if (nibbinStage === 'grad') return 'autonomous_send';

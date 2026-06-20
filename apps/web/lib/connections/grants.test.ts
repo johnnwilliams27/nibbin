@@ -3,8 +3,9 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   createWriteGrant, grantWriteCapability, revokeWriteGrant,
   suspendGrantsForConnection, deriveCapabilityTier,
-  type CreateWriteGrantInput,
+  type CreateWriteGrantInput, type WriteCapability,
 } from './grants';
+import { writeGrantSpecFor } from './callback-core';
 
 // ── compile-time check ────────────────────────────────────────────────────────
 
@@ -159,4 +160,43 @@ it('deriveCapabilityTier ignores revoked rows', async () => {
       { capability: 'email.send', revoked_at: '2026-06-17T00:00:00Z' },
     ]));
   expect(tier).toBe('draft_only');
+});
+
+// ── Calendar write (Connector Lever 1) ────────────────────────────────────────
+
+it('deriveCapabilityTier → event_create when only calendar.event-create active', async () => {
+  const tier = await deriveCapabilityTier('n', 'c', 'senior',
+    makeSvcWithGrants([{ capability: 'calendar.event-create', revoked_at: null }]));
+  expect(tier).toBe('event_create');
+});
+
+it('createWriteGrant can mint a calendar.event-create grant', async () => {
+  const upserted: Record<string, unknown>[] = [];
+  const svc = {
+    from: () => ({ upsert: (row: Record<string, unknown>) => { upserted.push(row); return { error: null }; } }),
+  } as unknown as SupabaseClient;
+  const capability: WriteCapability = 'calendar.event-create';
+  await createWriteGrant(
+    { accountId: 'acc1', nibbinId: 'nib1', connectionId: 'cal1', capability, grantedBy: 'usr1',
+      plainLanguageReason: 'Will create calendar events for your approval before anything is saved.' },
+    svc,
+  );
+  expect(upserted[0]).toMatchObject({ capability: 'calendar.event-create', revoked_at: null });
+});
+
+it('writeGrantSpecFor mints a calendar.event-create spec with a plain-language reason', () => {
+  const spec = writeGrantSpecFor('google-calendar');
+  expect(spec).not.toBeNull();
+  expect(spec!.capability).toBe('calendar.event-create');
+  expect(spec!.reason.length).toBeGreaterThanOrEqual(12);
+});
+
+it('deriveCapabilityTier → event_create when BOTH email.draft and calendar.event-create active (calendar takes priority)', async () => {
+  // Regression: the email-ladder branch must not swallow the calendar grant.
+  const tier = await deriveCapabilityTier('n', 'c', 'senior',
+    makeSvcWithGrants([
+      { capability: 'email.draft', revoked_at: null },
+      { capability: 'calendar.event-create', revoked_at: null },
+    ]));
+  expect(tier).toBe('event_create');
 });

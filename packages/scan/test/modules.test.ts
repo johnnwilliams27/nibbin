@@ -5,9 +5,9 @@
  * carries raw content.
  */
 import { describe, expect, it } from 'vitest';
-import { CONNECTOR_REGISTRY, scanWindowEndingAt, type Connection, type Finding } from '@nibbin/connectors';
+import { CONNECTOR_REGISTRY, SCAN_WINDOW_MONTHS, quarantine, scanWindowEndingAt, type Connection, type Finding } from '@nibbin/connectors';
 import { TEMPLATE_FOR_SCAN_MODULE, getTemplate } from '@nibbin/runtime';
-import { ALL_SCAN_MODULES, fixtureReader, modulesForProvider, runScan } from '../src/index';
+import { ALL_SCAN_MODULES, fixtureReader, modulesForProvider, paymentsFeeLeakage, paymentsInvoiceLatency, crmDeliveryLatency, runScan } from '../src/index';
 
 const NOW = Date.UTC(2026, 5, 11, 12, 0, 0);
 
@@ -127,5 +127,73 @@ describe('the scan engine', () => {
     );
     expect(result.empty).toBe(true);
     expect(result.failures.length).toBeGreaterThan(0);
+  });
+});
+
+describe('hoursPerWeek window divisor (Fix 3)', () => {
+  it('paymentsInvoiceLatency uses the full 52-week window divisor, not a hardcoded 13', async () => {
+    // 52 invoices with 5-day draft lag; ~6 min each → hoursPerWeek = (52*6)/60/52 = 0.1
+    // With the old /13 divisor it would be (52*6)/60/13 = 0.4 — 4× inflated
+    const nowSecs = Math.floor(NOW / 1000);
+    const invoices = Array.from({ length: 52 }, (_, i) => ({
+      id: `inv-${i}`,
+      status: 'paid',
+      created: nowSecs - (i + 1) * 7 * 86_400,
+      status_transitions: { finalized_at: nowSecs - (i + 1) * 7 * 86_400 + 5 * 86_400 },
+    }));
+    const reader = {
+      read: async () => quarantine(JSON.stringify({ data: invoices }), 'stripe:c1:/v1/invoices'),
+    };
+    const conn = connection('stripe', 'conn-inv-lat');
+    const { SCAN_WINDOW_WEEKS } = await import('@nibbin/connectors');
+    const out = await paymentsInvoiceLatency.run({ connection: conn, window: scanWindowEndingAt(NOW), reader });
+    expect(out.length).toBeGreaterThan(0);
+    const f = out[0]!;
+    // Expected hoursPerWeek uses SCAN_WINDOW_WEEKS (~52), not 13
+    const expectedHpw = Math.round(((52 * 6) / 60 / SCAN_WINDOW_WEEKS) * 10) / 10;
+    expect(f.cost.hoursPerWeek).toBe(expectedHpw);
+    // Sanity: value at 52-week divisor is ~4× smaller than the old 13-week divisor
+    const inflatedHpw = Math.round(((52 * 6) / 60 / 13) * 10) / 10;
+    expect(f.cost.hoursPerWeek).toBeLessThan(inflatedHpw);
+  });
+
+  it('crmDeliveryLatency uses the full 52-week window divisor, not a hardcoded 13', async () => {
+    // 52 collections published 8 days after creation (> 7-day threshold)
+    const collections = Array.from({ length: 52 }, (_, i) => ({
+      id: `col-${i}`,
+      created_at: new Date(NOW - (20 + i * 6) * 86_400_000).toISOString(),
+      published_at: new Date(NOW - (12 + i * 6) * 86_400_000).toISOString(), // 8 days later
+    }));
+    const reader = {
+      read: async () => quarantine(JSON.stringify({ data: collections }), 'pixieset:c1:/v1/collections'),
+    };
+    const conn = connection('pixieset', 'conn-crm-lat');
+    const { SCAN_WINDOW_WEEKS } = await import('@nibbin/connectors');
+    const out = await crmDeliveryLatency.run({ connection: conn, window: scanWindowEndingAt(NOW), reader });
+    // The first finding (medianDays >= 7) contains hoursPerWeek
+    const latencyFinding = out.find((f) => f.module === 'crm.delivery-latency' && f.evidence && (f.evidence as Record<string, unknown>).published !== undefined);
+    expect(latencyFinding).toBeDefined();
+    // hoursPerWeek computed as (count*6)/60/SCAN_WINDOW_WEEKS — should not equal the 13-week value
+    const expectedHpw = Math.max(0.1, Math.round(((52 * 6) / 60 / SCAN_WINDOW_WEEKS) * 10) / 10);
+    const inflatedHpw = Math.round(((52 * 6) / 60 / 13) * 10) / 10;
+    expect(latencyFinding!.cost.hoursPerWeek).toBe(expectedHpw);
+    expect(latencyFinding!.cost.hoursPerWeek).toBeLessThan(inflatedHpw);
+  });
+});
+
+describe('monthly averaging math', () => {
+  it('fee-leakage averages fees over the full window, not a hardcoded 3 months', async () => {
+    // 12 balance transactions, $2400 fee each = $28800 total fees over 12 months = $2400/mo
+    // (must exceed the $20/mo guard; with old /3 math this would have yielded $9600/mo)
+    const feePerTxnCents = 240000; // $2400 in cents
+    const txns = Array.from({ length: 12 }, (_, i) => ({ id: `t${i}`, fee: feePerTxnCents, amount: 5000000 }));
+    const reader = {
+      read: async () => quarantine(JSON.stringify({ data: txns }), 'stripe:c1:/v1/balance_transactions'),
+    };
+    const conn = connection('stripe', 'conn-stripe-math');
+    const out = await paymentsFeeLeakage.run({ connection: conn, window: scanWindowEndingAt(NOW), reader });
+    // $28800 total fees / SCAN_WINDOW_MONTHS(=12) = $2400/mo, NOT $28800/3 = $9600/mo
+    const expectedPerMonth = Math.round((12 * feePerTxnCents) / 100 / SCAN_WINDOW_MONTHS); // 2400
+    expect(out[0]?.cost.dollarsPerMonth).toBe(expectedPerMonth);
   });
 });

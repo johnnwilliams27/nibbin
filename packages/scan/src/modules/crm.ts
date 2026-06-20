@@ -4,6 +4,7 @@
  * Adapters: honeybook (projects), pixieset (collections).
  */
 import type { ScanContext, ScanModule } from '@nibbin/connectors';
+import { SCAN_WINDOW_WEEKS } from '@nibbin/connectors';
 import { DAY_MS, makeFinding, median, round1 } from '../findings';
 import { parseQuarantinedJson } from '../unwrap';
 
@@ -133,8 +134,8 @@ export const crmDeliveryLatency: ScanModule = {
           ctx.connection.id,
           `Galleries take a median ${medianDays} days from shoot to delivery — clients are happiest (and pay fastest) inside a week.`,
           {
-            hoursPerWeek: Math.max(0.1, round1((gaps.length * 6) / 60 / 13)),
-            basis: `${gaps.length} collections published in 90 days; median created→published gap ${medianDays} days`,
+            hoursPerWeek: Math.max(0.1, round1((gaps.length * 6) / 60 / SCAN_WINDOW_WEEKS)),
+            basis: `${gaps.length} collections published in 12 months; median created→published gap ${medianDays} days`,
           },
           { published: gaps.length, medianDays },
         ),

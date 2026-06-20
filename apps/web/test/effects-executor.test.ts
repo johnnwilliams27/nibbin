@@ -49,6 +49,48 @@ it('email.send blocked by velocity returns error', async () => {
   ).rejects.toThrow(/daily-cap/);
 });
 
+function makeCalendarConn(scopes: string[]): Connection {
+  return {
+    id: 'cal1', accountId: 'acc1', provider: 'google-calendar', method: 'H', scopes,
+    status: 'active', tokenRef: 'ref1', webhookState: {}, createdBy: null,
+    createdAt: '2026-01-01T00:00:00Z', revokedAt: null,
+  };
+}
+
+it('calendar.event-create capability calls createEvent with calendarId + event (no velocity cap)', async () => {
+  const events: Array<{ calendarId: string; event: Record<string, unknown> }> = [];
+  const byId = new Map([['cal1', makeCalendarConn(['https://www.googleapis.com/auth/calendar.events'])]]);
+  let velocityCalled = false;
+  const executor = buildEffectsExecutor(byId, 'acc1', Date.now() - 86400000 * 30, {
+    createDraft: async () => { throw new Error('should not draft'); },
+    sendMessage: async () => { throw new Error('should not send'); },
+    sendVelocityConsume: async () => { velocityCalled = true; return { allowed: true }; },
+    createEvent: async (calendarId, event) => { events.push({ calendarId, event }); return { id: 'evt1' }; },
+  });
+  await executor({
+    connectionId: 'cal1',
+    capability: 'calendar.event-create',
+    args: { calendarId: 'primary', event: { summary: 'Shoot' } },
+    idempotencyKey: 'ik-cal',
+  });
+  expect(events).toEqual([{ calendarId: 'primary', event: { summary: 'Shoot' } }]);
+  // Calendar creation is NOT a bulk-send rail — no velocity consume.
+  expect(velocityCalled).toBe(false);
+});
+
+it('calendar.event-create defaults calendarId to primary when omitted', async () => {
+  const events: Array<{ calendarId: string }> = [];
+  const byId = new Map([['cal1', makeCalendarConn(['https://www.googleapis.com/auth/calendar.events'])]]);
+  const executor = buildEffectsExecutor(byId, 'acc1', Date.now(), {
+    createDraft: async () => ({ id: '' }),
+    sendMessage: async () => ({ id: '' }),
+    sendVelocityConsume: async () => ({ allowed: true }),
+    createEvent: async (calendarId) => { events.push({ calendarId }); return { id: 'e' }; },
+  });
+  await executor({ connectionId: 'cal1', capability: 'calendar.event-create', args: { event: {} }, idempotencyKey: 'ik-cal2' });
+  expect(events[0].calendarId).toBe('primary');
+});
+
 it('unknown capability throws', async () => {
   const byId = new Map([['conn1', makeGmailConn([COMPOSE, SEND])]]);
   const executor = buildEffectsExecutor(byId, 'acc1', Date.now(), {

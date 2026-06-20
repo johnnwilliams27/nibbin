@@ -174,6 +174,8 @@ export interface EffectsExecutorTestDeps {
   sendVelocityConsume: (args: {
     accountId: string; provider: string; hourCap: number; dayCap: number;
   }) => Promise<{ allowed: boolean; reason?: string; retryAfterMs?: number }>;
+  /** Optional: stub the Calendar createEvent call. Absent in email-only tests. */
+  createEvent?: (calendarId: string, event: Record<string, unknown>) => Promise<{ id?: string }>;
 }
 
 /**
@@ -279,6 +281,39 @@ export function buildEffectsExecutor(
           }
         } catch (err) {
           // Fleet-learning telemetry: emit connector_blocked on auth/connection-state errors.
+          if (err instanceof ConnectorRequestError) {
+            const reason = err.kind === 'auth' ? 'auth_failed' : err.kind === 'connection-state' ? 'not_connected' : null;
+            if (reason) await emitConnectorBlocked(err.provider, reason);
+          }
+          throw err;
+        }
+        break;
+      }
+      case 'calendar.event-create': {
+        // Calendar write (Connector Lever 1). By the time execution reaches here
+        // the run loop has ALREADY cleared every wall: gateSideEffect (School
+        // stage / proven routine), the calendar.event-create write grant
+        // (deps.grants.hasGrant), and idempotency. This case only performs the
+        // approved side effect. calendarId defaults to 'primary'; the event body
+        // is built by the trusted primitive, never the model.
+        const calendarId =
+          typeof args.args.calendarId === 'string' && args.args.calendarId
+            ? args.args.calendarId
+            : 'primary';
+        const event = (args.args.event as Record<string, unknown> | undefined) ?? {};
+        try {
+          if (testDeps?.createEvent) {
+            await testDeps.createEvent(calendarId, event);
+          } else {
+            const vault = new SupabaseTokenVault({
+              supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
+              serviceKey: process.env.SUPABASE_SECRET_KEY ?? '',
+            });
+            // createEvent throws if the connection lacks calendar.events — a
+            // defense-in-depth scope check beneath the runtime grant gate.
+            await new GoogleCalendarClient(connection, vault).createEvent(calendarId, event);
+          }
+        } catch (err) {
           if (err instanceof ConnectorRequestError) {
             const reason = err.kind === 'auth' ? 'auth_failed' : err.kind === 'connection-state' ? 'not_connected' : null;
             if (reason) await emitConnectorBlocked(err.provider, reason);

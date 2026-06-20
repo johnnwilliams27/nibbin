@@ -10,6 +10,7 @@ export interface ConnectableProvider {
 // in the "Browse all connectors" directory below, not in this list.
 export const CONNECTABLE_PROVIDERS: ConnectableProvider[] = [
   { id: 'gmail', label: 'Gmail', wired: true, domain: 'gmail.com' },
+  { id: 'google-calendar', label: 'Google Calendar', wired: true, domain: 'calendar.google.com' },
 ];
 
 /** Plain-language summary for each granted OAuth scope (no raw URLs in the UI). */

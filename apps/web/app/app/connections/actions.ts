@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation';
 import { appSession } from '../../../lib/auth/app-session';
 import { serviceClient } from '../../../lib/supabase/service';
-import { getGoogleOAuthConfig } from '../../../lib/connections/google-oauth-env';
+import { getOAuthConfigFor } from '../../../lib/connections/oauth-config';
 import { loadTesterAllowlist } from '../../../lib/connections/tester-allowlist';
 import { storePending } from '../../../lib/connections/pending';
 import { beginConnect } from '../../../lib/connections/begin';
@@ -22,7 +22,7 @@ export async function beginConnectAction(formData: FormData): Promise<void> {
   const { url } = await beginConnect(
     { provider, accountId, userId: user.id, userEmail: user.email ?? null, returnTo, resumeTemplate, sweepConsent },
     {
-      config: getGoogleOAuthConfig(),
+      config: getOAuthConfigFor(provider),
       allowlistFor: (p) => loadTesterAllowlist(p, svc),
       save: (input) => storePending(input, svc),
       nowMs: Date.now(),
@@ -99,7 +99,7 @@ export async function beginWriteConnectAction(formData: FormData): Promise<void>
   const { url } = await beginWriteConnect(
     { nibbinId, provider, accountId, userId: user.id, userEmail: user.email ?? null },
     {
-      config: getGoogleOAuthConfig(),
+      config: getOAuthConfigFor(provider),
       allowlistFor: (p) => loadTesterAllowlist(p, svc),
       save: (input) => storePending(input, svc),
       nowMs: Date.now(),

@@ -1,6 +1,6 @@
 /**
  * The connector scan engine (§4.4): runs every applicable module over each
- * active connection's 90-day window, streams findings, and signals the
+ * active connection's 12-month window, streams findings, and signals the
  * scan_empty → Keeper interview fallback (§6.12 cold start) when nothing
  * meaningful surfaced. Recomputes are cheap and deterministic — the weekly
  * recompute (§4.4) is just calling this again.

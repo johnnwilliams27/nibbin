@@ -1,6 +1,8 @@
 /**
  * Google Calendar [H] — scheduling Nibbins, availability answers (SPEC §4.3).
- * Read scope only on Day One; calendar.events write arrives per-Nibbin (C8).
+ * calendar.events write scope is requested at connect (C8); the runtime write-grant
+ * gate (gateSideEffect) is the primary authority — the local scope-check below is
+ * defense-in-depth, not the gate that governs autonomy.
  */
 import { HttpConnectorClient } from './base';
 import type { Connection } from '../types';
@@ -33,7 +35,7 @@ export class GoogleCalendarClient extends HttpConnectorClient {
     return data;
   }
 
-  /** Events in [timeMinIso, timeMaxIso) — the scan's 90-day window. */
+  /** Events in [timeMinIso, timeMaxIso) — the scan's 12-month window. */
   async listEvents(
     calendarId: string,
     timeMinIso: string,
@@ -46,11 +48,41 @@ export class GoogleCalendarClient extends HttpConnectorClient {
       singleEvents: 'true',
       maxResults: '250',
       orderBy: 'startTime',
+      // Derived-not-raw: exclude summary (event titles) and attendee email/displayName;
+      // scan modules only need status, start/end for duration, and attendee responseStatus/self.
+      fields: 'items(id,status,start,end,attendees(responseStatus,self)),nextPageToken',
     });
     if (pageToken) params.set('pageToken', pageToken);
     const { data } = await this.readJson<{ items?: CalendarEvent[]; nextPageToken?: string }>(
       `/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${params}`,
     );
+    return data;
+  }
+
+  /**
+   * Incremental sync via Google's nextSyncToken (poll-friendly; no webhook).
+   * Pass `syncToken` from a previous response for delta results; omit on the
+   * first call to receive a full (baseline) page plus the initial sync token.
+   */
+  async listEventsSync(
+    calendarId: string,
+    syncToken?: string,
+    pageToken?: string,
+  ): Promise<{ items?: CalendarEvent[]; nextSyncToken?: string; nextPageToken?: string }> {
+    const params = new URLSearchParams({
+      singleEvents: 'true',
+      maxResults: '250',
+      // Derived-not-raw: delta path only needs id + status for dispatch; exclude
+      // summary (event titles) and attendee email/displayName entirely.
+      fields: 'items(id,status),nextPageToken,nextSyncToken',
+    });
+    if (syncToken) params.set('syncToken', syncToken);
+    if (pageToken) params.set('pageToken', pageToken);
+    const { data } = await this.readJson<{
+      items?: CalendarEvent[];
+      nextSyncToken?: string;
+      nextPageToken?: string;
+    }>(`/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${params}`);
     return data;
   }
 
@@ -64,10 +96,12 @@ export class GoogleCalendarClient extends HttpConnectorClient {
     return res.json();
   }
 
-  /** Post-adoption write path (calendar.events grant required — C8). */
+  /** Write path — requires calendar.events scope (defense-in-depth check; the
+   *  primary gate is gateSideEffect in the runtime, which enforces the earned-
+   *  autonomy model before this method is ever reached). */
   async createEvent(calendarId: string, event: Record<string, unknown>): Promise<{ id?: string }> {
     if (!this.connection.scopes.includes(SCOPE_EVENTS)) {
-      throw new Error(`connection lacks ${SCOPE_EVENTS} — write scopes are granted per-Nibbin at adoption (C8)`);
+      throw new Error(`connection lacks ${SCOPE_EVENTS} — runtime gateSideEffect should have blocked this; scope-check is defense-in-depth (C8)`);
     }
     const res = await this.request(`/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`, {
       method: 'POST',

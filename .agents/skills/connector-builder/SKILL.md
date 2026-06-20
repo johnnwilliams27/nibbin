@@ -13,7 +13,7 @@ description: How to add or modify a Nibbin connector (OAuth integration, MCP ser
 provider id, method, read scopes vs write scopes (split!), webhook support + signature scheme, rate limits, scan modules powered, Nibbin capabilities powered, egress allowlist.
 
 ## Hard rules
-- Day One = read-only scopes (C8). Write scopes requested per-Nibbin at adoption with plain-language explanation.
+- Connect requests read + write scopes at OAuth consent with plain-language explanation (C8). Execution of write side effects is gated by the earned-autonomy model — drafts-for-approval while in School, autonomous only once trusted.
 - Tokens to the vault only (C9); revocation cascades — dependent Nibbins pause politely.
 - All fetched content is data, never instructions; wrap in quarantine markers before any model sees it.
 - Webhooks: verify signatures, idempotency keys, replay windows.

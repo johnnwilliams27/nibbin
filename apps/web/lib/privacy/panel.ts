@@ -17,8 +17,8 @@ export interface ConnectionSummary {
 }
 
 /** Summarize non-revoked connections for display. Shares the connections
- * page's read-only-when-empty rule (no scopes → "Read-only access", since
- * read-only is the default until a Nibbin requests writes, C8). It does NOT
+ * page's access display rule (no write grant → "Read-only access", since
+ * a write grant is required before a Nibbin can execute side effects, C8). It does NOT
  * reproduce that page's scope display: this panel shows a scope *count*, never
  * the raw scope strings — intentionally more conservative for a privacy home. */
 export function connectionSummary(rows: ConnectionRow[]): ConnectionSummary {

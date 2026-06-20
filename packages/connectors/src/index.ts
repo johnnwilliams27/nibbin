@@ -44,6 +44,7 @@ export * from './send-velocity';
 export * from './connectors/base';
 export * from './connectors/gmail';
 export * from './connectors/google-calendar';
+export * from './connectors/calendar-delta';
 export * from './connectors/stripe';
 export * from './connectors/honeybook';
 export * from './connectors/pixieset';

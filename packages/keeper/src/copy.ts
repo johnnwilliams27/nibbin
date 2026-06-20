@@ -94,7 +94,7 @@ export const CHAT = {
   credits:
     'Your credits are on the grove page — every task a Nibbin completes uses some. Nothing spends without you seeing it.',
   privacy:
-    "Plainly: your connections start read-only, nothing acts without your approval while it's learning, and I myself can't touch anything — I read, plan, and talk, that's all.",
+    "Plainly: connections request the access your Nibbins may use — nothing acts on its own while a Nibbin is still learning, it drafts for your approval. And I myself can't touch anything — I read, plan, and talk, that's all.",
   fallback:
     "I don't have a good answer for that yet — most of my craft arrives with your connectors and your first Nibbins. Ask me about the grove, or just keep me company.",
   empty: "I'm listening — say the word.",

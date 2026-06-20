@@ -17,7 +17,7 @@ const STEPS = [
   {
     num: 'DAY ONE',
     h: 'Hatch with the Grovekeeper',
-    p: 'Answer a few plain questions about your work. The Keeper sets up your grove, connects your tools read-only, and runs a scan of the last 12 months.',
+    p: 'Answer a few plain questions about your work. The Keeper sets up your grove, connects your tools — nothing acts without your approval — and runs a scan of the last 12 months.',
     dur: '10 minutes, start to first Nibbin',
   },
   {
@@ -47,9 +47,9 @@ const PRIVACY = [
     p: 'The Field Study runs locally. Raw captures are processed and deleted on your machine — only redacted, structured text about your workflows is ever uploaded, and only when you say so.',
   },
   {
-    pi: 'Read-only by default',
+    pi: 'Nothing acts without you',
     h: 'Nothing sends without you',
-    p: 'Connections start read-only. A Nibbin earns the ability to send, per task, only after you grant it — and even then, its accuracy was verified on drafts you approved first.',
+    p: 'A connection can hold the keys to act, but no email is sent and no event is booked until you approve it. A Nibbin earns the ability to act, per task, only after its accuracy was verified on drafts you approved first.',
   },
   {
     pi: 'Yours to control',
@@ -228,7 +228,7 @@ export default function Home() {
               <div className="keeper-points">
                 <div className="kp">
                   <b>Sets you up in minutes.</b> A short conversation, not a configuration screen. The Keeper hatches
-                  your grove and connects your tools — read-only until you say otherwise.
+                  your grove and connects your tools — nothing acts until you approve it.
                 </div>
                 <div className="kp">
                   <b>Finds the busywork.</b> It runs the 12-month scan, names what it finds in hours and dollars, and
