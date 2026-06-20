@@ -96,13 +96,14 @@
 .groupChevron { font-size: 11px; color: var(--ink-soft); width: 12px; flex-shrink: 0; }
 .groupName { flex: 1; min-width: 0; }
 .groupCount { font-family: var(--mono); font-size: 12px; color: var(--ink-soft); }
-.grid { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--gap-fluid, 10px); }
+.grid { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--gap-fluid, 10px); }
 .card { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border: 1px solid var(--line); border-radius: var(--r-card); background: var(--canopy); box-shadow: var(--shadow-1); height: 100%;
   transition: transform var(--dur-1) var(--ease-spring, ease), box-shadow var(--dur-1) var(--ease-spring, ease); }
 .card:hover { transform: translateY(-1px); box-shadow: var(--shadow-2); }
 .cardBody { flex: 1; min-width: 0; }
-.cardName { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cardDesc { margin: 2px 0 0; font-size: 12px; color: var(--ink-soft); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.cardHead { display: flex; align-items: center; gap: 6px; }
+.cardName { flex: 1; min-width: 0; font-weight: 600; font-size: 14px; white-space: normal; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.cardDesc { margin: 4px 0 0; font-size: 12px; color: var(--ink-soft); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
 
 /* HelpSearch */

@@ -21,14 +21,16 @@ function ConnectorGrid({ items, connectedIds }: { items: ConnectorEntry[]; conne
           <li key={c.id} className={styles.card}>
             <ConnectorLogo name={c.name} domain={c.domain} />
             <div className={styles.cardBody}>
-              <div className={styles.cardName}>{c.name}</div>
+              <div className={styles.cardHead}>
+                <span className={styles.cardName}>{c.name}</span>
+                {connected ? (
+                  <Badge tone="moss">Connected</Badge>
+                ) : (
+                  <Badge tone={STATUS_LABEL[c.status].tone}>{STATUS_LABEL[c.status].label}</Badge>
+                )}
+              </div>
               <p className={styles.cardDesc}>{c.whatItDoes}</p>
             </div>
-            {connected ? (
-              <Badge tone="moss" style={{ alignSelf: 'flex-start' }}>Connected</Badge>
-            ) : (
-              <Badge tone={STATUS_LABEL[c.status].tone} style={{ alignSelf: 'flex-start' }}>{STATUS_LABEL[c.status].label}</Badge>
-            )}
           </li>
         );
       })}
