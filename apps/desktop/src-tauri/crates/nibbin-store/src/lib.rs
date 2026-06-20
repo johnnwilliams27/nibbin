@@ -131,6 +131,21 @@ impl ObserverStore {
         Ok(out)
     }
 
+    /// List events whose `ts` is at or after `cutoff_iso` (ISO-8601 string).
+    /// `ts` is stored as ISO-8601 text, which is lexicographically ordered, so
+    /// a string comparison is correct and the index on `ts` is used.
+    pub fn list_events_since(&self, cutoff_iso: &str) -> Result<Vec<ObserverEvent>, anyhow::Error> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT json FROM events WHERE ts >= ?1 ORDER BY ts, id")?;
+        let rows = stmt.query_map([cutoff_iso], |row| row.get::<_, String>(0))?;
+        let mut out = Vec::new();
+        for row in rows {
+            out.push(serde_json::from_str(&row?)?);
+        }
+        Ok(out)
+    }
+
     pub fn set_review_state(
         &mut self,
         ids: &[String],
