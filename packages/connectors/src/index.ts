@@ -2,7 +2,7 @@
  * @nibbin/connectors — connector platform (M3).
  *
  * Registry (SPEC §4.3 declarations), OAuth engine (C8 read-only defaults,
- * PKCE/state/nonce, per-Nibbin write upgrades), token vault client (C9),
+ * PKCE/state, per-Nibbin write upgrades), token vault client (C9),
  * webhook signature verification + idempotency (§6.5), deny-by-default
  * egress proxy (§6.9 SSRF), quarantine markers (data, never instructions),
  * send-velocity caps (RISKS §2), Tier-1 hand-built clients, the aggregator

@@ -79,10 +79,16 @@ export class SendVelocityLimiter {
 
     if (day.length >= dailyBudget) {
       const oldest = Math.min(...day);
+      const windowExpiry = oldest + DAY_MS - at;
+      // For new accounts, also respect the cooldown window: the budget may
+      // refill before the cooldown expires, so retry must wait for both.
+      const cooldownExpiry = isNewAccount
+        ? accountCreatedAtMs + caps.newAccountCooldownHours * HOUR_MS - at
+        : windowExpiry;
       return {
         allowed: false,
         reason: isNewAccount && dailyBudget < caps.perAccountPerDay ? 'new-account-cap' : 'daily-cap',
-        retryAfterMs: Math.max(0, oldest + DAY_MS - at),
+        retryAfterMs: Math.max(0, windowExpiry, cooldownExpiry),
       };
     }
     if (hour.length >= caps.perAccountPerHour) {

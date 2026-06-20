@@ -4,6 +4,7 @@ import {
   deadlinePassed,
   InvalidTransitionError,
   newStudy,
+  observeClock,
   remainingMs,
   STUDY_DURATION_MS,
   transition,
@@ -142,6 +143,32 @@ describe('study lifecycle state machine', () => {
     expect(() =>
       transition(started(), { type: 'create_study', id: 'x', kind: 'full_study', label: null, depth: 'lite' }),
     ).toThrow(InvalidTransitionError);
+  });
+
+  it('observeClock uses epoch-ms comparison, not lexicographic ISO string order', () => {
+    // Reproduces the lexicographic-order hazard: the same instant in two
+    // different ISO formats would compare differently as strings but must
+    // compare equal as epoch-ms (neither should overwrite the other).
+    const activeSnap = started();
+    const instant = T0;
+    // Same moment expressed without milliseconds — lexicographically different
+    // from T0 ('2026-06-10T08:00:00Z' vs '2026-06-10T08:00:00.000Z') but
+    // identical in epoch time.
+    const sameInstantNoMs = instant.replace('.000Z', 'Z');
+    // Both should result in the same epoch time → high-water mark shouldn't change.
+    const s1 = observeClock(activeSnap, instant);
+    expect(s1.clockHighWater).toBe(instant);
+    const s2 = observeClock(s1, sameInstantNoMs);
+    // s2.clockHighWater should be s1's value (epoch-equal, so high stays s1's version).
+    expect(Date.parse(s2.clockHighWater!)).toBe(Date.parse(instant));
+    // An earlier instant must never advance the high-water mark.
+    const earlier = new Date(Date.parse(instant) - 1000).toISOString();
+    const s3 = observeClock(s1, earlier);
+    expect(Date.parse(s3.clockHighWater!)).toBe(Date.parse(instant));
+    // A later instant must advance it.
+    const later = new Date(Date.parse(instant) + 1000).toISOString();
+    const s4 = observeClock(s1, later);
+    expect(s4.clockHighWater).toBe(later);
   });
 
   it('depth defaults to lite and round-trips detailed', () => {

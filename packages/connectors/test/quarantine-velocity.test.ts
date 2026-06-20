@@ -95,6 +95,35 @@ describe('send-velocity caps (RISKS §2)', () => {
     if (!denied.allowed) expect(denied.reason).toBe('new-account-cap');
   });
 
+  it('retryAfterMs for new-account cap accounts for cooldown window, not just daily roll-off', async () => {
+    // Scenario: account created at t=0. Sends N=newAccountPerDay messages
+    // 1 min apart. The daily window rolls off in ~24h from the oldest send.
+    // But the cooldown is newAccountCooldownHours — if that exceeds 24h the
+    // retry must be the cooldown expiry, not just the daily roll-off.
+    const caps = gmail.send!.velocity;
+    const created = 0; // created at epoch 0
+    let now = 0;
+    const store = new MemorySendRecordStore();
+    const limiter = new SendVelocityLimiter(store, () => now);
+    const MINUTE = 60_000;
+    for (let i = 0; i < caps.newAccountPerDay; i++) {
+      expect((await limiter.checkAndConsume('acct', gmail, created)).allowed).toBe(true);
+      now += MINUTE;
+    }
+    const denied = await limiter.checkAndConsume('acct', gmail, created);
+    expect(denied.allowed).toBe(false);
+    if (!denied.allowed) {
+      expect(denied.reason).toBe('new-account-cap');
+      // Cooldown expires at: 0 + cooldownHours * HOUR
+      // "now" is: newAccountPerDay * MINUTE
+      const cooldownExpiresInMs = caps.newAccountCooldownHours * HOUR - now;
+      // Daily window rolls off at: first-send + 24h = 0 + 24h, so retryAfterMs = 24h - now
+      const dailyRolloffMs = DAY - now;
+      // retryAfterMs must be the larger of the two
+      expect(denied.retryAfterMs).toBe(Math.max(0, dailyRolloffMs, cooldownExpiresInMs));
+    }
+  });
+
   it('a connector without declared caps can never send', async () => {
     const { limiter } = limiterAt(100 * DAY);
     const notion = getConnector('notion');

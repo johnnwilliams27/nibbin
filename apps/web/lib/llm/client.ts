@@ -48,9 +48,23 @@ export interface ModelCallRecord {
   outcome?: 'ok' | 'refusal' | 'error';
   degraded?: boolean;
   latencyMs?: number | null;
+  /**
+   * The account's model_contribution_enabled flag (accounts.model_contribution_enabled,
+   * default true = opted IN). When explicitly false the call is NOT recorded into
+   * model_calls — the account's data is excluded from the aggregate contribution
+   * path entirely (R49 / D1-A). COGS callers that do not have the flag available
+   * may omit this field (it defaults to true, preserving existing behaviour).
+   */
+  modelContributionEnabled?: boolean;
 }
 
 export async function recordModelCall(rec: ModelCallRecord): Promise<void> {
+  // R49 / D1-A: an account that has opted out of the model-improvement
+  // contribution (model_contribution_enabled = false) must not generate rows in
+  // the model_calls table at all. The aggregate view (model_task_performance)
+  // also filters on this flag, but gating here ensures opted-out data never
+  // lands in the ledger in the first place.
+  if (rec.modelContributionEnabled === false) return;
   try {
     const svc = serviceClient();
     const { error } = await svc.from('model_calls').insert({
