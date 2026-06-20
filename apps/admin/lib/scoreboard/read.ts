@@ -206,3 +206,83 @@ export async function loadCapabilityScoreboard(
   }
   return rows.map(deriveCapabilityRates);
 }
+
+// ---------------------------------------------------------------------------
+// Shop template adoption (fleet) — §shop_template_performance_read RPC
+// ---------------------------------------------------------------------------
+
+/** One row of the shop-template-performance aggregate view (raw counts; snake_case from Postgres). */
+export interface ShopTemplateRow {
+  template_key: string;
+  nibbins: number;
+  contributing_accounts: number;
+  active: number;
+  dormant: number;
+  senior_plus: number;
+  graduated: number;
+}
+
+/** A shop-template row with derived null-safe rates the scoreboard renders. */
+export interface ShopTemplateScoreboardRow extends ShopTemplateRow {
+  /** active / nibbins — null when nibbins is 0. */
+  activeRate: number | null;
+  /** senior_plus / nibbins — null when nibbins is 0. */
+  maturityRate: number | null;
+}
+
+/** The count columns required on every shop-template row. */
+const REQUIRED_SHOP_TEMPLATE_NUMERIC_KEYS = [
+  'nibbins',
+  'contributing_accounts',
+  'active',
+  'dormant',
+  'senior_plus',
+  'graduated',
+] as const;
+
+/**
+ * Shape guard for one shop_template_performance_read RPC row.
+ * A row is valid iff template_key is a string and all count columns are finite
+ * numbers (Postgres bigint columns arrive as JS number via the JS client).
+ * A drifted view shape yields a clean rejection (loadShopScoreboard throws),
+ * never NaN rates from arithmetic on undefined.
+ */
+export function isShopTemplateRow(row: unknown): row is ShopTemplateRow {
+  if (!row || typeof row !== 'object') return false;
+  const r = row as Record<string, unknown>;
+  if (typeof r.template_key !== 'string') return false;
+  return REQUIRED_SHOP_TEMPLATE_NUMERIC_KEYS.every(
+    (k) => typeof r[k] === 'number' && Number.isFinite(r[k]),
+  );
+}
+
+/** Derive the rendered rates from one raw shop-template row. Pure + null-safe. */
+export function deriveShopTemplateRates(row: ShopTemplateRow): ShopTemplateScoreboardRow {
+  return {
+    ...row,
+    activeRate: rate(row.active, row.nibbins),
+    maturityRate: rate(row.senior_plus, row.nibbins),
+  };
+}
+
+/**
+ * Load the shop-template-adoption scoreboard rows via the staff-gated RPC.
+ * The caller MUST be a staff service-role client (the RPC is granted to
+ * service_role only, matching capability_task_performance_read). Aggregate-only,
+ * anonymized, and k-anonymous (≥5 contributing accounts) — no per-user content.
+ */
+export async function loadShopScoreboard(
+  admin: SupabaseClient,
+): Promise<ShopTemplateScoreboardRow[]> {
+  const { data, error } = await admin.rpc('shop_template_performance_read');
+  if (error) throw new Error(`shop_template_performance_read failed: ${error.message}`);
+  const raw = Array.isArray(data) ? data : [];
+  const rows: ShopTemplateRow[] = [];
+  for (const row of raw) {
+    if (!isShopTemplateRow(row)) {
+      throw new Error('shop_template_performance_read returned an unexpected row shape');
+    }
+    rows.push(row);
+  }
+  return rows.map(deriveShopTemplateRates);
+}
