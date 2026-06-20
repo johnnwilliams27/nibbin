@@ -53,8 +53,6 @@ export interface RouteRequest {
   origin: RouteOrigin;
   /** Freeform text; required when task is 'chat' (the classifier reads it). */
   text?: string;
-  /** IANA timezone for the user's budget day; defaults to UTC. */
-  timezone?: string;
 }
 
 /** What the T0 complexity classifier concluded about a chat request. */

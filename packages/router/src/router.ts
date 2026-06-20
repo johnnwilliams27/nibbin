@@ -166,7 +166,12 @@ export function createRouter(overrides: RouterOverrides = {}): Router {
       // complex_plan with origin:'pipeline' is budgeted like everything else.
       const unbudgeted = req.origin === 'pipeline' && UNBUDGETED_T2_TASKS.has(req.task);
       if (requestedTier === 't2' && !unbudgeted) {
-        const day = dayKey(config.now(), req.timezone);
+        // The budget day is pinned to UTC, NOT the user's timezone (#24/#52):
+        // tz was a user-editable profile field, so keying the window to it let a
+        // user toggle tz around local midnight to straddle two windows and mint
+        // extra T2 chat calls. UTC removes the lever — the reset is at a fixed
+        // instant for everyone. dayKey() defaults to UTC when given no zone.
+        const day = dayKey(config.now());
         const limit = config.dailyFrontierBudget;
         const take = await config.budgetStore.take(req.userId, day, limit);
         const budget: BudgetStatus = {
