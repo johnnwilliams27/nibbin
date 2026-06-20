@@ -227,9 +227,10 @@ describe.skipIf(!LIVE)('M6.5 live stack (hosted dev + real model)', () => {
         { title: 'Leaks', content: 'Gallery delivery chasing (4x/week), invoice nudges (3 overdue), rescheduling ping-pong.' },
       ],
     });
-    expect(diagnosis).not.toBeNull();
-    expect(diagnosis!.model).toContain('opus');
-    console.log(`[live-stack] DIAGNOSIS (${diagnosis!.model}, first 300 chars):\n${diagnosis!.text.slice(0, 300)}…\n`);
+    expect(diagnosis.kind).toBe('ok');
+    if (diagnosis.kind !== 'ok') throw new Error('diagnosis did not produce output');
+    expect(diagnosis.model).toContain('opus');
+    console.log(`[live-stack] DIAGNOSIS (${diagnosis.model}, free=${diagnosis.free}, first 300 chars):\n${diagnosis.text.slice(0, 300)}…\n`);
 
     const { serviceClient } = await import('../../apps/web/lib/supabase/service');
     const { data: cogs } = await serviceClient().rpc('account_model_cogs', { p_account: accountId, p_days: 1 });
