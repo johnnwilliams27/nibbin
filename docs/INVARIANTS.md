@@ -23,7 +23,8 @@ RLS grants via membership. Staff world is separate (staff_users, admin.nibbin.co
 staff can never read vault tokens or Observer study data; impersonation is time-boxed,
 reasoned, default read-only, and always visible in the account's audit log.
 Retention clocks published on data-ai.html are build requirements (SPEC §6.11): run
-logs 90d default/configurable, journals user-deleted, account ≤30d post-deletion,
+logs 90d default/configurable, journals are a derived view over run logs (no separate
+store; clearing run logs clears them — gate F-4), account ≤30d post-deletion,
 backups ≤35d roll-off — purge jobs monitored, deletions receipted.
 Gamification rewards accuracy only; nothing decays, dies, or guilts; no mechanic may
 grant or accelerate autonomy. No audio, no camera — exclusions, not roadmap.
