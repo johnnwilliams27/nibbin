@@ -18,13 +18,17 @@ export function WebAnalytics() {
     <Analytics
       beforeSend={(event) => {
         try {
-          const path = new URL(event.url).pathname;
-          if (path === '/app' || path.startsWith('/app/')) return null;
+          const u = new URL(event.url);
+          // Don't track the authenticated in-product app.
+          if (u.pathname === '/app' || u.pathname.startsWith('/app/')) return null;
+          // Strip query + hash so secrets that ride in URLs on public routes
+          // (e.g. /waitlist/confirm?token=…, /auth?code=…, password-reset links)
+          // are NEVER recorded. Marketing analytics only needs the path.
+          return { ...event, url: u.origin + u.pathname };
         } catch {
-          // If the URL can't be parsed, fail safe by dropping the event.
+          // Unparseable URL → fail safe by dropping the event.
           return null;
         }
-        return event;
       }}
     />
   );
