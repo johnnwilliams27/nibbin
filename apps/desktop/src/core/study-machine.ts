@@ -114,13 +114,17 @@ export function newStudy(
 /** Monotonic clock observation — never lowers the high-water mark (C2). */
 export function observeClock(snap: StudySnapshot, nowIso: string): StudySnapshot {
   if (snap.state !== 'ACTIVE' && snap.state !== 'PAUSED') return snap;
-  const high =
-    snap.clockHighWater !== null && snap.clockHighWater >= nowIso ? snap.clockHighWater : nowIso;
+  // Compare as epoch-ms: ISO strings can differ in format/timezone rendering,
+  // making lexicographic comparison unreliable across timezone variants.
+  const highMs = snap.clockHighWater !== null ? Date.parse(snap.clockHighWater) : -Infinity;
+  const nowMs = Date.parse(nowIso);
+  const high = highMs >= nowMs ? snap.clockHighWater! : nowIso;
   return { ...snap, clockHighWater: high };
 }
 
 function effectiveNow(snap: StudySnapshot, nowIso: string): string {
-  return snap.clockHighWater !== null && snap.clockHighWater > nowIso ? snap.clockHighWater : nowIso;
+  if (snap.clockHighWater === null) return nowIso;
+  return Date.parse(snap.clockHighWater) > Date.parse(nowIso) ? snap.clockHighWater : nowIso;
 }
 
 const TERMINAL: ReadonlySet<StudyState> = new Set(['COMPLETE', 'DELETED']);
