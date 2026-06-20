@@ -22,6 +22,7 @@ create or replace view public.demand_gap_signals with (security_invoker = true) 
   where e.name = 'capability_unfulfilled'
     and e.at > now() - interval '90 days'
     and e.props->>'capability' is not null
+    and e.props->>'reason' is not null
   group by 1, 2
   having count(distinct e.account_id) >= 5;
 
@@ -47,6 +48,7 @@ create or replace view public.connector_blocker_signals with (security_invoker =
   where e.name = 'connector_blocked'
     and e.at > now() - interval '90 days'
     and e.props->>'connector' is not null
+    and e.props->>'reason' is not null
   group by 1, 2
   having count(distinct e.account_id) >= 5;
 

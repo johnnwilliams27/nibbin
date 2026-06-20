@@ -155,6 +155,26 @@ describe('composeSpec', () => {
     expect(result.unfulfilled?.capability).toBe('nudge.overdue-invoice');
   });
 
+  it('surfaces unfulfilled.reason=no_capability with the category for an unserved workflow', async () => {
+    // A workflow whose category has NO genuine primitive (social/docs/crm/other,
+    // no morning-brief signal) → roadmap gap. The emitted capability is the
+    // structural WorkflowCategory enum, never the free-text workflow.key.
+    const unserved: DiagnosisWorkflow = {
+      key: 'social.dms',
+      label: 'Replying to social DMs',
+      category: 'other',
+      hoursPerWeek: 1,
+      frequency: 'daily',
+      friction: null,
+      recommendedNibbin: 'scribe',
+    };
+    const result = await composeSpec('acct-1', 'user-1', unserved, []);
+    expect('error' in result).toBe(true);
+    if (!('error' in result)) return;
+    expect(result.unfulfilled?.reason).toBe('no_capability');
+    expect(result.unfulfilled?.capability).toBe('other');
+  });
+
   it('no-key fallback maps a payments workflow → nudge.overdue-invoice (validates)', async () => {
     const result = await composeSpec('acct-1', 'user-1', PAYMENTS_WF, ['stripe']);
     if ('error' in result) throw new Error(result.error);
