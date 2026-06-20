@@ -1,91 +1,54 @@
-# Bug-Runtime Fix Report — #43, #44, #47
+# Free first field-study diagnosis — build report
 
-Commit: `af770acf`
-Branch: `fix/bug-runtime`
-Gate: lint clean | tsc clean (no new errors vs baseline) | vitest 270/270 passed
+Branch `feat/free-study` (worktree `C:/nib-free-study`). 5 commits:
+- 5b6622f5 — migration + cost-cap constant
+- bfb2a38b — entitlement + credit gate + cost cap in the diagnosis path
+- 1bb21f83 — tests + cost-cap coverage
+- 777713e0 — cap = $1 backstop + 100k-input truncate-don't-fail (per John)
+- 9c9f0386 — clip oversized first section to a hard input bound + honest ledger sum
 
----
+## What's free vs charged
+- First ever diagnosis (per account): FREE — accounts.first_diagnosis_consumed flips false->true atomically; no credit charge.
+- Subsequent with credits: charged frontier weight (3 credits) via a `run` ledger debit.
+- Subsequent out of credits: REFUSED before any model call (needs_credits); no spend.
+- Cost is bounded by the 100k INPUT-token packet cap (primary) plus a $1 log-only dollar backstop (DIAGNOSIS_MAX_MICRO_USD) — neither ever fails a study.
 
-## #43 — Stage/status not re-checked mid-run
+## 1. Migration
+supabase/migrations/20260620170000_free_first_diagnosis.sql
+- alter table public.accounts add column if not exists first_diagnosis_consumed boolean not null default false;
+- partial index accounts_first_diagnosis_unconsumed_idx on (id) where not first_diagnosis_consumed.
+- APPLIED to dev/staging/prod.
 
-Root cause: `executeRun` passes `nibbin` (a dispatch-time snapshot) to `dispatchStep`; `nibbin_demote` flips the DB row instantly but the in-flight runner uses stale `NibbinRef.stage`.
+## 2. Entitlement + gate seam
+apps/web/lib/llm/diagnosis-entitlement.ts
+resolveDiagnosisEntitlement(accountId) -> { kind:'free' | 'charge' | 'needs_credits', message? }
+- Atomic consume (service client): update accounts set first_diagnosis_consumed=true where id=? and first_diagnosis_consumed=false then .select('id'). Returned row => owns the free run. Race-safe: under two concurrent firsts only one update returns a row.
+- Credit gate (fall-through): sums credit_ledger deltas, requires canRun(balance,'frontier'); insufficient => needs_credits with Nibbin-voice copy, no model call.
+- Fail-closed: consume error -> credit gate (never infinite free); unreadable ledger -> refuse.
+- chargeDiagnosis(accountId, runId): appends chargeForRun('frontier', runId) (-3 run debit), paid path only.
 
-Files changed:
-- `packages/runtime/src/types.ts:162` — Added `stageChangedAt: number` to `NibbinRef`
-- `packages/runtime/src/stores.ts:28` — Added `NibbinCurrentState` interface; `getNibbin(nibbinId)` to `RunStore`
-- `packages/runtime/src/stores.ts:87` — `MemoryNibbinState` gains `stage?/stageChangedAt?`; `begin()` seeds them; `MemoryRunStore.getNibbin()` implemented
-- `packages/runtime/src/runner.ts:264` — Before execute branch in `dispatchStep`: re-reads `freshNibbin = await deps.runs.getNibbin(nibbin.id)`; if absent or `status !== 'active'` → draft-not-execute; uses `freshNibbin.stage/stageChangedAt` for gating
-- `packages/runtime/src/runner.ts:415` — `executeRun` passes `nibbinStage/nibbinStageChangedAt` to `begin()` to seed in-memory store
-- `apps/web/lib/runtime/stores.ts:107` — `SupabaseRunStore.getNibbin` reads `stage, stage_changed_at, status` from `nibbins`
-- `apps/web/lib/runtime/engine.ts` — All `nibbins` selects include `stage_changed_at`; all `NibbinRef` constructions include `stageChangedAt`
+Wired in apps/web/lib/llm/synthesis.ts diagnosisSynthesis(accountId,userId,packet,generateOverride?,runId?):
+- Return type widened to DiagnosisResult = ok|needs_credits|unavailable.
+- Gate resolved BEFORE routing/model call; needs_credits short-circuits (no spend).
+- Free run tagged channel='free_first' on recordModelCall (no meta slot; channel is the honest tag).
+- Charge appended only when !free; no charge on model failure.
+- Caller updated: tests/evals/live-stack.eval.ts.
 
-Tests added (runner-invariants.test.ts):
-- `a grad run executes normally when no demotion occurs` — baseline ✓
-- `a grad run demoted mid-run (store stage flipped to student) drafts instead of executing` — demotes inside program body; asserts `awaiting_approval` not `executed` ✓
-- `a nibbin paused mid-run (store status flipped to paused) also drafts instead of executing` ✓
+## 3. Hard cost bound (anti-runaway) — per John: "$1 and 100k cap but not fail a study, just stop adding to it if it hits the cap"
+packages/shared/src/credits.ts:
+- DIAGNOSIS_MAX_INPUT_TOKENS = 100_000 — PRIMARY bound. buildTruncatedBody() (synthesis.ts) adds packet sections in order until the next would exceed it, then stops. A single oversized FIRST section is CLIPPED to the remaining budget so the payload reaching the model is a HARD bound even for one giant section. Never refuses, never fails a study.
+- DIAGNOSIS_MAX_MICRO_USD = 1_000_000 ($1) — log-only dollar tripwire. Every path logs LOUD "cost cap BREACHED" if recorded cost > $1, but does NOT fail the study (a real diagnosis is ~$0.06 output + capped input, so it should never fire). It exists to catch pricing/usage drift.
+- DIAGNOSIS_MAX_TOKENS=2500 bounds output.
 
----
-
-## #44 — Routine-pattern trust never resets on demotion
-
-Root cause: `RoutineStore.approvedCount` counted approvals for all time with no stage scoping.
-
-Files changed:
-- `packages/runtime/src/stores.ts:61` — `RoutineStore.approvedCount` gains `sinceMs: number` parameter
-- `packages/runtime/src/stores.ts:305` — `MemoryRoutineStore` stores timestamps per approval; `approvedCount` filters `t >= sinceMs`
-- `packages/runtime/src/runner.ts:275` — `approvedCount` called with `effectiveStageChangedAt` (from fresh `getNibbin` read)
-- `apps/web/lib/runtime/stores.ts:128` — `SupabaseRoutineStore.approvedCount` adds `.gte('decided_at', sinceIso)`
-
-Tests added (runner-invariants.test.ts):
-- `approvals recorded BEFORE demotion do not count toward re-promotion autonomy` — 5 pre-demotion approvals, sinceMs=DEMOTION_AT → count=0 ✓
-- `approvals recorded AFTER demotion count toward re-promotion autonomy` — 3 pre + 4 post → count=4 ✓
-- `a senior whose pattern was approved pre-demotion does not regain autonomy after re-promotion` — full executeRun with pre-demotion approvals → awaiting_approval ✓
-
----
-
-## #47 — M4+M5 gate findings
-
-### #47a (FIXED) — nibbin_demote is member-callable (red-team griefing)
-
-Migration: `supabase/migrations/20260620200000_nibbin_demote_role_gate.sql`
-
-The original function checked `private.is_account_member()` (any role). The fix replaces this with:
-
-  if uid is not null then
-    if not exists (
-      select 1 from public.memberships m
-      where m.account_id = v_account
-        and m.user_id = uid and m.status = 'active'
-        and m.role in ('owner', 'admin')
-    ) then
-      raise exception 'permission denied — demoting a Nibbin requires owner or admin role';
-    end if;
-  end if;
-
-Preserved: SECURITY DEFINER, SET search_path='', signature, return type, stage-transition logic, audit_log insert, grant to authenticated+service_role. Service-role callers (uid IS NULL) are unaffected.
-
-CONTROLLER ACTION REQUIRED: Apply migration to dev/staging/prod.
-
-### #47b (ADDRESSED by #43/#44) — Promotion window decided_at-scoped, not run-scoped
-
-The issue was prior-stage decisions decided after promotion counting toward the next window. #43 re-reads stage_changed_at freshly before each execute; #44 scopes approvedCount to decided_at >= stage_changed_at. No additional work needed.
-
-### #47 P3s — noted, not fixed (cosmetic/deferred)
-
-Finding #47/1: unseenInsights permanently-unseen classes; copy claims "not yet seen" — cosmetic copy/UX, no correctness risk
-Finding #47/2: nibbinDay counts rejected/failed/killed as "nibbles done" — cosmetic metric, no trust/money impact
-Finding #47/3: ensureArcs backfills week-old accounts with started_at=now() — pre-existing behavior, low observational impact
-Finding #47/4: MemoryRunStore.finish allows queued→completed; SQL blocks it — mirror divergence, no app-path risk
-Finding #47/6: Credit RPCs need READ COMMITTED comment; queue depth unbounded at zero balance — comment note, no immediate risk
-Finding #47/7: emit_product_event allows members to forge their own funnel events — analytics only, no entitlement risk today (red-team P3)
-Finding #47/9: maxTokens enforced post-hoc; reader.read has no timeout — handled by wall-clock ceiling
-Finding #47/10: Warm-up cap check-then-send across ticks (+1-2/day overshoot) — accepted minor overshoot
-Finding #47/11: Rejected drafts keep their charge — deliberate §6.4 tension; needs product decision
-
----
+## 4. Tests
+- apps/web/lib/llm/diagnosis-entitlement.test.ts (9): free consumes flag; consumed+zero refused; consumed+credits->charge; below-weight refused; race (one free, one falls through); fail-closed consume-error->gate; fail-closed unreadable-ledger->refuse; chargeDiagnosis writes frontier debit.
+- apps/web/lib/llm/synthesis.test.ts diagnosis block (8): first=free routes Opus pin no charge; second+no credits refused WITHOUT model call; second+credits proceeds+charges; loud cap breach on over-cap usage; oversized packet TRUNCATED (runs, not refused); single giant first section CLIPPED to a hard bound; empty packet/completion->unavailable.
+- packages/shared/test/credits.test.ts: withinDiagnosisCostCap bounds + fail-closed.
 
 ## Verification
+- npx vitest run on the changed files: 17 passed.
+- npm run lint: clean on the changed files.
+- npx tsc -p apps/web: zero errors in changed files (remaining errors are pre-existing C:/Nibbin junction / stale-workspace @nibbin/* noise; CI fresh npm ci resolves them).
 
-  npm run lint              → clean
-  npx tsc -p apps/web       → only pre-existing errors (DONE/@nibbin/keeper, MAX_COMPOSED_STEPS, planAction, sparticuz, etc.)
-  npx vitest run packages/runtime → 270/270 passed (17 files)
+## Product decision
+Subsequent-diagnosis pricing = frontier weight (3 credits) per the existing WEIGHTS table; this establishes the FIRST credit gate in the web app (none existed). Tunable via DIAGNOSIS_WEIGHT in diagnosis-entitlement.ts. A consumed free entitlement is NOT auto-restored on a failed run (no charge either) — reveal-side retry is M7's concern.
