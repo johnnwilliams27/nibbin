@@ -38,6 +38,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { modelDrafterFor } from '../llm/drafting';
 import { serviceClient } from '../supabase/service';
 import { buildProgram, type ConnectionMap } from './programs';
+import { PgSendRecordStore } from '../connectors/pg-send-velocity-store';
 import {
   SupabaseEventSink,
   SupabaseGrantStore,
@@ -235,28 +236,24 @@ export function buildEffectsExecutor(
         break;
       }
       case 'email.send': {
-        // Use the atomic RPC rather than the two-step MemorySendRecordStore to avoid TOCTOU
+        // Atomic velocity check via PgSendRecordStore (migration 20260620180000).
+        // The RPC serializes check-and-insert under a per-account advisory lock,
+        // eliminating the TOCTOU in the old two-step read→record path.
         const descriptor = getConnector(connection.provider);
-        const caps = descriptor.send?.velocity;
-        if (!caps) throw new Error(`${connection.provider} has no velocity caps declared`);
         let decision: { allowed: boolean; reason?: string; retryAfterMs?: number };
         if (testDeps) {
+          const caps = descriptor.send?.velocity;
+          if (!caps) throw new Error(`${connection.provider} has no velocity caps declared`);
           decision = await testDeps.sendVelocityConsume({
             accountId, provider: connection.provider,
             hourCap: caps.perAccountPerHour, dayCap: caps.perAccountPerDay,
           });
         } else {
-          const svc = serviceClient();
-          const { data } = await svc.rpc('send_velocity_consume', {
-            p_account: accountId,
-            p_provider: connection.provider,
-            p_hour_cap: caps.perAccountPerHour,
-            p_day_cap: caps.perAccountPerDay,
-          });
-          const row = (Array.isArray(data) ? data[0] : data) as {
-            allowed: boolean; reason: string | null; retry_after_ms: number;
-          };
-          decision = { allowed: row.allowed, reason: row.reason ?? undefined, retryAfterMs: row.retry_after_ms };
+          const store = new PgSendRecordStore(serviceClient());
+          const sendDecision = await store.checkAndConsume(accountId, descriptor, accountCreatedAtMs);
+          decision = sendDecision.allowed
+            ? { allowed: true }
+            : { allowed: false, reason: sendDecision.reason, retryAfterMs: sendDecision.retryAfterMs };
         }
         if (!decision.allowed) {
           // Fleet-learning telemetry: velocity cap blocked a send. Best-effort.
