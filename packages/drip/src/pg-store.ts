@@ -89,8 +89,12 @@ export function pgDripStore(pool: Pool): DripStore & { ensureArcs(): Promise<num
      */
     async claimSend(accountId, beat, slot, localDay): Promise<boolean> {
       const r = await pool.query(
-        `insert into drip_sends (account_id, beat, slot, local_day, status)
+        `with _lock as (
+           select private.lock_account($1::uuid)
+         )
+         insert into drip_sends (account_id, beat, slot, local_day, status)
          select $1, $2, $3, $4, 'claimed'
+          from _lock
           where not exists (
             select 1 from drip_sends
              where account_id = $1
@@ -134,9 +138,10 @@ export function pgDripStore(pool: Pool): DripStore & { ensureArcs(): Promise<num
       await pool.query(`update drip_arcs set status = 'completed' where account_id = $1`, [accountId]);
     },
 
-    async insertEarnedNotification(accountId, event: EarnedEvent): Promise<void> {
-      const title = event.kind === 'graduation' ? `${event.nibbin} graduated` : `${event.nibbin} moved up`;
-      await pool.query(
+    async insertEarnedNotification(accountId, event: EarnedEvent): Promise<boolean> {
+      const rawTitle = event.kind === 'graduation' ? `${event.nibbin} graduated` : `${event.nibbin} moved up`;
+      const title = rawTitle.length > 200 ? rawTitle.slice(0, 197) + '…' : rawTitle;
+      const r = await pool.query(
         `insert into notifications (account_id, kind, source_id, title, body, payload)
          values ($1, $2, $3, $4, $5, $6)
          on conflict (account_id, kind, source_id) do nothing`,
@@ -154,9 +159,11 @@ export function pgDripStore(pool: Pool): DripStore & { ensureArcs(): Promise<num
           }),
         ],
       );
+      return (r.rowCount ?? 0) === 1;
     },
 
     async insertBeatNotification(accountId, content: BeatContent): Promise<void> {
+      const beatTitle = content.title.length > 200 ? content.title.slice(0, 197) + '…' : content.title;
       await pool.query(
         `insert into notifications (account_id, kind, source_id, title, body, payload)
          values ($1, 'beat', $2, $3, $4, $5)
@@ -164,7 +171,7 @@ export function pgDripStore(pool: Pool): DripStore & { ensureArcs(): Promise<num
         [
           accountId,
           content.key,
-          content.title,
+          beatTitle,
           content.body,
           JSON.stringify({
             cards: content.cards,

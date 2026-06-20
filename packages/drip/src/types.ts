@@ -67,6 +67,8 @@ export interface ArcState {
 export interface ArcFlags {
   /** A Field Study is currently running on the user's device. */
   studyActive: boolean;
+  /** The most recent study lifecycle event is study_completed (distinct from active). */
+  studyCompleted: boolean;
   /** Some Nibbin is within reach of graduating (drives day 12). */
   nearGraduation: boolean;
 }
@@ -200,8 +202,9 @@ export interface DripStore {
   markFailed(accountId: string, beat: BeatKey): Promise<void>;
   recordSkipped(accountId: string, skips: SkipEntry[], localDay: string): Promise<void>;
   completeArc(accountId: string): Promise<void>;
-  /** Idempotent on event.id — earned events must not duplicate on retry. */
-  insertEarnedNotification(accountId: string, event: EarnedEvent): Promise<void>;
+  /** Idempotent on event.id — earned events must not duplicate on retry.
+   * Returns true when a new row was inserted, false when it was a duplicate. */
+  insertEarnedNotification(accountId: string, event: EarnedEvent): Promise<boolean>;
   insertBeatNotification(accountId: string, content: BeatContent): Promise<void>;
 }
 

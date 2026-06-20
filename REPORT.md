@@ -1,54 +1,87 @@
-# Free first field-study diagnosis — build report
+# Drip Bug Fix Report — fix/bug-drip
 
-Branch `feat/free-study` (worktree `C:/nib-free-study`). 5 commits:
-- 5b6622f5 — migration + cost-cap constant
-- bfb2a38b — entitlement + credit gate + cost cap in the diagnosis path
-- 1bb21f83 — tests + cost-cap coverage
-- 777713e0 — cap = $1 backstop + 100k-input truncate-don't-fail (per John)
-- 9c9f0386 — clip oversized first section to a hard input bound + honest ledger sum
+## #45 — diagnosis_reveal branches on study lifecycle, not studyActive flag
 
-## What's free vs charged
-- First ever diagnosis (per account): FREE — accounts.first_diagnosis_consumed flips false->true atomically; no credit charge.
-- Subsequent with credits: charged frontier weight (3 credits) via a `run` ledger debit.
-- Subsequent out of credits: REFUSED before any model call (needs_credits); no spend.
-- Cost is bounded by the 100k INPUT-token packet cap (primary) plus a $1 log-only dollar backstop (DIAGNOSIS_MAX_MICRO_USD) — neither ever fails a study.
+**Files:**
+- `packages/drip/src/types.ts` — added `studyCompleted: boolean` to `ArcFlags`
+- `packages/drip/src/pg-arc-data.ts` — `flags()` computes `studyCompleted` (latest event === study_completed)
+- `packages/drip/src/ceremonies.ts` — `buildDiagnosisReveal` has three branches:
+  - `studyCompleted=true` → "Your diagnosis is ready" + `/app/diagnosis` CTA
+  - `studyActive=true` → "Still watching" copy
+  - neither → pitch Field Study ("Your grove, one fortnight in")
+- `packages/drip/src/stub.ts` — default stub includes `studyCompleted: false`
 
-## 1. Migration
-supabase/migrations/20260620170000_free_first_diagnosis.sql
-- alter table public.accounts add column if not exists first_diagnosis_consumed boolean not null default false;
-- partial index accounts_first_diagnosis_unconsumed_idx on (id) where not first_diagnosis_consumed.
-- APPLIED to dev/staging/prod.
+**Migration SQL:** none.
 
-## 2. Entitlement + gate seam
-apps/web/lib/llm/diagnosis-entitlement.ts
-resolveDiagnosisEntitlement(accountId) -> { kind:'free' | 'charge' | 'needs_credits', message? }
-- Atomic consume (service client): update accounts set first_diagnosis_consumed=true where id=? and first_diagnosis_consumed=false then .select('id'). Returned row => owns the free run. Race-safe: under two concurrent firsts only one update returns a row.
-- Credit gate (fall-through): sums credit_ledger deltas, requires canRun(balance,'frontier'); insufficient => needs_credits with Nibbin-voice copy, no model call.
-- Fail-closed: consume error -> credit gate (never infinite free); unreadable ledger -> refuse.
-- chargeDiagnosis(accountId, runId): appends chargeForRun('frontier', runId) (-3 run debit), paid path only.
+**Tests:** 3 unit tests + 1 arc integration test (arc.test.ts, #45 describe block).
 
-Wired in apps/web/lib/llm/synthesis.ts diagnosisSynthesis(accountId,userId,packet,generateOverride?,runId?):
-- Return type widened to DiagnosisResult = ok|needs_credits|unavailable.
-- Gate resolved BEFORE routing/model call; needs_credits short-circuits (no spend).
-- Free run tagged channel='free_first' on recordModelCall (no meta slot; channel is the honest tag).
-- Charge appended only when !free; no charge on model failure.
-- Caller updated: tests/evals/live-stack.eval.ts.
+---
 
-## 3. Hard cost bound (anti-runaway) — per John: "$1 and 100k cap but not fail a study, just stop adding to it if it hits the cap"
-packages/shared/src/credits.ts:
-- DIAGNOSIS_MAX_INPUT_TOKENS = 100_000 — PRIMARY bound. buildTruncatedBody() (synthesis.ts) adds packet sections in order until the next would exceed it, then stops. A single oversized FIRST section is CLIPPED to the remaining budget so the payload reaching the model is a HARD bound even for one giant section. Never refuses, never fails a study.
-- DIAGNOSIS_MAX_MICRO_USD = 1_000_000 ($1) — log-only dollar tripwire. Every path logs LOUD "cost cap BREACHED" if recorded cost > $1, but does NOT fail the study (a real diagnosis is ~$0.06 output + capped input, so it should never fire). It exists to catch pricing/usage drift.
-- DIAGNOSIS_MAX_TOKENS=2500 bounds output.
+## #42 — unbounded nibbins.name bricks drip for 30 days
 
-## 4. Tests
-- apps/web/lib/llm/diagnosis-entitlement.test.ts (9): free consumes flag; consumed+zero refused; consumed+credits->charge; below-weight refused; race (one free, one falls through); fail-closed consume-error->gate; fail-closed unreadable-ledger->refuse; chargeDiagnosis writes frontier debit.
-- apps/web/lib/llm/synthesis.test.ts diagnosis block (8): first=free routes Opus pin no charge; second+no credits refused WITHOUT model call; second+credits proceeds+charges; loud cap breach on over-cap usage; oversized packet TRUNCATED (runs, not refused); single giant first section CLIPPED to a hard bound; empty packet/completion->unavailable.
-- packages/shared/test/credits.test.ts: withinDiagnosisCostCap bounds + fail-closed.
+**Files:**
+- `supabase/migrations/20260620140000_nibbin_name_length_cap.sql` — NEW:
+  - backfill: `UPDATE nibbins SET name = left(name, 150) WHERE char_length(name) > 150`
+  - constraint: `ALTER TABLE nibbins ADD CONSTRAINT nibbins_name_max_length CHECK (char_length(name) <= 150)`
+- `packages/drip/src/pg-store.ts` — title truncation (slice to 197 + ellipsis) in both `insertEarnedNotification` and `insertBeatNotification`
+- `packages/drip/src/worker.ts` — per-event try/catch in earned-event loop; errors call onError and continue
 
-## Verification
-- npx vitest run on the changed files: 17 passed.
-- npm run lint: clean on the changed files.
-- npx tsc -p apps/web: zero errors in changed files (remaining errors are pre-existing C:/Nibbin junction / stale-workspace @nibbin/* noise; CI fresh npm ci resolves them).
+**Migration SQL:** `supabase/migrations/20260620140000_nibbin_name_length_cap.sql` — controller applies after review.
 
-## Product decision
-Subsequent-diagnosis pricing = frontier weight (3 credits) per the existing WEIGHTS table; this establishes the FIRST credit gate in the web app (none existed). Tunable via DIAGNOSIS_WEIGHT in diagnosis-entitlement.ts. A consumed free entitlement is NOT auto-restored on a failed run (no charge either) — reveal-side retry is M7's concern.
+**Tests:** 2 new tests in arc.test.ts (#42 describe block).
+
+---
+
+## #41 — 20h spacing-floor race under concurrent tz-flip claims
+
+**Files:**
+- `packages/drip/src/pg-store.ts` — `claimSend` uses a CTE that calls `private.lock_account($1::uuid)` before the INSERT, serializing claims per account within a transaction. Lock helper confirmed at migration line 275: `private.lock_account(target_account uuid) returns void`.
+
+**Migration SQL:** none — `private.lock_account` exists in M4.
+
+**Tests:** existing concurrent-tick and stale-worker tests cover the guard path.
+
+---
+
+## #40 — tz guard case-sensitive
+
+**Files:**
+- `packages/drip/src/pg-arc-data.ts` `nibbinDay()` query:
+  - Before: `u.tz in (select name from pg_timezone_names)`
+  - After: `lower(u.tz) in (select lower(name) from pg_timezone_names)`
+
+**Migration SQL:** none.
+
+**Tests:** SQL contract test via pool mock (arc.test.ts, #40 describe block).
+
+---
+
+## #39 — earnedEvents breaks since-last-tick contract
+
+**Files:**
+- `packages/drip/src/types.ts` — `DripStore.insertEarnedNotification` returns `Promise<boolean>` (true=inserted, false=skipped)
+- `packages/drip/src/pg-store.ts` — returns `(r.rowCount ?? 0) === 1`
+- `packages/drip/src/worker.ts` — `if (inserted) result.earnedNotifications += 1`
+- `packages/drip/test/arc.test.ts` — in-memory store returns `boolean`
+
+**Note:** Insert-report approach (via ON CONFLICT DO NOTHING rowCount) achieves the same correctness as a high-water mark at zero schema cost.
+
+**Migration SQL:** none.
+
+**Tests:** cumulative earnedNotifications=1 test across 3 days (arc.test.ts, #39 describe block).
+
+---
+
+## Gate results
+
+| Check | Result |
+|-------|--------|
+| `npm run lint` | PASS |
+| `npx tsc -p apps/web` (drip files) | PASS (0 new errors) |
+| `npx vitest run packages/drip` | PASS (37/37) |
+
+## Concerns
+
+1. **#41 lock in tests:** The in-memory store cannot replicate Postgres advisory lock semantics. The fix is correct at the DB level; integration-harness testing would be needed to verify the race is truly closed.
+2. **#40 AT TIME ZONE:** Postgres normalises `AT TIME ZONE` case-insensitively, so non-canonical tz values still work in the bound expression.
+3. **Migration sequencing:** The nibbins name-cap migration should run before the drip worker upgrade to avoid a window where old long names can still enter.
