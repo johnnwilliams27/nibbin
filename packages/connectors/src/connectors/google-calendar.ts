@@ -33,7 +33,7 @@ export class GoogleCalendarClient extends HttpConnectorClient {
     return data;
   }
 
-  /** Events in [timeMinIso, timeMaxIso) — the scan's 90-day window. */
+  /** Events in [timeMinIso, timeMaxIso) — the scan's 12-month window. */
   async listEvents(
     calendarId: string,
     timeMinIso: string,

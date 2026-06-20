@@ -2,7 +2,7 @@
  * The connector interface M4's scan engine and agent runtime consume.
  *
  * SPEC §4.4: scan modules are pure functions
- *   (connection, 90-day window) → findings[]
+ *   (connection, 12-month window) → findings[]
  * Each finding carries a plain-language insight, a quantified cost, the
  * Nibbin that fixes it, and a one-tap adopt action. Deterministic where
  * possible — T1 synthesis only rephrases, with strict structured output.
@@ -24,7 +24,7 @@ export interface Connection {
   revokedAt: string | null;
 }
 
-/** The 90-day read-only lookback every scan module computes over. */
+/** The 12-month read-only lookback every scan module computes over. */
 export interface ScanWindow {
   /** inclusive, epoch ms */
   startMs: number;
@@ -32,7 +32,12 @@ export interface ScanWindow {
   endMs: number;
 }
 
-export const SCAN_WINDOW_DAYS = 90;
+/** Single source of truth for the lookback. Months → days here, and modules
+ *  that average per-month MUST divide by this same constant (see payments.ts)
+ *  so the window length and the monthly math can never drift apart. */
+export const SCAN_WINDOW_MONTHS = 12;
+/** 12 months expressed as days for the epoch-ms math (30.4375 d/mo avg). */
+export const SCAN_WINDOW_DAYS = Math.round(SCAN_WINDOW_MONTHS * 30.4375); // 365
 
 export function scanWindowEndingAt(endMs: number): ScanWindow {
   return { startMs: endMs - SCAN_WINDOW_DAYS * 86_400_000, endMs };

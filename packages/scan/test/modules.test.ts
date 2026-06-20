@@ -5,9 +5,9 @@
  * carries raw content.
  */
 import { describe, expect, it } from 'vitest';
-import { CONNECTOR_REGISTRY, scanWindowEndingAt, type Connection, type Finding } from '@nibbin/connectors';
+import { CONNECTOR_REGISTRY, SCAN_WINDOW_MONTHS, quarantine, scanWindowEndingAt, type Connection, type Finding } from '@nibbin/connectors';
 import { TEMPLATE_FOR_SCAN_MODULE, getTemplate } from '@nibbin/runtime';
-import { ALL_SCAN_MODULES, fixtureReader, modulesForProvider, runScan } from '../src/index';
+import { ALL_SCAN_MODULES, fixtureReader, modulesForProvider, paymentsFeeLeakage, runScan } from '../src/index';
 
 const NOW = Date.UTC(2026, 5, 11, 12, 0, 0);
 
@@ -127,5 +127,22 @@ describe('the scan engine', () => {
     );
     expect(result.empty).toBe(true);
     expect(result.failures.length).toBeGreaterThan(0);
+  });
+});
+
+describe('monthly averaging math', () => {
+  it('fee-leakage averages fees over the full window, not a hardcoded 3 months', async () => {
+    // 12 balance transactions, $2400 fee each = $28800 total fees over 12 months = $2400/mo
+    // (must exceed the $20/mo guard; with old /3 math this would have yielded $9600/mo)
+    const feePerTxnCents = 240000; // $2400 in cents
+    const txns = Array.from({ length: 12 }, (_, i) => ({ id: `t${i}`, fee: feePerTxnCents, amount: 5000000 }));
+    const reader = {
+      read: async () => quarantine(JSON.stringify({ data: txns }), 'stripe:c1:/v1/balance_transactions'),
+    };
+    const conn = connection('stripe', 'conn-stripe-math');
+    const out = await paymentsFeeLeakage.run({ connection: conn, window: scanWindowEndingAt(NOW), reader });
+    // $28800 total fees / SCAN_WINDOW_MONTHS(=12) = $2400/mo, NOT $28800/3 = $9600/mo
+    const expectedPerMonth = Math.round((12 * feePerTxnCents) / 100 / SCAN_WINDOW_MONTHS); // 2400
+    expect(out[0]?.cost.dollarsPerMonth).toBe(expectedPerMonth);
   });
 });
