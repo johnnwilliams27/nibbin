@@ -5,7 +5,7 @@ import { createClient } from '../../../lib/supabase/server';
 import { ensureAccount } from '../../../lib/auth/bootstrap';
 import { upsertOwnProfile } from '../../../lib/auth/profile';
 import { AppShell } from '../../../components/shell/AppShell';
-import { Badge, Card, InlineFeedback } from '../../../components/ui';
+import { Badge, Card, EmptyState, InlineFeedback } from '../../../components/ui';
 import type { DiagnosisMap } from '../../../lib/diagnosis/types';
 import { DiagnosisReveal } from './DiagnosisReveal';
 import styles from './diagnosis.module.css';
@@ -89,12 +89,10 @@ export default async function DiagnosisPage({
       {error && <InlineFeedback tone="error">That didn’t go through — give it another try.</InlineFeedback>}
 
       {!hasDiagnosis ? (
-        <Card>
-          <p className={`${styles.muted} ${styles.empty}`}>
-            Your diagnosis isn’t ready yet. Run the 14-day Field Study from the desktop app and your
-            map grows in here — where your hours go, and the chores your grove can take on.
-          </p>
-        </Card>
+        <EmptyState
+          title="No map yet"
+          body="Run the 14-day Field Study from the desktop app and your map grows in here — where your hours go, and the chores your grove can take on."
+        />
       ) : (
         <>
           <DiagnosisReveal
