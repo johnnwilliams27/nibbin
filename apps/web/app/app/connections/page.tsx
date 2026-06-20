@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { appSession } from '../../../lib/auth/app-session';
 import { AppShell } from '../../../components/shell/AppShell';
 import { Card, Badge, InlineFeedback } from '../../../components/ui';
-import { ProviderIcon } from '../../../components/connections/ProviderIcon';
+import { ConnectorLogo } from '../../../components/help/ConnectorLogo';
 import { CONNECTABLE_PROVIDERS, scopeSummary, isReadOnly } from '../../../lib/connections/providers';
 import { beginConnectAction, disconnectAction } from './actions';
 import { AdoptButton } from '../../../components/adopt/AdoptButton';
@@ -39,6 +39,27 @@ export default async function ConnectionsPage({
     .neq('status', 'revoked');
   const byProvider = new Map((data ?? []).map((c) => [c.provider as string, c]));
 
+  // Short list = wired connectables + any provider you actually have a
+  // (non-revoked) connection for, so active accounts always populate here.
+  // Coming-soon providers live only in the directory below.
+  const catalogById = new Map(CONNECTORS.map((c) => [c.id, c]));
+  const providerMeta = (id: string): { label: string; domain: string | null } => {
+    const fromList = CONNECTABLE_PROVIDERS.find((p) => p.id === id);
+    const fromCatalog = catalogById.get(id);
+    return {
+      label: fromList?.label ?? fromCatalog?.name ?? id,
+      domain: fromList?.domain ?? fromCatalog?.domain ?? null,
+    };
+  };
+  const wiredIds = CONNECTABLE_PROVIDERS.filter((p) => p.wired).map((p) => p.id);
+  const shortListIds = Array.from(
+    new Set([...wiredIds, ...(data ?? []).map((c) => c.provider as string)]),
+  );
+  // Only genuinely-active connections are marked "Connected" in the directory.
+  const activeConnectedIds = (data ?? [])
+    .filter((c) => c.status === 'active')
+    .map((c) => c.provider as string);
+
   return (
     <AppShell active="connections" title="Connections" email={user.email}>
       <header className={styles.header}>
@@ -62,14 +83,16 @@ export default async function ConnectionsPage({
       )}
 
       <div className={styles.grid}>
-        {CONNECTABLE_PROVIDERS.map((p) => {
-          const conn = byProvider.get(p.id);
-          const resumeHere = sp.resume && sp.needed?.split(',').includes(p.id);
+        {shortListIds.map((id) => {
+          const meta = providerMeta(id);
+          const conn = byProvider.get(id);
+          const wired = CONNECTABLE_PROVIDERS.find((p) => p.id === id)?.wired ?? false;
+          const resumeHere = sp.resume && sp.needed?.split(',').includes(id);
           return (
-            <Card key={p.id} className={styles.card}>
+            <Card key={id} className={styles.card}>
               <div className={styles.cardTop}>
-                <span className={styles.icon}><ProviderIcon provider={p.id} size={22} /></span>
-                <span className={styles.name}>{p.label}</span>
+                <span className={styles.icon}><ConnectorLogo name={meta.label} domain={meta.domain} /></span>
+                <span className={styles.name}>{meta.label}</span>
                 {conn && <Badge tone={STATUS_TONE[conn.status] ?? 'neutral'}>{conn.status}</Badge>}
               </div>
               {conn ? (
@@ -79,17 +102,17 @@ export default async function ConnectionsPage({
                     {isReadOnly(conn.scopes as string[] | null) ? 'Read-only access' : 'Includes actions you approve'} · revoke anytime
                   </p>
                   <form action={disconnectAction} className={styles.disconnectRow}>
-                    <input type="hidden" name="provider" value={p.id} />
+                    <input type="hidden" name="provider" value={id} />
                     <button className={styles.disconnect} type="submit">Disconnect</button>
                   </form>
                 </>
-              ) : p.wired ? (
+              ) : wired ? (
                 <form action={beginConnectAction}>
-                  <input type="hidden" name="provider" value={p.id} />
+                  <input type="hidden" name="provider" value={id} />
                   {sp.resume && <input type="hidden" name="resumeTemplate" value={sp.resume} />}
                   <input type="hidden" name="returnTo" value="/app/connections" />
-                  <button className={styles.connect} type="submit">Connect {p.label}</button>
-                  {p.id === 'gmail' && (
+                  <button className={styles.connect} type="submit">Connect {meta.label}</button>
+                  {id === 'gmail' && (
                     <label className={styles.accessNote} style={{ display: 'block', marginTop: 8 }}>
                       <input type="checkbox" name="sweepConsent" />{' '}
                       Also learn my style from my mail — a one-time read of about my last 12 months of
@@ -114,7 +137,7 @@ export default async function ConnectionsPage({
         })}
       </div>
 
-      <ConnectorDirectory connectors={CONNECTORS} heading="Browse all connectors" />
+      <ConnectorDirectory connectors={CONNECTORS} heading="Browse all connectors" connectedIds={activeConnectedIds} />
     </AppShell>
   );
 }

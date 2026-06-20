@@ -323,7 +323,6 @@ export function AppShell({ active, title, email, children, panel, onboarding }: 
           >
             <path d="M15 18l-6-6 6-6" />
           </svg>
-          <span className={styles.navCollapseBtnLabel}>Collapse navigation</span>
         </button>
       </aside>
 

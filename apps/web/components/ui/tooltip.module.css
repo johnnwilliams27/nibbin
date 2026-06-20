@@ -23,9 +23,14 @@
   padding: 6px 10px;
   border-radius: var(--r-input);
   box-shadow: var(--shadow-2);
-  max-width: 240px;
+  /* Size to content (so the bubble never collapses to a 1-char-wide column when
+     its tiny inline-flex wrapper is the positioning context), capped to the
+     viewport on small screens. overflow-wrap (not word-break) keeps normal
+     words intact while still breaking the rare unbreakable string. */
+  width: max-content;
+  max-width: min(240px, 78vw);
   white-space: normal;
-  word-break: break-word;
+  overflow-wrap: anywhere;
   pointer-events: none;
   /* Hidden by default */
   opacity: 0;

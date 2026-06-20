@@ -12,19 +12,26 @@ const STATUS_LABEL: Record<ConnectorEntry['status'], { label: string; tone: 'mos
   coming_soon: { label: 'Coming soon', tone: 'neutral' },
 };
 
-function ConnectorGrid({ items }: { items: ConnectorEntry[] }) {
+function ConnectorGrid({ items, connectedIds }: { items: ConnectorEntry[]; connectedIds: Set<string> }) {
   return (
     <ul className={styles.grid}>
-      {items.map((c) => (
-        <li key={c.id} className={styles.card}>
-          <ConnectorLogo name={c.name} domain={c.domain} />
-          <div className={styles.cardBody}>
-            <div className={styles.cardName}>{c.name}</div>
-            <p className={styles.cardDesc}>{c.whatItDoes}</p>
-          </div>
-          <Badge tone={STATUS_LABEL[c.status].tone} style={{ alignSelf: "flex-start" }}>{STATUS_LABEL[c.status].label}</Badge>
-        </li>
-      ))}
+      {items.map((c) => {
+        const connected = connectedIds.has(c.id);
+        return (
+          <li key={c.id} className={styles.card}>
+            <ConnectorLogo name={c.name} domain={c.domain} />
+            <div className={styles.cardBody}>
+              <div className={styles.cardName}>{c.name}</div>
+              <p className={styles.cardDesc}>{c.whatItDoes}</p>
+            </div>
+            {connected ? (
+              <Badge tone="moss" style={{ alignSelf: 'flex-start' }}>Connected</Badge>
+            ) : (
+              <Badge tone={STATUS_LABEL[c.status].tone} style={{ alignSelf: 'flex-start' }}>{STATUS_LABEL[c.status].label}</Badge>
+            )}
+          </li>
+        );
+      })}
     </ul>
   );
 }
@@ -33,11 +40,15 @@ export function ConnectorDirectory({
   connectors,
   heading = 'All connectors',
   showSort = true,
+  connectedIds = [],
 }: {
   connectors: ConnectorEntry[];
   heading?: string;
   showSort?: boolean;
+  /** Catalog ids the account has an active connection for — shown as "Connected". */
+  connectedIds?: string[];
 }) {
+  const connectedSet = useMemo(() => new Set(connectedIds), [connectedIds]);
   const [mode, setMode] = useState<'available' | 'alpha'>('available');
   const groups = useMemo(
     () =>
@@ -103,7 +114,7 @@ export function ConnectorDirectory({
             ) : (
               <h3>{g.category}</h3>
             )}
-            {expanded && <ConnectorGrid items={g.items} />}
+            {expanded && <ConnectorGrid items={g.items} connectedIds={connectedSet} />}
           </div>
         );
       })}
