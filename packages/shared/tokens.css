@@ -53,10 +53,11 @@
   --ease-snap: cubic-bezier(0.32, 0.72, 0, 1);
   /* Shared reveal tokens — nav collapse/expand AND keeper dock (rail + sheet)
      both use these so all chrome panels animate with one motion grammar.
-     Duration sits between --dur-2 and --dur-3 for a deliberate but nimble feel;
-     easing reuses --ease-settle (out-expo spring) for a natural settle. */
-  --motion-reveal: cubic-bezier(.16, 1, .3, 1);
-  --motion-reveal-dur: 260ms;
+     Tuned to the Grovekeeper chat's original slow, smooth reveal (--dur-4, the
+     650ms out-expo settle) — every open/close panel should feel unhurried and
+     gliding, NOT snappy. Don't drop this below --dur-4 without a reason. */
+  --motion-reveal: var(--ease-settle);
+  --motion-reveal-dur: var(--dur-4);
 
   /* Fluid type scale */
   --type-hero: clamp(1.9rem, 1.2rem + 2.6vw, 3rem);
