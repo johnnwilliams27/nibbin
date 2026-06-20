@@ -28,9 +28,9 @@ fn web_url() -> &'static str {
     option_env!("NIBBIN_WEB_URL").unwrap_or("https://nibbin.com")
 }
 
-/// Vertical offset where the Grove child webview starts, leaving the native
-/// tab bar (rendered by the main webview) visible above it.
-const GROVE_TOP_PX: f64 = 96.0;
+/// Vertical offset where the Grove child webview starts. Now 0.0 — the Grove
+/// webview fills the entire window; the native tab bar has been removed.
+const GROVE_TOP_PX: f64 = 0.0;
 
 fn grove_bounds(window: &tauri::Window) -> (tauri::LogicalPosition<f64>, tauri::LogicalSize<f64>) {
     let scale = window.scale_factor().unwrap_or(1.0);
