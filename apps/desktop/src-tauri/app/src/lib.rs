@@ -96,8 +96,11 @@ async fn grove_show(window: tauri::Window) -> Result<(), String> {
                 if !matches!(url.scheme(), "http" | "https") {
                     return true;
                 }
-                let host_ok =
-                    matches!(&allowed_host, Some(h) if url.host_str() == Some(h.as_str()));
+                // Require HTTPS in addition to matching the host: rejects
+                // http://nibbin.com downgrades that could exfiltrate the
+                // injected handoff token (defense-in-depth, P6).
+                let host_ok = matches!(&allowed_host, Some(h)
+                    if url.scheme() == "https" && url.host_str() == Some(h.as_str()));
                 // The embedded web app signing out (or its session expiring)
                 // lands the Grove webview on /login. The native shell keeps a
                 // separate keychain session, so without this it would still show
@@ -129,6 +132,20 @@ async fn grove_show(window: tauri::Window) -> Result<(), String> {
         .add_child(builder, pos, size)
         .map(|_| ())
         .map_err(|e| e.to_string())
+}
+
+/// Reload the Grove webview in-place (used by the "Retry" button after an
+/// offline failure). If the Grove webview already exists, calls `Webview::reload()`
+/// so the user can recover without closing and reopening the window. Falls back
+/// to the full create path if the webview is somehow absent.
+#[tauri::command]
+async fn grove_reload(window: tauri::Window) -> Result<(), String> {
+    if let Some(wv) = window.app_handle().get_webview("grove") {
+        return wv.reload().map_err(|e| e.to_string());
+    }
+    // Webview absent — fall back to the create path (shows the loading state
+    // and attempts a fresh load, so Retry is never a dead end).
+    grove_show(window).await
 }
 
 /// Hide the Grove webview (switching to Field Study, or signing out).
@@ -182,6 +199,7 @@ pub fn run() {
             update::open_external,
             grove_show,
             grove_hide,
+            grove_reload,
         ])
         .setup(|app| {
             // Keep the Grove child webview fitted to the window as it resizes.

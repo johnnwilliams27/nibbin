@@ -1,3 +1,4 @@
+import { bridge } from '../bridge.js';
 import { button, el } from '../dom.js';
 
 // The native loading/offline placeholder shown beneath the Grove child webview
@@ -6,9 +7,16 @@ import { button, el } from '../dom.js';
 // only briefly. If the web app fails to load (offline/network error) this
 // placeholder stays visible and must communicate that clearly.
 //
-// `onRetry` is called when the user taps Retry — callers should re-invoke the
-// boot/groveShow path so the webview attempts to reload.
+// `onRetry` is called when the user taps Retry — the button now calls
+// bridge.groveReload() first so the existing webview actually reloads the
+// failed page (previously groveShow returned early when the webview existed,
+// leaving the user stranded offline even after connectivity returned).
 export function groveView(onRetry: () => void): HTMLElement {
+  const handleRetry = () => {
+    // Reload the existing Grove webview in-place; then run the caller's
+    // onRetry path so the parent shell also re-runs its boot logic.
+    void bridge.groveReload().finally(() => onRetry());
+  };
   const children: (HTMLElement | string)[] = [
     el(
       'div',
@@ -24,7 +32,7 @@ export function groveView(onRetry: () => void): HTMLElement {
       "Can't reach Nibbin — capture is still running in the background.",
     ]),
     el('div', { class: 'grove-retry' }, [
-      button('Retry', onRetry, 'secondary'),
+      button('Retry', handleRetry, 'secondary'),
     ]),
   ];
 
