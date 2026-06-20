@@ -6,7 +6,9 @@
  */
 import { bridge } from '../bridge.js';
 import type { StudyKind, StudyDepth } from '../../core/study-machine.js';
+import type { StudySnapshot } from '../../core/study-machine.js';
 import { button, el } from '../dom.js';
+import { postStudyStatus } from '../post-study-status.js';
 
 export function consentView(onChanged: () => void, kind: StudyKind = 'full_study', depth: StudyDepth = 'lite'): HTMLElement {
   // The "When it ends" claim is the only line that differs by kind: a quick
@@ -90,6 +92,20 @@ export function consentView(onChanged: () => void, kind: StudyKind = 'full_study
         void (async () => {
           await bridge.sendControl('consent');
           await bridge.sendControl('start');
+          // Re-fetch status to get the started study's id, timestamps, and label
+          // (the study row is only fully populated after the daemon processes 'start').
+          const status = await bridge.studyStatus();
+          const study = status.study as Partial<StudySnapshot> | null;
+          if (study?.studyId && study.startedAt) {
+            void postStudyStatus({
+              studyId: study.studyId,
+              kind: study.kind ?? kind,
+              label: study.label ?? null,
+              status: "active",
+              startedAt: study.startedAt,
+              endsAt: study.endsAt ?? null,
+            });
+          }
           onChanged();
         })();
       },

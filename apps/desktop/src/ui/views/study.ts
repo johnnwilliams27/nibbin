@@ -4,7 +4,9 @@
  */
 import { bridge, type StudyStatus } from '../bridge.js';
 import type { StudyDepth } from '../../core/study-machine.js';
+import type { StudySnapshot } from '../../core/study-machine.js';
 import { button, el } from '../dom.js';
+import { postStudyStatus } from '../post-study-status.js';
 
 function fmtRemaining(ms: number | null): string {
   if (ms === null) return '—';
@@ -59,7 +61,22 @@ export function studyView(status: StudyStatus, onChanged: () => void): HTMLEleme
     paused
       ? button('Resume capture', () => void bridge.sendControl('resume').then(onChanged), 'primary')
       : button('Pause capture (⌘⇧.)', () => void bridge.sendControl('pause').then(onChanged)),
-    button('End the study early', () => void bridge.sendControl('stop_early').then(onChanged)),
+    button('End the study early', () => {
+      void bridge.sendControl('stop_early').then(() => {
+        const snap = status.study as Partial<StudySnapshot> | null;
+        if (snap?.studyId && snap.startedAt) {
+          void postStudyStatus({
+            studyId: snap.studyId,
+            kind: snap.kind ?? 'full_study',
+            label: snap.label ?? null,
+            status: "stopped",
+            startedAt: snap.startedAt,
+            endsAt: snap.endsAt ?? null,
+          });
+        }
+        onChanged();
+      });
+    }),
   );
   controls.append(
     row,
