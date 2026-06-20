@@ -113,8 +113,9 @@ export const CAPABILITY_REGISTRY: Record<string, CapabilityDescriptor> = {
   // yields it as a gated DraftStep, the runner gates it through gateSideEffect
   // (draft below Graduate / unproven routine) + a calendar.event-create write
   // grant + idempotency before the effects executor ever calls createEvent.
-  // Same wall as email.send — event creation never auto-fires without a human
-  // yes until the Nibbin has earned it. No velocity caps (not a bulk-send rail).
+  // Same wall as email.send — while a Nibbin is learning (below Graduate / below
+  // proven-routine Senior) it drafts the event for approval; Graduate or proven-Senior
+  // may auto-execute. No velocity caps (not a bulk-send rail).
   'calendar.event-create': { id: 'calendar.event-create', resource: 'calendar', verb: 'create', sideEffect: 'write', requiredConnector: 'google-calendar', patternKeyPrefix: 'calendar.event-create' },
   'payments.read': { id: 'payments.read', resource: 'payments', verb: 'get',   sideEffect: 'read',  requiredConnector: 'stripe' },
   'invoice.nudge': { id: 'invoice.nudge', resource: 'invoice',  verb: 'nudge', sideEffect: 'draft', requiredConnector: 'stripe', patternKeyPrefix: 'invoice.nudge' },

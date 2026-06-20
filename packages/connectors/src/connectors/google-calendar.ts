@@ -1,6 +1,8 @@
 /**
  * Google Calendar [H] — scheduling Nibbins, availability answers (SPEC §4.3).
- * Read scope only on Day One; calendar.events write arrives per-Nibbin (C8).
+ * calendar.events write scope is requested at connect (C8); the runtime write-grant
+ * gate (gateSideEffect) is the primary authority — the local scope-check below is
+ * defense-in-depth, not the gate that governs autonomy.
  */
 import { HttpConnectorClient } from './base';
 import type { Connection } from '../types';
@@ -94,10 +96,12 @@ export class GoogleCalendarClient extends HttpConnectorClient {
     return res.json();
   }
 
-  /** Post-adoption write path (calendar.events grant required — C8). */
+  /** Write path — requires calendar.events scope (defense-in-depth check; the
+   *  primary gate is gateSideEffect in the runtime, which enforces the earned-
+   *  autonomy model before this method is ever reached). */
   async createEvent(calendarId: string, event: Record<string, unknown>): Promise<{ id?: string }> {
     if (!this.connection.scopes.includes(SCOPE_EVENTS)) {
-      throw new Error(`connection lacks ${SCOPE_EVENTS} — write scopes are granted per-Nibbin at adoption (C8)`);
+      throw new Error(`connection lacks ${SCOPE_EVENTS} — runtime gateSideEffect should have blocked this; scope-check is defense-in-depth (C8)`);
     }
     const res = await this.request(`/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`, {
       method: 'POST',

@@ -431,6 +431,27 @@ describe('C8 (Connector Lever 1): calendar.event-create is a gated side effect',
     expect(outcome.kind).toBe('awaiting_approval'); // no grant → draft, not execute
     expect(executed).toBe(0);
   });
+
+  it('a Senior WITH the grant AND a proven routine EXECUTES the calendar event (earned-autonomy)', async () => {
+    // A Senior on a proven routine (routineApprovals >= routineMinApprovals) is
+    // equivalent to Graduate for auto-execution — this is the intended earned-autonomy
+    // behavior. Lock it here so copy and code agree.
+    const h = harness({ credits: 1000 });
+    const grants = new MemoryGrantStore();
+    grants.grant('nib-1', CONN, 'calendar.event-create');
+    h.deps.grants = grants;
+    // Seed routineMinApprovals approvals for the pattern key 'cal-1'
+    const routines = new MemoryRoutineStore();
+    const threshold = calSpec().curriculum.routineMinApprovals; // 5
+    for (let i = 0; i < threshold; i++) routines.approve('nib-1', 'cal-1');
+    h.deps.routines = routines;
+    let executed = 0;
+    h.deps.effects = { async execute(req) { if (req.capability === 'calendar.event-create') executed += 1; } };
+
+    const outcome = await executeRun(calNib('senior'), TRIGGER, createEvent, h.deps);
+    expect(outcome.kind).toBe('executed');
+    expect(executed).toBe(1);
+  });
 });
 
 describe('§4.7: promotion math (rolling window)', () => {

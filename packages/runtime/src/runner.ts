@@ -167,6 +167,19 @@ export function deriveResourceClaim(step: DraftStep): { resourceType: string; re
     const id = typeof args.invoiceId === 'string' && args.invoiceId;
     if (id) return { resourceType: 'invoice', resourceId: id };
   }
+  // calendar.event-create: iCalUID is stable; fall back to a deterministic hash of
+  // summary+start so two concurrent runs can't double-create the same logical event.
+  if (step.capability === 'calendar.event-create') {
+    const ev = typeof args.event === 'object' && args.event !== null ? (args.event as Record<string, unknown>) : {};
+    const iCalUID = typeof ev.iCalUID === 'string' && ev.iCalUID;
+    if (iCalUID) return { resourceType: 'calendar', resourceId: iCalUID };
+    const summary = typeof ev.summary === 'string' ? ev.summary : '';
+    const start = typeof ev.start === 'string' ? ev.start : (typeof (ev.start as Record<string, unknown> | undefined)?.dateTime === 'string' ? (ev.start as Record<string, unknown>).dateTime : '');
+    if (summary || start) {
+      // Stable deterministic id from summary + start — good enough for conflict detection.
+      return { resourceType: 'calendar', resourceId: `${summary}|${start}` };
+    }
+  }
   // No derivable resource id → skip the claim (don't block the send).
   return null;
 }

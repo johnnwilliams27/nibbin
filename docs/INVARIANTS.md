@@ -9,7 +9,7 @@ Full claims register with engineering meanings: SPEC §2. Compressed:
 - C5 Banking/health/personal categories blocked before persistence.
 - C6 Global pause hotkey kills capture <100ms.
 - C7 Only redacted structured text leaves the device; pixels never.
-- C8 Write scopes may be requested at connect (one consent, explained plainly); a connection acting on the world is still gated at EXECUTION — every side effect requires the Nibbin's Agent School stage + your approval + send-velocity caps. Acquiring a scope never authorizes an unapproved action.
+- C8 Connect requests read + write scopes (one consent, explained plainly). Execution of any side effect is gated at RUNTIME by the earned-autonomy model: while a Nibbin is in School (below Graduate / below proven-routine Senior) every side effect is drafted for user approval; Graduate or proven-routine Senior may auto-execute. Send-velocity caps apply to bulk-send rails. Acquiring a scope never authorizes an unapproved action.
 - C9 Tokens in vault only, never app DB; one-click revoke; revocation cascades.
 - C10 Grovekeeper holds zero side-effect tools, permanently.
 - C11 No data sales; never train models on user content. Anonymized, aggregate, STRUCTURAL contribution (capability/model performance — never content, never per-user) is opt-out (default-on, one user switch — `accounts.model_contribution_enabled`), honored everywhere (the `model_task_performance` aggregate filters to contributing accounts).

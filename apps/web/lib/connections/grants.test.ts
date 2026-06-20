@@ -190,3 +190,13 @@ it('writeGrantSpecFor mints a calendar.event-create spec with a plain-language r
   expect(spec!.capability).toBe('calendar.event-create');
   expect(spec!.reason.length).toBeGreaterThanOrEqual(12);
 });
+
+it('deriveCapabilityTier → event_create when BOTH email.draft and calendar.event-create active (calendar takes priority)', async () => {
+  // Regression: the email-ladder branch must not swallow the calendar grant.
+  const tier = await deriveCapabilityTier('n', 'c', 'senior',
+    makeSvcWithGrants([
+      { capability: 'email.draft', revoked_at: null },
+      { capability: 'calendar.event-create', revoked_at: null },
+    ]));
+  expect(tier).toBe('event_create');
+});

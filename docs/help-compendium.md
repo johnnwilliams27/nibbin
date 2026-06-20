@@ -55,7 +55,7 @@ The desktop app is where the real work happens — it's the only place your Nibb
 
 ### Step 5 — Connect a tool (so your Nibbin has something to work with)
 1. Go to **Connections** (`/app/connections`) — *"Accounts your Nibbins work from."*
-2. Connect **Gmail** (live). Connections start **read-only**; a Nibbin asks for write access (drafting) **separately and in plain words** when it needs it (INVARIANT C8).
+2. Connect **Gmail** (live). OAuth consent covers read + write scopes at connect, explained plainly (C8). While a Nibbin is learning, every side effect is drafted for your approval; it only acts autonomously once it has earned trust.
 3. **Google Calendar and Stripe are shown as "Coming soon"** in the connect surface today (source: `connections/lib/providers.ts`). When you adopt a Nibbin that needs a tool you haven't connected, you'll see: *"That Nibbin needs [x] and [y] connected to finish adopting."*
 
 > ⚠️ **Tester-allowlist gate:** Gmail (and other Google scopes) are gated behind a tester allowlist while Nibbin's Google OAuth verification is pending (capped at 100 users). If you're not on the allowlist, you'll need to **request access**. Source: `connections/tester-allowlist.ts`, `RISKS.md §1`.
@@ -104,7 +104,7 @@ The desktop app is where the real work happens — it's the only place your Nibb
 
 **Crystallization ("Make this recurring").** After you supervise a successful one-off task run (via the Planner), Nibbin can offer "Make this recurring" — it distills exactly the chore you just approved into a permanent, scheduled Nibbin. You pick the cadence (it suggests one; it never auto-schedules), and the new Nibbin **hatches as an Egg and earns its autonomy from scratch** — your earlier approvals don't transfer into standing trust. Source: `crystallization-slice4-design.md`. ⚠️ Gated/early-access; confirm availability in `docs/STATE.md`.
 
-**Connections.** The accounts your Nibbins work from (Gmail today; Calendar/Stripe coming). Read-only to start; write access is granted **per Nibbin, by you**, with one-click revoke.
+**Connections.** The accounts your Nibbins work from (Gmail today; Calendar/Stripe coming). Write scopes are requested at connect with a plain-language explanation; while a Nibbin is learning it drafts every side effect for your approval. One-click revoke.
 
 **Memory (Grove Memory + agent memory).** Two layers. **Grove Memory** is the business brain you edit by hand — facts, pricing, policies, FAQs, your voice, and **hard rules** your Nibbins can never break. **Agent memory** is short derived notes Nibbins learn from your approved work (never raw content). Both make drafts sound like *you*.
 
@@ -175,8 +175,8 @@ After you supervise a successful one-off Planner run, Nibbin can offer **"Make t
 
 ### Connections — **Gmail live (tester-gated); Calendar + Stripe coming soon**
 - **Connections** (`/app/connections`) — *"Accounts your Nibbins work from."*
-- **Read-only by default.** A Nibbin requests **write access (drafting) per-Nibbin, in plain words**, only when it needs it (INVARIANT C8). Access shows as **"Read-only access"** or **"Includes actions you approve · revoke anytime."**
-- **Live in code:** **Gmail** (`gmail.readonly` at connect; drafting scopes added per-Nibbin). **Coming soon:** **Google Calendar, Stripe.**
+- **Earned-autonomy gated.** Connect requests read + write scopes at OAuth consent, with plain-language explanation (INVARIANT C8). While a Nibbin is learning it drafts every side effect for your approval; once it has earned trust (Graduate, or Senior on a proven routine) it may act autonomously. Access shows as **"Read-only access"** (no write grant) or **"Includes actions you approve · revoke anytime"** (write grant held, autonomy depends on stage). |
+- **Live in code:** **Gmail** (`gmail.readonly` + `gmail.compose` + `gmail.send` requested at connect). **Coming soon:** **Google Calendar** (`calendar.readonly` + `calendar.events` at connect), **Stripe.**
 - ⚠️ **HoneyBook, Instagram, Pixieset, QuickBooks, Outlook, Notion, Drive/Dropbox** appear in the **Hatch Your Own** app-picker and in product/strategy docs, but are **not** in the connectable provider list today. They are **roadmap, not connectable now.** Confirm against `connections/lib/providers.ts` before publishing any "supported tools" list.
 - **Write grants** are per-capability and revocable one-click; revoking a connection suspends all its grants and destroys the stored token (INVARIANT C9).
 
@@ -219,7 +219,7 @@ Nibbin's whole design is built so that **your screen never leaves your computer*
 - **Raw data is verifiably deleted after synthesis (C3).** After your packet is safely uploaded, the raw data is deleted and an **independent verifier confirms it's gone.** Deletion is user-visible, and account deletion produces a receipt.
 - **No telemetry; no data sales (C1, C11).** Nibbin doesn't quietly phone home, and it never sells your data.
 - **Nibbin never trains its models on your content — ever. That's a hard guarantee, not a setting** (there is no toggle because it never happens). Separately, a **Model improvement** toggle controls whether Nibbin learns from anonymized, aggregate signals about how its capabilities and models perform — never your data, never your content, never sold. **That toggle is ON by default (opt-out)**; turn it off anytime in Data & Privacy. (Source: `settings/privacy/page.tsx`, Trust & Controls D1-A.)
-- **Connections are read-only until you say otherwise (C8).** Drafting/write access is requested per-Nibbin, in plain words. Tokens live in an **encrypted vault, never the app database**, with **one-click revoke that cascades** (C9).
+- **Nothing acts on your behalf while a Nibbin is learning (C8).** Connect requests the access your Nibbins may use (read + write scopes, explained plainly); execution is gated by the earned-autonomy model — every side effect is drafted for your approval while a Nibbin is in School, and it only acts autonomously once it has earned your trust. Tokens live in an **encrypted vault, never the app database**, with **one-click revoke that cascades** (C9).
 - **The Grovekeeper can never act (C10).** It holds zero side-effect tools, permanently.
 
 ### What's kept, and for how long (from the Data & Privacy panel)
@@ -368,7 +368,7 @@ That's by design until it graduates. Eggs observe; Students/Seniors draft for yo
 
 **What tools can I connect?** **Gmail** today. **Google Calendar and Stripe are coming soon.** Other tools shown in the Hatch picker are on the roadmap, not connectable yet. ⚠️ Some connections are tester-allowlist-gated — request access if you're not on the list.
 
-**Are my connections read-only?** Yes, to start. A Nibbin asks for drafting/write access **per Nibbin, in plain words**, only when it needs it — and you can revoke it in one click.
+**Are my connections read-only?** Connect requests read + write scopes at consent, with a plain-language explanation. While a Nibbin is learning it drafts everything for your approval — nothing acts on its own. Once a Nibbin earns trust (Graduate, or Senior on a proven routine) it may act autonomously. Revoke in one click anytime.
 
 **What is Grove Memory?** Your editable business brain — facts, pricing, policies, FAQs, voice, and **hard rules** — shared with all your Nibbins so their drafts sound like you. Edit or clear any of it anytime.
 
@@ -382,9 +382,9 @@ That's by design until it graduates. Eggs observe; Students/Seniors draft for yo
 
 **What does it cost?** There's a free tier plus paid plans (handled in-app). ⚠️ Confirm current plan names/prices on the live billing page before quoting figures.
 
-**Which tools can I connect, really?** Today: **Gmail** (read-only at first; voice-learning read optional). **Calendar** and **Stripe** are **coming soon**. Connections are allowlist-gated — request access if you're not a tester. ⚠️ HoneyBook/Instagram/Pixieset/QuickBooks/Outlook/Notion/Drive appear in the Hatch picker and strategy docs but are **NOT connectable** — roadmap only. Confirm against `apps/web/lib/connections/providers.ts`.
+**Which tools can I connect, really?** Today: **Gmail** (read + write scopes at connect; voice-learning read optional). **Calendar** and **Stripe** are **coming soon**. Connections are allowlist-gated — request access if you're not a tester. ⚠️ HoneyBook/Instagram/Pixieset/QuickBooks/Outlook/Notion/Drive appear in the Hatch picker and strategy docs but are **NOT connectable** — roadmap only. Confirm against `apps/web/lib/connections/providers.ts`.
 
-**How do write/send permissions work?** Read-only by default. Write access is granted **per-Nibbin** through a separate approval, climbing a tier ladder (draft-only → one-click-send → autonomous-send). Revoke anytime in one click.
+**How do write/send permissions work?** Connect requests write scopes at consent with a plain-language explanation. A Nibbin then climbs a trust ladder (draft-only → one-click-send → autonomous-send for email; draft → autonomous for calendar). While a Nibbin is learning, every side effect is drafted for your approval. Only a Graduate — or a Senior on a proven routine — may act autonomously. Revoke anytime in one click.
 
 **What's in Memory?** Facts (what you do, pricing, policies, FAQ), Voice (how you sound), and Hard rules (non-negotiables never broken in a draft). Edit or clear anytime.
 

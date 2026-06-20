@@ -32,9 +32,12 @@ or the Decision Log, never soften a claim here to match a gap.
 ## 1. Scopes requested + per-scope justification
 
 Google grants the **narrowest** scope that supports a real, user-visible feature. Request only
-these; justify each as minimal. Read-only is the Day-One default (C8); write scopes are
-requested **incrementally, per Nibbin, at adoption time** with a plain-language explanation —
-state this explicitly in the submission, because it is the strongest possible minimal-scope story.
+these; justify each as minimal. Connect requests read **and** write scopes together at consent
+time, with a plain-language explanation for each — but acquiring a scope never authorizes an
+action. Execution is gated by the earned-autonomy model: a Nibbin drafts every side effect for
+user approval while it is in School, and only acts autonomously once it has earned trust (Graduate
+stage or a Senior on a proven routine). State this explicitly in the submission, because it is the
+strongest possible minimal-scope + user-control story.
 
 | Scope | Class | Feature it powers | Why minimal |
 |---|---|---|---|
@@ -60,11 +63,11 @@ explicit "scopes we declined."
 - **App name:** Nibbin
 - **App description (if prompted):** "Nibbin connects a solo business owner's tools and runs
   small, supervised agents that draft replies, answer scheduling questions, and surface overdue
-  items. Connections are read-only until the user explicitly grants a specific write action."
+  items. Write scopes are requested at connect with a plain-language explanation; execution of any side effect is gated by the earned-autonomy model — a Nibbin drafts for user approval while learning, and only acts autonomously once it has earned trust."
 - **Scope justification (the free-text box, per restricted scope) — Gmail readonly:**
   "Nibbin reads the signed-in user's Gmail to (1) produce a one-time 'connector scan' — counts of
   unanswered inquiries, overdue threads, and FAQ candidates — and (2) draft reply suggestions
-  that the user reviews and approves before anything is sent. Access is read-only; the user can
+  that the user reviews and approves before anything is sent. The user can
   revoke it one click at any time, which immediately stops all processing. Gmail content is
   processed to provide these user-facing features only and is never sold, never used for
   advertising, and never used to train general models without the user's explicit, separate,

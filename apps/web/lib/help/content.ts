@@ -96,7 +96,7 @@ export const HELP_CONTENT: HelpContent = [
         id: "gs-connect-gmail",
         q: "How do I connect my tools?",
         body:
-          "Go to Connections (/app/connections) — “Accounts your Nibbins work from.” Gmail is live today. Connections start read-only; a Nibbin asks for write access (drafting) separately and in plain words when it needs it.\n\nGoogle Calendar and Stripe show “Coming soon.” When you adopt a Nibbin that needs a tool you haven’t connected yet, you’ll see “That Nibbin needs [x] and [y] connected to finish adopting.”\n\nNote: Gmail connections are currently gated behind a tester allowlist while Google OAuth verification is pending. If you’re not on the list yet, you’ll see a prompt to request access.",
+          “Go to Connections (/app/connections) — “Accounts your Nibbins work from.” Gmail is live today. OAuth consent covers read + write scopes at connect, explained plainly; while a Nibbin is learning every side effect is drafted for your approval.\n\nGoogle Calendar and Stripe show “Coming soon.” When you adopt a Nibbin that needs a tool you haven’t connected yet, you’ll see “That Nibbin needs [x] and [y] connected to finish adopting.”\n\nNote: Gmail connections are currently gated behind a tester allowlist while Google OAuth verification is pending. If you’re not on the list yet, you’ll see a prompt to request access.”,
         keywords: ["connect", "gmail", "connections", "tools", "oauth", "allowlist"],
       },
       {
@@ -270,8 +270,8 @@ export const HELP_CONTENT: HelpContent = [
         id: "priv-connections-data",
         q: "What happens to data from my connected accounts (Gmail, etc.)?",
         body:
-          "Connections start read-only. When a Nibbin needs to act (draft a reply, nudge a thread), it requests write access per Nibbin, in plain words, before doing anything.\n\nConnection tokens are stored in an encrypted vault, not in the app database. One-click revoke cascades to all associated grants and destroys the stored token immediately.\n\nFor the optional Gmail voice-learning sweep: if you opt in, sent messages are processed by the model and your inbox is reduced to subjects and previews — only short derived notes are kept. The raw mail is not retained. This is off by default and opt-in only.",
-        keywords: ["gmail", "connections", "read-only", "token", "vault", "revoke", "sweep", "voice learning"],
+          "Connect requests read + write scopes at OAuth consent, with a plain-language explanation for each. While a Nibbin is in School it drafts every side effect for your approval — nothing acts autonomously until the Nibbin has earned your trust.\n\nConnection tokens are stored in an encrypted vault, not in the app database. One-click revoke cascades to all associated grants and destroys the stored token immediately.\n\nFor the optional Gmail voice-learning sweep: if you opt in, sent messages are processed by the model and your inbox is reduced to subjects and previews — only short derived notes are kept. The raw mail is not retained. This is off by default and opt-in only.",
+        keywords: ["gmail", "connections", "write scopes", "earned autonomy", "token", "vault", "revoke", "sweep", "voice learning"],
       },
       {
         id: "priv-no-telemetry",
@@ -374,14 +374,14 @@ export const HELP_CONTENT: HelpContent = [
         id: "conn-what-do-connections-do",
         q: "What do Connections do?",
         body:
-          "Connections (/app/connections) link your accounts — email, calendar, payments — so your Nibbins have something to work with. Without a connection, a Nibbin that needs Gmail can’t read threads or draft replies.\n\nConnections start read-only. When a Nibbin needs to take action (draft a reply, send a nudge), it asks for write access per Nibbin, in plain words, before doing anything. You can revoke any connection in one click, which instantly suspends all grants and destroys the stored token.",
+          "Connections (/app/connections) link your accounts — email, calendar, payments — so your Nibbins have something to work with. Without a connection, a Nibbin that needs Gmail can’t read threads or draft replies.\n\nOAuth consent covers read + write scopes at connect, with a plain-language explanation. While a Nibbin is in School every side effect is drafted for your approval — it only acts autonomously once it has earned your trust. You can revoke any connection in one click, which instantly suspends all grants and destroys the stored token.",
         keywords: ["connections", "what do", "accounts", "read-only", "revoke", "tools"],
       },
       {
         id: "conn-whats-live",
         q: "Which connections are available today?",
         body:
-          "Today, Gmail is the only connectable tool. When you connect Gmail, it starts with read-only access (gmail.readonly). If you adopt a Nibbin that drafts replies, it will ask for drafting scope separately, in plain words, before it can act.\n\nGoogle Calendar and Stripe show “Coming soon” on the Connections page — you can’t connect them yet. Brief, Tally, and Hopper need those connections to function fully.\n\nOther tools you might see mentioned in the Hatch Your Own picker (HoneyBook, Notion, QuickBooks, and others) are on the roadmap but not connectable today.",
+          “Today, Gmail is the only connectable tool. When you connect Gmail, OAuth consent covers gmail.readonly + gmail.compose + gmail.send — explained plainly. While a Nibbin is in School every side effect is drafted for your approval; it only acts autonomously once it has earned trust.\n\nGoogle Calendar and Stripe show “Coming soon” on the Connections page — you can’t connect them yet. Brief, Tally, and Hopper need those connections to function fully.\n\nOther tools you might see mentioned in the Hatch Your Own picker (HoneyBook, Notion, QuickBooks, and others) are on the roadmap but not connectable today.”,
         keywords: ["gmail", "live", "coming soon", "calendar", "stripe", "available", "today"],
       },
       {
@@ -395,8 +395,8 @@ export const HELP_CONTENT: HelpContent = [
         id: "conn-read-vs-write",
         q: "What is the difference between read access and write access?",
         body:
-          "Every connection starts read-only. A Nibbin can read threads, calendar events, or invoice data — but can’t send, create, or change anything.\n\nWrite access is granted per Nibbin, by you, in plain words, only when a specific Nibbin needs it to do its job. The access label in Connections shows either “Read-only access” or “Includes actions you approve · revoke anytime.”\n\nWrite access can be revoked in one click from the Connections page. Revoking cascades: all grants for that tool are suspended and the stored token is destroyed immediately.",
-        keywords: ["read-only", "write access", "grant", "per nibbin", "revoke", "drafting", "send"],
+          “Connect requests the scopes your Nibbins may use (read + write), with a plain-language explanation for each. Holding a write scope doesn’t authorize action — execution is gated by the earned-autonomy model.\n\nWhile a Nibbin is in School (Student, or Senior not yet on a proven routine) it drafts every side effect for your approval. Only a Graduate, or a Senior on a proven routine, may act autonomously. The access label in Connections shows either “Read-only access” (no write grant) or “Includes actions you approve · revoke anytime.”\n\nWrite access can be revoked in one click from the Connections page. Revoking cascades: all grants for that tool are suspended and the stored token is destroyed immediately.”,
+        keywords: [“write scopes”, “earned autonomy”, “grant”, “per nibbin”, “revoke”, “drafting”, “send”],
       },
       {
         id: "conn-privacy-of-data",
@@ -648,7 +648,7 @@ export const HELP_CONTENT: HelpContent = [
         id: "faq-what-connections",
         q: "Which tools can I connect?",
         body:
-          "Today: Gmail (read-only at first; drafting scope added per Nibbin). Google Calendar and Stripe are coming soon. Other tools mentioned in the Hatch picker are on the roadmap but not connectable yet.\n\nNote: Gmail connections are tester-allowlist-gated while Google OAuth verification is pending. Request access from the Connections page if you’re not on the list.",
+          "Today: Gmail (read + write scopes at connect; while a Nibbin is learning it drafts for your approval). Google Calendar and Stripe are coming soon. Other tools mentioned in the Hatch picker are on the roadmap but not connectable yet.\n\nNote: Gmail connections are tester-allowlist-gated while Google OAuth verification is pending. Request access from the Connections page if you’re not on the list.",
         keywords: ["connect", "gmail", "calendar", "stripe", "tools", "connections", "allowlist"],
       },
       {
