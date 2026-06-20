@@ -82,6 +82,9 @@ export default async function WaitlistPage({
           <a className={styles.navLink} href="/scoreboard">
             Model performance
           </a>
+          <a className={styles.navLink} href="/analytics">
+            Analytics
+          </a>
         </span>
         <span className={styles.who}>
           {staff.email} · {staff.role}

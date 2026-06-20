@@ -120,3 +120,169 @@ export async function loadScoreboard(admin: SupabaseClient): Promise<ScoreboardR
   }
   return rows.map(deriveRates);
 }
+
+// ---------------------------------------------------------------------------
+// Capability performance (fleet) — §capability_task_performance_read RPC
+// ---------------------------------------------------------------------------
+
+/** One row of the capability-performance aggregate view (raw counts; snake_case from Postgres). */
+export interface CapabilityRow {
+  capability: string;
+  decided_calls: bigint | number;
+  approved_unedited: bigint | number;
+  edited: bigint | number;
+  rejected: bigint | number;
+  avg_edit_distance: number | null;
+  contributing_accounts: bigint | number;
+}
+
+/** A capability row with derived null-safe rates the scoreboard renders. */
+export interface CapabilityScoreboardRow extends CapabilityRow {
+  /** approved_unedited / decided_calls — null when decided_calls is 0. */
+  approvedUneditedRate: number | null;
+  /** edited / decided_calls — null when decided_calls is 0. */
+  editedRate: number | null;
+  /** rejected / decided_calls — null when decided_calls is 0. */
+  rejectedRate: number | null;
+}
+
+/** The count columns required on every capability row. */
+const REQUIRED_CAPABILITY_NUMERIC_KEYS = [
+  'decided_calls',
+  'approved_unedited',
+  'edited',
+  'rejected',
+  'contributing_accounts',
+] as const;
+
+/**
+ * Shape guard for one capability_task_performance_read RPC row.
+ * A row is valid iff capability is a string and all count columns are finite
+ * numbers (Postgres bigint columns arrive as JS number via the JS client).
+ * A drifted view shape yields a clean rejection (loadCapabilityScoreboard
+ * throws), never NaN rates from arithmetic on undefined.
+ */
+export function isCapabilityRow(row: unknown): row is CapabilityRow {
+  if (!row || typeof row !== 'object') return false;
+  const r = row as Record<string, unknown>;
+  if (typeof r.capability !== 'string') return false;
+  // avg_edit_distance is number|null (rendered with .toFixed) — a drift that
+  // drops it to undefined would throw at render, so reject it here too.
+  if (r.avg_edit_distance !== null && typeof r.avg_edit_distance !== 'number') return false;
+  return REQUIRED_CAPABILITY_NUMERIC_KEYS.every(
+    (k) => typeof r[k] === 'number' && Number.isFinite(r[k]),
+  );
+}
+
+/** Derive the rendered rates from one raw capability row. Pure + null-safe. */
+export function deriveCapabilityRates(row: CapabilityRow): CapabilityScoreboardRow {
+  const decided = Number(row.decided_calls);
+  return {
+    ...row,
+    approvedUneditedRate: rate(Number(row.approved_unedited), decided),
+    editedRate: rate(Number(row.edited), decided),
+    rejectedRate: rate(Number(row.rejected), decided),
+  };
+}
+
+/**
+ * Load the capability-performance scoreboard rows via the staff-gated RPC.
+ * The caller MUST be a staff service-role client (the RPC is granted to
+ * service_role only, matching model_task_performance_read). Aggregate-only,
+ * anonymized, and k-anonymous (≥5 contributing accounts) — no per-user content.
+ */
+export async function loadCapabilityScoreboard(
+  admin: SupabaseClient,
+): Promise<CapabilityScoreboardRow[]> {
+  const { data, error } = await admin.rpc('capability_task_performance_read');
+  if (error) throw new Error(`capability_task_performance_read failed: ${error.message}`);
+  const raw = Array.isArray(data) ? data : [];
+  const rows: CapabilityRow[] = [];
+  for (const row of raw) {
+    if (!isCapabilityRow(row)) {
+      throw new Error('capability_task_performance_read returned an unexpected row shape');
+    }
+    rows.push(row);
+  }
+  return rows.map(deriveCapabilityRates);
+}
+
+// ---------------------------------------------------------------------------
+// Shop template adoption (fleet) — §shop_template_performance_read RPC
+// ---------------------------------------------------------------------------
+
+/** One row of the shop-template-performance aggregate view (raw counts; snake_case from Postgres). */
+export interface ShopTemplateRow {
+  template_key: string;
+  nibbins: number;
+  contributing_accounts: number;
+  active: number;
+  dormant: number;
+  senior_plus: number;
+  graduated: number;
+}
+
+/** A shop-template row with derived null-safe rates the scoreboard renders. */
+export interface ShopTemplateScoreboardRow extends ShopTemplateRow {
+  /** active / nibbins — null when nibbins is 0. */
+  activeRate: number | null;
+  /** senior_plus / nibbins — null when nibbins is 0. */
+  maturityRate: number | null;
+}
+
+/** The count columns required on every shop-template row. */
+const REQUIRED_SHOP_TEMPLATE_NUMERIC_KEYS = [
+  'nibbins',
+  'contributing_accounts',
+  'active',
+  'dormant',
+  'senior_plus',
+  'graduated',
+] as const;
+
+/**
+ * Shape guard for one shop_template_performance_read RPC row.
+ * A row is valid iff template_key is a string and all count columns are finite
+ * numbers (Postgres bigint columns arrive as JS number via the JS client).
+ * A drifted view shape yields a clean rejection (loadShopScoreboard throws),
+ * never NaN rates from arithmetic on undefined.
+ */
+export function isShopTemplateRow(row: unknown): row is ShopTemplateRow {
+  if (!row || typeof row !== 'object') return false;
+  const r = row as Record<string, unknown>;
+  if (typeof r.template_key !== 'string') return false;
+  return REQUIRED_SHOP_TEMPLATE_NUMERIC_KEYS.every(
+    (k) => typeof r[k] === 'number' && Number.isFinite(r[k]),
+  );
+}
+
+/** Derive the rendered rates from one raw shop-template row. Pure + null-safe. */
+export function deriveShopTemplateRates(row: ShopTemplateRow): ShopTemplateScoreboardRow {
+  return {
+    ...row,
+    activeRate: rate(row.active, row.nibbins),
+    maturityRate: rate(row.senior_plus, row.nibbins),
+  };
+}
+
+/**
+ * Load the shop-template-adoption scoreboard rows via the staff-gated RPC.
+ * The caller MUST be a staff service-role client (the RPC is granted to
+ * service_role only, matching capability_task_performance_read). Aggregate-only,
+ * anonymized, and k-anonymous (≥5 contributing accounts) — no per-user content.
+ */
+export async function loadShopScoreboard(
+  admin: SupabaseClient,
+): Promise<ShopTemplateScoreboardRow[]> {
+  const { data, error } = await admin.rpc('shop_template_performance_read');
+  if (error) throw new Error(`shop_template_performance_read failed: ${error.message}`);
+  const raw = Array.isArray(data) ? data : [];
+  const rows: ShopTemplateRow[] = [];
+  for (const row of raw) {
+    if (!isShopTemplateRow(row)) {
+      throw new Error('shop_template_performance_read returned an unexpected row shape');
+    }
+    rows.push(row);
+  }
+  return rows.map(deriveShopTemplateRates);
+}
