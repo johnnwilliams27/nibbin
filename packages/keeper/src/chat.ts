@@ -20,7 +20,6 @@ import type { KeeperExpression, KeeperMessage } from './types';
 export interface KeeperChatContext {
   userId: string;
   keeperName?: string | null;
-  timezone?: string;
 }
 
 export interface KeeperChatDeps {
@@ -105,7 +104,6 @@ export async function keeperChat(
       task: 'chat',
       origin: 'chat',
       text,
-      timezone: ctx.timezone,
     });
     dispatchedTier = decision.tier;
     dispatchedModel = decision.model;

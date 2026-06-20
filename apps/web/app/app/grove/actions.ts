@@ -158,14 +158,13 @@ export async function keeperChatAction(rawText: unknown): Promise<GroveChatPaylo
   const { supabase, user, accountId } = await groveSession();
   const text = typeof rawText === 'string' ? rawText : '';
 
-  const [{ data: row }, { data: me }] = await Promise.all([
-    supabase
-      .from('grove_state')
-      .select('keeper_name')
-      .eq('account_id', accountId)
-      .maybeSingle<{ keeper_name: string | null }>(),
-    supabase.from('users').select('tz').eq('id', user.id).maybeSingle<{ tz: string | null }>(),
-  ]);
+  // No tz fetch: the frontier budget day is UTC-pinned in the router (#24/#52),
+  // so the user's timezone no longer affects routing.
+  const { data: row } = await supabase
+    .from('grove_state')
+    .select('keeper_name')
+    .eq('account_id', accountId)
+    .maybeSingle<{ keeper_name: string | null }>();
 
   // M6.5: the real generate path. Without an API key this is null, keeperChat
   // gets no generate dep, and the scripted floor answers with zero routing
@@ -206,7 +205,7 @@ export async function keeperChatAction(rawText: unknown): Promise<GroveChatPaylo
 
   const reply = await keeperChat(
     text,
-    { userId: user.id, keeperName: row?.keeper_name ?? null, timezone: me?.tz ?? undefined },
+    { userId: user.id, keeperName: row?.keeper_name ?? null },
     { route: (r) => groveRouter.route(r), ...(generate ? { generate } : {}) },
   );
 
