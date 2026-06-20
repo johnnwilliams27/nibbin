@@ -159,46 +159,65 @@ export async function handleConnectionCallback(
   let createdConnectionId: string | null = null;
   let createdPending: PendingAuth | null = null;
 
-  const { redirectTo } = await completeConnection(
-    { code, returnedState: state, nowMs: Date.now() },
-    {
-      consume: async (s, now) => {
-        const p = await consumePending(s, now, svc);
-        // Guard: the pending row's provider must match the route it was redeemed on.
-        if (p && opts.expectedProvider && p.provider !== opts.expectedProvider) return null;
-        if (p) createdPending = p;
-        return p;
+  let saveFailed = false;
+  let completeResult: { redirectTo: string };
+  try {
+    completeResult = await completeConnection(
+      { code, returnedState: state, nowMs: Date.now() },
+      {
+        consume: async (s, now) => {
+          const p = await consumePending(s, now, svc);
+          // Guard: the pending row's provider must match the route it was redeemed on.
+          if (p && opts.expectedProvider && p.provider !== opts.expectedProvider) return null;
+          if (p) createdPending = p;
+          return p;
+        },
+        exchange: (pending, c) => exchangeViaEngine(pending, c),
+        createActiveConnection: async (pending, token) => {
+          try {
+            const id = await makeCreateActiveConnection(svc)(pending, token);
+            createdConnectionId = id;
+            return id;
+          } catch (err) {
+            // Log server-side without token material; never put error text in the redirect URL.
+            console.error('[connections] vault/insert failed for provider', pending.provider, '—', err instanceof Error ? err.message : String(err));
+            throw { __saveFailed: true } as unknown as Error;
+          }
+        },
+        resumeAdopt: async (pending, templateKey) => {
+          const r = await adoptTemplate(pending.accountId, pending.userId, templateKey);
+          return { ok: r.missingConnectors.length === 0, missing: r.missingConnectors };
+        },
+        createWriteGrant: async (pending, connectionId) => {
+          if (!pending.nibbinId) return;
+          const spec = writeGrantSpecFor(pending.provider);
+          if (!spec) return;
+          await createWriteGrant(
+            {
+              accountId: pending.accountId,
+              nibbinId: pending.nibbinId,
+              connectionId,
+              capability: spec.capability,
+              grantedBy: pending.userId,
+              plainLanguageReason: spec.reason,
+            },
+            svc,
+          );
+        },
       },
-      exchange: (pending, c) => exchangeViaEngine(pending, c),
-      createActiveConnection: async (pending, token) => {
-        const id = await makeCreateActiveConnection(svc)(pending, token);
-        createdConnectionId = id;
-        return id;
-      },
-      resumeAdopt: async (pending, templateKey) => {
-        const r = await adoptTemplate(pending.accountId, pending.userId, templateKey);
-        return { ok: r.missingConnectors.length === 0, missing: r.missingConnectors };
-      },
-      createWriteGrant: async (pending, connectionId) => {
-        if (!pending.nibbinId) return;
-        const spec = writeGrantSpecFor(pending.provider);
-        if (!spec) return;
-        await createWriteGrant(
-          {
-            accountId: pending.accountId,
-            nibbinId: pending.nibbinId,
-            connectionId,
-            capability: spec.capability,
-            grantedBy: pending.userId,
-            plainLanguageReason: spec.reason,
-          },
-          svc,
-        );
-      },
-    },
-  );
+    );
+  } catch (err) {
+    if (err !== null && typeof err === 'object' && '__saveFailed' in err) {
+      saveFailed = true;
+      completeResult = { redirectTo: '/app/connections?error=save_failed' };
+    } else {
+      throw err;
+    }
+  }
 
-  if (createdConnectionId && opts.postConnect && createdPending) {
+  const { redirectTo } = completeResult!;
+
+  if (!saveFailed && createdConnectionId && opts.postConnect && createdPending) {
     await opts.postConnect(svc, createdPending, createdConnectionId);
   }
 

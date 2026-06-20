@@ -11,6 +11,7 @@ import { adoptFromShopOutcome } from '../shop/actions';
 import { ConnectorDirectory } from '../../../components/help/ConnectorDirectory';
 import { CONNECTORS } from '../../../lib/connections/catalog';
 import styles from './connections.module.css';
+import { connectionErrorMessage } from './connection-error';
 
 export const metadata: Metadata = { title: 'Connections — Nibbin' };
 export const dynamic = 'force-dynamic';
@@ -72,9 +73,23 @@ export default async function ConnectionsPage({
           {CONNECTABLE_PROVIDERS.find((p) => p.id === sp.disconnected)?.label ?? 'Account'} disconnected — its access was revoked.
         </InlineFeedback>
       )}
-      {sp.error === 'expired' && <InlineFeedback tone="error">That connection link expired — try again.</InlineFeedback>}
-      {sp.error === 'exchange_failed' && <InlineFeedback tone="error">Couldn't finish connecting — nothing was saved. Try again.</InlineFeedback>}
-      {sp.error === 'declined' && <InlineFeedback tone="error">You declined the connection.</InlineFeedback>}
+      {sp.error && (() => {
+        const err = connectionErrorMessage(sp.error);
+        return (
+          <InlineFeedback tone="error">
+            <strong>{err.title}</strong> {err.body}
+            {err.action !== 'none' && (
+              <form action={beginConnectAction} style={{ display: 'inline', marginLeft: 8 }}>
+                <input type="hidden" name="provider" value={sp.needed?.split(',')[0] ?? 'gmail'} />
+                <input type="hidden" name="returnTo" value="/app/connections" />
+                <button type="submit" style={{ textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'inherit', fontSize: 'inherit' }}>
+                  {err.action === 'restart' ? 'Start again' : 'Try again'}
+                </button>
+              </form>
+            )}
+          </InlineFeedback>
+        );
+      })()}
       {sp.needed && (
         <InlineFeedback tone="error">
           That Nibbin needs {sp.needed.split(',').join(' and ')} connected to finish adopting.
