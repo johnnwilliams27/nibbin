@@ -22,7 +22,6 @@ export default async function PlannerPage() {
   return (
     <AppShell title="Ask a Nibbin" active="planner" email={user.email}>
       <div className={styles.header}>
-        <p className={styles.eyebrow}>Planner</p>
         <h1 className={styles.title}>Ask a Nibbin to look into something</h1>
         <p className={styles.sub}>
           Describe what you'd like handled. A Nibbin will lay out a small plan first — you'll see exactly what it
