@@ -1,0 +1,16 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "grove-remote",
+  "description": "Scoped IPC capability for the embedded nibbin.com Grove webview. Grants ONLY the read-only bridge commands (study_status, review_events) to content loaded from https://nibbin.com. Deliberately: (a) targets the 'grove' webview label only — not the 'main' webview; (b) sets local:false so local app content cannot use this capability; (c) uses an exact-origin URLPattern (no wildcard subdomains) matching the production and NIBBIN_GROVE_HANDOFF origins. The on_navigation lock in lib.rs (grove_show ~line 91) provides defense-in-depth by blocking same-webview navigation to any other host. Together these two layers ensure no other origin — including attacker-controlled redirects — can reach these commands.",
+  "webviews": ["grove"],
+  "local": false,
+  "remote": {
+    "urls": [
+      "https://nibbin.com/*"
+    ]
+  },
+  "permissions": [
+    "allow-study-status",
+    "allow-review-events"
+  ]
+}

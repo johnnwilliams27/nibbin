@@ -1,0 +1,19 @@
+# Read-only bridge commands exposed to the embedded nibbin.com webview.
+# These are the only app commands the Grove webview can invoke via IPC.
+# Write-path commands (send_control, create_study, review_delete, etc.)
+# are NOT listed here and must NOT be added without a separate security review.
+
+[[permission]]
+identifier = "allow-study-status"
+description = "Enables the study_status command. Returns the current daemon snapshot (state/remaining_ms/paused/study metadata). Read-only."
+commands.allow = ["study_status"]
+
+[[permission]]
+identifier = "allow-review-events"
+description = "Enables the review_events command. Returns the post-pipeline, already-redacted event list for the end-of-day review UI. Read-only."
+commands.allow = ["review_events"]
+
+# ── Placeholder slot for gap commands added in future plan slices ─────────────
+# When a new bridge command is approved for the remote webview, add it here
+# AND update the grove-remote capability to reference its allow-<name> token.
+# Do NOT reference future commands in the capability until the TOML entry exists.
