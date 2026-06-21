@@ -7,12 +7,12 @@
  *  - same-tool-same-args repetition kill
  *  - idempotency keys on every side-effectful action
  *  - tool access per-spec allowlisted
- *  - Agent School stage gates draft-vs-execute (school.ts), never the prompt
+ *  - Action level is the sole execution gate (owner-set): observe→no output,
+ *    draft→draft, send→execute — identically at every grade (§ action-levels).
  *  - tool output without quarantine markers is refused (§6.5)
  */
 import { createHash } from 'node:crypto';
 import { isQuarantined, quarantine, type QuarantinedContent } from '@nibbin/connectors';
-import { gateSideEffect } from './school';
 import type { GrantStore, ResourceClaimStore, RoutineStore, RunStore, IdempotencyStore } from './stores';
 import type {
   DraftStep,
@@ -270,32 +270,32 @@ export async function dispatchStep(
     return done({ kind: 'composed' });
   }
 
-  // step.kind === 'draft': a proposed action. The Agent School gate — at the
-  // runtime layer, never the prompt layer — decides draft vs execute.
+  // step.kind === 'draft': a proposed action. The action level gate —
+  // owner-set, enforced at the runtime layer, never the prompt layer — decides
+  // observe/draft/execute (§ action-levels).
   if (!spec.toolsAllowlist.includes(step.capability)) return done({ kind: 'kill', reason: 'allowlist' });
 
-  // §43: Re-read the nibbin's current stage+status immediately before the
-  // execute decision. nibbin_demote is "one click, instant" — the NibbinRef
-  // captured at admission may already be stale if a demotion or pause happened
-  // between begin() and this step. A stale stage must not grant autonomy.
+  // §43: Re-read the nibbin's current status immediately before the execute
+  // decision. nibbin_demote / nibbin_pause is "one click, instant" — the
+  // NibbinRef captured at admission may already be stale.
   const freshNibbin = await deps.runs.getNibbin(nibbin.id);
   if (!freshNibbin || freshNibbin.status !== 'active') {
     return done({ kind: 'drafted', draft: step });
   }
-  const effectiveStage = freshNibbin.stage;
-  const effectiveStageChangedAt = freshNibbin.stageChangedAt;
 
-  const routineApprovals = await deps.routines.approvedCount(nibbin.id, step.patternKey, effectiveStageChangedAt);
-  let gate = step.presentation
-    ? ({ action: 'draft', reason: 'stage' } as const)
-    : gateSideEffect(effectiveStage, routineApprovals, spec.curriculum);
-
-  if (gate.action === 'deny') return done({ kind: 'kill', reason: 'stage' });
-
-  if (gate.action === 'execute') {
-    const granted = await deps.grants.hasGrant(nibbin.id, step.connectionId, step.capability);
-    if (!granted) gate = { action: 'draft', reason: 'stage' };
+  // Action level is the sole execution gate (owner-set). Grade does not gate.
+  // `step.presentation` steps are always drafts (they're proposals by construction).
+  const level = freshNibbin.actionLevel;
+  let gate: { action: 'execute' } | { action: 'draft'; reason: string } | { action: 'deny'; reason: string };
+  if (step.presentation || level === 'draft') {
+    gate = { action: 'draft', reason: 'level' };
+  } else if (level === 'observe') {
+    gate = { action: 'deny', reason: 'observe' };
+  } else {
+    gate = { action: 'execute' }; // level === 'send'
   }
+
+  if (gate.action === 'deny') return done({ kind: 'kill', reason: gate.reason as KillReason });
 
   if (gate.action === 'draft') {
     await deps.runs.recordStep(nibbin.accountId, runId, {
@@ -316,7 +316,7 @@ export async function dispatchStep(
     return done({ kind: 'drafted', draft: step });
   }
 
-  // gate.action === 'execute' (Senior on routine, Graduate within spec)
+  // gate.action === 'execute' (action level is 'send')
   // §18.3 Slice 1: claim the resource BEFORE the idempotency claim. A
   // conflict-skip must NOT create an idempotency row — otherwise a same-key
   // event redelivery (missed-push reconcile / re-poll) would later read it as
