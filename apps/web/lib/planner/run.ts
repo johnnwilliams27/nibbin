@@ -272,13 +272,14 @@ async function resolveResponse(
 
     // FIX 1 (fail-closed re-assertion at execute time — the human approval IS
     // the authorization, but it can only ever execute the SAME surface the plan
-    // was provisioned for, and only a draft-class capability):
+    // was provisioned for, and only an allowed write capability may execute):
     //  1. the capability must be in the plan's provisioned toolsAllowlist;
-    //  2. the capability's descriptor must NOT be a 'write' (only a draft-class
-    //     capability may be approval-executed — mirrors validatePick /
-    //     validateComposedSpec's "raw write rejected" rule).
+    //  2. the capability's descriptor must be a known registry capability;
+    //  3. write-class capabilities are only approval-executable when nativeDraft:true
+    //     (Task 4: email.send — the action level governs draft-vs-send; a raw
+    //     write that is NOT nativeDraft is still refused here).
     // A plan run can never hold a write-grant row (it is ephemeral / no nibbin),
-    // so the allowlist + draft-class assertion is the correct gate — NOT hasGrant.
+    // so the allowlist + nativeDraft assertion is the correct gate — NOT hasGrant.
     if (!state.plan.toolsAllowlist.includes(capabilityId)) {
       return { kind: 'fail', observation: `refused: "${capabilityId}" is not in this plan's provisioned surface` };
     }
@@ -286,8 +287,8 @@ async function resolveResponse(
     if (!desc) {
       return { kind: 'fail', observation: `refused: "${capabilityId}" is not a registry capability` };
     }
-    if (desc.sideEffect === 'write') {
-      return { kind: 'fail', observation: `refused: "${capabilityId}" is a raw write-class capability — only a draft-class capability may be approval-executed` };
+    if (desc.sideEffect === 'write' && !desc.nativeDraft) {
+      return { kind: 'fail', observation: `refused: "${capabilityId}" is a raw write-class capability — only nativeDraft write capabilities may be approval-executed` };
     }
 
     // Approved + re-asserted: execute the held draft through the runner's effect

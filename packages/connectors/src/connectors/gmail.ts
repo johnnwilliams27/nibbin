@@ -182,6 +182,22 @@ export class GmailClient extends HttpConnectorClient {
     return res.json() as { id?: string };
   }
 
+  /** Delete a draft (compose scope). Used to keep Nibbin/Gmail drafts in sync. */
+  async deleteDraft(draftId: string): Promise<void> {
+    this.requireGrantedScope(SCOPE_COMPOSE);
+    await this.request(`/gmail/v1/users/me/drafts/${encodeURIComponent(draftId)}`, { method: 'DELETE' });
+  }
+
+  /** Send an existing draft (send scope + velocity already consumed by caller). */
+  async sendDraft(draftId: string): Promise<{ id?: string }> {
+    this.requireGrantedScope(SCOPE_SEND);
+    const res = await this.request('/gmail/v1/users/me/drafts/send', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id: draftId }),
+    });
+    return res.json() as { id?: string };
+  }
+
   /**
    * Send — needs the post-adoption gmail.send grant AND a velocity-cap pass
    * (docs/RISKS.md §2: outbound-send abuse is an OAuth-app killer).

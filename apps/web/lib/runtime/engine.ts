@@ -177,13 +177,20 @@ export interface EffectsExecutorTestDeps {
   }) => Promise<{ allowed: boolean; reason?: string; retryAfterMs?: number }>;
   /** Optional: stub the Calendar createEvent call. Absent in email-only tests. */
   createEvent?: (calendarId: string, event: Record<string, unknown>) => Promise<{ id?: string }>;
+  /** Task 4: delete a Gmail draft by id (best-effort, dismiss path). */
+  deleteDraft?: (draftId: string) => Promise<void>;
+  /** Task 4: send a previously-created Gmail draft by id (send path with stored ref). */
+  sendDraft?: (draftId: string) => Promise<{ id?: string }>;
 }
 
 /**
  * Build the effects executor (email.send + calendar.event-create).
  * Task 3: email.draft retired; email.send is now the single email write capability.
- * Task 4 will wire the native-draft path (nativeDraft: true) so email.send at
- * Draft action level calls createDraft instead of sendMessage.
+ * Task 4: native-draft mirror + delete-sync wired.
+ *   - args.nativeDraft=true + no nativeDraftRef → createDraft (Draft level mirror).
+ *   - args.nativeDraftRef set + no dismiss → sendDraft(ref) after velocity consume.
+ *   - args.dismiss=true + nativeDraftRef set → deleteDraft(ref) best-effort, no send.
+ *   - Neither flag → sendMessage (legacy / send-level non-native-draft path).
  * In production (no testDeps): calls GmailClient directly + send_velocity_consume RPC atomically.
  * In tests (testDeps injected): calls the provided stubs.
  */
@@ -216,11 +223,60 @@ export function buildEffectsExecutor(
     const rfc822 = String(args.args.rfc822 ?? '');
 
     switch (args.capability) {
-      // Task 4 (TODO): add native-draft dispatch here when actionLevel === 'draft'
-      // (call createDraft instead of sendMessage). For now email.send always
-      // reaches the send path — the runner gates draft steps for human approval
-      // before the executor is called, so this is only reached at Send level.
       case 'email.send': {
+        const nativeDraftRef = typeof args.args.nativeDraftRef === 'string' ? args.args.nativeDraftRef : null;
+        const nativeDraft = args.args.nativeDraft === true;
+        const dismiss = args.args.dismiss === true;
+
+        // ── Dismiss path: delete the Gmail draft best-effort, no send ──────────
+        // Triggered when the user dismisses a Nibbin draft that has a native ref.
+        if (dismiss && nativeDraftRef) {
+          try {
+            if (testDeps) {
+              await testDeps.deleteDraft?.(nativeDraftRef);
+            } else {
+              const vault = new SupabaseTokenVault({
+                supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
+                serviceKey: process.env.SUPABASE_SECRET_KEY ?? '',
+              });
+              await new GmailClient(connection, vault).deleteDraft(nativeDraftRef);
+            }
+          } catch (err) {
+            // Best-effort: logged, never blocks dismissal.
+            console.warn('[effects] deleteDraft best-effort failed:', err instanceof Error ? err.message : String(err));
+          }
+          return;
+        }
+
+        // ── Native-draft mirror path: create a Gmail draft (Draft action level) ─
+        // nativeDraft=true without a ref → Draft level mirror: createDraft.
+        // Does NOT consume velocity (this is draft creation, not send).
+        // Returns the nativeDraftId so the runner can store it in native_draft_ref.
+        if (nativeDraft && !nativeDraftRef) {
+          let draftId: string | undefined;
+          try {
+            if (testDeps) {
+              const r = await testDeps.createDraft(rfc822);
+              draftId = r.id;
+            } else {
+              const vault = new SupabaseTokenVault({
+                supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
+                serviceKey: process.env.SUPABASE_SECRET_KEY ?? '',
+              });
+              const r = await new GmailClient(connection, vault).createDraft(rfc822);
+              draftId = r.id;
+            }
+          } catch (err) {
+            if (err instanceof ConnectorRequestError) {
+              const reason = err.kind === 'auth' ? 'auth_failed' : err.kind === 'connection-state' ? 'not_connected' : null;
+              if (reason) await emitConnectorBlocked(err.provider, reason);
+            }
+            throw err;
+          }
+          return { nativeDraftId: draftId } as unknown as void;
+        }
+
+        // ── Send path: velocity consume then send (stored draft or fresh send) ──
         // Atomic velocity check via PgSendRecordStore (migration 20260620180000).
         // The RPC serializes check-and-insert under a per-account advisory lock,
         // eliminating the TOCTOU in the old two-step read→record path.
@@ -248,7 +304,18 @@ export function buildEffectsExecutor(
           );
         }
         try {
-          if (testDeps) {
+          if (nativeDraftRef) {
+            // Send the previously-created Gmail draft (velocity already consumed above).
+            if (testDeps) {
+              await testDeps.sendDraft?.(nativeDraftRef);
+            } else {
+              const vault = new SupabaseTokenVault({
+                supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
+                serviceKey: process.env.SUPABASE_SECRET_KEY ?? '',
+              });
+              await new GmailClient(connection, vault).sendDraft(nativeDraftRef);
+            }
+          } else if (testDeps) {
             await testDeps.sendMessage(rfc822);
           } else {
             const vault = new SupabaseTokenVault({

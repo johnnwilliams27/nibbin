@@ -2,6 +2,91 @@ import { expect, it } from 'vitest';
 import { buildEffectsExecutor } from '../lib/runtime/engine';
 import type { Connection } from '@nibbin/connectors';
 
+// ── Task 4: native-draft mirror + delete-sync ─────────────────────────────────
+// (a) drafting an email step at draft level (nativeDraftRef absent, createDraft
+//     present) calls createDraft and stores a native_draft_ref
+it('Task 4: email.send with nativeDraft mode calls createDraft and returns the id in result', async () => {
+  const drafts: string[] = [];
+  const byId = new Map([['conn1', makeGmailConn([COMPOSE, SEND])]]);
+  const executor = buildEffectsExecutor(byId, 'acc1', Date.now() - 86400000 * 30, {
+    createDraft: async (rfc822: string) => { drafts.push(rfc822); return { id: 'draft-native-1' }; },
+    sendMessage: async () => { throw new Error('should not send in draft mode'); },
+    sendVelocityConsume: async () => { throw new Error('velocity should not be consumed for native draft'); },
+    deleteDraft: async () => {},
+    sendDraft: async () => { throw new Error('should not sendDraft without a ref'); },
+  });
+  // nativeDraftRef absent → createDraft path
+  const result = await executor({
+    connectionId: 'conn1',
+    capability: 'email.send',
+    args: { rfc822: 'cmF3', nativeDraft: true },
+    idempotencyKey: 'ik-nd1',
+  });
+  expect(drafts).toEqual(['cmF3']);
+  expect((result as { nativeDraftId?: string } | void)?.nativeDraftId).toBe('draft-native-1');
+});
+
+// (b) drafting a calendar step records NO native ref (nativeDraft false on the descriptor)
+it('Task 4: calendar.event-create does NOT call createDraft (nativeDraft:false)', async () => {
+  const draftCalls: unknown[] = [];
+  const events: unknown[] = [];
+  const byId = new Map([['cal1', makeCalendarConn(['https://www.googleapis.com/auth/calendar.events'])]]);
+  const executor = buildEffectsExecutor(byId, 'acc1', Date.now() - 86400000 * 30, {
+    createDraft: async () => { draftCalls.push(true); return { id: 'x' }; },
+    sendMessage: async () => { throw new Error('should not send'); },
+    sendVelocityConsume: async () => ({ allowed: true }),
+    createEvent: async (_cid, ev) => { events.push(ev); return { id: 'evt-t4' }; },
+    deleteDraft: async () => {},
+    sendDraft: async () => ({}),
+  });
+  await executor({ connectionId: 'cal1', capability: 'calendar.event-create', args: { event: { summary: 'Test' } }, idempotencyKey: 'ik-cal-nd' });
+  expect(draftCalls).toHaveLength(0); // no native draft for calendar
+  expect(events).toHaveLength(1);
+});
+
+// (c) sending with a stored nativeDraftRef calls sendDraft (not a fresh send)
+it('Task 4: email.send with nativeDraftRef calls sendDraft (not sendMessage)', async () => {
+  const sends: string[] = [];
+  const draftSends: string[] = [];
+  const byId = new Map([['conn1', makeGmailConn([COMPOSE, SEND])]]);
+  const executor = buildEffectsExecutor(byId, 'acc1', Date.now() - 86400000 * 30, {
+    createDraft: async () => { throw new Error('should not re-create draft'); },
+    sendMessage: async (r) => { sends.push(r); return { id: 's-fresh' }; },
+    sendVelocityConsume: async () => ({ allowed: true }),
+    deleteDraft: async () => {},
+    sendDraft: async (draftId) => { draftSends.push(draftId); return { id: 's-stored' }; },
+  });
+  await executor({
+    connectionId: 'conn1',
+    capability: 'email.send',
+    args: { rfc822: 'cmF3', nativeDraftRef: 'draft-stored-xyz' },
+    idempotencyKey: 'ik-nd-send',
+  });
+  // Must use sendDraft with the stored ref, NOT a fresh sendMessage
+  expect(draftSends).toEqual(['draft-stored-xyz']);
+  expect(sends).toHaveLength(0);
+});
+
+// (d) dismissing (deleteDraft ref) calls deleteDraft best-effort
+it('Task 4: deleteDraft is called on dismiss with a nativeDraftRef', async () => {
+  const deleted: string[] = [];
+  const byId = new Map([['conn1', makeGmailConn([COMPOSE, SEND])]]);
+  const executor = buildEffectsExecutor(byId, 'acc1', Date.now() - 86400000 * 30, {
+    createDraft: async () => ({}),
+    sendMessage: async () => ({}),
+    sendVelocityConsume: async () => ({ allowed: true }),
+    deleteDraft: async (draftId) => { deleted.push(draftId); },
+    sendDraft: async () => ({}),
+  });
+  await executor({
+    connectionId: 'conn1',
+    capability: 'email.send',
+    args: { rfc822: 'cmF3', nativeDraftRef: 'draft-to-delete', dismiss: true },
+    idempotencyKey: 'ik-dismiss',
+  });
+  expect(deleted).toEqual(['draft-to-delete']);
+});
+
 const COMPOSE = 'https://www.googleapis.com/auth/gmail.compose';
 const SEND = 'https://www.googleapis.com/auth/gmail.send';
 
