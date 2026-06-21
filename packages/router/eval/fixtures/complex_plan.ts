@@ -14,7 +14,7 @@ Pick the smallest surface that can satisfy the request. Always include "done".`;
 
 const SURFACE = `Connector capabilities:
 - email.search (read, uses gmail)
-- email.draft (write-draft, uses gmail)
+- email.send (write-draft, uses gmail)
 - calendar.list (read, uses google-calendar)
 - calendar.draft-invite (write-draft, uses google-calendar)
 - invoice.list (read, uses stripe)

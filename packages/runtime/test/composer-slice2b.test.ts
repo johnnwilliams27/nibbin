@@ -127,7 +127,7 @@ describe('validateComposedSpec — nudge family connector gating', () => {
 
   it('rejects an unknown input on reply.new-inquiry (empty schema accepts no keys)', () => {
     const s = spec({
-      toolsAllowlist: ['email.read', 'email.draft'],
+      toolsAllowlist: ['email.read', 'email.send'],
       requiredConnectors: ['gmail'],
       steps: [{ capability: 'reply.new-inquiry', inputs: { evil: 1 } as Record<string, unknown> }],
     });
