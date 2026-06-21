@@ -13,6 +13,7 @@ import {
   MemoryResourceClaimStore,
   MemoryRoutineStore,
   MemoryRunStore,
+  nudgeOverdueEmail,
   promotionCheck,
   REPETITION_KILL_AT,
   type AgentSpec,
@@ -415,11 +416,38 @@ describe('C8 (Connector Lever 1): calendar.event-create gates on action level (n
     expect(executed).toBe(0); // side effect did NOT fire
   });
 
-  it('an Egg cannot produce a calendar event at all (pre-run guard unchanged)', async () => {
-    // Egg guard is in executeRun head — unchanged from old model.
+  it('an Egg + send EXECUTES the calendar event (egg admission fence REMOVED — action_level is the sole gate)', async () => {
+    // FIX 4: the egg run-admission fence is removed. An Egg now admits and is
+    // governed solely by action_level. egg + send → acts (behind the unchanged
+    // idempotency / resource-claim walls).
     const h = harness({ credits: 1000 });
+    h.runs.nibbinState('nib-1').actionLevel = 'send';
+    let executed = 0;
+    h.deps.effects = { async execute(req) { if (req.capability === 'calendar.event-create') executed += 1; } };
     const outcome = await executeRun(calNib('egg'), TRIGGER, createEvent, h.deps);
-    expect(outcome.kind).toBe('not_started'); // eggs never run
+    expect(outcome.kind).toBe('executed');
+    expect(executed).toBe(1);
+  });
+
+  it('an Egg + draft DRAFTS the calendar event (egg admits, action_level=draft → draft)', async () => {
+    const h = harness({ credits: 1000 });
+    h.runs.nibbinState('nib-1').actionLevel = 'draft';
+    let executed = 0;
+    h.deps.effects = { async execute() { executed += 1; } };
+    const outcome = await executeRun(calNib('egg'), TRIGGER, createEvent, h.deps);
+    expect(outcome.kind).toBe('awaiting_approval');
+    expect(executed).toBe(0);
+  });
+
+  it('an Egg + observe produces NO output (kill:observe) — egg admits, action_level=observe → deny', async () => {
+    const h = harness({ credits: 1000 });
+    h.runs.nibbinState('nib-1').actionLevel = 'observe';
+    let executed = 0;
+    h.deps.effects = { async execute() { executed += 1; } };
+    const outcome = await executeRun(calNib('egg'), TRIGGER, createEvent, h.deps);
+    expect(outcome.kind).toBe('killed');
+    expect((outcome as { reason: string }).reason).toBe('observe');
+    expect(executed).toBe(0);
   });
 
   it('actionLevel=send → executes the calendar event at any stage (Student executes)', async () => {
@@ -471,10 +499,9 @@ describe('§ action-levels: action level is the sole execution gate', () => {
   //  • draft   → always drafts at any grade
   //  • send    → always executes at any grade (incl. Egg pre-run guard bypassed via dispatchStep)
   //
-  // The "Egg + Send" tests below call dispatchStep directly because executeRun
-  // has a pre-run egg guard (not_started:egg) that fires BEFORE dispatchStep.
-  // We use the runner's exported dispatchStep + a started run to prove the gate.
-  // For the executeRun-level tests we use non-egg stages.
+  // FIX 4: the egg run-admission fence is REMOVED — an Egg admits and is gated
+  // solely by action_level in dispatchStep. So Egg + Send executes via executeRun
+  // directly (no need to drive dispatchStep separately).
 
   const sendStep: ProgramFn = async function* () {
     yield {
@@ -495,12 +522,10 @@ describe('§ action-levels: action level is the sole execution gate', () => {
     return { h, nibRef };
   }
 
-  it('action-level Send executes regardless of stage (uses student stage — egg is fenced before dispatchStep)', async () => {
-    // Note: the egg admission fence (executeRun pre-run guard) returns
-    // not_started:egg before dispatchStep fires, so we prove the action-level
-    // Send path using a non-egg stage (student). The egg fence itself is tested
-    // in "retained walls" below.
-    const { h, nibRef } = actionHarness('send', 'student');
+  it('action-level Send executes regardless of stage — INCLUDING Egg (fence removed)', async () => {
+    // FIX 4: with the egg admission fence removed, an Egg + Send executes through
+    // executeRun directly — action_level is the sole gate, stage is advisory.
+    const { h, nibRef } = actionHarness('send', 'egg');
     let executed = 0;
     h.deps.effects = { async execute() { executed += 1; } };
     const out = await executeRun(nibRef, TRIGGER, sendStep, h.deps);
@@ -545,6 +570,57 @@ describe('§ action-levels: action level is the sole execution gate', () => {
       };
     }, h.deps);
     expect(out.kind).toBe('awaiting_approval');
+  });
+
+  it('P0-2: presentation step at OBSERVE level is suppressed (kill:observe, ZERO draft rows)', async () => {
+    // The observe deny is evaluated BEFORE the presentation/draft arm, so a
+    // presentation/digest step at observe level produces NO output — not a draft.
+    const { h, nibRef } = actionHarness('observe', 'grad');
+    let executed = 0;
+    h.deps.effects = { async execute() { executed += 1; } };
+    const out = await executeRun(nibRef, TRIGGER, async function* () {
+      yield {
+        kind: 'draft',
+        capability: 'email.send',
+        connectionId: CONN,
+        patternKey: 'p-pres-obs',
+        title: 'Digest',
+        draft: 'digest body',
+        effectArgs: {},
+        presentation: true,
+      };
+    }, h.deps);
+    expect(out.kind).toBe('killed');
+    expect((out as { reason: string }).reason).toBe('observe');
+    expect(executed).toBe(0);
+    // ZERO draft rows recorded
+    const runId = (out as { runId: string }).runId;
+    const draftRows = h.runs.getSteps(runId).filter((s) => s.kind === 'draft');
+    expect(draftRows).toHaveLength(0);
+  });
+
+  it('P1-2: an unknown / NULL action_level fails SAFE to draft (never execute)', async () => {
+    // The execute arm requires level === 'send' explicitly; any other value
+    // (NULL, out-of-enum, future value) must default to draft — never auto-send.
+    const { h, nibRef } = actionHarness('send', 'student');
+    // Force an out-of-enum level past the typed setter.
+    (h.runs.nibbinState('nib-1') as { actionLevel: unknown }).actionLevel = 'bogus-level';
+    let sent = 0;
+    // Count only real SENDS (executor calls without the nativeDraft mirror flag).
+    h.deps.effects = { async execute(req) { if (req.args.nativeDraft !== true) sent += 1; } };
+    const out = await executeRun(nibRef, TRIGGER, sendStep, h.deps);
+    expect(out.kind).toBe('awaiting_approval'); // drafted, not executed
+    expect(sent).toBe(0); // no auto-send fired
+  });
+
+  it('P1-2: a NULL action_level fails SAFE to draft', async () => {
+    const { h, nibRef } = actionHarness('send', 'student');
+    (h.runs.nibbinState('nib-1') as { actionLevel: unknown }).actionLevel = null;
+    let sent = 0;
+    h.deps.effects = { async execute(req) { if (req.args.nativeDraft !== true) sent += 1; } };
+    const out = await executeRun(nibRef, TRIGGER, sendStep, h.deps);
+    expect(out.kind).toBe('awaiting_approval');
+    expect(sent).toBe(0);
   });
 });
 
@@ -892,11 +968,14 @@ describe('Task 6 lock: dispatchStep outcome is invariant to stage for a fixed ac
     'actionLevel=draft + stage=%s → drafted (grade never gates)',
     async (stage) => {
       const { h, nibRef } = lockHarness('draft', stage);
-      let executed = 0;
-      h.deps.effects = { async execute() { executed += 1; } };
+      let sent = 0;
+      // Count only real SENDS. An email.send draft step now legitimately calls
+      // the executor once for the native-draft MIRROR (createDraft, nativeDraft:true)
+      // — that is draft creation, NOT a send. The draft outcome proves no send.
+      h.deps.effects = { async execute(req) { if (req.args.nativeDraft !== true) sent += 1; } };
       const out = await executeRun(nibRef, TRIGGER, draftYield, h.deps);
       expect(out.kind).toBe('awaiting_approval');
-      expect(executed).toBe(0); // no side effect
+      expect(sent).toBe(0); // no send fired
     },
   );
 
@@ -914,155 +993,141 @@ describe('Task 6 lock: dispatchStep outcome is invariant to stage for a fixed ac
   );
 });
 
-// ── Task 4: native-draft lifecycle — end-to-end ref persistence ───────────────
-// These 4 tests prove the full lifecycle from the runner's perspective:
-//   (a) email.send nativeDraft step at Draft level → executor called, ref persisted
-//   (b) calendar.event-create at Draft level → executor NOT called (nativeDraft:false)
-//   (c) send with stored nativeDraftRef → executor receives the ref (sendDraft path)
-//   (d) dismiss with nativeDraftRef → executor receives dismiss+ref (deleteDraft path)
-// Velocity consume is NOT tested here — that's the executor's concern (engine.test.ts).
-// The runner invariant under test: draft path calls executor iff nativeDraft:true,
-// persists the ref in run_steps.payload.nativeDraftRef, and the send/dismiss paths
-// forward the ref from effectArgs to the executor unchanged.
-describe('Task 4: native-draft lifecycle — ref persisted in run_steps.payload', () => {
-  function nativeDraftHarness(actionLevel: 'draft' | 'send' = 'draft') {
+// ── Task 4: native-draft mirror — END-TO-END via a REAL primitive ─────────────
+// FIX 5 (P1-1 / F1 / red-team P1-2): the prior 4 tests were tautologies — they
+// hand-injected `nativeDraft`/`nativeDraftRef`/`dismiss` into the program's
+// effectArgs and asserted a mock saw them. But NO real primitive sets those
+// flags, and the runner now reads `nativeDraft` from the capability DESCRIPTOR,
+// NOT from effectArgs. These replacements drive the REAL `nudgeOverdueEmail`
+// primitive (which yields email.send with effectArgs {threadId,to,subject} —
+// zero native-draft flags) and assert the wired feature:
+//   • the runner creates a Gmail draft at Draft level (descriptor.nativeDraft===true)
+//   • the returned id is persisted to run_steps.payload.nativeDraftRef
+//   • a re-run does NOT create a second draft (idempotency/orphan guard)
+//   • a calendar primitive (descriptor.nativeDraft===false) creates NO native draft
+describe('Task 4: native-draft mirror is wired end-to-end (real primitive, descriptor-driven)', () => {
+  const GMAIL = 'gmail-conn';
+  const OLD = Date.now() - 10 * 86_400_000; // 10 days ago → overdue
+
+  // A reader that yields one overdue inbound thread, no matching sent reply, so
+  // nudgeOverdueEmail produces exactly one email.send draft step.
+  function overdueMailboxReader() {
+    return {
+      async read(_c: string, _cap: string, path: string) {
+        if (path.includes('in%3Ainbox') || path.includes('in:inbox')) {
+          return quarantine(JSON.stringify({ messages: [{ id: 'msg-1' }] }), `gmail:list:inbox`);
+        }
+        if (path.includes('in%3Asent') || path.includes('in:sent')) {
+          return quarantine(JSON.stringify({ messages: [] }), `gmail:list:sent`);
+        }
+        // metadata fetch for a specific message id
+        return quarantine(
+          JSON.stringify({
+            id: 'msg-1',
+            threadId: 'thread-1',
+            internalDate: String(OLD),
+            payload: { headers: [
+              { name: 'From', value: 'Pat <pat@example.com>' },
+              { name: 'Subject', value: 'Our proposal' },
+            ] },
+          }),
+          `gmail:meta:msg-1`,
+        );
+      },
+    };
+  }
+
+  function harnessFor(opts: {
+    actionLevel: 'observe' | 'draft' | 'send';
+    idempotency?: MemoryIdempotencyStore;
+    reader?: { read(c: string, cap: string, path: string): Promise<ReturnType<typeof quarantine>> };
+  }) {
     const runs = new MemoryRunStore(() => Date.now());
     runs.seedCredits(ACCOUNT, 1000);
-    runs.nibbinState('nib-1').actionLevel = actionLevel;
-    // Capture execute calls so we can assert what was passed
-    const executeCalls: Array<{ capability: string; args: Record<string, unknown> }> = [];
-    let executeResult: { nativeDraftId?: string } | void = undefined;
+    runs.nibbinState('nib-1').actionLevel = opts.actionLevel;
+    const createDraftCalls: Array<Record<string, unknown>> = [];
+    let nextDraftId = 'gmail-draft-1';
     const deps: RunnerDeps = {
       runs,
       routines: new MemoryRoutineStore(),
       grants: new MemoryGrantStore(),
-      idempotency: new MemoryIdempotencyStore(),
+      idempotency: opts.idempotency ?? new MemoryIdempotencyStore(),
       events: new MemoryEventSink(),
-      reader: { async read(_c, _cap, path) { return quarantine('{}', `test:${path}`); } },
+      reader: opts.reader ?? overdueMailboxReader(),
       effects: {
         async execute(req) {
-          executeCalls.push({ capability: req.capability, args: req.args });
-          return executeResult;
+          createDraftCalls.push(req.args);
+          // Mirror the production executor: only the nativeDraft path returns an id.
+          if (req.args.nativeDraft === true) return { nativeDraftId: nextDraftId };
+          return undefined;
         },
       },
       now: () => Date.now(),
     };
-    return { deps, runs, executeCalls, setResult: (r: typeof executeResult) => { executeResult = r; } };
+    return { deps, runs, createDraftCalls, setDraftId: (id: string) => { nextDraftId = id; } };
   }
 
-  // (a) nativeDraft email step at Draft level: executor called, id stored in payload
-  it('(a) email.send nativeDraft:true at Draft level calls executor and persists nativeDraftRef in run_steps.payload', async () => {
-    const { deps, runs, executeCalls, setResult } = nativeDraftHarness('draft');
-    setResult({ nativeDraftId: 'gmail-draft-abc' });
-
-    const program: ProgramFn = async function* () {
-      yield {
-        kind: 'draft',
-        capability: 'email.send',
-        connectionId: CONN,
-        patternKey: 'p-nd',
-        title: 'Draft email',
-        draft: 'Body here',
-        effectArgs: { rfc822: 'base64body', nativeDraft: true },
-      };
-    };
+  it('creates a Gmail draft at Draft level from the DESCRIPTOR (effectArgs carry no nativeDraft flag) and persists the ref', async () => {
+    const { deps, runs, createDraftCalls } = harnessFor({ actionLevel: 'draft' });
+    const program: ProgramFn = ({ nibbin }) =>
+      nudgeOverdueEmail({}, { gmail: GMAIL }, Date.now())({ nibbin, trigger: TRIGGER });
 
     const outcome = await executeRun(nib(), TRIGGER, program, deps);
-    expect(outcome.kind).toBe('awaiting_approval'); // Draft level → draft outcome
-    // The executor must have been called once (for the native-draft creation)
-    expect(executeCalls).toHaveLength(1);
-    expect(executeCalls[0].capability).toBe('email.send');
-    expect(executeCalls[0].args.nativeDraft).toBe(true);
-    // The returned id must be persisted in run_steps.payload.nativeDraftRef
+    expect(outcome.kind).toBe('awaiting_approval');
+    // Exactly one executor call — the native-draft createDraft (gated on the
+    // descriptor, NOT on an effectArgs flag the primitive never sets).
+    expect(createDraftCalls).toHaveLength(1);
+    expect(createDraftCalls[0].nativeDraft).toBe(true);
+    // The ref is persisted on the draft step.
     const runId = (outcome as { runId: string }).runId;
-    const steps = runs.getSteps(runId);
-    const draftStep = steps.find((s) => s.kind === 'draft');
-    expect(draftStep?.payload?.nativeDraftRef).toBe('gmail-draft-abc');
+    const draftStep = runs.getSteps(runId).find((s) => s.kind === 'draft');
+    expect(draftStep?.payload?.nativeDraftRef).toBe('gmail-draft-1');
   });
 
-  // (b) calendar.event-create at Draft level: executor NOT called (nativeDraft:false)
-  it('(b) calendar.event-create at Draft level does NOT call executor (nativeDraft:false)', async () => {
-    const calSpec = spec({
-      toolsAllowlist: ['calendar.event-create'],
+  it('a re-run does NOT create a second Gmail draft (orphan/idempotency guard, F1)', async () => {
+    // Share one idempotency store across two run attempts of the same logical
+    // draft. The second attempt must see already_executed and skip createDraft.
+    const idem = new MemoryIdempotencyStore();
+    const h1 = harnessFor({ actionLevel: 'draft', idempotency: idem });
+    const program1: ProgramFn = ({ nibbin }) =>
+      nudgeOverdueEmail({}, { gmail: GMAIL }, Date.now())({ nibbin, trigger: TRIGGER });
+    await executeRun(nib(), TRIGGER, program1, h1.deps);
+    expect(h1.createDraftCalls).toHaveLength(1);
+
+    // Second attempt (e.g. a lambda re-invoke) with the SAME idempotency store.
+    const h2 = harnessFor({ actionLevel: 'draft', idempotency: idem });
+    const program2: ProgramFn = ({ nibbin }) =>
+      nudgeOverdueEmail({}, { gmail: GMAIL }, Date.now())({ nibbin, trigger: TRIGGER });
+    await executeRun(nib(), TRIGGER, program2, h2.deps);
+    // No second createDraft — the native-draft key was already claimed.
+    expect(h2.createDraftCalls).toHaveLength(0);
+  });
+
+  it('calendar primitive (descriptor.nativeDraft===false) creates NO native draft at Draft level', async () => {
+    // nudge.unconfirmed-event drafts via calendar.event-create (nativeDraft:false).
+    // Use a hand-built program yielding a calendar.event-create draft step — the
+    // descriptor's nativeDraft:false must keep the executor un-called at draft.
+    const calSpecLocal = spec({
+      toolsAllowlist: ['calendar.read', 'calendar.event-create'],
       requiredConnectors: ['google-calendar'],
     });
-    const calNib: NibbinRef = { ...nib(calSpec), stage: 'student' };
-    const { deps, runs, executeCalls } = nativeDraftHarness('draft');
-    // Override runs to use calSpec
-    deps.runs = runs;
-
+    const { deps, runs, createDraftCalls } = harnessFor({ actionLevel: 'draft' });
     const program: ProgramFn = async function* () {
       yield {
         kind: 'draft',
         capability: 'calendar.event-create',
         connectionId: CONN,
-        patternKey: 'p-cal',
-        title: 'Schedule event',
-        draft: 'Event draft',
+        patternKey: 'cal-1',
+        title: 'Confirm shoot',
+        draft: 'Proposed event',
         effectArgs: { calendarId: 'primary', event: { summary: 'Shoot' } },
       };
     };
-
-    const outcome = await executeRun(calNib, TRIGGER, program, deps);
-    expect(outcome.kind).toBe('awaiting_approval'); // Still drafts
-    // No executor call — calendar is nativeDraft:false
-    expect(executeCalls).toHaveLength(0);
-    // No nativeDraftRef in the payload
+    const outcome = await executeRun(nib(calSpecLocal), TRIGGER, program, deps);
+    expect(outcome.kind).toBe('awaiting_approval');
+    expect(createDraftCalls).toHaveLength(0); // nativeDraft:false → no native draft
     const runId = (outcome as { runId: string }).runId;
-    const steps = runs.getSteps(runId);
-    const draftStep = steps.find((s) => s.kind === 'draft');
+    const draftStep = runs.getSteps(runId).find((s) => s.kind === 'draft');
     expect(draftStep?.payload?.nativeDraftRef).toBeUndefined();
-  });
-
-  // (c) send with stored nativeDraftRef → executor receives the ref (send path)
-  it('(c) email.send with nativeDraftRef in effectArgs at Send level forwards ref to executor', async () => {
-    const { deps, executeCalls } = nativeDraftHarness('send');
-
-    const program: ProgramFn = async function* () {
-      yield {
-        kind: 'draft',
-        capability: 'email.send',
-        connectionId: CONN,
-        patternKey: 'p-send-ref',
-        title: 'Send draft',
-        draft: 'Body',
-        // nativeDraftRef already in effectArgs (the runner reads this from DB and threads it)
-        effectArgs: { rfc822: 'base64body', nativeDraftRef: 'gmail-draft-stored' },
-      };
-    };
-
-    const outcome = await executeRun(nib(), TRIGGER, program, deps);
-    expect(outcome.kind).toBe('executed'); // Send level → executed
-    // Executor called once (for the send)
-    expect(executeCalls).toHaveLength(1);
-    expect(executeCalls[0].capability).toBe('email.send');
-    // The ref is forwarded unchanged — the executor (engine.ts) will call sendDraft(ref)
-    expect(executeCalls[0].args.nativeDraftRef).toBe('gmail-draft-stored');
-    // velocity is the executor's concern; the runner only verifies the ref is forwarded
-  });
-
-  // (d) dismiss with nativeDraftRef → executor receives dismiss+ref (deleteDraft path)
-  it('(d) email.send dismiss:true + nativeDraftRef at Send level forwards dismiss+ref to executor', async () => {
-    const { deps, executeCalls } = nativeDraftHarness('send');
-
-    const program: ProgramFn = async function* () {
-      yield {
-        kind: 'draft',
-        capability: 'email.send',
-        connectionId: CONN,
-        patternKey: 'p-dismiss',
-        title: 'Dismiss draft',
-        draft: 'Body',
-        effectArgs: { rfc822: 'base64body', nativeDraftRef: 'gmail-draft-to-delete', dismiss: true },
-      };
-    };
-
-    const outcome = await executeRun(nib(), TRIGGER, program, deps);
-    expect(outcome.kind).toBe('executed'); // Send level → executed (dismiss is an executor decision)
-    expect(executeCalls).toHaveLength(1);
-    expect(executeCalls[0].capability).toBe('email.send');
-    expect(executeCalls[0].args.nativeDraftRef).toBe('gmail-draft-to-delete');
-    expect(executeCalls[0].args.dismiss).toBe(true);
-    // The executor will call deleteDraft(ref) + return without sending (engine.ts concern)
   });
 });

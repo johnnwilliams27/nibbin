@@ -41,7 +41,7 @@ function testSpec(): AgentSpec {
     templateKey: 'echo',
     version: 1,
     displayName: 'Echo',
-    toolsAllowlist: ['email.read', 'email.draft'],
+    toolsAllowlist: ['email.read', 'email.send'],
     requiredConnectors: ['gmail'],
     triggers: [
       { kind: 'user', debounceSecs: 0, cooldownSecs: 0 },
@@ -65,9 +65,9 @@ function nibbin(stage: StageName): NibbinRef {
 const effectProgram: ProgramFn = async function* () {
   yield {
     kind: 'draft',
-    capability: 'email.draft',
+    capability: 'email.send',
     connectionId: CONN,
-    patternKey: 'email.draft:overdue-followup',
+    patternKey: 'email.send:overdue-followup',
     title: 'Follow-up',
     draft: 'Hi — picking this back up.',
     effectArgs: { threadId: 't-1' },
@@ -103,7 +103,11 @@ function harness(credits = 100, actionLevel: 'observe' | 'draft' | 'send' = 'dra
     },
     effects: {
       async execute(req) {
+        // Skip the native-draft mirror (createDraft at draft level, nativeDraft:true)
+        // — `executed` tracks real SENDS / side effects, not native-draft creation.
+        if (req.args.nativeDraft === true) return undefined;
         executed.push({ capability: req.capability });
+        return undefined;
       },
     },
     now: () => Date.now(),
@@ -121,12 +125,28 @@ describe('§7.2 trust gates — action level controls draft-vs-execute', () => {
   // CONVERTED (Task 2): action level (not stage/grants/routines) is the sole gate.
 
   for (const path of PATHS) {
-    it(`egg via ${path.label}: produces NOTHING (pre-run guard unchanged)`, async () => {
-      const h = harness();
+    it(`egg + draft via ${path.label}: DRAFTS (egg admission fence removed — action_level is the sole gate)`, async () => {
+      // FIX 4: the egg run-admission fence is removed. An Egg now admits and is
+      // governed solely by action_level. egg + draft (default) → drafts.
+      const h = harness(100, 'draft');
       const outcome = await executeRun(nibbin('egg'), path.trigger, effectProgram, h.deps);
-      expect(outcome).toEqual({ kind: 'not_started', why: 'egg' });
+      expect(outcome.kind).toBe('awaiting_approval');
+      expect(h.executed).toHaveLength(0); // no SEND fired (native-draft mirror excluded)
+    });
+
+    it(`egg + send via ${path.label}: EXECUTES (action_level is the sole gate, stage advisory)`, async () => {
+      const h = harness(100, 'send');
+      const outcome = await executeRun(nibbin('egg'), path.trigger, effectProgram, h.deps);
+      expect(outcome.kind).toBe('executed');
+      expect(h.executed).toHaveLength(1);
+    });
+
+    it(`egg + observe via ${path.label}: produces NOTHING (kill:observe)`, async () => {
+      const h = harness(100, 'observe');
+      const outcome = await executeRun(nibbin('egg'), path.trigger, effectProgram, h.deps);
+      expect(outcome.kind).toBe('killed');
+      expect((outcome as { reason: string }).reason).toBe('observe');
       expect(h.executed).toHaveLength(0);
-      expect(h.runs.balance(ACCOUNT)).toBe(100); // not a credit was spent
     });
 
     it(`student with actionLevel=draft via ${path.label}: drafts, never executes`, async () => {

@@ -103,7 +103,7 @@ const TIER1: ConnectorDescriptor[] = [
       'calendar.no-show-churn',
       'calendar.confirmation-gaps',
     ],
-    capabilities: ['email.read', 'email.draft', 'email.send', 'calendar.read', 'calendar.event-create'],
+    capabilities: ['email.read', 'email.send', 'calendar.read', 'calendar.event-create'],
     egressAllowlist: ['graph.microsoft.com', 'login.microsoftonline.com'],
     send: { velocity: DEFAULT_SEND_VELOCITY },
     availability: 'live',

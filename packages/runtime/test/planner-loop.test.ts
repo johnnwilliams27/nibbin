@@ -73,7 +73,11 @@ function runnerDeps(opts: { now?: () => number; executed?: string[] } = {}): Run
     },
     effects: {
       async execute(req) {
+        // Skip the native-draft mirror (createDraft at draft level) — `executed`
+        // tracks real SENDS / side effects, not native-draft creation.
+        if (req.args.nativeDraft === true) return undefined;
         opts.executed?.push(req.capability);
+        return undefined;
       },
     },
     now: opts.now ?? (() => Date.now()),

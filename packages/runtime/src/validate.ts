@@ -294,6 +294,18 @@ export function validateComposedSpec(spec: AgentSpec, accountConnections: string
       continue;
     }
 
+    // Reserved native-draft control keys (nativeDraft / nativeDraftRef / dismiss)
+    // are runtime-internal — the runner sets them, never the spec. A composed/LLM
+    // spec that supplies one in `inputs` could forge a draft-level SEND of an
+    // arbitrary Gmail draft (red-team P1-2). Reject fail-closed here; the
+    // interpreter also strips them at run time (defense-in-depth).
+    const stepInputs = (step.inputs ?? {}) as Record<string, unknown>;
+    for (const reserved of ['nativeDraft', 'nativeDraftRef', 'dismiss']) {
+      if (reserved in stepInputs) {
+        at(`step ${idx} capability "${cap.id}" supplies the reserved key "${reserved}" in inputs — native-draft control keys are runtime-internal and may not be set by a spec`);
+      }
+    }
+
     // FIX 2 (red-team P3): every composed step's capability must be a primitive
     // OR a pure read — asserted by KIND, not merely by the draft/write branch
     // below. The interpreter's generic non-primitive draft/write path reads

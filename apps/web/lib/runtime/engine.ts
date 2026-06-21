@@ -122,12 +122,35 @@ interface SpecRow {
   persona_policy?: AgentSpec['personaPolicy'];
 }
 
+/**
+ * Load-time shim (P0-1): `email.draft` was retired in favor of `email.send`
+ * (the action level now decides draft-vs-act). `agent_specs` rows are immutable
+ * once adopted, so already-adopted email Nibbins still carry `email.draft` in
+ * their tools_allowlist (and possibly steps[].capability). Without this
+ * normalization the runner's allowlist gate kills every such run
+ * (`!toolsAllowlist.includes('email.send')`). The data migration
+ * 20260620210000 rewrites the rows; this shim is belt-and-suspenders for any
+ * row the migration missed (replication lag, manual insert, restore).
+ */
+function normalizeRetiredEmailDraft(allowlist: string[]): string[] {
+  if (!allowlist.includes('email.draft')) return allowlist;
+  const mapped = allowlist.map((cap) => (cap === 'email.draft' ? 'email.send' : cap));
+  // Dedup if both email.draft and email.send were present.
+  return [...new Set(mapped)];
+}
+
+function normalizeRetiredEmailDraftSteps(steps: AgentSpec['steps']): AgentSpec['steps'] {
+  if (!steps || steps.length === 0) return steps;
+  if (!steps.some((s) => s.capability === 'email.draft')) return steps;
+  return steps.map((s) => (s.capability === 'email.draft' ? { ...s, capability: 'email.send' } : s));
+}
+
 export function specFromRow(row: SpecRow): AgentSpec {
   return {
     templateKey: row.template_key,
     version: row.version,
     displayName: row.display_name,
-    toolsAllowlist: row.tools_allowlist,
+    toolsAllowlist: normalizeRetiredEmailDraft(row.tools_allowlist),
     requiredConnectors: row.required_connectors,
     triggers: row.triggers,
     curriculum: row.curriculum,
@@ -135,7 +158,7 @@ export function specFromRow(row: SpecRow): AgentSpec {
     // A template adoption carries empty steps → buildProgram routes it to the
     // hand-written program (no behavior change); a composed spec round-trips
     // its steps/persona through to the interpreter.
-    steps: row.steps ?? [],
+    steps: normalizeRetiredEmailDraftSteps(row.steps ?? []),
     personaPolicy: row.persona_policy ?? {},
   };
 }
@@ -345,11 +368,13 @@ export function buildEffectsExecutor(
       }
       case 'calendar.event-create': {
         // Calendar write (Connector Lever 1). By the time execution reaches here
-        // the run loop has ALREADY cleared every wall: gateSideEffect (School
-        // stage / proven routine), the calendar.event-create write grant
-        // (deps.grants.hasGrant), and idempotency. This case only performs the
-        // approved side effect. calendarId defaults to 'primary'; the event body
-        // is built by the trusted primitive, never the model.
+        // the runner has ALREADY cleared every wall: action_level (the SOLE
+        // execution gate — observe/draft/send, owner-set), resource-claim
+        // conflict locks, and idempotency. Grade and write-grant rows are
+        // advisory only and do NOT gate (the runtime no longer calls hasGrant).
+        // This case only performs the approved side effect. calendarId defaults
+        // to 'primary'; the event body is built by the trusted primitive, never
+        // the model.
         const calendarId =
           typeof args.args.calendarId === 'string' && args.args.calendarId
             ? args.args.calendarId

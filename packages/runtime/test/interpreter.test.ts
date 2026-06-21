@@ -75,7 +75,11 @@ function harness(model?: ModelDrafter): Harness {
     },
     effects: {
       async execute(req) {
+        // Skip the native-draft mirror (createDraft at draft level) — `executed`
+        // tracks real SENDS / side effects, not native-draft creation.
+        if (req.args.nativeDraft === true) return undefined;
         executed.push({ capability: req.capability });
+        return undefined;
       },
     },
     model,

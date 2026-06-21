@@ -53,6 +53,8 @@ function makeSvc(
   calls: Calls,
   owns: boolean,
   activeConnIds: string[] = [],
+  /** Optional richer connection rows ({id, provider}) for cross-provider grant tests. */
+  activeConnRows?: Array<{ id: string; provider: string }>,
 ): object {
   const svc = {
     from: (table: string) => {
@@ -70,15 +72,18 @@ function makeSvc(
             };
           }
           if (table === 'connections') {
-            // Active connections for send-path grant reconciliation
+            // Active connections for send-path grant reconciliation. The action
+            // now filters with .eq('account_id').eq('status').in('provider', [...])
+            // and reads each row's provider to pick the write capability.
             calls.activeConnections = { table, select: cols };
+            const rows = activeConnRows ?? activeConnIds.map((id) => ({ id, provider: 'gmail' }));
             return {
               eq: () => ({
                 eq: () => ({
-                  eq: () => ({
+                  in: () => ({
                     // Returns active connection rows
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    then: (resolve: any) => resolve({ data: activeConnIds.map((id) => ({ id })), error: null }),
+                    then: (resolve: any) => resolve({ data: rows, error: null }),
                     [Symbol.asyncIterator]: undefined,
                   }),
                 }),
@@ -210,6 +215,25 @@ it('setNibbinActionLevel(send) upserts grant rows for each active write connecti
   expect(upserted.length).toBe(activeConnIds.length);
   expect(upserted[0]).toMatchObject({ nibbin_id: 'nibbin-4', capability: 'email.send' });
   expect(upserted[1]).toMatchObject({ nibbin_id: 'nibbin-4', capability: 'email.send' });
+});
+
+it('P2-1: setNibbinActionLevel(send) upserts calendar.event-create for a google-calendar connection', async () => {
+  const calls = makeCalls();
+  const svc = makeSvc(calls, true, [], [
+    { id: 'conn-gmail', provider: 'gmail' },
+    { id: 'conn-cal', provider: 'google-calendar' },
+  ]);
+  mockSession('acc-cal', 'user-cal');
+  (serviceClient as ReturnType<typeof vi.fn>).mockReturnValue(svc);
+
+  await setNibbinActionLevel('nibbin-cal', 'send');
+
+  const upserted = calls.grantsUpsert as Array<Record<string, unknown>>;
+  expect(upserted).not.toBeNull();
+  expect(upserted.length).toBe(2);
+  const caps = upserted.map((r) => r.capability);
+  expect(caps).toContain('email.send');
+  expect(caps).toContain('calendar.event-create');
 });
 
 it('setNibbinActionLevel(draft) revokes active grants for the nibbin', async () => {
