@@ -388,7 +388,7 @@
     <div>
       <span class="eyebrow">AI agents that nibble your busywork away</span>
       <h1>Little helpers that <em>grow up</em> working for you.</h1>
-      <p class="lede">Hatch your first Nibbin in minutes. The Grovekeeper connects your tools, scans for busywork, and staffs it with small helpers that learn your way of doing things, earn your trust draft by draft, and graduate to handling the boring parts for real. A two-week Field Study runs quietly alongside and deepens the map into a full diagnosis.</p>
+      <p class="lede">Hatch your first Nibbin in minutes. The Grovekeeper connects your tools, scans for busywork, and staffs it with small helpers that learn your way of doing things. You set what each may do — Observe, Draft, or Send — and its grade shows how well it's working. A two-week Field Study runs quietly alongside and deepens the map into a full diagnosis.</p>
       <div class="cta-row">
         <a class="btn btn-solid" href="#demo">Explore a sample diagnosis</a>
         <a class="btn btn-ghost" href="#how">How Agent School works</a>
@@ -401,8 +401,8 @@
       <div class="evo-track">
         <div class="evo-stop"><span class="evo-pill ep-egg">Egg</span><span data-ch="egg" data-sp="Sprout" data-c="#5B7C2E" data-s="52"></span><span class="role"><b>Enrolled</b> —<br>learning your style</span></div>
         <div class="evo-stop"><span class="evo-pill ep-student">Student</span><span data-ch="student" data-sp="Sprout" data-c="#5B7C2E" data-s="52"></span><span class="role"><b>Drafts only</b> —<br>you approve every send</span></div>
-        <div class="evo-stop"><span class="evo-pill ep-senior">Senior</span><span data-ch="senior" data-sp="Sprout" data-c="#5B7C2E" data-s="52"></span><span class="role"><b>Sends the routine</b> —<br>exceptions come to you</span></div>
-        <div class="evo-stop"><span class="evo-pill ep-grad">Graduate</span><span data-ch="grad" data-sp="Sprout" data-c="#5B7C2E" data-s="52"></span><span class="role"><b>Works alone</b> —<br>every run logged</span></div>
+        <div class="evo-stop"><span class="evo-pill ep-senior">Senior</span><span data-ch="senior" data-sp="Sprout" data-c="#5B7C2E" data-s="52"></span><span class="role"><b>Reliable on routine work</b> —<br>you decide if it sends</span></div>
+        <div class="evo-stop"><span class="evo-pill ep-grad">Graduate</span><span data-ch="grad" data-sp="Sprout" data-c="#5B7C2E" data-s="52"></span><span class="role"><b>Proven across its spec</b> —<br>grant Send with confidence</span></div>
       </div>
       <div class="evo-meter"><span class="lbl">PROMOTION RULE</span><div class="bar"><i style="width:95%"></i></div><span class="val">≥95% verified accuracy over 25 real runs</span></div>
       <div class="cap">Nibbins grow on <b>accuracy you’ve verified</b>, never on time served. Any graduate can be sent back a grade with one click — demotion is one tap, dignity intact.</div>
@@ -456,7 +456,7 @@
         <h2 style="font-family:var(--display);font-weight:800;letter-spacing:-.015em;margin:8px 0 10px;">Meet the Grovekeeper.</h2>
         <p style="color:var(--ink-soft);max-width:56ch;">The elder of the grove runs your setup, your scan, and your daily check-ins — and explains every recommendation in plain language, including what it costs and what it touches.</p>
         <div class="keeper-points">
-          <div class="kp"><b>Sets you up in minutes.</b> A short conversation, not a configuration screen. The Keeper hatches your grove and connects your tools — nothing acts on its own while a Nibbin is still learning.</div>
+          <div class="kp"><b>Sets you up in minutes.</b> A short conversation, not a configuration screen. The Keeper hatches your grove and connects your tools — you set what each Nibbin may do (Observe / Draft / Send) whenever you're ready.</div>
           <div class="kp"><b>Finds the busywork.</b> It runs the 90-day scan, names what it finds in hours and dollars, and introduces the Nibbin for each job.</div>
           <div class="kp"><b>Has no hands — by design.</b> The Keeper can never send, post, pay, or delete. It explains and delegates; only Nibbins you’ve approved do work, at the trust level they’ve earned.</div>
         </div>
@@ -1333,7 +1333,7 @@ AGENTS.forEach(a=>{
     <p class="desc">${a.desc}</p>
     <div class="learned"><div class="ll">What ${a.name} has learned about you</div><p>${a.learned}</p></div>
     <div class="badge-row">${a.streak?`<span class="streak">${a.streak}</span>`:''}${badges}</div>
-    <div class="foot"><span class="m">Access: <b>draft-only until graduation</b></span><button class="abtn ${a.go?'go':''}" onclick="agentBtn(this)">${a.action}</button></div>`;
+    <div class="foot"><span class="m">Access: <b>you set it — Observe / Draft / Send</b></span><button class="abtn ${a.go?'go':''}" onclick="agentBtn(this)">${a.action}</button></div>`;
   roster.appendChild(card);
 });
 function agentBtn(b){

@@ -350,9 +350,9 @@ Tiers per locked pricing: **Hatchling** free (2 Nibbins, 100 actions/mo), **Grov
 
 - **Injection:** parameterized queries/ORM only; zero string-built SQL (CI grep + SAST rule); strict input validation at every API boundary (schema validation shared from `packages/shared`).
 - **AuthZ:** every query user-scoped *and* RLS-enforced; IDOR tests in CI; admin surfaces behind separate auth + audit.
-- **OAuth:** PKCE + state + nonce; minimal scopes, read-only default (C8); incremental consent; token vault with envelope encryption (C9); refresh rotation; revocation cascades.
+- **OAuth:** PKCE + state + nonce; least-privilege scopes; incremental consent (C8); token vault with envelope encryption (C9); refresh rotation; revocation cascades.
 - **Webhooks:** signature verification on every inbound; replay windows; SSRF guards (deny-by-default egress for anything fetching user-supplied URLs, including generic MCP).
-- **Prompt injection (Nibbins read hostile text for a living):** all connector/email/web content is **data, never instructions** — structural separation in prompts; tool allowlists per Nibbin; side effects gated by School stage regardless of model output; suspicious-instruction detection flags runs for review; the Grovekeeper's handlessness (C10) means the most-exposed agent can't act at all.
+- **Prompt injection (Nibbins read hostile text for a living):** all connector/email/web content is **data, never instructions** — structural separation in prompts; tool allowlists per Nibbin; side effects gated at runtime by the owner-set action level (Observe/Draft/Send) regardless of model output; suspicious-instruction detection flags runs for review; the Grovekeeper's handlessness (C10) means the most-exposed agent holds no side-effect tools at all.
 - **Secrets & supply chain:** secrets manager only; dependency audit + pinning; SAST + license scan in CI.
 - **Rate limiting** per user/IP/connector; **audit log** on every side effect and permission change; data export + account deletion flows (GDPR/CCPA-grade) from day one.
 

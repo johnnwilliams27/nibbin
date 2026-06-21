@@ -328,7 +328,7 @@ export function MayaDemo() {
                 </div>
                 <div className="foot">
                   <span className="m">
-                    Access: <b>draft-only until graduation</b>
+                    Access: <b>you set it — Observe / Draft / Send</b>
                   </span>
                   <button
                     className={`abtn${a.go && !graduatedQueued[a.name] ? ' go' : ''}`}

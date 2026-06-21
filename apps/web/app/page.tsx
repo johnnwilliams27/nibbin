@@ -8,9 +8,9 @@ import { Wordmark } from './(marketing)/Wordmark';
 
 const SCHOOL = [
   { pill: 'ep-egg', label: 'Egg', stage: 'egg' as const, role: ['Enrolled', 'learning your style'] },
-  { pill: 'ep-student', label: 'Student', stage: 'student' as const, role: ['Drafts only', 'you approve every send'] },
-  { pill: 'ep-senior', label: 'Senior', stage: 'senior' as const, role: ['Sends the routine', 'exceptions come to you'] },
-  { pill: 'ep-grad', label: 'Graduate', stage: 'grad' as const, role: ['Works alone', 'every run logged'] },
+  { pill: 'ep-student', label: 'Student', stage: 'student' as const, role: ['Drafts for your approval', 'accuracy building'] },
+  { pill: 'ep-senior', label: 'Senior', stage: 'senior' as const, role: ['Reliable on routine work', 'you decide if it sends'] },
+  { pill: 'ep-grad', label: 'Graduate', stage: 'grad' as const, role: ['Proven across its spec', 'grant Send with confidence'] },
 ];
 
 const STEPS = [

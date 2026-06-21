@@ -164,9 +164,8 @@ never optimized for.
 
 The marketing department is a grove of internal agents. Where the product can do the job,
 dogfood Nibbin itself; where it can't yet (video assembly, ad ops), run Claude-based
-pipelines that graduate into product connectors later. **The same trust law applies: every
-agent starts at Student (drafts only); promotion to Senior (auto-publish routine items)
-requires John-verified accuracy, just like the product.** The meta-story — "Nibbin is run
+pipelines that graduate into product connectors later. **The same principle applies: every
+agent starts at Student (drafting for approval); John sets the action level for each — promotion to Senior grade (auto-publish routine items) informs the grant, just like the product.** The meta-story — "Nibbin is run
 by Nibbins" — is itself Phase 0/1 content.
 
 | Agent | Job | Tools | School rules |

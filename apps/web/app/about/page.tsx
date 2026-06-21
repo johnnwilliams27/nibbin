@@ -102,9 +102,9 @@ export default function AboutPage() {
                 uses to understand your workflows never leave your device.
               </li>
               <li>
-                <strong>Nothing acts without your approval until it’s earned it.</strong> Every new Nibbin drafts for
-                you first. Autonomy is granted by you, gradually, based on proven accuracy — and you can pull it back
-                at any time.
+                <strong>Nothing acts without your say-so.</strong> Every new Nibbin starts by drafting for you; you
+                decide when it may Send. Agent School grades its accuracy so you know when to grant more — and you can
+                pull it back at any time.
               </li>
               <li>
                 <strong>You can see, edit, and delete everything Nibbin knows</strong> about your business, in plain

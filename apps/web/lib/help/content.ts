@@ -82,7 +82,7 @@ export const HELP_CONTENT: HelpContent = [
         id: "gs-read-diagnosis",
         q: "What does my diagnosis show?",
         body:
-          "Open Your diagnosis (/app/diagnosis) — “Where your week actually goes.” It reveals:\n• A letter from your Grovekeeper.\n• Total routine hours per week.\n• How much could move to your grove.\n• A workflow map (“Where the hours go”).\n• Where your desktop time goes.\n• The biggest friction points.\n\nEach workflow can carry a recommendation to adopt a Nibbin — drafts only, for your approval, until it earns more. Or browse the Agent Shop and adopt any ready-made helper.",
+          "Open Your diagnosis (/app/diagnosis) — “Where your week actually goes.” It reveals:\n• A letter from your Grovekeeper.\n• Total routine hours per week.\n• How much could move to your grove.\n• A workflow map (“Where the hours go”).\n• Where your desktop time goes.\n• The biggest friction points.\n\nEach workflow can carry a recommendation to adopt a Nibbin — it drafts for your approval; you set its action level when you're ready. Or browse the Agent Shop and adopt any ready-made helper.",
         keywords: ["diagnosis", "workflow map", "hours", "routine", "recommend"],
       },
       {
@@ -117,7 +117,7 @@ export const HELP_CONTENT: HelpContent = [
         id: "gs-agent-school",
         q: "What is Agent School?",
         body:
-          "Agent School is how every Nibbin earns trust. There are four stages:\n• Egg — observes only, drafts nothing yet.\n• Student — drafts everything for your approval.\n• Senior — acts on its own for routine work it has proven, drafts the rest.\n• Graduate — acts on its own within its spec.\n\nPromotion happens when a Nibbin hits 95% approved-without-edits over a rolling 25-run window. Graduating from Senior to Graduate also requires proven accuracy across at least 4 distinct routine patterns, with high-stakes actions weighted more heavily. Demotion is one click and always your call — the system may nudge you if recent drafts are getting edited, but it never demotes automatically. Paused progress is never lost.",
+          "Agent School is how every Nibbin's accuracy is graded. There are four stages:\n• Egg — observes only, drafts nothing yet.\n• Student — drafts everything for your approval.\n• Senior — accuracy proven on routine work.\n• Graduate — accuracy proven across its spec.\n\nThese are accuracy grades — you decide what each Nibbin may do (Observe / Draft / Send); the grade tells you when to grant more, it never grants it for you.\n\nPromotion happens when a Nibbin hits 95% approved-without-edits over a rolling 25-run window. Graduating from Senior to Graduate also requires proven accuracy across at least 4 distinct routine patterns, with high-stakes actions weighted more heavily. Demotion is one click and always your call — the system may nudge you if recent drafts are getting edited, but it never demotes automatically. Paused progress is never lost.",
         keywords: ["agent school", "egg", "student", "senior", "graduate", "promotion", "trust", "accuracy"],
       },
       {
@@ -322,14 +322,14 @@ export const HELP_CONTENT: HelpContent = [
         id: "agents-composer",
         q: "What is the Composer?",
         body:
-          "The Composer builds a custom Nibbin for you from an email workflow in your diagnosis. When you see “Build a Nibbin for this” on a diagnosis recommendation, the Composer proposes a helper made of validated primitives — for example: “watch your inbox for overdue threads → draft a warm follow-up for your approval.”\n\nYou get a review-before-adopt card showing the workflow, the plain-language steps, the persona, the trigger, and the connectors it needs. Nothing exists until you confirm.\n\nToday’s Composer covers the detect-and-nudge family (overdue email, overdue invoices, unconfirmed events, new-inquiry replies) and the digest family (inbox cleanup, morning brief). The custom Nibbin hatches as an Egg and goes through Agent School exactly like a shop Nibbin — no shortcut to autonomy.\n\nComposer is early access / gated.",
+          "The Composer builds a custom Nibbin for you from an email workflow in your diagnosis. When you see “Build a Nibbin for this” on a diagnosis recommendation, the Composer proposes a helper made of validated primitives — for example: “watch your inbox for overdue threads → draft a warm follow-up for your approval.”\n\nYou get a review-before-adopt card showing the workflow, the plain-language steps, the persona, the trigger, and the connectors it needs. Nothing exists until you confirm.\n\nToday’s Composer covers the detect-and-nudge family (overdue email, overdue invoices, unconfirmed events, new-inquiry replies) and the digest family (inbox cleanup, morning brief). The custom Nibbin hatches as an Egg and is graded by Agent School the same way every other Nibbin is — you set its action level (Observe / Draft / Send) whenever you’re ready.\n\nComposer is early access / gated.",
         keywords: ["composer", "custom", "build", "diagnosis", "primitives", "review", "early access"],
       },
       {
         id: "agents-hatch-your-own",
         q: "How do I build my own Nibbin from scratch?",
         body:
-          "Go to Hatch Your Own (/app/hatch) — “Build a Nibbin for one chore.” It takes three steps:\n1. What’s the chore? (plain description of what you want handled)\n2. Where does it happen? (which apps or tools)\n3. Name your egg and optionally customize its look.\n\nYour custom Nibbin hatches as an Egg and earns autonomy through Agent School the same way every other Nibbin does — there’s no shortcut.",
+          "Go to Hatch Your Own (/app/hatch) — “Build a Nibbin for one chore.” It takes three steps:\n1. What’s the chore? (plain description of what you want handled)\n2. Where does it happen? (which apps or tools)\n3. Name your egg and optionally customize its look.\n\nYour custom Nibbin hatches as an Egg and is graded by Agent School the same way every other Nibbin is — you set its action level (Observe / Draft / Send) whenever you’re ready.",
         keywords: ["hatch", "custom", "build your own", "chore", "name", "egg", "from scratch"],
       },
       {
@@ -374,14 +374,14 @@ export const HELP_CONTENT: HelpContent = [
         id: "conn-what-do-connections-do",
         q: "What do Connections do?",
         body:
-          "Connections (/app/connections) link your accounts — email, calendar, payments — so your Nibbins have something to work with. Without a connection, a Nibbin that needs Gmail can’t read threads or draft replies.\n\nOAuth consent covers read + write scopes at connect, with a plain-language explanation. While a Nibbin is in School every side effect is drafted for your approval — it only acts autonomously once it has earned your trust. You can revoke any connection in one click, which instantly suspends all grants and destroys the stored token.",
+          "Connections (/app/connections) link your accounts — email, calendar, payments — so your Nibbins have something to work with. Without a connection, a Nibbin that needs Gmail can’t read threads or draft replies.\n\nOAuth consent covers read + write scopes at connect, with a plain-language explanation. You set each Nibbin’s action level — Observe, Draft, or Send; Agent School grades its accuracy so you know when to grant more. Holding a write scope never authorizes an action you haven’t granted. You can revoke any connection in one click, which instantly suspends all grants and destroys the stored token.",
         keywords: ["connections", "what do", "accounts", "read-only", "revoke", "tools"],
       },
       {
         id: "conn-whats-live",
         q: "Which connections are available today?",
         body:
-          "Today, Gmail is the only connectable tool. When you connect Gmail, OAuth consent covers gmail.readonly + gmail.compose + gmail.send — explained plainly. While a Nibbin is in School every side effect is drafted for your approval; it only acts autonomously once it has earned trust.\n\nGoogle Calendar and Stripe show “Coming soon” on the Connections page — you can’t connect them yet. Brief, Tally, and Hopper need those connections to function fully.\n\nOther tools you might see mentioned in the Hatch Your Own picker (HoneyBook, Notion, QuickBooks, and others) are on the roadmap but not connectable today.",
+          "Today, Gmail is the only connectable tool. When you connect Gmail, OAuth consent covers gmail.readonly + gmail.compose + gmail.send — explained plainly. You set each Nibbin’s action level — Observe, Draft, or Send; Agent School grades its accuracy so you know when to grant more. Holding a write scope never authorizes an action you haven’t granted.\n\nGoogle Calendar and Stripe show “Coming soon” on the Connections page — you can’t connect them yet. Brief, Tally, and Hopper need those connections to function fully.\n\nOther tools you might see mentioned in the Hatch Your Own picker (HoneyBook, Notion, QuickBooks, and others) are on the roadmap but not connectable today.",
         keywords: ["gmail", "live", "coming soon", "calendar", "stripe", "available", "today"],
       },
       {

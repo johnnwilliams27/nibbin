@@ -168,7 +168,7 @@ export function NibbinControls({
             <span className={styles.draftConfirmTxt}>
               {name} is a {stage ? STAGE_GRADE_LABEL[stage] : 'Student'}
               {matchPct !== null && matchPct !== undefined ? ` (${matchPct}% approved as-is)` : ''} and hasn&rsquo;t graduated yet.
-              Send permission is yours to grant — {name} will draft first, then ask you to confirm each send.
+              Send permission is yours to grant — {name} will act on its own right away. You can dial it back to Draft or Observe anytime.
             </span>
             <span style={{ display: 'flex', gap: 6 }}>
               <button

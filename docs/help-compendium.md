@@ -50,12 +50,12 @@ The desktop app is where the real work happens — it's the only place your Nibb
 ### Step 4 — Read your diagnosis and adopt your first Nibbin
 1. In the web app, open **Your diagnosis** (`/app/diagnosis`) — *"Where your week actually goes."* If it's not ready: *"Run the 14-day Field Study from the desktop app and your map grows in here."*
 2. The diagnosis reveals: a **letter from the Grovekeeper**, your **total routine hours/week**, **how much could move to your grove** (~Xh/week automatable), a **workflow map** ("Where the hours go"), where your **desktop time goes**, and the **biggest friction**.
-3. Each workflow can carry a recommendation: **"Adopt [Nibbin] to start handling this — drafts only, for your approval, until it earns more."** For email workflows you'll also see **"Build a Nibbin for this"** (the Composer path — see Section 3).
+3. Each workflow can carry a recommendation: **"Adopt [Nibbin] to start handling this — it drafts for your approval; you set what it may do when you're ready."** For email workflows you'll also see **"Build a Nibbin for this"** (the Composer path — see Section 3).
 4. Or browse the **Agent Shop** (`/app/shop`) and adopt any of the six ready-made Nibbins, or **Hatch Your Own** (`/app/hatch`) for a custom-named helper built around one chore.
 
 ### Step 5 — Connect a tool (so your Nibbin has something to work with)
 1. Go to **Connections** (`/app/connections`) — *"Accounts your Nibbins work from."*
-2. Connect **Gmail** (live). OAuth consent covers read + write scopes at connect, explained plainly (C8). While a Nibbin is learning, every side effect is drafted for your approval; it only acts autonomously once it has earned trust.
+2. Connect **Gmail** (live). OAuth consent covers read + write scopes at connect, explained plainly (C8). You set what each Nibbin may do — Observe, Draft, or Send. Agent School grades how accurately it's working so you know when to grant it more; the grade never gates what you've granted.
 3. **Google Calendar and Stripe are shown as "Coming soon"** in the connect surface today (source: `connections/lib/providers.ts`). When you adopt a Nibbin that needs a tool you haven't connected, you'll see: *"That Nibbin needs [x] and [y] connected to finish adopting."*
 
 > ⚠️ **Tester-allowlist gate:** Gmail (and other Google scopes) are gated behind a tester allowlist while Nibbin's Google OAuth verification is pending (capped at 100 users). If you're not on the allowlist, you'll need to **request access**. Source: `connections/tester-allowlist.ts`, `RISKS.md §1`.
@@ -64,7 +64,7 @@ The desktop app is where the real work happens — it's the only place your Nibb
 1. Your new Nibbin hatches as an **Egg** in **Agent School** — watching only, drafting nothing yet.
 2. In a few days it becomes a **Student** and starts leaving **drafts for your approval** on **Grove Home** under **"Needs you — your only to-do."**
 3. For each draft: **"Approve & send"** or **"Edit first."** Your approvals (and edits/rejections) are the training signal.
-4. As it earns verified accuracy, it climbs to **Senior** and then **Graduate** — and only a Graduate acts on its own. (Full mechanics in Section 2 and Section 3.)
+4. As it earns verified accuracy, it climbs to **Senior** and then **Graduate** — its grade tells you when to grant it more. You set what it may do (Observe / Draft / Send) at any time. (Full mechanics in Section 2 and Section 3.)
 
 ---
 
@@ -88,11 +88,13 @@ The desktop app is where the real work happens — it's the only place your Nibb
 
 **Synthesis packet.** The redacted, structured summary your desktop app builds on-device at the end of a study. It contains categorized workflow summaries (and bounded, re-minable structure like repeated action sequences and URL templates) — **never your screen recordings, never the raw event stream.** It *becomes* your diagnosis.
 
-**Agent School (Egg → Student → Senior → Graduate).** How every Nibbin earns trust. Trust is earned through **verified accuracy, never time served.**
+**Agent School (Egg → Student → Senior → Graduate).** How every Nibbin's accuracy is graded. Trust is built through **verified accuracy, never time served.**
 - **Egg** — observes only; drafts nothing.
 - **Student** — drafts everything for your approval.
-- **Senior** — acts on its own for *routine* work it's proven, drafts the rest.
-- **Graduate** — acts on its own within its spec.
+- **Senior** — accuracy proven on routine work.
+- **Graduate** — accuracy proven across its spec.
+
+Grades are advisory; you grant Observe / Draft / Send.
 
 **Promotion & demotion.** A Nibbin promotes when it hits **≥95% approved-without-edits over a rolling 25-run window** (stage-scoped). Senior→Graduate also requires **coverage of ≥4 distinct routine patterns** (so it can't graduate on one easy case). High-stakes actions are weighted more heavily (read=1 / normal=3 / delete-or-archive=10). **Demotion is human-only and one click** — the system may *nudge* ("its last few got edited — want to put it back to drafts?") but never demotes automatically. **Paused never means penalized:** earned progress is frozen, never eroded by silence (source: `promotion-rubric-design.md`, `school.ts`).
 
@@ -102,9 +104,9 @@ The desktop app is where the real work happens — it's the only place your Nibb
 
 **Composer.** The system that **builds a custom Nibbin for you** from a diagnosis or a description — it assembles validated primitives into a working helper. You review it before it's created (see Section 3).
 
-**Crystallization ("Make this recurring").** After you supervise a successful one-off task run (via the Planner), Nibbin can offer "Make this recurring" — it distills exactly the chore you just approved into a permanent, scheduled Nibbin. You pick the cadence (it suggests one; it never auto-schedules), and the new Nibbin **hatches as an Egg and earns its autonomy from scratch** — your earlier approvals don't transfer into standing trust. Source: `crystallization-slice4-design.md`. ⚠️ Gated/early-access; confirm availability in `docs/STATE.md`.
+**Crystallization ("Make this recurring").** After you supervise a successful one-off task run (via the Planner), Nibbin can offer "Make this recurring" — it distills exactly the chore you just approved into a permanent, scheduled Nibbin. You pick the cadence (it suggests one; it never auto-schedules), and the new Nibbin **hatches as an Egg and is graded from scratch** — your earlier approvals don't transfer into standing accuracy. You set its action level whenever you're ready. Source: `crystallization-slice4-design.md`. ⚠️ Gated/early-access; confirm availability in `docs/STATE.md`.
 
-**Connections.** The accounts your Nibbins work from (Gmail today; Calendar/Stripe coming). Write scopes are requested at connect with a plain-language explanation; while a Nibbin is learning it drafts every side effect for your approval. One-click revoke.
+**Connections.** The accounts your Nibbins work from (Gmail today; Calendar/Stripe coming). Write scopes are requested at connect with a plain-language explanation; you set what each Nibbin may do (Observe / Draft / Send). One-click revoke.
 
 **Memory (Grove Memory + agent memory).** Two layers. **Grove Memory** is the business brain you edit by hand — facts, pricing, policies, FAQs, your voice, and **hard rules** your Nibbins can never break. **Agent memory** is short derived notes Nibbins learn from your approved work (never raw content). Both make drafts sound like *you*.
 
@@ -155,14 +157,14 @@ All start at the Draft action level — you set each one's action level (Observe
 - From an **email** workflow in your diagnosis, **"Build a Nibbin for this"** runs the **Composer**: it proposes a custom Nibbin made of validated **primitives** (e.g. "watch your inbox for overdue threads → draft a warm follow-up for your approval").
 - You get a **review-before-adopt** card showing the workflow, the plain-language steps, the persona, the trigger, and the connectors it needs. **Nothing exists until you confirm.**
 - Today's primitives cover the **detect-and-nudge** family (overdue email, overdue invoices, unconfirmed events, new-inquiry replies) and the **digest** family (inbox cleanup, morning brief). Source: `composer-slice2a/2b/2c-design.md`.
-- The custom Nibbin hatches as an **Egg** and is School-gated exactly like a shop Nibbin — no shortcut to autonomy.
+- The custom Nibbin hatches as an **Egg** and is graded by Agent School exactly like a shop Nibbin — you set its action level (Observe / Draft / Send) whenever you're ready.
 - **Hatch Your Own** (`/app/hatch`) is the simplest builder: pick a chore, pick the apps, name your egg. *"Build a Nibbin for one chore."* Three steps: "What's the chore?" → "Where does it happen?" → "Your egg is ready" (name it, optionally customize its look).
 
 ### Planner — multi-step orchestration — **early access (coming soon)**
 A bounded orchestrator that takes a goal, breaks it into steps across capable Nibbins, and tracks progress. Bounded ReAct loop: ≤30 iterations, capped tokens, ≤4 web calls, ≤3 memory writes; **every side effect is approval-gated** (runs at synthetic "student" stage so nothing auto-executes) (source: `runtime/planner.ts`, `planner-slice3a-design.md`). ⚠️ Treat as coming soon / early access unless confirmed live in `docs/STATE.md`.
 
 ### Crystallization ("Make this recurring") — **early access (gated)**
-After you supervise a successful one-off Planner run, Nibbin can offer **"Make this recurring"** — it distills exactly the chore you just approved into a permanent, scheduled Nibbin. You pick the cadence (Nibbin suggests one; it never auto-schedules). The new Nibbin **hatches as an Egg and earns its autonomy from scratch** — your earlier approvals don't transfer into standing trust. Source: `crystallization-slice4-design.md`. ⚠️ Gated/early-access; confirm in `docs/STATE.md`.
+After you supervise a successful one-off Planner run, Nibbin can offer **"Make this recurring"** — it distills exactly the chore you just approved into a permanent, scheduled Nibbin. You pick the cadence (Nibbin suggests one; it never auto-schedules). The new Nibbin **hatches as an Egg and is graded from scratch** — your earlier approvals don't transfer into standing accuracy. You set its action level whenever you're ready. Source: `crystallization-slice4-design.md`. ⚠️ Gated/early-access; confirm in `docs/STATE.md`.
 
 ### Training mode — **early access (gated)**
 - On a Student or Senior's card, **"Train faster"** opens a time-boxed window (1 hour–14 days, ≤100 extra runs) that surfaces more drafts for your review.

@@ -14,7 +14,7 @@ SPEC.md (the mechanics this document claims).
 Nibbin sells **earned trust in a vertical**, not intelligence. Models are rented, frozen,
 and swapped behind an eval gate; what accumulates — and what nobody can cold-start — is
 per-user state: a graded trust ledger, an observation-based diagnosis, Grove Memory, and
-weeks of approve/edit/reject history that both improves drafts and unlocks autonomy.
+weeks of approve/edit/reject history that both improves drafts and tells the owner when to grant more.
 Frontier models improving makes Nibbin smarter and cheaper; we are a buyer of model
 progress, not a casualty of it.
 
@@ -30,7 +30,7 @@ claim survive diligence:
 |---|---|---|---|
 | **Weights** | Train/fine-tune the model itself | Enterprise fine-tuning platforms; per-company, never per-individual (cost, privacy, lock-in) | **Never.** Model is rented + eval-gate swappable. Weight-personalization would anchor us to a model version; state-personalization rides every upgrade |
 | **Context** | What the model is shown: memory, exemplars, voice, rules | Commodity — ChatGPT/Claude memory, Read "Ada," Sintra Brain, Lindy KBs | Yes: Grove Memory + edit/rejection signals + approved-draft exemplars. Necessary, NOT differentiating — never claim uniqueness here |
-| **Permissions** | What the system lets the agent do, as a function of verified performance | **Found nowhere in consumer/prosumer market** (two full passes) | **The moat.** Agent School: per-action-type accuracy graded against the user's own decisions gates autonomy (Student→Senior at 95%/25), visible on report cards, reversible on regression. Deterministic system logic — auditable, no ML |
+| **Permissions** | What the system lets the agent do, as a function of verified performance | **Found nowhere in consumer/prosumer market** (two full passes) | **The moat.** Agent School: per-action-type accuracy graded against the user's own decisions informs the owner's grant decision (advisory; Student→Senior at 95%/25), visible on report cards, reversible on regression. Deterministic system logic — auditable, no ML |
 
 Vocabulary law: **never say "per-user reinforcement learning."** Say: *"We don't train
 models per user; we train agents — their context, exemplars, and earned permissions. Human

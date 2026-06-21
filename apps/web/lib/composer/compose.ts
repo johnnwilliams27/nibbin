@@ -460,7 +460,7 @@ function summarize(caps: CapabilityDescriptor[], spec: AgentSpec, workflow: Diag
   const ordered = parts
     .map((clause, i) => (i === 0 ? `First, ${clause}` : `Then, ${clause}`))
     .join(' ');
-  return `${ordered} It works on “${workflow.label}”, drafts only for your approval until it earns more, and needs your ${allConns} connection${spec.requiredConnectors.length > 1 ? 's' : ''}.`;
+  return `${ordered} It works on “${workflow.label}”, drafts for your approval at first — you set its action level when you're ready — and needs your ${allConns} connection${spec.requiredConnectors.length > 1 ? 's' : ''}.`;
 }
 
 /** A short verb-phrase clause for one step in a multi-step plan (no tail). */
@@ -497,7 +497,7 @@ function stepClause(cap: CapabilityDescriptor, spec: AgentSpec, idx: number): st
  *  for all six primitives and names the connection(s) it needs. */
 function summarizeStep(cap: CapabilityDescriptor, spec: AgentSpec, idx: number, workflow: DiagnosisWorkflow): string {
   const conns = connectorsFor(cap).map(connectorLabel).join(' and ');
-  const tail = `It works on “${workflow.label}”, drafts only until it earns more, and needs your ${conns} connection.`;
+  const tail = `It works on “${workflow.label}”, drafts for your approval at first — you set its action level when you're ready — and needs your ${conns} connection.`;
   const p = spec.steps?.[idx]?.inputs ?? {};
   switch (cap.id) {
     case 'nudge.overdue-email': {
@@ -523,7 +523,7 @@ function summarizeStep(cap: CapabilityDescriptor, spec: AgentSpec, idx: number, 
     case 'digest.morning':
       return `Every morning, pull your day together — next on the calendar, fresh mail, and any overdue invoices — into one short brief. It only reads and presents: nothing is ever sent. It works on “${workflow.label}” and needs your ${conns} connection.`;
     default:
-      return `Automate “${workflow.label}” — drafts only, for your approval, until it earns more.`;
+      return `Automate “${workflow.label}” — drafts for your approval; you set its action level when you're ready.`;
   }
 }
 
