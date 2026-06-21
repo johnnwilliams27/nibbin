@@ -66,6 +66,21 @@ export async function pushDraftToGmailAction(
         if (typeof p.rfc822 !== 'string') throw new Error('draft step has no rfc822 payload');
         return p.rfc822;
       },
+      // Task 4: return the stored native_draft_ref from run_steps.payload so we
+      // don't create a second Gmail draft when the runner already mirrored one.
+      loadNativeDraftRef: async (rId, idx, aId) => {
+        const { data } = await svc
+          .from('run_steps')
+          .select('payload')
+          .eq('run_id', rId)
+          .eq('idx', idx)
+          .eq('account_id', aId)
+          .eq('kind', 'draft')
+          .maybeSingle();
+        if (!data) return null;
+        const p = data.payload as Record<string, unknown>;
+        return typeof p.nativeDraftRef === 'string' ? p.nativeDraftRef : null;
+      },
       hasGrant: async (nId, connId) => {
         const { count } = await svc
           .from('nibbin_write_grants')

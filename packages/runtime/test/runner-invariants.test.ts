@@ -847,3 +847,156 @@ describe('#44: routine-pattern trust resets on demotion (stage-scoped approvals)
     void runs;
   });
 });
+
+// ── Task 4: native-draft lifecycle — end-to-end ref persistence ───────────────
+// These 4 tests prove the full lifecycle from the runner's perspective:
+//   (a) email.send nativeDraft step at Draft level → executor called, ref persisted
+//   (b) calendar.event-create at Draft level → executor NOT called (nativeDraft:false)
+//   (c) send with stored nativeDraftRef → executor receives the ref (sendDraft path)
+//   (d) dismiss with nativeDraftRef → executor receives dismiss+ref (deleteDraft path)
+// Velocity consume is NOT tested here — that's the executor's concern (engine.test.ts).
+// The runner invariant under test: draft path calls executor iff nativeDraft:true,
+// persists the ref in run_steps.payload.nativeDraftRef, and the send/dismiss paths
+// forward the ref from effectArgs to the executor unchanged.
+describe('Task 4: native-draft lifecycle — ref persisted in run_steps.payload', () => {
+  function nativeDraftHarness(actionLevel: 'draft' | 'send' = 'draft') {
+    const runs = new MemoryRunStore(() => Date.now());
+    runs.seedCredits(ACCOUNT, 1000);
+    runs.nibbinState('nib-1').actionLevel = actionLevel;
+    // Capture execute calls so we can assert what was passed
+    const executeCalls: Array<{ capability: string; args: Record<string, unknown> }> = [];
+    let executeResult: { nativeDraftId?: string } | void = undefined;
+    const deps: RunnerDeps = {
+      runs,
+      routines: new MemoryRoutineStore(),
+      grants: new MemoryGrantStore(),
+      idempotency: new MemoryIdempotencyStore(),
+      events: new MemoryEventSink(),
+      reader: { async read(_c, _cap, path) { return quarantine('{}', `test:${path}`); } },
+      effects: {
+        async execute(req) {
+          executeCalls.push({ capability: req.capability, args: req.args });
+          return executeResult;
+        },
+      },
+      now: () => Date.now(),
+    };
+    return { deps, runs, executeCalls, setResult: (r: typeof executeResult) => { executeResult = r; } };
+  }
+
+  // (a) nativeDraft email step at Draft level: executor called, id stored in payload
+  it('(a) email.send nativeDraft:true at Draft level calls executor and persists nativeDraftRef in run_steps.payload', async () => {
+    const { deps, runs, executeCalls, setResult } = nativeDraftHarness('draft');
+    setResult({ nativeDraftId: 'gmail-draft-abc' });
+
+    const program: ProgramFn = async function* () {
+      yield {
+        kind: 'draft',
+        capability: 'email.send',
+        connectionId: CONN,
+        patternKey: 'p-nd',
+        title: 'Draft email',
+        draft: 'Body here',
+        effectArgs: { rfc822: 'base64body', nativeDraft: true },
+      };
+    };
+
+    const outcome = await executeRun(nib(), TRIGGER, program, deps);
+    expect(outcome.kind).toBe('awaiting_approval'); // Draft level → draft outcome
+    // The executor must have been called once (for the native-draft creation)
+    expect(executeCalls).toHaveLength(1);
+    expect(executeCalls[0].capability).toBe('email.send');
+    expect(executeCalls[0].args.nativeDraft).toBe(true);
+    // The returned id must be persisted in run_steps.payload.nativeDraftRef
+    const runId = (outcome as { runId: string }).runId;
+    const steps = runs.getSteps(runId);
+    const draftStep = steps.find((s) => s.kind === 'draft');
+    expect(draftStep?.payload?.nativeDraftRef).toBe('gmail-draft-abc');
+  });
+
+  // (b) calendar.event-create at Draft level: executor NOT called (nativeDraft:false)
+  it('(b) calendar.event-create at Draft level does NOT call executor (nativeDraft:false)', async () => {
+    const calSpec = spec({
+      toolsAllowlist: ['calendar.event-create'],
+      requiredConnectors: ['google-calendar'],
+    });
+    const calNib: NibbinRef = { ...nib(calSpec), stage: 'student' };
+    const { deps, runs, executeCalls } = nativeDraftHarness('draft');
+    // Override runs to use calSpec
+    deps.runs = runs;
+
+    const program: ProgramFn = async function* () {
+      yield {
+        kind: 'draft',
+        capability: 'calendar.event-create',
+        connectionId: CONN,
+        patternKey: 'p-cal',
+        title: 'Schedule event',
+        draft: 'Event draft',
+        effectArgs: { calendarId: 'primary', event: { summary: 'Shoot' } },
+      };
+    };
+
+    const outcome = await executeRun(calNib, TRIGGER, program, deps);
+    expect(outcome.kind).toBe('awaiting_approval'); // Still drafts
+    // No executor call — calendar is nativeDraft:false
+    expect(executeCalls).toHaveLength(0);
+    // No nativeDraftRef in the payload
+    const runId = (outcome as { runId: string }).runId;
+    const steps = runs.getSteps(runId);
+    const draftStep = steps.find((s) => s.kind === 'draft');
+    expect(draftStep?.payload?.nativeDraftRef).toBeUndefined();
+  });
+
+  // (c) send with stored nativeDraftRef → executor receives the ref (send path)
+  it('(c) email.send with nativeDraftRef in effectArgs at Send level forwards ref to executor', async () => {
+    const { deps, executeCalls } = nativeDraftHarness('send');
+
+    const program: ProgramFn = async function* () {
+      yield {
+        kind: 'draft',
+        capability: 'email.send',
+        connectionId: CONN,
+        patternKey: 'p-send-ref',
+        title: 'Send draft',
+        draft: 'Body',
+        // nativeDraftRef already in effectArgs (the runner reads this from DB and threads it)
+        effectArgs: { rfc822: 'base64body', nativeDraftRef: 'gmail-draft-stored' },
+      };
+    };
+
+    const outcome = await executeRun(nib(), TRIGGER, program, deps);
+    expect(outcome.kind).toBe('executed'); // Send level → executed
+    // Executor called once (for the send)
+    expect(executeCalls).toHaveLength(1);
+    expect(executeCalls[0].capability).toBe('email.send');
+    // The ref is forwarded unchanged — the executor (engine.ts) will call sendDraft(ref)
+    expect(executeCalls[0].args.nativeDraftRef).toBe('gmail-draft-stored');
+    // velocity is the executor's concern; the runner only verifies the ref is forwarded
+  });
+
+  // (d) dismiss with nativeDraftRef → executor receives dismiss+ref (deleteDraft path)
+  it('(d) email.send dismiss:true + nativeDraftRef at Send level forwards dismiss+ref to executor', async () => {
+    const { deps, executeCalls } = nativeDraftHarness('send');
+
+    const program: ProgramFn = async function* () {
+      yield {
+        kind: 'draft',
+        capability: 'email.send',
+        connectionId: CONN,
+        patternKey: 'p-dismiss',
+        title: 'Dismiss draft',
+        draft: 'Body',
+        effectArgs: { rfc822: 'base64body', nativeDraftRef: 'gmail-draft-to-delete', dismiss: true },
+      };
+    };
+
+    const outcome = await executeRun(nib(), TRIGGER, program, deps);
+    expect(outcome.kind).toBe('executed'); // Send level → executed (dismiss is an executor decision)
+    expect(executeCalls).toHaveLength(1);
+    expect(executeCalls[0].capability).toBe('email.send');
+    expect(executeCalls[0].args.nativeDraftRef).toBe('gmail-draft-to-delete');
+    expect(executeCalls[0].args.dismiss).toBe(true);
+    // The executor will call deleteDraft(ref) + return without sending (engine.ts concern)
+  });
+});

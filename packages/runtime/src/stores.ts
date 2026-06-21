@@ -271,6 +271,14 @@ export class MemoryRunStore implements RunStore {
     run.steps.push(step);
   }
 
+  /**
+   * Test helper: return all recorded steps for a run. Used by lifecycle tests
+   * that assert on run_steps.payload.nativeDraftRef (Task 4).
+   */
+  getSteps(runId: string): StepRecord[] {
+    return this.runs.get(runId)?.steps ?? [];
+  }
+
   async getNibbin(nibbinId: string): Promise<NibbinCurrentState | null> {
     // nibbinState() auto-creates a default { status: 'active' } entry, mirroring
     // how begin() treats an unseen nibbin. We never return null from the in-memory

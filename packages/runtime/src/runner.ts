@@ -33,17 +33,30 @@ export interface ToolReader {
   read(connectionId: string, capability: string, path: string): Promise<QuarantinedContent>;
 }
 
+/** Result returned by EffectExecutor.execute. */
+export interface EffectResult {
+  /**
+   * The Gmail draft id created by the native-draft mirror path (nativeDraft:true
+   * at Draft action level). Only set on createDraft calls — undefined for sends,
+   * deletes, calendar events, and every non-nativeDraft execution.
+   */
+  nativeDraftId?: string;
+}
+
 export interface EffectExecutor {
   /**
    * Execute a side effect through the connector layer (which enforces C8
    * write-scope grants and RISKS §2 velocity caps unconditionally).
+   *
+   * Returns `{ nativeDraftId }` when the execution created a native draft
+   * (nativeDraft:true path); otherwise returns void / undefined.
    */
   execute(req: {
     connectionId?: string;
     capability: string;
     args: Record<string, unknown>;
     idempotencyKey: string;
-  }): Promise<void>;
+  }): Promise<EffectResult | void>;
 }
 
 /**
@@ -298,6 +311,32 @@ export async function dispatchStep(
   if (gate.action === 'deny') return done({ kind: 'kill', reason: gate.reason as KillReason });
 
   if (gate.action === 'draft') {
+    // Native-draft mirror (Task 4): when the capability signals nativeDraft:true,
+    // call the executor NOW (at draft time) to create the native Gmail draft. The
+    // executor's nativeDraft path does NOT consume velocity and does NOT create an
+    // idempotency row — it only calls createDraft and returns the id. We persist
+    // the returned id in run_steps.payload.nativeDraftRef so dismiss-sync can
+    // delete it and send-with-ref can use it instead of a fresh send.
+    // Fail-open: if createDraft throws, we log the warning and record the draft
+    // row WITHOUT a ref (the user can still approve/send, just without the
+    // native-draft sync). This preserves the draft outcome invariant.
+    let nativeDraftRef: string | undefined;
+    if (step.effectArgs.nativeDraft === true) {
+      try {
+        const result = await deps.effects.execute({
+          connectionId: step.connectionId,
+          capability: step.capability,
+          args: step.effectArgs,
+          idempotencyKey: `native-draft:${hashArgs([nibbin.id, step.capability, step.effectArgs, runId])}`,
+        });
+        nativeDraftRef = result?.nativeDraftId;
+      } catch (err) {
+        // Best-effort: log and continue. The draft is still recorded; dismiss/send
+        // will fall back gracefully (no ref = no native-draft cleanup/routing).
+        console.warn('[runner] native-draft createDraft failed (non-fatal):', err instanceof Error ? err.message : String(err));
+      }
+    }
+
     await deps.runs.recordStep(nibbin.accountId, runId, {
       idx: idx++,
       kind: 'draft',
@@ -311,6 +350,7 @@ export async function dispatchStep(
         effectArgs: step.effectArgs,
         connectionId: step.connectionId ?? null,
         gate: gate.reason,
+        ...(nativeDraftRef !== undefined ? { nativeDraftRef } : {}),
       },
     });
     return done({ kind: 'drafted', draft: step });

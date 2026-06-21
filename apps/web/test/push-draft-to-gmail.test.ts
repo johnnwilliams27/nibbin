@@ -38,3 +38,32 @@ it('throws when draft step has no rfc822 payload', async () => {
     ),
   ).rejects.toThrow(/step not found/i);
 });
+
+// Task 4: loadNativeDraftRef guard — prevents double-create when the runner
+// already mirrored the draft to Gmail at draft time (nativeDraft:true).
+it('Task 4: when loadNativeDraftRef returns a stored ref, returns it directly without calling createDraft', async () => {
+  const createDraftCalls: string[] = [];
+  const result = await pushDraftToGmail(baseInput, makeDeps({
+    createDraft: async (rfc822) => { createDraftCalls.push(rfc822); return { id: 'would-be-second-draft' }; },
+    loadNativeDraftRef: async () => 'gmail-draft-already-created',
+  }));
+  // Should return the stored ref, NOT call createDraft
+  expect(result.gmailDraftId).toBe('gmail-draft-already-created');
+  expect(createDraftCalls).toHaveLength(0);
+});
+
+it('Task 4: when loadNativeDraftRef returns null, falls through to createDraft normally', async () => {
+  const createDraftCalls: string[] = [];
+  const result = await pushDraftToGmail(baseInput, makeDeps({
+    createDraft: async (rfc822) => { createDraftCalls.push(rfc822); return { id: 'fresh-draft' }; },
+    loadNativeDraftRef: async () => null,
+  }));
+  expect(result.gmailDraftId).toBe('fresh-draft');
+  expect(createDraftCalls).toHaveLength(1); // createDraft was called
+});
+
+it('Task 4: without loadNativeDraftRef dep, falls through to createDraft (backward compat)', async () => {
+  // The dep is optional — existing callers that don't provide it continue to work.
+  const result = await pushDraftToGmail(baseInput, makeDeps());
+  expect(result.gmailDraftId).toBe('draft-xyz');
+});

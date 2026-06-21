@@ -201,7 +201,12 @@ export function buildEffectsExecutor(
   testDeps?: EffectsExecutorTestDeps,
   /** Optional event sink for fleet-learning telemetry (best-effort, never changes run behavior). */
   eventSink?: EventSink,
-) {
+): (args: {
+    connectionId: string;
+    capability: string;
+    args: Record<string, unknown>;
+    idempotencyKey: string;
+  }) => Promise<{ nativeDraftId?: string } | void> {
   /** Emit a connector_blocked event best-effort (structural ids only — no content/PII). */
   async function emitConnectorBlocked(connector: string, reason: 'not_connected' | 'auth_failed' | 'velocity_cap'): Promise<void> {
     if (!eventSink) return;
@@ -217,7 +222,7 @@ export function buildEffectsExecutor(
     capability: string;
     args: Record<string, unknown>;
     idempotencyKey: string;
-  }): Promise<void> => {
+  }): Promise<{ nativeDraftId?: string } | void> => {
     const connection = byId.get(args.connectionId);
     if (!connection) throw new Error(`connection ${args.connectionId} not found`);
     const rfc822 = String(args.args.rfc822 ?? '');
@@ -273,7 +278,7 @@ export function buildEffectsExecutor(
             }
             throw err;
           }
-          return { nativeDraftId: draftId } as unknown as void;
+          return { nativeDraftId: draftId };
         }
 
         // ── Send path: velocity consume then send (stored draft or fresh send) ──
