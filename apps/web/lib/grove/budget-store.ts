@@ -19,12 +19,13 @@ import { serviceClient } from '../supabase/service';
 
 export function pgBudgetStore(): BudgetStore {
   return {
-    async take(userId, dayKey, limit) {
+    async take(userId, dayKey, limit, kind = 'frontier') {
       const svc = serviceClient();
       const { data, error } = await svc.rpc('frontier_budget_take', {
         p_user: userId,
         p_day: dayKey,
         p_limit: limit,
+        p_kind: kind,
       });
       if (error || !Array.isArray(data) || data.length === 0) {
         console.error('[budget] frontier_budget_take failed — denying grant (fail closed)', error?.message);
@@ -34,11 +35,12 @@ export function pgBudgetStore(): BudgetStore {
       return { granted: row.granted, used: row.used };
     },
 
-    async used(userId, dayKey) {
+    async used(userId, dayKey, kind = 'frontier') {
       const svc = serviceClient();
       const { data, error } = await svc.rpc('frontier_budget_used', {
         p_user: userId,
         p_day: dayKey,
+        p_kind: kind,
       });
       if (error) {
         console.error('[budget] frontier_budget_used failed', error.message);

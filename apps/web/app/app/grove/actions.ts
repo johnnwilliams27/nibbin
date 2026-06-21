@@ -25,6 +25,7 @@ import {
 import { understandingModelTurn } from '../../../lib/llm/understanding';
 import { writeHandoff } from '../../../lib/onboarding/handoff';
 import type { TokenUsage } from '@nibbin/router';
+import { CHAT_DAILY_CEILING, type Tier } from '@nibbin/shared';
 import { ensureAccount } from '../../../lib/auth/bootstrap';
 import { upsertOwnProfile } from '../../../lib/auth/profile';
 import { groveRouter } from '../../../lib/grove/router';
@@ -158,13 +159,23 @@ export async function keeperChatAction(rawText: unknown): Promise<GroveChatPaylo
   const { supabase, user, accountId } = await groveSession();
   const text = typeof rawText === 'string' ? rawText : '';
 
-  // No tz fetch: the frontier budget day is UTC-pinned in the router (#24/#52),
-  // so the user's timezone no longer affects routing.
-  const { data: row } = await supabase
-    .from('grove_state')
-    .select('keeper_name')
-    .eq('account_id', accountId)
-    .maybeSingle<{ keeper_name: string | null }>();
+  // No tz fetch: the budget day is UTC-pinned in the router (#24/#52). We do
+  // read the plan to size the daily chat ceiling (#230) — a runaway backstop
+  // scaled by plan so paying users get more headroom. No subscription row =
+  // free tier (the tightest ceiling), matching the adopt-RPC convention.
+  const [{ data: row }, { data: sub }] = await Promise.all([
+    supabase
+      .from('grove_state')
+      .select('keeper_name')
+      .eq('account_id', accountId)
+      .maybeSingle<{ keeper_name: string | null }>(),
+    supabase
+      .from('subscriptions')
+      .select('tier')
+      .eq('account_id', accountId)
+      .maybeSingle<{ tier: Tier | null }>(),
+  ]);
+  const dailyChatCeiling = CHAT_DAILY_CEILING[(sub?.tier ?? 'hatchling') as Tier];
 
   // M6.5: the real generate path. Without an API key this is null, keeperChat
   // gets no generate dep, and the scripted floor answers with zero routing
@@ -205,7 +216,7 @@ export async function keeperChatAction(rawText: unknown): Promise<GroveChatPaylo
 
   const reply = await keeperChat(
     text,
-    { userId: user.id, keeperName: row?.keeper_name ?? null },
+    { userId: user.id, keeperName: row?.keeper_name ?? null, dailyChatCeiling },
     { route: (r) => groveRouter.route(r), ...(generate ? { generate } : {}) },
   );
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createRouter, DEGRADATION_NOTICE } from '@nibbin/router';
+import { CHAT_CEILING_NOTICE, createRouter, DEGRADATION_NOTICE } from '@nibbin/router';
 import { CHAT_INPUT_MAX, keeperChat } from '../src/index';
 
 const T2_TEXT = `Plan a complete end-to-end overhaul of my booking workflow. First, audit the current intake.
@@ -75,6 +75,30 @@ describe('keeperChat routes through §6.3 before replying', () => {
     expect(takes).toEqual(['user-1']);
     expect(reply.decision.tier).toBe('t2');
     expect(reply.decision.degraded).toBe(false);
+  });
+
+  it('at the daily chat ceiling, it pauses with the notice and makes NO model call (#230)', async () => {
+    const router = createRouter({ now: () => new Date('2026-06-11T12:00:00Z') });
+    const ceilingCtx = { ...ctx, dailyChatCeiling: 1 };
+    let calls = 0;
+    const generate = async () => {
+      calls += 1;
+      return 'should not run';
+    };
+    // first turn: under the ceiling, the model runs
+    const first = await keeperChat('hi', ceilingCtx, { route: (r) => router.route(r), generate });
+    expect(first.decision.paused).toBeFalsy();
+    expect(calls).toBe(1);
+
+    // second turn: ceiling reached → paused, the notice IS the reply, no spend
+    const second = await keeperChat('hi again', ceilingCtx, { route: (r) => router.route(r), generate });
+    expect(second.decision.paused).toBe(true);
+    expect(calls).toBe(1); // generate not called again
+    expect(second.dispatchedTier).toBeNull();
+    // the ceiling status survives to the caller (telemetry / meter surface)
+    expect(second.decision.budget).toMatchObject({ limit: 1, used: 1, remaining: 0 });
+    if (second.message.card.kind !== 'prose') throw new Error('expected prose');
+    expect(second.message.card.text).toBe(CHAT_CEILING_NOTICE);
   });
 
   it('uses the generate hook when provided, scripted floor when it returns null', async () => {

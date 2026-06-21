@@ -53,6 +53,17 @@ export interface RouteRequest {
   origin: RouteOrigin;
   /** Freeform text; required when task is 'chat' (the classifier reads it). */
   text?: string;
+  /**
+   * Per-user/day ceiling on TOTAL chat turns (all tiers), an anti-runaway
+   * backstop (#230). Set by the WEB chat caller from the user's plan
+   * (`CHAT_DAILY_CEILING` in @nibbin/shared). Only consulted for `chat` tasks;
+   * undefined means no ceiling — non-chat work, tests, AND channel chat
+   * (Telegram/SMS), which is bounded by its own channel spend-cap/anomaly gate
+   * rather than this per-user web ceiling. When the ceiling is reached the
+   * decision comes back `paused` — the surface pauses chat for the day, no
+   * model call, no spend.
+   */
+  dailyChatCeiling?: number;
 }
 
 /** What the T0 complexity classifier concluded about a chat request. */
@@ -90,6 +101,12 @@ export interface RouteDecision {
   classification?: Classification;
   /** Present when the frontier budget was consulted. */
   budget?: BudgetStatus;
+  /**
+   * True when the per-user daily chat ceiling (#230) was reached: chat is
+   * paused for the day. The surface shows `notice` and must NOT call the model
+   * (no spend). `budget` carries the chat_total counter status when paused.
+   */
+  paused?: boolean;
 }
 
 /**
@@ -99,8 +116,18 @@ export interface RouteDecision {
  * store slots in here when the agent runtime lands (M4).
  */
 export interface BudgetStore {
-  take(userId: string, dayKey: string, limit: number): Promise<{ granted: boolean; used: number }>;
-  used(userId: string, dayKey: string): Promise<number>;
+  /**
+   * `kind` namespaces independent counters sharing the (userId, dayKey) window:
+   * 'frontier' (default) is the T2-from-chat budget; 'chat_total' is the
+   * anti-runaway all-tier chat ceiling (#230). Atomic per (userId, dayKey, kind).
+   */
+  take(
+    userId: string,
+    dayKey: string,
+    limit: number,
+    kind?: string,
+  ): Promise<{ granted: boolean; used: number }>;
+  used(userId: string, dayKey: string, kind?: string): Promise<number>;
 }
 
 /**
