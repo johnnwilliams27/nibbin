@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CHAT_CEILING_NOTICE,
   classifyComplexity,
   createRouter,
   dayKey,
@@ -291,5 +292,52 @@ describe('config', () => {
     expect(() =>
       router.reconfigure({ taskCandidates: { specialist_draft: ['nope'] } }),
     ).toThrow(/not a vetted model/);
+  });
+});
+
+describe('daily chat ceiling (#230 — anti-runaway, all tiers)', () => {
+  it('pauses chat for the day once the ceiling is reached — no spend past it', async () => {
+    const router = createRouter({ now: () => new Date('2026-06-11T12:00:00Z') });
+    const first = await router.route(chat('hi there', { dailyChatCeiling: 2 }));
+    expect(first.paused).toBeFalsy();
+    const second = await router.route(chat('hi again', { dailyChatCeiling: 2 }));
+    expect(second.paused).toBeFalsy();
+
+    const third = await router.route(chat('and again', { dailyChatCeiling: 2 }));
+    expect(third).toMatchObject({ paused: true, degraded: false, notice: CHAT_CEILING_NOTICE });
+    expect(third.budget).toMatchObject({ limit: 2, used: 2, remaining: 0 });
+  });
+
+  it('counts EVERY tier, not just T2 — a cheap T0 turn still draws the ceiling', async () => {
+    const router = createRouter({ now: () => new Date('2026-06-11T12:00:00Z') });
+    // two trivial T0 turns exhaust a ceiling of 2…
+    await router.route(chat('hi', { dailyChatCeiling: 2 }));
+    await router.route(chat('hello', { dailyChatCeiling: 2 }));
+    // …so even a would-be T2 turn is paused, never reaching the model.
+    const blocked = await router.route(chat(T2_CHAT, { dailyChatCeiling: 2 }));
+    expect(blocked.paused).toBe(true);
+  });
+
+  it('no ceiling set → never pauses (unbounded — non-chat work, or tests)', async () => {
+    const router = createRouter({ now: () => new Date('2026-06-11T12:00:00Z') });
+    for (let i = 0; i < 50; i++) {
+      const d = await router.route(chat('hi', {}));
+      expect(d.paused).toBeFalsy();
+    }
+  });
+
+  it('the chat ceiling and the T2 frontier budget are independent counters', async () => {
+    // Generous ceiling, tight frontier budget: T2 degrades at the frontier cap
+    // while the ceiling has room — separate 'kind' counters, no cross-talk.
+    const router = createRouter({
+      dailyFrontierBudget: 1,
+      now: () => new Date('2026-06-11T12:00:00Z'),
+    });
+    const first = await router.route(chat(T2_CHAT, { dailyChatCeiling: 100 }));
+    expect(first).toMatchObject({ tier: 't2' });
+    expect(first.paused).toBeFalsy();
+    const second = await router.route(chat(T2_CHAT, { dailyChatCeiling: 100 }));
+    expect(second).toMatchObject({ tier: 't1', degraded: true });
+    expect(second.paused).toBeFalsy();
   });
 });

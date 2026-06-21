@@ -7,6 +7,7 @@ import {
   DEFAULT_REINFORCEMENT,
   DEFAULT_TASK_CANDIDATES,
   DEFAULT_TASK_MODELS,
+  CHAT_CEILING_NOTICE,
   DEGRADATION_NOTICE,
   TIER_FOR_TASK,
   UNBUDGETED_T2_TASKS,
@@ -127,6 +128,37 @@ export function createRouter(overrides: RouterOverrides = {}): Router {
       if (!req.userId || req.userId.trim() === '') {
         throw new Error('route: userId is required');
       }
+
+      // Anti-runaway daily chat ceiling (#230). EVERY chat turn — T0/T1/T2 —
+      // counts against a per-user/day cap (the caller passes the plan-scaled
+      // limit from @nibbin/shared CHAT_DAILY_CEILING). This is a SAFETY backstop
+      // on the otherwise-unbounded free chat surface, NOT a credit meter: it
+      // never debits run-credits, it just pauses chat for the UTC day past a
+      // generous limit. Counted in a SEPARATE 'chat_total' counter from the
+      // 'frontier' (T2) budget below — a T2 chat turn draws both. Checked before
+      // any classification/model selection so a paused turn does zero work.
+      if (req.task === 'chat' && req.dailyChatCeiling !== undefined) {
+        const day = dayKey(config.now());
+        const ceiling = req.dailyChatCeiling;
+        const take = await config.budgetStore.take(req.userId, day, ceiling, 'chat_total');
+        if (!take.granted) {
+          return {
+            tier: 't0',
+            model: config.models.t0,
+            requestedTier: 't0',
+            degraded: false,
+            notice: CHAT_CEILING_NOTICE,
+            paused: true,
+            budget: {
+              limit: ceiling,
+              used: take.used,
+              remaining: Math.max(0, ceiling - take.used),
+              dayKey: day,
+            },
+          };
+        }
+      }
+
       const { tier: requestedTier, classification } = requestedTierFor(req);
       // The static, config-pinned model for a tier: the task pin (the Opus
       // diagnosis pin) when serving the requested tier, else the tier default.
@@ -173,7 +205,7 @@ export function createRouter(overrides: RouterOverrides = {}): Router {
         // instant for everyone. dayKey() defaults to UTC when given no zone.
         const day = dayKey(config.now());
         const limit = config.dailyFrontierBudget;
-        const take = await config.budgetStore.take(req.userId, day, limit);
+        const take = await config.budgetStore.take(req.userId, day, limit, 'frontier');
         const budget: BudgetStatus = {
           limit,
           used: take.used,

@@ -146,8 +146,13 @@ export const DEFAULT_REINFORCEMENT: ReinforcementParams = {
   maxRefusalErrorRate: 0.2,
 };
 
-/** Default T2-from-chat grants per user per day. */
-export const DEFAULT_DAILY_FRONTIER_BUDGET = 5;
+/**
+ * Default T2-from-chat grants per user per day. Raised 5→15 (2026-06-21): 5
+ * dropped a chatty user to "the simple way" fast; at ~$0.01/Sonnet turn, 15/day
+ * caps T2 chat at ~$0.15/user/day. The outer all-tier ceiling (#230) is the
+ * runaway backstop; this is just the frontier-tier sub-limit within it.
+ */
+export const DEFAULT_DAILY_FRONTIER_BUDGET = 15;
 
 /**
  * §6.3 degradation phrasing — shown to the user whenever a chat request that
@@ -155,3 +160,11 @@ export const DEFAULT_DAILY_FRONTIER_BUDGET = 5;
  * Degradation is transparent by construction; this string is the transparency.
  */
 export const DEGRADATION_NOTICE = "Doing this the simple way today — it'll still be right.";
+
+/**
+ * Shown when the per-user daily chat ceiling (#230) is reached — chat pauses
+ * for the rest of the UTC day. Calm and non-punitive: nothing is lost, the
+ * user's Nibbins keep working, and it resets automatically.
+ */
+export const CHAT_CEILING_NOTICE =
+  "We've talked a lot today — let's pick this up tomorrow. Your Nibbins keep working in the meantime, and chat resets after midnight (UTC).";

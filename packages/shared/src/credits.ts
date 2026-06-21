@@ -51,6 +51,22 @@ export type Tier = keyof typeof TIERS;
 export const TOP_UP = { priceUsdCents: 1000, credits: 1000 } as const;
 
 /**
+ * Anti-runaway daily chat-turn ceiling per plan (#230). A SAFETY backstop on
+ * the otherwise-unbounded free Grovekeeper chat surface — EVERY chat turn
+ * (T0/T1/T2) counts — NOT a credit meter: hitting it politely pauses chat for
+ * the UTC day and never debits run-credits (so it respects the credits people
+ * paid for). Generous enough that no human reaches it (a heavy onboarding day
+ * is ~100-200 turns); it only stops runaway client loops / abuse. Scaled by
+ * plan so paying users get more headroom. The router enforces it atomically
+ * (the 'chat_total' frontier_budget counter); the caller passes the number.
+ */
+export const CHAT_DAILY_CEILING: Record<Tier, number> = {
+  hatchling: 150,
+  grove: 500,
+  canopy: 2000,
+} as const;
+
+/**
  * Anti-runaway DOLLAR backstop for a SINGLE diagnosis-synthesis call, in
  * micro-USD: 1_000_000 = $1.00. The diagnosis pipeline is the deliberate T2
  * Opus splurge the router never degrades, so the caller-side controls ARE the

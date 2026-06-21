@@ -3,6 +3,7 @@ export { classifyComplexity } from './classifier';
 export { dayKey, InMemoryBudgetStore } from './budget';
 export { chooseModel } from './reinforce';
 export {
+  CHAT_CEILING_NOTICE,
   DEFAULT_DAILY_FRONTIER_BUDGET,
   DEFAULT_MODELS,
   DEFAULT_REINFORCEMENT,

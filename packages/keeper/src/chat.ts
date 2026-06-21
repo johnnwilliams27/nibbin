@@ -20,6 +20,12 @@ import type { KeeperExpression, KeeperMessage } from './types';
 export interface KeeperChatContext {
   userId: string;
   keeperName?: string | null;
+  /**
+   * Per-user/day total-chat ceiling (#230), from the caller's plan
+   * (CHAT_DAILY_CEILING). Passed through to the router; when reached the turn
+   * comes back paused and we answer with the calm ceiling notice, no model call.
+   */
+  dailyChatCeiling?: number;
 }
 
 export interface KeeperChatDeps {
@@ -104,11 +110,18 @@ export async function keeperChat(
       task: 'chat',
       origin: 'chat',
       text,
+      dailyChatCeiling: ctx.dailyChatCeiling,
     });
-    dispatchedTier = decision.tier;
-    dispatchedModel = decision.model;
-    dispatchedDegraded = decision.degraded;
-    reply = await deps.generate(decision.model, text);
+    if (decision.paused) {
+      // Daily chat ceiling reached (#230): answer with the calm notice and make
+      // NO model call — no dispatch, no COGS, no spend. Resets next UTC day.
+      reply = decision.notice;
+    } else {
+      dispatchedTier = decision.tier;
+      dispatchedModel = decision.model;
+      dispatchedDegraded = decision.degraded;
+      reply = await deps.generate(decision.model, text);
+    }
   }
   if (reply === null || reply === undefined || reply.trim() === '') {
     reply = scriptedReply(text);
