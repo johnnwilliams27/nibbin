@@ -37,7 +37,7 @@ models per user; we train agents — their context, exemplars, and earned permis
 feedback shapes behavior the way RLHF does, but at the system layer, not the weights — so
 every model upgrade makes every user's agents smarter overnight."*
 
-Uniqueness law: claim **"to our knowledge, no one ships performance-earned autonomy"** —
+Uniqueness law: claim **"to our knowledge, no one ships owner-set action levels with graded-accuracy school reports per agent"** —
 never "nobody is doing this." Same punch, survives the counterexample an associate finds.
 
 ## 3. The trust taxonomy (how everyone else handles it — all static)
@@ -124,8 +124,8 @@ maturity. No team seats beyond a future read-only bookkeeper guest.
 - **Moat (30s):** "Anthropic sells intelligence; we sell trust in a vertical. Their vector
   is enterprise knowledge work; ours is a photographer's revenue loop through connectors a
   horizontal player will never prioritize. The core mechanic isn't a copyable feature: our
-  agents earn autonomy through graded accuracy over weeks of a user's real decisions. That
-  trust ledger plus the diagnosis compounds per user and can't be cold-started by anyone —
+  agents build an accuracy grade over weeks of a user's real decisions, and the owner sets
+  what each may do. That trust ledger plus the diagnosis compounds per user and can't be cold-started by anyone —
   including us, twice. Better models make our staff smarter and our margins better."
 - **One-liner:** "Models are the engine; we own the relationship, the vertical rails, and
   the earned-trust history — none of which ship in an API."

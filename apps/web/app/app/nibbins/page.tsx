@@ -300,7 +300,7 @@ export default async function NibbinsPage() {
       <AppShell active="nibbins" title="Your Nibbins" email={user.email}>
         <EmptyState
           title="Your grove is quiet"
-          body="No Nibbins yet. Each one starts as an egg in Agent School — drafting everything for your yes until it earns its way to working on its own."
+          body="No Nibbins yet. Each one starts as an egg in Agent School — you set its action level (Observe / Draft / Send) and Agent School grades how accurately it works so you know when to trust it with more."
           action={
             <a className={`${styles.abtn} ${styles.abtnGo}`} href="/app/shop">
               Visit the Agent Shop →

@@ -14,7 +14,7 @@ the way SPEC.md governs the build: changes via decision log, not drift. The Mark
 it's the legibility of trust, and it's the most screenshot-able object in the category.
 **Against fear (the real enemy):** solo owners are afraid of AI embarrassing them in front
 of clients and afraid of surveillance. Both answers are architectural and we say them plainly:
-*nothing sends without your approval until it has earned it* (Agent School), and *screen
+*nothing sends without your approval — you grant what each Nibbin may do* (action level), and *screen
 captures never leave your device* (Observer). Privacy is a growth asset, not fine print.
 **One-liner:** "Little creatures that grow up working for you."
 **Category line:** "AI Agents. Simplified." — used in SEO titles, meta,

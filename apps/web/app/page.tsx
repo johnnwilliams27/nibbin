@@ -49,7 +49,7 @@ const PRIVACY = [
   {
     pi: 'Nothing acts without you',
     h: 'Nothing sends without you',
-    p: 'A connection can hold the keys to act, but no email is sent and no event is booked until you approve it. A Nibbin earns the ability to act, per task, only after its accuracy was verified on drafts you approved first.',
+    p: 'A connection can hold the keys to act, but no email is sent and no event is booked until you approve it. You grant each Nibbin what it may do — Observe, Draft, or Send. Agent School grades how accurately it has been working so you always know when to trust it with more.',
   },
   {
     pi: 'Yours to control',
@@ -237,7 +237,7 @@ export default function Home() {
                 </div>
                 <div className="kp">
                   <b>Orchestrates and delegates.</b> The Keeper can never send, post, pay, or delete. It explains each
-                  recommendation; only Nibbins you’ve approved do the work, at the trust level they’ve earned.
+                  recommendation; only Nibbins you’ve approved do the work, at the action level you’ve set.
                 </div>
               </div>
             </div>

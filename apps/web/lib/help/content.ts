@@ -110,7 +110,7 @@ export const HELP_CONTENT: HelpContent = [
         id: "gs-six-shop-nibbins",
         q: "What are the six Shop Nibbins?",
         body:
-          "• Sweep — “Keeps your inbox floor clean.” Reads your inbox and hands you one short keep-or-clear list. Nothing deleted without you. Needs: Gmail.\n• Echo — “Never lets a thread go quiet.” Watches for overdue replies and drafts the nudge. Needs: Gmail.\n• Brief — “Your morning, on one card.” Reads yesterday/today across calendar, inbox, and money, and writes five lines every morning. Needs: Gmail + Google Calendar + Stripe.\n• Tally — “Minds the money you already earned.” Watches invoices and drafts the polite payment nudge. Needs: Stripe.\n• Hopper — “Keeps your calendar honest.” Checks tomorrow for unconfirmed sessions and drafts the confirmation. Needs: Google Calendar + Gmail.\n• Scribe — “Answers the question you answer every week.” Drafts your reply to repeat inquiries in your voice. Needs: Gmail.\n\nAll start drafting-only and earn autonomy through Agent School.",
+          "• Sweep — “Keeps your inbox floor clean.” Reads your inbox and hands you one short keep-or-clear list. Nothing deleted without you. Needs: Gmail.\n• Echo — “Never lets a thread go quiet.” Watches for overdue replies and drafts the nudge. Needs: Gmail.\n• Brief — “Your morning, on one card.” Reads yesterday/today across calendar, inbox, and money, and writes five lines every morning. Needs: Gmail + Google Calendar + Stripe.\n• Tally — “Minds the money you already earned.” Watches invoices and drafts the polite payment nudge. Needs: Stripe.\n• Hopper — “Keeps your calendar honest.” Checks tomorrow for unconfirmed sessions and drafts the confirmation. Needs: Google Calendar + Gmail.\n• Scribe — “Answers the question you answer every week.” Drafts your reply to repeat inquiries in your voice. Needs: Gmail.\n\nAll start at the Draft action level — you set each one's action level (Observe/Draft/Send); Agent School grades how well it's doing.",
         keywords: ["sweep", "echo", "brief", "tally", "hopper", "scribe", "shop", "six"],
       },
       {
@@ -271,7 +271,7 @@ export const HELP_CONTENT: HelpContent = [
         q: "What happens to data from my connected accounts (Gmail, etc.)?",
         body:
           "Connect requests read + write scopes at OAuth consent, with a plain-language explanation for each. While a Nibbin is in School it drafts every side effect for your approval — nothing acts autonomously until the Nibbin has earned your trust.\n\nConnection tokens are stored in an encrypted vault, not in the app database. One-click revoke cascades to all associated grants and destroys the stored token immediately.\n\nFor the optional Gmail voice-learning sweep: if you opt in, sent messages are processed by the model and your inbox is reduced to subjects and previews — only short derived notes are kept. The raw mail is not retained. This is off by default and opt-in only.",
-        keywords: ["gmail", "connections", "write scopes", "earned autonomy", "token", "vault", "revoke", "sweep", "voice learning"],
+        keywords: ["gmail", "connections", "write scopes", "action level", "token", "vault", "revoke", "sweep", "voice learning"],
       },
       {
         id: "priv-no-telemetry",
@@ -301,7 +301,7 @@ export const HELP_CONTENT: HelpContent = [
         id: "agents-shop-overview",
         q: "What is the Agent Shop?",
         body:
-          "The Agent Shop (/app/shop) is where you browse and adopt the six ready-made Nibbins. Each has a clear tagline, a description of what it does, and a list of the connections it needs. All start as drafting-only and earn autonomy through Agent School.\n\nThe six are:\n• Sweep — “Keeps your inbox floor clean.” Keep-or-clear inbox list. Needs: Gmail.\n• Echo — “Never lets a thread go quiet.” Overdue-reply nudges. Needs: Gmail.\n• Scribe — “Answers the question you answer every week.” Repeat-inquiry replies in your voice. Needs: Gmail.\n• Brief — “Your morning, on one card.” Five-line morning summary. Needs: Gmail + Google Calendar + Stripe.\n• Tally — “Minds the money you already earned.” Overdue invoice nudges. Needs: Stripe.\n• Hopper — “Keeps your calendar honest.” Tomorrow’s booking confirmations. Needs: Google Calendar + Gmail.",
+          "The Agent Shop (/app/shop) is where you browse and adopt the six ready-made Nibbins. Each has a clear tagline, a description of what it does, and a list of the connections it needs. All start at the Draft action level — you set each one's action level (Observe/Draft/Send); Agent School grades how well it's doing.\n\nThe six are:\n• Sweep — “Keeps your inbox floor clean.” Keep-or-clear inbox list. Needs: Gmail.\n• Echo — “Never lets a thread go quiet.” Overdue-reply nudges. Needs: Gmail.\n• Scribe — “Answers the question you answer every week.” Repeat-inquiry replies in your voice. Needs: Gmail.\n• Brief — “Your morning, on one card.” Five-line morning summary. Needs: Gmail + Google Calendar + Stripe.\n• Tally — “Minds the money you already earned.” Overdue invoice nudges. Needs: Stripe.\n• Hopper — “Keeps your calendar honest.” Tomorrow’s booking confirmations. Needs: Google Calendar + Gmail.",
         keywords: ["shop", "six", "sweep", "echo", "scribe", "brief", "tally", "hopper", "ready-made"],
       },
       {
@@ -395,8 +395,8 @@ export const HELP_CONTENT: HelpContent = [
         id: "conn-read-vs-write",
         q: "What is the difference between read access and write access?",
         body:
-          "Connect requests the scopes your Nibbins may use (read + write), with a plain-language explanation for each. Holding a write scope doesn’t authorize action — execution is gated by the earned-autonomy model.\n\nWhile a Nibbin is in School (Student, or Senior not yet on a proven routine) it drafts every side effect for your approval. Only a Graduate, or a Senior on a proven routine, may act autonomously. The access label in Connections shows either “Read-only access” (no write grant) or “Includes actions you approve · revoke anytime.”\n\nWrite access can be revoked in one click from the Connections page. Revoking cascades: all grants for that tool are suspended and the stored token is destroyed immediately.",
-        keywords: ["write scopes", "earned autonomy", "grant", "per nibbin", "revoke", "drafting", "send"],
+          "Connect requests the scopes your Nibbins may use (read + write), with a plain-language explanation for each. Holding a write scope doesn’t authorize action — execution is gated by the owner-set action level (Observe / Draft / Send). You decide what each Nibbin may do, and you can change or revoke it anytime. Agent School grades how accurately it’s working so you know when to grant more.\n\nThe access label in Connections shows either “Read-only access” (no write grant) or “Includes actions you approve · revoke anytime.”\n\nWrite access can be revoked in one click from the Connections page. Revoking cascades: all grants for that tool are suspended and the stored token is destroyed immediately.",
+        keywords: ["write scopes", "action level", "grant", "per nibbin", "revoke", "drafting", "send"],
       },
       {
         id: "conn-privacy-of-data",

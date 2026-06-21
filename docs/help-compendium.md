@@ -98,7 +98,7 @@ The desktop app is where the real work happens — it's the only place your Nibb
 
 **Keeper.** See Grovekeeper. (Always locked from editing tools by design.)
 
-**Agents & capabilities.** Each Nibbin is built from **capabilities** — typed, atomic skills like `email.read`, `email.draft`, `calendar.read`, `payments.read`, `invoice.nudge`, plus higher-level **primitives** (e.g. "nudge overdue email," "morning digest"). A Nibbin can only ever use the capabilities it was given, and only at the trust level it's earned.
+**Agents & capabilities.** Each Nibbin is built from **capabilities** — typed, atomic skills like `email.read`, `email.draft`, `calendar.read`, `payments.read`, `invoice.nudge`, plus higher-level **primitives** (e.g. "nudge overdue email," "morning digest"). A Nibbin can only ever use the capabilities it was given, and only at the action level you've granted.
 
 **Composer.** The system that **builds a custom Nibbin for you** from a diagnosis or a description — it assembles validated primitives into a working helper. You review it before it's created (see Section 3).
 
@@ -133,7 +133,7 @@ The desktop app is where the real work happens — it's the only place your Nibb
 - **Exclusions** let you name an app or a website that should **never** be recorded; they persist across sessions (source: `exclusion-persistence.md`). Add them from Review or Preferences.
 
 ### The six Shop Nibbins (verbatim from `packages/runtime/src/templates.ts`)
-All start as drafting-only and earn autonomy through Agent School. Each lists its required connections.
+All start at the Draft action level — you set each one's action level (Observe/Draft/Send); Agent School grades how well it's doing. Each lists its required connections.
 
 | Nibbin | Tagline | What it does | Needs |
 |---|---|---|---|
@@ -175,7 +175,7 @@ After you supervise a successful one-off Planner run, Nibbin can offer **"Make t
 
 ### Connections — **Gmail live (tester-gated); Calendar + Stripe coming soon**
 - **Connections** (`/app/connections`) — *"Accounts your Nibbins work from."*
-- **Earned-autonomy gated.** Connect requests read + write scopes at OAuth consent, with plain-language explanation (INVARIANT C8). While a Nibbin is learning it drafts every side effect for your approval; once it has earned trust (Graduate, or Senior on a proven routine) it may act autonomously. Access shows as **"Read-only access"** (no write grant) or **"Includes actions you approve · revoke anytime"** (write grant held, autonomy depends on stage). |
+- **Action-level gated.** Connect requests read + write scopes at OAuth consent, with plain-language explanation (INVARIANT C8). Holding a write scope doesn't authorize action — execution is gated by the owner-set action level (Observe / Draft / Send). You decide what each Nibbin may do, and you can change or revoke it anytime. Agent School grades how accurately it's working so you know when to grant more. Access shows as **"Read-only access"** (no write grant) or **"Includes actions you approve · revoke anytime"** (write grant held, action level set by you). |
 - **Live in code:** **Gmail** (`gmail.readonly` + `gmail.compose` + `gmail.send` requested at connect). **Coming soon:** **Google Calendar** (`calendar.readonly` + `calendar.events` at connect), **Stripe.**
 - ⚠️ **HoneyBook, Instagram, Pixieset, QuickBooks, Outlook, Notion, Drive/Dropbox** appear in the **Hatch Your Own** app-picker and in product/strategy docs, but are **not** in the connectable provider list today. They are **roadmap, not connectable now.** Confirm against `connections/lib/providers.ts` before publishing any "supported tools" list.
 - **Write grants** are per-capability and revocable one-click; revoking a connection suspends all its grants and destroys the stored token (INVARIANT C9).
@@ -219,7 +219,7 @@ Nibbin's whole design is built so that **your screen never leaves your computer*
 - **Raw data is verifiably deleted after synthesis (C3).** After your packet is safely uploaded, the raw data is deleted and an **independent verifier confirms it's gone.** Deletion is user-visible, and account deletion produces a receipt.
 - **No telemetry; no data sales (C1, C11).** Nibbin doesn't quietly phone home, and it never sells your data.
 - **Nibbin never trains its models on your content — ever. That's a hard guarantee, not a setting** (there is no toggle because it never happens). Separately, a **Model improvement** toggle controls whether Nibbin learns from anonymized, aggregate signals about how its capabilities and models perform — never your data, never your content, never sold. **That toggle is ON by default (opt-out)**; turn it off anytime in Data & Privacy. (Source: `settings/privacy/page.tsx`, Trust & Controls D1-A.)
-- **Nothing acts on your behalf while a Nibbin is learning (C8).** Connect requests the access your Nibbins may use (read + write scopes, explained plainly); execution is gated by the earned-autonomy model — every side effect is drafted for your approval while a Nibbin is in School, and it only acts autonomously once it has earned your trust. Tokens live in an **encrypted vault, never the app database**, with **one-click revoke that cascades** (C9).
+- **Nothing acts on your behalf without your permission (C8).** Connect requests the access your Nibbins may use (read + write scopes, explained plainly); execution is gated by the owner-set action level (Observe / Draft / Send) — holding a write scope doesn't authorize action, you grant each Nibbin what it may do. Agent School grades how accurately it's working so you know when to grant more. Tokens live in an **encrypted vault, never the app database**, with **one-click revoke that cascades** (C9).
 - **The Grovekeeper can never act (C10).** It holds zero side-effect tools, permanently.
 
 ### What's kept, and for how long (from the Data & Privacy panel)
@@ -352,9 +352,9 @@ Check its action level — if it is set to Draft, every output comes to you for 
 
 **What's the Grovekeeper?** Your guide. It chats, writes your diagnosis letter, and keeps things tidy — but it **can never send or change anything.**
 
-**What are the stages?** **Egg** (observes) → **Student** (drafts for approval) → **Senior** (routine autonomy) → **Graduate** (in-spec autonomy). Trust is earned by accuracy, not time.
+**What are the Agent School grades?** **Egg** (observes) → **Student** (drafts for approval) → **Senior** (proven-routine grade) → **Graduate** (in-spec grade). These are accuracy grades, not autonomy unlocks — you set what each Nibbin may do via its action level (Observe/Draft/Send).
 
-**How does a Nibbin earn autonomy?** **≥95% of its drafts approved without edits over a rolling 25-run window.** Graduating to full autonomy also needs proven accuracy across **≥4 distinct routine patterns**, with high-stakes actions weighted more.
+**How does a Nibbin's Agent School grade improve?** A Nibbin advances when **≥95% of its drafts are approved without edits over a rolling 25-run window.** Reaching Graduate also needs proven accuracy across **≥4 distinct routine patterns**, with high-stakes actions weighted more. Better grades tell you when it's safe to grant a higher action level — but the grade alone does not unlock execution.
 
 **Can it demote a Nibbin automatically?** No. It may **nudge** you if recent drafts start getting edited, but **demotion is one click and always your call.** Pausing never costs earned progress.
 
@@ -368,7 +368,7 @@ Check its action level — if it is set to Draft, every output comes to you for 
 
 **What tools can I connect?** **Gmail** today. **Google Calendar and Stripe are coming soon.** Other tools shown in the Hatch picker are on the roadmap, not connectable yet. ⚠️ Some connections are tester-allowlist-gated — request access if you're not on the list.
 
-**Are my connections read-only?** Connect requests read + write scopes at consent, with a plain-language explanation. While a Nibbin is learning it drafts everything for your approval — nothing acts on its own. Once a Nibbin earns trust (Graduate, or Senior on a proven routine) it may act autonomously. Revoke in one click anytime.
+**Are my connections read-only?** Connect requests read + write scopes at consent, with a plain-language explanation. Holding a write scope doesn't authorize action — you set each Nibbin's action level (Observe / Draft / Send) and nothing acts beyond what you've granted. Agent School grades how accurately it's been working so you know when to grant more. Revoke in one click anytime.
 
 **What is Grove Memory?** Your editable business brain — facts, pricing, policies, FAQs, voice, and **hard rules** — shared with all your Nibbins so their drafts sound like you. Edit or clear any of it anytime.
 
@@ -384,7 +384,7 @@ Check its action level — if it is set to Draft, every output comes to you for 
 
 **Which tools can I connect, really?** Today: **Gmail** (read + write scopes at connect; voice-learning read optional). **Calendar** and **Stripe** are **coming soon**. Connections are allowlist-gated — request access if you're not a tester. ⚠️ HoneyBook/Instagram/Pixieset/QuickBooks/Outlook/Notion/Drive appear in the Hatch picker and strategy docs but are **NOT connectable** — roadmap only. Confirm against `apps/web/lib/connections/providers.ts`.
 
-**How do write/send permissions work?** Connect requests write scopes at consent with a plain-language explanation. A Nibbin then climbs a trust ladder (draft-only → one-click-send → autonomous-send for email; draft → autonomous for calendar). While a Nibbin is learning, every side effect is drafted for your approval. Only a Graduate — or a Senior on a proven routine — may act autonomously. Revoke anytime in one click.
+**How do write/send permissions work?** Connect requests write scopes at consent with a plain-language explanation. Holding a write scope does not authorize action — you set each Nibbin's action level (Observe / Draft / Send). While a Nibbin is at the Draft level, every side effect is drafted for your approval; at Send, it acts immediately within its spec. Agent School grades how accurately it has been working so you know when to grant more. Revoke anytime in one click.
 
 **What's in Memory?** Facts (what you do, pricing, policies, FAQ), Voice (how you sound), and Hard rules (non-negotiables never broken in a draft). Edit or clear anytime.
 
