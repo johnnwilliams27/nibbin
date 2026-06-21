@@ -54,7 +54,7 @@ export async function setNibbinActionLevel(
     .select('id', { count: 'exact', head: true })
     .eq('id', id)
     .eq('account_id', accountId);
-  if (!owns) throw new Error(`nibbin ${id} not found for this account`);
+  if (!owns) return { ok: false, error: `nibbin ${id} not found for this account` };
 
   // ── Update action_level ─────────────────────────────────────────────────────
   const { error: updateError } = await svc
@@ -62,7 +62,7 @@ export async function setNibbinActionLevel(
     .update({ action_level: level })
     .eq('id', id)
     .eq('account_id', accountId);
-  if (updateError) throw new Error(`setNibbinActionLevel update failed: ${updateError.message}`);
+  if (updateError) return { ok: false, error: `setNibbinActionLevel update failed: ${updateError.message}` };
 
   // ── Grant reconciliation ────────────────────────────────────────────────────
   if (level === 'send') {
@@ -89,7 +89,7 @@ export async function setNibbinActionLevel(
       const { error: upsertError } = await svc
         .from('nibbin_write_grants')
         .upsert(grantRows, { onConflict: 'nibbin_id,connection_id,capability' });
-      if (upsertError) throw new Error(`setNibbinActionLevel grant upsert failed: ${upsertError.message}`);
+      if (upsertError) return { ok: false, error: `setNibbinActionLevel grant upsert failed: ${upsertError.message}` };
     }
   } else {
     // draft / observe — revoke all active grants for this Nibbin so the audit
@@ -100,7 +100,7 @@ export async function setNibbinActionLevel(
       .eq('nibbin_id', id)
       .eq('account_id', accountId)
       .is('revoked_at', null);
-    if (revokeError) throw new Error(`setNibbinActionLevel grant revoke failed: ${revokeError.message}`);
+    if (revokeError) return { ok: false, error: `setNibbinActionLevel grant revoke failed: ${revokeError.message}` };
   }
 
   revalidatePath('/app/nibbins');

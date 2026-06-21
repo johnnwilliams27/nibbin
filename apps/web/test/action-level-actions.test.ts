@@ -189,9 +189,9 @@ it('setNibbinActionLevel rejects a nibbin that belongs to a different account (I
   mockSession('attacker-acc');
   (serviceClient as ReturnType<typeof vi.fn>).mockReturnValue(svc);
 
-  await expect(setNibbinActionLevel('victim-nibbin', 'send')).rejects.toThrow(
-    /not found for this account/i,
-  );
+  const result = await setNibbinActionLevel('victim-nibbin', 'send');
+  expect(result.ok).toBe(false);
+  expect(result.error).toMatch(/not found for this account/i);
 
   // Ownership check must have fired but action_level must NOT have been updated
   expect(calls.ownershipCheck).not.toBeNull();

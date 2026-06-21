@@ -7,11 +7,11 @@ import { EmptyState } from '../../../components/ui';
 import { Tooltip, InfoTooltip } from '../../../components/ui/Tooltip';
 import { NoteRefresher } from './NoteRefresher';
 import { NibbinEditor } from './NibbinEditor';
-import { BackToDrafts } from './BackToDrafts';
 import { TrainingToggle, type TrainingState } from './TrainingToggle';
 import { NibbinControls } from './NibbinControls';
 import { refreshNibbinNote } from './actions';
 import { RetuneDialog } from './RetuneDialog';
+import type { ActionLevel } from './action-level-actions';
 import styles from './nibbins.module.css';
 
 export const metadata: Metadata = { title: 'Your Nibbins — Nibbin' };
@@ -68,6 +68,7 @@ interface NibbinRow {
   hatched_at: string;
   learned_note: string | null;
   learned_note_runs: number;
+  action_level: string | null;
   agent_specs: SpecRow | SpecRow[] | null;
 }
 interface RunRow {
@@ -232,7 +233,7 @@ export default async function NibbinsPage() {
       supabase
         .from('nibbins')
         .select(
-          'id, name, species, stage, status, paused_reason, palette, accessory, marking, stage_changed_at, hatched_at, learned_note, learned_note_runs, agent_specs(display_name, template_key, version)',
+          'id, name, species, stage, status, paused_reason, palette, accessory, marking, stage_changed_at, hatched_at, learned_note, learned_note_runs, action_level, agent_specs(display_name, template_key, version)',
         )
         .eq('account_id', accountId)
         .eq('kind', 'specialist')
@@ -467,9 +468,6 @@ export default async function NibbinsPage() {
                       state={trainingByNibbin.get(n.id) ?? { active: false }}
                     />
                   )}
-                  {(n.stage === 'senior' || n.stage === 'grad') && (
-                    <BackToDrafts nibbinId={n.id} name={n.name} />
-                  )}
                   <NibbinEditor
                     nibbin={{
                       id: n.id,
@@ -487,6 +485,9 @@ export default async function NibbinsPage() {
                     name={n.name}
                     status={n.status}
                     pausedReason={n.paused_reason ?? null}
+                    actionLevel={(n.action_level as ActionLevel) ?? 'draft'}
+                    stage={n.stage}
+                    matchPct={d.matchPct}
                   />
                 </span>
               </div>

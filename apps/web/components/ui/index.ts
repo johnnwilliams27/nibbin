@@ -9,3 +9,5 @@ export { Tooltip, InfoTooltip } from "./Tooltip";
 export type { TooltipProps, InfoTooltipProps } from "./Tooltip";
 export { EmptyState } from "./EmptyState";
 export type { EmptyStateProps } from "./EmptyState";
+export { SegmentedControl } from "./SegmentedControl";
+export type { SegmentedControlProps, SegmentOption } from "./SegmentedControl";
