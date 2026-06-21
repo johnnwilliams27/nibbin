@@ -22,11 +22,11 @@ const SYSTEM_PAUSE_LABELS: Record<string, string> = {
   connection: 'Paused — connection issue',
 };
 
-const ACTION_LEVEL_OPTIONS = [
+const ACTION_LEVEL_OPTIONS: Array<{ value: string; label: string; description?: string }> = [
   { value: 'observe', label: 'Observe', description: 'Nibbin watches and learns — no drafts or sends.' },
   { value: 'draft',   label: 'Draft',   description: 'Nibbin prepares drafts for your approval.' },
   { value: 'send',    label: 'Send',    description: 'Nibbin can send after your one-time grant.' },
-] as const;
+];
 
 type Stage = 'egg' | 'student' | 'senior' | 'grad';
 
@@ -105,6 +105,7 @@ export function NibbinControls({
   }
 
   function handleLevelChange(level: string) {
+    // Safe: ACTION_LEVEL_OPTIONS is the only source of values passed to onChange.
     const l = level as ActionLevel;
     // Non-blocking Send warning: if choosing Send and the nibbin is below Graduate,
     // show a confirm. The owner can still proceed — it never blocks.
@@ -145,7 +146,7 @@ export function NibbinControls({
       {/* Action level segmented control */}
       <span style={{ display: 'inline-flex', flexDirection: 'column', gap: 6 }}>
         <SegmentedControl
-          options={ACTION_LEVEL_OPTIONS as unknown as Array<{ value: string; label: string; description?: string }>}
+          options={ACTION_LEVEL_OPTIONS}
           value={actionLevel}
           onChange={handleLevelChange}
           disabled={levelPending || pending}
