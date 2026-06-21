@@ -848,6 +848,71 @@ describe('#44: routine-pattern trust resets on demotion (stage-scoped approvals)
   });
 });
 
+// ── Task 6: lock — dispatchStep outcome is invariant to stage (grade never gates) ─────────────
+// Parametrized proof: the SAME step with a FIXED actionLevel yields the SAME
+// outcome at every non-egg stage (student / senior / grad). Grade is purely a
+// report-card label; it has zero influence on the draft-vs-execute decision.
+describe('Task 6 lock: dispatchStep outcome is invariant to stage for a fixed actionLevel', () => {
+  // Stages the runner can actually process (egg is short-circuited at pre-run).
+  const runnableStages = ['student', 'senior', 'grad'] as const;
+
+  const draftYield: ProgramFn = async function* () {
+    yield {
+      kind: 'draft',
+      capability: 'email.send',
+      connectionId: CONN,
+      patternKey: 'p-lock',
+      title: 'Lock test email',
+      draft: 'Body',
+      effectArgs: { threadId: 't-lock-1' },
+    };
+  };
+
+  function lockHarness(actionLevel: 'observe' | 'draft' | 'send', stage: NibbinRef['stage']) {
+    const h = harness({ credits: 1000 });
+    h.runs.nibbinState('nib-1').actionLevel = actionLevel;
+    const nibRef: NibbinRef = { ...nib(), stage };
+    return { h, nibRef };
+  }
+
+  it.each(runnableStages)(
+    'actionLevel=send + stage=%s → executed (grade never gates)',
+    async (stage) => {
+      const { h, nibRef } = lockHarness('send', stage);
+      let executed = 0;
+      h.deps.effects = { async execute() { executed += 1; } };
+      const out = await executeRun(nibRef, TRIGGER, draftYield, h.deps);
+      expect(out.kind).toBe('executed');
+      expect(executed).toBe(1);
+    },
+  );
+
+  it.each(runnableStages)(
+    'actionLevel=draft + stage=%s → drafted (grade never gates)',
+    async (stage) => {
+      const { h, nibRef } = lockHarness('draft', stage);
+      let executed = 0;
+      h.deps.effects = { async execute() { executed += 1; } };
+      const out = await executeRun(nibRef, TRIGGER, draftYield, h.deps);
+      expect(out.kind).toBe('awaiting_approval');
+      expect(executed).toBe(0); // no side effect
+    },
+  );
+
+  it.each(runnableStages)(
+    'actionLevel=observe + stage=%s → kill:observe (grade never gates)',
+    async (stage) => {
+      const { h, nibRef } = lockHarness('observe', stage);
+      let executed = 0;
+      h.deps.effects = { async execute() { executed += 1; } };
+      const out = await executeRun(nibRef, TRIGGER, draftYield, h.deps);
+      expect(out.kind).toBe('killed');
+      expect((out as { reason: string }).reason).toBe('observe');
+      expect(executed).toBe(0);
+    },
+  );
+});
+
 // ── Task 4: native-draft lifecycle — end-to-end ref persistence ───────────────
 // These 4 tests prove the full lifecycle from the runner's perspective:
 //   (a) email.send nativeDraft step at Draft level → executor called, ref persisted
