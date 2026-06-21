@@ -73,11 +73,11 @@ export default function AboutPage() {
             their week disappears to.
           </p>
           <p>
-            Only then does Nibbin suggest a few agents matched to your actual work, not a generic menu. Each Nibbin
-            starts as a Student. It drafts, you approve, and it earns more responsibility only as it proves, over real
-            tasks, that it gets things right. We call this Agent School. You always see what your Nibbins are doing,
-            why they’re doing it, and how accurate they’ve been. Nothing is a black box, and nothing graduates to
-            working on its own until you’ve watched it earn the right.
+            Only then does Nibbin suggest a few agents matched to your actual work, not a generic menu. You choose
+            what each Nibbin may do — Observe, Draft, or Send. Agent School grades how accurately it has been working,
+            so you always have the information to decide when to grant it more. You always see what your Nibbins are
+            doing, why they are doing it, and how accurate they have been. Nothing is a black box, and nothing acts
+            at the Send level until you grant it.
           </p>
 
           <h2>Personable, not just powerful</h2>
@@ -102,9 +102,9 @@ export default function AboutPage() {
                 uses to understand your workflows never leave your device.
               </li>
               <li>
-                <strong>Nothing acts without your approval until it’s earned it.</strong> Every new Nibbin drafts for
-                you first. Autonomy is granted by you, gradually, based on proven accuracy — and you can pull it back
-                at any time.
+                <strong>Nothing acts without your say-so.</strong> Every new Nibbin starts by drafting for you; you
+                decide when it may Send. Agent School grades its accuracy so you know when to grant more — and you can
+                pull it back at any time.
               </li>
               <li>
                 <strong>You can see, edit, and delete everything Nibbin knows</strong> about your business, in plain

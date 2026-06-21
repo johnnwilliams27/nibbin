@@ -4,7 +4,7 @@ import { appSession } from '../../../../lib/auth/app-session';
 import { serviceClient } from '../../../../lib/supabase/service';
 import { GmailClient, SupabaseTokenVault } from '@nibbin/connectors';
 import { pushDraftToGmail } from '../../../../lib/connections/push-draft';
-import { revokeWriteGrant } from '../../../../lib/connections/grants';
+import { revokeWriteGrant, type WriteCapability } from '../../../../lib/connections/grants';
 import { connectionFromRow } from '../../../../lib/runtime/engine';
 import { maybePromote } from '../../../../lib/runtime/engine';
 
@@ -66,13 +66,28 @@ export async function pushDraftToGmailAction(
         if (typeof p.rfc822 !== 'string') throw new Error('draft step has no rfc822 payload');
         return p.rfc822;
       },
+      // Task 4: return the stored native_draft_ref from run_steps.payload so we
+      // don't create a second Gmail draft when the runner already mirrored one.
+      loadNativeDraftRef: async (rId, idx, aId) => {
+        const { data } = await svc
+          .from('run_steps')
+          .select('payload')
+          .eq('run_id', rId)
+          .eq('idx', idx)
+          .eq('account_id', aId)
+          .eq('kind', 'draft')
+          .maybeSingle();
+        if (!data) return null;
+        const p = data.payload as Record<string, unknown>;
+        return typeof p.nativeDraftRef === 'string' ? p.nativeDraftRef : null;
+      },
       hasGrant: async (nId, connId) => {
         const { count } = await svc
           .from('nibbin_write_grants')
           .select('id', { count: 'exact', head: true })
           .eq('nibbin_id', nId)
           .eq('connection_id', connId)
-          .eq('capability', 'email.draft')
+          .eq('capability', 'email.send')
           .is('revoked_at', null);
         return (count ?? 0) > 0;
       },
@@ -109,7 +124,7 @@ export async function pushDraftToGmailAction(
 export async function revokeWriteGrantAction(
   nibbinId: string,
   connectionId: string,
-  capability: 'email.draft' | 'email.send',
+  capability: WriteCapability,
 ): Promise<void> {
   const { accountId } = await appSession();
   // FIX 2: verify nibbin belongs to session account before revoking grants

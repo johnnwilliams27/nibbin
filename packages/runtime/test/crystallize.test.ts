@@ -57,10 +57,12 @@ describe('crystallizeTranscript — steps from the trace', () => {
   it('marks a raw atomic draft pick as ungeneralizable (must ride a primitive)', () => {
     const out = crystallizeTranscript(
       runWith([
-        { idx: 0, pick: { tool: 'email.draft', args: { threadId: 'thread-abc' } }, observation: 'drafted' },
+        { idx: 0, pick: { tool: 'email.send', args: { threadId: 'thread-abc' } }, observation: 'drafted' },
         { idx: 1, pick: { done: true, artifact: {} } },
       ]),
     );
+    // email.send is a registered write capability — the "raw write must ride a
+    // primitive" branch fires (sideEffect === 'write'), returning ungeneralizable.
     expect(out).toEqual({ ok: false, reason: 'ungeneralizable', detail: expect.any(String) });
   });
 
@@ -189,11 +191,15 @@ describe('crystallizabilityGate — fail-closed', () => {
   it('refuses an un-generalizable raw atomic draft with ungeneralizable', () => {
     const out = crystallizabilityGate(
       runWith([
-        { idx: 0, pick: { tool: 'email.draft', args: { threadId: 'thread-abc' } }, observation: 'drafted' },
+        { idx: 0, pick: { tool: 'email.send', args: { threadId: 'thread-abc' } }, observation: 'drafted' },
         { idx: 1, pick: { done: true, artifact: {} } },
       ]),
       ['gmail'],
     );
+    // email.send is a registered write capability — the gate reaches
+    // crystallizeTranscript which hits the raw-write branch (sideEffect === 'write')
+    // and returns ungeneralizable. Same reason as before; detail differs but is
+    // asserted as any string so the test remains meaningful.
     expect(out).toEqual({ ok: false, reason: 'ungeneralizable', detail: expect.any(String) });
   });
 

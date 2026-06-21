@@ -8,9 +8,9 @@ import { Wordmark } from './(marketing)/Wordmark';
 
 const SCHOOL = [
   { pill: 'ep-egg', label: 'Egg', stage: 'egg' as const, role: ['Enrolled', 'learning your style'] },
-  { pill: 'ep-student', label: 'Student', stage: 'student' as const, role: ['Drafts only', 'you approve every send'] },
-  { pill: 'ep-senior', label: 'Senior', stage: 'senior' as const, role: ['Sends the routine', 'exceptions come to you'] },
-  { pill: 'ep-grad', label: 'Graduate', stage: 'grad' as const, role: ['Works alone', 'every run logged'] },
+  { pill: 'ep-student', label: 'Student', stage: 'student' as const, role: ['Drafts for your approval', 'accuracy building'] },
+  { pill: 'ep-senior', label: 'Senior', stage: 'senior' as const, role: ['Reliable on routine work', 'you decide if it sends'] },
+  { pill: 'ep-grad', label: 'Graduate', stage: 'grad' as const, role: ['Proven across its spec', 'grant Send with confidence'] },
 ];
 
 const STEPS = [
@@ -49,7 +49,7 @@ const PRIVACY = [
   {
     pi: 'Nothing acts without you',
     h: 'Nothing sends without you',
-    p: 'A connection can hold the keys to act, but no email is sent and no event is booked until you approve it. A Nibbin earns the ability to act, per task, only after its accuracy was verified on drafts you approved first.',
+    p: 'A connection can hold the keys to act, but no email is sent and no event is booked until you approve it. You grant each Nibbin what it may do — Observe, Draft, or Send. Agent School grades how accurately it has been working so you always know when to trust it with more.',
   },
   {
     pi: 'Yours to control',
@@ -122,9 +122,10 @@ export default function Home() {
             </h1>
             <p className="lede">
               Hatch your first Nibbin in minutes. The Grovekeeper connects your tools, scans for busywork, and
-              staffs it with small helpers that learn your way of doing things, earn your trust draft by draft,
-              and graduate to handling the boring parts for real. A two-week Field Study runs quietly alongside and
-              deepens the map into a full diagnosis.
+              staffs it with small helpers that learn your way of doing things. You decide what each Nibbin may
+              do — Observe, Draft, or Send — and Agent School grades how well it is doing so you always know
+              when to extend more trust. A two-week Field Study runs quietly alongside and deepens the map into
+              a full diagnosis.
             </p>
             <div className="cta-row">
               <a className="btn btn-solid" href="#join">
@@ -141,7 +142,7 @@ export default function Home() {
             </p>
           </div>
           <div className="evocard">
-            <span className="t">Agent School — every Nibbin earns its way up</span>
+            <span className="t">Agent School — your Nibbin&apos;s competency report card</span>
             <svg className="evo-vine" viewBox="0 0 400 14" preserveAspectRatio="none" aria-hidden="true">
               <path
                 d="M8 9 C70 1 120 13 200 7 C280 1 330 12 392 6"
@@ -236,7 +237,7 @@ export default function Home() {
                 </div>
                 <div className="kp">
                   <b>Orchestrates and delegates.</b> The Keeper can never send, post, pay, or delete. It explains each
-                  recommendation; only Nibbins you’ve approved do the work, at the trust level they’ve earned.
+                  recommendation; only Nibbins you’ve approved do the work, at the action level you’ve set.
                 </div>
               </div>
             </div>

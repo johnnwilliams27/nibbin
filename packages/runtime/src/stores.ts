@@ -32,6 +32,7 @@ export interface NibbinCurrentState {
   stage: import('./types').StageName;
   stageChangedAt: number;
   status: 'active' | 'paused' | 'sleeping';
+  actionLevel: 'observe' | 'draft' | 'send';
 }
 
 export interface RunStore {
@@ -108,6 +109,8 @@ export interface MemoryNibbinState {
   /** Stage tracking for mid-run re-check (#43). Defaults to 'student' if not set. */
   stage?: import('./types').StageName;
   stageChangedAt?: number;
+  /** Permission model action level. Defaults to 'draft' if not set. */
+  actionLevel?: 'observe' | 'draft' | 'send';
 }
 
 export class MemoryRunStore implements RunStore {
@@ -268,6 +271,14 @@ export class MemoryRunStore implements RunStore {
     run.steps.push(step);
   }
 
+  /**
+   * Test helper: return all recorded steps for a run. Used by lifecycle tests
+   * that assert on run_steps.payload.nativeDraftRef (Task 4).
+   */
+  getSteps(runId: string): StepRecord[] {
+    return this.runs.get(runId)?.steps ?? [];
+  }
+
   async getNibbin(nibbinId: string): Promise<NibbinCurrentState | null> {
     // nibbinState() auto-creates a default { status: 'active' } entry, mirroring
     // how begin() treats an unseen nibbin. We never return null from the in-memory
@@ -277,6 +288,7 @@ export class MemoryRunStore implements RunStore {
       stage: state.stage ?? 'student',
       stageChangedAt: state.stageChangedAt ?? 0,
       status: state.status,
+      actionLevel: state.actionLevel ?? 'draft',
     };
   }
 }

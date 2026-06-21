@@ -55,8 +55,8 @@ tripwires, and Nibbin's design satisfies them by construction:
 - **24-hour standard messaging window:** replies are sent within the standard window in response
   to a user-initiated message; if a human-handoff is needed beyond 24h, use the `human_agent`
   tag (≤7 days) — never message-tag abuse for marketing.
-- **Read-only until granted (C8):** the connection reads DMs to scan; sending is a distinct,
-  user-approved action.
+- **Write requires a grant + Send action level (C8):** the connection reads DMs to scan; sending
+  requires both a write grant and the owner having set the Send action level on that Nibbin.
 - **Abuse controls (§6.9):** per-account send-velocity caps, new-account cooldowns, moderation on
   autonomous outbound, complaint-rate monitoring with automatic pause, per-capability kill
   switches. Name these — Meta wants to see you can't become a spam vector.

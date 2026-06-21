@@ -36,7 +36,7 @@ function spec(steps: CapabilityStep[]): AgentSpec {
     templateKey: 'echo',
     version: 1,
     displayName: 'Composed',
-    toolsAllowlist: ['email.read', 'email.draft'],
+    toolsAllowlist: ['email.read', 'email.send'],
     requiredConnectors: ['gmail'],
     triggers: [{ kind: 'user', debounceSecs: 0, cooldownSecs: 0 }],
     curriculum: { measures: 'test', promotion: { windowRuns: 25, minApprovedUneditedPct: 0.95 }, routineMinApprovals: 5 },
@@ -75,7 +75,11 @@ function harness(model?: ModelDrafter): Harness {
     },
     effects: {
       async execute(req) {
+        // Skip the native-draft mirror (createDraft at draft level) — `executed`
+        // tracks real SENDS / side effects, not native-draft creation.
+        if (req.args.nativeDraft === true) return undefined;
         executed.push({ capability: req.capability });
+        return undefined;
       },
     },
     model,
@@ -95,7 +99,7 @@ describe('interpretSpec — runs a declarative steps-spec via the real runner', 
     const s = spec([
       { capability: 'email.read', inputs: { path: '/gmail/v1/users/me/messages?q=in:inbox' } },
       {
-        capability: 'email.draft',
+        capability: 'email.send',
         prompt: { intent: 'Draft a warm follow-up.', context: 'Subject: Project', maxTokens: 200 },
         inputs: { to: 'someone@example.com', subject: 'Re: Project' },
       },
@@ -110,7 +114,7 @@ describe('interpretSpec — runs a declarative steps-spec via the real runner', 
     // The draft carries the model text (compose→draft handoff) + the bound args.
     expect(outcome.draft.draft).toContain('circling back');
     // Per-step patternKey: prefix:templateKey#idx (the draft is step index 1).
-    expect(outcome.draft.patternKey).toBe('email.draft:echo#1');
+    expect(outcome.draft.patternKey).toBe('email.send:echo#1');
     expect(outcome.draft.effectArgs).toEqual({ to: 'someone@example.com', subject: 'Re: Project' });
     // It NEVER executed — interpreter yields steps; the runner gated it as a draft.
     expect(h.executed).toHaveLength(0);
@@ -120,7 +124,7 @@ describe('interpretSpec — runs a declarative steps-spec via the real runner', 
     const h = harness(); // no model
     const s = spec([
       {
-        capability: 'email.draft',
+        capability: 'email.send',
         prompt: { intent: 'Draft something.', context: 'x' },
         inputs: { to: 'a@b.com' },
       },
@@ -170,13 +174,16 @@ describe('interpretSpec — runs a declarative steps-spec via the real runner', 
     expect(outcome.error).toContain('missing inputs.path');
   });
 
-  it('a granted Graduate executes the composed draft (earned autonomy flows through the interpreter)', async () => {
+  it('actionLevel=send executes the composed draft (action level flows through the interpreter)', async () => {
+    // CONVERTED (Task 2): was "a granted Graduate executes (earned autonomy flows through)".
+    // NEW: actionLevel='send' is the sole gate — grade and grant are irrelevant.
+    // Using 'student' stage + no grant to prove neither is required for execution.
     const h = harness();
-    (h.deps.grants as MemoryGrantStore).grant('nib-i', GMAIL, 'email.draft');
-    const s = spec([{ capability: 'email.draft', inputs: { to: 'a@b.com' } }]);
-    const outcome = await executeRun(nib(s, 'grad'), TRIGGER, interpretSpec(s, CONN_MAP), h.deps);
+    h.runs.nibbinState('nib-i').actionLevel = 'send';
+    const s = spec([{ capability: 'email.send', inputs: { to: 'a@b.com' } }]);
+    const outcome = await executeRun(nib(s, 'student'), TRIGGER, interpretSpec(s, CONN_MAP), h.deps);
     expect(outcome.kind).toBe('executed');
-    expect(h.executed).toEqual([{ capability: 'email.draft' }]);
+    expect(h.executed).toEqual([{ capability: 'email.send' }]);
   });
 
   /* ── P2-1: read-path guard (SSRF / traversal) ──────────────────────────── */
@@ -209,7 +216,7 @@ describe('interpretSpec — runs a declarative steps-spec via the real runner', 
     const h = harness();
     const s = spec([
       {
-        capability: 'email.draft',
+        capability: 'email.send',
         inputs: {
           to: 'victim@example.com\r\nBcc: attacker@evil.example',
           subject: 'Hello\nX-Injected: 1',
@@ -235,7 +242,7 @@ describe('interpretSpec — runs a declarative steps-spec via the real runner', 
   it('caps an over-long effectArgs string at the header-line length', async () => {
     const h = harness();
     const long = 'a'.repeat(2000);
-    const s = spec([{ capability: 'email.draft', inputs: { subject: long } }]);
+    const s = spec([{ capability: 'email.send', inputs: { subject: long } }]);
     const outcome = await executeRun(nib(s), TRIGGER, interpretSpec(s, CONN_MAP), h.deps);
     if (outcome.kind !== 'awaiting_approval') throw new Error('expected awaiting_approval');
     expect((outcome.draft.effectArgs.subject as string).length).toBe(998);
@@ -245,8 +252,8 @@ describe('interpretSpec — runs a declarative steps-spec via the real runner', 
 
   it('two distinct draft steps get distinct patternKeys (independent routine identities)', async () => {
     const s = spec([
-      { capability: 'email.draft', inputs: { to: 'a@b.com' } },
-      { capability: 'email.draft', inputs: { to: 'c@d.com' } },
+      { capability: 'email.send', inputs: { to: 'a@b.com' } },
+      { capability: 'email.send', inputs: { to: 'c@d.com' } },
     ]);
     const gen = interpretSpec(s, CONN_MAP)({ nibbin: nib(s), trigger: TRIGGER });
     const first = await gen.next();
@@ -255,19 +262,19 @@ describe('interpretSpec — runs a declarative steps-spec via the real runner', 
     if (first.value.kind !== 'draft' || second.value.kind !== 'draft') {
       throw new Error('expected draft steps');
     }
-    expect(first.value.patternKey).toBe('email.draft:echo#0');
-    expect(second.value.patternKey).toBe('email.draft:echo#1');
+    expect(first.value.patternKey).toBe('email.send:echo#0');
+    expect(second.value.patternKey).toBe('email.send:echo#1');
     expect(first.value.patternKey).not.toBe(second.value.patternKey);
   });
 
   it('a step-level patternKey overrides the derived per-step key', async () => {
     const s = spec([
-      { capability: 'email.draft', patternKey: 'email.draft:overdue-followup', inputs: { to: 'a@b.com' } },
+      { capability: 'email.send', patternKey: 'email.send:overdue-followup', inputs: { to: 'a@b.com' } },
     ]);
     const gen = interpretSpec(s, CONN_MAP)({ nibbin: nib(s), trigger: TRIGGER });
     const step = await gen.next();
     if (step.done || step.value.kind !== 'draft') throw new Error('expected a draft step');
-    expect(step.value.patternKey).toBe('email.draft:overdue-followup');
+    expect(step.value.patternKey).toBe('email.send:overdue-followup');
   });
 
   /* ── FIX 3: STRUCTURAL read↔presentation invariant ─────────────────────────

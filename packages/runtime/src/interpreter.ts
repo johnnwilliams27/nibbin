@@ -3,10 +3,10 @@
  *
  * SAFETY (load-bearing, design §2): this interpreter ONLY *yields* ProgramSteps
  * — it never executes a side effect. The same runner.ts consumes them and
- * applies every wall: toolsAllowlist, quarantine, School gateSideEffect,
- * write-grants, idempotency, ceilings, repetition kill. A steps-spec is gated
- * identically to a template program; the interpreter cannot bypass any
- * boundary.
+ * applies every wall: toolsAllowlist, quarantine, action-level gating
+ * (owner-set observe/draft/send via runner.ts), write-grants, idempotency,
+ * ceilings, repetition kill. A steps-spec is gated identically to a template
+ * program; the interpreter cannot bypass any boundary.
  *
  * It handles the linear primitive shapes Composer (Slice 2) emits
  * (detect-and-nudge / template-fill-and-send / summarize):
@@ -70,12 +70,27 @@ function sanitizeEffectArgValue(v: unknown, depth: number): unknown {
   return out;
 }
 
-/** Sanitize every string in effectArgs (top level + one nested level).
+/**
+ * Reserved native-draft control keys. These are runtime-internal flags the
+ * runner/executor key on (createDraft vs sendDraft(ref) vs deleteDraft(ref)).
+ * A composed/LLM/primitive spec MUST NEVER be able to supply them via
+ * effectArgs — a forged `nativeDraftRef` could make a DRAFT-level step SEND an
+ * arbitrary Gmail draft (red-team P1-2). We strip them unconditionally at the
+ * interpreter boundary so no spec-supplied value can ride into the executor.
+ * The runner sets `nativeDraft:true` itself, AFTER sanitization, from the
+ * capability descriptor.
+ */
+const RESERVED_EFFECT_KEYS = ['nativeDraft', 'nativeDraftRef', 'dismiss'] as const;
+
+/** Sanitize every string in effectArgs (top level + one nested level) and strip
+ *  the reserved native-draft control keys.
  *  Strings are always neutralized; the depth budget bounds how far we descend
  *  into nested objects/arrays (the args object itself counts as the first
  *  level, so depth 2 reaches values one container deep, e.g. headers.Bcc). */
 function sanitizeEffectArgs(args: Record<string, unknown>): Record<string, unknown> {
-  return sanitizeEffectArgValue(args, 2) as Record<string, unknown>;
+  const stripped: Record<string, unknown> = { ...args };
+  for (const k of RESERVED_EFFECT_KEYS) delete stripped[k];
+  return sanitizeEffectArgValue(stripped, 2) as Record<string, unknown>;
 }
 
 /**
@@ -248,7 +263,7 @@ export function interpretSpec(spec: AgentSpec, connMap: ConnectionMap, nowMs: nu
           // never executing. (A draft/write capability surfaces as a DraftStep,
           // `kind:'draft'`; ProgramStep has no separate 'write' kind.) A
           // non-presentation draft from a read-classified capability would
-          // reach the School gate as an EXECUTABLE draft, promoting a read into
+          // reach the action-level gate as an EXECUTABLE draft, promoting a read into
           // an autonomous write. Reject it so the run fails cleanly rather than
           // relying on every primitive author's convention. Belt-and-suspenders:
           // the two shipped digests already satisfy this — a no-op for them.

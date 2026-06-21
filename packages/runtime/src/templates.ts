@@ -8,9 +8,10 @@
  * .claude/skills/brand-voice: sentence case, concrete nouns, no corporate
  * filler; trust is earned, never unlocked.
  *
- * v0 keeps every template on draft-shaped capabilities (email.draft,
- * invoice.nudge, dm.reply) — no template ships with raw send authority, and
- * write scopes only arrive per-Nibbin at adoption (C8).
+ * v0 keeps every template on write capabilities (email.send,
+ * invoice.nudge, dm.reply) — the action level (observe/draft/send) decides
+ * draft-vs-act; no template ships with autonomous send authority by default,
+ * and write scopes only arrive per-Nibbin at adoption (C8).
  */
 import type { SpeciesName, Accessory, Marking } from '@nibbin/creatures';
 import type { AgentSpec, RunCeilings } from './types';
@@ -88,7 +89,7 @@ export const SHOP_TEMPLATES: readonly ShopTemplate[] = [
     spec: spec({
       templateKey: 'echo',
       displayName: 'Echo',
-      toolsAllowlist: ['email.read', 'email.draft'],
+      toolsAllowlist: ['email.read', 'email.send'],
       requiredConnectors: ['gmail'],
       triggers: [
         { kind: 'schedule', schedule: 'daily.morning', cooldownSecs: 3600 },
@@ -165,7 +166,7 @@ export const SHOP_TEMPLATES: readonly ShopTemplate[] = [
     spec: spec({
       templateKey: 'hopper',
       displayName: 'Hopper',
-      toolsAllowlist: ['calendar.read', 'email.draft', 'email.read'],
+      toolsAllowlist: ['calendar.read', 'email.send', 'email.read'],
       requiredConnectors: ['google-calendar', 'gmail'],
       triggers: [
         { kind: 'schedule', schedule: 'daily.afternoon', cooldownSecs: 3600 },
@@ -191,7 +192,7 @@ export const SHOP_TEMPLATES: readonly ShopTemplate[] = [
     spec: spec({
       templateKey: 'scribe',
       displayName: 'Scribe',
-      toolsAllowlist: ['email.read', 'email.draft'],
+      toolsAllowlist: ['email.read', 'email.send'],
       requiredConnectors: ['gmail'],
       triggers: [
         { kind: 'event', source: 'connector:gmail:message.received', debounceSecs: 300, cooldownSecs: 120 },

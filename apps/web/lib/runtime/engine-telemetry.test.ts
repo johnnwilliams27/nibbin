@@ -59,7 +59,7 @@ describe('buildEffectsExecutor — fleet-learning telemetry', () => {
     expect(sink.events[0].accountId).toBe('acct-1');
   });
 
-  it('emits connector_blocked with reason=auth_failed on ConnectorRequestError(auth) from email.draft', async () => {
+  it('emits connector_blocked with reason=auth_failed on ConnectorRequestError(auth) from email.send', async () => {
     const conn = makeConnection();
     const byId = new Map([['conn-1', conn]]);
     const sink = new MemoryEventSink();
@@ -69,17 +69,17 @@ describe('buildEffectsExecutor — fleet-learning telemetry', () => {
       'acct-1',
       0,
       {
-        createDraft: async () => {
+        createDraft: async () => ({}),
+        sendMessage: async () => {
           throw new ConnectorRequestError('gmail', 401, 'auth');
         },
-        sendMessage: async () => ({}),
         sendVelocityConsume: async () => ({ allowed: true }),
       },
       sink,
     );
 
     await expect(
-      executor({ connectionId: 'conn-1', capability: 'email.draft', args: { rfc822: '' }, idempotencyKey: 'k2' }),
+      executor({ connectionId: 'conn-1', capability: 'email.send', args: { rfc822: '' }, idempotencyKey: 'k2' }),
     ).rejects.toBeInstanceOf(ConnectorRequestError);
 
     expect(sink.events).toHaveLength(1);
@@ -88,7 +88,7 @@ describe('buildEffectsExecutor — fleet-learning telemetry', () => {
     expect(sink.events[0].props?.reason).toBe('auth_failed');
   });
 
-  it('does NOT emit for non-auth ConnectorRequestError kinds (e.g. rate-limit)', async () => {
+  it('does NOT emit for non-auth ConnectorRequestError kinds (e.g. rate-limit) from email.send', async () => {
     const conn = makeConnection();
     const byId = new Map([['conn-1', conn]]);
     const sink = new MemoryEventSink();
@@ -98,17 +98,17 @@ describe('buildEffectsExecutor — fleet-learning telemetry', () => {
       'acct-1',
       0,
       {
-        createDraft: async () => {
+        createDraft: async () => ({}),
+        sendMessage: async () => {
           throw new ConnectorRequestError('gmail', 429, 'rate-limit');
         },
-        sendMessage: async () => ({}),
         sendVelocityConsume: async () => ({ allowed: true }),
       },
       sink,
     );
 
     await expect(
-      executor({ connectionId: 'conn-1', capability: 'email.draft', args: { rfc822: '' }, idempotencyKey: 'k3' }),
+      executor({ connectionId: 'conn-1', capability: 'email.send', args: { rfc822: '' }, idempotencyKey: 'k3' }),
     ).rejects.toBeInstanceOf(ConnectorRequestError);
 
     // rate-limit is not one of the three connector_blocked reasons — no event.

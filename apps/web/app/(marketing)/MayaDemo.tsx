@@ -328,7 +328,7 @@ export function MayaDemo() {
                 </div>
                 <div className="foot">
                   <span className="m">
-                    Access: <b>draft-only until graduation</b>
+                    Access: <b>you set it — Observe / Draft / Send</b>
                   </span>
                   <button
                     className={`abtn${a.go && !graduatedQueued[a.name] ? ' go' : ''}`}
@@ -400,7 +400,7 @@ export function MayaDemo() {
             {step === 2 && (
               <div className="wiz-pane active">
                 <h3>Where does it happen?</h3>
-                <p className="sub">Tap the apps involved. Your Nibbin only ever gets the narrowest access that works — drafting, not sending, until it graduates.</p>
+                <p className="sub">Tap the apps involved. Your Nibbin only ever gets the narrowest access that works — you set its action level (Observe, Draft, or Send) after it hatches.</p>
                 <div className="appsel">
                   {APPS.map((a) => (
                     <button
@@ -452,12 +452,11 @@ export function MayaDemo() {
                       {enrolled ? '✓ Enrolled' : 'Enroll in Agent School'}
                     </button>
                   </div>
-                  <p className="note">It starts as an egg: watching only. In a few days it hatches into a student and drafts its first work for your approval. Nothing is ever sent without you until it graduates.</p>
+                  <p className="note">It starts as an egg: watching only. In a few days it hatches into a student and begins drafting work for your approval. You set its action level — Observe, Draft, or Send — and Agent School grades how accurately it handles the chore.</p>
                   {enrolled && (
                     <div className="enrolled">
-                      🎒 <b>{eggName.trim() || 'Nib'}</b> is enrolled in Agent School. It’s watching how you handle this
-                      chore now — expect its first drafts in your Today feed within a few days. Nothing sends without you
-                      until it graduates.
+                      🎒 <b>{eggName.trim() || 'Nib'}</b> is enrolled in Agent School. It&apos;s watching how you handle this
+                      chore now — expect its first drafts in your Today feed within a few days.
                     </div>
                   )}
                 </div>

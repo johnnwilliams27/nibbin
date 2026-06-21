@@ -120,7 +120,7 @@ describe('composeSpec', () => {
 
     expect(result.spec.templateKey).toBeNull();
     expect(result.spec.steps?.[0]?.capability).toBe('nudge.overdue-email');
-    expect(result.spec.toolsAllowlist).toEqual(['email.read', 'email.draft']);
+    expect(result.spec.toolsAllowlist).toEqual(['email.read', 'email.send']);
     expect(result.spec.requiredConnectors).toEqual(['gmail']);
     // The assembled spec passes the fail-closed gate.
     expect(validateComposedSpec(result.spec, ['gmail'])).toEqual([]);
@@ -190,9 +190,9 @@ describe('composeSpec', () => {
     if ('error' in result) throw new Error(result.error);
     expect(result.spec.steps?.[0]?.capability).toBe('nudge.unconfirmed-event');
     // The cross-resource primitive's connectors are derived server-side from
-    // effectiveTools (calendar.read→gcal, email.draft→gmail) — both required.
+    // effectiveTools (calendar.read→gcal, email.send→gmail) — both required.
     expect([...result.spec.requiredConnectors].sort()).toEqual(['gmail', 'google-calendar']);
-    expect(result.spec.toolsAllowlist).toEqual(['calendar.read', 'email.draft']);
+    expect(result.spec.toolsAllowlist).toEqual(['calendar.read', 'email.send']);
     expect(validateComposedSpec(result.spec, ['google-calendar', 'gmail'])).toEqual([]);
   });
 

@@ -29,7 +29,7 @@ function spec(maxTokens = 1000): AgentSpec {
     templateKey: 'echo',
     version: 1,
     displayName: 'Echo',
-    toolsAllowlist: ['email.read', 'email.draft'],
+    toolsAllowlist: ['email.read', 'email.send'],
     requiredConnectors: ['gmail'],
     triggers: [{ kind: 'user', debounceSecs: 0, cooldownSecs: 0 }],
     curriculum: {
@@ -77,9 +77,9 @@ const promptProgram: ProgramFn = async function* () {
   if (fed) body = unwrapQuarantined(fed);
   yield {
     kind: 'draft',
-    capability: 'email.draft',
+    capability: 'email.send',
     connectionId: CONN,
-    patternKey: 'email.draft:test',
+    patternKey: 'email.send:test',
     title: 'Test draft',
     draft: body,
     effectArgs: { threadId: 't1' },

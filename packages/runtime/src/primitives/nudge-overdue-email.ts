@@ -49,7 +49,7 @@ export function nudgeOverdueEmail(
   nowMs: number,
 ): ProgramFn {
   const staleDays = inputs.staleDays ?? 3;
-  const patternKey = inputs.patternKey ?? 'email.draft:overdue-followup';
+  const patternKey = inputs.patternKey ?? 'email.send:overdue-followup';
   return async function* () {
     const gmail = connMap.gmail;
     if (!gmail) throw new Error('no active gmail connection — pausing politely');
@@ -83,7 +83,7 @@ export function nudgeOverdueEmail(
     };
     yield {
       kind: 'draft',
-      capability: 'email.draft',
+      capability: 'email.send',
       connectionId: gmail,
       patternKey,
       title: `Follow-up on “${subject}” (waiting ${waitedDays} days)`,

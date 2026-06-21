@@ -196,8 +196,8 @@ export function DiagnosisReveal({
               <Card key={key} className={styles.wfCard}>
                 <div className={styles.recRow}>
                   <span className={styles.recText}>
-                    Adopt <strong>{NIBBIN_NAME[key] ?? key}</strong> to start handling this — drafts
-                    only, for your approval, until it earns more.
+                    Adopt <strong>{NIBBIN_NAME[key] ?? key}</strong> to start handling this — it drafts
+                    for your approval; you set what it may do when you&rsquo;re ready.
                   </span>
                   <AdoptButton
                     action={adoptRecommendationOutcome}

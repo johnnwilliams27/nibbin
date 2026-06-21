@@ -14,7 +14,7 @@ the way SPEC.md governs the build: changes via decision log, not drift. The Mark
 it's the legibility of trust, and it's the most screenshot-able object in the category.
 **Against fear (the real enemy):** solo owners are afraid of AI embarrassing them in front
 of clients and afraid of surveillance. Both answers are architectural and we say them plainly:
-*nothing sends without your approval until it has earned it* (Agent School), and *screen
+*nothing sends without your approval — you grant what each Nibbin may do* (action level), and *screen
 captures never leave your device* (Observer). Privacy is a growth asset, not fine print.
 **One-liner:** "Little creatures that grow up working for you."
 **Category line:** "AI Agents. Simplified." — used in SEO titles, meta,
@@ -69,7 +69,7 @@ SEO additions: Studioflo alternative, GlossGenius + AI agents, Bonsai AI, Moxie 
   that's actually true.
 - **Seed the photographer beachhead:** join 10 photographer FB groups + 3 subreddits as a
   genuine participant (Scout agent surfaces threads; John posts as himself). Zero pitching
-  for 60 days — earn the right.
+  for 60 days — build credibility first.
 - **Educator pipeline opens:** Quill agent builds the list (podcasts, YouTube educators,
   workshop leaders); first 10 relationships warmed before there's anything to sell.
 
@@ -164,9 +164,8 @@ never optimized for.
 
 The marketing department is a grove of internal agents. Where the product can do the job,
 dogfood Nibbin itself; where it can't yet (video assembly, ad ops), run Claude-based
-pipelines that graduate into product connectors later. **The same trust law applies: every
-agent starts at Student (drafts only); promotion to Senior (auto-publish routine items)
-requires John-verified accuracy, just like the product.** The meta-story — "Nibbin is run
+pipelines that graduate into product connectors later. **The same principle applies: every
+agent starts at Student (drafting for approval); John sets the action level for each — promotion to Senior grade (auto-publish routine items) informs the grant, just like the product.** The meta-story — "Nibbin is run
 by Nibbins" — is itself Phase 0/1 content.
 
 | Agent | Job | Tools | School rules |

@@ -7,12 +7,13 @@
  *  - same-tool-same-args repetition kill
  *  - idempotency keys on every side-effectful action
  *  - tool access per-spec allowlisted
- *  - Agent School stage gates draft-vs-execute (school.ts), never the prompt
+ *  - Action level is the sole execution gate (owner-set): observe→no output,
+ *    draft→draft, send→execute — identically at every grade (§ action-levels).
  *  - tool output without quarantine markers is refused (§6.5)
  */
 import { createHash } from 'node:crypto';
 import { isQuarantined, quarantine, type QuarantinedContent } from '@nibbin/connectors';
-import { gateSideEffect } from './school';
+import { capability } from './capabilities';
 import type { GrantStore, ResourceClaimStore, RoutineStore, RunStore, IdempotencyStore } from './stores';
 import type {
   DraftStep,
@@ -33,17 +34,32 @@ export interface ToolReader {
   read(connectionId: string, capability: string, path: string): Promise<QuarantinedContent>;
 }
 
+/** Result returned by EffectExecutor.execute. */
+export interface EffectResult {
+  /**
+   * The Gmail draft id created by the native-draft mirror path (nativeDraft:true
+   * at Draft action level). Only set on createDraft calls — undefined for sends,
+   * deletes, calendar events, and every non-nativeDraft execution.
+   */
+  nativeDraftId?: string;
+}
+
 export interface EffectExecutor {
   /**
-   * Execute a side effect through the connector layer (which enforces C8
-   * write-scope grants and RISKS §2 velocity caps unconditionally).
+   * Execute a side effect through the connector layer (which enforces the
+   * account-wide OAuth write scope and RISKS §2 velocity caps unconditionally).
+   * Per-Nibbin authority is the owner-set action_level (the SOLE runtime gate),
+   * NOT a per-Nibbin write-grant row — those are advisory/audit only.
+   *
+   * Returns `{ nativeDraftId }` when the execution created a native draft
+   * (nativeDraft:true path); otherwise returns void / undefined.
    */
   execute(req: {
     connectionId?: string;
     capability: string;
     args: Record<string, unknown>;
     idempotencyKey: string;
-  }): Promise<void>;
+  }): Promise<EffectResult | void>;
 }
 
 /**
@@ -65,6 +81,13 @@ export interface ModelDrafter {
 export interface RunnerDeps {
   runs: RunStore;
   routines: RoutineStore;
+  /**
+   * Advisory/audit write-grant store. NOTE: `dispatchStep` no longer calls
+   * `grants.hasGrant` — action_level is the sole runtime execution gate. The
+   * dep is retained because other callers wire it and may read it for audit;
+   * it does NOT gate the send path. (Do not reintroduce a hasGrant check here
+   * without an explicit invariant change — grade/grants are advisory.)
+   */
   grants: GrantStore;
   idempotency: IdempotencyStore;
   reader: ToolReader;
@@ -156,7 +179,7 @@ export function deriveResourceClaim(step: DraftStep): { resourceType: string; re
   const args = step.effectArgs;
   // email capabilities: threadId is the canonical per-thread identity.
   // inReplyTo is also accepted (some connectors use this field instead).
-  if (step.capability === 'email.send' || step.capability === 'email.draft') {
+  if (step.capability === 'email.send') {
     const id =
       (typeof args.threadId === 'string' && args.threadId) ||
       (typeof args.inReplyTo === 'string' && args.inReplyTo);
@@ -270,34 +293,103 @@ export async function dispatchStep(
     return done({ kind: 'composed' });
   }
 
-  // step.kind === 'draft': a proposed action. The Agent School gate — at the
-  // runtime layer, never the prompt layer — decides draft vs execute.
+  // step.kind === 'draft': a proposed action. The action level gate —
+  // owner-set, enforced at the runtime layer, never the prompt layer — decides
+  // observe/draft/execute (§ action-levels).
   if (!spec.toolsAllowlist.includes(step.capability)) return done({ kind: 'kill', reason: 'allowlist' });
 
-  // §43: Re-read the nibbin's current stage+status immediately before the
-  // execute decision. nibbin_demote is "one click, instant" — the NibbinRef
-  // captured at admission may already be stale if a demotion or pause happened
-  // between begin() and this step. A stale stage must not grant autonomy.
+  // §43: Re-read the nibbin's current status immediately before the execute
+  // decision. nibbin_demote / nibbin_pause is "one click, instant" — the
+  // NibbinRef captured at admission may already be stale.
   const freshNibbin = await deps.runs.getNibbin(nibbin.id);
   if (!freshNibbin || freshNibbin.status !== 'active') {
     return done({ kind: 'drafted', draft: step });
   }
-  const effectiveStage = freshNibbin.stage;
-  const effectiveStageChangedAt = freshNibbin.stageChangedAt;
 
-  const routineApprovals = await deps.routines.approvedCount(nibbin.id, step.patternKey, effectiveStageChangedAt);
-  let gate = step.presentation
-    ? ({ action: 'draft', reason: 'stage' } as const)
-    : gateSideEffect(effectiveStage, routineApprovals, spec.curriculum);
-
-  if (gate.action === 'deny') return done({ kind: 'kill', reason: 'stage' });
-
-  if (gate.action === 'execute') {
-    const granted = await deps.grants.hasGrant(nibbin.id, step.connectionId, step.capability);
-    if (!granted) gate = { action: 'draft', reason: 'stage' };
+  // Action level is the sole execution gate (owner-set). Grade does not gate.
+  // `step.presentation` steps are always drafts (they're proposals by construction).
+  const level = freshNibbin.actionLevel;
+  let gate: { action: 'execute' } | { action: 'draft'; reason: string } | { action: 'deny'; reason: string };
+  // Observe is evaluated FIRST so a presentation/digest step at observe level
+  // is suppressed (deny) rather than leaking a draft (P0-2). Execute requires
+  // an EXPLICIT level === 'send'; ANY other value (NULL, unknown, future enum)
+  // fails SAFE to draft — never auto-execute (P1-2, fail-closed default).
+  if (level === 'observe') {
+    gate = { action: 'deny', reason: 'observe' };
+  } else if (step.presentation || level === 'draft') {
+    gate = { action: 'draft', reason: 'level' };
+  } else if (level === 'send') {
+    gate = { action: 'execute' };
+  } else {
+    // Unknown / out-of-enum action level: fail-safe to draft (never execute).
+    gate = { action: 'draft', reason: 'unknown_level' };
   }
 
+  if (gate.action === 'deny') return done({ kind: 'kill', reason: gate.reason as KillReason });
+
   if (gate.action === 'draft') {
+    // Native-draft mirror (Task 4): when the capability signals nativeDraft:true,
+    // call the executor NOW (at draft time) to create the native Gmail draft. The
+    // executor's nativeDraft path does NOT consume velocity and does NOT create an
+    // idempotency row — it only calls createDraft and returns the id. We persist
+    // the returned id in run_steps.payload.nativeDraftRef so dismiss-sync can
+    // delete it and send-with-ref can use it instead of a fresh send.
+    // Fail-open: if createDraft throws, we log the warning and record the draft
+    // row WITHOUT a ref (the user can still approve/send, just without the
+    // native-draft sync). This preserves the draft outcome invariant.
+    let nativeDraftRef: string | undefined;
+    // P1-1 fix: gate the native-draft mirror on the capability DESCRIPTOR
+    // (CAPABILITY_REGISTRY[cap].nativeDraft === true), NOT on effectArgs. The flag
+    // lives on the descriptor; nothing writes it into effectArgs, so the old
+    // `step.effectArgs.nativeDraft === true` check was always false in production.
+    // Reading the descriptor makes the Gmail draft actually get created for
+    // email.send at draft level.
+    if (capability(step.capability)?.nativeDraft === true) {
+      // F1 fix (cost-auditor): orphan-on-retry guard. A run that fails after
+      // createDraft succeeds but before recordStep persists the ref would, on a
+      // retry (cap-queue resume / lambda re-invoke), create a SECOND Gmail draft.
+      // Claim a stable native-draft idempotency key BEFORE calling createDraft.
+      // The key excludes runId (it must be stable across run attempts for the
+      // SAME logical draft) so a retry sees `already_executed` and skips the
+      // duplicate createDraft. The send-path idempotency key (effectIdempotencyKey,
+      // which includes the trigger dedupeKey) is a separate namespace.
+      const nativeDraftKey = `native-draft:${hashArgs([nibbin.id, step.capability, step.patternKey, step.effectArgs])}`;
+      let claim: 'claimed' | 'already_executed' | 'unknown_outcome' = 'claimed';
+      try {
+        claim = await deps.idempotency.claim({
+          accountId: nibbin.accountId,
+          runId,
+          stepIdx: idx,
+          capability: step.capability,
+          idempotencyKey: nativeDraftKey,
+        });
+      } catch (err) {
+        // Infra error → fail-open on the claim (proceed to createDraft). A
+        // duplicate native draft is a UX annoyance, not a money/safety event.
+        console.warn('[runner] native-draft idempotency claim failed (fail-open):', err instanceof Error ? err.message : String(err));
+      }
+      if (claim === 'claimed') {
+        try {
+          const result = await deps.effects.execute({
+            connectionId: step.connectionId,
+            capability: step.capability,
+            args: { ...step.effectArgs, nativeDraft: true },
+            idempotencyKey: nativeDraftKey,
+          });
+          nativeDraftRef = result?.nativeDraftId;
+          await deps.idempotency.markExecuted(nibbin.accountId, nativeDraftKey);
+        } catch (err) {
+          // Best-effort: log and continue. The draft is still recorded; dismiss/send
+          // will fall back gracefully (no ref = no native-draft cleanup/routing).
+          console.warn('[runner] native-draft createDraft failed (non-fatal):', err instanceof Error ? err.message : String(err));
+        }
+      }
+      // claim === 'already_executed' | 'unknown_outcome': a prior attempt already
+      // created (or attempted) the native draft — do NOT createDraft again. Record
+      // the draft row without a fresh ref (the persisted ref from the prior attempt,
+      // if any, already lives on that run's step; the user can still approve/send).
+    }
+
     await deps.runs.recordStep(nibbin.accountId, runId, {
       idx: idx++,
       kind: 'draft',
@@ -311,12 +403,13 @@ export async function dispatchStep(
         effectArgs: step.effectArgs,
         connectionId: step.connectionId ?? null,
         gate: gate.reason,
+        ...(nativeDraftRef !== undefined ? { nativeDraftRef } : {}),
       },
     });
     return done({ kind: 'drafted', draft: step });
   }
 
-  // gate.action === 'execute' (Senior on routine, Graduate within spec)
+  // gate.action === 'execute' (action level is 'send')
   // §18.3 Slice 1: claim the resource BEFORE the idempotency claim. A
   // conflict-skip must NOT create an idempotency row — otherwise a same-key
   // event redelivery (missed-push reconcile / re-poll) would later read it as
@@ -410,9 +503,13 @@ export async function executeRun(
   program: ProgramFn,
   deps: RunnerDeps,
 ): Promise<RunOutcome> {
-  // §4.7: Eggs observe; they never run, draft, or spend.
-  if (nibbin.stage === 'egg') return { kind: 'not_started', why: 'egg' };
-
+  // Owner decision (action-levels): the Egg run-admission fence is REMOVED.
+  // `action_level` is the truly sole gate — a run admits regardless of stage and
+  // is governed solely by the action level in dispatchStep (egg+observe →
+  // observe-deny; egg+draft → drafts; egg+send → acts, behind every unchanged
+  // idempotency / velocity / resource-claim / anomaly / cooldown wall). Grade is
+  // advisory only and must NEVER gate execution. (Pause/quarantine/cooldown/
+  // anomaly admission guards below are untouched.)
   const spec = nibbin.spec;
   // debounce/cooldown come from the trigger definition that fired (matched by
   // kind + key), falling back to conservative defaults

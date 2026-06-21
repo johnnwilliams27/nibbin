@@ -53,7 +53,7 @@ const TIER1: ConnectorDescriptor[] = [
     webhooks: { supported: true, scheme: 'google-pubsub-oidc', replayWindowSecs: 600 },
     rateLimit: { requests: 240, perSeconds: 60 },
     scanModules: ['email.inquiry-rate', 'email.overdue-threads', 'email.newsletter-noise'],
-    capabilities: ['email.read', 'email.draft', 'email.send'],
+    capabilities: ['email.read', 'email.send'],
     egressAllowlist: ['gmail.googleapis.com', ...GOOGLE_AUTH_HOSTS],
     send: { velocity: DEFAULT_SEND_VELOCITY },
     platform: {
@@ -103,7 +103,7 @@ const TIER1: ConnectorDescriptor[] = [
       'calendar.no-show-churn',
       'calendar.confirmation-gaps',
     ],
-    capabilities: ['email.read', 'email.draft', 'email.send', 'calendar.read', 'calendar.event-create'],
+    capabilities: ['email.read', 'email.send', 'calendar.read', 'calendar.event-create'],
     egressAllowlist: ['graph.microsoft.com', 'login.microsoftonline.com'],
     send: { velocity: DEFAULT_SEND_VELOCITY },
     availability: 'live',

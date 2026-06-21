@@ -5,7 +5,7 @@
  * recurring steps in plain language, a cadence picker (the user's EXPLICIT
  * choice — defaulted to the suggested cadence if present, else unselected), the
  * connectors needed, and a name field. Confirm → adoptCrystal → the Beat-2 hatch
- * ceremony (an egg — drafts for approval until it earns autonomy). Tokens-only,
+ * ceremony (an egg — drafts for approval; you set its action level when ready). Tokens-only,
  * brand voice, no coral.
  */
 import { useState, useTransition } from 'react';
@@ -142,7 +142,7 @@ export function CrystalPreview({
         />
 
         <p className={styles.assurance}>
-          It hatches as an egg — it drafts everything for your approval until it earns autonomy. You
+          It hatches as an egg — it drafts everything for your approval. You set its action level (Observe / Draft / Send) whenever you&rsquo;re ready. You
           can also run it any time.
         </p>
 

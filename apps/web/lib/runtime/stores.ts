@@ -109,7 +109,7 @@ export class SupabaseRunStore implements RunStore {
   async getNibbin(nibbinId: string): Promise<NibbinCurrentState | null> {
     const { data, error } = await this.svc
       .from('nibbins')
-      .select('stage, stage_changed_at, status')
+      .select('stage, stage_changed_at, status, action_level')
       .eq('id', nibbinId)
       .maybeSingle();
     if (error) throw new Error(`getNibbin failed: ${error.message}`);
@@ -118,6 +118,10 @@ export class SupabaseRunStore implements RunStore {
       stage: data.stage as NibbinCurrentState['stage'],
       stageChangedAt: new Date(data.stage_changed_at as string).getTime(),
       status: data.status as NibbinCurrentState['status'],
+      // Fail-safe coalesce (P1-2): a NULL/absent action_level defaults to
+      // 'draft', never 'send' — the runtime gate must never auto-execute on an
+      // unknown level. Mirrors MemoryRunStore's `?? 'draft'`.
+      actionLevel: (data.action_level ?? 'draft') as NibbinCurrentState['actionLevel'],
     };
   }
 }

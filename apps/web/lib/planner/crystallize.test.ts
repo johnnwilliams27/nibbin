@@ -71,7 +71,7 @@ describe('crystallize — soft-layer proposal + assembly', () => {
     expect(out.spec.templateKey).toBeNull();
     expect(out.spec.displayName).toBe('Overdue follow-ups');
     expect(out.spec.steps).toEqual([{ capability: 'nudge.overdue-email', inputs: { staleDays: 3 } }]);
-    expect([...out.spec.toolsAllowlist].sort()).toEqual(['email.draft', 'email.read']);
+    expect([...out.spec.toolsAllowlist].sort()).toEqual(['email.read', 'email.send']);
     expect(out.spec.requiredConnectors).toEqual(['gmail']);
     // The suggested schedule + a manual {kind:'user'} trigger.
     expect(out.spec.triggers.some((t) => t.kind === 'schedule' && t.schedule === 'daily.morning')).toBe(true);
@@ -91,8 +91,14 @@ describe('crystallize — soft-layer proposal + assembly', () => {
     );
     const out = await crystallize(doneRun(), 'user-1', ['gmail'], generate, testRouter());
     if ('refused' in out) throw new Error('unexpected refusal');
+    // The steps must come from the router (not the LLM injection) — even though
+    // the LLM tried to inject a raw email.send step, the router picks nudge.overdue-email.
     expect(out.spec.steps).toEqual([{ capability: 'nudge.overdue-email', inputs: { staleDays: 3 } }]);
-    expect(out.spec.toolsAllowlist).not.toContain('email.send');
+    // Task 3: email.send appears legitimately in toolsAllowlist (it's the unified
+    // email write capability, derived from nudge.overdue-email effectiveTools).
+    // The faithfulness property is that STEPS are router-determined, not that email.send is absent.
+    expect(out.spec.toolsAllowlist).toContain('email.read');
+    expect(out.spec.toolsAllowlist).toContain('email.send');
   });
 
   it('no-key soft-layer falls back to a deterministic name + no suggested cadence; still validates', async () => {

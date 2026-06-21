@@ -7,11 +7,11 @@ import { EmptyState } from '../../../components/ui';
 import { Tooltip, InfoTooltip } from '../../../components/ui/Tooltip';
 import { NoteRefresher } from './NoteRefresher';
 import { NibbinEditor } from './NibbinEditor';
-import { BackToDrafts } from './BackToDrafts';
 import { TrainingToggle, type TrainingState } from './TrainingToggle';
 import { NibbinControls } from './NibbinControls';
 import { refreshNibbinNote } from './actions';
 import { RetuneDialog } from './RetuneDialog';
+import type { ActionLevel } from './action-level-actions';
 import styles from './nibbins.module.css';
 
 export const metadata: Metadata = { title: 'Your Nibbins — Nibbin' };
@@ -68,6 +68,7 @@ interface NibbinRow {
   hatched_at: string;
   learned_note: string | null;
   learned_note_runs: number;
+  action_level: string | null;
   agent_specs: SpecRow | SpecRow[] | null;
 }
 interface RunRow {
@@ -232,7 +233,7 @@ export default async function NibbinsPage() {
       supabase
         .from('nibbins')
         .select(
-          'id, name, species, stage, status, paused_reason, palette, accessory, marking, stage_changed_at, hatched_at, learned_note, learned_note_runs, agent_specs(display_name, template_key, version)',
+          'id, name, species, stage, status, paused_reason, palette, accessory, marking, stage_changed_at, hatched_at, learned_note, learned_note_runs, action_level, agent_specs(display_name, template_key, version)',
         )
         .eq('account_id', accountId)
         .eq('kind', 'specialist')
@@ -299,7 +300,7 @@ export default async function NibbinsPage() {
       <AppShell active="nibbins" title="Your Nibbins" email={user.email}>
         <EmptyState
           title="Your grove is quiet"
-          body="No Nibbins yet. Each one starts as an egg in Agent School — drafting everything for your yes until it earns its way to working on its own."
+          body="No Nibbins yet. Each one starts as an egg in Agent School — you set its action level (Observe / Draft / Send) and Agent School grades how accurately it works so you know when to trust it with more."
           action={
             <a className={`${styles.abtn} ${styles.abtnGo}`} href="/app/shop">
               Visit the Agent Shop →
@@ -336,10 +337,10 @@ export default async function NibbinsPage() {
       <div className={styles.pageHead}>
         <h1 className={styles.h1}>Your nibbins</h1>
         <div className={styles.intro}>
-          Every Nibbin climbs Agent School the same way — egg, student, senior, graduate — and trust is
-          earned through verified accuracy, never time served. Streaks and badges below are read
-          straight from real run history.{' '}
-          <InfoTooltip content="Promotion is earned by a sustained track record of work you approve without edits — weighted by how much is at stake, and (for graduation) proven across several kinds of task." />
+          Agent School grades every Nibbin — egg, student, senior, graduate — on verified accuracy,
+          never time served. The grade helps you decide what action level to grant (Observe, Draft,
+          or Send). Streaks and badges below are read straight from real run history.{' '}
+          <InfoTooltip content="The Agent School grade is a competency report card. It is advisory — you set the action level. Promotion reflects a sustained track record of work you approved without edits, weighted by how much is at stake, and (for graduation) proven across several kinds of task." />
         </div>
       </div>
 
@@ -450,12 +451,12 @@ export default async function NibbinsPage() {
               <div className={styles.foot}>
                 <span className={styles.footM}>
                   {n.stage === 'grad' ? (
-                    <>Access: <b>Acting on its own</b>{' '}
-                      <InfoTooltip content="This Nibbin has graduated and can execute tasks without a draft step — you can step it back a grade any time." />
+                    <>Action level: <b>Send</b>{' '}
+                      <InfoTooltip content="You have granted Send — this Nibbin executes immediately without a draft step. You can change the action level any time." />
                     </>
                   ) : (
-                    <>Access: <b>Draft-only until graduation</b>{' '}
-                      <InfoTooltip content="Every action is prepared as a draft and waits for your approval. Nothing is sent or executed until you say yes." />
+                    <>Action level: <b>Draft</b>{' '}
+                      <InfoTooltip content="Every action is prepared as a draft and waits for your approval before anything is sent or executed. You can grant Send any time." />
                     </>
                   )}
                 </span>
@@ -466,9 +467,6 @@ export default async function NibbinsPage() {
                       name={n.name}
                       state={trainingByNibbin.get(n.id) ?? { active: false }}
                     />
-                  )}
-                  {(n.stage === 'senior' || n.stage === 'grad') && (
-                    <BackToDrafts nibbinId={n.id} name={n.name} />
                   )}
                   <NibbinEditor
                     nibbin={{
@@ -487,6 +485,9 @@ export default async function NibbinsPage() {
                     name={n.name}
                     status={n.status}
                     pausedReason={n.paused_reason ?? null}
+                    actionLevel={(n.action_level as ActionLevel) ?? 'draft'}
+                    stage={n.stage}
+                    matchPct={d.matchPct}
                   />
                 </span>
               </div>

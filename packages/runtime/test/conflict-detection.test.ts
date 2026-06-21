@@ -42,7 +42,7 @@ function spec(overrides: Partial<AgentSpec> = {}): AgentSpec {
     templateKey: 'echo',
     version: 1,
     displayName: 'Echo',
-    toolsAllowlist: ['email.draft', 'email.send', 'invoice.nudge'],
+    toolsAllowlist: ['email.send', 'invoice.nudge'],
     requiredConnectors: ['gmail'],
     triggers: [{ kind: 'user', debounceSecs: 0, cooldownSecs: 0 }],
     curriculum: {
@@ -63,8 +63,9 @@ function seniorNib(id: string = NIB_A): NibbinRef {
 }
 
 /**
- * Build a harness pre-wired for auto-execute: Senior nibbin, 5 routine
- * approvals for patternKey 'p1', a write-grant for email.draft.
+ * Build a harness pre-wired for auto-execute: actionLevel='send' so the
+ * runner reaches the execute path. Routines/grants are no longer part of
+ * the gate decision (Task 2) but remain in deps for structural completeness.
  */
 function harness(opts: {
   claimsOverride?: ResourceClaimStore;
@@ -72,13 +73,14 @@ function harness(opts: {
 } = {}) {
   const runs = new MemoryRunStore();
   runs.seedCredits(ACCOUNT, 100);
+  const nid = opts.nibbinId ?? NIB_A;
+  // actionLevel='send' is the sole gate under the new model
+  runs.nibbinState(nid).actionLevel = 'send';
 
   const routines = new MemoryRoutineStore();
-  const nid = opts.nibbinId ?? NIB_A;
   for (let i = 0; i < 5; i++) routines.approve(nid, 'p1');
 
   const grants = new MemoryGrantStore();
-  grants.grant(nid, CONN, 'email.draft');
   grants.grant(nid, CONN, 'email.send');
   grants.grant(nid, CONN, 'invoice.nudge');
 
@@ -103,11 +105,11 @@ function harness(opts: {
   return { deps, effects, runs };
 }
 
-/** A program that auto-executes one email draft. */
+/** A program that auto-executes one email step (email.send — single write capability). */
 const emailDraftProgram: ProgramFn = async function* () {
   yield {
     kind: 'draft',
-    capability: 'email.draft',
+    capability: 'email.send',
     connectionId: CONN,
     patternKey: 'p1',
     title: 'Follow-up',
@@ -132,10 +134,10 @@ const invoiceNudgeProgram: ProgramFn = async function* () {
 /* ── deriveResourceClaim unit tests ─────────────────────────────────────── */
 
 describe('deriveResourceClaim', () => {
-  it('derives email resource from email.draft with threadId', () => {
+  it('derives email resource from email.send with threadId', () => {
     const step: DraftStep = {
       kind: 'draft',
-      capability: 'email.draft',
+      capability: 'email.send',
       connectionId: CONN,
       patternKey: 'p1',
       title: 't',
@@ -174,7 +176,7 @@ describe('deriveResourceClaim', () => {
   it('returns null when no resource id is derivable (effectArgs missing id fields)', () => {
     const step: DraftStep = {
       kind: 'draft',
-      capability: 'email.draft',
+      capability: 'email.send',
       connectionId: CONN,
       patternKey: 'p1',
       title: 't',
@@ -196,7 +198,7 @@ describe('§18.3 conflict detection — runner integration', () => {
     expect(outcome.kind).toBe('executed');
     expect(h.effects.execute).toHaveBeenCalledTimes(1);
     expect(h.effects.execute).toHaveBeenCalledWith(
-      expect.objectContaining({ capability: 'email.draft' }),
+      expect.objectContaining({ capability: 'email.send' }),
     );
   });
 
@@ -225,7 +227,7 @@ describe('§18.3 conflict detection — runner integration', () => {
       expect(outcome.resourceConflict?.resourceType).toBe('email');
       expect(outcome.resourceConflict?.resourceId).toBe('thread-abc');
       expect(outcome.resourceConflict?.holderNibbin).toBe(NIB_B);
-      expect(outcome.resourceConflict?.capability).toBe('email.draft');
+      expect(outcome.resourceConflict?.capability).toBe('email.send');
     }
   });
 
@@ -315,7 +317,7 @@ describe('§18.3 conflict detection — runner integration', () => {
     const noIdProgram: ProgramFn = async function* () {
       yield {
         kind: 'draft',
-        capability: 'email.draft',
+        capability: 'email.send',
         connectionId: CONN,
         patternKey: 'p1',
         title: 'Draft without resource id',

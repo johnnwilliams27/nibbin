@@ -27,8 +27,8 @@ export default async function HatchPage() {
           <h1 className={styles.title}>Build a Nibbin for one chore</h1>
           <p className={styles.lede}>
             Name the thing you&rsquo;re tired of doing and where it happens — we hatch a custom-named
-            egg that starts in Agent School, watching only, drafting nothing until it earns its way
-            up.
+            egg. You set its action level (Observe, Draft, or Send); Agent School grades how well it
+            does the work.
           </p>
         </header>
         <HatchWizard chores={[...HATCH_CHORES]} apps={[...HATCH_APPS]} />

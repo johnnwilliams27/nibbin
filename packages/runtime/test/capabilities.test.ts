@@ -23,31 +23,48 @@ describe('capability registry — conformance', () => {
   it('covers every capability the six hand-written programs yield', () => {
     // The programs live in apps/web (can't import here without a cross-package
     // edge), so this is the canonical hard-coded set the web-side program grep
-    // surfaces: email.read / email.draft / calendar.read / payments.read /
-    // invoice.nudge. Plus email.send — the grant capability the runner gates at
-    // Senior (engine.maybeInsertSendGrant). If a program adds a capability,
-    // this list and the registry must grow together.
+    // surfaces: email.read / email.send / calendar.read / payments.read /
+    // invoice.nudge. email.send is the single email write capability (Task 3:
+    // email.draft retired — the action level decides draft-vs-act).
+    // If a program adds a capability, this list and the registry must grow together.
     const usedByPrograms = [
       'email.read',
-      'email.draft',
+      'email.send',
       'calendar.read',
       'payments.read',
       'invoice.nudge',
-      'email.send',
     ];
     const missing = usedByPrograms.filter((id) => !capability(id));
     expect(missing).toEqual([]);
   });
 
+  // Task 3 — single email write capability
+  it('email.draft is NOT in the registry (retired; email.send is the sole email write)', () => {
+    expect(capability('email.draft')).toBeUndefined();
+  });
+
+  it('email.send has nativeDraft: true (action level decides draft-vs-act)', () => {
+    const c = capability('email.send');
+    expect(c).toBeDefined();
+    expect(c?.nativeDraft).toBe(true);
+    expect(c?.sideEffect).toBe('write');
+  });
+
+  it('calendar.event-create has nativeDraft: false', () => {
+    const c = capability('calendar.event-create');
+    expect(c).toBeDefined();
+    expect(c?.nativeDraft).toBe(false);
+  });
+
   it('each descriptor is internally consistent (id matches key, sideEffect valid)', () => {
-    const valid = new Set(['read', 'draft', 'write']);
+    const valid = new Set(['read', 'write']); // 'draft' retired in Task 3
     for (const [id, d] of Object.entries(CAPABILITY_REGISTRY)) {
       expect(d.id).toBe(id);
       expect(valid.has(d.sideEffect)).toBe(true);
       expect(d.resource.length).toBeGreaterThan(0);
       expect(d.verb.length).toBeGreaterThan(0);
       expect(d.requiredConnector.length).toBeGreaterThan(0);
-      // draft/write capabilities carry a routine-matching prefix (§4.7). Atomic
+      // write capabilities carry a routine-matching prefix (§4.7). Atomic
       // reads do not (they yield no patternKey). The one exception is a
       // PRESENTATION primitive (Slice 2c digest/summarize shape): its sideEffect
       // is 'read' (no real side effect — the runner gates it as a draft always),
@@ -64,7 +81,6 @@ describe('capability registry — conformance', () => {
 
   it('connector mappings match what the programs requireConn', () => {
     expect(capability('email.read')?.requiredConnector).toBe('gmail');
-    expect(capability('email.draft')?.requiredConnector).toBe('gmail');
     expect(capability('email.send')?.requiredConnector).toBe('gmail');
     expect(capability('calendar.read')?.requiredConnector).toBe('google-calendar');
     expect(capability('payments.read')?.requiredConnector).toBe('stripe');

@@ -57,7 +57,7 @@ const REVIEWED_SPEC: AgentSpec = {
   templateKey: null,
   version: 1,
   displayName: 'Overdue follow-ups',
-  toolsAllowlist: ['email.read', 'email.draft'],
+  toolsAllowlist: ['email.read', 'email.send'],
   requiredConnectors: ['gmail'],
   triggers: [
     { kind: 'schedule', schedule: 'daily.morning', cooldownSecs: 3600 },
@@ -141,7 +141,7 @@ describe('adoptSynthesized — applies + re-validates a user edit', () => {
     const [, , adopted] = adoptComposedSpec.mock.calls[0] as unknown as [string, string, AgentSpec];
     // The re-derived spec carries the tweaked param + the trusted envelope rebuilt server-side.
     expect(adopted.steps?.[0]?.inputs?.staleDays).toBe(14);
-    expect(adopted.toolsAllowlist).toEqual(['email.read', 'email.draft']);
+    expect(adopted.toolsAllowlist).toEqual(['email.read', 'email.send']);
     expect(adopted.requiredConnectors).toEqual(['gmail']);
   });
 

@@ -1,7 +1,7 @@
 # AGENTS.md — Nibbin (router)
 
 Nibbin: AI agents that nibble your busywork away, for people who work for themselves.
-Creature agents earn autonomy through verified accuracy (Agent School). The Grovekeeper
+Owners grant each agent's action level (Observe/Draft/Send); Agent School grades accuracy to inform that grant. The Grovekeeper
 orchestrates but has no hands. Two surfaces: Day One web app + desktop Observer.
 
 **Read only what the task needs:**

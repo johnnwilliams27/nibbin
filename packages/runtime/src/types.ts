@@ -256,7 +256,8 @@ export type KillReason =
   | 'wall_clock'
   | 'allowlist'         // capability outside the spec's tool allowlist
   | 'unquarantined'     // tool output missing quarantine markers (§6.5)
-  | 'stage';            // egg attempted output (§4.7: Eggs observe only)
+  | 'stage'             // legacy — kept for any persisted step records referencing the old reason
+  | 'observe';          // action level is 'observe' — no output produced (§ action-levels)
 
 /* ── Planner (Slice 3a): mode C — the supervised bounded-ReAct loop ──────────
  *

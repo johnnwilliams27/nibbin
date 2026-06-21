@@ -1,9 +1,16 @@
 /**
- * §7.2 trust-gate suite: attempt side effects from every stage below Graduate
- * via every path (direct event trigger, Grovekeeper delegation, schedule) —
- * all must yield drafts/approvals, never executions. Senior autonomy exists
- * only for routine patterns repeatedly matched AND structurally granted (C8
- * write-grant rows, issue #26).
+ * §7.2 trust-gate suite: attempt side effects at every action level and stage
+ * via every path (direct event trigger, Grovekeeper delegation, schedule).
+ *
+ * CONVERTED (Task 2): actionLevel is the sole execution gate.
+ * - observe → no output (kill:observe)
+ * - draft   → always drafts (regardless of stage)
+ * - send    → always executes (regardless of stage)
+ *
+ * The hasGrant / routineApprovals checks are no longer in the gate path.
+ * They remain in RunnerDeps for other callers but are not tested here as
+ * gate conditions. Tests that previously relied on grant+routine to reach
+ * execute now set actionLevel='send' explicitly.
  */
 import { describe, expect, it } from 'vitest';
 import { quarantine } from '@nibbin/connectors';
@@ -34,7 +41,7 @@ function testSpec(): AgentSpec {
     templateKey: 'echo',
     version: 1,
     displayName: 'Echo',
-    toolsAllowlist: ['email.read', 'email.draft'],
+    toolsAllowlist: ['email.read', 'email.send'],
     requiredConnectors: ['gmail'],
     triggers: [
       { kind: 'user', debounceSecs: 0, cooldownSecs: 0 },
@@ -58,9 +65,9 @@ function nibbin(stage: StageName): NibbinRef {
 const effectProgram: ProgramFn = async function* () {
   yield {
     kind: 'draft',
-    capability: 'email.draft',
+    capability: 'email.send',
     connectionId: CONN,
-    patternKey: 'email.draft:overdue-followup',
+    patternKey: 'email.send:overdue-followup',
     title: 'Follow-up',
     draft: 'Hi — picking this back up.',
     effectArgs: { threadId: 't-1' },
@@ -75,9 +82,11 @@ interface Harness {
   executed: Array<{ capability: string }>;
 }
 
-function harness(credits = 100): Harness {
+function harness(credits = 100, actionLevel: 'observe' | 'draft' | 'send' = 'draft'): Harness {
   const runs = new MemoryRunStore(() => Date.now());
   runs.seedCredits(ACCOUNT, credits);
+  // Seed the nibbin action level so getNibbin() returns the right value.
+  runs.nibbinState('nib-1').actionLevel = actionLevel;
   const routines = new MemoryRoutineStore();
   const grants = new MemoryGrantStore();
   const executed: Array<{ capability: string }> = [];
@@ -94,7 +103,11 @@ function harness(credits = 100): Harness {
     },
     effects: {
       async execute(req) {
+        // Skip the native-draft mirror (createDraft at draft level, nativeDraft:true)
+        // — `executed` tracks real SENDS / side effects, not native-draft creation.
+        if (req.args.nativeDraft === true) return undefined;
         executed.push({ capability: req.capability });
+        return undefined;
       },
     },
     now: () => Date.now(),
@@ -108,69 +121,95 @@ const PATHS: Array<{ label: string; trigger: RunTrigger }> = [
   { label: 'schedule', trigger: { kind: 'schedule', key: 'daily.morning' } },
 ];
 
-describe('§7.2 trust gates — side effects below Graduate', () => {
+describe('§7.2 trust gates — action level controls draft-vs-execute', () => {
+  // CONVERTED (Task 2): action level (not stage/grants/routines) is the sole gate.
+
   for (const path of PATHS) {
-    it(`egg via ${path.label}: produces NOTHING (no run, no charge)`, async () => {
-      const h = harness();
+    it(`egg + draft via ${path.label}: DRAFTS (egg admission fence removed — action_level is the sole gate)`, async () => {
+      // FIX 4: the egg run-admission fence is removed. An Egg now admits and is
+      // governed solely by action_level. egg + draft (default) → drafts.
+      const h = harness(100, 'draft');
       const outcome = await executeRun(nibbin('egg'), path.trigger, effectProgram, h.deps);
-      expect(outcome).toEqual({ kind: 'not_started', why: 'egg' });
-      expect(h.executed).toHaveLength(0);
-      expect(h.runs.balance(ACCOUNT)).toBe(100); // not a credit was spent
+      expect(outcome.kind).toBe('awaiting_approval');
+      expect(h.executed).toHaveLength(0); // no SEND fired (native-draft mirror excluded)
     });
 
-    it(`student via ${path.label}: drafts, never executes`, async () => {
-      const h = harness();
+    it(`egg + send via ${path.label}: EXECUTES (action_level is the sole gate, stage advisory)`, async () => {
+      const h = harness(100, 'send');
+      const outcome = await executeRun(nibbin('egg'), path.trigger, effectProgram, h.deps);
+      expect(outcome.kind).toBe('executed');
+      expect(h.executed).toHaveLength(1);
+    });
+
+    it(`egg + observe via ${path.label}: produces NOTHING (kill:observe)`, async () => {
+      const h = harness(100, 'observe');
+      const outcome = await executeRun(nibbin('egg'), path.trigger, effectProgram, h.deps);
+      expect(outcome.kind).toBe('killed');
+      expect((outcome as { reason: string }).reason).toBe('observe');
+      expect(h.executed).toHaveLength(0);
+    });
+
+    it(`student with actionLevel=draft via ${path.label}: drafts, never executes`, async () => {
+      // CONVERTED: was "student via path: drafts, never executes" (stage gate).
+      // Now: actionLevel=draft (default) causes draft at any stage.
+      const h = harness(100, 'draft');
       const outcome = await executeRun(nibbin('student'), path.trigger, effectProgram, h.deps);
       expect(outcome.kind).toBe('awaiting_approval');
       expect(h.executed).toHaveLength(0);
     });
 
-    it(`senior (novel pattern) via ${path.label}: drafts and flags novelty`, async () => {
-      const h = harness();
-      h.grants.grant('nib-1', CONN, 'email.draft'); // granted but NOT routine
+    it(`senior with actionLevel=draft via ${path.label}: drafts and gate reason is 'level'`, async () => {
+      // CONVERTED: was "senior (novel pattern) via path: drafts and flags novelty".
+      // NEW: gate reason is 'level' (not 'novelty') — actionLevel=draft is the gate.
+      const h = harness(100, 'draft');
       const outcome = await executeRun(nibbin('senior'), path.trigger, effectProgram, h.deps);
       expect(outcome.kind).toBe('awaiting_approval');
       expect(h.executed).toHaveLength(0);
       const run = [...h.runs.runs.values()][0];
       const draftStep = run.steps.find((s) => s.kind === 'draft');
-      expect(draftStep?.payload?.gate).toBe('novelty');
+      expect(draftStep?.payload?.gate).toBe('level');
     });
   }
 
-  it('senior with a routine pattern but NO write grant: still drafts (C8 structural)', async () => {
-    const h = harness();
+  it('actionLevel=draft always drafts regardless of routine approvals (routines no longer gate)', async () => {
+    // CONVERTED: was "senior with routine pattern but NO write grant: still drafts".
+    // NEW: routineApprovals not in gate — actionLevel=draft drafts at any count.
+    const h = harness(100, 'draft');
     for (let i = 0; i < 5; i++) h.routines.approve('nib-1', 'email.draft:overdue-followup');
     const outcome = await executeRun(nibbin('senior'), PATHS[0].trigger, effectProgram, h.deps);
     expect(outcome.kind).toBe('awaiting_approval');
     expect(h.executed).toHaveLength(0);
   });
 
-  it('graduate with NO write grant: still drafts (autonomy never outruns access)', async () => {
-    const h = harness();
+  it('graduate with actionLevel=draft: drafts (actionLevel beats grade)', async () => {
+    // CONVERTED: was "graduate with NO write grant: still drafts (autonomy never outruns access)".
+    // NEW: actionLevel=draft overrides grade — grants are not in the gate.
+    const h = harness(100, 'draft');
     const outcome = await executeRun(nibbin('grad'), PATHS[0].trigger, effectProgram, h.deps);
     expect(outcome.kind).toBe('awaiting_approval');
     expect(h.executed).toHaveLength(0);
   });
 
-  it('senior with routine pattern AND grant: executes (earned autonomy, §4.7)', async () => {
-    const h = harness();
-    for (let i = 0; i < 5; i++) h.routines.approve('nib-1', 'email.draft:overdue-followup');
-    h.grants.grant('nib-1', CONN, 'email.draft');
-    const outcome = await executeRun(nibbin('senior'), PATHS[0].trigger, effectProgram, h.deps);
+  it('student with actionLevel=send: executes (grade no longer a barrier)', async () => {
+    // CONVERTED: was "senior with routine pattern AND grant: executes (earned autonomy, §4.7)".
+    // NEW: send level executes at ANY grade. Using student to prove grade is irrelevant.
+    const h = harness(100, 'send');
+    const outcome = await executeRun(nibbin('student'), PATHS[0].trigger, effectProgram, h.deps);
     expect(outcome.kind).toBe('executed');
     expect(h.executed).toHaveLength(1);
   });
 
-  it('graduate with grant: executes within spec', async () => {
-    const h = harness();
-    h.grants.grant('nib-1', CONN, 'email.draft');
+  it('graduate with actionLevel=send: executes within spec', async () => {
+    // CONVERTED: was "graduate with grant: executes within spec".
+    // NEW: actionLevel=send is the gate — no grant needed.
+    const h = harness(100, 'send');
     const outcome = await executeRun(nibbin('grad'), PATHS[0].trigger, effectProgram, h.deps);
     expect(outcome.kind).toBe('executed');
   });
 
-  it('presentation drafts never execute, even for a granted graduate', async () => {
-    const h = harness();
-    h.grants.grant('nib-1', CONN, 'email.read');
+  it('presentation drafts never execute, even at send level', async () => {
+    // UNCHANGED: step.presentation=true is always draft regardless of actionLevel.
+    const h = harness(100, 'send');
     const presentation: ProgramFn = async function* () {
       yield {
         kind: 'draft',

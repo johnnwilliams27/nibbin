@@ -177,7 +177,7 @@ export function HatchWizard({ chores, apps }: { chores: ChoreOption[]; apps: str
           <h2>Where does it happen?</h2>
           <p className={styles.sub}>
             Tap the apps involved. Your Nibbin only ever gets the narrowest access that works —
-            drafting, not sending, until it graduates.
+            you set its action level (Observe, Draft, or Send) after it hatches.
           </p>
           <div className={styles.appsel}>
             {apps.map((a) => (
@@ -367,8 +367,9 @@ export function HatchWizard({ chores, apps }: { chores: ChoreOption[]; apps: str
               </div>
             )}
             <p className={styles.note}>
-              It starts as an egg: watching only. In a few days it hatches into a student and drafts
-              its first work for your approval. Nothing is ever sent without you until it graduates.
+              It starts as an egg: watching only. In a few days it hatches into a student and begins
+              drafting work for your approval. You decide what it may do — Observe, Draft, or Send —
+              and Agent School grades how accurately it handles the chore.
             </p>
 
             {synthesizing && !enrolled && (

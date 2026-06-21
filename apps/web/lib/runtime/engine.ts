@@ -122,12 +122,35 @@ interface SpecRow {
   persona_policy?: AgentSpec['personaPolicy'];
 }
 
+/**
+ * Load-time shim (P0-1): `email.draft` was retired in favor of `email.send`
+ * (the action level now decides draft-vs-act). `agent_specs` rows are immutable
+ * once adopted, so already-adopted email Nibbins still carry `email.draft` in
+ * their tools_allowlist (and possibly steps[].capability). Without this
+ * normalization the runner's allowlist gate kills every such run
+ * (`!toolsAllowlist.includes('email.send')`). The data migration
+ * 20260620210000 rewrites the rows; this shim is belt-and-suspenders for any
+ * row the migration missed (replication lag, manual insert, restore).
+ */
+function normalizeRetiredEmailDraft(allowlist: string[]): string[] {
+  if (!allowlist.includes('email.draft')) return allowlist;
+  const mapped = allowlist.map((cap) => (cap === 'email.draft' ? 'email.send' : cap));
+  // Dedup if both email.draft and email.send were present.
+  return [...new Set(mapped)];
+}
+
+function normalizeRetiredEmailDraftSteps(steps: AgentSpec['steps']): AgentSpec['steps'] {
+  if (!steps || steps.length === 0) return steps;
+  if (!steps.some((s) => s.capability === 'email.draft')) return steps;
+  return steps.map((s) => (s.capability === 'email.draft' ? { ...s, capability: 'email.send' } : s));
+}
+
 export function specFromRow(row: SpecRow): AgentSpec {
   return {
     templateKey: row.template_key,
     version: row.version,
     displayName: row.display_name,
-    toolsAllowlist: row.tools_allowlist,
+    toolsAllowlist: normalizeRetiredEmailDraft(row.tools_allowlist),
     requiredConnectors: row.required_connectors,
     triggers: row.triggers,
     curriculum: row.curriculum,
@@ -135,7 +158,7 @@ export function specFromRow(row: SpecRow): AgentSpec {
     // A template adoption carries empty steps → buildProgram routes it to the
     // hand-written program (no behavior change); a composed spec round-trips
     // its steps/persona through to the interpreter.
-    steps: row.steps ?? [],
+    steps: normalizeRetiredEmailDraftSteps(row.steps ?? []),
     personaPolicy: row.persona_policy ?? {},
   };
 }
@@ -177,10 +200,20 @@ export interface EffectsExecutorTestDeps {
   }) => Promise<{ allowed: boolean; reason?: string; retryAfterMs?: number }>;
   /** Optional: stub the Calendar createEvent call. Absent in email-only tests. */
   createEvent?: (calendarId: string, event: Record<string, unknown>) => Promise<{ id?: string }>;
+  /** Task 4: delete a Gmail draft by id (best-effort, dismiss path). */
+  deleteDraft?: (draftId: string) => Promise<void>;
+  /** Task 4: send a previously-created Gmail draft by id (send path with stored ref). */
+  sendDraft?: (draftId: string) => Promise<{ id?: string }>;
 }
 
 /**
- * Build the effects executor (email.draft + email.send).
+ * Build the effects executor (email.send + calendar.event-create).
+ * Task 3: email.draft retired; email.send is now the single email write capability.
+ * Task 4: native-draft mirror + delete-sync wired.
+ *   - args.nativeDraft=true + no nativeDraftRef → createDraft (Draft level mirror).
+ *   - args.nativeDraftRef set + no dismiss → sendDraft(ref) after velocity consume.
+ *   - args.dismiss=true + nativeDraftRef set → deleteDraft(ref) best-effort, no send.
+ *   - Neither flag → sendMessage (legacy / send-level non-native-draft path).
  * In production (no testDeps): calls GmailClient directly + send_velocity_consume RPC atomically.
  * In tests (testDeps injected): calls the provided stubs.
  */
@@ -191,7 +224,12 @@ export function buildEffectsExecutor(
   testDeps?: EffectsExecutorTestDeps,
   /** Optional event sink for fleet-learning telemetry (best-effort, never changes run behavior). */
   eventSink?: EventSink,
-) {
+): (args: {
+    connectionId: string;
+    capability: string;
+    args: Record<string, unknown>;
+    idempotencyKey: string;
+  }) => Promise<{ nativeDraftId?: string } | void> {
   /** Emit a connector_blocked event best-effort (structural ids only — no content/PII). */
   async function emitConnectorBlocked(connector: string, reason: 'not_connected' | 'auth_failed' | 'velocity_cap'): Promise<void> {
     if (!eventSink) return;
@@ -207,35 +245,66 @@ export function buildEffectsExecutor(
     capability: string;
     args: Record<string, unknown>;
     idempotencyKey: string;
-  }): Promise<void> => {
+  }): Promise<{ nativeDraftId?: string } | void> => {
     const connection = byId.get(args.connectionId);
     if (!connection) throw new Error(`connection ${args.connectionId} not found`);
     const rfc822 = String(args.args.rfc822 ?? '');
 
     switch (args.capability) {
-      case 'email.draft': {
-        try {
-          if (testDeps) {
-            await testDeps.createDraft(rfc822);
-          } else {
-            const vault = new SupabaseTokenVault({
-              supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
-              serviceKey: process.env.SUPABASE_SECRET_KEY ?? '',
-            });
-            await new GmailClient(connection, vault).createDraft(rfc822);
-          }
-        } catch (err) {
-          // Fleet-learning telemetry: emit connector_blocked on auth/connection-state errors.
-          // Re-throw so the runner's error handling is unchanged.
-          if (err instanceof ConnectorRequestError) {
-            const reason = err.kind === 'auth' ? 'auth_failed' : err.kind === 'connection-state' ? 'not_connected' : null;
-            if (reason) await emitConnectorBlocked(err.provider, reason);
-          }
-          throw err;
-        }
-        break;
-      }
       case 'email.send': {
+        const nativeDraftRef = typeof args.args.nativeDraftRef === 'string' ? args.args.nativeDraftRef : null;
+        const nativeDraft = args.args.nativeDraft === true;
+        const dismiss = args.args.dismiss === true;
+
+        // ── Dismiss path: delete the Gmail draft best-effort, no send ──────────
+        // Triggered when the user dismisses a Nibbin draft that has a native ref.
+        if (dismiss && nativeDraftRef) {
+          try {
+            if (testDeps) {
+              await testDeps.deleteDraft?.(nativeDraftRef);
+            } else {
+              const vault = new SupabaseTokenVault({
+                supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
+                serviceKey: process.env.SUPABASE_SECRET_KEY ?? '',
+              });
+              await new GmailClient(connection, vault).deleteDraft(nativeDraftRef);
+            }
+          } catch (err) {
+            // Best-effort: logged, never blocks dismissal.
+            console.warn('[effects] deleteDraft best-effort failed:', err instanceof Error ? err.message : String(err));
+          }
+          return;
+        }
+
+        // ── Native-draft mirror path: create a Gmail draft (Draft action level) ─
+        // nativeDraft=true without a ref → Draft level mirror: createDraft.
+        // Does NOT consume velocity (this is draft creation, not send).
+        // Returns the nativeDraftId so the runner can store it in native_draft_ref.
+        if (nativeDraft && !nativeDraftRef) {
+          let draftId: string | undefined;
+          try {
+            if (testDeps) {
+              const r = await testDeps.createDraft(rfc822);
+              draftId = r.id;
+            } else {
+              const vault = new SupabaseTokenVault({
+                supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
+                serviceKey: process.env.SUPABASE_SECRET_KEY ?? '',
+              });
+              const r = await new GmailClient(connection, vault).createDraft(rfc822);
+              draftId = r.id;
+            }
+          } catch (err) {
+            if (err instanceof ConnectorRequestError) {
+              const reason = err.kind === 'auth' ? 'auth_failed' : err.kind === 'connection-state' ? 'not_connected' : null;
+              if (reason) await emitConnectorBlocked(err.provider, reason);
+            }
+            throw err;
+          }
+          return { nativeDraftId: draftId };
+        }
+
+        // ── Send path: velocity consume then send (stored draft or fresh send) ──
         // Atomic velocity check via PgSendRecordStore (migration 20260620180000).
         // The RPC serializes check-and-insert under a per-account advisory lock,
         // eliminating the TOCTOU in the old two-step read→record path.
@@ -263,7 +332,18 @@ export function buildEffectsExecutor(
           );
         }
         try {
-          if (testDeps) {
+          if (nativeDraftRef) {
+            // Send the previously-created Gmail draft (velocity already consumed above).
+            if (testDeps) {
+              await testDeps.sendDraft?.(nativeDraftRef);
+            } else {
+              const vault = new SupabaseTokenVault({
+                supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
+                serviceKey: process.env.SUPABASE_SECRET_KEY ?? '',
+              });
+              await new GmailClient(connection, vault).sendDraft(nativeDraftRef);
+            }
+          } else if (testDeps) {
             await testDeps.sendMessage(rfc822);
           } else {
             const vault = new SupabaseTokenVault({
@@ -288,11 +368,13 @@ export function buildEffectsExecutor(
       }
       case 'calendar.event-create': {
         // Calendar write (Connector Lever 1). By the time execution reaches here
-        // the run loop has ALREADY cleared every wall: gateSideEffect (School
-        // stage / proven routine), the calendar.event-create write grant
-        // (deps.grants.hasGrant), and idempotency. This case only performs the
-        // approved side effect. calendarId defaults to 'primary'; the event body
-        // is built by the trusted primitive, never the model.
+        // the runner has ALREADY cleared every wall: action_level (the SOLE
+        // execution gate — observe/draft/send, owner-set), resource-claim
+        // conflict locks, and idempotency. Grade and write-grant rows are
+        // advisory only and do NOT gate (the runtime no longer calls hasGrant).
+        // This case only performs the approved side effect. calendarId defaults
+        // to 'primary'; the event body is built by the trusted primitive, never
+        // the model.
         const calendarId =
           typeof args.args.calendarId === 'string' && args.args.calendarId
             ? args.args.calendarId

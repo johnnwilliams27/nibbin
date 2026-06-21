@@ -73,7 +73,11 @@ function runnerDeps(opts: { now?: () => number; executed?: string[] } = {}): Run
     },
     effects: {
       async execute(req) {
+        // Skip the native-draft mirror (createDraft at draft level) — `executed`
+        // tracks real SENDS / side effects, not native-draft creation.
+        if (req.args.nativeDraft === true) return undefined;
         opts.executed?.push(req.capability);
+        return undefined;
       },
     },
     now: opts.now ?? (() => Date.now()),
@@ -196,7 +200,7 @@ describe('runPlan — a write pick is approval-gated', () => {
       runner,
     );
     const outcome = await runPlan(
-      plan({ toolsAllowlist: ['email.read', 'email.draft', 'reply.new-inquiry', 'done'] }),
+      plan({ toolsAllowlist: ['email.read', 'email.send', 'reply.new-inquiry', 'done'] }),
       d,
     );
     expect(outcome.kind).toBe('needs_input');
@@ -342,7 +346,7 @@ describe('runPlan — resume rebuilds repetition for primitive-internal reads', 
   function primitivePlan(): PlanSpec {
     return plan({
       goal: 'reply to new inquiries',
-      toolsAllowlist: ['email.read', 'email.draft', 'reply.new-inquiry', 'done'],
+      toolsAllowlist: ['email.read', 'email.send', 'reply.new-inquiry', 'done'],
       requiredConnectors: ['gmail'],
     });
   }
