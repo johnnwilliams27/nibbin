@@ -196,7 +196,7 @@ describe('runPlan — a write pick is approval-gated', () => {
       runner,
     );
     const outcome = await runPlan(
-      plan({ toolsAllowlist: ['email.read', 'email.draft', 'reply.new-inquiry', 'done'] }),
+      plan({ toolsAllowlist: ['email.read', 'email.send', 'reply.new-inquiry', 'done'] }),
       d,
     );
     expect(outcome.kind).toBe('needs_input');
@@ -342,7 +342,7 @@ describe('runPlan — resume rebuilds repetition for primitive-internal reads', 
   function primitivePlan(): PlanSpec {
     return plan({
       goal: 'reply to new inquiries',
-      toolsAllowlist: ['email.read', 'email.draft', 'reply.new-inquiry', 'done'],
+      toolsAllowlist: ['email.read', 'email.send', 'reply.new-inquiry', 'done'],
       requiredConnectors: ['gmail'],
     });
   }

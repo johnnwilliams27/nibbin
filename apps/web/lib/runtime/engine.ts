@@ -180,7 +180,10 @@ export interface EffectsExecutorTestDeps {
 }
 
 /**
- * Build the effects executor (email.draft + email.send).
+ * Build the effects executor (email.send + calendar.event-create).
+ * Task 3: email.draft retired; email.send is now the single email write capability.
+ * Task 4 will wire the native-draft path (nativeDraft: true) so email.send at
+ * Draft action level calls createDraft instead of sendMessage.
  * In production (no testDeps): calls GmailClient directly + send_velocity_consume RPC atomically.
  * In tests (testDeps injected): calls the provided stubs.
  */
@@ -213,28 +216,10 @@ export function buildEffectsExecutor(
     const rfc822 = String(args.args.rfc822 ?? '');
 
     switch (args.capability) {
-      case 'email.draft': {
-        try {
-          if (testDeps) {
-            await testDeps.createDraft(rfc822);
-          } else {
-            const vault = new SupabaseTokenVault({
-              supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
-              serviceKey: process.env.SUPABASE_SECRET_KEY ?? '',
-            });
-            await new GmailClient(connection, vault).createDraft(rfc822);
-          }
-        } catch (err) {
-          // Fleet-learning telemetry: emit connector_blocked on auth/connection-state errors.
-          // Re-throw so the runner's error handling is unchanged.
-          if (err instanceof ConnectorRequestError) {
-            const reason = err.kind === 'auth' ? 'auth_failed' : err.kind === 'connection-state' ? 'not_connected' : null;
-            if (reason) await emitConnectorBlocked(err.provider, reason);
-          }
-          throw err;
-        }
-        break;
-      }
+      // Task 4 (TODO): add native-draft dispatch here when actionLevel === 'draft'
+      // (call createDraft instead of sendMessage). For now email.send always
+      // reaches the send path — the runner gates draft steps for human approval
+      // before the executor is called, so this is only reached at Send level.
       case 'email.send': {
         // Atomic velocity check via PgSendRecordStore (migration 20260620180000).
         // The RPC serializes check-and-insert under a per-account advisory lock,

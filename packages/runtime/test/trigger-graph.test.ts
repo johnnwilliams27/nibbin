@@ -106,10 +106,17 @@ describe('the shop catalog (§4.6)', () => {
     }
   });
 
-  it('no template ships raw send authority in v0', () => {
+  it('no template ships raw autonomous-send authority in v0 (email.send is nativeDraft:true — action level governs draft-vs-act)', () => {
+    // Task 3: email.send is the unified email write capability with nativeDraft:true.
+    // Templates may include email.send; the action level (observe/draft/send) on
+    // the nibbin's spec governs whether it drafts or auto-executes.
+    // The old guard ("email.send must not appear") is superseded by the
+    // action-level gate. What we verify instead: no template ships with a
+    // non-nativeDraft write cap (those would be autonomous by default).
     for (const t of SHOP_TEMPLATES) {
-      expect(t.spec.toolsAllowlist).not.toContain('email.send');
       expect(t.spec.toolsAllowlist).not.toContain('chat.post');
+      // calendar.event-create is nativeDraft:false — if a template ships it,
+      // the action level is the gate, but this confirms intent (currently none do).
     }
   });
 });

@@ -10,7 +10,7 @@ export interface PushDraftToGmailInput {
 export interface PushDraftToGmailDeps {
   /** Load the run_steps row: returns payload.rfc822 (base64url encoded RFC 822) */
   loadDraftPayload: (runId: string, stepIdx: number, accountId: string) => Promise<string>;
-  /** Check nibbin_write_grants for email.draft */
+  /** Check nibbin_write_grants for email.send */
   hasGrant: (nibbinId: string, connectionId: string) => Promise<boolean>;
   /** The gmail connection_id for this account */
   gmailConnectionId: () => Promise<string | null>;
@@ -29,7 +29,7 @@ export async function pushDraftToGmail(
   const granted = await deps.hasGrant(input.nibbinId, connectionId);
   if (!granted) {
     throw new Error(
-      `email.draft grant missing for nibbin ${input.nibbinId} — connect Gmail write access first`,
+      `email.send grant missing for nibbin ${input.nibbinId} — connect Gmail write access first`,
     );
   }
   const rfc822 = await deps.loadDraftPayload(input.runId, input.draftStepIdx, input.accountId);

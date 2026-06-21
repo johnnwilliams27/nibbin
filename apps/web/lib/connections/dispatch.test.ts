@@ -14,7 +14,7 @@ function makeNibbin(overrides: Partial<NibbinRef> = {}): NibbinRef {
       templateKey: 'scribe',
       version: 1,
       displayName: 'Scribe',
-      toolsAllowlist: ['email.read', 'email.draft'],
+      toolsAllowlist: ['email.read', 'email.send'],
       requiredConnectors: ['gmail'],
       triggers: [{ kind: 'event', source: 'connector:gmail:message.received', debounceSecs: 300 }],
       curriculum: { measures: '', promotion: { windowRuns: 25, minApprovedUneditedPct: 0.95 }, routineMinApprovals: 5 },

@@ -7,7 +7,7 @@
  *
  * Shape: `email.read` (gmail) → detect a NEW unanswered first-contact inquiry
  * (no In-Reply-To, not bulk, no sent reply on the thread), newest first → draft
- * a warm first reply (model draft, deterministic fallback) via `email.draft`.
+ * a warm first reply (model draft, deterministic fallback) via `email.send`.
  *
  * SAFETY (load-bearing): the Composer never emits the read path or effectArgs —
  * it picks this primitive's id (no params). The mailbox sweep, the first-inquiry
@@ -66,9 +66,9 @@ export function replyNewInquiry(
     };
     yield {
       kind: 'draft',
-      capability: 'email.draft',
+      capability: 'email.send',
       connectionId: gmail,
-      patternKey: 'email.draft:inquiry-reply',
+      patternKey: 'email.send:inquiry-reply',
       title: `Reply to “${subject}”`,
       draft: modelDraftOr(fallback, fed),
       effectArgs: { threadId: newest.threadId, subject: `Re: ${subject}` },

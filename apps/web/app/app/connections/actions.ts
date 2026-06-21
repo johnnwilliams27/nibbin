@@ -84,10 +84,10 @@ export async function beginWriteConnectAction(formData: FormData): Promise<void>
 
   const COMPOSE = 'https://www.googleapis.com/auth/gmail.compose';
   if (conn && (conn.scopes as string[]).includes(COMPOSE)) {
-    // Compose already held — grant email.draft directly without OAuth round-trip
+    // Compose already held — grant email.send directly without OAuth round-trip
     await grantWriteCapability(
       nibbinId, conn.id as string, accountId, user.id,
-      'email.draft',
+      'email.send',
       'Maya will create a Gmail draft for your review.',
       svc,
     );

@@ -124,9 +124,9 @@ export function crystallizeTranscript(planRun: PlanRunState): CrystalResult {
       continue;
     }
 
-    // A raw atomic draft/write is not a reusable step — reuse must ride a
+    // A raw atomic write is not a reusable step — reuse must ride a
     // primitive that owns its effectArgs (mirrors validateComposedSpec).
-    if (cap.sideEffect === 'draft' || cap.sideEffect === 'write') {
+    if (cap.sideEffect === 'write') {
       return {
         ok: false,
         reason: 'ungeneralizable',
@@ -157,20 +157,20 @@ export function crystallizeTranscript(planRun: PlanRunState): CrystalResult {
   return { ok: true, steps };
 }
 
-/** Does an extracted step perform an approved connector ACTION (a draft/write),
- *  not a pure read? A draft-producing primitive counts; a presentation/read-only
+/** Does an extracted step perform an approved connector ACTION (a write),
+ *  not a pure read? A write-producing primitive counts; a presentation/read-only
  *  digest (sideEffect 'read') does not. */
 function stepIsAction(step: CapabilityStep): boolean {
   const cap = capability(step.capability);
   if (!cap) return false;
-  if (cap.sideEffect === 'draft' || cap.sideEffect === 'write') return true;
-  // A primitive whose effectiveTools include a draft/write tool produces an
-  // approved connector action (e.g. a nudge drafts an email). A read-only digest
+  if (cap.sideEffect === 'write') return true;
+  // A primitive whose effectiveTools include a write tool produces an
+  // approved connector action (e.g. a nudge sends an email). A read-only digest
   // primitive's effectiveTools are all reads → no action.
   if (cap.kind === 'primitive') {
     return (cap.effectiveTools ?? []).some((t) => {
       const dep = capability(t);
-      return dep?.sideEffect === 'draft' || dep?.sideEffect === 'write';
+      return dep?.sideEffect === 'write';
     });
   }
   return false;

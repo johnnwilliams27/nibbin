@@ -6,7 +6,7 @@
  * `withinDays` is at its default (7 = hopper's horizon).
  *
  * Shape: `calendar.read` (google-calendar) → detect upcoming events with an
- * unconfirmed external guest → draft `email.draft` (GMAIL) to the guest. This
+ * unconfirmed external guest → draft `email.send` (GMAIL) to the guest. This
  * is the cross-resource case: the read rides the gcal connection, the draft
  * rides the gmail connection. The Composer derives BOTH required connectors
  * from this primitive's `effectiveTools` (server-side, never from the LLM).
@@ -76,9 +76,9 @@ export function nudgeUnconfirmedEvent(
     const guestEmail = safeAddress((next.attendees ?? []).find((a) => !a.self)?.email);
     yield {
       kind: 'draft',
-      capability: 'email.draft',
+      capability: 'email.send',
       connectionId: gmail,
-      patternKey: 'email.draft:session-confirmation',
+      patternKey: 'email.send:session-confirmation',
       title: `Confirmation for ${next.summary ?? 'your next session'}`,
       draft:
         `Hi! Looking forward to ${next.summary ?? 'our session'} on ${when}. ` +

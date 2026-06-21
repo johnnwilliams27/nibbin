@@ -4,7 +4,7 @@ import { appSession } from '../../../../lib/auth/app-session';
 import { serviceClient } from '../../../../lib/supabase/service';
 import { GmailClient, SupabaseTokenVault } from '@nibbin/connectors';
 import { pushDraftToGmail } from '../../../../lib/connections/push-draft';
-import { revokeWriteGrant } from '../../../../lib/connections/grants';
+import { revokeWriteGrant, type WriteCapability } from '../../../../lib/connections/grants';
 import { connectionFromRow } from '../../../../lib/runtime/engine';
 import { maybePromote } from '../../../../lib/runtime/engine';
 
@@ -72,7 +72,7 @@ export async function pushDraftToGmailAction(
           .select('id', { count: 'exact', head: true })
           .eq('nibbin_id', nId)
           .eq('connection_id', connId)
-          .eq('capability', 'email.draft')
+          .eq('capability', 'email.send')
           .is('revoked_at', null);
         return (count ?? 0) > 0;
       },
@@ -109,7 +109,7 @@ export async function pushDraftToGmailAction(
 export async function revokeWriteGrantAction(
   nibbinId: string,
   connectionId: string,
-  capability: 'email.draft' | 'email.send',
+  capability: WriteCapability,
 ): Promise<void> {
   const { accountId } = await appSession();
   // FIX 2: verify nibbin belongs to session account before revoking grants

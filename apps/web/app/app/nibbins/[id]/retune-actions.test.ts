@@ -39,7 +39,7 @@ const VALID_SPEC_ROW = {
   template_key: null,
   version: 2,
   display_name: 'Overdue follow-ups',
-  tools_allowlist: ['email.read', 'email.draft'],
+  tools_allowlist: ['email.read', 'email.send'],
   required_connectors: ['gmail'],
   triggers: [
     { kind: 'schedule', schedule: 'daily.morning', cooldownSecs: 3600 },

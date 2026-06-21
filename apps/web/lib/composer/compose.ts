@@ -134,7 +134,7 @@ interface ComposedDraft {
  * The connectors a primitive actually needs — the UNIQUE set of each effective
  * tool's atomic-descriptor `requiredConnector` (server-side, from the registry,
  * never from LLM output). A cross-resource primitive (e.g.
- * `nudge.unconfirmed-event`: calendar.read + email.draft) needs BOTH gcal AND
+ * `nudge.unconfirmed-event`: calendar.read + email.send) needs BOTH gcal AND
  * gmail. Falls back to `[cap.requiredConnector]` if effectiveTools is absent
  * (atomic descriptors keep their single home connector).
  */

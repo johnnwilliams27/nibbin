@@ -86,7 +86,7 @@ describe('validateComposedSpec — nudge family connector gating', () => {
   it('accepts reply.new-inquiry when gmail is granted; rejects when not', () => {
     const s = spec({
       displayName: 'New-inquiry replies',
-      toolsAllowlist: ['email.read', 'email.draft'],
+      toolsAllowlist: ['email.read', 'email.send'],
       requiredConnectors: ['gmail'],
       steps: [{ capability: 'reply.new-inquiry', inputs: {} }],
     });
@@ -97,7 +97,7 @@ describe('validateComposedSpec — nudge family connector gating', () => {
   it('accepts the CROSS-RESOURCE nudge.unconfirmed-event when BOTH gcal+gmail are granted', () => {
     const s = spec({
       displayName: 'Booking confirmations',
-      toolsAllowlist: ['calendar.read', 'email.draft'],
+      toolsAllowlist: ['calendar.read', 'email.send'],
       requiredConnectors: ['google-calendar', 'gmail'],
       steps: [{ capability: 'nudge.unconfirmed-event', inputs: { withinDays: 7 } }],
     });
@@ -107,11 +107,11 @@ describe('validateComposedSpec — nudge family connector gating', () => {
   it('rejects nudge.unconfirmed-event when only gcal is granted (gmail missing — the email.draft tool)', () => {
     const s = spec({
       displayName: 'Booking confirmations',
-      toolsAllowlist: ['calendar.read', 'email.draft'],
+      toolsAllowlist: ['calendar.read', 'email.send'],
       requiredConnectors: ['google-calendar', 'gmail'],
       steps: [{ capability: 'nudge.unconfirmed-event', inputs: { withinDays: 7 } }],
     });
-    // gcal granted but gmail is not → the email.draft step needs gmail.
+    // gcal granted but gmail is not → the email.send step needs gmail.
     const problems = validateComposedSpec(s, ['google-calendar']);
     expect(problems.some((p) => /gmail.*not connected|not connected/.test(p))).toBe(true);
   });
@@ -246,7 +246,7 @@ describe('interpreter dispatches the nudge-family primitives through the runner'
   it('nudge.unconfirmed-event (cross-resource): reads on gcal, drafts on gmail → awaiting_approval', async () => {
     const h = harness(gcalGmailReader());
     const s = spec({
-      toolsAllowlist: ['calendar.read', 'email.draft'],
+      toolsAllowlist: ['calendar.read', 'email.send'],
       requiredConnectors: ['google-calendar', 'gmail'],
       steps: [{ capability: 'nudge.unconfirmed-event', inputs: {} }],
     });
@@ -263,24 +263,24 @@ describe('interpreter dispatches the nudge-family primitives through the runner'
     expect(h.reads[0].connectionId).toBe(GCAL);
     expect(h.reads[0].path).toContain('/calendar/');
     // The draft rides the gmail connection, with trusted-built effectArgs.
-    expect(outcome.draft.capability).toBe('email.draft');
+    expect(outcome.draft.capability).toBe('email.send');
     expect(outcome.draft.connectionId).toBe(GMAIL);
-    expect(outcome.draft.patternKey).toBe('email.draft:session-confirmation');
+    expect(outcome.draft.patternKey).toBe('email.send:session-confirmation');
     expect(outcome.draft.effectArgs).toEqual({ eventId: EVENT_ID, to: 'guest@example.com' });
   });
 
   it('reply.new-inquiry → awaiting_approval inquiry-reply draft', async () => {
     const h = harness(inquiryReader());
     const s = spec({
-      toolsAllowlist: ['email.read', 'email.draft'],
+      toolsAllowlist: ['email.read', 'email.send'],
       requiredConnectors: ['gmail'],
       steps: [{ capability: 'reply.new-inquiry', inputs: {} }],
     });
     const outcome = await executeRun(nib(s), TRIGGER, interpretSpec(s, { gmail: GMAIL }, NOW), h.deps);
     expect(outcome.kind).toBe('awaiting_approval');
     if (outcome.kind !== 'awaiting_approval') throw new Error('expected awaiting_approval');
-    expect(outcome.draft.capability).toBe('email.draft');
-    expect(outcome.draft.patternKey).toBe('email.draft:inquiry-reply');
+    expect(outcome.draft.capability).toBe('email.send');
+    expect(outcome.draft.patternKey).toBe('email.send:inquiry-reply');
     expect(outcome.draft.effectArgs).toEqual({ threadId: INQUIRY_THREAD, subject: 'Re: Wedding inquiry' });
   });
 });
@@ -324,7 +324,7 @@ describe('parameterization beyond the templates (minDaysLate / withinDays)', () 
   it('nudge.unconfirmed-event withinDays=30 widens the calendar timeMax to now + 30 days', async () => {
     const h = harness(gcalGmailReader());
     const s = spec({
-      toolsAllowlist: ['calendar.read', 'email.draft'],
+      toolsAllowlist: ['calendar.read', 'email.send'],
       requiredConnectors: ['google-calendar', 'gmail'],
       steps: [{ capability: 'nudge.unconfirmed-event', inputs: { withinDays: 30 } }],
     });
@@ -390,8 +390,8 @@ describe('template ↔ primitive parity (identical yielded steps + effectArgs)',
     expect(read.connectionId).toBe(GCAL);
     expect(read.path).toContain('/calendar/');
     expect(draft.connectionId).toBe(GMAIL);
-    expect(draft.capability).toBe('email.draft');
-    expect(draft.patternKey).toBe('email.draft:session-confirmation');
+    expect(draft.capability).toBe('email.send');
+    expect(draft.patternKey).toBe('email.send:session-confirmation');
     expect(draft.effectArgs).toEqual({ eventId: EVENT_ID, to: 'guest@example.com' });
   });
 
@@ -399,8 +399,8 @@ describe('template ↔ primitive parity (identical yielded steps + effectArgs)',
     const steps = await drive(replyNewInquiry({}, { gmail: GMAIL }, NOW), inquiryResponder);
     const draft = steps.find((s) => s.kind === 'draft');
     if (!draft || draft.kind !== 'draft') throw new Error('expected draft');
-    expect(draft.capability).toBe('email.draft');
-    expect(draft.patternKey).toBe('email.draft:inquiry-reply');
+    expect(draft.capability).toBe('email.send');
+    expect(draft.patternKey).toBe('email.send:inquiry-reply');
     expect(draft.effectArgs).toEqual({ threadId: INQUIRY_THREAD, subject: 'Re: Wedding inquiry' });
     // It asked the runner for a model draft before the draft, like scribe.
     expect(steps.some((s) => s.kind === 'compose' && 'prompt' in s && s.prompt)).toBe(true);

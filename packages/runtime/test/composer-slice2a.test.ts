@@ -41,7 +41,7 @@ function nudgeSpec(overrides: Partial<AgentSpec> = {}): AgentSpec {
     templateKey: null,
     version: 1,
     displayName: 'Overdue follow-ups',
-    toolsAllowlist: ['email.read', 'email.draft'],
+    toolsAllowlist: ['email.read', 'email.send'],
     requiredConnectors: ['gmail'],
     triggers: [
       { kind: 'schedule', schedule: 'daily.morning', cooldownSecs: 3600 },
@@ -113,13 +113,13 @@ describe('validateComposedSpec — fail-closed gate', () => {
   // FIX 5: a composed draft/write step MUST ride a primitive — a RAW atomic
   // draft/write step would carry attacker-shaped effectArgs (e.g. a bcc) from
   // step.inputs, reopening the injection boundary primitives close.
-  it('rejects a RAW composed email.draft step (composed drafts must ride a primitive)', () => {
+  it('rejects a RAW composed email.send step (composed writes must ride a primitive)', () => {
     const spec = nudgeSpec({
-      toolsAllowlist: ['email.draft'],
-      steps: [{ capability: 'email.draft', inputs: { to: 'x@y.com', bcc: 'leak@evil.com', body: 'hi' } }],
+      toolsAllowlist: ['email.send'],
+      steps: [{ capability: 'email.send', inputs: { to: 'x@y.com', bcc: 'leak@evil.com', body: 'hi' } }],
     });
     const problems = validateComposedSpec(spec, ['gmail']);
-    expect(problems.some((p) => /raw draft step|must ride a primitive/.test(p))).toBe(true);
+    expect(problems.some((p) => /raw (draft|write) step|must ride a primitive/.test(p))).toBe(true);
   });
 
   it('rejects a RAW composed email.send (write) step', () => {
@@ -269,9 +269,9 @@ describe('interpreter dispatches nudge.overdue-email through the runner', () => 
     const draft = outcome.draft;
     expect(draft.kind).toBe('draft');
     if (draft.kind !== 'draft') throw new Error('expected a draft step');
-    expect(draft.capability).toBe('email.draft');
-    // Per-primitive trusted routine identity (echo parity key).
-    expect(draft.patternKey).toBe('email.draft:overdue-followup');
+    expect(draft.capability).toBe('email.send');
+    // Per-primitive trusted routine identity (echo parity key — Task 3: email.send prefix).
+    expect(draft.patternKey).toBe('email.send:overdue-followup');
     // The effectArgs were built by the trusted primitive (threadId + sanitized
     // recipient + Re: subject) — the composed spec only chose the primitive id.
     expect(draft.effectArgs).toEqual({
@@ -342,8 +342,8 @@ describe('echo ↔ nudge.overdue-email primitive parity', () => {
 
     // The draft carries the trusted-built effectArgs the echo template builds:
     // threadId + sanitized recipient + Re: subject. The LLM never produced these.
-    expect(draft.capability).toBe('email.draft');
-    expect(draft.patternKey).toBe('email.draft:overdue-followup');
+    expect(draft.capability).toBe('email.send');
+    expect(draft.patternKey).toBe('email.send:overdue-followup');
     expect(draft.effectArgs).toEqual({
       threadId,
       to: 'dana@example.com',

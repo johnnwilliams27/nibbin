@@ -31,7 +31,7 @@ function spec(overrides: Partial<AgentSpec> = {}): AgentSpec {
     templateKey: 'echo',
     version: 1,
     displayName: 'Echo',
-    toolsAllowlist: ['email.read', 'email.draft'],
+    toolsAllowlist: ['email.read', 'email.send'],
     requiredConnectors: ['gmail'],
     triggers: [{ kind: 'user', debounceSecs: 0, cooldownSecs: 0 }],
     curriculum: {
@@ -169,7 +169,7 @@ describe('default ceilings clear a realistic mailbox sweep (cost-auditor P1-1)',
       for (let i = 0; i < 82; i++) yield read(`/gmail/v1/users/me/messages/m-${i}`);
       yield {
         kind: 'draft',
-        capability: 'email.draft',
+        capability: 'email.send',
         connectionId: CONN,
         patternKey: 'p',
         title: 't',
@@ -317,7 +317,7 @@ describe('§6.2: idempotency keys on side effects', () => {
     const routines = new MemoryRoutineStore();
     for (let i = 0; i < 5; i++) routines.approve('nib-1', 'p1');
     const grants = new MemoryGrantStore();
-    grants.grant('nib-1', CONN, 'email.draft');
+    grants.grant('nib-1', CONN, 'email.send');
     h.deps.routines = routines;
     h.deps.grants = grants;
     return h;
@@ -325,7 +325,7 @@ describe('§6.2: idempotency keys on side effects', () => {
   const effect: ProgramFn = async function* () {
     yield {
       kind: 'draft',
-      capability: 'email.draft',
+      capability: 'email.send',
       connectionId: CONN,
       patternKey: 'p1',
       title: 't',
@@ -479,7 +479,7 @@ describe('§ action-levels: action level is the sole execution gate', () => {
   const sendStep: ProgramFn = async function* () {
     yield {
       kind: 'draft',
-      capability: 'email.draft',
+      capability: 'email.send',
       connectionId: CONN,
       patternKey: 'p-al',
       title: 't',
@@ -534,7 +534,7 @@ describe('§ action-levels: action level is the sole execution gate', () => {
     const out = await executeRun(nibRef, TRIGGER, async function* () {
       yield {
         kind: 'draft',
-        capability: 'email.draft',
+        capability: 'email.send',
         connectionId: CONN,
         patternKey: 'p-pres',
         title: 't',
@@ -559,7 +559,7 @@ describe('§ action-levels: retained safety walls fire under Egg+Send (dispatchS
   const sendEffect: ProgramFn = async function* () {
     yield {
       kind: 'draft',
-      capability: 'email.draft',
+      capability: 'email.send',
       connectionId: CONN,
       patternKey: 'p-wall',
       title: 't',
@@ -668,7 +668,7 @@ describe('#43: status re-checked mid-run — paused/level-lowered Nibbin drafts 
     runs.nibbinState('nib-1').actionLevel = 'send';
     const routines = new MemoryRoutineStore();
     const grants = new MemoryGrantStore();
-    grants.grant('nib-1', CONN, 'email.draft');
+    grants.grant('nib-1', CONN, 'email.send');
     const deps: RunnerDeps = {
       runs,
       routines,
@@ -685,7 +685,7 @@ describe('#43: status re-checked mid-run — paused/level-lowered Nibbin drafts 
   const draftStep: ProgramFn = async function* () {
     yield {
       kind: 'draft',
-      capability: 'email.draft',
+      capability: 'email.send',
       connectionId: CONN,
       patternKey: 'p1',
       title: 't',
@@ -715,7 +715,7 @@ describe('#43: status re-checked mid-run — paused/level-lowered Nibbin drafts 
       runs.nibbinState('nib-1').actionLevel = 'draft';
       yield {
         kind: 'draft',
-        capability: 'email.draft',
+        capability: 'email.send',
         connectionId: CONN,
         patternKey: 'p1',
         title: 't',
@@ -737,7 +737,7 @@ describe('#43: status re-checked mid-run — paused/level-lowered Nibbin drafts 
       runs.nibbinState('nib-1').status = 'paused';
       yield {
         kind: 'draft',
-        capability: 'email.draft',
+        capability: 'email.send',
         connectionId: CONN,
         patternKey: 'p1',
         title: 't',
@@ -762,7 +762,7 @@ describe('#44: routine-pattern trust resets on demotion (stage-scoped approvals)
     runs.seedCredits(ACCOUNT, 1000);
     const routines = new MemoryRoutineStore(now);
     const grants = new MemoryGrantStore();
-    grants.grant('nib-1', CONN, 'email.draft');
+    grants.grant('nib-1', CONN, 'email.send');
     const deps: RunnerDeps = {
       runs, routines, grants,
       idempotency: new MemoryIdempotencyStore(),
@@ -834,7 +834,7 @@ describe('#44: routine-pattern trust resets on demotion (stage-scoped approvals)
     const outcome = await executeRun(seniorNib, TRIGGER, async function* () {
       yield {
         kind: 'draft',
-        capability: 'email.draft',
+        capability: 'email.send',
         connectionId: CONN,
         patternKey: 'p1',
         title: 't',

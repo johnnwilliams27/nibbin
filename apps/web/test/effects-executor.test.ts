@@ -13,16 +13,20 @@ function makeGmailConn(scopes: string[]): Connection {
   };
 }
 
-it('email.draft capability calls createDraft', async () => {
-  const drafts: string[] = [];
+// Task 3: email.draft retired. email.send is the single email write capability.
+// Task 4 will wire the native-draft path (nativeDraft:true). For now email.send
+// at the executor level always calls sendMessage (the runner gates draft steps
+// for human approval before the executor is ever invoked at Draft level).
+it('email.send capability calls sendMessage (single email write capability, Task 3)', async () => {
+  const sends: string[] = [];
   const byId = new Map([['conn1', makeGmailConn([COMPOSE, SEND])]]);
   const executor = buildEffectsExecutor(byId, 'acc1', Date.now() - 86400000 * 30, {
-    createDraft: async (rfc822: string) => { drafts.push(rfc822); return { id: 'd1' }; },
-    sendMessage: async () => { throw new Error('should not send'); },
+    createDraft: async () => { throw new Error('should not draft'); },
+    sendMessage: async (rfc822: string) => { sends.push(rfc822); return { id: 's-dup' }; },
     sendVelocityConsume: async () => ({ allowed: true }),
   });
-  await executor({ connectionId: 'conn1', capability: 'email.draft', args: { rfc822: 'cmF3' }, idempotencyKey: 'ik1' });
-  expect(drafts).toEqual(['cmF3']);
+  await executor({ connectionId: 'conn1', capability: 'email.send', args: { rfc822: 'cmF3' }, idempotencyKey: 'ik1' });
+  expect(sends).toEqual(['cmF3']);
 });
 
 it('email.send capability calls sendMessage after velocity check', async () => {
@@ -111,7 +115,7 @@ it('missing connection throws', async () => {
     sendVelocityConsume: async () => ({ allowed: true }),
   });
   await expect(
-    executor({ connectionId: 'conn-missing', capability: 'email.draft', args: { rfc822: '' }, idempotencyKey: 'ik5' }),
+    executor({ connectionId: 'conn-missing', capability: 'email.send', args: { rfc822: '' }, idempotencyKey: 'ik5' }),
   ).rejects.toThrow(/not found/);
 });
 

@@ -12,7 +12,7 @@ import { writeGrantSpecFor } from './callback-core';
 it('CreateWriteGrantInput requires plainLanguageReason (compile-time check)', () => {
   const input: CreateWriteGrantInput = {
     accountId: 'a', nibbinId: 'n', connectionId: 'c',
-    capability: 'email.draft',
+    capability: 'email.send',
     grantedBy: 'u',
     plainLanguageReason: 'Maya will create a Gmail draft for your review.',
   };
@@ -37,14 +37,14 @@ it('createWriteGrant upserts a nibbin_write_grants row and does not throw on con
   } as unknown as SupabaseClient;
   const input: CreateWriteGrantInput = {
     accountId: 'acc1', nibbinId: 'nib1', connectionId: 'con1',
-    capability: 'email.draft', grantedBy: 'usr1',
+    capability: 'email.send', grantedBy: 'usr1',
     plainLanguageReason: 'Maya will create a Gmail draft for your review.',
   };
   await createWriteGrant(input, svc);
   expect(upserted).toHaveLength(1);
   expect(upserted[0]).toMatchObject({
     account_id: 'acc1', nibbin_id: 'nib1', connection_id: 'con1',
-    capability: 'email.draft', granted_by: 'usr1',
+    capability: 'email.send', granted_by: 'usr1',
     plain_language_reason: 'Maya will create a Gmail draft for your review.',
     revoked_at: null,
   });
@@ -58,7 +58,7 @@ it('createWriteGrant throws when the svc call errors', async () => {
   } as unknown as SupabaseClient;
   await expect(
     createWriteGrant(
-      { accountId: 'a', nibbinId: 'n', connectionId: 'c', capability: 'email.draft',
+      { accountId: 'a', nibbinId: 'n', connectionId: 'c', capability: 'email.send',
         grantedBy: 'u', plainLanguageReason: 'Maya will create a Gmail draft for your review.' },
       svc,
     ),
@@ -74,8 +74,8 @@ it('grantWriteCapability delegates to createWriteGrant with correct params', asy
       upsert: (row: Record<string, unknown>) => { upserted.push(row); return { error: null }; },
     }),
   } as unknown as SupabaseClient;
-  await grantWriteCapability('nib1', 'con1', 'acc1', 'usr1', 'email.draft', 'Maya will create a Gmail draft for your review.', svc);
-  expect(upserted[0]).toMatchObject({ nibbin_id: 'nib1', connection_id: 'con1', capability: 'email.draft' });
+  await grantWriteCapability('nib1', 'con1', 'acc1', 'usr1', 'email.send', 'Maya will create a Gmail draft for your review.', svc);
+  expect(upserted[0]).toMatchObject({ nibbin_id: 'nib1', connection_id: 'con1', capability: 'email.send' });
 });
 
 // ── revokeWriteGrant ──────────────────────────────────────────────────────────
@@ -92,7 +92,7 @@ it('revokeWriteGrant sets revoked_at and scopes by nibbin + connection + capabil
       },
     }),
   } as unknown as SupabaseClient;
-  await revokeWriteGrant('nib1', 'con1', 'email.draft', svc);
+  await revokeWriteGrant('nib1', 'con1', 'email.send', svc);
   expect(updates[0]).toHaveProperty('revoked_at');
 });
 
@@ -112,7 +112,7 @@ it('suspendGrantsForConnection sets revoked_at on all active grants for a connec
   expect(updates[0]).toHaveProperty('revoked_at');
 });
 
-// ── deriveCapabilityTier ──────────────────────────────────────────────────────
+// ── deriveCapabilityTier (Task 3: 2-tier model) ───────────────────────────────
 
 function makeSvcWithGrants(rows: { capability: string; revoked_at: string | null }[]) {
   return {
@@ -125,50 +125,47 @@ function makeSvcWithGrants(rows: { capability: string; revoked_at: string | null
 }
 
 it('deriveCapabilityTier → read_only when no active grants', async () => {
-  const tier = await deriveCapabilityTier('n', 'c', 'student', makeSvcWithGrants([]));
+  const tier = await deriveCapabilityTier('n', 'c', makeSvcWithGrants([]));
   expect(tier).toBe('read_only');
 });
 
-it('deriveCapabilityTier → draft_only when only email.draft active', async () => {
-  const tier = await deriveCapabilityTier('n', 'c', 'student',
-    makeSvcWithGrants([{ capability: 'email.draft', revoked_at: null }]));
-  expect(tier).toBe('draft_only');
+it('deriveCapabilityTier → write when email.send active', async () => {
+  const tier = await deriveCapabilityTier('n', 'c',
+    makeSvcWithGrants([{ capability: 'email.send', revoked_at: null }]));
+  expect(tier).toBe('write');
 });
 
-it('deriveCapabilityTier → one_click_send when email.send active and not grad', async () => {
-  const tier = await deriveCapabilityTier('n', 'c', 'senior',
+it('deriveCapabilityTier → write when calendar.event-create active', async () => {
+  const tier = await deriveCapabilityTier('n', 'c',
+    makeSvcWithGrants([{ capability: 'calendar.event-create', revoked_at: null }]));
+  expect(tier).toBe('write');
+});
+
+it('deriveCapabilityTier → write when both email.send and calendar.event-create active', async () => {
+  const tier = await deriveCapabilityTier('n', 'c',
     makeSvcWithGrants([
-      { capability: 'email.draft', revoked_at: null },
       { capability: 'email.send', revoked_at: null },
+      { capability: 'calendar.event-create', revoked_at: null },
     ]));
-  expect(tier).toBe('one_click_send');
+  expect(tier).toBe('write');
 });
 
-it('deriveCapabilityTier → autonomous_send when email.send active and stage = grad', async () => {
-  const tier = await deriveCapabilityTier('n', 'c', 'grad',
+it('deriveCapabilityTier ignores revoked rows → read_only when all revoked', async () => {
+  const tier = await deriveCapabilityTier('n', 'c',
     makeSvcWithGrants([
-      { capability: 'email.draft', revoked_at: null },
-      { capability: 'email.send', revoked_at: null },
-    ]));
-  expect(tier).toBe('autonomous_send');
-});
-
-it('deriveCapabilityTier ignores revoked rows', async () => {
-  const tier = await deriveCapabilityTier('n', 'c', 'senior',
-    makeSvcWithGrants([
-      { capability: 'email.draft', revoked_at: null },
       { capability: 'email.send', revoked_at: '2026-06-17T00:00:00Z' },
+      { capability: 'calendar.event-create', revoked_at: '2026-06-17T00:00:00Z' },
     ]));
-  expect(tier).toBe('draft_only');
+  expect(tier).toBe('read_only');
+});
+
+it('deriveCapabilityTier → read_only (not write) when only revoked email.send', async () => {
+  const tier = await deriveCapabilityTier('n', 'c',
+    makeSvcWithGrants([{ capability: 'email.send', revoked_at: '2026-06-17T00:00:00Z' }]));
+  expect(tier).toBe('read_only');
 });
 
 // ── Calendar write (Connector Lever 1) ────────────────────────────────────────
-
-it('deriveCapabilityTier → event_create when only calendar.event-create active', async () => {
-  const tier = await deriveCapabilityTier('n', 'c', 'senior',
-    makeSvcWithGrants([{ capability: 'calendar.event-create', revoked_at: null }]));
-  expect(tier).toBe('event_create');
-});
 
 it('createWriteGrant can mint a calendar.event-create grant', async () => {
   const upserted: Record<string, unknown>[] = [];
@@ -191,12 +188,8 @@ it('writeGrantSpecFor mints a calendar.event-create spec with a plain-language r
   expect(spec!.reason.length).toBeGreaterThanOrEqual(12);
 });
 
-it('deriveCapabilityTier → event_create when BOTH email.draft and calendar.event-create active (calendar takes priority)', async () => {
-  // Regression: the email-ladder branch must not swallow the calendar grant.
-  const tier = await deriveCapabilityTier('n', 'c', 'senior',
-    makeSvcWithGrants([
-      { capability: 'email.draft', revoked_at: null },
-      { capability: 'calendar.event-create', revoked_at: null },
-    ]));
-  expect(tier).toBe('event_create');
+it('writeGrantSpecFor → email.send for gmail (single email write capability)', () => {
+  const spec = writeGrantSpecFor('gmail');
+  expect(spec).not.toBeNull();
+  expect(spec!.capability).toBe('email.send');
 });

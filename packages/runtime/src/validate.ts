@@ -276,7 +276,7 @@ export function validateComposedSpec(spec: AgentSpec, accountConnections: string
   // LLM output). The per-step `cap.requiredConnector` check below only sees each
   // capability's HOME connector; a cross-resource primitive (e.g.
   // nudge.unconfirmed-event homed on google-calendar but drafting on gmail via
-  // email.draft) touches connectors its home alone doesn't name. We accumulate
+  // email.send) touches connectors its home alone doesn't name. We accumulate
   // the union here and, after the loop, assert it is BOTH ⊆ granted AND fully
   // listed in spec.requiredConnectors — so a raw-spec path (adoptSynthesized
   // with edit undefined) can never omit a non-home connector from
@@ -349,14 +349,14 @@ export function validateComposedSpec(spec: AgentSpec, accountConnections: string
       continue;
     }
 
-    // A composed draft/write step MUST ride a primitive: a primitive's trusted
-    // implementation builds its own effectArgs, but a RAW atomic draft/write
-    // step would carry effectArgs straight from `step.inputs` (the interpreter's
+    // A composed write step MUST ride a primitive: a primitive's trusted
+    // implementation builds its own effectArgs, but a RAW atomic write step
+    // would carry effectArgs straight from `step.inputs` (the interpreter's
     // generic path only CRLF/length-sanitizes them) — reopening the very
     // attacker-controlled-args surface the primitive boundary closes (e.g. a
     // composed `email.send` with a `bcc` arg). Fail-closed: reject it here so a
     // composed write can only ever flow through a primitive.
-    if (cap.sideEffect === 'draft' || cap.sideEffect === 'write') {
+    if (cap.sideEffect === 'write') {
       at(
         `step ${idx} capability "${cap.id}" is a raw ${cap.sideEffect} step — composed ${cap.sideEffect} steps must ride a primitive that owns its effectArgs, not a raw atomic capability`,
       );
@@ -629,9 +629,9 @@ export function validatePick(
     }
   }
 
-  // Atomic capability. A draft/write must ride a primitive (so the picker can
+  // Atomic capability. A write must ride a primitive (so the picker can
   // never inject effectArgs) — exactly the validateComposedSpec rule.
-  if (cap.sideEffect === 'draft' || cap.sideEffect === 'write') {
+  if (cap.sideEffect === 'write') {
     return {
       ok: false,
       reason: `tool "${tool}" is a raw ${cap.sideEffect} capability — composed side effects must ride a primitive`,

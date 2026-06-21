@@ -24,7 +24,7 @@ export function writeGrantSpecFor(
 ): { capability: WriteCapability; reason: string } | null {
   switch (provider) {
     case 'gmail':
-      return { capability: 'email.draft', reason: 'Maya will create a Gmail draft for your review.' };
+      return { capability: 'email.send', reason: 'Maya will create a Gmail draft for your review.' };
     case 'google-calendar':
       return {
         capability: 'calendar.event-create',

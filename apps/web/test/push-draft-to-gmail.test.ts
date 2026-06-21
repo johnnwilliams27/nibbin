@@ -24,10 +24,10 @@ it('throws when no gmail connection exists for the account', async () => {
   ).rejects.toThrow(/no active gmail connection/i);
 });
 
-it('throws when email.draft grant is missing', async () => {
+it('throws when email.send grant is missing', async () => {
   await expect(
     pushDraftToGmail(baseInput, makeDeps({ hasGrant: async () => false })),
-  ).rejects.toThrow(/email\.draft grant/i);
+  ).rejects.toThrow(/email\.send grant/i);
 });
 
 it('throws when draft step has no rfc822 payload', async () => {

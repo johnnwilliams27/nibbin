@@ -156,7 +156,7 @@ export function deriveResourceClaim(step: DraftStep): { resourceType: string; re
   const args = step.effectArgs;
   // email capabilities: threadId is the canonical per-thread identity.
   // inReplyTo is also accepted (some connectors use this field instead).
-  if (step.capability === 'email.send' || step.capability === 'email.draft') {
+  if (step.capability === 'email.send') {
     const id =
       (typeof args.threadId === 'string' && args.threadId) ||
       (typeof args.inReplyTo === 'string' && args.inReplyTo);

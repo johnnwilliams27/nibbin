@@ -42,7 +42,7 @@ function spec(overrides: Partial<AgentSpec> = {}): AgentSpec {
     templateKey: 'echo',
     version: 1,
     displayName: 'Echo',
-    toolsAllowlist: ['email.draft', 'email.send', 'invoice.nudge'],
+    toolsAllowlist: ['email.send', 'invoice.nudge'],
     requiredConnectors: ['gmail'],
     triggers: [{ kind: 'user', debounceSecs: 0, cooldownSecs: 0 }],
     curriculum: {
@@ -81,7 +81,6 @@ function harness(opts: {
   for (let i = 0; i < 5; i++) routines.approve(nid, 'p1');
 
   const grants = new MemoryGrantStore();
-  grants.grant(nid, CONN, 'email.draft');
   grants.grant(nid, CONN, 'email.send');
   grants.grant(nid, CONN, 'invoice.nudge');
 
@@ -106,11 +105,11 @@ function harness(opts: {
   return { deps, effects, runs };
 }
 
-/** A program that auto-executes one email draft. */
+/** A program that auto-executes one email step (email.send — single write capability). */
 const emailDraftProgram: ProgramFn = async function* () {
   yield {
     kind: 'draft',
-    capability: 'email.draft',
+    capability: 'email.send',
     connectionId: CONN,
     patternKey: 'p1',
     title: 'Follow-up',
@@ -135,10 +134,10 @@ const invoiceNudgeProgram: ProgramFn = async function* () {
 /* ── deriveResourceClaim unit tests ─────────────────────────────────────── */
 
 describe('deriveResourceClaim', () => {
-  it('derives email resource from email.draft with threadId', () => {
+  it('derives email resource from email.send with threadId', () => {
     const step: DraftStep = {
       kind: 'draft',
-      capability: 'email.draft',
+      capability: 'email.send',
       connectionId: CONN,
       patternKey: 'p1',
       title: 't',
@@ -177,7 +176,7 @@ describe('deriveResourceClaim', () => {
   it('returns null when no resource id is derivable (effectArgs missing id fields)', () => {
     const step: DraftStep = {
       kind: 'draft',
-      capability: 'email.draft',
+      capability: 'email.send',
       connectionId: CONN,
       patternKey: 'p1',
       title: 't',
@@ -199,7 +198,7 @@ describe('§18.3 conflict detection — runner integration', () => {
     expect(outcome.kind).toBe('executed');
     expect(h.effects.execute).toHaveBeenCalledTimes(1);
     expect(h.effects.execute).toHaveBeenCalledWith(
-      expect.objectContaining({ capability: 'email.draft' }),
+      expect.objectContaining({ capability: 'email.send' }),
     );
   });
 
@@ -228,7 +227,7 @@ describe('§18.3 conflict detection — runner integration', () => {
       expect(outcome.resourceConflict?.resourceType).toBe('email');
       expect(outcome.resourceConflict?.resourceId).toBe('thread-abc');
       expect(outcome.resourceConflict?.holderNibbin).toBe(NIB_B);
-      expect(outcome.resourceConflict?.capability).toBe('email.draft');
+      expect(outcome.resourceConflict?.capability).toBe('email.send');
     }
   });
 
@@ -318,7 +317,7 @@ describe('§18.3 conflict detection — runner integration', () => {
     const noIdProgram: ProgramFn = async function* () {
       yield {
         kind: 'draft',
-        capability: 'email.draft',
+        capability: 'email.send',
         connectionId: CONN,
         patternKey: 'p1',
         title: 'Draft without resource id',

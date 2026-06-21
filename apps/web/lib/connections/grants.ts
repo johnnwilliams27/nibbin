@@ -3,13 +3,14 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 /**
  * Write capabilities a Nibbin can hold on a connection. Each is gated at
- * execution time by Agent School stage + approval + (for sends) velocity —
- * holding the grant never bypasses the runtime side-effect gate.
- *   email.draft        — compose a Gmail draft for human review
- *   email.send         — send a (previously drafted/approved) email
+ * execution time by the action level (observe/draft/send) — holding the grant
+ * never bypasses the runtime side-effect gate. Task 3: email.draft retired;
+ * email.send is the single email write capability (nativeDraft: true in the
+ * registry — the action level decides draft-vs-act).
+ *   email.send            — compose/send an email (action level gates draft-vs-act)
  *   calendar.event-create — create/modify a Calendar event (with approval)
  */
-export type WriteCapability = 'email.draft' | 'email.send' | 'calendar.event-create';
+export type WriteCapability = 'email.send' | 'calendar.event-create';
 
 export interface CreateWriteGrantInput {
   accountId: string;
@@ -20,12 +21,14 @@ export interface CreateWriteGrantInput {
   plainLanguageReason: string;
 }
 
+/**
+ * Task 3: two-tier model. The action level (observe/draft/send) governs
+ * draft-vs-act within each write grant. UI only needs to know whether the
+ * Nibbin holds any write grant.
+ */
 export type CapabilityTier =
-  | 'read_only'       // no write grants
-  | 'draft_only'      // email.draft active, email.send absent or revoked
-  | 'one_click_send'  // email.send active (Senior)
-  | 'autonomous_send' // email.send active + nibbin stage = 'grad'
-  | 'event_create';   // calendar.event-create active (Calendar; gated by earned-autonomy model — drafts while learning, autonomous once trusted)
+  | 'read_only'  // no active write grants
+  | 'write';     // at least one active write grant (email.send or calendar.event-create)
 
 /** Idempotent upsert — ON CONFLICT (nibbin_id, connection_id, capability) sets revoked_at = null */
 export async function createWriteGrant(
@@ -94,13 +97,14 @@ export async function suspendGrantsForConnection(
 }
 
 /**
- * Reads nibbin_write_grants to produce a display tier.
- * Does NOT read nibbins.stage — the caller passes stage if needed for 'autonomous_send'.
+ * Reads nibbin_write_grants to produce the two-tier display tier (Task 3).
+ * Returns 'write' when the Nibbin holds any active write grant, else 'read_only'.
+ * The action level (observe/draft/send) on the agent spec governs draft-vs-act
+ * within the write tier — no stage parameter needed here.
  */
 export async function deriveCapabilityTier(
   nibbinId: string,
   connectionId: string,
-  nibbinStage: 'egg' | 'student' | 'senior' | 'grad',
   svc: SupabaseClient,
 ): Promise<CapabilityTier> {
   const { data, error } = await svc
@@ -111,17 +115,8 @@ export async function deriveCapabilityTier(
     .is('revoked_at', null);
   if (error) throw new Error(`deriveCapabilityTier failed: ${error.message}`);
   // Filter to only active (non-revoked) grants defensively in case of mock/test env
-  const active = new Set(
-    (data ?? [])
-      .filter((r) => r.revoked_at === null || r.revoked_at === undefined)
-      .map((r) => r.capability as string),
+  const active = (data ?? []).filter(
+    (r) => r.revoked_at === null || r.revoked_at === undefined,
   );
-  // Calendar takes priority when held — a Nibbin with calendar.event-create
-  // is always in the event_create tier regardless of email grants present.
-  // This ensures the calendar grant is never hidden by the email ladder.
-  if (active.has('calendar.event-create')) return 'event_create';
-  if (!active.has('email.draft')) return 'read_only';
-  if (!active.has('email.send')) return 'draft_only';
-  if (nibbinStage === 'grad') return 'autonomous_send';
-  return 'one_click_send';
+  return active.length > 0 ? 'write' : 'read_only';
 }
