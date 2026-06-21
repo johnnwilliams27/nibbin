@@ -69,7 +69,7 @@ SEO additions: Studioflo alternative, GlossGenius + AI agents, Bonsai AI, Moxie 
   that's actually true.
 - **Seed the photographer beachhead:** join 10 photographer FB groups + 3 subreddits as a
   genuine participant (Scout agent surfaces threads; John posts as himself). Zero pitching
-  for 60 days — earn the right.
+  for 60 days — build credibility first.
 - **Educator pipeline opens:** Quill agent builds the list (podcasts, YouTube educators,
   workshop leaders); first 10 relationships warmed before there's anything to sell.
 

@@ -73,11 +73,11 @@ export default function AboutPage() {
             their week disappears to.
           </p>
           <p>
-            Only then does Nibbin suggest a few agents matched to your actual work, not a generic menu. Each Nibbin
-            starts as a Student. It drafts, you approve, and it earns more responsibility only as it proves, over real
-            tasks, that it gets things right. We call this Agent School. You always see what your Nibbins are doing,
-            why they’re doing it, and how accurate they’ve been. Nothing is a black box, and nothing graduates to
-            working on its own until you’ve watched it earn the right.
+            Only then does Nibbin suggest a few agents matched to your actual work, not a generic menu. You choose
+            what each Nibbin may do — Observe, Draft, or Send. Agent School grades how accurately it has been working,
+            so you always have the information to decide when to grant it more. You always see what your Nibbins are
+            doing, why they are doing it, and how accurate they have been. Nothing is a black box, and nothing acts
+            at the Send level until you grant it.
           </p>
 
           <h2>Personable, not just powerful</h2>

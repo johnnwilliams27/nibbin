@@ -25,11 +25,11 @@ Nibbin is a consumer product for people who work for themselves — solo entrepr
 - **Day One (minutes):** the user hatches their **Grovekeeper**, connects their accounts, gets an instant **connector scan** (a mini-diagnosis from API data), and adopts ready-made Nibbins from the Agent Shop that start working immediately.
 - **Day Fourteen (the study):** in parallel, the desktop **Observer** runs a bounded two-week study of how the user actually works — the cross-app glue and API-less portals that connectors can't see — producing the full **diagnosis** and bespoke Nibbin recommendations.
 
-Nibbins are creature agents that earn autonomy through verified accuracy in **Agent School**. The **Grovekeeper** is the user's permanent companion and orchestrator: it talks, plans, and delegates — it never acts directly.
+Nibbins are creature agents. The owner grants each one an **action level** (Observe, Draft, or Send) that governs what it may do; **Agent School** grades how well it is doing — a competency report card to help the owner decide. The **Grovekeeper** is the user's permanent companion and orchestrator: it talks, plans, and delegates — it never acts directly.
 
 ### In scope (this document, this build)
 1. Day One web app: accounts, Grovekeeper visual chat, connector platform, connector scan, Agent Shop, hatch wizard
-2. Agent runtime with Agent School gates, weighted-credit metering, billing
+2. Agent runtime with action-level gating, weighted-credit metering, billing; Agent School competency grading
 3. The 14-day companion arc (in-product drip + Field Notes)
 4. Desktop capture client (Windows and macOS)
 5. Local redaction pipeline; local encrypted event store
@@ -73,7 +73,7 @@ No audio capture. No camera capture. These are exclusions, not roadmap.
 │   Grovekeeper visual chat ── LLM Router (§6.3) ── model pool (T0→T2)        │
 │   Connector platform (MCP-first + aggregator) ── token vault (KMS)           │
 │   Connector scan engine ── scan_results                                      │
-│   Agent runtime ── Agent School gates ── credit ledger ── Stripe billing     │
+│   Agent runtime ── action-level gating ── credit ledger ── Stripe billing    │
 │   Companion arc scheduler (drip, Field Notes) ── notifications               │
 │   Postgres (RLS) · Redis (queues/cache) · object store (static assets only)  │
 └───────────────────────────────────────────────────────────────────────────────┘
@@ -117,7 +117,7 @@ The two surfaces share one identity (§6.1). The Observer authenticates to assoc
 
 **Hard rules.**
 1. **No hands (C10):** zero side-effect tools. It reads (scan results, run reports, journals), plans, talks, and delegates.
-2. **No autonomy laundering:** delegation never bypasses Agent School. A Student-stage specialist invoked by the Grovekeeper still produces a draft for approval. The specialist's earned stage gates the action, always.
+2. **No autonomy laundering:** delegation never bypasses the action level. A specialist invoked by the Grovekeeper with a Draft action level still produces a draft for approval. The action level set by the owner governs every dispatched run, always.
 3. **Hub-and-spoke, terminal hub:** specialists report results to the Grovekeeper; nothing a specialist does may trigger the Grovekeeper into triggering further runs. The trigger graph treats the Grovekeeper as a sink for events and a source only for *user-initiated or scheduled* dispatches. Cycles are rejected at configuration time (§6.2).
 
 **The visual chat (not a generic chat box).** The conversation happens *in the grove*:
@@ -330,7 +330,7 @@ Rules: OAuth tokens **never** in the app DB (vault references only, C9); RLS pol
 
 ### 6.2 Agent runtime invariants
 
-Pre-run budget check against weighted credits (**standard 1 / frontier-heavy 3 / computer-use 10**); per-run ceilings (max turns, max tokens, wall-clock); same-tool-same-args repetition kill; idempotency keys on every side-effectful action; trigger debounce/dedupe + per-Nibbin cooldowns; **cycle-checked trigger graphs at spec-validation time** — Nibbins must never trigger each other cyclically, and the Grovekeeper is a structurally terminal hub (§4.2); anomaly auto-pause at 5–10× the user's trailing baseline ("{name} noticed something unusual and is taking a breather"); at cap: pause politely, queue, explain, one-tap top-up — never silent degradation, never surprise bills. Tool access is per-spec allowlisted; Agent School stage gates side effects (draft vs. execute) at the **runtime layer**, not the prompt layer.
+Pre-run budget check against weighted credits (**standard 1 / frontier-heavy 3 / computer-use 10**); per-run ceilings (max turns, max tokens, wall-clock); same-tool-same-args repetition kill; idempotency keys on every side-effectful action; trigger debounce/dedupe + per-Nibbin cooldowns; **cycle-checked trigger graphs at spec-validation time** — Nibbins must never trigger each other cyclically, and the Grovekeeper is a structurally terminal hub (§4.2); anomaly auto-pause at 5–10× the user's trailing baseline ("{name} noticed something unusual and is taking a breather"); at cap: pause politely, queue, explain, one-tap top-up — never silent degradation, never surprise bills. Tool access is per-spec allowlisted; the owner-set **action level** (Observe/Draft/Send) gates side effects at the **runtime layer**, not the prompt layer. Agent School grades competency to inform the owner's decision — it does not gate execution.
 
 ### 6.3 LLM routing & cost control
 

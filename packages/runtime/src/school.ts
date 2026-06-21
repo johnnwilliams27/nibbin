@@ -22,6 +22,13 @@ export type GateDecision =
 /**
  * The one place draft-vs-execute is decided. `routineApprovals` is how many
  * approved-unedited runs of this exact pattern exist (RoutineStore).
+ *
+ * @deprecated As of the action-level model (Task 6+), the owner-set action
+ * level (observe/draft/send on agent_specs) is the primary gate; runner.ts
+ * checks that FIRST and short-circuits to draft/execute before ever calling
+ * this function. `gateSideEffect` is now used only to produce the Agent School
+ * grade explanation — it no longer governs whether a side effect executes.
+ * Do not add new call sites that treat this as the authoritative gate.
  */
 export function gateSideEffect(
   stage: StageName,

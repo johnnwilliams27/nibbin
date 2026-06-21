@@ -54,13 +54,8 @@ function makeSvc(
   owns: boolean,
   activeConnIds: string[] = [],
 ): object {
-  // Track what the latest from() table was so we can route operations.
-  let currentTable = '';
-
   const svc = {
     from: (table: string) => {
-      currentTable = table;
-
       return {
         select: (cols: string, opts?: { count?: string; head?: boolean }) => {
           if (table === 'nibbins' && opts?.count === 'exact') {

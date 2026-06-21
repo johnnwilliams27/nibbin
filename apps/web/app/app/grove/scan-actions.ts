@@ -8,7 +8,7 @@
  *
  * C10 holds: nothing here gives the Grovekeeper a side-effect tool. The scan
  * is read-only; adoption and decisions are USER actions the Keeper narrates;
- * runs execute under the Agent School gates in @nibbin/runtime.
+ * runs execute under the action-level gate in @nibbin/runtime.
  */
 import type { Finding } from '@nibbin/connectors';
 import type { KeeperExpression, KeeperMessage } from '@nibbin/keeper';

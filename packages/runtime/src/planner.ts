@@ -175,10 +175,10 @@ function normalizeBrowserObservation(obs: string | undefined): string | undefine
   return obs?.replace(/:[0-9a-f]{24}\b/g, ':<tag>');
 }
 
-/** A synthetic NibbinRef for dispatchStep: `student` stage so EVERY side effect
- *  is approval-gated (gateSideEffect(student) → draft). Ephemeral — never an
- *  actual nibbins row; this is a runtime shell carrying the plan's allowlist +
- *  ceilings to the existing gates. */
+/** A synthetic NibbinRef for dispatchStep: action level forced to 'draft' so
+ *  EVERY side effect is approval-gated. Ephemeral — never an actual nibbins
+ *  row; this is a runtime shell carrying the plan's allowlist + ceilings to
+ *  the existing gates. */
 function syntheticNibbin(plan: PlanSpec, runId: string): NibbinRef {
   const spec: AgentSpec = {
     templateKey: null,

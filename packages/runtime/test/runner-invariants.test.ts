@@ -495,10 +495,11 @@ describe('§ action-levels: action level is the sole execution gate', () => {
     return { h, nibRef };
   }
 
-  it('Egg + Send executes (stage no longer gates; tested via non-egg stage)', async () => {
-    // executeRun pre-run guard returns not_started:egg before dispatchStep fires.
-    // The equivalent proof: any stage (including student) + send → executes.
-    // A dedicated dispatchStep test for the egg path is in "retained walls" below.
+  it('action-level Send executes regardless of stage (uses student stage — egg is fenced before dispatchStep)', async () => {
+    // Note: the egg admission fence (executeRun pre-run guard) returns
+    // not_started:egg before dispatchStep fires, so we prove the action-level
+    // Send path using a non-egg stage (student). The egg fence itself is tested
+    // in "retained walls" below.
     const { h, nibRef } = actionHarness('send', 'student');
     let executed = 0;
     h.deps.effects = { async execute() { executed += 1; } };

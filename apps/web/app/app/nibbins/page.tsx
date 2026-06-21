@@ -337,10 +337,10 @@ export default async function NibbinsPage() {
       <div className={styles.pageHead}>
         <h1 className={styles.h1}>Your nibbins</h1>
         <div className={styles.intro}>
-          Every Nibbin climbs Agent School the same way — egg, student, senior, graduate — and trust is
-          earned through verified accuracy, never time served. Streaks and badges below are read
-          straight from real run history.{' '}
-          <InfoTooltip content="Promotion is earned by a sustained track record of work you approve without edits — weighted by how much is at stake, and (for graduation) proven across several kinds of task." />
+          Agent School grades every Nibbin — egg, student, senior, graduate — on verified accuracy,
+          never time served. The grade helps you decide what action level to grant (Observe, Draft,
+          or Send). Streaks and badges below are read straight from real run history.{' '}
+          <InfoTooltip content="The Agent School grade is a competency report card. It is advisory — you set the action level. Promotion reflects a sustained track record of work you approved without edits, weighted by how much is at stake, and (for graduation) proven across several kinds of task." />
         </div>
       </div>
 
@@ -451,12 +451,12 @@ export default async function NibbinsPage() {
               <div className={styles.foot}>
                 <span className={styles.footM}>
                   {n.stage === 'grad' ? (
-                    <>Access: <b>Acting on its own</b>{' '}
-                      <InfoTooltip content="This Nibbin has graduated and can execute tasks without a draft step — you can step it back a grade any time." />
+                    <>Action level: <b>Send</b>{' '}
+                      <InfoTooltip content="You have granted Send — this Nibbin executes immediately without a draft step. You can change the action level any time." />
                     </>
                   ) : (
-                    <>Access: <b>Draft-only until graduation</b>{' '}
-                      <InfoTooltip content="Every action is prepared as a draft and waits for your approval. Nothing is sent or executed until you say yes." />
+                    <>Action level: <b>Draft</b>{' '}
+                      <InfoTooltip content="Every action is prepared as a draft and waits for your approval before anything is sent or executed. You can grant Send any time." />
                     </>
                   )}
                 </span>

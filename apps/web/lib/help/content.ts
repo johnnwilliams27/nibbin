@@ -20,13 +20,13 @@ export const HELP_CONTENT: HelpContent = [
     id: "getting-started",
     title: "Getting started",
     intro:
-      "Nibbin gives you a grove of little helpers — Nibbins — that learn how you work and take routine chores off your plate. They never act on their own until they've earned your trust, draft by draft. Four moves get you there: sign in → run a Field Study → read your diagnosis → approve drafts.",
+      "Nibbin gives you a grove of little helpers — Nibbins — that learn how you work and take routine chores off your plate. You decide what each one may do (Observe, Draft, or Send); Agent School grades how well it is doing so you always know when to extend more trust. Four moves get you there: sign in → run a Field Study → read your diagnosis → approve drafts.",
     articles: [
       {
         id: "gs-what-is-nibbin",
         q: "What is Nibbin, in plain language?",
         body:
-          "Nibbin is a grove of little AI helpers that privately learn how you work, tell you where your time goes, and grow small agents (“Nibbins”) that take routine chores off your plate. Each helper is built from your patterns — not generic templates — and earns the right to act on its own one approved draft at a time.",
+          "Nibbin is a grove of little AI helpers that privately learn how you work, tell you where your time goes, and grow small agents (“Nibbins”) that take routine chores off your plate. Each helper is built from your patterns — not generic templates. You grant what each Nibbin may do (Observe, Draft, or Send); Agent School grades how accurately it is working so you always know when to trust it with more.",
         keywords: ["overview", "intro", "what is", "helpers", "agents"],
       },
       {
@@ -350,7 +350,7 @@ export const HELP_CONTENT: HelpContent = [
         id: "agents-runaway-prevention",
         q: "What stops a Nibbin from doing too much?",
         body:
-          "Several layers:\n• Every Nibbin only has the capabilities its spec lists — it can’t reach outside those.\n• Until it graduates, every side effect goes through you for approval.\n• The Planner (early access) is bounded: at most 30 loop iterations, capped tokens, at most 4 web calls, and at most 3 memory writes per run. Every side effect in a Planner run is approval-gated.\n• The Grovekeeper can never take any action — it holds zero tools by design.\n• Type “cancel” in a Telegram plan preview to stop a run mid-flight.\n• Revoking a connection instantly suspends all the Nibbin’s grants for that tool.",
+          "Several layers:\n• Every Nibbin only has the capabilities its spec lists — it can’t reach outside those.\n• The action level you set governs what it does: Observe (no output), Draft (needs your approval), or Send (executes immediately). You control this any time.\n• The Planner (early access) is bounded: at most 30 loop iterations, capped tokens, at most 4 web calls, and at most 3 memory writes per run. Every side effect in a Planner run is approval-gated.\n• The Grovekeeper can never take any action — it holds zero tools by design.\n• Type \”cancel\” in a Telegram plan preview to stop a run mid-flight.\n• Revoking a connection instantly suspends all the Nibbin’s grants for that tool.",
         keywords: ["runaway", "safety", "limits", "capabilities", "approval-gated", "cancel", "grovekeeper", "tools"],
       },
       {

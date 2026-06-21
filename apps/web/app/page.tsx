@@ -122,9 +122,10 @@ export default function Home() {
             </h1>
             <p className="lede">
               Hatch your first Nibbin in minutes. The Grovekeeper connects your tools, scans for busywork, and
-              staffs it with small helpers that learn your way of doing things, earn your trust draft by draft,
-              and graduate to handling the boring parts for real. A two-week Field Study runs quietly alongside and
-              deepens the map into a full diagnosis.
+              staffs it with small helpers that learn your way of doing things. You decide what each Nibbin may
+              do — Observe, Draft, or Send — and Agent School grades how well it is doing so you always know
+              when to extend more trust. A two-week Field Study runs quietly alongside and deepens the map into
+              a full diagnosis.
             </p>
             <div className="cta-row">
               <a className="btn btn-solid" href="#join">
@@ -141,7 +142,7 @@ export default function Home() {
             </p>
           </div>
           <div className="evocard">
-            <span className="t">Agent School — every Nibbin earns its way up</span>
+            <span className="t">Agent School — your Nibbin&apos;s competency report card</span>
             <svg className="evo-vine" viewBox="0 0 400 14" preserveAspectRatio="none" aria-hidden="true">
               <path
                 d="M8 9 C70 1 120 13 200 7 C280 1 330 12 392 6"

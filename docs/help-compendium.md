@@ -15,7 +15,7 @@
 ## SECTION 1 — GETTING STARTED
 
 ### The big picture (read this first)
-Nibbin gives you a **grove of little helpers** — Nibbins — that learn how *you* work and then take routine chores off your plate. They never act on their own until they've earned your trust, draft by draft. The journey has four moves: **(1) sign in and meet your Grovekeeper → (2) install the desktop app and run a Field Study so Nibbin learns your real work → (3) read your diagnosis and adopt your first Nibbin → (4) approve its drafts until it earns the right to act on its own.**
+Nibbin gives you a **grove of little helpers** — Nibbins — that learn how *you* work and then take routine chores off your plate. You decide what each one may do — **Observe**, **Draft**, or **Send** — and Agent School grades how well it is doing so you always know when to extend more trust. The journey has four moves: **(1) sign in and meet your Grovekeeper → (2) install the desktop app and run a Field Study so Nibbin learns your real work → (3) read your diagnosis and adopt your first Nibbin → (4) set its action level and approve its drafts.**
 
 ### Step 1 — Create your account and meet your Keeper
 1. Go to **nibbin.com** and sign up with your **email and a password** (this single login works on the web app *and* the desktop app — source: `settings/security/page.tsx`).
@@ -314,13 +314,13 @@ Only **Gmail** is connectable today; **Google Calendar and Stripe** show **"Comi
 Connect the named tools in **Connections**, then adoption resumes. If the tool shows "Coming soon," wait for that connector to go live.
 
 **"My Nibbin isn't acting on its own."**
-That's by design until it graduates. Eggs observe; Students/Seniors draft for your approval. Keep approving accurate drafts; check its ladder on **Your Nibbins.** Use **Training mode** to speed up the climb.
+Check its action level — if it is set to Draft, every output comes to you for approval. Eggs always observe regardless of action level (it hasn't hatched yet). Check its Agent School grade on **Your Nibbins** to see how accurately it has been working; use **Training mode** to accumulate more graded runs faster. You can raise the action level any time.
 
 ---
 
 ## SECTION 7 — FAQ
 
-**What is Nibbin, in one line?** A grove of little AI helpers that learn how you work and take routine chores off your plate — earning the right to act on their own, one approved draft at a time.
+**What is Nibbin, in one line?** A grove of little AI helpers that learn how you work and take routine chores off your plate — you grant what each one may do, and Agent School grades how well it is doing.
 
 **Who is it for?** People who work for themselves — solopreneurs, freelancers, and small creative service businesses (photographers, videographers, designers, and the like).
 

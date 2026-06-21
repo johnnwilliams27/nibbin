@@ -22,7 +22,7 @@ This is honest and hard to game on *accuracy*. Its blind spots are about *what* 
 ## 2. Guardrails any change MUST honor (INVARIANTS.md + this review)
 
 - "Gamification **rewards accuracy only**; nothing decays, dies, or guilts; **no mechanic may grant or accelerate autonomy**." → New dimensions may only make autonomy **harder or equal** to earn — never a shortcut, never partial credit that loosens the 95%/25 spine.
-- "Agent School gates side effects at the **runtime layer**, never the prompt layer." → All of this stays in SQL/runtime.
+- "Side effects are gated at the **runtime layer** by the owner-set action level, never the prompt layer." → All of this stays in SQL/runtime.
 - "Promotion is verified accuracy over a rolling window — never time served." → Time may never *grant* a stage **and may never take one away** (see next).
 - "Demotion is one click, instant, dignified." → The human pulls the trigger. The system may *point*, never yank.
 - **Paused ≠ penalized — trust freezes, never decays (this review).** A Nibbin's earned progress is **banked**: a pause, a disconnected connector, the global capture pause, or a quiet stretch all produce *no new runs → no new evidence →* the state is **frozen, not eroded**. Trust is earned by evidence and is **never lost to silence** — only ever questioned by *new, contradicting evidence* (actual recent runs that were edited/rejected). No wall-clock decay anywhere.

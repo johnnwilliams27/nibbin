@@ -124,12 +124,11 @@ export const CAPABILITY_REGISTRY: Record<string, CapabilityDescriptor> = {
   'email.send':    { id: 'email.send',    resource: 'email',    verb: 'send',  sideEffect: 'write', nativeDraft: true,  requiredConnector: 'gmail', patternKeyPrefix: 'email.send' },
   'calendar.read': { id: 'calendar.read', resource: 'calendar', verb: 'get',   sideEffect: 'read',  requiredConnector: 'google-calendar' },
   // Calendar write (Connector Lever 1). A 'write' side effect: the interpreter
-  // yields it as a gated DraftStep, the runner gates it through gateSideEffect
-  // (draft below Graduate / unproven routine) + a calendar.event-create write
+  // yields it as a DraftStep; the runner resolves draft-vs-execute via the
+  // owner-set action level (observe/draft/send) + a calendar.event-create write
   // grant + idempotency before the effects executor ever calls createEvent.
-  // Same wall as email.send — while a Nibbin is learning (below Graduate / below
-  // proven-routine Senior) it drafts the event for approval; Graduate or proven-Senior
-  // may auto-execute. No velocity caps (not a bulk-send rail).
+  // Same wall as email.send — draft when action level is Draft; execute immediately
+  // when action level is Send. No velocity caps (not a bulk-send rail).
   'calendar.event-create': { id: 'calendar.event-create', resource: 'calendar', verb: 'create', sideEffect: 'write', nativeDraft: false, requiredConnector: 'google-calendar', patternKeyPrefix: 'calendar.event-create' },
   'payments.read': { id: 'payments.read', resource: 'payments', verb: 'get',   sideEffect: 'read',  requiredConnector: 'stripe' },
   'invoice.nudge': { id: 'invoice.nudge', resource: 'invoice',  verb: 'nudge', sideEffect: 'write', requiredConnector: 'stripe', patternKeyPrefix: 'invoice.nudge' },
