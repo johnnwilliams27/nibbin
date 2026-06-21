@@ -129,14 +129,16 @@ export function createRouter(overrides: RouterOverrides = {}): Router {
         throw new Error('route: userId is required');
       }
 
-      // Anti-runaway daily chat ceiling (#230). EVERY chat turn — T0/T1/T2 —
-      // counts against a per-user/day cap (the caller passes the plan-scaled
-      // limit from @nibbin/shared CHAT_DAILY_CEILING). This is a SAFETY backstop
-      // on the otherwise-unbounded free chat surface, NOT a credit meter: it
-      // never debits run-credits, it just pauses chat for the UTC day past a
-      // generous limit. Counted in a SEPARATE 'chat_total' counter from the
-      // 'frontier' (T2) budget below — a T2 chat turn draws both. Checked before
-      // any classification/model selection so a paused turn does zero work.
+      // Anti-runaway daily chat ceiling (#230). When the caller supplies a
+      // ceiling (the WEB chat action does — channel chat omits it and is bounded
+      // by the channel spend-cap/anomaly gate instead), every web chat turn —
+      // T0/T1/T2 — counts against a per-user/day cap (the plan-scaled limit from
+      // @nibbin/shared CHAT_DAILY_CEILING). A SAFETY backstop on the otherwise-
+      // unbounded free web chat surface, NOT a credit meter: it never debits
+      // run-credits, it just pauses chat for the UTC day past a generous limit.
+      // Counted in a SEPARATE 'chat_total' counter from the 'frontier' (T2)
+      // budget below — a T2 chat turn draws both. Checked before any
+      // classification/model selection so a paused turn does zero work.
       if (req.task === 'chat' && req.dailyChatCeiling !== undefined) {
         const day = dayKey(config.now());
         const ceiling = req.dailyChatCeiling;

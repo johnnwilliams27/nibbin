@@ -52,13 +52,20 @@ export const TOP_UP = { priceUsdCents: 1000, credits: 1000 } as const;
 
 /**
  * Anti-runaway daily chat-turn ceiling per plan (#230). A SAFETY backstop on
- * the otherwise-unbounded free Grovekeeper chat surface — EVERY chat turn
- * (T0/T1/T2) counts — NOT a credit meter: hitting it politely pauses chat for
- * the UTC day and never debits run-credits (so it respects the credits people
- * paid for). Generous enough that no human reaches it (a heavy onboarding day
- * is ~100-200 turns); it only stops runaway client loops / abuse. Scaled by
- * plan so paying users get more headroom. The router enforces it atomically
- * (the 'chat_total' frontier_budget counter); the caller passes the number.
+ * the WEB IN-APP Grovekeeper chat surface, which otherwise had no per-user cap
+ * on cheap T0/T1 turns. Every web chat turn (T0/T1/T2) counts. NOT a credit
+ * meter: hitting it politely pauses chat for the UTC day and never debits
+ * run-credits (so it respects the credits people paid for). Generous enough
+ * that no human reaches it (a heavy onboarding day is ~100-200 turns); it only
+ * stops runaway client loops / abuse. Scaled by plan so paying users get more
+ * headroom. The router enforces it atomically (the 'chat_total' frontier_budget
+ * counter); the web caller passes the number.
+ *
+ * SCOPE: this governs WEB chat only. Channel chat (Telegram/SMS) runs through
+ * the same keeperChat but is bounded by its OWN, stronger guard — the channel
+ * turn/dollar spend cap + anomaly auto-pause (packages/channels gateTurn) — so
+ * it deliberately does NOT pass this ceiling (different scope: per-account/
+ * channel dollars vs per-user/day web turns).
  */
 export const CHAT_DAILY_CEILING: Record<Tier, number> = {
   hatchling: 150,

@@ -12,6 +12,8 @@ alter table public.frontier_budget
     check (kind in ('frontier', 'chat_total'));
 
 -- Repoint the primary key to include kind (existing rows default to 'frontier').
+-- The original PK (migration 20260612120000) was unnamed, so Postgres assigned
+-- the conventional name `frontier_budget_pkey`. Repoint it to include kind.
 alter table public.frontier_budget drop constraint frontier_budget_pkey;
 alter table public.frontier_budget add primary key (user_id, day_key, kind);
 
@@ -33,8 +35,8 @@ as $$
 declare
   v_used integer;
 begin
-  if p_limit < 0 then
-    raise exception 'frontier_budget_take: limit must be >= 0';
+  if p_limit is null or p_limit < 0 then
+    raise exception 'frontier_budget_take: limit must be a non-negative integer';
   end if;
 
   insert into public.frontier_budget as b (user_id, day_key, kind, used)

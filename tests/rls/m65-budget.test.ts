@@ -106,6 +106,45 @@ describe.skipIf(!dbAvailable)('M6.5: frontier budget + COGS at the DB layer', ()
     });
   });
 
+  describe('kind discriminator (#230 chat_total ceiling)', () => {
+    const take = (day: string, limit: string, kind?: string) =>
+      h.as(service, async (c) =>
+        (
+          await c.query(
+            `select * from public.frontier_budget_take($1, $2, ${limit}${kind ? `, '${kind}'` : ''})`,
+            [OWNER, day],
+          )
+        ).rows[0],
+      );
+
+    it('chat_total and frontier are independent counters in one (user, day)', async () => {
+      // chat_total capped at 2: grant, grant, deny
+      const ct1 = await take('2026-06-21', '2', 'chat_total');
+      const ct2 = await take('2026-06-21', '2', 'chat_total');
+      const ct3 = await take('2026-06-21', '2', 'chat_total');
+      expect([ct1.granted, ct2.granted, ct3.granted]).toEqual([true, true, false]);
+
+      // the frontier counter on the SAME day is untouched by chat_total being
+      // spent (3-arg back-compat call defaults kind='frontier').
+      const f1 = await take('2026-06-21', '1');
+      expect(f1.granted).toBe(true);
+
+      // used() reports each kind separately
+      const usedChat = await h.as(service, async (c) =>
+        (await c.query(`select public.frontier_budget_used($1, '2026-06-21', 'chat_total') as n`, [OWNER])).rows[0].n,
+      );
+      const usedFrontier = await h.as(service, async (c) =>
+        (await c.query(`select public.frontier_budget_used($1, '2026-06-21') as n`, [OWNER])).rows[0].n,
+      );
+      expect(usedChat).toBe(2);
+      expect(usedFrontier).toBe(1);
+    });
+
+    it('a null limit raises (restored fail-loud guard)', async () => {
+      await expect(take('2026-06-22', 'null', 'chat_total')).rejects.toThrow(/non-negative/);
+    });
+  });
+
   describe('model_calls ledger', () => {
     it('service role records calls; clients read nothing', async () => {
       await h.as(service, (c) =>

@@ -147,10 +147,13 @@ export const DEFAULT_REINFORCEMENT: ReinforcementParams = {
 };
 
 /**
- * Default T2-from-chat grants per user per day. Raised 5→15 (2026-06-21): 5
+ * Default per-user/day T2 (frontier) grant. This is the shared T2 cap consulted
+ * by EVERY budgeted T2 path that reaches the frontier branch (chat is the
+ * dominant one; budgeted non-chat T2 draws it too). Raised 5→15 (2026-06-21): 5
  * dropped a chatty user to "the simple way" fast; at ~$0.01/Sonnet turn, 15/day
- * caps T2 chat at ~$0.15/user/day. The outer all-tier ceiling (#230) is the
- * runaway backstop; this is just the frontier-tier sub-limit within it.
+ * is ~$0.15/user/day worst case across surfaces — cost-safe (gate cost-auditor).
+ * The all-tier web ceiling (#230) is the outer runaway backstop; this is the
+ * frontier-tier sub-limit within it.
  */
 export const DEFAULT_DAILY_FRONTIER_BUDGET = 15;
 

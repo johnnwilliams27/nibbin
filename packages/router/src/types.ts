@@ -55,11 +55,13 @@ export interface RouteRequest {
   text?: string;
   /**
    * Per-user/day ceiling on TOTAL chat turns (all tiers), an anti-runaway
-   * backstop (#230). Set by the caller from the user's plan
+   * backstop (#230). Set by the WEB chat caller from the user's plan
    * (`CHAT_DAILY_CEILING` in @nibbin/shared). Only consulted for `chat` tasks;
-   * undefined means no ceiling (non-chat work, or tests). When the ceiling is
-   * reached the decision comes back `paused` — the surface pauses chat for the
-   * day, no model call, no spend.
+   * undefined means no ceiling — non-chat work, tests, AND channel chat
+   * (Telegram/SMS), which is bounded by its own channel spend-cap/anomaly gate
+   * rather than this per-user web ceiling. When the ceiling is reached the
+   * decision comes back `paused` — the surface pauses chat for the day, no
+   * model call, no spend.
    */
   dailyChatCeiling?: number;
 }

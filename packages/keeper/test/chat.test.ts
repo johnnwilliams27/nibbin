@@ -95,6 +95,8 @@ describe('keeperChat routes through §6.3 before replying', () => {
     expect(second.decision.paused).toBe(true);
     expect(calls).toBe(1); // generate not called again
     expect(second.dispatchedTier).toBeNull();
+    // the ceiling status survives to the caller (telemetry / meter surface)
+    expect(second.decision.budget).toMatchObject({ limit: 1, used: 1, remaining: 0 });
     if (second.message.card.kind !== 'prose') throw new Error('expected prose');
     expect(second.message.card.text).toBe(CHAT_CEILING_NOTICE);
   });
