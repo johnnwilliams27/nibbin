@@ -70,7 +70,11 @@ export const TOP_UP = { priceUsdCents: 1000, credits: 1000 } as const;
 export const CHAT_DAILY_CEILING: Record<Tier, number> = {
   hatchling: 150,
   grove: 500,
-  canopy: 2000,
+  // 1000 (not 2000): keeps even adversarial maxed-output worst case (~$2.3/day →
+  // ~$70/mo) under the $79 Canopy price, while staying ~5-7x above any real
+  // human's daily chat. The gate cost-auditor flagged 2000 as a sustained-abuse
+  // margin edge (~$75-140/mo); 1000 closes it without touching legitimate use.
+  canopy: 1000,
 } as const;
 
 /**

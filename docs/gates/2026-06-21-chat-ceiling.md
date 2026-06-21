@@ -21,7 +21,7 @@ Reviewers: red-team, logic-skeptic, cost-auditor, claims-auditor. **No reviewer 
 
 ### Accepted / follow-up (non-blocking)
 
-- **P3 (cost-auditor) — Canopy's 2000 ceiling is a sustained-abuse margin edge.** A single runaway loop is bounded fine (~$4.67/day). But a user maxing 2000 substantive turns *every* day with maxed output is ~$140/mo worst / ~$75/mo realistic vs the $79 price. Not a runaway risk; a margin-under-sustained-abuse edge, and implausible for a human. **Kept at 2000 (founder's explicit choice); surfaced for decision** — options if margin pressure ever shows up: lower Canopy to ~1000, or add a monthly (not just daily) aggregate guard.
+- **P3 (cost-auditor) — Canopy's 2000 ceiling was a sustained-abuse margin edge.** A single runaway loop is bounded fine (~$4.67/day), but a user maxing 2000 turns *every* day with maxed output is ~$140/mo worst / ~$75/mo realistic vs the $79 price. **RESOLVED post-gate (founder decision): lowered Canopy 2000 → 1000**, so even the adversarial worst case (~$2.3/day → ~$70/mo) stays under the $79 price, while 1000 is still ~5-7× above any real human's daily chat. A monthly aggregate guard / anomaly auto-pause remains the better-targeted fix if sustained abuse ever materializes (channels already have anomaly auto-pause).
 
 ### Cost math (cost-auditor, adversarial maxed-output)
 
