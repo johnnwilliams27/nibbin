@@ -20,6 +20,7 @@ import { nudgeOverdueEmail } from './primitives/nudge-overdue-email';
 import { nudgeOverdueInvoice } from './primitives/nudge-overdue-invoice';
 import { nudgeUnconfirmedEvent } from './primitives/nudge-unconfirmed-event';
 import { replyNewInquiry } from './primitives/reply-new-inquiry';
+import { scheduleFocusBlock } from './primitives/schedule-focus-block';
 
 /**
  * A typed input field for a PRIMITIVE capability's `inputSchema` (design §1).
@@ -256,6 +257,27 @@ export const CAPABILITY_REGISTRY: Record<string, CapabilityDescriptor> = {
     effectiveTools: ['calendar.read', 'payments.read', 'email.read'],
   },
 
+  // ── Calendar write primitive (Task 3 — end-to-end proof) ────────────────────
+  // Reads the next `withinDays` calendar days (google-calendar), detects the
+  // first overloaded weekday (>= minMeetings events), and drafts a 90-min focus
+  // block via `calendar.event-create`. Single connector: google-calendar for
+  // both the read and the write. `nativeDraft:false` (inherited from the
+  // calendar.event-create atomic capability — no native calendar mirror).
+  'schedule.focus-block': {
+    id: 'schedule.focus-block',
+    resource: 'calendar',
+    verb: 'schedule',
+    sideEffect: 'write',
+    requiredConnector: 'google-calendar',
+    patternKeyPrefix: 'calendar.event-create',
+    kind: 'primitive',
+    inputSchema: {
+      withinDays:   { type: 'number', default: 7,  min: 1, max: 60 },
+      minMeetings:  { type: 'number', default: 4,  min: 1, max: 20 },
+    },
+    effectiveTools: ['calendar.read', 'calendar.event-create'],
+  },
+
   // ── computer_use family (design §4 / R9) — the browser surface ──────────────
   // A unified `target` (selector | coords, OCR fallback) over six verbs, driven
   // by an injected BrowserDriver (NOT an OAuth connector). reads:
@@ -304,6 +326,15 @@ export const PRIMITIVE_IMPLS: Record<string, PrimitiveImpl> = {
       nowMs,
     ),
   'digest.morning': (_inputs, connMap, nowMs) => digestMorning({}, connMap, nowMs),
+  'schedule.focus-block': (inputs, connMap, nowMs) =>
+    scheduleFocusBlock(
+      {
+        withinDays:  typeof inputs.withinDays  === 'number' ? inputs.withinDays  : undefined,
+        minMeetings: typeof inputs.minMeetings === 'number' ? inputs.minMeetings : undefined,
+      },
+      connMap,
+      nowMs,
+    ),
 };
 
 export function capability(id: string): CapabilityDescriptor | undefined {
