@@ -10,19 +10,20 @@
   position: relative;
   padding: 78px 0 12px;
   border-bottom: 1px solid var(--line);
-  text-align: center;
 }
+/* Hero content shares the body's 860px measure (centered block, left-aligned
+   text) so the top section lines up with the prose and cards below it. */
 .landing .ab-h1 {
   font-family: var(--display);
   font-size: clamp(32px, 4.6vw, 50px);
   font-weight: 800;
   letter-spacing: -0.02em;
   line-height: 1.06;
-  max-width: 22ch;
+  max-width: 860px;
   margin: 14px auto 0;
 }
 .landing .ab-lead {
-  max-width: 60ch;
+  max-width: 860px;
   margin: 22px auto 0;
 }
 .landing .ab-lead p {

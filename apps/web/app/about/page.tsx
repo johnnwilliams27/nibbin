@@ -71,6 +71,12 @@ export default function AboutPage() {
               capability sits there, mostly unused, while people keep doing by hand the exact things the model could
               already handle, if only someone had set it up right.
             </p>
+            <p>
+              We’re a small team that has spent about fifteen years building payments, risk, and AI systems at Google,
+              Block, and PayPal, for products used by tens of millions of people, in regulated places where trust has
+              to be earned. The capability in these tools is real. Most people just never get a fair shot at it, and
+              that’s the gap we’re building Nibbin to close.
+            </p>
           </div>
         </div>
       </header>
@@ -152,35 +158,6 @@ export default function AboutPage() {
               </div>
             ))}
           </div>
-
-          <article className="ab-prose reveal">
-            <h2>Why we’re the ones to build this</h2>
-            <p>
-              The easy version of this product is another chat box or another drag-and-drop node editor. Plenty of
-              those exist. They’re easy precisely because they push the hard part onto you.
-            </p>
-            <p>
-              The hard version is the one worth building: learn from raw activity on a device, keep it private, and
-              turn messy real behavior into automation you can actually trust. It happens to be close to the work we’ve
-              been doing for years.
-            </p>
-            <p>
-              Between us, we’ve spent about fifteen years building payments, risk, and AI systems at Google, Block, and
-              PayPal, for products used by tens of millions of people. That work lived in regulated,
-              get-it-wrong-and-it-matters environments, where trust isn’t a tagline. We were building agentic systems
-              before the word was everywhere: an autonomous credit system on Gemini at Google, agentic money movement
-              on stablecoin rails at PayPal, the fraud and risk models behind Cash App. We’ve also started a company
-              and sold it, so we know the difference between a demo and something people actually rely on.
-            </p>
-            <p>
-              All of that taught us where software really hurts: the small, repeated friction that never makes a
-              roadmap but quietly eats up people’s days. And we’ve spent enough time inside today’s agent tools to see
-              the other half of the problem. The capability is right there, but aiming it at your own work turns out to
-              be its own skill, and most people are left to figure it out alone. Those everyday problems are the ones we
-              care about most, and we’d rather solve them once, properly, than watch millions of people keep doing the
-              tedious thing forever.
-            </p>
-          </article>
 
           <div className="ab-cta reveal">
             <h2>We’re building Nibbin now.</h2>
