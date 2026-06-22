@@ -3,7 +3,7 @@
  *
  * Reads the next `withinDays` calendar days (google-calendar), detects the
  * FIRST weekday (Mon–Fri) that has `>= minMeetings` non-cancelled events
- * ("overloaded"), and drafts a 90-minute Focus block at 08:00 local on that
+ * ("overloaded"), and drafts a 90-minute Focus block at 08:00 UTC on that
  * day as a `calendar.event-create` step.
  *
  * This is the end-to-end proof that synthesis→action works for a SECOND
@@ -121,6 +121,11 @@ export function scheduleFocusBlock(
     // Propose a 90-minute focus block at 08:00 UTC on the overloaded day.
     // Use ISO dateTime strings (the Google Calendar API requires them for
     // timed events; an all-day event would use `date` instead).
+    // FOLLOW-UP: 08:00Z is timezone-naive — for a US owner this lands overnight.
+    // A real rollout should derive the slot from the owner's calendar timezone
+    // (events.insert accepts an event-level `timeZone`, or read the calendar's
+    // default tz). Acceptable for the proof primitive; tracked for the calendar
+    // use-case work the Planner will parameterize.
     const startIso = `${overloadedDate}T08:00:00Z`;
     const endIso   = `${overloadedDate}T09:30:00Z`;
 
@@ -130,7 +135,7 @@ export function scheduleFocusBlock(
       connectionId: gcal,
       patternKey: 'calendar.event-create:focus-block',
       title: 'Focus block',
-      draft: 'Proposed a 2-hour focus block on your busiest upcoming day.',
+      draft: 'Proposed a 90-minute focus block on your busiest upcoming day.',
       effectArgs: {
         event: {
           summary: 'Focus block',
