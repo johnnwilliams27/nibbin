@@ -8,7 +8,7 @@ import { SiteNav } from './(marketing)/SiteNav';
 import { SiteFooter } from './(marketing)/SiteFooter';
 
 const SCHOOL = [
-  { pill: 'ep-egg', label: 'Egg', stage: 'egg' as const, role: ['Enrolled and learning', 'Observing how you work'] },
+  { pill: 'ep-egg', label: 'Egg', stage: 'egg' as const, role: ['Enrolled and learning your work', 'Passively observing'] },
   { pill: 'ep-student', label: 'Student', stage: 'student' as const, role: ['Drafts for your approval', 'Accuracy building'] },
   { pill: 'ep-senior', label: 'Senior', stage: 'senior' as const, role: ['Reliable on routine work', 'You decide if it acts'] },
   { pill: 'ep-grad', label: 'Graduate', stage: 'grad' as const, role: ['Proven across its spec', 'Act with confidence'] },
