@@ -6,7 +6,10 @@
 :root {
   --display: var(--font-bricolage), 'Bricolage Grotesque', 'Archivo', sans-serif;
   --sans: var(--font-archivo), 'Archivo', -apple-system, 'Helvetica Neue', sans-serif;
-  --mono: var(--font-plex-mono), 'IBM Plex Mono', ui-monospace, monospace;
+  /* Label / eyebrow accent font — now the grotesque, not a monospace. The old
+     IBM Plex Mono read as "typewriter / notepad". Kept under the --mono name so
+     every existing consumer updates at once. */
+  --mono: var(--font-archivo), 'Archivo', -apple-system, 'Helvetica Neue', sans-serif;
   /* Landing aliases for canonical brand tokens (understory / honey / canopy). */
   --paper-deep: #eaede3;
   --sun: #d9a21b;

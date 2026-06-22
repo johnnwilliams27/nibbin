@@ -1,0 +1,279 @@
+/* About page — long-form article rendered inside the landing design system.
+   Everything is scoped under .landing so it shares the tokens, nav, footer and
+   buttons, and so these rules live in the same cascade as landing.css. The
+   compound `.landing .ab-*` selectors outrank the bare `.landing h1/h2/h3`
+   resets, so headings render at full display weight. The page frame is the
+   landing 1080px .wrap; prose is held to a readable measure inside it. */
+
+/* ---------- hero ---------- */
+.landing .ab-hero {
+  position: relative;
+  padding: 78px 0 12px;
+  border-bottom: 1px solid var(--line);
+}
+/* Hero content shares the body's 860px measure (centered block, left-aligned
+   text) so the top section lines up with the prose and cards below it. */
+.landing .ab-h1 {
+  font-family: var(--display);
+  font-size: clamp(32px, 4.6vw, 50px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.06;
+  max-width: 860px;
+  margin: 14px auto 0;
+}
+.landing .ab-lead {
+  max-width: 860px;
+  margin: 22px auto 0;
+}
+.landing .ab-lead p {
+  font-size: 18px;
+  line-height: 1.62;
+  color: var(--ink);
+  margin: 0 0 16px;
+}
+
+/* ---------- body ---------- */
+.landing .ab-body {
+  padding: 16px 0 76px;
+}
+
+/* Prose column — matched to the card width so the article reads as one
+   consistent measure (not a narrow column floating inside wider cards). */
+.landing .ab-prose {
+  max-width: 860px;
+  margin: 0 auto;
+}
+.landing .ab-prose h2 {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: clamp(22px, 2.4vw, 28px);
+  letter-spacing: -0.015em;
+  line-height: 1.15;
+  color: var(--ink);
+  margin: 46px 0 12px;
+}
+.landing .ab-prose p {
+  font-size: 16.5px;
+  line-height: 1.7;
+  color: var(--ink-soft);
+  margin: 0 0 14px;
+}
+.landing .ab-prose p:last-child {
+  margin-bottom: 0;
+}
+.landing .ab-prose strong {
+  color: var(--ink);
+  font-weight: 700;
+}
+.landing .ab-punch {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 19px;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  margin: 22px 0 4px;
+  padding-left: 16px;
+  border-left: 3px solid var(--moss);
+}
+.landing .ab-familiar-h {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  margin: 42px auto 0;
+  max-width: 860px;
+}
+
+/* Medium-width blocks — wider than prose, centered. */
+.landing .ab-compare,
+.landing .ab-examples,
+.landing .ab-control {
+  max-width: 860px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.landing .ab-cta {
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ---------- contrast table ---------- */
+.landing .ab-compare {
+  margin-top: 24px;
+  margin-bottom: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  overflow: hidden;
+  background: var(--canopy);
+  box-shadow: var(--shadow-2);
+}
+.landing .ab-row {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr 1.5fr;
+}
+.landing .ab-row + .ab-row {
+  border-top: 1px solid var(--line);
+}
+.landing .ab-row-head {
+  background: var(--moss-tint);
+}
+.landing .ab-row-head .ab-cell {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--moss-deep);
+  font-weight: 600;
+}
+.landing .ab-cell {
+  padding: 14px 16px;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+.landing .ab-cell + .ab-cell {
+  border-left: 1px solid var(--line);
+}
+.landing .ab-tool {
+  color: var(--ink);
+  font-weight: 700;
+}
+.landing .ab-row-feat {
+  background: var(--moss-tint);
+}
+.landing .ab-row-feat .ab-tool {
+  color: var(--moss-deep);
+}
+.landing .ab-label {
+  display: none;
+}
+@media (max-width: 640px) {
+  .landing .ab-row {
+    grid-template-columns: 1fr;
+  }
+  .landing .ab-row-head {
+    display: none;
+  }
+  .landing .ab-cell + .ab-cell {
+    border-left: none;
+    border-top: 1px dashed var(--line);
+  }
+  .landing .ab-label {
+    display: block;
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--moss-deep);
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+}
+
+/* ---------- "this might sound familiar" examples ---------- */
+.landing .ab-examples {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-top: 14px;
+  margin-bottom: 8px;
+}
+@media (max-width: 720px) {
+  .landing .ab-examples {
+    grid-template-columns: 1fr;
+  }
+}
+.landing .ab-card {
+  background: var(--moss-tint);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  padding: 18px;
+}
+.landing .ab-card strong {
+  display: block;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1.3;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+.landing .ab-card p {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+/* ---------- "you stay in control" cluster ---------- */
+.landing .ab-control {
+  margin-top: 46px;
+}
+.landing .ab-control-h {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: clamp(22px, 2.4vw, 28px);
+  letter-spacing: -0.015em;
+  color: var(--ink);
+  margin: 0 0 14px;
+}
+.landing .ab-cluster {
+  background: var(--moss-tint);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-2);
+  padding: 4px 26px;
+}
+.landing .ab-item {
+  padding: 22px 0;
+  border-top: 1px solid var(--line);
+}
+.landing .ab-item:first-child {
+  border-top: none;
+}
+.landing .ab-item h3 {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  margin: 0 0 8px;
+}
+.landing .ab-item p {
+  font-size: 15.5px;
+  line-height: 1.62;
+  color: var(--ink-soft);
+  margin: 0 0 10px;
+}
+.landing .ab-item p:last-child {
+  margin-bottom: 0;
+}
+
+/* ---------- close CTA ---------- */
+.landing .ab-cta {
+  margin-top: 50px;
+  padding: 34px 32px;
+  background: var(--canopy);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-2);
+  text-align: center;
+}
+.landing .ab-cta h2 {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: clamp(22px, 2.6vw, 28px);
+  letter-spacing: -0.015em;
+  color: var(--ink);
+  margin: 0 0 8px;
+}
+.landing .ab-cta p {
+  color: var(--ink-soft);
+  font-size: 15.5px;
+  margin: 0 auto 18px;
+  max-width: 52ch;
+}

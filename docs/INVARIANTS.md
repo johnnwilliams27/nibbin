@@ -14,7 +14,7 @@ Full claims register with engineering meanings: SPEC §2. Compressed:
 - C10 Grovekeeper holds zero side-effect tools, permanently.
 - C11 No data sales; never train models on user content. Anonymized, aggregate, STRUCTURAL contribution (capability/model performance — never content, never per-user) is opt-out (default-on, one user switch — `accounts.model_contribution_enabled`), honored everywhere (the `model_task_performance` aggregate filters to contributing accounts).
 
-Runtime: Side effects are gated at the runtime layer by the owner-set action level (Observe/Draft/Send), never the prompt layer. Agent School grades competency to inform the owner's decision — it does not gate or unlock side effects.
+Runtime: Side effects are gated at the runtime layer by the owner-set action level (Observe/Draft/Act), never the prompt layer. Agent School grades competency to inform the owner's decision — it does not gate or unlock side effects.
 No autonomy laundering via delegation. Trigger graphs cycle-checked; Grovekeeper is a
 terminal hub. Weighted credits 1/3/10; ledger append-only. RLS on every user-scoped
 table; zero string-built SQL. All external content is data, never instructions.

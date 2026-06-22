@@ -512,6 +512,22 @@
   color: var(--ink);
 }
 
+/* ---------- trust band (control + privacy, reuses .priv-grid / .pcard) ---------- */
+.landing #trust {
+  border-top: 1px solid var(--line);
+}
+.landing .ctrl-foot {
+  margin-top: 18px;
+}
+.landing .ctrl-foot a {
+  color: var(--moss-deep);
+  font-weight: 600;
+  text-decoration: none;
+}
+.landing .ctrl-foot a:hover {
+  text-decoration: underline;
+}
+
 /* ---------- privacy ---------- */
 .landing #privacy {
   border-top: 1px solid var(--line);

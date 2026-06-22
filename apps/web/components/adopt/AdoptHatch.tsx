@@ -106,8 +106,8 @@ export function AdoptHatch({
 
   const title = isFirstAdoption ? `Meet ${name} — your first Nibbin` : `${name} hatched`;
   const body = isFirstAdoption
-    ? `${name} is in your grove now, drafting for your approval. You set what it may do — Observe, Draft, or Send — and its grade climbs as you approve its work.`
-    : `${name} is in your grove now, drafting for your approval. You set what it may do — Observe, Draft, or Send — and its grade climbs as you approve its work.`;
+    ? `${name} is in your grove now, drafting for your approval. You set what it may do — Observe, Draft, or Act — and its grade climbs as you approve its work.`
+    : `${name} is in your grove now, drafting for your approval. You set what it may do — Observe, Draft, or Act — and its grade climbs as you approve its work.`;
 
   return (
     <div className={styles.backdrop} role="dialog" aria-modal="true" aria-label={title}>

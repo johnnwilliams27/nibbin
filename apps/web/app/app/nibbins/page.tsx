@@ -300,7 +300,7 @@ export default async function NibbinsPage() {
       <AppShell active="nibbins" title="Your Nibbins" email={user.email}>
         <EmptyState
           title="Your grove is quiet"
-          body="No Nibbins yet. Each one starts as an egg in Agent School — you set its action level (Observe / Draft / Send) and Agent School grades how accurately it works so you know when to trust it with more."
+          body="No Nibbins yet. Each one starts as an egg in Agent School — you set its action level (Observe / Draft / Act) and Agent School grades how accurately it works so you know when to trust it with more."
           action={
             <a className={`${styles.abtn} ${styles.abtnGo}`} href="/app/shop">
               Visit the Agent Shop →
@@ -339,7 +339,7 @@ export default async function NibbinsPage() {
         <div className={styles.intro}>
           Agent School grades every Nibbin — egg, student, senior, graduate — on verified accuracy,
           never time served. The grade helps you decide what action level to grant (Observe, Draft,
-          or Send). Streaks and badges below are read straight from real run history.{' '}
+          or Act). Streaks and badges below are read straight from real run history.{' '}
           <InfoTooltip content="The Agent School grade is a competency report card. It is advisory — you set the action level. Promotion reflects a sustained track record of work you approved without edits, weighted by how much is at stake, and (for graduation) proven across several kinds of task." />
         </div>
       </div>
@@ -451,12 +451,12 @@ export default async function NibbinsPage() {
               <div className={styles.foot}>
                 <span className={styles.footM}>
                   {n.stage === 'grad' ? (
-                    <>Action level: <b>Send</b>{' '}
-                      <InfoTooltip content="You have granted Send — this Nibbin executes immediately without a draft step. You can change the action level any time." />
+                    <>Action level: <b>Act</b>{' '}
+                      <InfoTooltip content="You have granted Act — this Nibbin executes immediately without a draft step. You can change the action level any time." />
                     </>
                   ) : (
                     <>Action level: <b>Draft</b>{' '}
-                      <InfoTooltip content="Every action is prepared as a draft and waits for your approval before anything is sent or executed. You can grant Send any time." />
+                      <InfoTooltip content="Every action is prepared as a draft and waits for your approval before anything is sent or executed. You can grant Act any time." />
                     </>
                   )}
                 </span>

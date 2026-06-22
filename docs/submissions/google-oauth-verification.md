@@ -34,7 +34,7 @@ or the Decision Log, never soften a claim here to match a gap.
 Google grants the **narrowest** scope that supports a real, user-visible feature. Request only
 these; justify each as minimal. Connect requests read **and** write scopes together at consent
 time, with a plain-language explanation for each — but acquiring a scope never authorizes an
-action. Execution is gated by the owner-set action level (Observe / Draft / Send): holding a write
+action. Execution is gated by the owner-set action level (Observe / Draft / Act): holding a write
 scope never authorizes action on its own. The owner grants each Nibbin what it may do, and Agent
 School grades how accurately it has been working so the owner knows when to grant more. State this
 explicitly in the submission, because it is the strongest possible minimal-scope + user-control story.
@@ -63,7 +63,7 @@ explicit "scopes we declined."
 - **App name:** Nibbin
 - **App description (if prompted):** "Nibbin connects a solo business owner's tools and runs
   small, supervised agents that draft replies, answer scheduling questions, and surface overdue
-  items. Write scopes are requested at connect with a plain-language explanation; holding a write scope never authorizes action — execution is gated by the owner-set action level (Observe / Draft / Send). Agent School grades each Nibbin's accuracy so the owner knows when to grant it more."
+  items. Write scopes are requested at connect with a plain-language explanation; holding a write scope never authorizes action — execution is gated by the owner-set action level (Observe / Draft / Act). Agent School grades each Nibbin's accuracy so the owner knows when to grant it more."
 - **Scope justification (the free-text box, per restricted scope) — Gmail readonly:**
   "Nibbin reads the signed-in user's Gmail to (1) produce a one-time 'connector scan' — counts of
   unanswered inquiries, overdue threads, and FAQ candidates — and (2) draft reply suggestions

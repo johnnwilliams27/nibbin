@@ -26,12 +26,12 @@ it('getNibbin selects action_level and maps it to actionLevel (send)', async () 
     stage: 'graduate',
     stage_changed_at: '2026-01-01T00:00:00.000Z',
     status: 'active',
-    action_level: 'send',
+    action_level: 'act',
   });
   const store = new SupabaseRunStore(svc);
   const state = await store.getNibbin('nibbin-1');
   expect(state).not.toBeNull();
-  expect(state?.actionLevel).toBe('send');
+  expect(state?.actionLevel).toBe('act');
 });
 
 it('getNibbin selects action_level and maps it to actionLevel (draft)', async () => {

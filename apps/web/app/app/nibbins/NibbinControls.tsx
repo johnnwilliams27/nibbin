@@ -2,9 +2,9 @@
 
 /**
  * Per-nibbin controls:
- *   — Observe / Draft / Send action-level segmented control (Task 7)
+ *   — Observe / Draft / Act action-level segmented control (Task 7)
  *   — Advisory Agent School grade badge (informational, never gates)
- *   — Non-blocking Send-below-Graduate warning (confirm proceeds, never blocks)
+ *   — Non-blocking Act-below-Graduate warning (confirm proceeds, never blocks)
  *   — Pause / Resume (status-based)
  *   — Delete (archive, two-step inline confirm)
  */
@@ -25,7 +25,7 @@ const SYSTEM_PAUSE_LABELS: Record<string, string> = {
 const ACTION_LEVEL_OPTIONS: Array<{ value: string; label: string; description?: string }> = [
   { value: 'observe', label: 'Observe', description: 'Nibbin watches and learns — no drafts or sends.' },
   { value: 'draft',   label: 'Draft',   description: 'Nibbin prepares drafts for your approval.' },
-  { value: 'send',    label: 'Send',    description: 'Nibbin can send after your one-time grant.' },
+  { value: 'act',     label: 'Act',     description: 'Nibbin can act on its own after your one-time grant.' },
 ];
 
 type Stage = 'egg' | 'student' | 'senior' | 'grad';
@@ -42,7 +42,7 @@ interface Props {
   name: string;
   status: string;
   pausedReason: string | null;
-  /** Current action_level (observe/draft/send). Default: 'draft'. */
+  /** Current action_level (observe/draft/act). Default: 'draft'. */
   actionLevel?: ActionLevel;
   /** Agent School stage — advisory only, never gates action level. */
   stage?: Stage;
@@ -107,9 +107,9 @@ export function NibbinControls({
   function handleLevelChange(level: string) {
     // Safe: ACTION_LEVEL_OPTIONS is the only source of values passed to onChange.
     const l = level as ActionLevel;
-    // Non-blocking Send warning: if choosing Send and the nibbin is below Graduate,
+    // Non-blocking Act warning: if choosing Act and the nibbin is below Graduate,
     // show a confirm. The owner can still proceed — it never blocks.
-    if (l === 'send' && stage !== 'grad') {
+    if (l === 'act' && stage !== 'grad') {
       setPendingSendLevel(l);
       setConfirmSend(true);
       return;
@@ -162,13 +162,13 @@ export function NibbinControls({
           </span>
         )}
 
-        {/* Non-blocking Send-below-Graduate warning */}
+        {/* Non-blocking Act-below-Graduate warning */}
         {confirmSend && (
           <span className={styles.draftConfirm} style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
             <span className={styles.draftConfirmTxt}>
               {name} is a {stage ? STAGE_GRADE_LABEL[stage] : 'Student'}
               {matchPct !== null && matchPct !== undefined ? ` (${matchPct}% approved as-is)` : ''} and hasn&rsquo;t graduated yet.
-              Send permission is yours to grant — {name} will act on its own right away. You can dial it back to Draft or Observe anytime.
+              Act permission is yours to grant, and {name} will act on its own right away. You can dial it back to Draft or Observe anytime.
             </span>
             <span style={{ display: 'flex', gap: 6 }}>
               <button
@@ -177,7 +177,7 @@ export function NibbinControls({
                 onClick={confirmSendWarning}
                 disabled={levelPending}
               >
-                {levelPending ? 'Saving…' : 'Set to Send anyway'}
+                {levelPending ? 'Saving…' : 'Set to Act anyway'}
               </button>
               <button
                 type="button"

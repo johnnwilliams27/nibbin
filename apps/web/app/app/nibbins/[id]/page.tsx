@@ -46,7 +46,7 @@ export default async function NibbinDetailPage({ params, searchParams }: Props) 
             <div className={styles.ll}>Write scope ready</div>
             <p>
               {provider.charAt(0).toUpperCase() + provider.slice(1)} write access is connected.
-              Set {nibbin.name}&rsquo;s action level below to enable sending.
+              Set {nibbin.name}&rsquo;s action level below to enable it to act.
             </p>
           </div>
         )}

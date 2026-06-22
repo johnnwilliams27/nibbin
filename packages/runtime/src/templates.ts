@@ -9,7 +9,7 @@
  * filler; the owner grants the action level, Agent School grades competency.
  *
  * v0 templates carry write capabilities (email.send, dm.reply) — the action
- * level (observe/draft/send) decides draft-vs-act; no template ships at `send`
+ * level (observe/draft/act) decides draft-vs-act; no template ships at `send`
  * by default. (`invoice.nudge` is vestigial — the overdue-invoice nudge now
  * rides email.send via the cross-resource nudge.overdue-invoice primitive.)
  */

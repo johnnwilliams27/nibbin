@@ -10,7 +10,7 @@
  * The hasGrant / routineApprovals checks are no longer in the gate path.
  * They remain in RunnerDeps for other callers but are not tested here as
  * gate conditions. Tests that previously relied on grant+routine to reach
- * execute now set actionLevel='send' explicitly.
+ * execute now set actionLevel='act' explicitly.
  */
 import { describe, expect, it } from 'vitest';
 import { quarantine } from '@nibbin/connectors';
@@ -82,7 +82,7 @@ interface Harness {
   executed: Array<{ capability: string }>;
 }
 
-function harness(credits = 100, actionLevel: 'observe' | 'draft' | 'send' = 'draft'): Harness {
+function harness(credits = 100, actionLevel: 'observe' | 'draft' | 'act' = 'draft'): Harness {
   const runs = new MemoryRunStore(() => Date.now());
   runs.seedCredits(ACCOUNT, credits);
   // Seed the nibbin action level so getNibbin() returns the right value.
@@ -135,7 +135,7 @@ describe('§7.2 trust gates — action level controls draft-vs-execute', () => {
     });
 
     it(`egg + send via ${path.label}: EXECUTES (action_level is the sole gate, stage advisory)`, async () => {
-      const h = harness(100, 'send');
+      const h = harness(100, 'act');
       const outcome = await executeRun(nibbin('egg'), path.trigger, effectProgram, h.deps);
       expect(outcome.kind).toBe('executed');
       expect(h.executed).toHaveLength(1);
@@ -193,7 +193,7 @@ describe('§7.2 trust gates — action level controls draft-vs-execute', () => {
   it('student with actionLevel=send: executes (grade no longer a barrier)', async () => {
     // CONVERTED: was "senior with routine pattern AND grant: executes (earned autonomy, §4.7)".
     // NEW: send level executes at ANY grade. Using student to prove grade is irrelevant.
-    const h = harness(100, 'send');
+    const h = harness(100, 'act');
     const outcome = await executeRun(nibbin('student'), PATHS[0].trigger, effectProgram, h.deps);
     expect(outcome.kind).toBe('executed');
     expect(h.executed).toHaveLength(1);
@@ -202,14 +202,14 @@ describe('§7.2 trust gates — action level controls draft-vs-execute', () => {
   it('graduate with actionLevel=send: executes within spec', async () => {
     // CONVERTED: was "graduate with grant: executes within spec".
     // NEW: actionLevel=send is the gate — no grant needed.
-    const h = harness(100, 'send');
+    const h = harness(100, 'act');
     const outcome = await executeRun(nibbin('grad'), PATHS[0].trigger, effectProgram, h.deps);
     expect(outcome.kind).toBe('executed');
   });
 
   it('presentation drafts never execute, even at send level', async () => {
     // UNCHANGED: step.presentation=true is always draft regardless of actionLevel.
-    const h = harness(100, 'send');
+    const h = harness(100, 'act');
     const presentation: ProgramFn = async function* () {
       yield {
         kind: 'draft',

@@ -11,7 +11,7 @@ Nibbin needs to grow from one fully-acting connector (Gmail) to many. The questi
 
 Two facts frame the decision:
 
-1. **Nibbin already shipped the agent-action layer.** The Composer/Planner synthesises a bespoke spec from field study; that spec may only compose **vetted primitives** (not raw writes — `validateComposedSpec` rejects any composed step whose capability is not `kind:'primitive'` or a pure read); and the owner-set **action level (Observe/Draft/Send)** is the sole execution gate. This primitive + action-level boundary is the product's safety model (see [[project-nibbin-action-levels]]).
+1. **Nibbin already shipped the agent-action layer.** The Composer/Planner synthesises a bespoke spec from field study; that spec may only compose **vetted primitives** (not raw writes — `validateComposedSpec` rejects any composed step whose capability is not `kind:'primitive'` or a pure read); and the owner-set **action level (Observe/Draft/Act)** is the sole execution gate. This primitive + action-level boundary is the product's safety model (see [[project-nibbin-action-levels]]).
 2. **The privacy moat is the on-device screen capture (C7), not connector data.** Connector data is "cloud-but-disciplined": tokens-not-warehouses, derived-not-raw. The owner has explicitly ruled that connector data flowing through a third-party processor is acceptable; only the screen capture is the moat.
 
 ## Decision

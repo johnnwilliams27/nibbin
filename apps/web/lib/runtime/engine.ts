@@ -369,7 +369,7 @@ export function buildEffectsExecutor(
       case 'calendar.event-create': {
         // Calendar write (Connector Lever 1). By the time execution reaches here
         // the runner has ALREADY cleared every wall: action_level (the SOLE
-        // execution gate — observe/draft/send, owner-set), resource-claim
+        // execution gate — observe/draft/act, owner-set), resource-claim
         // conflict locks, and idempotency. Grade and write-grant rows are
         // advisory only and do NOT gate (the runtime no longer calls hasGrant).
         // This case only performs the approved side effect. calendarId defaults

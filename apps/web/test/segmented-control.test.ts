@@ -14,7 +14,7 @@ import type { ActionLevel } from '../app/app/nibbins/action-level-actions';
 const OPTIONS: SegmentOption[] = [
   { value: 'observe', label: 'Observe', description: 'Watch mode' },
   { value: 'draft',   label: 'Draft',   description: 'Draft mode' },
-  { value: 'send',    label: 'Send',    description: 'Send mode' },
+  { value: 'act',    label: 'Act',    description: 'Act mode' },
 ];
 
 /**
@@ -44,7 +44,7 @@ describe('SegmentedControl', () => {
     expect(new Set(values).size).toBe(3);
     expect(values).toContain('observe');
     expect(values).toContain('draft');
-    expect(values).toContain('send');
+    expect(values).toContain('act');
   });
 
   it('marks only the current value as active (aria-pressed equivalent)', () => {
@@ -55,7 +55,7 @@ describe('SegmentedControl', () => {
     };
     expect(isActive(props, 'observe')).toBe(false);
     expect(isActive(props, 'draft')).toBe(true);
-    expect(isActive(props, 'send')).toBe(false);
+    expect(isActive(props, 'act')).toBe(false);
   });
 
   it('calls onChange with the clicked option value when not disabled', () => {
@@ -65,9 +65,9 @@ describe('SegmentedControl', () => {
       value: 'observe',
       onChange,
     };
-    simulateClick(props, 'send');
+    simulateClick(props, 'act');
     expect(onChange).toHaveBeenCalledOnce();
-    expect(onChange).toHaveBeenCalledWith('send');
+    expect(onChange).toHaveBeenCalledWith('act');
   });
 
   it('does not call onChange when disabled', () => {
@@ -78,7 +78,7 @@ describe('SegmentedControl', () => {
       onChange,
       disabled: true,
     };
-    simulateClick(props, 'send');
+    simulateClick(props, 'act');
     expect(onChange).not.toHaveBeenCalled();
   });
 
@@ -117,7 +117,7 @@ function makeControls(stage: string | undefined) {
     const l = level as ActionLevel;
     // Non-blocking Send warning: if choosing Send and the nibbin is below Graduate,
     // show a confirm. The owner can still proceed — it never blocks.
-    if (l === 'send' && stage !== 'grad') {
+    if (l === 'act' && stage !== 'grad') {
       pendingSendLevel = l;
       confirmSend = true;
       return;
@@ -142,26 +142,26 @@ function makeControls(stage: string | undefined) {
 describe('NibbinControls Send-warning flow', () => {
   it('(a) selecting send when stage !== grad sets confirmSend=true and does NOT call applyLevel', () => {
     const ctrl = makeControls('student');
-    ctrl.handleLevelChange('send');
+    ctrl.handleLevelChange('act');
     expect(ctrl.getConfirmSend()).toBe(true);
-    expect(ctrl.getPendingLevel()).toBe('send');
+    expect(ctrl.getPendingLevel()).toBe('act');
     expect(ctrl.applyLevel).not.toHaveBeenCalled();
   });
 
-  it('(b) confirmSendWarning calls applyLevel("send") after the warning', () => {
+  it('(b) confirmSendWarning calls applyLevel("act") after the warning', () => {
     const ctrl = makeControls('senior');
-    ctrl.handleLevelChange('send');
+    ctrl.handleLevelChange('act');
     expect(ctrl.applyLevel).not.toHaveBeenCalled();
     ctrl.confirmSendWarning();
     expect(ctrl.applyLevel).toHaveBeenCalledOnce();
-    expect(ctrl.applyLevel).toHaveBeenCalledWith('send');
+    expect(ctrl.applyLevel).toHaveBeenCalledWith('act');
     expect(ctrl.getConfirmSend()).toBe(false);
     expect(ctrl.getPendingLevel()).toBeNull();
   });
 
   it('(c) cancelSendWarning does NOT call applyLevel', () => {
     const ctrl = makeControls('egg');
-    ctrl.handleLevelChange('send');
+    ctrl.handleLevelChange('act');
     ctrl.cancelSendWarning();
     expect(ctrl.applyLevel).not.toHaveBeenCalled();
     expect(ctrl.getConfirmSend()).toBe(false);
@@ -186,9 +186,9 @@ describe('NibbinControls Send-warning flow', () => {
 
   it('(d) selecting send when stage === grad calls applyLevel immediately with no warning', () => {
     const ctrl = makeControls('grad');
-    ctrl.handleLevelChange('send');
+    ctrl.handleLevelChange('act');
     expect(ctrl.applyLevel).toHaveBeenCalledOnce();
-    expect(ctrl.applyLevel).toHaveBeenCalledWith('send');
+    expect(ctrl.applyLevel).toHaveBeenCalledWith('act');
     expect(ctrl.getConfirmSend()).toBe(false);
   });
 });

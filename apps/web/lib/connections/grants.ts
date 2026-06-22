@@ -3,7 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 /**
  * Write capabilities a Nibbin can hold on a connection. Each is gated at
- * execution time by the action level (observe/draft/send) — holding the grant
+ * execution time by the action level (observe/draft/act) — holding the grant
  * never bypasses the runtime side-effect gate. Task 3: email.draft retired;
  * email.send is the single email write capability (nativeDraft: true in the
  * registry — the action level decides draft-vs-act).
@@ -22,7 +22,7 @@ export interface CreateWriteGrantInput {
 }
 
 /**
- * Task 3: two-tier model. The action level (observe/draft/send) governs
+ * Task 3: two-tier model. The action level (observe/draft/act) governs
  * draft-vs-act within each write grant. UI only needs to know whether the
  * Nibbin holds any write grant.
  */
@@ -99,7 +99,7 @@ export async function suspendGrantsForConnection(
 /**
  * Reads nibbin_write_grants to produce the two-tier display tier (Task 3).
  * Returns 'write' when the Nibbin holds any active write grant, else 'read_only'.
- * The action level (observe/draft/send) on the agent spec governs draft-vs-act
+ * The action level (observe/draft/act) on the agent spec governs draft-vs-act
  * within the write tier — no stage parameter needed here.
  */
 export async function deriveCapabilityTier(

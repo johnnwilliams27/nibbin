@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { WebAnalytics } from './WebAnalytics';
 import { creatureCss } from '@nibbin/creatures';
-import { archivo, bricolage, plexMono } from './fonts';
+import { archivo, bricolage } from './fonts';
 import './globals.css';
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://nibbin.com';
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${archivo.variable} ${bricolage.variable} ${plexMono.variable}`}>
+    <html lang="en" className={`${archivo.variable} ${bricolage.variable}`}>
       <head>
         {/* Mark JS-capable before paint so reveal-on-scroll only hides content
             when the observer can reveal it (no-JS/crawlers see everything). */}

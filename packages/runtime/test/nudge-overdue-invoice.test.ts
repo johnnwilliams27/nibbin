@@ -132,7 +132,7 @@ function harness(reader?: { read(c: string, cap: string, path: string): Promise<
   return { deps, runs };
 }
 
-function invoiceNib(actionLevel: 'observe' | 'draft' | 'send'): { h: ReturnType<typeof harness>; nib: NibbinRef } {
+function invoiceNib(actionLevel: 'observe' | 'draft' | 'act'): { h: ReturnType<typeof harness>; nib: NibbinRef } {
   const h = harness();
   h.runs.nibbinState('nib-inv').actionLevel = actionLevel;
   return { h, nib: nibRef() };
@@ -371,7 +371,7 @@ describe('nudge.overdue-invoice — action-level matrix (email.send rail)', () =
   });
 
   it('send → executed — effects executor sends exactly once with the invoice recipient', async () => {
-    const { h, nib } = invoiceNib('send');
+    const { h, nib } = invoiceNib('act');
     h.deps.reader = overdueReader();
     const sendCalls: Array<Record<string, unknown>> = [];
     h.deps.effects = {
@@ -391,7 +391,7 @@ describe('nudge.overdue-invoice — action-level matrix (email.send rail)', () =
   });
 
   it('send with replayed trigger → idempotency holds — send fires exactly once', async () => {
-    const { h, nib } = invoiceNib('send');
+    const { h, nib } = invoiceNib('act');
     h.deps.reader = overdueReader();
     let sends = 0;
     h.deps.effects = {
@@ -417,7 +417,7 @@ describe('nudge.overdue-invoice — action-level matrix (email.send rail)', () =
   });
 
   it('no overdue invoices → completes with no draft step even at send level', async () => {
-    const { h, nib } = invoiceNib('send');
+    const { h, nib } = invoiceNib('act');
     h.deps.reader = emptyReader();
     let executions = 0;
     h.deps.effects = { async execute() { executions += 1; } };
