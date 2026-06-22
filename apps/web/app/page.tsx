@@ -214,8 +214,8 @@ export default function Home() {
                   your first Nibbin and connects your tools, and nothing acts until you approve it.
                 </div>
                 <div className="kp">
-                  <b>Finds the busywork.</b> It runs the 12-month scan, names what it finds in hours and dollars, and
-                  introduces the Nibbin for each job.
+                  <b>Finds the busywork.</b> It looks at your past work across connected applications, names what it
+                  finds in hours and dollars, and introduces the Nibbin for each job.
                 </div>
                 <div className="kp">
                   <b>Orchestrates and delegates.</b> The Keeper can never send, post, pay, or delete. It explains each
