@@ -106,7 +106,7 @@ export default function Home() {
               Hatch your first Nibbin in minutes. The Grovekeeper connects your tools, scans for busywork, and
               staffs it with small helpers that learn your way of doing things. You decide what each Nibbin may
               do: Observe, Draft, or Act. Agent School grades how well it is doing, so you always know when to
-              extend more trust. A two-week Field Study runs quietly alongside and deepens the map into a full
+              extend more trust. A two-week Field Study runs in the background to deepen the initial mapping into a full
               diagnosis.
             </p>
             <div className="cta-row">
