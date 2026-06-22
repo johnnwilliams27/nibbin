@@ -37,9 +37,10 @@
   padding: 16px 0 76px;
 }
 
-/* Readable prose column, centered within the wide frame. */
+/* Prose column — matched to the card width so the article reads as one
+   consistent measure (not a narrow column floating inside wider cards). */
 .landing .ab-prose {
-  max-width: 66ch;
+  max-width: 860px;
   margin: 0 auto;
 }
 .landing .ab-prose h2 {
@@ -81,10 +82,8 @@
   font-size: 18px;
   letter-spacing: -0.01em;
   color: var(--ink);
-  margin: 42px 0 0;
-  max-width: 66ch;
-  margin-left: auto;
-  margin-right: auto;
+  margin: 42px auto 0;
+  max-width: 860px;
 }
 
 /* Medium-width blocks — wider than prose, centered. */
