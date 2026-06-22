@@ -143,6 +143,180 @@
   color: var(--ink);
 }
 
+/* Lead — the opening argument, set a touch larger and in ink. */
+.lead {
+  margin: 8px 0 8px;
+}
+.lead p {
+  font-size: 18px;
+  line-height: 1.62;
+  color: var(--ink);
+  max-width: 60ch;
+  margin: 0 0 16px;
+}
+
+/* Punch line — "the description is the lie." A single emphatic beat. */
+.punch {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 19px;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  color: var(--ink) !important;
+  max-width: 60ch;
+  margin: 20px 0 8px !important;
+  padding-left: 16px;
+  border-left: 3px solid var(--moss);
+}
+
+/* Contrast table — three competitors plus Nibbin. A real grid on desktop;
+   each row collapses to a labeled card under 640px so it never breaks. */
+.compare {
+  margin: 24px 0 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  overflow: hidden;
+  background: var(--canopy);
+  box-shadow: var(--shadow-2);
+}
+.compareRow {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr 1.5fr;
+}
+.compareRow + .compareRow {
+  border-top: 1px solid var(--line);
+}
+.compareHead {
+  background: var(--moss-tint);
+}
+.compareHead .compareCell {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--moss-deep);
+  font-weight: 600;
+}
+.compareCell {
+  padding: 14px 16px;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+.compareCell + .compareCell {
+  border-left: 1px solid var(--line);
+}
+.compareTool {
+  color: var(--ink);
+  font-weight: 700;
+}
+.compareFeat {
+  background: var(--moss-tint);
+}
+.compareFeat .compareTool {
+  color: var(--moss-deep);
+}
+.compareLabel {
+  display: none;
+}
+@media (max-width: 640px) {
+  .compareRow {
+    grid-template-columns: 1fr;
+  }
+  .compareHead {
+    display: none;
+  }
+  .compareCell + .compareCell {
+    border-left: none;
+    border-top: 1px dashed var(--line);
+  }
+  .compareLabel {
+    display: block;
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--moss-deep);
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+}
+
+/* "This might sound familiar" — supporting examples, stacked cards. */
+.familiarHead {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  margin: 40px 0 14px;
+}
+.exGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0 0 8px;
+}
+.exCard {
+  background: var(--moss-tint);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  padding: 18px 20px;
+}
+.exCard strong {
+  display: block;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+.exCard p {
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  margin: 0;
+  max-width: none;
+}
+
+/* "You stay in control" — one grouped panel so the four blocks read as a set. */
+.controlHead {
+  margin-bottom: 4px;
+}
+.controlCluster {
+  background: var(--moss-tint);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-2);
+  padding: 4px 26px;
+  margin: 16px 0 8px;
+}
+.controlItem {
+  padding: 22px 0;
+  border-top: 1px solid var(--line);
+}
+.controlItem:first-child {
+  border-top: none;
+}
+.controlItem h3 {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  margin: 0 0 8px;
+}
+.controlItem p {
+  font-size: 15.5px;
+  line-height: 1.62;
+  color: var(--ink-soft);
+  margin: 0 0 10px;
+  max-width: 64ch;
+}
+.controlItem p:last-child {
+  margin-bottom: 0;
+}
+
 .cta {
   margin: 48px 0 0;
   padding: 32px;

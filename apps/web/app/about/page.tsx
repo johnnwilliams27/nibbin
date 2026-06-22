@@ -6,9 +6,77 @@ import styles from './about.module.css';
 export const metadata: Metadata = {
   title: 'About — Nibbin',
   description:
-    'Nibbin is an AI helper for people who work for themselves — a small grove of agents that learn how you work and quietly take the busywork off your plate.',
+    'Most AI tools hand you a blank box and wish you luck. Nibbin learns from your actual work — on your device, private by default — and turns what you keep repeating into agents you can trust.',
   alternates: { canonical: '/about' },
 };
+
+// Supporting contrast block. The Nibbin row deliberately flips the second
+// column from "where it breaks" to the payoff, so it carries its own mobile
+// label.
+const COMPARE = [
+  {
+    tool: 'Chat tools',
+    asks: 'Start over and re-explain everything each session',
+    breaks: 'No memory of your actual work; you’re the context engine',
+  },
+  {
+    tool: 'Automation builders',
+    asks: 'Map every step by hand before anything runs',
+    breaks: 'You have to describe a process you’ve never written down',
+  },
+  {
+    tool: 'Agent platforms',
+    asks: 'Spec out an agent up front',
+    breaks: 'You’re guessing at a workflow you haven’t tested',
+  },
+];
+
+const FAMILIAR = [
+  {
+    h: 'The weekly thing you’ve never explained to anyone.',
+    p: 'There’s some task you do every week that lives entirely in your hands. You’ve never written it down because you’ve never needed to. A chat tool can’t help with it — you’d have to explain it first, and explaining it is half the work. Nibbin just watches you do it and learns the steps.',
+  },
+  {
+    h: 'The automation you’d build if you had a free afternoon you’ll never have.',
+    p: 'You know exactly which part of your week is wasteful. You also know that sitting down to wire it up in some builder would cost more time than it saves this month, this quarter, maybe this year. So it never happens. Nibbin removes the afternoon. The setup is you doing the work.',
+  },
+  {
+    h: 'The context you paste in every single time.',
+    p: 'Every chat session, you re-establish the same background before you get anything done. Who you are, what the project is, how you like things handled. Nibbin already knows, because it was there when the work happened.',
+  },
+];
+
+// The transparency / control / privacy cluster — grouped so it reads as one
+// set. Same vocabulary as the home page band (track record · scope · off means
+// off). Plain and direct, no brand whimsy: trust copy that sounds cute
+// undercuts itself.
+const CONTROL = [
+  {
+    h: 'You stay in charge of every Nibbin',
+    ps: [
+      'Spinning up agents is the easy part. The moment you have a few of them doing real work, a harder question shows up, and almost no tool answers it: can you trust them, and how would you even know?',
+      'Most platforms leave you guessing. The agent runs, something happens, and you either believe it or you babysit it, which defeats the point of having it. We treat that as the actual product, not the fine print. Every Nibbin shows its work — what it did, when, on what, and how it turned out. You watch one closely until you trust it, then you stop watching.',
+    ],
+  },
+  {
+    h: 'Quality you can see, not guess at',
+    ps: [
+      'An agent is only worth keeping if it’s good, and “good” shouldn’t be a feeling. Each Nibbin carries a track record you can read: where it succeeds, where it slips, how often you’ve had to step in and fix something. When one stops pulling its weight, you find out before it costs you, not after. You should never have to take an agent’s word for its own performance.',
+    ],
+  },
+  {
+    h: 'You set the boundaries, the agent earns them',
+    ps: [
+      'A Nibbin does not decide what it’s allowed to touch. You do. Permissions and scope are granted by a person, on purpose, and they start narrow. An agent earns more room by proving it can handle what it already has, and you can take that room back at any time, no friction, no negotiation. The person holds the keys. That doesn’t change as the Grove gets bigger.',
+    ],
+  },
+  {
+    h: 'Watched only if you want it watched',
+    ps: [
+      'Nibbin learns by paying attention to your work, and that only happens on your terms. You choose what it sees and what stays off-limits, and nothing is observed or learned from unless you’ve said it can be. The screen capture it learns from never leaves your device. It stays on your machine, not on our servers, and off means off. We didn’t add privacy late to check a box. It’s where we started, and everything else is built on top of it.',
+    ],
+  },
+];
 
 export default function AboutPage() {
   return (
@@ -33,115 +101,144 @@ export default function AboutPage() {
       <header className={styles.header}>
         <div className={styles.wrap}>
           <span className={styles.eyebrow}>About Nibbin</span>
-          <h1 className={styles.h1}>Little helpers that grow up working for you.</h1>
-          <p className={styles.tagline}>AI agents for people who work for themselves.</p>
+          <h1 className={styles.h1}>Most AI tools hand you a blank box and wish you luck.</h1>
         </div>
       </header>
 
       <main className={styles.body}>
         <div className={styles.wrap}>
-          <h2>What Nibbin is</h2>
-          <p>
-            Nibbin is an AI helper made for people who work for themselves. Instead of handing you a blank box and a
-            thousand things you could do, it gives you a small grove of agents — we call them Nibbins — that learn how
-            you actually work and then quietly take the busywork off your plate, one task at a time. You don’t build
-            them, wire them together, or babysit them. You raise them, and they grow into the job.
-          </p>
-
-          <h2>The problem we set out to solve</h2>
-          <p>
-            Most AI tools can do almost anything, which is exactly why they end up helping so little. They’re powerful
-            and open-ended, and they leave the hard part to you: figuring out what to hand off, setting it up, and
-            keeping it running over time. They’re also strangely impersonal. They rarely feel connected to you or to
-            the way you run your business, and most of them have no idea what you actually do all day.
-          </p>
-          <p>
-            Off-the-shelf agents exist, but they’re generic. Shaping one to fit your real workflows takes time, a fair
-            amount of technical comfort, and ongoing maintenance that most solo owners simply don’t have to spare. So
-            you’re left with a lot of capability and very little direction. You can do everything, and you still don’t
-            know where to start.
-          </p>
-          <p>We think that’s backwards. The whole point of help is to be guided.</p>
-
-          <h2>How Nibbin works</h2>
-          <p>Nibbin understands you before it does anything for you.</p>
-          <p>
-            It begins by studying how you actually work. It reviews how you’ve been working recently and observes your
-            day-to-day, and from that it builds a clear, plain-language map of your real workflows — your diagnosis:
-            where your time goes, where the friction is, and where you stand to gain the most. You see this map for
-            yourself. For a lot of people, that picture alone is the first time anyone has shown them exactly where
-            their week disappears to.
-          </p>
-          <p>
-            Only then does Nibbin suggest a few agents matched to your actual work, not a generic menu. You choose
-            what each Nibbin may do — Observe, Draft, or Send. Agent School grades how accurately it has been working,
-            so you always have the information to decide when to grant it more. You always see what your Nibbins are
-            doing, why they are doing it, and how accurate they have been. Nothing is a black box, and nothing acts
-            at the Send level until you grant it.
-          </p>
-
-          <h2>Personable, not just powerful</h2>
-          <p>
-            We built Nibbin to feel like something you actually want to check in on. Your agents are helpers you can
-            see, each one growing through visible stages as it learns your business. They carry report cards. They
-            celebrate the first time they handle something on their own. The personality isn’t decoration — it’s how
-            trust becomes legible: you can look at a Nibbin and understand, at a glance, how much it has learned and
-            how much it has earned. That sense of working alongside something, rather than configuring a tool, is the
-            thing most AI products are missing.
-          </p>
-
-          <h2>Trust is the whole point</h2>
-          <p>
-            Inviting a piece of software to observe how you work is a big ask, and we treat it like one. The trust
-            model is built into how Nibbin is made, not bolted on as fine print.
-          </p>
-          <div className={styles.box}>
-            <ul>
-              <li>
-                <strong>What Nibbin sees stays with you.</strong> Screen observation happens locally. The captures it
-                uses to understand your workflows never leave your device.
-              </li>
-              <li>
-                <strong>Nothing acts without your say-so.</strong> Every new Nibbin starts by drafting for you; you
-                decide when it may Send. Agent School grades its accuracy so you know when to grant more — and you can
-                pull it back at any time.
-              </li>
-              <li>
-                <strong>You can see, edit, and delete everything Nibbin knows</strong> about your business, in plain
-                language, whenever you want.
-              </li>
-              <li>
-                <strong>Privacy is the architecture.</strong> The product was designed from the ground up so the
-                trustworthy thing and the convenient thing are the same thing.
-              </li>
-            </ul>
+          <div className={styles.lead}>
+            <p>
+              The models are good now. That stopped being the problem a while ago. The problem is the gap between what
+              a model can do and what a person can actually get it to do — and that gap is wider than anyone selling AI
+              wants to admit.
+            </p>
+            <p>
+              To get real work out of these tools, you have to know what to ask, how to phrase it, what context to
+              paste in, and how to break your own process into steps a machine can follow. That’s a skill. Most people
+              don’t have it, and there’s no reason they should. Their job was never “prompt engineer.” So the
+              capability sits there, mostly unused, while people keep doing by hand the exact things the model could
+              already handle — if only someone had set it up right.
+            </p>
           </div>
 
-          <h2>Who Nibbin is for</h2>
+          <h2>The part nobody fixes</h2>
+          <p>Every tool in this space asks you to do the same thing first: describe your work.</p>
           <p>
-            Nibbin is for the people running a business of one: freelancers, creatives, independent operators — anyone
-            who is both the owner and the entire staff. It’s built especially for people who know AI could help them
-            but have never had the time, the technical background, or a guide to make it actually work. If you’ve ever
-            felt that these tools were built for engineers and not for you, Nibbin is the answer to that feeling.
+            Chat tools start you on a blank page. Every session, you re-explain who you are and what you’re working on
+            before you get anything useful. Automation builders make you map out each step by hand before a single
+            thing runs. Agent platforms want you to write a spec for an agent you haven’t even tested yet.
           </p>
           <p>
-            It’s not built to be another open-ended platform for people who want to assemble their own agents. It’s
-            built to be the helper that does the understanding, the setup, and the steady work for you.
+            They all share one assumption — that you can explain your work well enough to configure a machine to do it.
+            But the reason you wanted help in the first place is that your work is messy. It’s full of judgment calls,
+            exceptions, and small decisions you make without thinking about them. Ask someone to write down their
+            process and you get a clean version that leaves out everything that actually matters. Watch them do it and
+            you see what really happens.
+          </p>
+          <p className={styles.punch}>That’s the whole thing. The description is the lie. The work is the truth.</p>
+
+          <div className={styles.compare}>
+            <div className={`${styles.compareRow} ${styles.compareHead}`}>
+              <span className={styles.compareCell} />
+              <span className={styles.compareCell}>What it asks of you</span>
+              <span className={styles.compareCell}>Where it breaks</span>
+            </div>
+            {COMPARE.map((row) => (
+              <div className={styles.compareRow} key={row.tool}>
+                <span className={`${styles.compareCell} ${styles.compareTool}`}>{row.tool}</span>
+                <span className={styles.compareCell}>
+                  <span className={styles.compareLabel}>What it asks</span>
+                  {row.asks}
+                </span>
+                <span className={styles.compareCell}>
+                  <span className={styles.compareLabel}>Where it breaks</span>
+                  {row.breaks}
+                </span>
+              </div>
+            ))}
+            <div className={`${styles.compareRow} ${styles.compareFeat}`}>
+              <span className={`${styles.compareCell} ${styles.compareTool}`}>Nibbin</span>
+              <span className={styles.compareCell}>
+                <span className={styles.compareLabel}>What it asks</span>
+                Nothing extra — just do your work
+              </span>
+              <span className={styles.compareCell}>
+                <span className={styles.compareLabel}>Why it works</span>
+                It learns from what actually happens, not your description of it
+              </span>
+            </div>
+          </div>
+
+          <h2>What Nibbin does instead</h2>
+          <p>Nibbin learns from the work, not from your account of it.</p>
+          <p>
+            It runs on your machine and pays attention to how you actually get things done — the real sequence, the
+            real files, the real choices you make. From that, it builds agents and workflows out of what it sees. You
+            don’t write prompts. You don’t draw flowcharts. You don’t sit down for an afternoon to “set up your
+            automations.” You do your work, like always, and Nibbin turns the parts you keep repeating into Nibbins
+            that can take them off your plate.
+          </p>
+          <p>
+            It stays local and private by default. The thing watching your work is yours, on your device, working for
+            you and no one else.
           </p>
 
-          <h2>Why we built it</h2>
+          <h3 className={styles.familiarHead}>This might sound familiar</h3>
+          <div className={styles.exGrid}>
+            {FAMILIAR.map((ex) => (
+              <div className={styles.exCard} key={ex.h}>
+                <strong>{ex.h}</strong>
+                <p>{ex.p}</p>
+              </div>
+            ))}
+          </div>
+
+          <h2>Why we think we can pull this off</h2>
           <p>
-            We started Nibbin because the most capable software in the world was arriving at the same moment that the
-            people who could benefit from it most — the ones working entirely for themselves — were the least equipped
-            to use it. The gap wasn’t capability. The gap was guidance, trust, and a little bit of warmth. Nibbin
-            exists to close it.
+            The easy version of this product is another chat box or another drag-and-drop node editor. Plenty of those
+            exist. They’re easy precisely because they push the hard part onto you.
           </p>
+          <p>
+            The hard version — learn from raw activity on a device, keep it private, and turn unstructured real
+            behavior into automation you can actually trust — is the one worth building, and it’s close to the work we
+            know best. Years at Google and Block, building products used by people all over the world, taught us where
+            software actually hurts: the small, repeated friction that never makes a roadmap but quietly eats up
+            people’s days. We’ve also spent enough time inside today’s agent tools to see the other half of the
+            problem: when these things reach people who aren’t AI experts, the capability is right there, but knowing
+            how to aim it at your own work turns out to be its own skill, and most people are left to work it out
+            alone. Those everyday problems are the ones we care most about, and we’d rather solve them once, properly,
+            than make millions of people keep doing the tedious thing forever.
+          </p>
+
+          <h2>How it grows</h2>
+          <p>
+            Nibbin doesn’t arrive knowing everything, and it shouldn’t. It starts with one small thing it learned you
+            doing. You let it handle that. It earns a little more. Over time the Grove fills in — agents that grew up
+            around your actual work instead of a template someone guessed at. The longer you use it, the more it sounds
+            like you, because it learned from you and not from a manual.
+          </p>
+
+          <h2 className={styles.controlHead}>You stay in control</h2>
+          <div className={styles.controlCluster}>
+            {CONTROL.map((block) => (
+              <div className={styles.controlItem} key={block.h}>
+                <h3>{block.h}</h3>
+                {block.ps.map((para, i) => (
+                  <p key={i}>{para}</p>
+                ))}
+              </div>
+            ))}
+          </div>
 
           <div className={styles.cta}>
-            <h2>Raise your first helper.</h2>
-            <p>We’re opening Nibbin to a small founding cohort of people who work for themselves.</p>
+            <h2>We’re building Nibbin now.</h2>
+            <p>
+              The waitlist is open. If a tool that learns your work instead of making you explain it sounds like what
+              you’ve been waiting for, come get early access.
+            </p>
             <a className={styles.ctaBtn} href="/#join">
-              Join the Founding Grove
+              Join the waitlist
             </a>
           </div>
         </div>

@@ -58,6 +58,28 @@ const PRIVACY = [
   },
 ];
 
+// "You stay in control" band — the plain, no-whimsy half of the hybrid voice.
+// Mirrors the four-block control cluster on /about; same vocabulary on purpose
+// (track record · scope · off means off). Absorbs the old one-click grade-back
+// idea that used to live alone in the hero evocard caption.
+const CONTROL = [
+  {
+    pi: 'Track record',
+    h: 'See how each one’s doing.',
+    p: 'Every Nibbin keeps a track record you can read: where it does well, where it slips, when you’ve had to step in. Correct it once and it learns. No agent gets to vouch for itself.',
+  },
+  {
+    pi: 'Scope',
+    h: 'You decide what it can touch.',
+    p: 'Permissions and scope are set by you, and they start narrow. An agent earns more room by proving it can handle what it already has, and you can pull that room back anytime.',
+  },
+  {
+    pi: 'Off means off',
+    h: 'Watched only if you allow it.',
+    p: 'Nibbin learns from your work only on your terms. The screen capture it learns from never leaves your device. Off means off.',
+  },
+];
+
 const PRICING = [
   {
     tier: 'Hatchling — Free',
@@ -177,8 +199,7 @@ export default function Home() {
               <span className="val">≥95% verified accuracy over 25 real runs</span>
             </div>
             <div className="cap">
-              Nibbins grow on <b>accuracy you’ve verified</b>, never on time served. Any graduate can be sent back a
-              grade with one click — demotion is one tap, dignity intact.
+              Nibbins grow on <b>accuracy you’ve verified</b>, never on time served.
             </div>
           </div>
         </div>
@@ -229,7 +250,7 @@ export default function Home() {
               <div className="keeper-points">
                 <div className="kp">
                   <b>Sets you up in minutes.</b> A short conversation, not a configuration screen. The Keeper hatches
-                  your grove and connects your tools — nothing acts until you approve it.
+                  your first Nibbin and connects your tools — nothing acts until you approve it.
                 </div>
                 <div className="kp">
                   <b>Finds the busywork.</b> It runs the 12-month scan, names what it finds in hours and dollars, and
@@ -258,6 +279,28 @@ export default function Home() {
           <div className="reveal">
             <MayaDemo />
           </div>
+        </div>
+      </section>
+
+      <section id="control">
+        <div className="wrap">
+          <div className="sec-head reveal">
+            <span className="eyebrow">Trust &amp; control</span>
+            <h2>You stay in control.</h2>
+            <p>You hand off the work, not the control. Here’s what that looks like in practice.</p>
+          </div>
+          <div className="priv-grid reveal">
+            {CONTROL.map((c) => (
+              <div className="pcard" key={c.h}>
+                <span className="pi">{c.pi}</span>
+                <h3>{c.h}</h3>
+                <p>{c.p}</p>
+              </div>
+            ))}
+          </div>
+          <p className="priv-foot ctrl-foot">
+            <a href="/about">How this works → /about</a>
+          </p>
         </div>
       </section>
 
@@ -320,7 +363,7 @@ export default function Home() {
             <h2>Join the Founding Grove.</h2>
             <p className="sub">
               We’re opening Nibbin to a small first cohort of people who work for themselves. Claim a seat and the
-              Grovekeeper will hatch your grove early — and personally.
+              Grovekeeper will hatch your first Nibbins early — and personally.
             </p>
             <WaitlistForm />
             <p className="join-note">Double opt-in · one confirmation email · unsubscribe anytime.</p>
