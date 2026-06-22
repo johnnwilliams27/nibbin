@@ -311,10 +311,10 @@ describe('§6.2: trigger dedupe + cooldown + anomaly auto-pause', () => {
 describe('§6.2: idempotency keys on side effects', () => {
   function granted() {
     const h = harness({ credits: 1000 });
-    // Action level 'send' is required for the execute path under the new model.
+    // Action level 'act' is required for the execute path under the new model.
     // Grants and routines are no longer part of the gate decision but remain in
     // deps for other callers; we keep them here for structural completeness.
-    h.runs.nibbinState('nib-1').actionLevel = 'send';
+    h.runs.nibbinState('nib-1').actionLevel = 'act';
     const routines = new MemoryRoutineStore();
     for (let i = 0; i < 5; i++) routines.approve('nib-1', 'p1');
     const grants = new MemoryGrantStore();
@@ -334,7 +334,7 @@ describe('§6.2: idempotency keys on side effects', () => {
       effectArgs: { threadId: 't-1' },
     };
   };
-  // Stage no longer gates execution; any stage with actionLevel='send' executes.
+  // Stage no longer gates execution; any stage with actionLevel='act' executes.
   // Using 'student' here to prove stage is irrelevant to the execute path.
   const seniorNib = (): NibbinRef => ({ ...nib(), stage: 'student' });
   const sameEvent = { kind: 'event' as const, key: 'e', dedupeKey: 'evt-1' };
@@ -421,7 +421,7 @@ describe('C8 (Connector Lever 1): calendar.event-create gates on action level (n
     // governed solely by action_level. egg + send → acts (behind the unchanged
     // idempotency / resource-claim walls).
     const h = harness({ credits: 1000 });
-    h.runs.nibbinState('nib-1').actionLevel = 'send';
+    h.runs.nibbinState('nib-1').actionLevel = 'act';
     let executed = 0;
     h.deps.effects = { async execute(req) { if (req.capability === 'calendar.event-create') executed += 1; } };
     const outcome = await executeRun(calNib('egg'), TRIGGER, createEvent, h.deps);
@@ -454,7 +454,7 @@ describe('C8 (Connector Lever 1): calendar.event-create gates on action level (n
     // CONVERTED: was "Graduate WITH grant executes".
     // NEW: send level executes at ANY grade — even Student. No grant check.
     const h = harness({ credits: 1000 });
-    h.runs.nibbinState('nib-1').actionLevel = 'send';
+    h.runs.nibbinState('nib-1').actionLevel = 'act';
     let executed = 0;
     h.deps.effects = { async execute(req) { if (req.capability === 'calendar.event-create') executed += 1; } };
 
@@ -469,7 +469,7 @@ describe('C8 (Connector Lever 1): calendar.event-create gates on action level (n
     // NEW: hasGrant is NOT in the gate path. send level executes regardless.
     // Empty MemoryGrantStore (no grants), actionLevel=send → still executes.
     const h = harness({ credits: 1000 }); // empty MemoryGrantStore
-    h.runs.nibbinState('nib-1').actionLevel = 'send';
+    h.runs.nibbinState('nib-1').actionLevel = 'act';
     let executed = 0;
     h.deps.effects = { async execute() { executed += 1; } };
     const outcome = await executeRun(calNib('grad'), TRIGGER, createEvent, h.deps);
@@ -515,7 +515,7 @@ describe('§ action-levels: action level is the sole execution gate', () => {
     };
   };
 
-  function actionHarness(actionLevel: 'observe' | 'draft' | 'send', stage: NibbinRef['stage'] = 'student') {
+  function actionHarness(actionLevel: 'observe' | 'draft' | 'act', stage: NibbinRef['stage'] = 'student') {
     const h = harness({ credits: 1000 });
     h.runs.nibbinState('nib-1').actionLevel = actionLevel;
     const nibRef: NibbinRef = { ...nib(), stage };
@@ -525,7 +525,7 @@ describe('§ action-levels: action level is the sole execution gate', () => {
   it('action-level Send executes regardless of stage — INCLUDING Egg (fence removed)', async () => {
     // FIX 4: with the egg admission fence removed, an Egg + Send executes through
     // executeRun directly — action_level is the sole gate, stage is advisory.
-    const { h, nibRef } = actionHarness('send', 'egg');
+    const { h, nibRef } = actionHarness('act', 'egg');
     let executed = 0;
     h.deps.effects = { async execute() { executed += 1; } };
     const out = await executeRun(nibRef, TRIGGER, sendStep, h.deps);
@@ -549,14 +549,14 @@ describe('§ action-levels: action level is the sole execution gate', () => {
   });
 
   it('Student + send executes (grade is no longer a barrier)', async () => {
-    const { h, nibRef } = actionHarness('send', 'student');
+    const { h, nibRef } = actionHarness('act', 'student');
     const out = await executeRun(nibRef, TRIGGER, sendStep, h.deps);
     expect(out.kind).toBe('executed');
   });
 
   it('presentation steps are always drafts even at send level', async () => {
     // step.presentation=true → always draft regardless of actionLevel
-    const { h, nibRef } = actionHarness('send', 'grad');
+    const { h, nibRef } = actionHarness('act', 'grad');
     const out = await executeRun(nibRef, TRIGGER, async function* () {
       yield {
         kind: 'draft',
@@ -600,9 +600,9 @@ describe('§ action-levels: action level is the sole execution gate', () => {
   });
 
   it('P1-2: an unknown / NULL action_level fails SAFE to draft (never execute)', async () => {
-    // The execute arm requires level === 'send' explicitly; any other value
+    // The execute arm requires level === 'act' explicitly; any other value
     // (NULL, out-of-enum, future value) must default to draft — never auto-send.
-    const { h, nibRef } = actionHarness('send', 'student');
+    const { h, nibRef } = actionHarness('act', 'student');
     // Force an out-of-enum level past the typed setter.
     (h.runs.nibbinState('nib-1') as { actionLevel: unknown }).actionLevel = 'bogus-level';
     let sent = 0;
@@ -614,7 +614,7 @@ describe('§ action-levels: action level is the sole execution gate', () => {
   });
 
   it('P1-2: a NULL action_level fails SAFE to draft', async () => {
-    const { h, nibRef } = actionHarness('send', 'student');
+    const { h, nibRef } = actionHarness('act', 'student');
     (h.runs.nibbinState('nib-1') as { actionLevel: unknown }).actionLevel = null;
     let sent = 0;
     h.deps.effects = { async execute(req) { if (req.args.nativeDraft !== true) sent += 1; } };
@@ -627,7 +627,7 @@ describe('§ action-levels: action level is the sole execution gate', () => {
 describe('§ action-levels: retained safety walls fire under Egg+Send (dispatchStep)', () => {
   // The gate change is ONLY the draft-vs-execute DECISION. The retained walls
   // (resource claims, idempotency, velocity via effects executor) are unchanged
-  // and must still fire when actionLevel='send'.
+  // and must still fire when actionLevel='act'.
   //
   // We test these via executeRun with student (not egg) because executeRun
   // short-circuits at egg before dispatchStep. The walls are in dispatchStep,
@@ -647,7 +647,7 @@ describe('§ action-levels: retained safety walls fire under Egg+Send (dispatchS
 
   function wallHarness() {
     const h = harness({ credits: 1000 });
-    h.runs.nibbinState('nib-1').actionLevel = 'send';
+    h.runs.nibbinState('nib-1').actionLevel = 'act';
     return h;
   }
 
@@ -741,8 +741,8 @@ describe('#43: status re-checked mid-run — paused/level-lowered Nibbin drafts 
   function grantedHarness() {
     const runs = new MemoryRunStore(() => Date.now());
     runs.seedCredits(ACCOUNT, 1000);
-    // actionLevel='send' so the run can reach the execute path
-    runs.nibbinState('nib-1').actionLevel = 'send';
+    // actionLevel='act' so the run can reach the execute path
+    runs.nibbinState('nib-1').actionLevel = 'act';
     const routines = new MemoryRoutineStore();
     const grants = new MemoryGrantStore();
     grants.grant('nib-1', CONN, 'email.send');
@@ -782,7 +782,7 @@ describe('#43: status re-checked mid-run — paused/level-lowered Nibbin drafts 
 
   it('action level lowered mid-run (send→draft) drafts instead of executing', async () => {
     // CONVERTED: was "grad demoted mid-run (stage flipped to student) drafts".
-    // NEW model: actionLevel is the gate. Flipping actionLevel from 'send' to
+    // NEW model: actionLevel is the gate. Flipping actionLevel from 'act' to
     // 'draft' mid-run (simulating a concurrent owner permission change) causes
     // the runner to draft — getNibbin re-reads actionLevel fresh before execution.
     const { deps, runs } = grantedHarness();
@@ -945,7 +945,7 @@ describe('Task 6 lock: dispatchStep outcome is invariant to stage for a fixed ac
     };
   };
 
-  function lockHarness(actionLevel: 'observe' | 'draft' | 'send', stage: NibbinRef['stage']) {
+  function lockHarness(actionLevel: 'observe' | 'draft' | 'act', stage: NibbinRef['stage']) {
     const h = harness({ credits: 1000 });
     h.runs.nibbinState('nib-1').actionLevel = actionLevel;
     const nibRef: NibbinRef = { ...nib(), stage };
@@ -955,7 +955,7 @@ describe('Task 6 lock: dispatchStep outcome is invariant to stage for a fixed ac
   it.each(runnableStages)(
     'actionLevel=send + stage=%s → executed (grade never gates)',
     async (stage) => {
-      const { h, nibRef } = lockHarness('send', stage);
+      const { h, nibRef } = lockHarness('act', stage);
       let executed = 0;
       h.deps.effects = { async execute() { executed += 1; } };
       const out = await executeRun(nibRef, TRIGGER, draftYield, h.deps);
@@ -1038,7 +1038,7 @@ describe('Task 4: native-draft mirror is wired end-to-end (real primitive, descr
   }
 
   function harnessFor(opts: {
-    actionLevel: 'observe' | 'draft' | 'send';
+    actionLevel: 'observe' | 'draft' | 'act';
     idempotency?: MemoryIdempotencyStore;
     reader?: { read(c: string, cap: string, path: string): Promise<ReturnType<typeof quarantine>> };
   }) {

@@ -177,7 +177,7 @@ export function HatchWizard({ chores, apps }: { chores: ChoreOption[]; apps: str
           <h2>Where does it happen?</h2>
           <p className={styles.sub}>
             Tap the apps involved. Your Nibbin only ever gets the narrowest access that works —
-            you set its action level (Observe, Draft, or Send) after it hatches.
+            you set its action level (Observe, Draft, or Act) after it hatches.
           </p>
           <div className={styles.appsel}>
             {apps.map((a) => (
@@ -368,7 +368,7 @@ export function HatchWizard({ chores, apps }: { chores: ChoreOption[]; apps: str
             )}
             <p className={styles.note}>
               It starts as an egg: watching only. In a few days it hatches into a student and begins
-              drafting work for your approval. You decide what it may do — Observe, Draft, or Send —
+              drafting work for your approval. You decide what it may do — Observe, Draft, or Act —
               and Agent School grades how accurately it handles the chore.
             </p>
 

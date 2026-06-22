@@ -176,10 +176,10 @@ describe('interpretSpec — runs a declarative steps-spec via the real runner', 
 
   it('actionLevel=send executes the composed draft (action level flows through the interpreter)', async () => {
     // CONVERTED (Task 2): was "a granted Graduate executes (earned autonomy flows through)".
-    // NEW: actionLevel='send' is the sole gate — grade and grant are irrelevant.
+    // NEW: actionLevel='act' is the sole gate — grade and grant are irrelevant.
     // Using 'student' stage + no grant to prove neither is required for execution.
     const h = harness();
-    h.runs.nibbinState('nib-i').actionLevel = 'send';
+    h.runs.nibbinState('nib-i').actionLevel = 'act';
     const s = spec([{ capability: 'email.send', inputs: { to: 'a@b.com' } }]);
     const outcome = await executeRun(nib(s, 'student'), TRIGGER, interpretSpec(s, CONN_MAP), h.deps);
     expect(outcome.kind).toBe('executed');

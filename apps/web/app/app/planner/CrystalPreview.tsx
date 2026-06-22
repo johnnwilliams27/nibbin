@@ -142,7 +142,7 @@ export function CrystalPreview({
         />
 
         <p className={styles.assurance}>
-          It hatches as an egg — it drafts everything for your approval. You set its action level (Observe / Draft / Send) whenever you&rsquo;re ready. You
+          It hatches as an egg — it drafts everything for your approval. You set its action level (Observe / Draft / Act) whenever you&rsquo;re ready. You
           can also run it any time.
         </p>
 

@@ -63,7 +63,7 @@ function seniorNib(id: string = NIB_A): NibbinRef {
 }
 
 /**
- * Build a harness pre-wired for auto-execute: actionLevel='send' so the
+ * Build a harness pre-wired for auto-execute: actionLevel='act' so the
  * runner reaches the execute path. Routines/grants are no longer part of
  * the gate decision (Task 2) but remain in deps for structural completeness.
  */
@@ -74,8 +74,8 @@ function harness(opts: {
   const runs = new MemoryRunStore();
   runs.seedCredits(ACCOUNT, 100);
   const nid = opts.nibbinId ?? NIB_A;
-  // actionLevel='send' is the sole gate under the new model
-  runs.nibbinState(nid).actionLevel = 'send';
+  // actionLevel='act' is the sole gate under the new model
+  runs.nibbinState(nid).actionLevel = 'act';
 
   const routines = new MemoryRoutineStore();
   for (let i = 0; i < 5; i++) routines.approve(nid, 'p1');

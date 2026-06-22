@@ -312,13 +312,13 @@ export async function dispatchStep(
   let gate: { action: 'execute' } | { action: 'draft'; reason: string } | { action: 'deny'; reason: string };
   // Observe is evaluated FIRST so a presentation/digest step at observe level
   // is suppressed (deny) rather than leaking a draft (P0-2). Execute requires
-  // an EXPLICIT level === 'send'; ANY other value (NULL, unknown, future enum)
+  // an EXPLICIT level === 'act'; ANY other value (NULL, unknown, future enum)
   // fails SAFE to draft — never auto-execute (P1-2, fail-closed default).
   if (level === 'observe') {
     gate = { action: 'deny', reason: 'observe' };
   } else if (step.presentation || level === 'draft') {
     gate = { action: 'draft', reason: 'level' };
-  } else if (level === 'send') {
+  } else if (level === 'act') {
     gate = { action: 'execute' };
   } else {
     // Unknown / out-of-enum action level: fail-safe to draft (never execute).

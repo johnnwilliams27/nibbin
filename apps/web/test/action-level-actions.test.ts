@@ -176,9 +176,9 @@ it('setNibbinActionLevel(send) updates action_level after ownership check', asyn
   mockSession('acc-3');
   (serviceClient as ReturnType<typeof vi.fn>).mockReturnValue(svc);
 
-  await setNibbinActionLevel('nibbin-3', 'send');
+  await setNibbinActionLevel('nibbin-3', 'act');
 
-  expect(calls.actionLevelUpdate?.set).toMatchObject({ action_level: 'send' });
+  expect(calls.actionLevelUpdate?.set).toMatchObject({ action_level: 'act' });
 });
 
 // ── IDOR guard ────────────────────────────────────────────────────────────────
@@ -189,7 +189,7 @@ it('setNibbinActionLevel rejects a nibbin that belongs to a different account (I
   mockSession('attacker-acc');
   (serviceClient as ReturnType<typeof vi.fn>).mockReturnValue(svc);
 
-  const result = await setNibbinActionLevel('victim-nibbin', 'send');
+  const result = await setNibbinActionLevel('victim-nibbin', 'act');
   expect(result.ok).toBe(false);
   expect(result.error).toMatch(/not found for this account/i);
 
@@ -207,7 +207,7 @@ it('setNibbinActionLevel(send) upserts grant rows for each active write connecti
   mockSession('acc-4', 'user-4');
   (serviceClient as ReturnType<typeof vi.fn>).mockReturnValue(svc);
 
-  await setNibbinActionLevel('nibbin-4', 'send');
+  await setNibbinActionLevel('nibbin-4', 'act');
 
   // A grant should have been upserted for each active connection
   expect(calls.grantsUpsert).not.toBeNull();
@@ -226,7 +226,7 @@ it('P2-1: setNibbinActionLevel(send) upserts calendar.event-create for a google-
   mockSession('acc-cal', 'user-cal');
   (serviceClient as ReturnType<typeof vi.fn>).mockReturnValue(svc);
 
-  await setNibbinActionLevel('nibbin-cal', 'send');
+  await setNibbinActionLevel('nibbin-cal', 'act');
 
   const upserted = calls.grantsUpsert as Array<Record<string, unknown>>;
   expect(upserted).not.toBeNull();

@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { appSession } from '../../../lib/auth/app-session';
 import { serviceClient } from '../../../lib/supabase/service';
 
-export type ActionLevel = 'observe' | 'draft' | 'send';
+export type ActionLevel = 'observe' | 'draft' | 'act';
 
 export interface SetActionLevelResult {
   ok: boolean;
@@ -12,7 +12,7 @@ export interface SetActionLevelResult {
 }
 
 /**
- * Set the action_level on one of the caller's own Nibbins (observe/draft/send).
+ * Set the action_level on one of the caller's own Nibbins (observe/draft/act).
  *
  * Ownership check mirrors beginWriteConnectAction (connections/actions.ts:69-74):
  * nibbinId is client-supplied so we verify it belongs to the session account
@@ -20,10 +20,10 @@ export interface SetActionLevelResult {
  * tables against another account's Nibbin.
  *
  * Grant reconciliation (for audit; the runtime gate reads action_level, not grants):
- *   send    → upsert email.send grant rows for every active write connection
+ *   act     → upsert email.send grant rows for every active write connection
  *             so nibbin_write_grants stays coherent with the elected level.
  *   draft / observe → revoke all active grant rows for the Nibbin so the audit
- *             table reflects that the Nibbin no longer has send authority.
+ *             table reflects that the Nibbin no longer has act authority.
  */
 export async function setNibbinActionLevel(
   nibbinId: string,
@@ -31,7 +31,7 @@ export async function setNibbinActionLevel(
 ): Promise<SetActionLevelResult> {
   const id = nibbinId?.trim();
   if (!id) return { ok: false, error: 'nibbinId required' };
-  if (!['observe', 'draft', 'send'].includes(level)) {
+  if (!['observe', 'draft', 'act'].includes(level)) {
     return { ok: false, error: `invalid action level: ${level}` };
   }
 
@@ -65,7 +65,7 @@ export async function setNibbinActionLevel(
   if (updateError) return { ok: false, error: `setNibbinActionLevel update failed: ${updateError.message}` };
 
   // ── Grant reconciliation ────────────────────────────────────────────────────
-  if (level === 'send') {
+  if (level === 'act') {
     // Ensure a nibbin_write_grants row exists for every active write connection.
     // This is purely for audit trail — the runtime gate reads action_level.
     // Both write providers are reconciled: gmail → email.send, google-calendar
@@ -94,7 +94,7 @@ export async function setNibbinActionLevel(
             connection_id: conn.id,
             capability,
             granted_by: userId,
-            plain_language_reason: 'Action level set to send by user.',
+            plain_language_reason: 'Action level set to act by user.',
             revoked_at: null,
           };
         })

@@ -32,7 +32,7 @@ export interface NibbinCurrentState {
   stage: import('./types').StageName;
   stageChangedAt: number;
   status: 'active' | 'paused' | 'sleeping';
-  actionLevel: 'observe' | 'draft' | 'send';
+  actionLevel: 'observe' | 'draft' | 'act';
 }
 
 export interface RunStore {
@@ -110,7 +110,7 @@ export interface MemoryNibbinState {
   stage?: import('./types').StageName;
   stageChangedAt?: number;
   /** Permission model action level. Defaults to 'draft' if not set. */
-  actionLevel?: 'observe' | 'draft' | 'send';
+  actionLevel?: 'observe' | 'draft' | 'act';
 }
 
 export class MemoryRunStore implements RunStore {

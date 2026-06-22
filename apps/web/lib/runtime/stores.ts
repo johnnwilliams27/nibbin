@@ -119,7 +119,7 @@ export class SupabaseRunStore implements RunStore {
       stageChangedAt: new Date(data.stage_changed_at as string).getTime(),
       status: data.status as NibbinCurrentState['status'],
       // Fail-safe coalesce (P1-2): a NULL/absent action_level defaults to
-      // 'draft', never 'send' — the runtime gate must never auto-execute on an
+      // 'draft', never 'act' — the runtime gate must never auto-execute on an
       // unknown level. Mirrors MemoryRunStore's `?? 'draft'`.
       actionLevel: (data.action_level ?? 'draft') as NibbinCurrentState['actionLevel'],
     };
