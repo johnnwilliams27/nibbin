@@ -47,6 +47,8 @@
 **Acceptance:** `validateSpec`/`validateComposedSpec` accept a spec using each new capability; a unit test asserts each descriptor resolves and `dm.reply` is recognized for both connectors.
 
 ### Task 2: Connector-write executor branches with provider resolution
+> **RECLASSIFIED during execution (2026-06-22):** these two executor branches were folded into their connector phases rather than built up-front in Phase 0. Rationale discovered on reading the executor: `invoice.nudge`'s branch calls a Stripe write method that does not exist yet (the client is read-only — that method is **Task 4**), and `dm.reply`'s branch must avoid the velocity double-consume `email.send` solved (needs "direct send" variants on the HoneyBook/Instagram clients — **Tasks 6–9**). Both branches are inert until their connector phases and add write-surface ahead of need. `invoice.nudge` executor → build in **Task 4** with the Stripe write method; `dm.reply` executor → build in **Task 6/8** with the HoneyBook/Instagram primitives. Until then the `default: throw "no executor"` keeps them fail-closed (red-team confirmed). Task 1's capability registrations were the true cross-cutting Phase-0 foundation.
+
 **Files:** Modify `apps/web/lib/runtime/engine.ts` (effects executor switch, ~lines 253–406); tests `apps/web/test/effects-executor.test.ts` + `apps/web/lib/runtime/engine-telemetry.test.ts`.
 **Gap closed:** executor only handles `email.send` + `calendar.event-create`; `invoice.nudge` and `dm.reply` fall through to "no executor" → throws at Send.
 **Steps:**

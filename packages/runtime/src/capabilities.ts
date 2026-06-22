@@ -20,6 +20,7 @@ import { nudgeOverdueEmail } from './primitives/nudge-overdue-email';
 import { nudgeOverdueInvoice } from './primitives/nudge-overdue-invoice';
 import { nudgeUnconfirmedEvent } from './primitives/nudge-unconfirmed-event';
 import { replyNewInquiry } from './primitives/reply-new-inquiry';
+import { scheduleFocusBlock } from './primitives/schedule-focus-block';
 
 /**
  * A typed input field for a PRIMITIVE capability's `inputSchema` (design §1).
@@ -133,6 +134,26 @@ export const CAPABILITY_REGISTRY: Record<string, CapabilityDescriptor> = {
   'payments.read': { id: 'payments.read', resource: 'payments', verb: 'get',   sideEffect: 'read',  requiredConnector: 'stripe' },
   'invoice.nudge': { id: 'invoice.nudge', resource: 'invoice',  verb: 'nudge', sideEffect: 'write', requiredConnector: 'stripe', patternKeyPrefix: 'invoice.nudge' },
 
+  // ── Connector-batch Phase 0: honeybook / instagram-dm / pixieset atomic caps ─
+  // These are declared in CONNECTOR_REGISTRY but were absent from this registry,
+  // causing capability(id) → undefined for any composed spec or interpreter step
+  // that referenced them (connector-batch plan Task 1).
+  'crm.read':     { id: 'crm.read',     resource: 'crm',     verb: 'get',   sideEffect: 'read',  requiredConnector: 'honeybook' },
+  'dm.read':      { id: 'dm.read',      resource: 'dm',      verb: 'get',   sideEffect: 'read',  requiredConnector: 'instagram-dm' },
+  'gallery.read': { id: 'gallery.read', resource: 'gallery', verb: 'get',   sideEffect: 'read',  requiredConnector: 'pixieset' },
+  // `dm.reply` is declared by BOTH honeybook AND instagram-dm in CONNECTOR_REGISTRY
+  // (one shared "reply to a message/DM" verb). A single descriptor is correct:
+  //  - validateSpec powers tools via CONNECTOR_REGISTRY.capabilities (both connectors
+  //    list dm.reply), NOT this descriptor's requiredConnector, so instagram-dm and
+  //    honeybook specs both validate;
+  //  - crystallize.ts derives each primitive's connector from its READ tool
+  //    (crm.read → honeybook, dm.read → instagram-dm), never from dm.reply's home;
+  //  - at execution the effects executor resolves the concrete client from the
+  //    step's connectionId/provider, not from requiredConnector here.
+  // honeybook is the nominal home; the two connectors are interchangeable at the
+  // execution layer for this verb.
+  'dm.reply':     { id: 'dm.reply',     resource: 'dm',      verb: 'reply', sideEffect: 'write', requiredConnector: 'honeybook', patternKeyPrefix: 'dm.reply' },
+
   // ── Primitives (composite capabilities; design §1) ─────────────────────────
   // A primitive bundles read→detect→draft as ONE trusted implementation the
   // Composer composes by id + typed params. The LLM never emits the read
@@ -236,6 +257,27 @@ export const CAPABILITY_REGISTRY: Record<string, CapabilityDescriptor> = {
     effectiveTools: ['calendar.read', 'payments.read', 'email.read'],
   },
 
+  // ── Calendar write primitive (Task 3 — end-to-end proof) ────────────────────
+  // Reads the next `withinDays` calendar days (google-calendar), detects the
+  // first overloaded weekday (>= minMeetings events), and drafts a 90-min focus
+  // block via `calendar.event-create`. Single connector: google-calendar for
+  // both the read and the write. `nativeDraft:false` (inherited from the
+  // calendar.event-create atomic capability — no native calendar mirror).
+  'schedule.focus-block': {
+    id: 'schedule.focus-block',
+    resource: 'calendar',
+    verb: 'schedule',
+    sideEffect: 'write',
+    requiredConnector: 'google-calendar',
+    patternKeyPrefix: 'calendar.event-create',
+    kind: 'primitive',
+    inputSchema: {
+      withinDays:   { type: 'number', default: 7,  min: 1, max: 60 },
+      minMeetings:  { type: 'number', default: 4,  min: 1, max: 20 },
+    },
+    effectiveTools: ['calendar.read', 'calendar.event-create'],
+  },
+
   // ── computer_use family (design §4 / R9) — the browser surface ──────────────
   // A unified `target` (selector | coords, OCR fallback) over six verbs, driven
   // by an injected BrowserDriver (NOT an OAuth connector). reads:
@@ -284,6 +326,15 @@ export const PRIMITIVE_IMPLS: Record<string, PrimitiveImpl> = {
       nowMs,
     ),
   'digest.morning': (_inputs, connMap, nowMs) => digestMorning({}, connMap, nowMs),
+  'schedule.focus-block': (inputs, connMap, nowMs) =>
+    scheduleFocusBlock(
+      {
+        withinDays:  typeof inputs.withinDays  === 'number' ? inputs.withinDays  : undefined,
+        minMeetings: typeof inputs.minMeetings === 'number' ? inputs.minMeetings : undefined,
+      },
+      connMap,
+      nowMs,
+    ),
 };
 
 export function capability(id: string): CapabilityDescriptor | undefined {
