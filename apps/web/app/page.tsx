@@ -24,7 +24,7 @@ const STEPS = [
   {
     num: 'DAY ONE',
     h: 'Adopt working agents',
-    p: 'The scan finds the busywork: unanswered inquiries, unpaid invoices, unsent follow-ups. The Agent Shop has Nibbins ready to take each one today, drafting for your approval from the first hour.',
+    p: 'The scan finds the busywork: unanswered inquiries, unpaid invoices, unsent follow-ups. The Agent Shop has Nibbins ready to take each one today, drafting for your approval within the first hour of setup.',
     dur: 'First draft within the hour',
   },
   {
