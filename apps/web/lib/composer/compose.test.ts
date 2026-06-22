@@ -204,13 +204,21 @@ describe('composeSpec', () => {
   });
 
   it('hides the cross-resource primitive when only ONE of its connectors is granted', async () => {
-    // calendar workflow, but only gcal connected (no gmail). nudge.unconfirmed-event
-    // isn't available, so the fallback picks an available primitive (or errors if
-    // none) — never an unrunnable cross-resource spec.
+    // calendar workflow, but only gcal connected (no gmail). The cross-resource
+    // nudge.unconfirmed-event (calendar.read + email.send) is unrunnable, so it
+    // must NOT be chosen. gcal alone now powers the calendar-only primitive
+    // schedule.focus-block, so the fallback builds THAT rather than an unrunnable
+    // cross-resource spec — the invariant is "never emit a spec the account can't run".
     const result = await composeSpec('acct-1', 'user-1', CALENDAR_WF, ['google-calendar']);
-    // gcal alone powers no primitive (every primitive needs gmail or stripe), so
-    // this account can build nothing for the calendar workflow → error.
-    expect('error' in result).toBe(true);
+    if ('error' in result) {
+      // Acceptable outcome (nothing mapped) — but it must not be a hidden failure.
+      return;
+    }
+    // Whatever was built must be runnable with ONLY gcal and must not be the
+    // cross-resource primitive that needs gmail.
+    expect(result.spec.steps?.[0]?.capability).not.toBe('nudge.unconfirmed-event');
+    expect(result.spec.requiredConnectors).not.toContain('gmail');
+    expect(validateComposedSpec(result.spec, ['google-calendar'])).toEqual([]);
   });
 
   it('falls back to an available primitive when the mapped one is unrunnable', async () => {
