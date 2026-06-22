@@ -168,7 +168,7 @@ describe('schedule.focus-block — primitive unit', () => {
     // Step 2: draft yield
     const draftResult = await gen.next(calPayload);
     expect(draftResult.done).toBe(false);
-    const draft = draftResult.value as {
+    const draft = draftResult.value as unknown as {
       kind: string;
       capability: string;
       connectionId: string;
