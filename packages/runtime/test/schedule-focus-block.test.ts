@@ -58,7 +58,7 @@ function focusBlockSpec(over: Partial<AgentSpec> = {}): AgentSpec {
   };
 }
 
-function focusNib(actionLevel: 'observe' | 'draft' | 'send'): { h: ReturnType<typeof harness>; nibRef: NibbinRef } {
+function focusNib(actionLevel: 'observe' | 'draft' | 'act'): { h: ReturnType<typeof harness>; nibRef: NibbinRef } {
   const h = harness();
   h.runs.nibbinState('nib-fb').actionLevel = actionLevel;
   const nibRef: NibbinRef = {
@@ -337,7 +337,7 @@ describe('schedule.focus-block — action-level matrix (C8 proof for calendar wr
   });
 
   it('send → executed — effects executor called exactly once with the event body', async () => {
-    const { h, nibRef } = focusNib('send');
+    const { h, nibRef } = focusNib('act');
     h.deps.reader = overloadedCalReader();
     const effectCalls: Array<Record<string, unknown>> = [];
     h.deps.effects = {
@@ -358,7 +358,7 @@ describe('schedule.focus-block — action-level matrix (C8 proof for calendar wr
 
   it('send with replayed trigger → idempotency holds — effect fires exactly once', async () => {
     // Share the same idempotency store across two executeRun calls with the same trigger.
-    const { h, nibRef } = focusNib('send');
+    const { h, nibRef } = focusNib('act');
     h.deps.reader = overloadedCalReader();
     let executions = 0;
     h.deps.effects = {
@@ -380,7 +380,7 @@ describe('schedule.focus-block — action-level matrix (C8 proof for calendar wr
   });
 
   it('no overloaded day → completes with no draft step even at send level', async () => {
-    const { h, nibRef } = focusNib('send');
+    const { h, nibRef } = focusNib('act');
     h.deps.reader = emptyCalReader();
     let executions = 0;
     h.deps.effects = { async execute() { executions += 1; } };
