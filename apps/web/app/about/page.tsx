@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
-import { Creature } from '../(marketing)/Creature';
-import { Wordmark } from '../(marketing)/Wordmark';
-import styles from './about.module.css';
+import '../(marketing)/landing.css';
+import '../(marketing)/about.css';
+import { Enhancers } from '../(marketing)/Enhancers';
+import { SiteNav } from '../(marketing)/SiteNav';
+import { SiteFooter } from '../(marketing)/SiteFooter';
 
 export const metadata: Metadata = {
   title: 'About — Nibbin',
@@ -80,34 +82,15 @@ const CONTROL = [
 
 export default function AboutPage() {
   return (
-    <div className={styles.page}>
-      <nav className={styles.nav}>
-        <div className={styles.navIn}>
-          <a className={styles.logo} href="/" aria-label="Nibbin home">
-            <Creature species="Keeper" stage="student" color="#5B7C2E" size={34} />
-            <Wordmark height={20} />
-          </a>
-          <div className={styles.navRight}>
-            <a className={styles.navLink} href="/login">
-              Login
-            </a>
-            <a className={styles.navCta} href="/#join">
-              Join the grove
-            </a>
-          </div>
-        </div>
-      </nav>
+    <main className="landing" id="top">
+      <Enhancers />
+      <SiteNav />
 
-      <header className={styles.header}>
-        <div className={styles.wrap}>
-          <span className={styles.eyebrow}>About Nibbin</span>
-          <h1 className={styles.h1}>Most AI tools hand you a blank box and wish you luck.</h1>
-        </div>
-      </header>
-
-      <main className={styles.body}>
-        <div className={styles.wrap}>
-          <div className={styles.lead}>
+      <header className="ab-hero">
+        <div className="wrap">
+          <span className="eyebrow">About Nibbin</span>
+          <h1 className="ab-h1">Most AI tools hand you a blank box and wish you luck.</h1>
+          <div className="ab-lead">
             <p>
               The models are good now. That stopped being the problem a while ago. The problem is the gap between what
               a model can do and what a person can actually get it to do — and that gap is wider than anyone selling AI
@@ -121,137 +104,142 @@ export default function AboutPage() {
               already handle — if only someone had set it up right.
             </p>
           </div>
+        </div>
+      </header>
 
-          <h2>The part nobody fixes</h2>
-          <p>Every tool in this space asks you to do the same thing first: describe your work.</p>
-          <p>
-            Chat tools start you on a blank page. Every session, you re-explain who you are and what you’re working on
-            before you get anything useful. Automation builders make you map out each step by hand before a single
-            thing runs. Agent platforms want you to write a spec for an agent you haven’t even tested yet.
-          </p>
-          <p>
-            They all share one assumption — that you can explain your work well enough to configure a machine to do it.
-            But the reason you wanted help in the first place is that your work is messy. It’s full of judgment calls,
-            exceptions, and small decisions you make without thinking about them. Ask someone to write down their
-            process and you get a clean version that leaves out everything that actually matters. Watch them do it and
-            you see what really happens.
-          </p>
-          <p className={styles.punch}>That’s the whole thing. The description is the lie. The work is the truth.</p>
+      <section className="ab-body">
+        <div className="wrap">
+          <article className="ab-prose reveal">
+            <h2>The part nobody fixes</h2>
+            <p>Every tool in this space asks you to do the same thing first: describe your work.</p>
+            <p>
+              Chat tools start you on a blank page. Every session, you re-explain who you are and what you’re working
+              on before you get anything useful. Automation builders make you map out each step by hand before a single
+              thing runs. Agent platforms want you to write a spec for an agent you haven’t even tested yet.
+            </p>
+            <p>
+              They all share one assumption — that you can explain your work well enough to configure a machine to do
+              it. But the reason you wanted help in the first place is that your work is messy. It’s full of judgment
+              calls, exceptions, and small decisions you make without thinking about them. Ask someone to write down
+              their process and you get a clean version that leaves out everything that actually matters. Watch them do
+              it and you see what really happens.
+            </p>
+            <p className="ab-punch">That’s the whole thing. The description is the lie. The work is the truth.</p>
+          </article>
 
-          <div className={styles.compare}>
-            <div className={`${styles.compareRow} ${styles.compareHead}`}>
-              <span className={styles.compareCell} />
-              <span className={styles.compareCell}>What it asks of you</span>
-              <span className={styles.compareCell}>Where it breaks</span>
+          <div className="ab-compare reveal">
+            <div className="ab-row ab-row-head">
+              <span className="ab-cell" />
+              <span className="ab-cell">What it asks of you</span>
+              <span className="ab-cell">Where it breaks</span>
             </div>
             {COMPARE.map((row) => (
-              <div className={styles.compareRow} key={row.tool}>
-                <span className={`${styles.compareCell} ${styles.compareTool}`}>{row.tool}</span>
-                <span className={styles.compareCell}>
-                  <span className={styles.compareLabel}>What it asks</span>
+              <div className="ab-row" key={row.tool}>
+                <span className="ab-cell ab-tool">{row.tool}</span>
+                <span className="ab-cell">
+                  <span className="ab-label">What it asks</span>
                   {row.asks}
                 </span>
-                <span className={styles.compareCell}>
-                  <span className={styles.compareLabel}>Where it breaks</span>
+                <span className="ab-cell">
+                  <span className="ab-label">Where it breaks</span>
                   {row.breaks}
                 </span>
               </div>
             ))}
-            <div className={`${styles.compareRow} ${styles.compareFeat}`}>
-              <span className={`${styles.compareCell} ${styles.compareTool}`}>Nibbin</span>
-              <span className={styles.compareCell}>
-                <span className={styles.compareLabel}>What it asks</span>
+            <div className="ab-row ab-row-feat">
+              <span className="ab-cell ab-tool">Nibbin</span>
+              <span className="ab-cell">
+                <span className="ab-label">What it asks</span>
                 Nothing extra — just do your work
               </span>
-              <span className={styles.compareCell}>
-                <span className={styles.compareLabel}>Why it works</span>
+              <span className="ab-cell">
+                <span className="ab-label">Why it works</span>
                 It learns from what actually happens, not your description of it
               </span>
             </div>
           </div>
 
-          <h2>What Nibbin does instead</h2>
-          <p>Nibbin learns from the work, not from your account of it.</p>
-          <p>
-            It runs on your machine and pays attention to how you actually get things done — the real sequence, the
-            real files, the real choices you make. From that, it builds agents and workflows out of what it sees. You
-            don’t write prompts. You don’t draw flowcharts. You don’t sit down for an afternoon to “set up your
-            automations.” You do your work, like always, and Nibbin turns the parts you keep repeating into Nibbins
-            that can take them off your plate.
-          </p>
-          <p>
-            It stays local and private by default. The thing watching your work is yours, on your device, working for
-            you and no one else.
-          </p>
+          <article className="ab-prose reveal">
+            <h2>What Nibbin does instead</h2>
+            <p>Nibbin learns from the work, not from your account of it.</p>
+            <p>
+              It runs on your machine and pays attention to how you actually get things done — the real sequence, the
+              real files, the real choices you make. From that, it builds agents and workflows out of what it sees. You
+              don’t write prompts. You don’t draw flowcharts. You don’t sit down for an afternoon to “set up your
+              automations.” You do your work, like always, and Nibbin turns the parts you keep repeating into Nibbins
+              that can take them off your plate.
+            </p>
+            <p>
+              It stays local and private by default. The thing watching your work is yours, on your device, working for
+              you and no one else.
+            </p>
+          </article>
 
-          <h3 className={styles.familiarHead}>This might sound familiar</h3>
-          <div className={styles.exGrid}>
+          <h3 className="ab-familiar-h">This might sound familiar</h3>
+          <div className="ab-examples reveal">
             {FAMILIAR.map((ex) => (
-              <div className={styles.exCard} key={ex.h}>
+              <div className="ab-card" key={ex.h}>
                 <strong>{ex.h}</strong>
                 <p>{ex.p}</p>
               </div>
             ))}
           </div>
 
-          <h2>Why we think we can pull this off</h2>
-          <p>
-            The easy version of this product is another chat box or another drag-and-drop node editor. Plenty of those
-            exist. They’re easy precisely because they push the hard part onto you.
-          </p>
-          <p>
-            The hard version — learn from raw activity on a device, keep it private, and turn unstructured real
-            behavior into automation you can actually trust — is the one worth building, and it’s close to the work we
-            know best. Years at Google and Block, building products used by people all over the world, taught us where
-            software actually hurts: the small, repeated friction that never makes a roadmap but quietly eats up
-            people’s days. We’ve also spent enough time inside today’s agent tools to see the other half of the
-            problem: when these things reach people who aren’t AI experts, the capability is right there, but knowing
-            how to aim it at your own work turns out to be its own skill, and most people are left to work it out
-            alone. Those everyday problems are the ones we care most about, and we’d rather solve them once, properly,
-            than make millions of people keep doing the tedious thing forever.
-          </p>
+          <article className="ab-prose reveal">
+            <h2>Why we think we can pull this off</h2>
+            <p>
+              The easy version of this product is another chat box or another drag-and-drop node editor. Plenty of
+              those exist. They’re easy precisely because they push the hard part onto you.
+            </p>
+            <p>
+              The hard version — learn from raw activity on a device, keep it private, and turn unstructured real
+              behavior into automation you can actually trust — is the one worth building, and it’s close to the work
+              we know best. Years at Google and Block, building products used by people all over the world, taught us
+              where software actually hurts: the small, repeated friction that never makes a roadmap but quietly eats
+              up people’s days. We’ve also spent enough time inside today’s agent tools to see the other half of the
+              problem: when these things reach people who aren’t AI experts, the capability is right there, but knowing
+              how to aim it at your own work turns out to be its own skill, and most people are left to work it out
+              alone. Those everyday problems are the ones we care most about, and we’d rather solve them once, properly,
+              than make millions of people keep doing the tedious thing forever.
+            </p>
 
-          <h2>How it grows</h2>
-          <p>
-            Nibbin doesn’t arrive knowing everything, and it shouldn’t. It starts with one small thing it learned you
-            doing. You let it handle that. It earns a little more. Over time the Grove fills in — agents that grew up
-            around your actual work instead of a template someone guessed at. The longer you use it, the more it sounds
-            like you, because it learned from you and not from a manual.
-          </p>
+            <h2>How it grows</h2>
+            <p>
+              Nibbin doesn’t arrive knowing everything, and it shouldn’t. It starts with one small thing it learned you
+              doing. You let it handle that. It earns a little more. Over time the Grove fills in — agents that grew up
+              around your actual work instead of a template someone guessed at. The longer you use it, the more it
+              sounds like you, because it learned from you and not from a manual.
+            </p>
+          </article>
 
-          <h2 className={styles.controlHead}>You stay in control</h2>
-          <div className={styles.controlCluster}>
-            {CONTROL.map((block) => (
-              <div className={styles.controlItem} key={block.h}>
-                <h3>{block.h}</h3>
-                {block.ps.map((para, i) => (
-                  <p key={i}>{para}</p>
-                ))}
-              </div>
-            ))}
+          <div className="ab-control reveal">
+            <h2 className="ab-control-h">You stay in control</h2>
+            <div className="ab-cluster">
+              {CONTROL.map((block) => (
+                <div className="ab-item" key={block.h}>
+                  <h3>{block.h}</h3>
+                  {block.ps.map((para, i) => (
+                    <p key={i}>{para}</p>
+                  ))}
+                </div>
+              ))}
+            </div>
           </div>
 
-          <div className={styles.cta}>
+          <div className="ab-cta reveal">
             <h2>We’re building Nibbin now.</h2>
             <p>
               The waitlist is open. If a tool that learns your work instead of making you explain it sounds like what
               you’ve been waiting for, come get early access.
             </p>
-            <a className={styles.ctaBtn} href="/#join">
+            <a className="btn btn-solid" href="/#join">
               Join the waitlist
             </a>
           </div>
         </div>
-      </main>
+      </section>
 
-      <footer className={styles.footer}>
-        <div className={styles.footerIn}>
-          <span>Nibbin, Inc.</span>
-          <span>
-            <a href="/">Home</a> · <a href="/login">Login</a>
-          </span>
-        </div>
-      </footer>
-    </div>
+      <SiteFooter />
+    </main>
   );
 }

@@ -4,7 +4,8 @@ import { Grovekeeper } from '../components/grovekeeper/Grovekeeper';
 import { Enhancers } from './(marketing)/Enhancers';
 import { MayaDemo } from './(marketing)/MayaDemo';
 import { WaitlistForm } from './(marketing)/WaitlistForm';
-import { Wordmark } from './(marketing)/Wordmark';
+import { SiteNav } from './(marketing)/SiteNav';
+import { SiteFooter } from './(marketing)/SiteFooter';
 
 const SCHOOL = [
   { pill: 'ep-egg', label: 'Egg', stage: 'egg' as const, role: ['Enrolled', 'learning your style'] },
@@ -106,29 +107,7 @@ export default function Home() {
     <main className="landing" id="top">
       <Enhancers />
 
-      <nav>
-        <div className="wrap nav-in">
-          <a className="logo" href="#top" aria-label="Nibbin home">
-            <Wordmark height={22} />
-          </a>
-          <div className="nav-links">
-            <a href="#how">How it works</a>
-            <a href="#demo">Live demo</a>
-            <a href="#privacy">Privacy</a>
-            <a href="#pricing">Pricing</a>
-            <a href="/about">About</a>
-            <a href="/login">Login</a>
-          </div>
-          <div className="nav-right">
-            <a className="nav-login" href="/login">
-              Login
-            </a>
-            <a className="nav-cta" href="#join">
-              Join the grove
-            </a>
-          </div>
-        </div>
-      </nav>
+      <SiteNav home />
 
       <header className="hero">
         <div className="hero-leaves" aria-hidden="true">
@@ -371,20 +350,7 @@ export default function Home() {
         </div>
       </section>
 
-      <footer>
-        <div className="wrap foot-in">
-          <span>© 2026 Nibbin · hello@nibbin.com</span>
-          <div className="foot-links">
-            <a href="#how">How it works</a>
-            <a href="#pricing">Pricing</a>
-            <a href="mailto:hello@nibbin.com">Contact</a>
-            <a href="/privacy">Privacy</a>
-            <a href="/terms">Terms</a>
-            <a href="/data-ai">Data &amp; AI</a>
-            <a href="/subprocessors">Subprocessors</a>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter home />
     </main>
   );
 }
