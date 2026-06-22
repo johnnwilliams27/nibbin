@@ -266,10 +266,6 @@ export default function Home() {
           <p className="priv-foot ctrl-foot">
             <a href="/about">How this works → /about</a>
           </p>
-          <p className="priv-foot">
-            Full detail in the <a href="/data-ai">Data &amp; AI overview</a> and{' '}
-            <a href="/privacy">Privacy Policy</a>.
-          </p>
         </div>
       </section>
 
