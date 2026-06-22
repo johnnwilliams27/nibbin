@@ -55,7 +55,7 @@ The desktop app is where the real work happens — it's the only place your Nibb
 
 ### Step 5 — Connect a tool (so your Nibbin has something to work with)
 1. Go to **Connections** (`/app/connections`) — *"Accounts your Nibbins work from."*
-2. Connect **Gmail** (live). OAuth consent covers read + write scopes at connect, explained plainly (C8). You set what each Nibbin may do — Observe, Draft, or Send. Agent School grades how accurately it's working so you know when to grant it more; the grade never gates what you've granted.
+2. Connect **Gmail** (live). OAuth consent covers read + write scopes at connect, explained plainly (C8). You set what each Nibbin may do — Observe, Draft, or Act. Agent School grades how accurately it's working so you know when to grant it more; the grade never gates what you've granted.
 3. **Google Calendar and Stripe are shown as "Coming soon"** in the connect surface today (source: `connections/lib/providers.ts`). When you adopt a Nibbin that needs a tool you haven't connected, you'll see: *"That Nibbin needs [x] and [y] connected to finish adopting."*
 
 > ⚠️ **Tester-allowlist gate:** Gmail (and other Google scopes) are gated behind a tester allowlist while Nibbin's Google OAuth verification is pending (capped at 100 users). If you're not on the allowlist, you'll need to **request access**. Source: `connections/tester-allowlist.ts`, `RISKS.md §1`.
@@ -64,7 +64,7 @@ The desktop app is where the real work happens — it's the only place your Nibb
 1. Your new Nibbin hatches as an **Egg** in **Agent School** — watching only, drafting nothing yet.
 2. In a few days it becomes a **Student** and starts leaving **drafts for your approval** on **Grove Home** under **"Needs you — your only to-do."**
 3. For each draft: **"Approve & send"** or **"Edit first."** Your approvals (and edits/rejections) are the training signal.
-4. As it earns verified accuracy, it climbs to **Senior** and then **Graduate** — its grade tells you when to grant it more. You set what it may do (Observe / Draft / Send) at any time. (Full mechanics in Section 2 and Section 3.)
+4. As it earns verified accuracy, it climbs to **Senior** and then **Graduate** — its grade tells you when to grant it more. You set what it may do (Observe / Draft / Act) at any time. (Full mechanics in Section 2 and Section 3.)
 
 ---
 
@@ -94,7 +94,7 @@ The desktop app is where the real work happens — it's the only place your Nibb
 - **Senior** — accuracy proven on routine work.
 - **Graduate** — accuracy proven across its spec.
 
-Grades are advisory; you grant Observe / Draft / Send.
+Grades are advisory; you grant Observe / Draft / Act.
 
 **Promotion & demotion.** A Nibbin promotes when it hits **≥95% approved-without-edits over a rolling 25-run window** (stage-scoped). Senior→Graduate also requires **coverage of ≥4 distinct routine patterns** (so it can't graduate on one easy case). High-stakes actions are weighted more heavily (read=1 / normal=3 / delete-or-archive=10). **Demotion is human-only and one click** — the system may *nudge* ("its last few got edited — want to put it back to drafts?") but never demotes automatically. **Paused never means penalized:** earned progress is frozen, never eroded by silence (source: `promotion-rubric-design.md`, `school.ts`).
 
@@ -106,7 +106,7 @@ Grades are advisory; you grant Observe / Draft / Send.
 
 **Crystallization ("Make this recurring").** After you supervise a successful one-off task run (via the Planner), Nibbin can offer "Make this recurring" — it distills exactly the chore you just approved into a permanent, scheduled Nibbin. You pick the cadence (it suggests one; it never auto-schedules), and the new Nibbin **hatches as an Egg and is graded from scratch** — your earlier approvals don't transfer into standing accuracy. You set its action level whenever you're ready. Source: `crystallization-slice4-design.md`. ⚠️ Gated/early-access; confirm availability in `docs/STATE.md`.
 
-**Connections.** The accounts your Nibbins work from (Gmail today; Calendar/Stripe coming). Write scopes are requested at connect with a plain-language explanation; you set what each Nibbin may do (Observe / Draft / Send). One-click revoke.
+**Connections.** The accounts your Nibbins work from (Gmail today; Calendar/Stripe coming). Write scopes are requested at connect with a plain-language explanation; you set what each Nibbin may do (Observe / Draft / Act). One-click revoke.
 
 **Memory (Grove Memory + agent memory).** Two layers. **Grove Memory** is the business brain you edit by hand — facts, pricing, policies, FAQs, your voice, and **hard rules** your Nibbins can never break. **Agent memory** is short derived notes Nibbins learn from your approved work (never raw content). Both make drafts sound like *you*.
 
@@ -135,7 +135,7 @@ Grades are advisory; you grant Observe / Draft / Send.
 - **Exclusions** let you name an app or a website that should **never** be recorded; they persist across sessions (source: `exclusion-persistence.md`). Add them from Review or Preferences.
 
 ### The six Shop Nibbins (verbatim from `packages/runtime/src/templates.ts`)
-All start at the Draft action level — you set each one's action level (Observe/Draft/Send); Agent School grades how well it's doing. Each lists its required connections.
+All start at the Draft action level — you set each one's action level (Observe/Draft/Act); Agent School grades how well it's doing. Each lists its required connections.
 
 | Nibbin | Tagline | What it does | Needs |
 |---|---|---|---|
@@ -157,7 +157,7 @@ All start at the Draft action level — you set each one's action level (Observe
 - From an **email** workflow in your diagnosis, **"Build a Nibbin for this"** runs the **Composer**: it proposes a custom Nibbin made of validated **primitives** (e.g. "watch your inbox for overdue threads → draft a warm follow-up for your approval").
 - You get a **review-before-adopt** card showing the workflow, the plain-language steps, the persona, the trigger, and the connectors it needs. **Nothing exists until you confirm.**
 - Today's primitives cover the **detect-and-nudge** family (overdue email, overdue invoices, unconfirmed events, new-inquiry replies) and the **digest** family (inbox cleanup, morning brief). Source: `composer-slice2a/2b/2c-design.md`.
-- The custom Nibbin hatches as an **Egg** and is graded by Agent School exactly like a shop Nibbin — you set its action level (Observe / Draft / Send) whenever you're ready.
+- The custom Nibbin hatches as an **Egg** and is graded by Agent School exactly like a shop Nibbin — you set its action level (Observe / Draft / Act) whenever you're ready.
 - **Hatch Your Own** (`/app/hatch`) is the simplest builder: pick a chore, pick the apps, name your egg. *"Build a Nibbin for one chore."* Three steps: "What's the chore?" → "Where does it happen?" → "Your egg is ready" (name it, optionally customize its look).
 
 ### Planner — multi-step orchestration — **early access (coming soon)**
@@ -177,7 +177,7 @@ After you supervise a successful one-off Planner run, Nibbin can offer **"Make t
 
 ### Connections — **Gmail live (tester-gated); Calendar + Stripe coming soon**
 - **Connections** (`/app/connections`) — *"Accounts your Nibbins work from."*
-- **Action-level gated.** Connect requests read + write scopes at OAuth consent, with plain-language explanation (INVARIANT C8). Holding a write scope doesn't authorize action — execution is gated by the owner-set action level (Observe / Draft / Send). You decide what each Nibbin may do, and you can change or revoke it anytime. Agent School grades how accurately it's working so you know when to grant more. Access shows as **"Read-only access"** (no write grant) or **"Includes actions you approve · revoke anytime"** (write grant held, action level set by you). |
+- **Action-level gated.** Connect requests read + write scopes at OAuth consent, with plain-language explanation (INVARIANT C8). Holding a write scope doesn't authorize action — execution is gated by the owner-set action level (Observe / Draft / Act). You decide what each Nibbin may do, and you can change or revoke it anytime. Agent School grades how accurately it's working so you know when to grant more. Access shows as **"Read-only access"** (no write grant) or **"Includes actions you approve · revoke anytime"** (write grant held, action level set by you). |
 - **Live in code:** **Gmail** (`gmail.readonly` + `gmail.compose` + `gmail.send` requested at connect). **Coming soon:** **Google Calendar** (`calendar.readonly` + `calendar.events` at connect), **Stripe.**
 - ⚠️ **HoneyBook, Instagram, Pixieset, QuickBooks, Outlook, Notion, Drive/Dropbox** appear in the **Hatch Your Own** app-picker and in product/strategy docs, but are **not** in the connectable provider list today. They are **roadmap, not connectable now.** Confirm against `connections/lib/providers.ts` before publishing any "supported tools" list.
 - **Write grants** are per-capability and revocable one-click; revoking a connection suspends all its grants and destroys the stored token (INVARIANT C9).
@@ -221,7 +221,7 @@ Nibbin's whole design is built so that **your screen never leaves your computer*
 - **Raw data is verifiably deleted after synthesis (C3).** After your packet is safely uploaded, the raw data is deleted and an **independent verifier confirms it's gone.** Deletion is user-visible, and account deletion produces a receipt.
 - **No telemetry; no data sales (C1, C11).** Nibbin doesn't quietly phone home, and it never sells your data.
 - **Nibbin never trains its models on your content — ever. That's a hard guarantee, not a setting** (there is no toggle because it never happens). Separately, a **Model improvement** toggle controls whether Nibbin learns from anonymized, aggregate signals about how its capabilities and models perform — never your data, never your content, never sold. **That toggle is ON by default (opt-out)**; turn it off anytime in Data & Privacy. (Source: `settings/privacy/page.tsx`, Trust & Controls D1-A.)
-- **Nothing acts on your behalf without your permission (C8).** Connect requests the access your Nibbins may use (read + write scopes, explained plainly); execution is gated by the owner-set action level (Observe / Draft / Send) — holding a write scope doesn't authorize action, you grant each Nibbin what it may do. Agent School grades how accurately it's working so you know when to grant more. Tokens live in an **encrypted vault, never the app database**, with **one-click revoke that cascades** (C9).
+- **Nothing acts on your behalf without your permission (C8).** Connect requests the access your Nibbins may use (read + write scopes, explained plainly); execution is gated by the owner-set action level (Observe / Draft / Act) — holding a write scope doesn't authorize action, you grant each Nibbin what it may do. Agent School grades how accurately it's working so you know when to grant more. Tokens live in an **encrypted vault, never the app database**, with **one-click revoke that cascades** (C9).
 - **The Grovekeeper can never act (C10).** It holds zero side-effect tools, permanently.
 
 ### What's kept, and for how long (from the Data & Privacy panel)
@@ -354,7 +354,7 @@ Check its action level — if it is set to Draft, every output comes to you for 
 
 **What's the Grovekeeper?** Your guide. It chats, writes your diagnosis letter, and keeps things tidy — but it **can never send or change anything.**
 
-**What are the Agent School grades?** **Egg** (observes) → **Student** (drafts for approval) → **Senior** (proven-routine grade) → **Graduate** (in-spec grade). These are accuracy grades, not autonomy unlocks — you set what each Nibbin may do via its action level (Observe/Draft/Send).
+**What are the Agent School grades?** **Egg** (observes) → **Student** (drafts for approval) → **Senior** (proven-routine grade) → **Graduate** (in-spec grade). These are accuracy grades, not autonomy unlocks — you set what each Nibbin may do via its action level (Observe/Draft/Act).
 
 **How does a Nibbin's Agent School grade improve?** A Nibbin advances when **≥95% of its drafts are approved without edits over a rolling 25-run window.** Reaching Graduate also needs proven accuracy across **≥4 distinct routine patterns**, with high-stakes actions weighted more. Better grades tell you when it's safe to grant a higher action level — but the grade alone does not unlock execution.
 
@@ -370,7 +370,7 @@ Check its action level — if it is set to Draft, every output comes to you for 
 
 **What tools can I connect?** **Gmail** today. **Google Calendar and Stripe are coming soon.** Other tools shown in the Hatch picker are on the roadmap, not connectable yet. ⚠️ Some connections are tester-allowlist-gated — request access if you're not on the list.
 
-**Are my connections read-only?** Connect requests read + write scopes at consent, with a plain-language explanation. Holding a write scope doesn't authorize action — you set each Nibbin's action level (Observe / Draft / Send) and nothing acts beyond what you've granted. Agent School grades how accurately it's been working so you know when to grant more. Revoke in one click anytime.
+**Are my connections read-only?** Connect requests read + write scopes at consent, with a plain-language explanation. Holding a write scope doesn't authorize action — you set each Nibbin's action level (Observe / Draft / Act) and nothing acts beyond what you've granted. Agent School grades how accurately it's been working so you know when to grant more. Revoke in one click anytime.
 
 **What is Grove Memory?** Your editable business brain — facts, pricing, policies, FAQs, voice, and **hard rules** — shared with all your Nibbins so their drafts sound like you. Edit or clear any of it anytime.
 
@@ -386,7 +386,7 @@ Check its action level — if it is set to Draft, every output comes to you for 
 
 **Which tools can I connect, really?** Today: **Gmail** (read + write scopes at connect; voice-learning read optional). **Calendar** and **Stripe** are **coming soon**. Connections are allowlist-gated — request access if you're not a tester. ⚠️ HoneyBook/Instagram/Pixieset/QuickBooks/Outlook/Notion/Drive appear in the Hatch picker and strategy docs but are **NOT connectable** — roadmap only. Confirm against `apps/web/lib/connections/providers.ts`.
 
-**How do write/send permissions work?** Connect requests write scopes at consent with a plain-language explanation. Holding a write scope does not authorize action — you set each Nibbin's action level (Observe / Draft / Send). While a Nibbin is at the Draft level, every side effect is drafted for your approval; at Send, it acts immediately within its spec. Agent School grades how accurately it has been working so you know when to grant more. Revoke anytime in one click.
+**How do write/send permissions work?** Connect requests write scopes at consent with a plain-language explanation. Holding a write scope does not authorize action — you set each Nibbin's action level (Observe / Draft / Act). While a Nibbin is at the Draft level, every side effect is drafted for your approval; at Act, it acts immediately within its spec. Agent School grades how accurately it has been working so you know when to grant more. Revoke anytime in one click.
 
 **What's in Memory?** Facts (what you do, pricing, policies, FAQ), Voice (how you sound), and Hard rules (non-negotiables never broken in a draft). Edit or clear anytime.
 

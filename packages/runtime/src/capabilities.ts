@@ -126,7 +126,7 @@ export const CAPABILITY_REGISTRY: Record<string, CapabilityDescriptor> = {
   'calendar.read': { id: 'calendar.read', resource: 'calendar', verb: 'get',   sideEffect: 'read',  requiredConnector: 'google-calendar' },
   // Calendar write (Connector Lever 1). A 'write' side effect: the interpreter
   // yields it as a DraftStep; the runner resolves draft-vs-execute via the
-  // owner-set action level (observe/draft/send) + a calendar.event-create write
+  // owner-set action level (observe/draft/act) + a calendar.event-create write
   // grant + idempotency before the effects executor ever calls createEvent.
   // Same wall as email.send — draft when action level is Draft; execute immediately
   // when action level is Send. No velocity caps (not a bulk-send rail).

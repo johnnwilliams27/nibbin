@@ -4,7 +4,7 @@
  * SAFETY (load-bearing, design §2): this interpreter ONLY *yields* ProgramSteps
  * — it never executes a side effect. The same runner.ts consumes them and
  * applies every wall: toolsAllowlist, quarantine, action-level gating
- * (owner-set observe/draft/send via runner.ts), write-grants, idempotency,
+ * (owner-set observe/draft/act via runner.ts), write-grants, idempotency,
  * ceilings, repetition kill. A steps-spec is gated identically to a template
  * program; the interpreter cannot bypass any boundary.
  *

@@ -4,7 +4,7 @@
 
 **Goal:** Make Nibbins able to *act* on connectors beyond Gmail — light up Google Calendar (write), Stripe, HoneyBook, Instagram-DM (write), and Pixieset (read-only) — entirely in-house, under the existing primitive + action-level safety model.
 
-**Architecture:** Build verbs into the vetted **primitive vocabulary** (the only thing the Composer/Planner may compose) and thin **executor branches** (the only place a write touches a connector client). The owner-set **action level (Observe/Draft/Send)** remains the sole execution gate. No aggregator (see ADR `docs/decisions/2026-06-22-connector-strategy-diy-vs-aggregator.md`).
+**Architecture:** Build verbs into the vetted **primitive vocabulary** (the only thing the Composer/Planner may compose) and thin **executor branches** (the only place a write touches a connector client). The owner-set **action level (Observe/Draft/Act)** remains the sole execution gate. No aggregator (see ADR `docs/decisions/2026-06-22-connector-strategy-diy-vs-aggregator.md`).
 
 **Tech Stack:** Next.js 15 (`apps/web`), `packages/runtime` (interpreter, capabilities, primitives), `packages/connectors` (clients, oauth, registry), `packages/scan`, Supabase (Vault + Postgres + RLS), Vitest.
 

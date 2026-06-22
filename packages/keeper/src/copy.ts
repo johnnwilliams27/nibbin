@@ -94,7 +94,7 @@ export const CHAT = {
   credits:
     'Your credits are on the grove page — every task a Nibbin completes uses some. Nothing spends without you seeing it.',
   privacy:
-    "Plainly: connections request the access your Nibbins may use. You set the action level for each one — Observe, Draft, or Send — and Agent School grades how well it is doing so you know when to grant more. And I myself can't touch anything — I read, plan, and talk, that's all.",
+    "Plainly: connections request the access your Nibbins may use. You set the action level for each one — Observe, Draft, or Act — and Agent School grades how well it is doing so you know when to grant more. And I myself can't touch anything — I read, plan, and talk, that's all.",
   fallback:
     "I don't have a good answer for that yet — most of my craft arrives with your connectors and your first Nibbins. Ask me about the grove, or just keep me company.",
   empty: "I'm listening — say the word.",
