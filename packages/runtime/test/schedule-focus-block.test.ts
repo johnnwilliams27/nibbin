@@ -268,6 +268,32 @@ describe('schedule.focus-block — primitive unit', () => {
     const result = await gen.next(payload);
     expect((result.value as { kind: string }).kind).toBe('compose'); // no weekday overload → compose note
   });
+
+  it('skips a day that ALREADY has a Focus block (cross-run idempotency by self-observation)', async () => {
+    // Monday is overloaded (4 meetings) AND already carries a prior 'Focus block'
+    // event — a daily-scheduled run must NOT pile a second block onto that day.
+    // No other weekday is overloaded → it emits a compose note instead of a draft.
+    const fn = scheduleFocusBlock({ withinDays: 7, minMeetings: 4 }, { 'google-calendar': GCAL_CONN }, NOW_MS);
+    const gen = fn({ nibbin: { id: 'n', accountId: ACCOUNT, name: 'x', stage: 'student', stageChangedAt: 0, status: 'active', spec: focusBlockSpec() }, trigger: TRIGGER });
+
+    await gen.next(); // read
+
+    const payload = quarantine(
+      JSON.stringify({
+        items: [
+          { id: 'e1', status: 'confirmed', start: { dateTime: '2024-01-08T09:00:00Z' } },
+          { id: 'e2', status: 'confirmed', start: { dateTime: '2024-01-08T10:00:00Z' } },
+          { id: 'e3', status: 'confirmed', start: { dateTime: '2024-01-08T11:00:00Z' } },
+          { id: 'e4', status: 'confirmed', start: { dateTime: '2024-01-08T14:00:00Z' } },
+          { id: 'fb', status: 'confirmed', summary: 'Focus block', start: { dateTime: '2024-01-08T08:00:00Z' } },
+        ],
+      }),
+      'gcal:events:already-blocked',
+    );
+
+    const result = await gen.next(payload);
+    expect((result.value as { kind: string }).kind).toBe('compose'); // Monday skipped → no other overload → note
+  });
 });
 
 // ════════════════════════════════════════════════════════════════════════════

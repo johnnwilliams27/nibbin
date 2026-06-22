@@ -29,6 +29,11 @@ import { DAY, calendarEventsPath, parseQuarantinedJson } from './shared';
 
 type ConnectionMap = Record<string, string | undefined>;
 
+/** The event summary this primitive creates AND looks for when deciding whether
+ *  a day already has a focus block. Single source so detection and creation
+ *  can never drift (the cross-run idempotency depends on them matching). */
+const FOCUS_BLOCK_SUMMARY = 'Focus block';
+
 export interface ScheduleFocusBlockInputs {
   /** Look this many days ahead. Default 7. */
   withinDays?: number;
@@ -90,8 +95,15 @@ export function scheduleFocusBlock(
 
     const events = (res && parseQuarantinedJson<{ items?: CalEvent[] }>(res))?.items ?? [];
 
-    // Group non-cancelled events by UTC calendar date string "YYYY-MM-DD".
+    // Group non-cancelled events by UTC calendar date string "YYYY-MM-DD", and
+    // record which days ALREADY carry a focus block. Reading our own prior
+    // output is the cross-run idempotency: the send-path idempotency key falls
+    // back to runId for schedule triggers (no dedupeKey), so a daily run would
+    // otherwise pile a fresh block onto the same overloaded day every day. By
+    // skipping days that already have a `FOCUS_BLOCK_SUMMARY` event we converge
+    // to at most one block per day regardless of how often the Nibbin runs.
     const byDay = new Map<string, number>();
+    const daysWithFocusBlock = new Set<string>();
     for (const e of events) {
       if (e.status === 'cancelled') continue;
       const dateStr = e.start?.dateTime
@@ -99,14 +111,17 @@ export function scheduleFocusBlock(
         : (e.start?.date ?? '');
       if (!dateStr) continue;
       byDay.set(dateStr, (byDay.get(dateStr) ?? 0) + 1);
+      if (e.summary === FOCUS_BLOCK_SUMMARY) daysWithFocusBlock.add(dateStr);
     }
 
-    // Find the FIRST weekday (Mon–Fri, offset 0..withinDays-1) with >= minMeetings.
+    // Find the FIRST weekday (Mon–Fri, offset 0..withinDays-1) with >= minMeetings
+    // that does NOT already have a focus block.
     let overloadedDate: string | null = null;
     for (let offset = 0; offset < withinDays; offset++) {
       const dow = dayOfWeekAt(nowMs, offset);
       if (dow === 0 || dow === 6) continue; // skip weekends
       const dateStr = isoDateAt(nowMs, offset);
+      if (daysWithFocusBlock.has(dateStr)) continue; // already has a focus block — don't pile up
       if ((byDay.get(dateStr) ?? 0) >= minMeetings) {
         overloadedDate = dateStr;
         break;
@@ -135,10 +150,10 @@ export function scheduleFocusBlock(
       connectionId: gcal,
       patternKey: 'calendar.event-create:focus-block',
       title: 'Focus block',
-      draft: 'Proposed a 90-minute focus block on your busiest upcoming day.',
+      draft: 'Proposed a 90-minute focus block on your next overloaded weekday.',
       effectArgs: {
         event: {
-          summary: 'Focus block',
+          summary: FOCUS_BLOCK_SUMMARY,
           start: { dateTime: startIso },
           end:   { dateTime: endIso },
         },
