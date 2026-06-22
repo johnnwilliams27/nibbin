@@ -133,6 +133,26 @@ export const CAPABILITY_REGISTRY: Record<string, CapabilityDescriptor> = {
   'payments.read': { id: 'payments.read', resource: 'payments', verb: 'get',   sideEffect: 'read',  requiredConnector: 'stripe' },
   'invoice.nudge': { id: 'invoice.nudge', resource: 'invoice',  verb: 'nudge', sideEffect: 'write', requiredConnector: 'stripe', patternKeyPrefix: 'invoice.nudge' },
 
+  // ── Connector-batch Phase 0: honeybook / instagram-dm / pixieset atomic caps ─
+  // These are declared in CONNECTOR_REGISTRY but were absent from this registry,
+  // causing capability(id) → undefined for any composed spec or interpreter step
+  // that referenced them (connector-batch plan Task 1).
+  'crm.read':     { id: 'crm.read',     resource: 'crm',     verb: 'get',   sideEffect: 'read',  requiredConnector: 'honeybook' },
+  'dm.read':      { id: 'dm.read',      resource: 'dm',      verb: 'get',   sideEffect: 'read',  requiredConnector: 'instagram-dm' },
+  'gallery.read': { id: 'gallery.read', resource: 'gallery', verb: 'get',   sideEffect: 'read',  requiredConnector: 'pixieset' },
+  // `dm.reply` is declared by BOTH honeybook AND instagram-dm in CONNECTOR_REGISTRY
+  // (one shared "reply to a message/DM" verb). A single descriptor is correct:
+  //  - validateSpec powers tools via CONNECTOR_REGISTRY.capabilities (both connectors
+  //    list dm.reply), NOT this descriptor's requiredConnector, so instagram-dm and
+  //    honeybook specs both validate;
+  //  - crystallize.ts derives each primitive's connector from its READ tool
+  //    (crm.read → honeybook, dm.read → instagram-dm), never from dm.reply's home;
+  //  - at execution the effects executor resolves the concrete client from the
+  //    step's connectionId/provider, not from requiredConnector here.
+  // honeybook is the nominal home; the two connectors are interchangeable at the
+  // execution layer for this verb.
+  'dm.reply':     { id: 'dm.reply',     resource: 'dm',      verb: 'reply', sideEffect: 'write', requiredConnector: 'honeybook', patternKeyPrefix: 'dm.reply' },
+
   // ── Primitives (composite capabilities; design §1) ─────────────────────────
   // A primitive bundles read→detect→draft as ONE trusted implementation the
   // Composer composes by id + typed params. The LLM never emits the read
