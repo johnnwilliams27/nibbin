@@ -18,6 +18,7 @@ export * from './primitives/nudge-overdue-email';
 export * from './primitives/nudge-overdue-invoice';
 export * from './primitives/nudge-unconfirmed-event';
 export * from './primitives/reply-new-inquiry';
+export * from './primitives/schedule-focus-block';
 export * from './primitives/digest-inbox-cleanup';
 export * from './primitives/digest-morning';
 export * from './interpreter';
