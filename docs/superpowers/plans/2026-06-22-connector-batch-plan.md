@@ -68,19 +68,30 @@
 
 ---
 
-## Phase 2 — Stripe (invoice.nudge)
+## Phase 2 — Stripe
 
-### Task 4: Stripe reminder write method + wire executor
-**Files:** Modify `packages/connectors/src/connectors/stripe.ts` (add a write method, with scope/grant guard); ensure Task 2's `invoice.nudge` branch calls it; tests in connectors + effects-executor.
-**Gap closed:** Stripe client is read-only; `invoice.nudge` has no underlying write.
-**Steps:** Validate the exact Stripe reminder endpoint (Risk R1), add `sendInvoiceReminder(invoiceId)` (or send_invoice) with a defense-in-depth scope/grant check mirroring `gmail`/`honeybook`; idempotent at the Stripe layer where possible. The existing `nudge-overdue-invoice` primitive already emits `invoice.nudge` — no primitive work.
-**Acceptance:** executor test drives `nudge.overdue-invoice` end-to-end at Send → exactly one reminder call; velocity consumed first; read-only methods unchanged.
+> **R1 RESOLVED + owner decision "Option B" (2026-06-22):** the overdue-invoice nudge is a **personalized email to the customer via Gmail**, NOT a Stripe-native resend. (R1 confirmed `POST /v1/invoices/{id}/send` works for `send_invoice` open invoices with `read_write` scope, but the owner chose the personalized-email path — it matches Nibbin's personalization moat and the codebase's stated intent.) Consequence: **Stripe stays a read-only connector**; the nudge rides the existing `email.send` rail; no new Stripe write method or executor branch.
 
-### Task 5: Wire Stripe connectable + creds (no poll — scheduled)
-**Files:** Modify `apps/web/lib/connections/providers.ts` (`CONNECTABLE_PROVIDERS`: add `stripe wired:true`); Vercel env `STRIPE_OAUTH_CLIENT_ID/_SECRET`; `tester_allowlist` seed.
+### Task 4: overdue-invoice nudge → personalized Gmail email — ✅ SHIPPED (PR #237, `be37231c`)
+`nudge.overdue-invoice` reworked into a cross-resource primitive (read Stripe `payments.read` → draft `email.send` to Gmail with the invoice's `hosted_invoice_url` pay link), mirroring `nudge.unconfirmed-event`. `tally` template → tools `[payments.read,email.send]`, connectors `[stripe,gmail]`. `deriveResourceClaim` extended so the email claims the invoice (no-double-nudge within a run). Atomic `invoice.nudge` kept vestigial. Pay link validated as an https `stripe.com` URL (`safeStripeUrl`) before the body. Step-0 gate confirmed 0 stored `invoice.nudge` specs (no migration). 4-reviewer gate PASS (`docs/gates/2026-06-22-connector-stripe-invoice-nudge.md`) — 2 P1 fixed; 1 P1 deferred → see Task 5a.
+
+### Task 5: Wire Stripe connectable (read-only) + creds
+**Files:** `apps/web/lib/connections/providers.ts` (`CONNECTABLE_PROVIDERS`: add `stripe wired:true`); Vercel env `STRIPE_OAUTH_CLIENT_ID/_SECRET`; `tester_allowlist` seed.
 **Gap closed:** Stripe is `wired:false` → "coming soon"; not connectable.
-**Steps:** Flip wired; confirm the generic `[provider]` callback handles Stripe Connect OAuth2 (it should via `getOAuthConfigFor`); seed `tester_allowlist (email, 'stripe')` on 3 DBs. **No `connector-poll` change** — Stripe Nibbins run on the schedule tick scanning overdue invoices.
-**Acceptance:** a tester can connect Stripe end-to-end (live OAuth round-trip) on staging; an overdue-invoice Nibbin scheduled-run produces a draft (Draft level) / sends a reminder (Send level).
+**Steps:**
+- Flip `stripe` wired; request **read-only scope** at connect (Stripe stays read-only under Option B — do NOT request `read_write`). Also resolve the claims-gate Minor: annotate / set stripe to read-only in the registry (the `read_write` write scope is unused).
+- **Verify Stripe Connect OAuth specifics in the generic `[provider]` callback:** Stripe Connect's token response returns `stripe_user_id` (the connected account id) and the access token is account-scoped — confirm `handleConnectionCallback` + the stripe client store/use what they need (this is NOT vanilla OAuth2; add Stripe-specific handling if the generic path doesn't carry `stripe_user_id`). This needs the live Stripe Connect app to test end-to-end.
+- Seed `tester_allowlist (email, 'stripe')` on 3 DBs. **No `connector-poll` change** — Stripe Nibbins run on the schedule tick scanning overdue invoices.
+**External prereq (owner, like the Google setup):** a Stripe Connect OAuth application + `STRIPE_OAUTH_CLIENT_ID/_SECRET` in Vercel + the redirect URI registered. Code lands behind the tester-allowlist gate; live connect waits on this.
+**Acceptance:** a tester connects Stripe end-to-end (live OAuth round-trip) on staging; an overdue-invoice Nibbin scheduled-run produces a personalized email draft (Draft level).
+
+### Task 5a: Re-nudge cadence — safety floor + observed cadence + Stripe coordination (REQUIRED before Tally ships at Send)
+**Why:** the cost-auditor P1 (cross-run repeat-nudge) deferred from Task 4. A still-overdue invoice would be re-nudged every scheduled run (the effect idempotency key falls back to `runId` for schedule triggers; the invoice resource-claim releases at run-end). This is **unreachable today** (Stripe not connectable + Tally defaults to Draft) but **must be resolved before any Tally Nibbin runs at the `send` action level.** Owner direction (2026-06-22): do NOT hardcode a cooldown constant — separate the safety floor from a learned/derived cadence.
+**Design (build all three):**
+1. **Safety floor (runtime invariant, not configurable away):** a hard cap — never re-nudge the same invoice more than N times or more than once per the floor interval. Same category as the send-velocity cap; prevents a wrong-but-confident learner from spamming a customer.
+2. **Observation-driven cadence (within the floor):** the Nibbin reads its OWN run history (`run_steps` already records each `email.send` with `invoiceId` in effectArgs/patternKey — this is the self-observation source, NOT the Stripe read) to know whether/when it last nudged invoice X, and applies a cadence **learned from the owner's actual follow-up behavior** (field study + the reinforcement loop) rather than a constant. Business-rule override available to the owner (e.g. "weekly until paid, stop after 3").
+3. **Stripe-reminder coordination:** if the owner has Stripe's own automatic reminders enabled, the Nibbin should avoid double-dunning (read/defer to Stripe's reminder config, or surface the conflict) so the customer doesn't get both Stripe's stock email and the Nibbin's personal one.
+**Acceptance:** a Send-level Tally Nibbin re-nudging the same still-overdue invoice is bounded by the floor regardless of trigger frequency; the within-floor cadence reflects observed owner behavior; no double-dunning when Stripe auto-reminders are on. Build with Task 5 (when Stripe is connectable and there is real run history to learn from).
 
 ---
 
