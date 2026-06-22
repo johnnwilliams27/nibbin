@@ -61,8 +61,7 @@ export default function AboutPage() {
           <div className="ab-lead">
             <p>
               The models are good now. That stopped being the problem a while ago. The real gap is between what a model
-              can do and what you can actually get it to do, and that gap is wider than anyone building AI wants to
-              admit.
+              can do and what you can actually get it to do. That gap is wider than anyone building AI wants to admit.
             </p>
             <p>
               To get real work out of these tools, you have to know what to ask, how to phrase it, what context to
