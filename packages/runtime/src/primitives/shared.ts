@@ -110,6 +110,27 @@ export function safeAddress(raw: string | undefined): string {
   return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(addr) ? addr : '';
 }
 
+/**
+ * A trusted Stripe-hosted https URL, or '' — never an attacker-controlled link.
+ * Stripe's `hosted_invoice_url` is external/quarantined data; a crafted invoice
+ * could carry a `javascript:`/`data:`/phishing URL we would otherwise embed in a
+ * customer-facing "pay here" email from the owner's trusted Nibbin (red-team P1).
+ * Require scheme=https and host within stripe.com before it reaches any body.
+ */
+export function safeStripeUrl(raw: string | undefined | null): string {
+  const v = safeHeaderValue(raw ?? undefined, 2048);
+  if (!v) return '';
+  let u: URL;
+  try {
+    u = new URL(v);
+  } catch {
+    return '';
+  }
+  if (u.protocol !== 'https:') return '';
+  const host = u.hostname.toLowerCase();
+  return host === 'stripe.com' || host.endsWith('.stripe.com') ? u.toString() : '';
+}
+
 export interface MailScan {
   inbox: GmailMeta[];
   sent: GmailMeta[];

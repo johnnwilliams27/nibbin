@@ -17,15 +17,25 @@
  *
  * SAFETY (load-bearing): the Composer never emits the read path or effectArgs —
  * it picks this primitive's id + the schema-validated `minDaysLate` scalar. The
- * stripe path, the overdue detection, the sanitized recipient address, and the
- * `{invoiceId, to}` args are built by THIS trusted code; the interpreter only
- * yields the steps the runner gates. The "no active stripe/gmail connection"
- * pause throws INSIDE the generator and checks BOTH connectors up front
- * (Slice-2a P1), never at factory-build time.
+ * stripe path, the overdue detection, the sanitized recipient address, the
+ * stripe-host-validated pay link, and the `{invoiceId, to}` args are built by
+ * THIS trusted code; the interpreter only yields the steps the runner gates. The
+ * "no active stripe/gmail connection" pause throws INSIDE the generator and
+ * checks BOTH connectors up front (Slice-2a P1), never at factory-build time.
+ *
+ * KNOWN LIMITATION (cost-auditor P1 — must be resolved before `send` action
+ * level is enabled for an adopted Tally Nibbin): there is no CROSS-RUN dedup.
+ * The invoice resource-claim prevents two simultaneous runs from nudging the
+ * same invoice, but it releases at run-end, and schedule triggers carry no
+ * dedupeKey (so the effect idempotency key falls back to runId per run). A
+ * still-overdue invoice would therefore be re-nudged every scheduled run. Bound
+ * this with a per-(nibbin, invoice) cooldown before Tally ships at Send (Stripe
+ * is not connectable yet and Tally defaults to Draft, so it is unreachable
+ * today). Tracked in docs/gates/2026-06-22-connector-stripe-invoice-nudge.md.
  */
 import type { ProgramFn } from '../runner';
 import type { ProgramStep } from '../types';
-import { DAY, parseQuarantinedJson, safeAddress, stripeInvoicesPath } from './shared';
+import { DAY, parseQuarantinedJson, safeAddress, safeStripeUrl, stripeInvoicesPath } from './shared';
 
 type ConnectionMap = Record<string, string | undefined>;
 
@@ -81,9 +91,17 @@ export function nudgeOverdueInvoice(
       yield { kind: 'compose', payload: { note: 'overdue invoice has no customer email on file' } };
       return;
     }
+    // The pay link is external Stripe data — validate it is a real https
+    // stripe.com URL before embedding it in a customer-facing email, else a
+    // crafted invoice could turn the nudge into a phishing vector (red-team P1).
+    // No valid link → degrade to a compose note rather than send a bad/blank URL.
+    const payLink = safeStripeUrl(worst.hosted_invoice_url);
+    if (!payLink) {
+      yield { kind: 'compose', payload: { note: 'overdue invoice has no valid Stripe payment link' } };
+      return;
+    }
     const dollars = Math.round((worst.amount_due ?? 0) / 100);
     const daysLate = Math.round((nowMs - (worst.due_date ?? 0) * 1000) / DAY);
-    const payLink = worst.hosted_invoice_url ?? '';
     yield {
       kind: 'draft',
       capability: 'email.send',

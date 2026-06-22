@@ -6,12 +6,12 @@
  * Adoption snapshots the template into agent_specs via adopt_nibbin, so a
  * hatched Nibbin keeps the spec version it was born with. Copy follows
  * .claude/skills/brand-voice: sentence case, concrete nouns, no corporate
- * filler; trust is earned, never unlocked.
+ * filler; the owner grants the action level, Agent School grades competency.
  *
- * v0 keeps every template on write capabilities (email.send,
- * invoice.nudge, dm.reply) — the action level (observe/draft/send) decides
- * draft-vs-act; no template ships with autonomous send authority by default,
- * and write scopes only arrive per-Nibbin at adoption (C8).
+ * v0 templates carry write capabilities (email.send, dm.reply) — the action
+ * level (observe/draft/send) decides draft-vs-act; no template ships at `send`
+ * by default. (`invoice.nudge` is vestigial — the overdue-invoice nudge now
+ * rides email.send via the cross-resource nudge.overdue-invoice primitive.)
  */
 import type { SpeciesName, Accessory, Marking } from '@nibbin/creatures';
 import type { AgentSpec, RunCeilings } from './types';

@@ -254,6 +254,58 @@ describe('nudge.overdue-invoice — primitive unit', () => {
     expect(done.done).toBe(true);
   });
 
+  it('overdue invoice with a non-Stripe / malicious pay link → compose note, no send (red-team P1)', async () => {
+    for (const badUrl of ['javascript:alert(1)', 'https://evil.example.com/pay', 'data:text/html,x', 'http://invoice.stripe.com/i/x', 'https://stripe.com.evil.com/p', 'not-a-url']) {
+      const fn = nudgeOverdueInvoice({ minDaysLate: 0 }, { stripe: STRIPE_CONN, gmail: GMAIL_CONN }, NOW_MS);
+      const gen = fn({ nibbin: nibRef(), trigger: TRIGGER });
+      await gen.next(); // read
+      const payload = quarantine(
+        JSON.stringify({
+          data: [
+            {
+              id: OVERDUE_INVOICE,
+              status: 'open',
+              due_date: Math.floor((NOW_MS - 20 * DAY) / 1000),
+              amount_due: 24_900,
+              customer_email: CUSTOMER_EMAIL,
+              hosted_invoice_url: badUrl,
+            },
+          ],
+        }),
+        'stripe:invoices:badurl',
+      );
+      const result = await gen.next(payload);
+      const compose = result.value as { kind: string; payload: { note: string } };
+      expect(compose.kind, `bad url "${badUrl}" must NOT produce a send`).toBe('compose');
+      expect(compose.payload.note).toMatch(/no valid Stripe payment link/);
+    }
+  });
+
+  it('overdue invoice with an empty/missing pay link → compose note, no send (logic P2)', async () => {
+    const fn = nudgeOverdueInvoice({ minDaysLate: 0 }, { stripe: STRIPE_CONN, gmail: GMAIL_CONN }, NOW_MS);
+    const gen = fn({ nibbin: nibRef(), trigger: TRIGGER });
+    await gen.next(); // read
+    const payload = quarantine(
+      JSON.stringify({
+        data: [
+          {
+            id: OVERDUE_INVOICE,
+            status: 'open',
+            due_date: Math.floor((NOW_MS - 20 * DAY) / 1000),
+            amount_due: 24_900,
+            customer_email: CUSTOMER_EMAIL,
+            hosted_invoice_url: null,
+          },
+        ],
+      }),
+      'stripe:invoices:emptyurl',
+    );
+    const result = await gen.next(payload);
+    const compose = result.value as { kind: string; payload: { note: string } };
+    expect(compose.kind).toBe('compose');
+    expect(compose.payload.note).toMatch(/no valid Stripe payment link/);
+  });
+
   it('no overdue invoices → compose note, no draft', async () => {
     const fn = nudgeOverdueInvoice({ minDaysLate: 0 }, { stripe: STRIPE_CONN, gmail: GMAIL_CONN }, NOW_MS);
     const gen = fn({ nibbin: nibRef(), trigger: TRIGGER });
