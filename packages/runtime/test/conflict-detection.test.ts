@@ -173,6 +173,34 @@ describe('deriveResourceClaim', () => {
     expect(deriveResourceClaim(step)).toEqual({ resourceType: 'invoice', resourceId: 'inv-456' });
   });
 
+  it('derives invoice resource from email.send carrying invoiceId (the email-nudge path)', () => {
+    // The overdue-invoice nudge sends via email.send but has no thread — its
+    // stable identity is the Stripe invoice, so two agents can't both nudge it.
+    const step: DraftStep = {
+      kind: 'draft',
+      capability: 'email.send',
+      connectionId: CONN,
+      patternKey: 'email.send:invoice-nudge',
+      title: 't',
+      draft: 'd',
+      effectArgs: { invoiceId: 'inv-789', to: 'client@example.com' },
+    };
+    expect(deriveResourceClaim(step)).toEqual({ resourceType: 'invoice', resourceId: 'inv-789' });
+  });
+
+  it('prefers the thread identity over invoiceId when both are present on email.send', () => {
+    const step: DraftStep = {
+      kind: 'draft',
+      capability: 'email.send',
+      connectionId: CONN,
+      patternKey: 'p1',
+      title: 't',
+      draft: 'd',
+      effectArgs: { threadId: 'thread-xyz', invoiceId: 'inv-789' },
+    };
+    expect(deriveResourceClaim(step)).toEqual({ resourceType: 'email', resourceId: 'thread-xyz' });
+  });
+
   it('returns null when no resource id is derivable (effectArgs missing id fields)', () => {
     const step: DraftStep = {
       kind: 'draft',

@@ -141,7 +141,16 @@ function mailboxReader(): (path: string) => string {
 function stripeReader(): (path: string) => string {
   return () =>
     JSON.stringify({
-      data: [{ id: 'in_overdue', status: 'open', due_date: Math.floor((NOW - 20 * DAY) / 1000), amount_due: 24_900 }],
+      data: [
+        {
+          id: 'in_overdue',
+          status: 'open',
+          due_date: Math.floor((NOW - 20 * DAY) / 1000),
+          amount_due: 24_900,
+          customer_email: 'client@example.com',
+          hosted_invoice_url: 'https://invoice.stripe.com/i/pay_overdue',
+        },
+      ],
     });
 }
 
@@ -234,8 +243,8 @@ const CASES: Case[] = [
   },
   {
     templateKey: 'tally',
-    primitive: nudgeOverdueInvoice({ minDaysLate: 0 }, { stripe: STRIPE }, NOW),
-    connMap: { stripe: STRIPE },
+    primitive: nudgeOverdueInvoice({ minDaysLate: 0 }, { stripe: STRIPE, gmail: GMAIL }, NOW),
+    connMap: { stripe: STRIPE, gmail: GMAIL },
     reader: stripeReader(),
   },
   {

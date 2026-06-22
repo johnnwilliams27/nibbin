@@ -79,7 +79,7 @@ const MORNING_OPS_SPEC: AgentSpec = {
   templateKey: null,
   version: 1,
   displayName: 'Morning ops',
-  toolsAllowlist: ['calendar.read', 'payments.read', 'email.read', 'invoice.nudge'],
+  toolsAllowlist: ['calendar.read', 'payments.read', 'email.read', 'email.send'],
   requiredConnectors: ['google-calendar', 'stripe', 'gmail'],
   triggers: [
     { kind: 'schedule', schedule: 'daily.morning', cooldownSecs: 3600 },
@@ -156,9 +156,10 @@ describe('adoptSynthesized — applies + re-validates a user edit', () => {
     expect(outcome.ok).toBe(true);
     const [, , adopted] = adoptComposedSpec.mock.calls[0] as unknown as [string, string, AgentSpec];
     expect(adopted.steps?.map((s) => s.capability)).toEqual(['nudge.overdue-invoice']);
-    // Envelope re-derived to the SINGLE remaining step (gcal/email no longer needed).
-    expect(adopted.requiredConnectors).toEqual(['stripe']);
-    expect(adopted.toolsAllowlist).toEqual(['payments.read', 'invoice.nudge']);
+    // Envelope re-derived to the SINGLE remaining step. The invoice nudge is
+    // cross-resource now (Stripe read + Gmail send), so it needs BOTH connectors.
+    expect([...adopted.requiredConnectors].sort()).toEqual(['gmail', 'stripe']);
+    expect(adopted.toolsAllowlist).toEqual(['payments.read', 'email.send']);
   });
 
   it('adopts a REORDERED multi-step edit (nudge first, then brief)', async () => {
