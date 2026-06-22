@@ -73,8 +73,8 @@ function morningOpsSpec(over: Partial<AgentSpec> = {}): AgentSpec {
     displayName: 'Morning ops',
     // UNION of both primitives' effectiveTools (digest.morning: calendar.read,
     // payments.read, email.read; nudge.overdue-invoice: payments.read,
-    // invoice.nudge).
-    toolsAllowlist: ['calendar.read', 'payments.read', 'email.read', 'invoice.nudge'],
+    // email.send — the invoice nudge now sends a personalized email).
+    toolsAllowlist: ['calendar.read', 'payments.read', 'email.read', 'email.send'],
     // UNION of both primitives' connectors.
     requiredConnectors: ['google-calendar', 'stripe', 'gmail'],
     steps: [
@@ -136,8 +136,8 @@ describe('validateComposedSpec — multi-primitive', () => {
         { capability: 'nudge.overdue-invoice', inputs: { minDaysLate: 0 } },
         { capability: 'nudge.overdue-invoice', inputs: { minDaysLate: 30 } },
       ],
-      toolsAllowlist: ['payments.read', 'invoice.nudge'],
-      requiredConnectors: ['stripe'],
+      toolsAllowlist: ['payments.read', 'email.send'],
+      requiredConnectors: ['stripe', 'gmail'],
     });
     expect(validateComposedSpec(s, GRANTED)).toEqual([]);
   });
@@ -164,13 +164,13 @@ describe('validateComposedSpec — multi-primitive', () => {
   });
 
   it('rejects an allowlist gap for a LATER step (union must cover every step)', () => {
-    // Drop invoice.nudge from the allowlist — the runner would kill the 2nd
-    // primitive's draft step.
+    // Drop email.send from the allowlist — the runner would kill the 2nd
+    // primitive's (nudge.overdue-invoice) email draft step.
     const s = morningOpsSpec({
       toolsAllowlist: ['calendar.read', 'payments.read', 'email.read'],
     });
     const problems = validateComposedSpec(s, GRANTED);
-    expect(problems.some((p) => /invoice\.nudge/.test(p) && /toolsAllowlist/.test(p))).toBe(true);
+    expect(problems.some((p) => /email\.send/.test(p) && /toolsAllowlist/.test(p))).toBe(true);
   });
 });
 
@@ -312,6 +312,8 @@ function morningOpsReader(path: string): string {
           status: 'open',
           due_date: Math.floor((NOW - 20 * DAY) / 1000),
           amount_due: 25000,
+          customer_email: 'client@example.com',
+          hosted_invoice_url: 'https://invoice.stripe.com/i/pay_in_1',
         },
       ],
     });

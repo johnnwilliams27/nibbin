@@ -132,6 +132,7 @@ export const CAPABILITY_REGISTRY: Record<string, CapabilityDescriptor> = {
   // when action level is Send. No velocity caps (not a bulk-send rail).
   'calendar.event-create': { id: 'calendar.event-create', resource: 'calendar', verb: 'create', sideEffect: 'write', nativeDraft: false, requiredConnector: 'google-calendar', patternKeyPrefix: 'calendar.event-create' },
   'payments.read': { id: 'payments.read', resource: 'payments', verb: 'get',   sideEffect: 'read',  requiredConnector: 'stripe' },
+  // vestigial — no primitive emits this; invoice nudges send via email.send per the 2026-06-22 personalized-email decision; retained for router eval fixtures.
   'invoice.nudge': { id: 'invoice.nudge', resource: 'invoice',  verb: 'nudge', sideEffect: 'write', requiredConnector: 'stripe', patternKeyPrefix: 'invoice.nudge' },
 
   // ── Connector-batch Phase 0: honeybook / instagram-dm / pixieset atomic caps ─
@@ -173,19 +174,23 @@ export const CAPABILITY_REGISTRY: Record<string, CapabilityDescriptor> = {
     // follow-up (email.send) — the two atomic tools its yielded steps gate on.
     effectiveTools: ['email.read', 'email.send'],
   },
-  // From `tally`: watch stripe invoices, draft a nudge for the worst overdue one.
+  // From `tally`: CROSS-RESOURCE — read stripe invoices (payments.read), draft a
+  // personalized payment-nudge EMAIL to the customer (email.send via gmail) per
+  // the 2026-06-22 personalized-email decision. Stripe stays read-only. The
+  // Composer derives BOTH connectors from effectiveTools; `requiredConnector` is
+  // just the primitive's "home" resource.
   'nudge.overdue-invoice': {
     id: 'nudge.overdue-invoice',
     resource: 'invoice',
     verb: 'nudge',
     sideEffect: 'write',
     requiredConnector: 'stripe',
-    patternKeyPrefix: 'invoice.nudge',
+    patternKeyPrefix: 'email.send',
     kind: 'primitive',
     inputSchema: {
       minDaysLate: { type: 'number', default: 0, min: 0, max: 120 },
     },
-    effectiveTools: ['payments.read', 'invoice.nudge'],
+    effectiveTools: ['payments.read', 'email.send'],
   },
   // From `hopper`: CROSS-RESOURCE — read the calendar (google-calendar), draft a
   // confirmation email (gmail). The Composer derives BOTH connectors from

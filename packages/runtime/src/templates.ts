@@ -140,8 +140,11 @@ export const SHOP_TEMPLATES: readonly ShopTemplate[] = [
     spec: spec({
       templateKey: 'tally',
       displayName: 'Tally',
-      toolsAllowlist: ['payments.read', 'invoice.nudge'],
-      requiredConnectors: ['stripe'],
+      // Cross-resource (2026-06-22 personalized-email decision): reads Stripe
+      // invoices (payments.read) and drafts a brand-voice nudge email to the
+      // customer via Gmail (email.send). Stripe stays read-only — no native resend.
+      toolsAllowlist: ['payments.read', 'email.send'],
+      requiredConnectors: ['stripe', 'gmail'],
       triggers: [
         { kind: 'schedule', schedule: 'weekly.monday', cooldownSecs: 3600 },
         { kind: 'event', source: 'connector:stripe:invoice.overdue', debounceSecs: 86_400, cooldownSecs: 3600 },

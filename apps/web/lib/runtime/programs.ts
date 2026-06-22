@@ -112,10 +112,13 @@ function briefProgram(connections: ConnectionMap, nowMs: number): ProgramFn {
 }
 
 /**
- * Tally delegates to the SHARED `nudge.overdue-invoice` primitive
- * implementation — byte-for-byte identical to the primitive at its default
- * `minDaysLate=0` (parity test in packages/runtime). The "no stripe connection"
- * pause lives INSIDE the primitive's generator (Slice-2a P1).
+ * Tally delegates to the SHARED CROSS-RESOURCE `nudge.overdue-invoice`
+ * primitive implementation — byte-for-byte identical to the primitive at its
+ * default `minDaysLate=0` (parity test in packages/runtime). It reads Stripe
+ * invoices (stripe) and drafts a personalized payment-nudge email to the
+ * customer (gmail) per the 2026-06-22 personalized-email decision; Stripe stays
+ * read-only. The "no stripe/gmail connection" pause lives INSIDE the
+ * primitive's generator and checks BOTH connectors (Slice-2a P1).
  */
 function tallyProgram(connections: ConnectionMap, nowMs: number): ProgramFn {
   return nudgeOverdueInvoice({ minDaysLate: 0 }, connections, nowMs);

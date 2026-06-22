@@ -23,16 +23,18 @@ describe('capability registry — conformance', () => {
   it('covers every capability the six hand-written programs yield', () => {
     // The programs live in apps/web (can't import here without a cross-package
     // edge), so this is the canonical hard-coded set the web-side program grep
-    // surfaces: email.read / email.send / calendar.read / payments.read /
-    // invoice.nudge. email.send is the single email write capability (Task 3:
-    // email.draft retired — the action level decides draft-vs-act).
+    // surfaces: email.read / email.send / calendar.read / payments.read.
+    // email.send is the single email write capability (Task 3: email.draft
+    // retired — the action level decides draft-vs-act). NOTE: the tally invoice
+    // nudge now sends via email.send (2026-06-22 personalized-email decision),
+    // so no program yields invoice.nudge anymore — it stays vestigial in the
+    // registry (router eval fixtures), but is no longer in this used-by set.
     // If a program adds a capability, this list and the registry must grow together.
     const usedByPrograms = [
       'email.read',
       'email.send',
       'calendar.read',
       'payments.read',
-      'invoice.nudge',
     ];
     const missing = usedByPrograms.filter((id) => !capability(id));
     expect(missing).toEqual([]);
