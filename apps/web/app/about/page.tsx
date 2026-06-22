@@ -144,8 +144,8 @@ export default function AboutPage() {
               that can take them off your plate.
             </p>
             <p>
-              It stays local and private by default. The thing watching your work is yours, on your device, working for
-              you and no one else.
+              It stays local and private by default. The observer watching your work is yours, on your device, working
+              only for you.
             </p>
           </article>
 
