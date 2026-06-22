@@ -39,7 +39,7 @@ const FAMILIAR = [
     p: 'There’s some task you do every week that lives entirely in your hands. You’ve never written it down because you’ve never needed to. A chat tool can’t help with it: you’d have to explain it first, and explaining it is half the work. Nibbin just watches you do it and learns the steps.',
   },
   {
-    h: 'The automation you’d build if you had a free afternoon you’ll never have.',
+    h: 'The automation you’d build if you had a free afternoon.',
     p: 'You know exactly which part of your week is wasteful. You also know that sitting down to wire it up in some builder would cost more time than it saves this month, this quarter, maybe this year. So it never happens. Nibbin removes the afternoon. The setup is you doing the work.',
   },
   {
