@@ -8,7 +8,7 @@
  *  - idempotency keys on every side-effectful action
  *  - tool access per-spec allowlisted
  *  - Action level is the sole execution gate (owner-set): observe→no output,
- *    draft→draft, send→execute — identically at every grade (§ action-levels).
+ *    draft→draft, act→execute — identically at every grade (§ action-levels).
  *  - tool output without quarantine markers is refused (§6.5)
  */
 import { createHash } from 'node:crypto';
@@ -415,7 +415,7 @@ export async function dispatchStep(
     return done({ kind: 'drafted', draft: step });
   }
 
-  // gate.action === 'execute' (action level is 'send')
+  // gate.action === 'execute' (action level is 'act')
   // §18.3 Slice 1: claim the resource BEFORE the idempotency claim. A
   // conflict-skip must NOT create an idempotency row — otherwise a same-key
   // event redelivery (missed-push reconcile / re-poll) would later read it as
@@ -512,7 +512,7 @@ export async function executeRun(
   // Owner decision (action-levels): the Egg run-admission fence is REMOVED.
   // `action_level` is the truly sole gate — a run admits regardless of stage and
   // is governed solely by the action level in dispatchStep (egg+observe →
-  // observe-deny; egg+draft → drafts; egg+send → acts, behind every unchanged
+  // observe-deny; egg+draft → drafts; egg+act → acts, behind every unchanged
   // idempotency / velocity / resource-claim / anomaly / cooldown wall). Grade is
   // advisory only and must NEVER gate execution. (Pause/quarantine/cooldown/
   // anomaly admission guards below are untouched.)
