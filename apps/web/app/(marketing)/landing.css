@@ -512,8 +512,8 @@
   color: var(--ink);
 }
 
-/* ---------- control band (reuses .priv-grid / .pcard) ---------- */
-.landing #control {
+/* ---------- trust band (control + privacy, reuses .priv-grid / .pcard) ---------- */
+.landing #trust {
   border-top: 1px solid var(--line);
 }
 .landing .ctrl-foot {

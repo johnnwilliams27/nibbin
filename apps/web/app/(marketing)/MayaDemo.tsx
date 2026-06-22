@@ -30,11 +30,11 @@ interface WF {
 }
 const WORKFLOWS: WF[] = [
   { id: 'edit', x: 160, y: 120, r: 34, name: 'Culling & editing', hrs: '11.2', freq: '4×/week', apps: 'Lightroom · Photo Mechanic', auto: 35, color: '#D9A21B', friction: 'The export → rename → resize → re-export loop after editing is pure repetition: 41 identical runs observed. The creative work stays yours; the file plumbing doesn’t have to.' },
-  { id: 'email', x: 250, y: 190, r: 28, name: 'Client email & inquiries', hrs: '6.8', freq: 'daily', apps: 'Gmail', auto: 70, color: '#5B7C2E', friction: '71% of inbound asks one of 12 questions (pricing, availability, what’s included). You typed near-identical replies 64 times in two weeks. This is Scout’s whole job.' },
-  { id: 'album', x: 95, y: 275, r: 25, name: 'Album design & revisions', hrs: '4.5', freq: '2×/week', apps: 'AlbumStomp · Gmail', auto: 20, color: '#D9A21B', friction: 'Design is judgment work — low automation. But revision-round emails and version tracking ate 50 minutes/week of it.' },
+  { id: 'email', x: 250, y: 190, r: 28, name: 'Client email & inquiries', hrs: '6.8', freq: 'Daily', apps: 'Gmail', auto: 70, color: '#5B7C2E', friction: '71% of inbound asks one of 12 questions (pricing, availability, what’s included). You typed near-identical replies 64 times in two weeks. This is Scout’s whole job.' },
+  { id: 'album', x: 95, y: 275, r: 25, name: 'Album design & revisions', hrs: '4.5', freq: '2×/week', apps: 'AlbumStomp · Gmail', auto: 20, color: '#D9A21B', friction: 'Design is judgment work, low automation. But revision-round emails and version tracking ate 50 minutes/week of it.' },
   { id: 'gallery', x: 420, y: 105, r: 21, name: 'Gallery delivery', hrs: '3.1', freq: '3×/week', apps: 'Pixieset · Finder · Gmail', auto: 85, color: '#E2603A', friction: 'Your single biggest friction-per-hour: an 11-step chain done identically 39 times, with two forgotten delivery emails caught days late. Lily graduated on exactly this.' },
-  { id: 'invoice', x: 430, y: 255, r: 19, name: 'Invoicing & contracts', hrs: '2.4', freq: 'weekly', apps: 'HoneyBook · QuickBooks', auto: 80, color: '#5B7C2E', friction: 'Three invoices went out late in the study window; one payment nudge was skipped entirely. Rule-based, calendar-driven — Penny’s curriculum.' },
-  { id: 'sched', x: 280, y: 300, r: 18, name: 'Scheduling & reminders', hrs: '2.2', freq: 'daily', apps: 'Calendly · Gmail', auto: 75, color: '#5B7C2E', friction: 'Confirmations, prep guides, and week-of reminders are template emails you assemble by hand each time. Dot enrolled for this today.' },
+  { id: 'invoice', x: 430, y: 255, r: 19, name: 'Invoicing & contracts', hrs: '2.4', freq: 'Weekly', apps: 'HoneyBook · QuickBooks', auto: 80, color: '#5B7C2E', friction: 'Three invoices went out late in the study window; one payment nudge was skipped entirely. Rule-based, calendar-driven: Penny’s curriculum.' },
+  { id: 'sched', x: 280, y: 300, r: 18, name: 'Scheduling & reminders', hrs: '2.2', freq: 'Daily', apps: 'Calendly · Gmail', auto: 75, color: '#5B7C2E', friction: 'Confirmations, prep guides, and week-of reminders are template emails you assemble by hand each time. Dot enrolled for this today.' },
 ];
 
 interface Agent {
@@ -59,7 +59,7 @@ interface Agent {
 const AGENTS: Agent[] = [
   { name: 'Lily', job: 'Gallery delivery', sp: 'Sprout', mk: 'star', stage: 'grad', acc: 'none', stageLabel: 'GRADUATE', cls: 'st-grad', color: '#5B7C2E', rung: 4, desc: 'Runs Maya’s 11-step gallery chain whenever an export lands: rename, resize, upload, build the gallery, send the delivery email. Graduated March 28.', metric: '17 deliveries · 0 interventions', learned: 'You like delivery emails to land before 9 AM — she holds finished galleries overnight and sends at 7:40.', streak: '17-run clean streak', badges: [['First Solo', true], ['Zero-Miss Month', true], ['100 Runs', false]], action: 'View run log (17)', go: false },
   { name: 'Scout', job: 'Inquiries & replies', sp: 'Longear', mk: 'none', stage: 'senior', acc: 'pencil', stageLabel: 'SENIOR', cls: 'st-senior', color: '#3E7C74', rung: 3, desc: 'Drafts replies to incoming inquiries using Maya’s packages and calendar. Routine questions go out on standing approval; anything new gets flagged, not guessed.', metric: '94% match · 23 runs · 2 from graduating', learned: 'Repeat clients get a warmer opening line — he picked that up from your edits in week one.', streak: '9-day streak', badges: [['First Draft', true], ['20 Runs', true], ['First Solo', false]], action: 'Review & graduate →', go: true },
-  { name: 'Penny', job: 'Invoices & nudges', sp: 'Glim', mk: 'none', stage: 'student', acc: 'coin', stageLabel: 'STUDENT', cls: 'st-student', color: '#D9A21B', rung: 2, desc: 'Drafts every invoice after a shoot from contract terms, and friendly nudges when payments slip. Right now you approve everything — that’s how she learns your tone.', metric: '88% match · 9 runs · 2 drafts waiting in Today', learned: 'You waive late fees for past clients — so she asks you instead of ever adding one.', streak: '4-day streak', badges: [['First Draft', true], ['20 Runs', false]], action: 'See her drafts', go: false },
+  { name: 'Penny', job: 'Invoices & nudges', sp: 'Glim', mk: 'none', stage: 'student', acc: 'coin', stageLabel: 'STUDENT', cls: 'st-student', color: '#D9A21B', rung: 2, desc: 'Drafts every invoice after a shoot from contract terms, and friendly nudges when payments slip. Right now you approve everything, and that’s how she learns your tone.', metric: '88% match · 9 runs · 2 drafts waiting in Today', learned: 'You waive late fees for past clients, so she asks you instead of ever adding one.', streak: '4-day streak', badges: [['First Draft', true], ['20 Runs', false]], action: 'See her drafts', go: false },
   { name: 'Dot', job: 'Reminders & confirmations', sp: 'Puff', mk: 'none', stage: 'egg', acc: 'none', stageLabel: 'EGG · ENROLLED TODAY', cls: 'st-egg', color: '#E2603A', rung: 1, desc: 'Will handle booking confirmations, prep guides, and week-of reminders. For now: just watching how you do it. First drafts expected in 3–4 days.', metric: 'Watching · 0 drafts yet', learned: 'Still observing. Nibbins don’t guess before they’ve watched.', streak: null, badges: [['Enrolled', true], ['First Draft', false]], action: 'What is Dot learning?', go: false },
 ];
 
@@ -81,10 +81,10 @@ const SHOP: Shop[] = [
 ];
 
 const CHORES = [
-  ['Answering the same emails over and over', 'replies, quotes, FAQs'],
-  ['Chasing people who haven’t paid or replied', 'invoices, follow-ups, nudges'],
-  ['Moving files and info between apps', 'export → rename → upload → notify'],
-  ['Keeping clients in the loop', 'confirmations, reminders, updates'],
+  ['Answering the same emails over and over', 'Replies, quotes, FAQs'],
+  ['Chasing people who haven’t paid or replied', 'Invoices, follow-ups, nudges'],
+  ['Moving files and info between apps', 'Export → rename → upload → notify'],
+  ['Keeping clients in the loop', 'Confirmations, reminders, updates'],
 ];
 const APPS = ['Gmail', 'Outlook', 'Google Calendar', 'QuickBooks', 'HoneyBook', 'Stripe', 'Drive / Dropbox', 'Notion'];
 
@@ -152,9 +152,9 @@ export function MayaDemo() {
               <div className="tcard todo" style={{ marginBottom: 18 }}>
                 <h4>Needs you — your only to-do</h4>
                 {[
-                  { id: 'q1', who: { stage: 'student' as Stage, sp: 'Glim' as SpeciesName, c: '#D9A21B', acc: 'coin' as Accessory }, what: <><b>Penny</b> drafted invoice #2041 — Chen/Okafor wedding · $3,850 · net-14 per contract</>, meta: 'drafted 2h ago · matches contract terms · attachment ready', ok: 'Approve & send', msg: 'Penny is one approval closer to Senior 🎓', edit: 'Edit first' },
-                  { id: 'q2', who: { stage: 'student' as Stage, sp: 'Glim' as SpeciesName, c: '#D9A21B', acc: 'coin' as Accessory }, what: <><b>Penny</b> drafted a payment nudge — Rivera engagement shoot · $620 · 9 days overdue</>, meta: 'friendly tone — she remembered you waive late fees for repeat clients, so she asked instead of charging one', ok: 'Approve & send', msg: 'Sent. Penny noted you kept her wording.', edit: 'Edit first' },
-                  { id: 'q3', who: { stage: 'senior' as Stage, sp: 'Longear' as SpeciesName, c: '#3E7C74', acc: 'pencil' as Accessory }, what: <><b>Scout</b> flagged an inquiry it hasn’t seen before — a commercial brand shoot</>, meta: 'Outside Scout’s training — it drafted a holding reply and is asking, not guessing', ok: 'Send holding reply', msg: 'Reply sent. Scout filed this as a new example to learn from.', edit: 'Write my own' },
+                  { id: 'q1', who: { stage: 'student' as Stage, sp: 'Glim' as SpeciesName, c: '#D9A21B', acc: 'coin' as Accessory }, what: <><b>Penny</b> drafted invoice #2041 — Chen/Okafor wedding · $3,850 · net-14 per contract</>, meta: 'Drafted 2h ago · matches contract terms · attachment ready', ok: 'Approve & send', msg: 'Penny is one approval closer to Senior 🎓', edit: 'Edit first' },
+                  { id: 'q2', who: { stage: 'student' as Stage, sp: 'Glim' as SpeciesName, c: '#D9A21B', acc: 'coin' as Accessory }, what: <><b>Penny</b> drafted a payment nudge for the Rivera engagement shoot · $620 · 9 days overdue</>, meta: 'Friendly tone. She remembered you waive late fees for repeat clients, so she asked instead of charging one', ok: 'Approve & send', msg: 'Sent. Penny noted you kept her wording.', edit: 'Edit first' },
+                  { id: 'q3', who: { stage: 'senior' as Stage, sp: 'Longear' as SpeciesName, c: '#3E7C74', acc: 'pencil' as Accessory }, what: <><b>Scout</b> flagged an inquiry it hasn’t seen before, a commercial brand shoot</>, meta: 'Outside Scout’s training. It drafted a holding reply and is asking, not guessing', ok: 'Send holding reply', msg: 'Reply sent. Scout filed this as a new example to learn from.', edit: 'Write my own' },
                 ].map((q) => (
                   <div className="feed-item" key={q.id}>
                     <div className="who">
@@ -181,9 +181,9 @@ export function MayaDemo() {
             <div>
               <div className="tcard" style={{ marginBottom: 18 }}>
                 <h4>Done while you were editing</h4>
-                <Feed stage="grad" sp="Sprout" c="#5B7C2E" what={<><b>Lily</b> delivered the Harper/Nguyen gallery — exported, uploaded, client emailed</>} meta={<>7:42 AM · 11 steps · <b>saved 38 min</b></>} />
-                <Feed stage="senior" sp="Longear" c="#3E7C74" acc="pencil" what={<><b>Scout</b> answered 6 inquiries — 5 sent on your standing approval, 1 flagged (left)</>} meta={<>throughout the morning · <b>saved 34 min</b></>} />
-                <Feed stage="egg" sp="Puff" c="#E2603A" what={<><b>Dot</b> enrolled in Agent School today — quietly watching how you handle reminders</>} meta="first drafts expected in 3–4 days" />
+                <Feed stage="grad" sp="Sprout" c="#5B7C2E" what={<><b>Lily</b> delivered the Harper/Nguyen gallery: exported, uploaded, client emailed</>} meta={<>7:42 AM · 11 steps · <b>saved 38 min</b></>} />
+                <Feed stage="senior" sp="Longear" c="#3E7C74" acc="pencil" what={<><b>Scout</b> answered 6 inquiries: 5 sent on your standing approval, 1 flagged (left)</>} meta={<>Throughout the morning · <b>saved 34 min</b></>} />
+                <Feed stage="egg" sp="Puff" c="#E2603A" what={<><b>Dot</b> enrolled in Agent School today, quietly watching how you handle reminders</>} meta="First drafts expected in 3–4 days" />
               </div>
               <div className="tcard">
                 <h4>Coming up</h4>
@@ -230,7 +230,7 @@ export function MayaDemo() {
                         {n.hrs}
                       </text>
                       <text x={n.x} y={n.y + n.r + 16} textAnchor="middle" fontSize="9" fill="#5A6248">
-                        {n.name.split(' & ')[0].toLowerCase()}
+                        {n.name.split(' & ')[0]}
                       </text>
                     </g>
                   ))}
@@ -239,17 +239,17 @@ export function MayaDemo() {
               <div className="map-legend">
                 <span className="key">
                   <i style={{ background: '#5B7C2E' }} />
-                  highly automatable
+                  Highly automatable
                 </span>
                 <span className="key">
                   <i style={{ background: '#D9A21B' }} />
-                  partly automatable
+                  Partly automatable
                 </span>
                 <span className="key">
                   <i style={{ background: '#E2603A' }} />
-                  friction hotspot
+                  Friction hotspot
                 </span>
-                <span className="key">○ size = hours/week</span>
+                <span className="key">○ Size = hours/week</span>
               </div>
             </div>
             <div className="detail">
@@ -328,13 +328,13 @@ export function MayaDemo() {
                 </div>
                 <div className="foot">
                   <span className="m">
-                    Access: <b>you set it — Observe / Draft / Send</b>
+                    Access: <b>you set it (Observe, Draft, Act)</b>
                   </span>
                   <button
                     className={`abtn${a.go && !graduatedQueued[a.name] ? ' go' : ''}`}
                     onClick={() => a.go && setGraduatedQueued((g) => ({ ...g, [a.name]: true }))}
                   >
-                    {graduatedQueued[a.name] ? '✓ Graduation queued — 2 runs to go' : a.action}
+                    {graduatedQueued[a.name] ? '✓ Graduation queued, 2 runs to go' : a.action}
                   </button>
                 </div>
               </div>
@@ -347,7 +347,7 @@ export function MayaDemo() {
       {tab === 'shop' && (
         <div className="demo-pane">
           <p style={{ fontSize: 13.5, color: 'var(--ink-soft)', marginBottom: 18 }}>
-            Ready-made Nibbins anyone can adopt — no study required. They enroll as eggs and climb Agent School the same
+            Ready-made Nibbins anyone can adopt, no study required. They enroll as eggs and climb Agent School the same
             way your custom ones do.
           </p>
           <div className="shop-grid">
@@ -379,7 +379,7 @@ export function MayaDemo() {
             {step === 1 && (
               <div className="wiz-pane active">
                 <h3>What’s the chore?</h3>
-                <p className="sub">Pick the thing you’re tired of doing. Plain words are fine — no flowcharts, no settings.</p>
+                <p className="sub">Pick the thing you’re tired of doing. Plain words are fine. No flowcharts, no settings.</p>
                 <div className="chore-grid">
                   {CHORES.map(([c, small], i) => (
                     <button key={c} className={`chore${chore === i ? ' sel' : ''}`} onClick={() => setChore(i)}>
@@ -400,7 +400,7 @@ export function MayaDemo() {
             {step === 2 && (
               <div className="wiz-pane active">
                 <h3>Where does it happen?</h3>
-                <p className="sub">Tap the apps involved. Your Nibbin only ever gets the narrowest access that works — you set its action level (Observe, Draft, or Send) after it hatches.</p>
+                <p className="sub">Tap the apps involved. Your Nibbin only ever gets the narrowest access that works. You set its action level (Observe, Draft, or Act) after it hatches.</p>
                 <div className="appsel">
                   {APPS.map((a) => (
                     <button
@@ -434,7 +434,7 @@ export function MayaDemo() {
               <div className="wiz-pane active">
                 <div className="hatch">
                   <h3>Your egg is ready.</h3>
-                  <p className="sub">It already knows the chore and the apps. Give it a name — that’s the whole setup.</p>
+                  <p className="sub">It already knows the chore and the apps. Give it a name. That’s the whole setup.</p>
                   <div style={{ margin: '6px 0 4px' }}>
                     <Creature stage="egg" species="Wisp" color="#7B5BD6" size={84} />
                   </div>
@@ -452,11 +452,11 @@ export function MayaDemo() {
                       {enrolled ? '✓ Enrolled' : 'Enroll in Agent School'}
                     </button>
                   </div>
-                  <p className="note">It starts as an egg: watching only. In a few days it hatches into a student and begins drafting work for your approval. You set its action level — Observe, Draft, or Send — and Agent School grades how accurately it handles the chore.</p>
+                  <p className="note">It starts as an egg: watching only. In a few days it hatches into a student and begins drafting work for your approval. You set its action level (Observe, Draft, or Act), and Agent School grades how accurately it handles the chore.</p>
                   {enrolled && (
                     <div className="enrolled">
                       🎒 <b>{eggName.trim() || 'Nib'}</b> is enrolled in Agent School. It&apos;s watching how you handle this
-                      chore now — expect its first drafts in your Today feed within a few days.
+                      chore now. Expect its first drafts in your Today feed within a few days.
                     </div>
                   )}
                 </div>
@@ -472,7 +472,7 @@ export function MayaDemo() {
         </div>
       )}
 
-      <p className="demo-disclaimer">Interactive demo · fictional client · everything responds.</p>
+      <p className="demo-disclaimer">Interactive demo. Fictional client. Everything responds.</p>
     </div>
   );
 }

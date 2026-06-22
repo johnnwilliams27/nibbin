@@ -8,8 +8,9 @@
 /* ---------- hero ---------- */
 .landing .ab-hero {
   position: relative;
-  padding: 70px 0 6px;
+  padding: 78px 0 12px;
   border-bottom: 1px solid var(--line);
+  text-align: center;
 }
 .landing .ab-h1 {
   font-family: var(--display);
@@ -17,12 +18,12 @@
   font-weight: 800;
   letter-spacing: -0.02em;
   line-height: 1.06;
-  max-width: 20ch;
-  margin: 14px 0 0;
+  max-width: 22ch;
+  margin: 14px auto 0;
 }
 .landing .ab-lead {
   max-width: 60ch;
-  margin: 22px 0 0;
+  margin: 22px auto 0;
 }
 .landing .ab-lead p {
   font-size: 18px;
@@ -89,9 +90,13 @@
 /* Medium-width blocks — wider than prose, centered. */
 .landing .ab-compare,
 .landing .ab-examples,
-.landing .ab-control,
-.landing .ab-cta {
+.landing .ab-control {
   max-width: 860px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.landing .ab-cta {
+  max-width: 600px;
   margin-left: auto;
   margin-right: auto;
 }

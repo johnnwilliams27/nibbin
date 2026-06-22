@@ -40,7 +40,10 @@
   /* Type */
   --display: 'Bricolage Grotesque', 'Archivo', sans-serif;
   --sans: 'Archivo', -apple-system, 'Helvetica Neue', sans-serif;
-  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  /* --mono is the small-label / eyebrow accent font. Intentionally the
+     grotesque, not a monospace — the old IBM Plex Mono read as "typewriter".
+     Kept under the --mono name so every existing consumer updates at once. */
+  --mono: 'Archivo', -apple-system, 'Helvetica Neue', sans-serif;
 
   /* Motion */
   --dur-1: 160ms;

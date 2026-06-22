@@ -8,82 +8,63 @@ import { SiteNav } from './(marketing)/SiteNav';
 import { SiteFooter } from './(marketing)/SiteFooter';
 
 const SCHOOL = [
-  { pill: 'ep-egg', label: 'Egg', stage: 'egg' as const, role: ['Enrolled', 'learning your style'] },
-  { pill: 'ep-student', label: 'Student', stage: 'student' as const, role: ['Drafts for your approval', 'accuracy building'] },
-  { pill: 'ep-senior', label: 'Senior', stage: 'senior' as const, role: ['Reliable on routine work', 'you decide if it sends'] },
-  { pill: 'ep-grad', label: 'Graduate', stage: 'grad' as const, role: ['Proven across its spec', 'grant Send with confidence'] },
+  { pill: 'ep-egg', label: 'Egg', stage: 'egg' as const, role: ['Enrolled', 'Learning your style'] },
+  { pill: 'ep-student', label: 'Student', stage: 'student' as const, role: ['Drafts for your approval', 'Accuracy building'] },
+  { pill: 'ep-senior', label: 'Senior', stage: 'senior' as const, role: ['Reliable on routine work', 'You decide if it acts'] },
+  { pill: 'ep-grad', label: 'Graduate', stage: 'grad' as const, role: ['Proven across its spec', 'Grant Act with confidence'] },
 ];
 
 const STEPS = [
   {
     num: 'DAY ONE',
     h: 'Hatch with the Grovekeeper',
-    p: 'Answer a few plain questions about your work. The Keeper sets up your grove, connects your tools — nothing acts without your approval — and runs a scan of the last 12 months.',
-    dur: '10 minutes, start to first Nibbin',
+    p: 'Answer a few plain questions about your work. The Keeper sets up your grove, connects your tools so nothing acts without your approval, and runs a scan of the last 12 months.',
+    dur: 'Ten minutes to your first Nibbin',
   },
   {
     num: 'DAY ONE',
     h: 'Adopt working agents',
-    p: 'The scan finds the busywork — unanswered inquiries, unpaid invoices, unsent follow-ups — and the Agent Shop has Nibbins ready to take each one today, drafting for your approval from the first hour.',
-    dur: 'first draft within the hour',
+    p: 'The scan finds the busywork: unanswered inquiries, unpaid invoices, unsent follow-ups. The Agent Shop has Nibbins ready to take each one today, drafting for your approval from the first hour.',
+    dur: 'First draft within the hour',
   },
   {
     num: 'IN THE BACKGROUND',
     h: 'The Field Study',
-    p: 'Two weeks of quiet observation, on your device — how Nibbin learns the work that never touches an API. Visible countdown, pause hotkey; banking, health, and personal sites are never captured. Yours to start, skip, or stop.',
-    dur: '14 days · on your device',
+    p: 'Two weeks of quiet observation, on your device. This is how Nibbin learns the work that never touches an API. Visible countdown, pause hotkey, and banking, health, and personal sites are never captured. Yours to start, skip, or stop.',
+    dur: 'Fourteen days on your device',
   },
   {
     num: 'DAY 15',
     h: 'The full diagnosis',
-    p: 'Every workflow named and measured — hours, frequency, friction — including the work that never touches an API. New eggs hatch for what the Field Study finds.',
-    dur: 'your map, delivered',
+    p: 'Every workflow named and measured for hours, frequency, and friction, including the work that never touches an API. New eggs hatch for what the Field Study finds.',
+    dur: 'Your map, delivered',
   },
 ];
 
-const PRIVACY = [
-  {
-    pi: 'On your device',
-    h: 'Screen captures never leave',
-    p: 'The Field Study runs locally. Raw captures are processed and deleted on your machine — only redacted, structured text about your workflows is ever uploaded, and only when you say so.',
-  },
-  {
-    pi: 'Nothing acts without you',
-    h: 'Nothing sends without you',
-    p: 'A connection can hold the keys to act, but no email is sent and no event is booked until you approve it. You grant each Nibbin what it may do — Observe, Draft, or Send. Agent School grades how accurately it has been working so you always know when to trust it with more.',
-  },
-  {
-    pi: 'Yours to control',
-    h: 'Your data stays yours',
-    p: 'We never sell your data. We use it to make Nibbin better, and you can opt out anytime in settings. Either way, your screen captures never leave your device.',
-  },
-];
-
-// "You stay in control" band — the plain, no-whimsy half of the hybrid voice.
-// Mirrors the four-block control cluster on /about; same vocabulary on purpose
-// (track record · scope · off means off). Absorbs the old one-click grade-back
-// idea that used to live alone in the hero evocard caption.
-const CONTROL = [
+// One trust section: control + privacy, condensed (they used to be two
+// repetitive bands). Same vocabulary as /about — track record, scope, off
+// means off. Plain and direct: trust copy that sounds cute undercuts itself.
+const TRUST = [
   {
     pi: 'Track record',
-    h: 'See how each one’s doing.',
+    h: 'Quality you can see.',
     p: 'Every Nibbin keeps a track record you can read: where it does well, where it slips, when you’ve had to step in. Correct it once and it learns. No agent gets to vouch for itself.',
   },
   {
     pi: 'Scope',
     h: 'You decide what it can touch.',
-    p: 'Permissions and scope are set by you, and they start narrow. An agent earns more room by proving it can handle what it already has, and you can pull that room back anytime.',
+    p: 'Permissions start narrow, and you set them. A Nibbin earns more room only by proving it handles what it already has, and nothing sends, books, or pays until you allow it. You can pull that room back anytime.',
   },
   {
-    pi: 'Off means off',
+    pi: 'On your device',
     h: 'Watched only if you allow it.',
-    p: 'Nibbin learns from your work only on your terms. The screen capture it learns from never leaves your device. Off means off.',
+    p: 'The screen capture Nibbin learns from never leaves your device. We never sell your data, you can opt out in settings anytime, and off means off.',
   },
 ];
 
 const PRICING = [
   {
-    tier: 'Hatchling — Free',
+    tier: 'Hatchling (Free)',
     feat: false,
     cta: 'Start free',
     items: ['Full 14-day Field Study + diagnosis', '2 Nibbins · 100 actions / month', 'The Grovekeeper + 12-month scan', 'All privacy guarantees, always'],
@@ -124,9 +105,9 @@ export default function Home() {
             <p className="lede">
               Hatch your first Nibbin in minutes. The Grovekeeper connects your tools, scans for busywork, and
               staffs it with small helpers that learn your way of doing things. You decide what each Nibbin may
-              do — Observe, Draft, or Send — and Agent School grades how well it is doing so you always know
-              when to extend more trust. A two-week Field Study runs quietly alongside and deepens the map into
-              a full diagnosis.
+              do: Observe, Draft, or Act. Agent School grades how well it is doing, so you always know when to
+              extend more trust. A two-week Field Study runs quietly alongside and deepens the map into a full
+              diagnosis.
             </p>
             <div className="cta-row">
               <a className="btn btn-solid" href="#join">
@@ -137,13 +118,13 @@ export default function Home() {
               </a>
             </div>
             <p className="hero-note">
-              First agent in 10 minutes · Free to start
+              First agent in 10 minutes. Free to start.
               <br />
               <b>Screen captures never leave your device</b>
             </p>
           </div>
           <div className="evocard">
-            <span className="t">Agent School — your Nibbin&apos;s competency report card</span>
+            <span className="t">Your Nibbin&apos;s Agent School report card</span>
             <svg className="evo-vine" viewBox="0 0 400 14" preserveAspectRatio="none" aria-hidden="true">
               <path
                 d="M8 9 C70 1 120 13 200 7 C280 1 330 12 392 6"
@@ -164,7 +145,8 @@ export default function Home() {
                   <span className={`evo-pill ${s.pill}`}>{s.label}</span>
                   <Creature species="Sprout" stage={s.stage} color="#5B7C2E" size={52} />
                   <span className="role">
-                    <b>{s.role[0]}</b> —<br />
+                    <b>{s.role[0]}</b>
+                    <br />
                     {s.role[1]}
                   </span>
                 </div>
@@ -223,13 +205,13 @@ export default function Home() {
                 Meet the Grovekeeper.
               </h2>
               <p style={{ color: 'var(--ink-soft)', maxWidth: '56ch' }}>
-                The elder of the grove runs your setup, your scan, and your daily check-ins — and explains every
+                The elder of the grove runs your setup, your scan, and your daily check-ins, and explains every
                 recommendation in plain language, including what it costs and what it touches.
               </p>
               <div className="keeper-points">
                 <div className="kp">
                   <b>Sets you up in minutes.</b> A short conversation, not a configuration screen. The Keeper hatches
-                  your first Nibbin and connects your tools — nothing acts until you approve it.
+                  your first Nibbin and connects your tools, and nothing acts until you approve it.
                 </div>
                 <div className="kp">
                   <b>Finds the busywork.</b> It runs the 12-month scan, names what it finds in hours and dollars, and
@@ -248,11 +230,11 @@ export default function Home() {
       <section id="demo">
         <div className="wrap">
           <div className="sec-head reveal">
-            <span className="eyebrow">Interactive demo · fictional client</span>
-            <h2>Maya’s grove</h2>
+            <span className="eyebrow">Interactive demo with a fictional client</span>
+            <h2>Maya’s Grove</h2>
             <p>
               Maya Reyes is a wedding photographer. Her study ended three weeks ago, and her four Nibbins are at four
-              different grades of Agent School. Click around — everything responds.
+              different grades of Agent School. Click around. Everything responds.
             </p>
           </div>
           <div className="reveal">
@@ -261,15 +243,19 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="control">
+      <section id="trust">
         <div className="wrap">
           <div className="sec-head reveal">
             <span className="eyebrow">Trust &amp; control</span>
             <h2>You stay in control.</h2>
-            <p>You hand off the work, not the control. Here’s what that looks like in practice.</p>
+            <p>
+              Handing your work to software is a real ask. We built Nibbin so the careful choice and the easy
+              choice are the same one. You can see what every agent does, you set what it may touch, and what it
+              learns from never leaves your machine.
+            </p>
           </div>
           <div className="priv-grid reveal">
-            {CONTROL.map((c) => (
+            {TRUST.map((c) => (
               <div className="pcard" key={c.h}>
                 <span className="pi">{c.pi}</span>
                 <h3>{c.h}</h3>
@@ -280,29 +266,10 @@ export default function Home() {
           <p className="priv-foot ctrl-foot">
             <a href="/about">How this works → /about</a>
           </p>
-        </div>
-      </section>
-
-      <section id="privacy">
-        <div className="wrap">
-          <div className="sec-head reveal">
-            <span className="eyebrow">Privacy by architecture</span>
-            <h2>The careful kind of AI.</h2>
-            <p>
-              Solo owners fear two things about AI: that it embarrasses them in front of clients, and that it
-              watches everything. Both answers are built in, not bolted on.
-            </p>
-          </div>
-          <div className="priv-grid reveal">
-            {PRIVACY.map((c) => (
-              <div className="pcard" key={c.h}>
-                <span className="pi">{c.pi}</span>
-                <h3>{c.h}</h3>
-                <p>{c.p}</p>
-              </div>
-            ))}
-          </div>
-          <p className="priv-foot">Full detail in the <a href="/data-ai">Data &amp; AI overview</a> and <a href="/privacy">Privacy Policy</a>.</p>
+          <p className="priv-foot">
+            Full detail in the <a href="/data-ai">Data &amp; AI overview</a> and{' '}
+            <a href="/privacy">Privacy Policy</a>.
+          </p>
         </div>
       </section>
 
@@ -312,8 +279,8 @@ export default function Home() {
             <span className="eyebrow">Simple, honest pricing</span>
             <h2>The diagnosis is free. Pay as your grove grows.</h2>
             <p>
-              See your full workflow map and two-week study before you pay a cent. An action is one completed task; the
-              meter is always visible in the grove — no surprise bills, never silent degradation.
+              See your full workflow map and two-week study before you pay a cent. An action is one completed task, and
+              the meter is always visible in the grove, with no surprise bills and never silent degradation.
             </p>
           </div>
           <div className="price-grid reveal">
@@ -342,10 +309,10 @@ export default function Home() {
             <h2>Join the Founding Grove.</h2>
             <p className="sub">
               We’re opening Nibbin to a small first cohort of people who work for themselves. Claim a seat and the
-              Grovekeeper will hatch your first Nibbins early — and personally.
+              Grovekeeper will hatch your first Nibbins early, and personally.
             </p>
             <WaitlistForm />
-            <p className="join-note">Double opt-in · one confirmation email · unsubscribe anytime.</p>
+            <p className="join-note">Double opt-in. One confirmation email. Unsubscribe anytime.</p>
           </div>
         </div>
       </section>
