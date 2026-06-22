@@ -147,6 +147,11 @@ const TIER1: ConnectorDescriptor[] = [
       'payments.fee-leakage',
       'payments.recurring-revenue',
     ],
+    // `invoice.nudge` is VESTIGIAL — no primitive emits it. Since the 2026-06-22
+    // personalized-email decision, overdue-invoice nudges ride `email.send`
+    // (Gmail) via the cross-resource `nudge.overdue-invoice` primitive; Stripe
+    // stays read-only. Retained here only so it remains a known registry
+    // capability for the router eval fixtures that still reference it.
     capabilities: ['payments.read', 'invoice.nudge'],
     egressAllowlist: ['api.stripe.com', 'connect.stripe.com'],
     send: { velocity: DEFAULT_SEND_VELOCITY },

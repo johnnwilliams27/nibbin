@@ -172,8 +172,9 @@ export type StepDisposition =
  * execute. Returns `null` if no stable resource id can be derived from the
  * effectArgs — in that case the caller skips the claim (fail-open: the send
  * still fires, no false conflict). Resource identity keys:
- *   email.*       : effectArgs.threadId | inReplyTo → resource_type='email'
- *   invoice.nudge : effectArgs.invoiceId            → resource_type='invoice'
+ *   email.* (thread) : effectArgs.threadId | inReplyTo → resource_type='email'
+ *   email.* (invoice): effectArgs.invoiceId            → resource_type='invoice'
+ *   invoice.nudge    : effectArgs.invoiceId            → resource_type='invoice'
  */
 export function deriveResourceClaim(step: DraftStep): { resourceType: string; resourceId: string } | null {
   const args = step.effectArgs;
@@ -184,6 +185,11 @@ export function deriveResourceClaim(step: DraftStep): { resourceType: string; re
       (typeof args.threadId === 'string' && args.threadId) ||
       (typeof args.inReplyTo === 'string' && args.inReplyTo);
     if (id) return { resourceType: 'email', resourceId: id };
+    // The overdue-invoice nudge sends via email.send but carries no thread —
+    // its stable identity is the Stripe invoice. Claim it as an invoice so two
+    // agents can't both nudge the same invoice (2026-06-22 email-nudge decision).
+    const invoiceId = typeof args.invoiceId === 'string' && args.invoiceId;
+    if (invoiceId) return { resourceType: 'invoice', resourceId: invoiceId };
   }
   // invoice capability: invoiceId is stable per Stripe invoice.
   if (step.capability === 'invoice.nudge') {

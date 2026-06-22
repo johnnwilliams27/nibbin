@@ -1,9 +1,10 @@
 /**
  * Stripe [H] — money truth; invoice/overdue scans (SPEC §4.3). Connected via
  * Stripe Connect OAuth with the platform-level `read_only` scope (C8 holds at
- * the provider). The 'invoice.nudge' capability drafts reminder text in the
- * runtime — it sends through the user's email connector, not Stripe, so this
- * client is read-only end to end.
+ * the provider). Overdue-invoice nudges are drafted in the runtime and sent
+ * through the user's Gmail connector (the cross-resource `nudge.overdue-invoice`
+ * primitive → `email.send`), NOT via a Stripe-native resend — so this client is
+ * read-only end to end.
  */
 import { HttpConnectorClient } from './base';
 import type { Connection } from '../types';

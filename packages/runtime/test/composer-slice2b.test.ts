@@ -72,15 +72,17 @@ function spec(over: Partial<AgentSpec>): AgentSpec {
 /* ── validator: per-primitive connector gating (incl. cross-resource) ─────── */
 
 describe('validateComposedSpec — nudge family connector gating', () => {
-  it('accepts nudge.overdue-invoice when stripe is granted; rejects when not', () => {
+  it('accepts the CROSS-RESOURCE nudge.overdue-invoice when BOTH stripe+gmail are granted; rejects when either missing', () => {
     const s = spec({
       displayName: 'Invoice nudges',
-      toolsAllowlist: ['payments.read', 'invoice.nudge'],
-      requiredConnectors: ['stripe'],
+      toolsAllowlist: ['payments.read', 'email.send'],
+      requiredConnectors: ['stripe', 'gmail'],
       steps: [{ capability: 'nudge.overdue-invoice', inputs: { minDaysLate: 0 } }],
     });
-    expect(validateComposedSpec(s, ['stripe'])).toEqual([]);
+    expect(validateComposedSpec(s, ['stripe', 'gmail'])).toEqual([]);
     expect(validateComposedSpec(s, []).some((p) => /not connected/.test(p))).toBe(true);
+    // stripe granted but gmail is not → the email.send step needs gmail.
+    expect(validateComposedSpec(s, ['stripe']).some((p) => /not connected/.test(p))).toBe(true);
   });
 
   it('accepts reply.new-inquiry when gmail is granted; rejects when not', () => {
@@ -118,11 +120,11 @@ describe('validateComposedSpec — nudge family connector gating', () => {
 
   it('rejects out-of-bounds invoice param (minDaysLate above max)', () => {
     const s = spec({
-      toolsAllowlist: ['payments.read', 'invoice.nudge'],
-      requiredConnectors: ['stripe'],
+      toolsAllowlist: ['payments.read', 'email.send'],
+      requiredConnectors: ['stripe', 'gmail'],
       steps: [{ capability: 'nudge.overdue-invoice', inputs: { minDaysLate: 999 } }],
     });
-    expect(validateComposedSpec(s, ['stripe']).some((p) => /above max/.test(p))).toBe(true);
+    expect(validateComposedSpec(s, ['stripe', 'gmail']).some((p) => /above max/.test(p))).toBe(true);
   });
 
   it('rejects an unknown input on reply.new-inquiry (empty schema accepts no keys)', () => {
@@ -175,11 +177,20 @@ function nib(s: AgentSpec): NibbinRef {
 }
 
 const OVERDUE_INVOICE = 'in_overdue';
+const INVOICE_CUSTOMER_EMAIL = 'client@example.com';
+const INVOICE_PAY_LINK = 'https://invoice.stripe.com/i/pay_overdue';
 function stripeReader(): (c: string, path: string) => string {
   return () =>
     JSON.stringify({
       data: [
-        { id: OVERDUE_INVOICE, status: 'open', due_date: Math.floor((NOW - 20 * DAY) / 1000), amount_due: 24_900 },
+        {
+          id: OVERDUE_INVOICE,
+          status: 'open',
+          due_date: Math.floor((NOW - 20 * DAY) / 1000),
+          amount_due: 24_900,
+          customer_email: INVOICE_CUSTOMER_EMAIL,
+          hosted_invoice_url: INVOICE_PAY_LINK,
+        },
       ],
     });
 }
@@ -227,20 +238,31 @@ function inquiryReader(): (c: string, path: string) => string {
 }
 
 describe('interpreter dispatches the nudge-family primitives through the runner', () => {
-  it('nudge.overdue-invoice → awaiting_approval invoice.nudge draft (trusted effectArgs)', async () => {
+  it('nudge.overdue-invoice (cross-resource): reads on stripe, drafts an email.send on gmail → awaiting_approval', async () => {
     const h = harness(stripeReader());
     const s = spec({
-      toolsAllowlist: ['payments.read', 'invoice.nudge'],
-      requiredConnectors: ['stripe'],
+      toolsAllowlist: ['payments.read', 'email.send'],
+      requiredConnectors: ['stripe', 'gmail'],
       steps: [{ capability: 'nudge.overdue-invoice', inputs: {} }],
     });
-    const outcome = await executeRun(nib(s), TRIGGER, interpretSpec(s, { stripe: STRIPE }, NOW), h.deps);
+    const outcome = await executeRun(nib(s), TRIGGER, interpretSpec(s, { stripe: STRIPE, gmail: GMAIL }, NOW), h.deps);
     expect(outcome.kind).toBe('awaiting_approval');
     if (outcome.kind !== 'awaiting_approval') throw new Error('expected awaiting_approval');
-    expect(h.executed).toHaveLength(0);
-    expect(outcome.draft.capability).toBe('invoice.nudge');
-    expect(outcome.draft.patternKey).toBe('invoice.nudge:overdue');
-    expect(outcome.draft.effectArgs).toEqual({ invoiceId: OVERDUE_INVOICE, amountCents: 24_900 });
+    // email.send is nativeDraft:true → the runner creates the Gmail draft mirror
+    // at draft time. The awaiting_approval outcome proves NO real send fired; the
+    // only executor call is the native-draft mirror (capability email.send).
+    expect(h.executed).toEqual([{ capability: 'email.send' }]);
+    // The read rode the stripe connection.
+    expect(h.reads.length).toBe(1);
+    expect(h.reads[0].connectionId).toBe(STRIPE);
+    expect(h.reads[0].path).toContain('/v1/invoices');
+    // The draft rides the gmail connection, with trusted-built effectArgs.
+    expect(outcome.draft.capability).toBe('email.send');
+    expect(outcome.draft.connectionId).toBe(GMAIL);
+    expect(outcome.draft.patternKey).toBe('email.send:invoice-nudge');
+    expect(outcome.draft.effectArgs).toEqual({ invoiceId: OVERDUE_INVOICE, to: INVOICE_CUSTOMER_EMAIL });
+    // The payment link travels in the email body so the client can pay.
+    expect(outcome.draft.draft).toContain(INVOICE_PAY_LINK);
   });
 
   it('nudge.unconfirmed-event (cross-resource): reads on gcal, drafts on gmail → awaiting_approval', async () => {
@@ -296,6 +318,8 @@ function stripeAgedReader(ages: Array<{ id: string; daysLate: number; amount: nu
         status: 'open',
         due_date: Math.floor((NOW - a.daysLate * DAY) / 1000),
         amount_due: a.amount,
+        customer_email: INVOICE_CUSTOMER_EMAIL,
+        hosted_invoice_url: INVOICE_PAY_LINK,
       })),
     });
 }
@@ -305,20 +329,20 @@ describe('parameterization beyond the templates (minDaysLate / withinDays)', () 
     // A 10-day-late invoice alone → cutoff (now - 30d) excludes it → no draft.
     const h10 = harness(stripeAgedReader([{ id: 'in_10', daysLate: 10, amount: 10_000 }]));
     const s = spec({
-      toolsAllowlist: ['payments.read', 'invoice.nudge'],
-      requiredConnectors: ['stripe'],
+      toolsAllowlist: ['payments.read', 'email.send'],
+      requiredConnectors: ['stripe', 'gmail'],
       steps: [{ capability: 'nudge.overdue-invoice', inputs: { minDaysLate: 30 } }],
     });
-    const out10 = await executeRun(nib(s), TRIGGER, interpretSpec(s, { stripe: STRIPE }, NOW), h10.deps);
+    const out10 = await executeRun(nib(s), TRIGGER, interpretSpec(s, { stripe: STRIPE, gmail: GMAIL }, NOW), h10.deps);
     // Compose-only outcome (no draft → completed, not awaiting_approval).
     expect(out10.kind).not.toBe('awaiting_approval');
 
     // A 40-day-late invoice → past the 30-day cutoff → it IS drafted.
     const h40 = harness(stripeAgedReader([{ id: 'in_40', daysLate: 40, amount: 50_000 }]));
-    const out40 = await executeRun(nib(s), TRIGGER, interpretSpec(s, { stripe: STRIPE }, NOW), h40.deps);
+    const out40 = await executeRun(nib(s), TRIGGER, interpretSpec(s, { stripe: STRIPE, gmail: GMAIL }, NOW), h40.deps);
     expect(out40.kind).toBe('awaiting_approval');
     if (out40.kind !== 'awaiting_approval') throw new Error('expected awaiting_approval');
-    expect(out40.draft.effectArgs).toEqual({ invoiceId: 'in_40', amountCents: 50_000 });
+    expect(out40.draft.effectArgs).toEqual({ invoiceId: 'in_40', to: INVOICE_CUSTOMER_EMAIL });
   });
 
   it('nudge.unconfirmed-event withinDays=30 widens the calendar timeMax to now + 30 days', async () => {
@@ -369,12 +393,22 @@ const inquiryResponder = (step: ProgramStep) =>
 
 describe('template ↔ primitive parity (identical yielded steps + effectArgs)', () => {
   it('nudge.overdue-invoice matches tally on the same invoice fixture', async () => {
-    const steps = await drive(nudgeOverdueInvoice({ minDaysLate: 0 }, { stripe: STRIPE }, NOW), stripeResponder);
+    const steps = await drive(
+      nudgeOverdueInvoice({ minDaysLate: 0 }, { stripe: STRIPE, gmail: GMAIL }, NOW),
+      stripeResponder,
+    );
+    const read = steps.find((s) => s.kind === 'read');
     const draft = steps.find((s) => s.kind === 'draft');
-    expect(draft && draft.kind === 'draft' && draft.capability).toBe('invoice.nudge');
+    if (!read || read.kind !== 'read') throw new Error('expected read');
     if (!draft || draft.kind !== 'draft') throw new Error('expected draft');
-    expect(draft.patternKey).toBe('invoice.nudge:overdue');
-    expect(draft.effectArgs).toEqual({ invoiceId: OVERDUE_INVOICE, amountCents: 24_900 });
+    // Cross-resource: read on stripe, draft on gmail.
+    expect(read.connectionId).toBe(STRIPE);
+    expect(read.path).toContain('/v1/invoices');
+    expect(draft.connectionId).toBe(GMAIL);
+    expect(draft.capability).toBe('email.send');
+    expect(draft.patternKey).toBe('email.send:invoice-nudge');
+    expect(draft.effectArgs).toEqual({ invoiceId: OVERDUE_INVOICE, to: INVOICE_CUSTOMER_EMAIL });
+    expect(draft.draft).toContain(INVOICE_PAY_LINK);
   });
 
   it('nudge.unconfirmed-event matches hopper: read carries gcal id, draft carries gmail id', async () => {

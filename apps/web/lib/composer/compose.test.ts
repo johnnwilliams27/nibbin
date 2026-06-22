@@ -175,13 +175,16 @@ describe('composeSpec', () => {
     expect(result.unfulfilled?.capability).toBe('other');
   });
 
-  it('no-key fallback maps a payments workflow → nudge.overdue-invoice (validates)', async () => {
-    const result = await composeSpec('acct-1', 'user-1', PAYMENTS_WF, ['stripe']);
+  it('no-key fallback maps a payments workflow → nudge.overdue-invoice with BOTH connectors derived (validates)', async () => {
+    // The invoice nudge is now CROSS-RESOURCE (2026-06-22 personalized-email
+    // decision): read Stripe, draft the customer email via Gmail. Both
+    // connectors are derived server-side from effectiveTools.
+    const result = await composeSpec('acct-1', 'user-1', PAYMENTS_WF, ['stripe', 'gmail']);
     if ('error' in result) throw new Error(result.error);
     expect(result.spec.steps?.[0]?.capability).toBe('nudge.overdue-invoice');
-    expect(result.spec.requiredConnectors).toEqual(['stripe']);
-    expect(result.spec.toolsAllowlist).toEqual(['payments.read', 'invoice.nudge']);
-    expect(validateComposedSpec(result.spec, ['stripe'])).toEqual([]);
+    expect([...result.spec.requiredConnectors].sort()).toEqual(['gmail', 'stripe']);
+    expect(result.spec.toolsAllowlist).toEqual(['payments.read', 'email.send']);
+    expect(validateComposedSpec(result.spec, ['stripe', 'gmail'])).toEqual([]);
     expect(result.summary.length).toBeGreaterThan(0);
   });
 
@@ -269,7 +272,7 @@ describe('composeSpec', () => {
     expect(result.spec.steps?.map((s) => s.capability)).toEqual(['digest.morning', 'nudge.overdue-invoice']);
     // UNION of both primitives' tools + connectors, derived server-side.
     expect([...result.spec.requiredConnectors].sort()).toEqual(['gmail', 'google-calendar', 'stripe']);
-    expect(result.spec.toolsAllowlist).toContain('invoice.nudge');
+    expect(result.spec.toolsAllowlist).toContain('email.send');
     expect(result.spec.toolsAllowlist).toContain('calendar.read');
     expect(validateComposedSpec(result.spec, ['google-calendar', 'stripe', 'gmail'])).toEqual([]);
     expect(result.summary.length).toBeGreaterThan(0);
