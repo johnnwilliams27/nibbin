@@ -650,9 +650,6 @@ export async function extractDocument(sourceId: string, accountId: string): Prom
     // Step 5: Text extraction dispatch by kind
     let rawText: string;
     let truncatedPages = false;
-    // pptx, xlsx, and svg proposals are append-only (extraction is additive; Task 1+2+3 constraint).
-    // Task 4 will extend append-only to all text extractors.
-    let appendOnly = kind === 'pptx' || kind === 'xlsx' || kind === 'svg';
 
     if (kind === 'pptx') {
       // pptx text extraction via office-extract.ts (unzip + <a:t> concatenation).
@@ -834,8 +831,8 @@ export async function extractDocument(sourceId: string, accountId: string): Prom
       // Parameter names MUST match the migration signature exactly:
       // propose_memory_change(p_account uuid, p_field_key text, p_op text, p_value text, p_rationale text, p_source_id uuid, p_origin text)
       // PostgREST resolves args by name — any mismatch silently produces zero proposals.
-      // pptx uses append-only (Task 1); notes always append; other fields use replace until Task 4.
-      const op = (appendOnly || fieldKey === 'notes') ? 'append' : 'replace';
+      // Extraction is additive; the owner approves and can prune — an upload never proposes destroying curated content.
+      const op = 'append';
       const { error: rpcError } = await svc.rpc('propose_memory_change', {
         p_account: accountId,
         p_field_key: fieldKey,

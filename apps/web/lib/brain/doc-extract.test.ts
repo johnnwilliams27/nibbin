@@ -1382,4 +1382,115 @@ describe('extractDocument — Task 5 state transitions', () => {
     const states = extractionStateWrites();
     expect(states).toContain('failed');
   });
+
+  // ── Task 4: extraction proposals are append-only ─────────────────────────
+
+  it('T4-1. text-native (txt) per-field path: ALL propose_memory_change calls use p_op=append', async () => {
+    // Task 4: extraction is additive; the owner approves and can prune —
+    // an upload never proposes destroying curated content.
+    // Text-native path (txt/docx/pdf text-layer) must also be append-only.
+    const plainText = 'We are a photography studio offering portrait, event, and wedding photography packages starting at $250 per hour for all occasions and events.';
+    mockStorageDownload.mockResolvedValue({
+      data: Buffer.from(plainText, 'utf8'),
+      error: null,
+    });
+    mockSelect.mockResolvedValue({
+      data: { origin: { filename: 'studio-info.txt', mime: 'text/plain' }, id: SOURCE_ID },
+      error: null,
+    });
+    mockApplyBattery.mockReturnValue({ text: plainText, rulesHit: [] });
+    mockHeuristicNerRedact.mockResolvedValue({ redacted: plainText, rulesHit: [] });
+    mockGroveRouterRoute.mockResolvedValue({ model: 'claude-haiku-4-5-20251001', tier: 't1', degraded: false });
+    // LLM returns multiple fields (pricing + facts) to verify both get append, not just notes
+    mockGenerateFn.mockResolvedValue({
+      text: JSON.stringify({ pricing: '$250/hr', facts: 'Photography studio', policies: 'No refunds' }),
+      model: 'claude-haiku-4-5-20251001',
+      usage: { inputTokens: 40, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 20 },
+      stopReason: 'end_turn',
+    });
+
+    await extractDocument(SOURCE_ID, ACCOUNT_ID);
+
+    expect(mockRpc).toHaveBeenCalled();
+    // ALL propose_memory_change calls must use p_op:'append' (not 'replace')
+    for (const call of mockRpc.mock.calls) {
+      if (call[0] === 'propose_memory_change') {
+        expect(call[1]).toMatchObject({ p_op: 'append' });
+      }
+    }
+    // Verify all three fields were proposed
+    const proposedFields = mockRpc.mock.calls
+      .filter((c) => c[0] === 'propose_memory_change')
+      .map((c) => (c[1] as Record<string, unknown>).p_field_key);
+    expect(proposedFields).toContain('pricing');
+    expect(proposedFields).toContain('facts');
+    expect(proposedFields).toContain('policies');
+  });
+
+  it('T4-2. docx per-field path: ALL propose_memory_change calls use p_op=append', async () => {
+    // Task 4: DOCX path must also be append-only.
+    const docxText = 'Business doc with facts and pricing info for test. Studio at downtown location.';
+    mockStorageDownload.mockResolvedValue({
+      data: Buffer.from('DOCX bytes'),
+      error: null,
+    });
+    mockSelect.mockResolvedValue({
+      data: {
+        origin: { filename: 'contract.docx', mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' },
+        id: SOURCE_ID,
+      },
+      error: null,
+    });
+    mockMammothExtract.mockResolvedValue({ value: docxText });
+    mockApplyBattery.mockReturnValue({ text: docxText, rulesHit: [] });
+    mockHeuristicNerRedact.mockResolvedValue({ redacted: docxText, rulesHit: [] });
+    mockGroveRouterRoute.mockResolvedValue({ model: 'claude-haiku-4-5-20251001', tier: 't1', degraded: false });
+    mockGenerateFn.mockResolvedValue({
+      text: JSON.stringify({ facts: 'Studio info', hard_rules: 'No changes after signing' }),
+      model: 'claude-haiku-4-5-20251001',
+      usage: { inputTokens: 30, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 20 },
+      stopReason: 'end_turn',
+    });
+
+    await extractDocument(SOURCE_ID, ACCOUNT_ID);
+
+    expect(mockRpc).toHaveBeenCalled();
+    for (const call of mockRpc.mock.calls) {
+      if (call[0] === 'propose_memory_change') {
+        expect(call[1]).toMatchObject({ p_op: 'append' });
+      }
+    }
+  });
+
+  it('T4-3. reference catch-all (notes) proposal uses p_op=append (pre-existing, regression guard)', async () => {
+    // Catch-all already used append; guard it against regression.
+    const longText = 'A'.repeat(6000);
+    setupCleanTextNativePdf({ rawText: longText, llmResponse: JSON.stringify({ facts: 'One field' }) });
+    mockPdfParse.mockResolvedValue({ text: longText, numpages: 2 });
+
+    let callCount = 0;
+    mockGenerateFn.mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) {
+        return Promise.resolve({
+          text: JSON.stringify({ facts: 'One field' }),
+          model: 'claude-haiku-4-5-20251001',
+          usage: { inputTokens: 300, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 40 },
+          stopReason: 'end_turn',
+        });
+      }
+      return Promise.resolve({
+        text: 'Summary of the document.',
+        model: 'claude-haiku-4-5-20251001',
+        usage: { inputTokens: 200, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 30 },
+        stopReason: 'end_turn',
+      });
+    });
+
+    await extractDocument(SOURCE_ID, ACCOUNT_ID);
+
+    const notesCalls = mockRpc.mock.calls.filter((c) => c[1]?.p_field_key === 'notes');
+    expect(notesCalls.length).toBeGreaterThan(0);
+    expect(notesCalls[0][1]).toMatchObject({ p_op: 'append' });
+  });
 });

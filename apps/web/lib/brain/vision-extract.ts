@@ -324,7 +324,8 @@ export async function extractFromImage(
     }
 
     // Build proposal
-    const op = fieldKey === 'notes' ? 'append' : 'replace';
+    // Extraction is additive; the owner approves and can prune — an upload never proposes destroying curated content.
+    const op = 'append';
     const rationale = buildRationale(filename, `contains your ${fieldKey.replace(/_/g, ' ')}`);
 
     // Submit via propose_memory_change RPC

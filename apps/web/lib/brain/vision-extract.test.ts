@@ -504,16 +504,52 @@ describe('extractFromImage', () => {
   // Test V7: SVG is phase2/unsupported — extractFromImage is NOT called for SVG
   //   (M3 fix: replaced tautological expect(true).toBe(true) with real assertion)
   // ──────────────────────────────────────────────────────────────────────────
-  it('V7. SVG is classified as phase2 by classifyExtractor and never reaches extractFromImage', async () => {
-    // SVG requires rasterization before it can be vision-processed. Since no rasterizer
-    // dependency is available in this package, SVG is classified as 'phase2' (unsupported)
-    // by classifyExtractor in doc-extract.ts. It never reaches extractFromImage.
-    //
-    // This test imports classifyExtractor directly to verify the classification.
+  it('V7. SVG is classified as svg by classifyExtractor (Task 3: real text extractor) and never reaches extractFromImage (dispatched to extractSvgText instead)', async () => {
+    // Task 3 promoted SVG to 'svg' (real text extractor). SVG is no longer 'phase2'.
+    // It goes through the text pipeline (extractSvgText) — not extractFromImage.
     // The actual enforcement (never calling extractFromImage for SVG) is in doc-extract.ts.
     const { classifyExtractor } = await import('./doc-extract');
-    expect(classifyExtractor('image/svg+xml', 'logo.svg')).toBe('phase2');
-    expect(classifyExtractor('', 'logo.svg')).toBe('phase2');
+    expect(classifyExtractor('image/svg+xml', 'logo.svg')).toBe('svg');
+    expect(classifyExtractor('', 'logo.svg')).toBe('svg');
+  });
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Task 4: Vision path proposals are append-only
+  // ──────────────────────────────────────────────────────────────────────────
+  it('T4-vision. extractFromImage: ALL propose_memory_change calls use p_op=append for every field (not replace)', async () => {
+    // Task 4: extraction is additive; the owner approves and can prune —
+    // an upload never proposes destroying curated content.
+    // The vision path must also be append-only for ALL fields, not just notes.
+    const buffer = Buffer.from('JPEG_FAKE_T4');
+    const mime = 'image/jpeg';
+    const llmReply = JSON.stringify({
+      pricing: '$150 per session',
+      facts: 'Downtown photography studio',
+      voice: 'Warm and professional',
+    });
+    const extractedText = 'Downtown photography studio pricing voice info';
+    setupCleanRedaction(extractedText);
+    // Per-field re-check: clean for all fields
+    mockApplyBattery.mockReturnValue({ text: extractedText, rulesHit: [] });
+
+    const mockRpcT4 = vi.fn().mockResolvedValue({ data: 'pid-t4', error: null });
+    const mockGenerate = makeMockGenerate(llmReply);
+
+    await extractFromImage(buffer, mime, mockGenerate, mockRpcT4, CTX);
+
+    expect(mockRpcT4).toHaveBeenCalled();
+    // ALL propose_memory_change calls must use p_op:'append' (not 'replace')
+    for (const call of mockRpcT4.mock.calls) {
+      expect(call[0]).toBe('propose_memory_change');
+      expect(call[1]).toMatchObject({ p_op: 'append' });
+    }
+    // Verify all three fields were proposed
+    const proposedFields = mockRpcT4.mock.calls.map(
+      (c) => (c[1] as Record<string, unknown>).p_field_key
+    );
+    expect(proposedFields).toContain('pricing');
+    expect(proposedFields).toContain('facts');
+    expect(proposedFields).toContain('voice');
   });
 });
 
