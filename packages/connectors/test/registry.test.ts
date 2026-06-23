@@ -8,9 +8,23 @@ import {
   listConnectors,
   getConnector,
 } from '../src/registry/registry';
-import { validateDescriptor, capabilityCanSend } from '../src/registry/types';
+import { validateDescriptor, capabilityCanSend, type ConnectorDescriptor } from '../src/registry/types';
 import { OAUTH_PROVIDERS } from '../src/oauth/providers';
 import { hostMatchesPattern } from '../src/egress/safe-fetch';
+
+const validNDescriptor: ConnectorDescriptor = {
+  id: 'test-nango',
+  label: 'Test Nango',
+  tier: 1,
+  method: 'N',
+  scopes: { read: ['some.scope'], write: [] },
+  webhooks: { supported: false },
+  rateLimit: { requests: 60, perSeconds: 60 },
+  scanModules: [],
+  capabilities: [],
+  egressAllowlist: ['api.example.com'],
+  availability: 'live',
+};
 
 const TIER1_CATALOG = [
   'gmail',
@@ -150,5 +164,17 @@ describe('connector registry (SPEC §4.3)', () => {
     const write = gmail.scopes.write;
     expect(write).toContain('https://www.googleapis.com/auth/gmail.compose');
     expect(write).toContain('https://www.googleapis.com/auth/gmail.send');
+  });
+
+  // Task 1 — ConnectorMethod 'N' support
+  it('accepts method N with a non-empty egress allowlist', () => {
+    expect(validateDescriptor(validNDescriptor)).toEqual([]);
+  });
+
+  it('rejects method N with empty egress allowlist', () => {
+    const d = { ...validNDescriptor, egressAllowlist: [] };
+    expect(validateDescriptor(d)).toEqual(
+      expect.arrayContaining([expect.stringContaining('egress allowlist')]),
+    );
   });
 });

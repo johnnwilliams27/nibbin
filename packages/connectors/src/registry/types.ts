@@ -7,7 +7,7 @@
  * (docs/RISKS.md §2) this package enforces.
  */
 
-export type ConnectorMethod = 'A' | 'H' | 'G';
+export type ConnectorMethod = 'A' | 'H' | 'G' | 'N';
 
 /** How an inbound webhook from this provider is authenticated (§6.5). */
 export type SignatureScheme =
@@ -111,7 +111,7 @@ export function validateDescriptor(d: ConnectorDescriptor): string[] {
 
   if (!KEBAB.test(d.id)) at('id must be kebab-case');
   if (!d.label.trim()) at('label required');
-  if (!['A', 'H', 'G'].includes(d.method)) at(`unknown method ${d.method}`);
+  if (!['A', 'H', 'G', 'N'].includes(d.method)) at(`unknown method ${d.method}`);
 
   // C8: the read/write split is structural. A scope may never be in both sets.
   const read = new Set(d.scopes.read);
@@ -134,7 +134,7 @@ export function validateDescriptor(d: ConnectorDescriptor): string[] {
     if (d.egressAllowlist.length > 0)
       at('generic rails must declare an empty egress allowlist (deny-by-default proxy only)');
   } else {
-    if (d.egressAllowlist.length === 0) at('A/H connectors must declare an egress allowlist');
+    if (d.egressAllowlist.length === 0) at('A/H/N connectors must declare an egress allowlist');
     for (const h of d.egressAllowlist) {
       if (!HOST_PATTERN.test(h)) at(`egress allowlist entry "${h}" is not a host pattern`);
     }
