@@ -3,7 +3,7 @@ import { appSession } from '../../../../lib/auth/app-session';
 import {
   parseSourcesParams,
   mapRowToSourceListItem,
-  groupToMimeFilter,
+  groupToMimePredicate,
   type SourceListItem,
 } from '../../../app/memory/sourcesQuery';
 
@@ -37,16 +37,25 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     query = query.ilike('title', '%' + escapedQ + '%');
   }
 
-  // Group filter — translate to mime_type patterns
+  // Group filter — translate to mime_type predicate
   if (params.group) {
-    const filters = groupToMimeFilter(params.group);
-    if (filters.length > 0) {
+    const predicate = groupToMimePredicate(params.group);
+    if (predicate.kind === 'in') {
       // Build an OR filter of ilike patterns over mime_type
-      const orClause = filters
-        .map((f) => `${f.column}.ilike.${f.pattern}`)
+      const orClause = predicate.patterns
+        .map((pat) => `mime_type.ilike.${pat}`)
         .join(',');
       query = query.or(orClause);
+    } else if (predicate.kind === 'notin') {
+      // 'other' group: exclude all known-group mimes via negated OR
+      // Supabase PostgREST: .not('mime_type', 'ilike', ...) for a single pattern,
+      // but for multiple we use .or() with not. syntax on each pattern.
+      const notOrClause = predicate.patterns
+        .map((pat) => `mime_type.not.ilike.${pat}`)
+        .join(',');
+      query = query.not('mime_type', 'or', notOrClause);
     }
+    // kind:'none' → no predicate applied
   }
 
   // Extraction state filter

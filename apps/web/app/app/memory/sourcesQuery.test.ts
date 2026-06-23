@@ -9,6 +9,7 @@ import {
   mimeToGroup,
   parseSourcesParams,
   mapRowToSourceListItem,
+  groupToMimePredicate,
 } from './sourcesQuery';
 
 // ---------------------------------------------------------------------------
@@ -203,5 +204,85 @@ describe('mapRowToSourceListItem', () => {
     const item = mapRowToSourceListItem(row);
     expect(item.mimeGroup).toBe('docs');
     expect(item.byteSize).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// groupToMimePredicate
+// ---------------------------------------------------------------------------
+
+describe('groupToMimePredicate', () => {
+  it("'images' → kind:'in' with image/* patterns", () => {
+    const p = groupToMimePredicate('images');
+    expect(p.kind).toBe('in');
+    expect(p.patterns.length).toBeGreaterThan(0);
+    // Every pattern for images must start with 'image/'
+    expect(p.patterns.every((pat) => pat.startsWith('image/'))).toBe(true);
+  });
+
+  it("'docs' → kind:'in' with pdf/plain/docx patterns", () => {
+    const p = groupToMimePredicate('docs');
+    expect(p.kind).toBe('in');
+    expect(p.patterns).toContain('application/pdf');
+    expect(p.patterns).toContain('text/plain');
+  });
+
+  it("'sheets' → kind:'in' with xlsx/csv/xls patterns", () => {
+    const p = groupToMimePredicate('sheets');
+    expect(p.kind).toBe('in');
+    expect(p.patterns).toContain('text/csv');
+  });
+
+  it("'slides' → kind:'in' with pptx patterns", () => {
+    const p = groupToMimePredicate('slides');
+    expect(p.kind).toBe('in');
+    expect(
+      p.patterns.some((pat) =>
+        pat.includes('presentationml'),
+      ),
+    ).toBe(true);
+  });
+
+  it("'web' → kind:'in' with text/html", () => {
+    const p = groupToMimePredicate('web');
+    expect(p.kind).toBe('in');
+    expect(p.patterns).toContain('text/html');
+  });
+
+  it("'other' → kind:'notin' with ALL known-group patterns listed", () => {
+    const p = groupToMimePredicate('other');
+    expect(p.kind).toBe('notin');
+    // Must include at least one pattern from each known group to exclude them
+    expect(p.patterns).toContain('application/pdf');         // docs
+    expect(p.patterns.some((pat) => pat.startsWith('image/'))).toBe(true); // images
+    expect(p.patterns).toContain('text/csv');                // sheets
+    expect(p.patterns.some((pat) => pat.includes('presentationml'))).toBe(true); // slides
+    expect(p.patterns).toContain('text/html');               // web
+  });
+
+  it("'other' excludes a known docs mime (application/pdf would NOT qualify as other)", () => {
+    const p = groupToMimePredicate('other');
+    expect(p.kind).toBe('notin');
+    // application/pdf is in the exclusion list → it is NOT 'other'
+    expect(p.patterns).toContain('application/pdf');
+  });
+
+  it("'other' leaves room for unknown mimes (application/x-thing is NOT in the exclusion list)", () => {
+    const p = groupToMimePredicate('other');
+    expect(p.kind).toBe('notin');
+    // An unknown mime should NOT appear in the notin list
+    expect(p.patterns).not.toContain('application/x-thing');
+  });
+
+  it('undefined group → kind:none, empty patterns', () => {
+    const p = groupToMimePredicate(undefined);
+    expect(p.kind).toBe('none');
+    expect(p.patterns).toHaveLength(0);
+  });
+
+  it('null group → kind:none, empty patterns', () => {
+    const p = groupToMimePredicate(null);
+    expect(p.kind).toBe('none');
+    expect(p.patterns).toHaveLength(0);
   });
 });

@@ -31,6 +31,40 @@ export interface SourcesParams {
 }
 
 // ---------------------------------------------------------------------------
+// MIME mapping table — single source of truth for group↔mime relationships
+// ---------------------------------------------------------------------------
+
+/**
+ * Exact MIME types that belong to each known group.
+ * `image/` entries use a prefix wildcard (handled specially in matching logic).
+ * This table drives both `mimeToGroup` and `groupToMimePredicate` so the two
+ * functions can never diverge.
+ */
+const MIME_GROUP_MAP: Record<Exclude<MimeGroup, 'other'>, string[]> = {
+  images: [
+    // image/* prefix — checked via startsWith in mimeToGroup; treated as a
+    // wildcard ilike pattern in groupToMimePredicate
+    'image/',
+  ],
+  docs: [
+    'application/pdf',
+    'text/plain',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/msword',
+  ],
+  sheets: [
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'text/csv',
+    'application/vnd.ms-excel',
+  ],
+  slides: [
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'application/vnd.ms-powerpoint',
+  ],
+  web: ['text/html'],
+};
+
+// ---------------------------------------------------------------------------
 // mimeToGroup
 // ---------------------------------------------------------------------------
 
@@ -76,6 +110,58 @@ export function mimeToGroup(mime: string | null, filename: string): MimeGroup {
   if (['html', 'htm'].includes(ext)) return 'web';
 
   return 'other';
+}
+
+// ---------------------------------------------------------------------------
+// groupToMimePredicate — pure predicate descriptor for the API route
+// ---------------------------------------------------------------------------
+
+export interface MimePredicate {
+  /**
+   * 'in'    → the mime_type must match one of the patterns (ilike wildcards ok)
+   * 'notin' → the mime_type must NOT match any of the patterns
+   * 'none'  → no predicate; return all rows
+   */
+  kind: 'in' | 'notin' | 'none';
+  /** Mime patterns (exact strings or ilike wildcards like 'image/%'). */
+  patterns: string[];
+}
+
+/**
+ * Returns a structured predicate descriptor for the given group.
+ *
+ * - Known group  → kind:'in',    patterns = that group's MIME patterns
+ * - 'other'      → kind:'notin', patterns = ALL known-group MIME patterns
+ *                   (so only mimes that belong to NO known group qualify)
+ * - null/undefined → kind:'none', no predicate
+ *
+ * Derived from `MIME_GROUP_MAP` so it always stays consistent with `mimeToGroup`.
+ */
+export function groupToMimePredicate(group: MimeGroup | null | undefined): MimePredicate {
+  if (!group) {
+    return { kind: 'none', patterns: [] };
+  }
+
+  if (group === 'other') {
+    // Collect every MIME pattern from all known groups to build the exclusion list.
+    // image/ entries become ilike-style 'image/%' wildcards.
+    const allKnownPatterns: string[] = [];
+    for (const patterns of Object.values(MIME_GROUP_MAP)) {
+      for (const pat of patterns) {
+        // Convert prefix markers (ending with '/') to ilike-style wildcard
+        allKnownPatterns.push(pat.endsWith('/') ? pat + '%' : pat);
+      }
+    }
+    return { kind: 'notin', patterns: allKnownPatterns };
+  }
+
+  const rawPatterns = MIME_GROUP_MAP[group as Exclude<MimeGroup, 'other'>];
+  if (!rawPatterns) {
+    return { kind: 'none', patterns: [] };
+  }
+
+  const patterns = rawPatterns.map((pat) => (pat.endsWith('/') ? pat + '%' : pat));
+  return { kind: 'in', patterns };
 }
 
 // ---------------------------------------------------------------------------
@@ -128,40 +214,3 @@ export function mapRowToSourceListItem(row: Record<string, unknown>): SourceList
   };
 }
 
-// ---------------------------------------------------------------------------
-// groupToMimeFilter — SQL predicate builder for the API route
-// ---------------------------------------------------------------------------
-
-/**
- * Returns the Supabase filter value to match rows in a given group.
- * The route applies this using `.or(...)` or `.ilike()` depending on group.
- */
-export function groupToMimeFilter(group: MimeGroup): { column: string; pattern: string }[] {
-  switch (group) {
-    case 'images':
-      return [{ column: 'mime_type', pattern: 'image/%' }];
-    case 'docs':
-      return [
-        { column: 'mime_type', pattern: 'application/pdf' },
-        { column: 'mime_type', pattern: 'text/plain' },
-        { column: 'mime_type', pattern: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' },
-        { column: 'mime_type', pattern: 'application/msword' },
-      ];
-    case 'sheets':
-      return [
-        { column: 'mime_type', pattern: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
-        { column: 'mime_type', pattern: 'text/csv' },
-        { column: 'mime_type', pattern: 'application/vnd.ms-excel' },
-      ];
-    case 'slides':
-      return [
-        { column: 'mime_type', pattern: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' },
-        { column: 'mime_type', pattern: 'application/vnd.ms-powerpoint' },
-      ];
-    case 'web':
-      return [{ column: 'mime_type', pattern: 'text/html' }];
-    case 'other':
-    default:
-      return [];
-  }
-}

@@ -52,6 +52,7 @@ function makeChain(rows: unknown[] = [], total = 0): Record<string, unknown> {
   chain.eq = makeMethod('eq');
   chain.ilike = makeMethod('ilike');
   chain.or = makeMethod('or');
+  chain.not = makeMethod('not');
   chain.order = makeMethod('order');
   chain.range = makeMethod('range');
 
@@ -221,6 +222,51 @@ describe('GET /api/brain/sources', () => {
 
     expect(orderArgs[0]).toBe('title');
     expect((orderArgs[1] as Record<string, unknown>).ascending).toBe(true);
+  });
+
+  it("group='other' applies a NOT exclusion predicate (not a pass-through)", async () => {
+    const { appSession } = await import('../../../../lib/auth/app-session');
+    (appSession as ReturnType<typeof vi.fn>).mockImplementationOnce(async () => ({
+      supabase: supabaseStub,
+      accountId: 'acct-test-1',
+      user: { id: 'user-1' },
+    }));
+
+    const notCalls: Array<unknown[]> = [];
+    const orCalls: Array<unknown[]> = [];
+    const chain = makeChain([], 0);
+    const originalNot = chain.not as (...args: unknown[]) => unknown;
+    chain.not = (...args: unknown[]) => {
+      notCalls.push(args);
+      return originalNot?.(...args) ?? chain;
+    };
+    const originalOr = chain.or as (...args: unknown[]) => unknown;
+    chain.or = (...args: unknown[]) => {
+      orCalls.push(args);
+      return originalOr?.(...args) ?? chain;
+    };
+    supabaseStub.from.mockReturnValueOnce(chain as ReturnType<typeof makeChain>);
+
+    const { GET } = await import('./route');
+    await GET(makeReq({ group: 'other' }));
+
+    // For group='other', the route must apply a NOT/exclusion predicate,
+    // NOT a pass-through (i.e. either .not() is called, or .or() is NOT called
+    // without the exclusion — the key invariant: known mimes like 'application/pdf'
+    // must be excluded, not freely returned).
+    //
+    // Either .not() was called (exclusion via not), OR .or() was called with a
+    // negating clause. At minimum, the route must NOT have left group='other'
+    // as a no-op pass-through (filters.length === 0 path).
+    //
+    // We assert that a NOT-style call was made with mime_type content:
+    const notApplied = notCalls.some(
+      (args) => typeof args[0] === 'string' && args[0] === 'mime_type',
+    );
+    const orAppliedWithNegation = orCalls.some(
+      (args) => typeof args[0] === 'string' && String(args[0]).includes('not.'),
+    );
+    expect(notApplied || orAppliedWithNegation).toBe(true);
   });
 
   it('escapes % in q before passing to ilike so it is treated as a literal substring', async () => {
