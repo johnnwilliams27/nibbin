@@ -203,3 +203,105 @@
 .primary:hover {
   background: var(--moss-deep);
 }
+
+/* ── Task 6: FieldView — formatted read-only display ────────────────────── */
+
+/* Container wrapping the formatted content (used by FieldBlock in Task 8) */
+.fieldView {
+  /* No padding here — FieldBlock owns the field padding */
+}
+
+/* ── list kind ────────────────────────────────────────────────────────────── */
+.list {
+  margin: 0;
+  padding: 0 0 0 18px;
+  list-style: disc;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink);
+}
+.listItem {
+  padding: 1px 0;
+}
+/* Blank-line separator between list groups */
+.listSep {
+  list-style: none;
+  height: 8px;
+  padding: 0;
+  margin: 0;
+}
+
+/* ── dl kind (definition list for facts) ─────────────────────────────────── */
+.dl {
+  margin: 0;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+}
+.dlRow {
+  display: contents;
+}
+.dlSep {
+  height: 8px;
+}
+.dt {
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0;
+  padding: 2px 0 0;
+  font-size: 13px;
+}
+.dd {
+  margin: 0 0 6px;
+  padding: 0;
+  color: var(--ink-soft);
+}
+
+/* ── quote kind (voice & tone) ───────────────────────────────────────────── */
+.quote {
+  margin: 0;
+  padding: 10px 14px;
+  border-left: 3px solid var(--moss);
+  background: var(--understory);
+  border-radius: 0 var(--r-input) var(--r-input) 0;
+  font-size: 14px;
+  font-style: italic;
+  line-height: 1.65;
+  color: var(--ink);
+}
+.quote p {
+  margin: 0;
+}
+
+/* ── paragraphs kind (notes) ─────────────────────────────────────────────── */
+.paragraphs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.para {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--ink);
+}
+
+/* ── price number (tabular-nums emphasis) ────────────────────────────────── */
+.num {
+  font-variant-numeric: tabular-nums lining-nums;
+  font-family: var(--mono);
+  font-size: 0.9em;
+  color: var(--ink);
+}
+
+/* ── empty / placeholder state ───────────────────────────────────────────── */
+.placeholder {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink-faint);
+  font-style: italic;
+}
