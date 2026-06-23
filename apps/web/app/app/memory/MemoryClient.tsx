@@ -1,6 +1,6 @@
 'use client';
 /**
- * Task 11 — MemoryClient.tsx
+ * Task 11 — MemoryClient.tsx (updated Task 6: dynamic registry + section controls)
  *
  * The top-level client shell for the Memory page.
  *
@@ -9,31 +9,33 @@
  *  - The per-field values mirror (Option A — full mirror, one key replaced per save)
  *  - Wires per-field saves through saveGroveMemory (full mirror → RPC)
  *  - Wires Reference saves through saveReference
+ *  - Task 6: sectionControlsReducer state + intent dispatch (add/move/remove sections)
  *
  * Architecture (spec §5.4, §12):
  *  - MemoryClient renders TabBar + the active tab panel
  *  - Grove Memory tab: GroveMemoryTab (FramingStrip + MemorySections + EmptyState)
  *  - Sources tab: stub for Task 13 (ReferenceCatchAll + EvidenceList)
  *
- * Save path for curated fields:
- *   FieldBlock.onSave(fieldKey, value)
- *   → MemoryClient.handleSave(fieldKey, value)
- *   → mergeMirror(values, fieldKey, value) [Option A: immutable replace]
- *   → FormData with full mirror
- *   → saveGroveMemory(formData) [server action, unchanged RPC]
- *
- * The Sources tab save path is deferred to Task 13.
- *
- * No `<form action=…>` in the server tree — the server page renders <MemoryClient>
- * and the client manages all saves from here.
+ * Task 6 additions:
+ *  - Accepts optional `metaRows` prop (field_meta rows from page.tsx)
+ *  - Builds dynamic section registry via buildSectionRegistry(metaRows)
+ *  - Owns sectionControlsReducer state
+ *  - Handles section intents: upsert_hide/upsert_new/upsert_pair → saveSectionMeta;
+ *    delete → deleteSection
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useReducer } from 'react';
 import { TabBar, PANEL_IDS, TAB_IDS } from './TabBar';
 import { GroveMemoryTab } from './GroveMemoryTab';
 import { SourcesTab } from './SourcesTab';
 import { mergeMirror } from './fields';
-import { saveGroveMemory, saveReference } from './actions';
+import { saveGroveMemory, saveReference, saveSectionMeta, deleteSection } from './actions';
+import { buildSectionRegistry, type FieldMetaRow } from './registry';
+import {
+  sectionControlsReducer,
+  initialSectionControlsState,
+  type SectionControlsIntent,
+} from './sectionControls.reducer';
 import type { TabKey } from './tabBar.logic';
 import type { FieldMeta } from './provenance';
 import styles from './memory.module.css';
@@ -63,6 +65,14 @@ export interface MemoryClientProps {
    * When undefined (pre-F1 or try/catch silent fail), all provenance slots stay empty.
    */
   fieldMeta?: Record<string, FieldMeta>;
+  /**
+   * Task 6: field_meta rows from the database (includes new columns:
+   * label, sort_order, is_custom, is_hidden). When provided, the dynamic
+   * registry is built from these rows and passed to GroveMemoryTab.
+   * When absent (pre-migration or fetch error), the static legacy rendering
+   * is used (backward compat).
+   */
+  metaRows?: FieldMetaRow[];
 }
 
 // ---------------------------------------------------------------------------
@@ -74,6 +84,7 @@ export function MemoryClient({
   initialReference,
   isEmpty,
   fieldMeta,
+  metaRows,
 }: MemoryClientProps): React.ReactElement {
   // ---------------------------------------------------------------------------
   // State
@@ -83,6 +94,18 @@ export function MemoryClient({
   const [values, setValues] = useState<Record<string, string>>(initialValues);
   // Task 13: promoted from useRef to useState so ReferenceCatchAll can consume it.
   const [referenceValue, setReferenceValue] = useState(initialReference);
+
+  // Task 6: dynamic section registry built from metaRows (or empty → no registry)
+  const registry = metaRows && metaRows.length > 0
+    ? buildSectionRegistry(metaRows)
+    : undefined;
+
+  // Task 6: section controls state machine
+  const [sectionControlsState, sectionControlsDispatch] = useReducer(
+    sectionControlsReducer,
+    registry ?? [],
+    initialSectionControlsState,
+  );
 
   // ---------------------------------------------------------------------------
   // Save handlers
@@ -135,6 +158,57 @@ export function MemoryClient({
       throw new Error(result.error);
     }
   }, [referenceValue]);
+
+  /**
+   * Task 6: Handle a pending section intent (from sectionControlsReducer).
+   * Submits the intent to the appropriate server action, then clears it.
+   *
+   * Intent types:
+   *   upsert_hide  → saveSectionMeta({ field_key, is_hidden: true })
+   *   upsert_new   → saveSectionMeta({ label, is_custom: true, sort_order })
+   *   upsert_pair  → saveSectionMeta twice (one per swapped section)
+   *   delete       → deleteSection({ field_key })
+   */
+  const handleSectionIntent = useCallback(async (intent: SectionControlsIntent) => {
+    try {
+      if (intent.type === 'delete') {
+        const fd = new FormData();
+        fd.set('field_key', intent.key);
+        await deleteSection(fd);
+      } else if (intent.type === 'upsert_hide') {
+        const fd = new FormData();
+        fd.set('field_key', intent.key);
+        fd.set('is_hidden', 'true');
+        fd.set('is_custom', 'false');
+        fd.set('sort_order', '1000');
+        await saveSectionMeta(fd);
+      } else if (intent.type === 'upsert_new') {
+        const fd = new FormData();
+        fd.set('label', intent.label);
+        fd.set('is_custom', 'true');
+        fd.set('is_hidden', 'false');
+        fd.set('sort_order', String(intent.sortOrder));
+        await saveSectionMeta(fd);
+      } else if (intent.type === 'upsert_pair') {
+        // Submit both swapped sections
+        await Promise.all(
+          intent.pairs.map((pair) => {
+            const fd = new FormData();
+            fd.set('field_key', pair.key);
+            fd.set('sort_order', String(pair.sortOrder));
+            fd.set('is_custom', pair.isCustom ? 'true' : 'false');
+            fd.set('is_hidden', 'false');
+            return saveSectionMeta(fd);
+          }),
+        );
+      }
+    } catch {
+      // Non-fatal: intent submission errors are swallowed silently for now.
+      // Task 10 (polish pass) can add inline error feedback.
+    } finally {
+      sectionControlsDispatch({ type: 'CLEAR_INTENT' });
+    }
+  }, [sectionControlsDispatch]);
 
   // ---------------------------------------------------------------------------
   // EmptyState chip click — open the named field in edit mode
@@ -200,6 +274,10 @@ export function MemoryClient({
           onSave={handleSave}
           onChipClick={handleChipClick}
           fieldMeta={fieldMeta}
+          registry={registry}
+          sectionControlsState={sectionControlsState}
+          sectionControlsDispatch={sectionControlsDispatch}
+          onSectionIntent={handleSectionIntent}
         />
       </div>
 

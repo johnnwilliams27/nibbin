@@ -1065,6 +1065,131 @@
   transition: max-height var(--dur-3, 240ms) var(--ease-settle);
 }
 
+/* ── Task 6: Section controls — add/rename/reorder/remove ───────────────── */
+
+/* Row holding the "+ Add a section" button (appears below section fields) */
+.addSectionRow {
+  display: flex;
+  padding: 10px 0 2px;
+}
+
+/* The "+ Add a section" affordance button — subdued tertiary style */
+.addSectionBtn {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border: 1px dashed var(--line);
+  border-radius: var(--r-button);
+  background: transparent;
+  color: var(--moss-deep);
+  cursor: pointer;
+  transition: background-color var(--dur-1) var(--ease-settle),
+              border-color var(--dur-1) var(--ease-settle);
+}
+.addSectionBtn:hover {
+  background: var(--understory);
+  border-color: var(--moss);
+  color: var(--ink);
+}
+
+/* The inline "add section" form shown when mode='adding' */
+.addSectionForm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 0 4px;
+}
+
+/* Label input in the add-section form */
+.addSectionInput {
+  font: inherit;
+  font-size: 14px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-input);
+  background: var(--paper);
+  color: var(--ink);
+  transition: border-color var(--dur-1) var(--ease-settle);
+}
+.addSectionInput:focus {
+  outline: none;
+  border-color: var(--moss);
+  background: var(--canopy);
+}
+
+/* Validation error in the add form */
+.addSectionError {
+  margin: 0;
+  font-size: 13px;
+  color: var(--coral-deep);
+  background: var(--coral-tint);
+  border: 1px solid var(--coral-line);
+  border-radius: var(--r-input);
+  padding: 6px 10px;
+  line-height: 1.4;
+}
+
+/* Action row: Add + Cancel buttons in the form */
+.addSectionActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Per-section controls row: move-up / move-down / remove */
+.sectionActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0 2px;
+}
+
+/* Move-up / move-down buttons — small ghost style */
+.sectionMoveBtn {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-button);
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: background-color var(--dur-1) var(--ease-settle),
+              border-color var(--dur-1) var(--ease-settle);
+  white-space: nowrap;
+}
+.sectionMoveBtn:hover:not(:disabled) {
+  background: var(--understory);
+  border-color: var(--moss);
+  color: var(--ink);
+}
+.sectionMoveBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Remove / Hide button — subdued coral, tertiary link style */
+.sectionRemoveBtn {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border: none;
+  background: transparent;
+  color: var(--coral-deep);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color var(--dur-1) var(--ease-settle);
+  margin-left: auto;
+  white-space: nowrap;
+}
+.sectionRemoveBtn:hover {
+  color: var(--coral);
+}
+
 /* ── Task 13: EvidenceList — gated F1 evidence store ────────────────────── */
 
 /* Graceful empty banner — understory bg, no spinner */
