@@ -212,3 +212,72 @@ begin
 end; $$;
 revoke execute on function public.propose_memory_change(uuid, text, text, text, text, uuid, text) from public, anon, authenticated;
 grant execute on function public.propose_memory_change(uuid, text, text, text, text, uuid, text) to service_role;
+
+-- F2: the human ratification gate. The ONLY new curated-write path; always logged.
+-- audit_log.action has no CHECK constraint (verified against M1 migration), so
+-- 'memory.ratified' is accepted without any constraint extension.
+create function public.decide_memory_proposal(p_proposal_id uuid, p_decision text)
+returns void language plpgsql security definer set search_path = '' as $$
+declare
+  uid uuid := (select auth.uid());
+  p public.proposals%rowtype;
+  cur_sections jsonb; cur_rules jsonb; cur_notes text; new_version integer;
+  old_val text; new_val text;
+begin
+  if uid is null then raise exception 'not authenticated'; end if;
+  if p_decision not in ('approved','rejected') then raise exception 'decision must be approved or rejected'; end if;
+  select * into p from public.proposals where id = p_proposal_id;
+  if not found then raise exception 'proposal not found'; end if;
+  if not (select private.is_account_member(p.account_id)) then raise exception 'not a member of this account'; end if;
+  if p.status <> 'pending' then raise exception 'proposal already decided'; end if;
+
+  perform pg_advisory_xact_lock(hashtext('grove_memory:' || p.account_id::text));
+
+  if p_decision = 'approved' then
+    insert into public.grove_memory (account_id, sections, hard_rules, notes) values (p.account_id, '{}'::jsonb, '[]'::jsonb, null)
+      on conflict (account_id) do nothing;
+    select sections, hard_rules, notes into cur_sections, cur_rules, cur_notes from public.grove_memory where account_id = p.account_id;
+
+    if p.field_key = 'notes' then
+      old_val := cur_notes;
+      new_val := case when p.op='append' and old_val is not null then old_val || E'\n' || p.proposed_value else p.proposed_value end;
+      update public.grove_memory set notes = new_val, version = version + 1, updated_at = now()
+        where account_id = p.account_id returning version into new_version;
+    elsif p.field_key = 'hard_rules' then
+      old_val := array_to_string(array(select jsonb_array_elements_text(coalesce(cur_rules,'[]'::jsonb))), E'\n');
+      new_val := case when p.op='append' and nullif(old_val,'') is not null then old_val || E'\n' || p.proposed_value else p.proposed_value end;
+      update public.grove_memory
+        set hard_rules = to_jsonb(string_to_array(new_val, E'\n')), version = version + 1, updated_at = now()
+        where account_id = p.account_id returning version into new_version;
+    else
+      old_val := cur_sections->>p.field_key;
+      new_val := case when p.op='append' and old_val is not null then old_val || E'\n' || p.proposed_value else p.proposed_value end;
+      update public.grove_memory
+        set sections = jsonb_set(coalesce(sections,'{}'::jsonb), array[p.field_key], to_jsonb(new_val), true),
+            version = version + 1, updated_at = now()
+        where account_id = p.account_id returning version into new_version;
+    end if;
+
+    insert into public.grove_memory_history (account_id, field_key, old_value, new_value, version, change_source, proposal_id, changed_by)
+      values (p.account_id, p.field_key, old_val, new_val, new_version,
+              case when p.origin='conflict' then 'conflict' else 'proposal' end, p.id, uid);
+    insert into public.field_meta (account_id, field_key, last_reviewed_at) values (p.account_id, p.field_key, now())
+      on conflict (account_id, field_key) do update set last_reviewed_at = now();
+    if p.source_id is not null then
+      insert into public.field_evidence (account_id, field_key, source_id, relationship)
+        values (p.account_id, p.field_key, p.source_id, 'supports')
+        on conflict (account_id, field_key, source_id) do nothing;
+    end if;
+  end if;
+
+  -- log the ratification (Trust Ledger substrate) for BOTH approve and reject
+  insert into public.audit_log (account_id, actor, actor_id, action, subject, meta)
+    values (p.account_id, 'user', uid::text, 'memory.ratified', p.field_key,
+            jsonb_build_object('proposal_id', p.id, 'decision', p_decision, 'source_id', p.source_id, 'origin', p.origin));
+
+  update public.proposals set status = p_decision, decided_at = now(), decided_by = uid where id = p.id;
+  update public.notifications set read_at = now()
+    where account_id = p.account_id and kind = 'review_item' and source_id = p.id::text and read_at is null;
+end; $$;
+revoke execute on function public.decide_memory_proposal(uuid, text) from public, anon, service_role;
+grant execute on function public.decide_memory_proposal(uuid, text) to authenticated;

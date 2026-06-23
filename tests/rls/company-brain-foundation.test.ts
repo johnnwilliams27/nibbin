@@ -141,3 +141,64 @@ describe.skipIf(!dbAvailable)('F2 — propose_memory_change + review_item notifi
     expect(rows).toEqual([{ status: 'pending', field_key: 'pricing' }]);
   });
 });
+
+describe.skipIf(!dbAvailable)('F2 — decide_memory_proposal apply-on-approve', () => {
+  const h = new RlsHarness();
+  let acct = ''; let otherAcct = '';
+  const UID = 'e5555555-7777-4777-8777-777777777777';
+  const OTHER = 'f6666666-7777-4777-8777-777777777777';
+  const asU = { kind: 'authenticated', uid: UID } as const;
+  const asOther = { kind: 'authenticated', uid: OTHER } as const;
+  const service = { kind: 'service_role' } as const;
+  beforeAll(async () => {
+    await h.reset();
+    await h.sql(`insert into auth.users (id,email) values ($1,'e@ex.test'),($2,'f@ex.test')`, [UID, OTHER]);
+    for (const [who, uid] of [[asU, UID], [asOther, OTHER]] as const) {
+      await h.as(who, async (c) => { await c.query(`insert into public.users (id,email) values ($1,$2)`, [uid, `${uid}@ex.test`]); });
+    }
+    acct = await h.as(asU, async (c) => (await c.query(`select public.create_account_with_owner('E') as id`)).rows[0].id);
+    otherAcct = await h.as(asOther, async (c) => (await c.query(`select public.create_account_with_owner('F') as id`)).rows[0].id);
+  });
+  afterAll(async () => { await h.close(); });
+
+  async function propose(src: string | null = null) {
+    return h.as(service, async (c) =>
+      (await c.query(`select public.propose_memory_change($1,'pricing','replace','$300','from rate sheet',$2,'doc_extract') as id`, [acct, src])).rows[0].id);
+  }
+
+  it('approving writes the curated value via a logged decision (history + evidence + audit + notification resolved)', async () => {
+    const srcId = await h.as(service, async (c) =>
+      (await c.query(`insert into public.sources (account_id, kind, title) values ($1,'document','Rate sheet') returning id`, [acct])).rows[0].id);
+    const pid = await propose(srcId);
+    await h.as(asU, async (c) => { await c.query(`select public.decide_memory_proposal($1,'approved')`, [pid]); });
+
+    const mem = await h.as(asU, async (c) => (await c.query(`select sections->>'pricing' as p from public.grove_memory where account_id=$1`, [acct])).rows[0].p);
+    expect(mem).toBe('$300');
+    const hist = await h.as(asU, async (c) => (await c.query(`select change_source, new_value from public.grove_memory_history where account_id=$1 and field_key='pricing'`, [acct])).rows);
+    expect(hist).toEqual([{ change_source: 'proposal', new_value: '$300' }]);
+    const link = await h.as(asU, async (c) => (await c.query(`select source_id from public.field_evidence where account_id=$1 and field_key='pricing'`, [acct])).rows[0].source_id);
+    expect(link).toBe(srcId);
+    const audit = await h.as(asU, async (c) => (await c.query(`select count(*)::int n from public.audit_log where account_id=$1 and action='memory.ratified'`, [acct])).rows[0].n);
+    expect(audit).toBe(1);
+    const status = await h.as(asU, async (c) => (await c.query(`select status from public.proposals where id=$1`, [pid])).rows[0].status);
+    expect(status).toBe('approved');
+    const openNote = await h.as(asU, async (c) => (await c.query(`select read_at from public.notifications where account_id=$1 and kind='review_item' and source_id=$2`, [acct, pid])).rows[0].read_at);
+    expect(openNote).not.toBeNull();
+  });
+
+  it('rejecting writes nothing to the curated layer', async () => {
+    const pid = await propose();
+    await h.as(asU, async (c) => { await c.query(`select public.decide_memory_proposal($1,'rejected')`, [pid]); });
+    const status = await h.as(asU, async (c) => (await c.query(`select status from public.proposals where id=$1`, [pid])).rows[0].status);
+    expect(status).toBe('rejected');
+    const histN = await h.as(asU, async (c) => (await c.query(`select count(*)::int n from public.grove_memory_history where account_id=$1 and change_source='proposal'`, [acct])).rows[0].n);
+    expect(histN).toBe(1); // only the approved one from the prior test's account is separate; this account: still just the approve above
+  });
+
+  it('a non-member cannot decide another account\'s proposal', async () => {
+    const pid = await propose();
+    await expect(
+      h.as(asOther, (c) => c.query(`select public.decide_memory_proposal($1,'approved')`, [pid])),
+    ).rejects.toThrow(/not a member|not found/);
+  });
+});
