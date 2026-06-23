@@ -22,24 +22,43 @@ import { buildStoragePath } from '../../../../../lib/brain/storage-path';
 /** 20 MB cap enforced before Storage PUT. */
 const MAX_SIZE_BYTES = 20 * 1024 * 1024;
 
-/**
- * Accepted MIME types for document uploads.
- *
- * Image MIMEs (image/jpeg, image/png, image/webp, image/heic) are intentionally
- * excluded. The vision extraction path is a stub — the router's Generate type
- * is text-only and cannot pass real image content blocks, so the model would
- * receive base64 text and could hallucinate proposals. Images are rejected here
- * with a 422 unsupported-type until a proper multimodal router extension lands.
- * TODO: re-add image MIMEs when @nibbin/router supports image content blocks.
- */
-const ACCEPTED_MIMES = new Set<string>([
-  'application/pdf',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
-  'text/plain',
-]);
-
 /** Legacy Word format — reject with a save-as nudge. */
 const DOC_MIME = 'application/msword';
+
+/**
+ * Classify a MIME type for extraction routing.
+ *
+ * - 'extractable'  → store + enqueue extraction job (extraction_state='pending')
+ * - 'unsupported'  → store only, no job (extraction_state='unsupported')
+ *
+ * Phase 2 types (pptx, xlsx) are unsupported for now; they will be handled
+ * when a structured parser is added. Everything else (unknown types) is also
+ * stored as unsupported — store-never-drop.
+ */
+type ExtractionClass = 'extractable' | 'unsupported';
+
+function classifyMime(mime: string): ExtractionClass {
+  // text-native
+  if (
+    mime === 'text/plain' ||
+    mime === 'text/markdown' ||
+    mime === 'text/csv' ||
+    mime === 'text/html'
+  ) return 'extractable';
+
+  // PDF
+  if (mime === 'application/pdf') return 'extractable';
+
+  // docx
+  if (mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') return 'extractable';
+
+  // images (vision extraction path)
+  if (mime.startsWith('image/')) return 'extractable';
+
+  // Phase 2 unsupported: pptx + xlsx — stored but not extracted yet
+  // Everything else is also stored as unsupported (store-never-drop)
+  return 'unsupported';
+}
 
 export async function POST(req: Request): Promise<Response> {
   // 1. Authenticate
@@ -64,7 +83,7 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ error: 'bad_request', message: 'Missing file field.' }, { status: 400 });
   }
 
-  // 3a. Validate MIME: .doc → nudge, other bad types → generic error
+  // 3a. Validate MIME: .doc → nudge (save-as required; we cannot process these)
   if (file.type === DOC_MIME) {
     return Response.json(
       {
@@ -86,15 +105,9 @@ export async function POST(req: Request): Promise<Response> {
     );
   }
 
-  if (!ACCEPTED_MIMES.has(file.type)) {
-    return Response.json(
-      {
-        error: 'unsupported_type',
-        message: 'Nibbin can read PDFs, Word docs (.docx), plain text, and images. Try a different file.',
-      },
-      { status: 422 },
-    );
-  }
+  // All other MIME types are accepted (store-never-drop). Unsupported types
+  // are stored with extraction_state='unsupported' and never enqueued.
+  const extractionClass = classifyMime(file.type);
 
   // 3b. Validate size — enforce BEFORE Storage PUT
   if (file.size > MAX_SIZE_BYTES) {
@@ -144,6 +157,10 @@ export async function POST(req: Request): Promise<Response> {
       },
       source_tier: 60,
       redaction_status: 'pending',
+      // Task 4: new columns added by P1 branch migration
+      mime_type: file.type,
+      byte_size: file.size,
+      extraction_state: extractionClass === 'extractable' ? 'pending' : 'unsupported',
     })
     .select()
     .single();
@@ -155,23 +172,27 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ error: 'store_failed', message: 'Failed to register document. Please try again.' }, { status: 502 });
   }
 
-  // 8. Enqueue source_extraction_jobs row
-  const { error: jobError } = await svc.from('source_extraction_jobs').insert({
-    account_id: accountId,
-    source_id: sourceId,
-    status: 'pending',
-  });
+  // 8. Enqueue source_extraction_jobs row (only for extractable types)
+  if (extractionClass === 'extractable') {
+    const { error: jobError } = await svc.from('source_extraction_jobs').insert({
+      account_id: accountId,
+      source_id: sourceId,
+      status: 'pending',
+    });
 
-  if (jobError) {
-    console.error('[upload] source_extraction_jobs insert failed', jobError.message);
-    // Non-fatal: the file + sources row exist; the worker can be triggered separately
+    if (jobError) {
+      console.error('[upload] source_extraction_jobs insert failed', jobError.message);
+      // Non-fatal: the file + sources row exist; the worker can be triggered separately
+    }
+
+    // 9. Fire-and-forget: kick the extraction worker
+    // The job row tracks status; the status-poll route reflects it.
+    // If the function is killed before extraction completes, the job stays 'pending'
+    // and the 90-second poll timeout shows the user a "check back" message.
+    void extractDocument(sourceId, accountId);
   }
-
-  // 9. Fire-and-forget: kick the extraction worker
-  // The job row tracks status; the status-poll route reflects it.
-  // If the function is killed before extraction completes, the job stays 'pending'
-  // and the 90-second poll timeout shows the user a "check back" message.
-  void extractDocument(sourceId, accountId);
+  // For unsupported types: file is stored + sources row created with
+  // extraction_state='unsupported'. No job enqueued; retained + searchable by name.
 
   // 10. Return 202 immediately
   return Response.json({ sourceId }, { status: 202 });

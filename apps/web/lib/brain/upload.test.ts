@@ -217,7 +217,8 @@ describe('POST /api/brain/documents/upload', () => {
     expect(mockStorageUpload).not.toHaveBeenCalled();
   });
 
-  it('3. .xlsx file → 422 with unsupported_type error', async () => {
+  it('3. .xlsx file → 202 accepted, stored with extraction_state=unsupported, job NOT enqueued', async () => {
+    // Task 4: store-never-drop. xlsx is phase2_unsupported — stored but not enqueued.
     mockAuthed();
 
     const req = makeUploadRequest({
@@ -227,13 +228,21 @@ describe('POST /api/brain/documents/upload', () => {
     });
 
     const res = await POST(req as unknown as Request);
-    expect(res.status).toBe(422);
+    expect(res.status).toBe(202);
 
-    const body = await res.json() as { error: string; message: string };
-    expect(body.error).toBe('unsupported_type');
+    const body = await res.json() as { sourceId: string };
+    expect(typeof body.sourceId).toBe('string');
 
-    // Storage should NOT be called
-    expect(mockStorageUpload).not.toHaveBeenCalled();
+    // Storage MUST be called (store-never-drop)
+    expect(mockStorageUpload).toHaveBeenCalledTimes(1);
+
+    // sources row must be inserted with extraction_state='unsupported'
+    expect(mockSourcesInsert).toHaveBeenCalledTimes(1);
+    const insertedSource = mockSourcesInsert.mock.calls[0][0] as Record<string, unknown>;
+    expect(insertedSource.extraction_state).toBe('unsupported');
+
+    // source_extraction_jobs must NOT be enqueued for unsupported types
+    expect(mockJobsInsert).not.toHaveBeenCalled();
   });
 
   it('4. file > 20 MB → 422 with file_too_large error including size', async () => {
@@ -274,10 +283,8 @@ describe('POST /api/brain/documents/upload', () => {
     expect(mockSourcesInsert).not.toHaveBeenCalled();
   });
 
-  it('6. image MIME types → 422 with unsupported_type error (vision path is not supported)', async () => {
-    // Image uploads must be rejected: the vision extraction path is a stub and
-    // would hallucinate proposals. Images stay unsupported until the router gets
-    // real multimodal (image content block) support.
+  it('6. image MIME types → 202 accepted, stored with extraction_state=pending, job enqueued (Task 4)', async () => {
+    // Task 4: image/* is extractable (via vision path). Accept, store, enqueue.
     const imageMimes = [
       { filename: 'photo.jpg', mimeType: 'image/jpeg' },
       { filename: 'photo.png', mimeType: 'image/png' },
@@ -288,16 +295,142 @@ describe('POST /api/brain/documents/upload', () => {
     for (const { filename, mimeType } of imageMimes) {
       mockAuthed();
       vi.clearAllMocks();
+      mockStorageUpload.mockResolvedValue({ data: { path: 'some/path' }, error: null });
+      mockSourcesInsert.mockResolvedValue({ data: { id: 'new-source-id' }, error: null });
+      mockJobsInsert.mockResolvedValue({ error: null });
+      mockExtractDocument.mockResolvedValue(undefined);
       mockJobsSelect.mockResolvedValue({ data: null, error: null });
 
       const req = makeUploadRequest({ filename, mimeType, sizeBytes: 1024 });
       const res = await POST(req as unknown as Request);
 
-      expect(res.status).toBe(422);
-      const body = await res.json() as { error: string };
-      expect(body.error).toBe('unsupported_type');
-      expect(mockStorageUpload).not.toHaveBeenCalled();
+      expect(res.status).toBe(202);
+      const body = await res.json() as { sourceId: string };
+      expect(typeof body.sourceId).toBe('string');
+
+      // Storage must be called
+      expect(mockStorageUpload).toHaveBeenCalledTimes(1);
+
+      // sources row must have extraction_state='pending'
+      const insertedSource = mockSourcesInsert.mock.calls[0][0] as Record<string, unknown>;
+      expect(insertedSource.extraction_state).toBe('pending');
+
+      // Job must be enqueued
+      expect(mockJobsInsert).toHaveBeenCalledTimes(1);
     }
+  });
+
+  // ── Task 4 new tests ───────────────────────────────────────────────────────
+
+  it('T4a. image/png upload → 202, mime_type + byte_size + extraction_state=pending written, job enqueued', async () => {
+    mockAuthed();
+
+    const FILE_SIZE = 8192;
+    const req = makeUploadRequest({
+      filename: 'diagram.png',
+      mimeType: 'image/png',
+      sizeBytes: FILE_SIZE,
+    });
+
+    const res = await POST(req as unknown as Request);
+    expect(res.status).toBe(202);
+
+    const body = await res.json() as { sourceId: string };
+    expect(typeof body.sourceId).toBe('string');
+
+    // Storage PUT called
+    expect(mockStorageUpload).toHaveBeenCalledTimes(1);
+
+    // sources row must include the three new columns
+    expect(mockSourcesInsert).toHaveBeenCalledTimes(1);
+    const inserted = mockSourcesInsert.mock.calls[0][0] as Record<string, unknown>;
+    expect(inserted.mime_type).toBe('image/png');
+    expect(inserted.byte_size).toBe(FILE_SIZE);
+    expect(inserted.extraction_state).toBe('pending');
+
+    // Job must be enqueued
+    expect(mockJobsInsert).toHaveBeenCalledTimes(1);
+    const insertedJob = mockJobsInsert.mock.calls[0][0] as Record<string, unknown>;
+    expect(insertedJob.status).toBe('pending');
+  });
+
+  it('T4b. pptx upload → 202, extraction_state=unsupported, job NOT enqueued', async () => {
+    mockAuthed();
+
+    const PPTX_MIME = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+    const req = makeUploadRequest({
+      filename: 'deck.pptx',
+      mimeType: PPTX_MIME,
+      sizeBytes: 4096,
+    });
+
+    const res = await POST(req as unknown as Request);
+    expect(res.status).toBe(202);
+
+    const body = await res.json() as { sourceId: string };
+    expect(typeof body.sourceId).toBe('string');
+
+    // Storage PUT called (store-never-drop)
+    expect(mockStorageUpload).toHaveBeenCalledTimes(1);
+
+    // sources row must have extraction_state='unsupported'
+    expect(mockSourcesInsert).toHaveBeenCalledTimes(1);
+    const inserted = mockSourcesInsert.mock.calls[0][0] as Record<string, unknown>;
+    expect(inserted.mime_type).toBe(PPTX_MIME);
+    expect(inserted.byte_size).toBe(4096);
+    expect(inserted.extraction_state).toBe('unsupported');
+
+    // Job must NOT be enqueued
+    expect(mockJobsInsert).not.toHaveBeenCalled();
+    // extractDocument must NOT be called
+    expect(mockExtractDocument).not.toHaveBeenCalled();
+  });
+
+  it('T4c. file > 20 MB → 422 file_too_large (size cap still enforced)', async () => {
+    mockAuthed();
+
+    const twentyOneMB = 21 * 1024 * 1024;
+    const req = makeUploadRequest({
+      filename: 'huge.png',
+      mimeType: 'image/png',
+      sizeBytes: twentyOneMB,
+    });
+
+    const res = await POST(req as unknown as Request);
+    expect(res.status).toBe(422);
+
+    const body = await res.json() as { error: string; message: string };
+    expect(body.error).toBe('file_too_large');
+    expect(body.message).toMatch(/20 MB/i);
+
+    expect(mockStorageUpload).not.toHaveBeenCalled();
+    expect(mockSourcesInsert).not.toHaveBeenCalled();
+  });
+
+  it('T4d. sources insert includes mime_type, byte_size, extraction_state column names', async () => {
+    mockAuthed();
+
+    const req = makeUploadRequest({
+      filename: 'notes.txt',
+      mimeType: 'text/plain',
+      sizeBytes: 256,
+    });
+
+    const res = await POST(req as unknown as Request);
+    expect(res.status).toBe(202);
+
+    expect(mockSourcesInsert).toHaveBeenCalledTimes(1);
+    const inserted = mockSourcesInsert.mock.calls[0][0] as Record<string, unknown>;
+
+    // Exact column names required
+    expect(Object.keys(inserted)).toContain('mime_type');
+    expect(Object.keys(inserted)).toContain('byte_size');
+    expect(Object.keys(inserted)).toContain('extraction_state');
+
+    // text/plain is extractable → pending
+    expect(inserted.mime_type).toBe('text/plain');
+    expect(inserted.byte_size).toBe(256);
+    expect(inserted.extraction_state).toBe('pending');
   });
 
   it('10. filename with path traversal characters → sanitized path, no directory separators', async () => {
