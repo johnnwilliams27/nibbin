@@ -1,5 +1,5 @@
 /**
- * Gmail [H] — where solo business arrives (SPEC §4.3).
+ * Gmail [N] — where solo business arrives (SPEC §4.3).
  *
  * Pending Google verification + CASA, this client runs on gmail.metadata
  * (headers/labels only) behind the 100-user tester allowlist (docs/RISKS.md
@@ -9,14 +9,14 @@
  * Send paths exist for post-adoption write grants and are double-gated:
  * granted-scope check + send-velocity caps. Agent School stage gating happens
  * in the M4 runtime on top of this.
+ *
+ * Transport: Nango proxy lane ([N]). Token custody is Nango Cloud.
  */
-import { HttpConnectorClient } from './base';
+import { NangoConnectorClient } from './nango-base';
+import type { Nango } from '../nango-client';
 import type { Connection } from '../types';
-import type { TokenVault } from '../vault';
-import type { UnsafeTestOverrides } from '../egress/safe-fetch';
 import { SendVelocityLimiter } from '../send-velocity';
 
-const BASE = 'https://gmail.googleapis.com';
 const SCOPE_COMPOSE = 'https://www.googleapis.com/auth/gmail.compose';
 const SCOPE_SEND = 'https://www.googleapis.com/auth/gmail.send';
 
@@ -68,9 +68,13 @@ interface ListMessagesResponse {
   resultSizeEstimate?: number;
 }
 
-export class GmailClient extends HttpConnectorClient {
-  constructor(connection: Connection, vault: TokenVault, unsafeTestOverrides?: UnsafeTestOverrides) {
-    super(connection, BASE, vault, unsafeTestOverrides);
+export class GmailClient extends NangoConnectorClient {
+  constructor(
+    connection: Connection,
+    nango: Nango,
+    nangoConnectionId: string,
+  ) {
+    super(connection, nango, 'google-mail', nangoConnectionId);
   }
 
   /** List message ids matching a Gmail query (e.g. `after:2026/03/01 in:inbox`). */

@@ -1,6 +1,7 @@
 import 'server-only';
 
-import { GmailClient, SupabaseTokenVault } from '@nibbin/connectors';
+import { GmailClient } from '@nibbin/connectors';
+import { getNango } from '../connectors/nango';
 import { serviceClient } from '../supabase/service';
 import { anthropicGenerate } from '../llm/client';
 import type { UnderstandingProfile } from '@nibbin/keeper';
@@ -134,10 +135,6 @@ export async function gmailOnboardingSweep(
 ): Promise<SweepResult> {
   const deadline = Date.now() + BUDGET_MS;
   const svc = serviceClient();
-  const vault = new SupabaseTokenVault({
-    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
-    serviceKey: process.env.SUPABASE_SECRET_KEY ?? '',
-  });
 
   // Load the connection row
   const { data: connRow, error: connErr } = await svc
@@ -151,7 +148,8 @@ export async function gmailOnboardingSweep(
 
   const { connectionFromRow } = await import('../runtime/engine');
   const connection = connectionFromRow(connRow as Record<string, unknown>);
-  const client = new GmailClient(connection, vault);
+  // TODO Task 6: replace with makeGmailClient factory
+  const client = new GmailClient(connection, getNango(), connection.nangoConnectionId ?? '');
 
   const generate = anthropicGenerate();
   const cutoff = new Date(Date.now() - SWEEP_WINDOW_DAYS * 24 * 60 * 60 * 1000);

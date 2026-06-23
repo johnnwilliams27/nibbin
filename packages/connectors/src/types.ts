@@ -9,7 +9,7 @@
  */
 import type { QuarantinedContent } from './quarantine';
 
-/** Mirror of public.connections (M3 migration). token_ref is a vault uuid — C9. */
+/** Mirror of public.connections (M3 + P4 Nango migration). token_ref is a vault uuid — C9. */
 export interface Connection {
   id: string;
   accountId: string;
@@ -22,6 +22,10 @@ export interface Connection {
   createdBy: string | null;
   createdAt: string;
   revokedAt: string | null;
+  /** Nango opaque connection identifier — non-null for method=N connectors only. */
+  nangoConnectionId?: string | null;
+  /** Nango integration key (e.g. 'google-mail') — non-null for method=N connectors only. */
+  nangoProviderConfigKey?: string | null;
 }
 
 /** The 12-month read-only lookback every scan module computes over. */

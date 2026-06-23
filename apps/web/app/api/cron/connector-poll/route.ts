@@ -7,6 +7,7 @@ import { dispatchForConnection, type ConnectorEvent } from '../../../../lib/conn
 import { fetchGmailDelta, advanceGmailCursor } from '../../../../lib/connections/gmail-delta';
 import { advanceCalendarCursor } from '../../../../lib/connections/calendar-delta';
 import { isAuthorizedCronRequest } from '../../../../lib/connections/cron-auth';
+import { getNango } from '../../../../lib/connectors/nango';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -65,7 +66,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       let advanceCursor: () => Promise<void> = async () => {};
 
       if (connection.provider === 'gmail') {
-        const client = new GmailClient(connection, vault);
+        // TODO Task 6: replace with makeGmailClient factory
+        const client = new GmailClient(connection, getNango(), connection.nangoConnectionId ?? '');
         const { events: gmailEvents, newHistoryId } = await fetchGmailDelta(
           connection.id,
           connection.accountId,

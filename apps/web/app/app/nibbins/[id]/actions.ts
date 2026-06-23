@@ -2,11 +2,12 @@
 
 import { appSession } from '../../../../lib/auth/app-session';
 import { serviceClient } from '../../../../lib/supabase/service';
-import { GmailClient, SupabaseTokenVault } from '@nibbin/connectors';
+import { GmailClient } from '@nibbin/connectors';
 import { pushDraftToGmail } from '../../../../lib/connections/push-draft';
 import { revokeWriteGrant, type WriteCapability } from '../../../../lib/connections/grants';
 import { connectionFromRow } from '../../../../lib/runtime/engine';
 import { maybePromote } from '../../../../lib/runtime/engine';
+import { getNango } from '../../../../lib/connectors/nango';
 
 /**
  * Guard: verifies that nibbinId belongs to the session accountId.
@@ -44,10 +45,6 @@ export async function pushDraftToGmailAction(
   // FIX 2: verify nibbin belongs to session account before any privileged operation
   await assertNibbinOwnership(nibbinId, accountId);
   const svc = serviceClient();
-  const vault = new SupabaseTokenVault({
-    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
-    serviceKey: process.env.SUPABASE_SECRET_KEY ?? '',
-  });
 
   return pushDraftToGmail(
     { nibbinId, runId, draftStepIdx, accountId },
@@ -111,7 +108,8 @@ export async function pushDraftToGmailAction(
           .single();
         if (!connRow) throw new Error('no active gmail connection');
         const conn = connectionFromRow(connRow as Record<string, unknown>);
-        const client = new GmailClient(conn, vault);
+        // TODO Task 6: replace with makeGmailClient factory
+        const client = new GmailClient(conn, getNango(), conn.nangoConnectionId ?? '');
         return client.createDraft(rfc822);
       },
     },

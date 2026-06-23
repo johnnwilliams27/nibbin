@@ -21,6 +21,7 @@ import {
   type ConnectorClient,
   type ScanResourceReader,
 } from '@nibbin/connectors';
+import { getNango } from '../connectors/nango';
 import {
   executeRun,
   promotionCheck,
@@ -66,6 +67,8 @@ export function connectionFromRow(row: Record<string, unknown>): Connection {
     createdBy: (row.created_by as string | null) ?? null,
     createdAt: row.created_at as string,
     revokedAt: (row.revoked_at as string | null) ?? null,
+    nangoConnectionId: (row.nango_connection_id as string | null) ?? null,
+    nangoProviderConfigKey: (row.nango_provider_config_key as string | null) ?? null,
   };
 }
 
@@ -76,7 +79,8 @@ function realClient(connection: Connection): ConnectorClient {
   });
   switch (connection.provider) {
     case 'gmail':
-      return new GmailClient(connection, vault);
+      // TODO Task 6: replace with makeGmailClient factory
+      return new GmailClient(connection, getNango(), connection.nangoConnectionId ?? '');
     case 'google-calendar':
       return new GoogleCalendarClient(connection, vault);
     case 'stripe':
@@ -263,11 +267,8 @@ export function buildEffectsExecutor(
             if (testDeps) {
               await testDeps.deleteDraft?.(nativeDraftRef);
             } else {
-              const vault = new SupabaseTokenVault({
-                supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
-                serviceKey: process.env.SUPABASE_SECRET_KEY ?? '',
-              });
-              await new GmailClient(connection, vault).deleteDraft(nativeDraftRef);
+              // TODO Task 6: replace with makeGmailClient factory
+              await new GmailClient(connection, getNango(), connection.nangoConnectionId ?? '').deleteDraft(nativeDraftRef);
             }
           } catch (err) {
             // Best-effort: logged, never blocks dismissal.
@@ -287,11 +288,8 @@ export function buildEffectsExecutor(
               const r = await testDeps.createDraft(rfc822);
               draftId = r.id;
             } else {
-              const vault = new SupabaseTokenVault({
-                supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
-                serviceKey: process.env.SUPABASE_SECRET_KEY ?? '',
-              });
-              const r = await new GmailClient(connection, vault).createDraft(rfc822);
+              // TODO Task 6: replace with makeGmailClient factory
+              const r = await new GmailClient(connection, getNango(), connection.nangoConnectionId ?? '').createDraft(rfc822);
               draftId = r.id;
             }
           } catch (err) {
@@ -337,24 +335,18 @@ export function buildEffectsExecutor(
             if (testDeps) {
               await testDeps.sendDraft?.(nativeDraftRef);
             } else {
-              const vault = new SupabaseTokenVault({
-                supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
-                serviceKey: process.env.SUPABASE_SECRET_KEY ?? '',
-              });
-              await new GmailClient(connection, vault).sendDraft(nativeDraftRef);
+              // TODO Task 6: replace with makeGmailClient factory
+              await new GmailClient(connection, getNango(), connection.nangoConnectionId ?? '').sendDraft(nativeDraftRef);
             }
           } else if (testDeps) {
             await testDeps.sendMessage(rfc822);
           } else {
-            const vault = new SupabaseTokenVault({
-              supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
-              serviceKey: process.env.SUPABASE_SECRET_KEY ?? '',
-            });
+            // TODO Task 6: replace with makeGmailClient factory
             // Velocity already atomically consumed above via send_velocity_consume RPC
             // (which INSERTs the send_records row). Use sendMessageDirect so the
             // in-process limiter does NOT insert a second send_records row — that
             // double-consume would halve the effective cap (FIX 1, Spec 2 review).
-            await new GmailClient(connection, vault).sendMessageDirect(rfc822);
+            await new GmailClient(connection, getNango(), connection.nangoConnectionId ?? '').sendMessageDirect(rfc822);
           }
         } catch (err) {
           // Fleet-learning telemetry: emit connector_blocked on auth/connection-state errors.
