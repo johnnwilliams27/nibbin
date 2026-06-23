@@ -226,7 +226,7 @@ declare
 begin
   if uid is null then raise exception 'not authenticated'; end if;
   if p_decision not in ('approved','rejected') then raise exception 'decision must be approved or rejected'; end if;
-  select * into p from public.proposals where id = p_proposal_id;
+  select * into p from public.proposals where id = p_proposal_id for update;
   if not found then raise exception 'proposal not found'; end if;
   if not (select private.is_account_member(p.account_id)) then raise exception 'not a member of this account'; end if;
   if p.status <> 'pending' then raise exception 'proposal already decided'; end if;
@@ -275,7 +275,7 @@ begin
     values (p.account_id, 'user', uid::text, 'memory.ratified', p.field_key,
             jsonb_build_object('proposal_id', p.id, 'decision', p_decision, 'source_id', p.source_id, 'origin', p.origin));
 
-  update public.proposals set status = p_decision, decided_at = now(), decided_by = uid where id = p.id;
+  update public.proposals set status = p_decision, decided_at = now(), decided_by = uid where id = p.id and status = 'pending';
   update public.notifications set read_at = now()
     where account_id = p.account_id and kind = 'review_item' and source_id = p.id::text and read_at is null;
 end; $$;

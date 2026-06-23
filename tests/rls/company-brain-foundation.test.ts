@@ -201,4 +201,38 @@ describe.skipIf(!dbAvailable)('F2 — decide_memory_proposal apply-on-approve', 
       h.as(asOther, (c) => c.query(`select public.decide_memory_proposal($1,'approved')`, [pid])),
     ).rejects.toThrow(/not a member|not found/);
   });
+
+  it('double-decide guard: second call throws "already decided"', async () => {
+    const pid = await propose();
+    await h.as(asU, async (c) => { await c.query(`select public.decide_memory_proposal($1,'approved')`, [pid]); });
+    await expect(
+      h.as(asU, (c) => c.query(`select public.decide_memory_proposal($1,'approved')`, [pid])),
+    ).rejects.toThrow(/already decided/);
+  });
+
+  it('append op: approved append joins with newline', async () => {
+    // First, seed policies = 'No refunds' via a replace proposal
+    const pid1 = await h.as(service, async (c) =>
+      (await c.query(`select public.propose_memory_change($1,'policies','replace','No refunds',null,null,'manual') as id`, [acct])).rows[0].id);
+    await h.as(asU, async (c) => { await c.query(`select public.decide_memory_proposal($1,'approved')`, [pid1]); });
+
+    // Then propose append
+    const pid2 = await h.as(service, async (c) =>
+      (await c.query(`select public.propose_memory_change($1,'policies','append','Cancellations need 48h notice',null,null,'manual') as id`, [acct])).rows[0].id);
+    await h.as(asU, async (c) => { await c.query(`select public.decide_memory_proposal($1,'approved')`, [pid2]); });
+
+    const val = await h.as(asU, async (c) =>
+      (await c.query(`select sections->>'policies' as v from public.grove_memory where account_id=$1`, [acct])).rows[0].v);
+    expect(val).toBe('No refunds\nCancellations need 48h notice');
+  });
+
+  it('hard_rules field: approved replace stores value as jsonb array', async () => {
+    const pid = await h.as(service, async (c) =>
+      (await c.query(`select public.propose_memory_change($1,'hard_rules','replace','Never quote a price without checking with me',null,null,'manual') as id`, [acct])).rows[0].id);
+    await h.as(asU, async (c) => { await c.query(`select public.decide_memory_proposal($1,'approved')`, [pid]); });
+
+    const val = await h.as(asU, async (c) =>
+      (await c.query(`select hard_rules from public.grove_memory where account_id=$1`, [acct])).rows[0].hard_rules);
+    expect(val).toEqual(['Never quote a price without checking with me']);
+  });
 });
