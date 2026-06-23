@@ -8,8 +8,13 @@
  * scan_finding / recommendation / draft_approval / field_notes / chart are
  * typed in @nibbin/keeper now and start appearing at M4; until then they get
  * a generic field-card rendering so nothing ever falls off the stream.
+ *
+ * synthesis (P5 §8b): delegates to SynthesisCardView (a dedicated component
+ * that holds useState for the modal open/close). Hooks must NOT be placed
+ * inside a switch case — the extracted component satisfies the React hooks rule.
  */
 import type { KeeperCard } from '@nibbin/keeper';
+import { SynthesisCardView } from './SynthesisCardView';
 import styles from './grove.module.css';
 
 export function CardView({ card }: { card: KeeperCard }) {
@@ -87,6 +92,11 @@ export function CardView({ card }: { card: KeeperCard }) {
         </div>
       );
     }
+
+    case 'synthesis':
+      // Delegates to a dedicated component — useState (modal open/close) must
+      // live inside a component function, not inside a switch case.
+      return <SynthesisCardView card={card} />;
 
     default:
       // Exhaustive today; transcript is the contract if a new kind outpaces a renderer.
