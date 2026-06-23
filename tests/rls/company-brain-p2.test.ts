@@ -118,7 +118,6 @@ const UID_B2 = 'bb000002-5555-4555-8555-555555555502';
 describe.skipIf(!dbAvailable)('P2 — cross-account isolation + quarantine gate', () => {
   const h = new RlsHarness();
   let accountA = '';
-  let accountB = '';
   const asA = { kind: 'authenticated', uid: UID_A2 } as const;
   const asB = { kind: 'authenticated', uid: UID_B2 } as const;
   const anon = { kind: 'anon' } as const;
@@ -137,8 +136,7 @@ describe.skipIf(!dbAvailable)('P2 — cross-account isolation + quarantine gate'
     }
     accountA = await h.as(asA, async (c) =>
       (await c.query(`select public.create_account_with_owner('IsoA') as id`)).rows[0].id);
-    accountB = await h.as(asB, async (c) =>
-      (await c.query(`select public.create_account_with_owner('IsoB') as id`)).rows[0].id);
+    await h.as(asB, async (c) => { await c.query(`select public.create_account_with_owner('IsoB') as id`); });
   });
   afterAll(async () => { await h.close(); });
 

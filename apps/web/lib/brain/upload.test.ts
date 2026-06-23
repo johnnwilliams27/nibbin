@@ -26,7 +26,6 @@ const mockStorageUpload = vi.fn();
 const mockSourcesInsert = vi.fn();
 const mockJobsInsert = vi.fn();
 const mockSourcesSelect = vi.fn();
-const mockProposalsSelect = vi.fn();
 
 vi.mock('../supabase/service', () => ({
   serviceClient: () => ({
@@ -55,9 +54,9 @@ vi.mock('../supabase/service', () => ({
       if (table === 'source_extraction_jobs') {
         return {
           insert: (data: unknown) => mockJobsInsert(data),
-          select: (cols: unknown) => ({
-            eq: (k1: string, v1: unknown) => ({
-              eq: (k2: string, v2: unknown) => ({
+          select: (_cols: unknown) => ({
+            eq: (_k1: string, _v1: unknown) => ({
+              eq: (_k2: string, _v2: unknown) => ({
                 maybeSingle: () => Promise.resolve({ data: null, error: null }),
               }),
             }),
@@ -66,9 +65,9 @@ vi.mock('../supabase/service', () => ({
       }
       if (table === 'proposals') {
         return {
-          select: (cols: unknown) => ({
-            eq: (k1: string, v1: unknown) => ({
-              eq: (k2: string, v2: unknown) => ({
+          select: (_cols: unknown) => ({
+            eq: (_k1: string, _v1: unknown) => ({
+              eq: (_k2: string, _v2: unknown) => ({
                 // count(*) returns head: true pattern; we'll use a simpler approach
               }),
             }),

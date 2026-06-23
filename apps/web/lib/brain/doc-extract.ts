@@ -33,8 +33,6 @@ import { serviceClient } from '../supabase/service';
 import { anthropicGenerate, recordModelCall } from '../llm/client';
 import { groveRouter } from '../grove/router';
 import { buildStoragePath } from './storage-path';
-import pdfParse from 'pdf-parse';
-import mammoth from 'mammoth';
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
@@ -177,12 +175,11 @@ async function updateJobStatus(
   }
 
   // supabase-js filter chain: .update(data).eq(k1,v1).eq(k2,v2)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (svc
     .from('source_extraction_jobs')
-    .update(update) as any)
+    .update(update)
     .eq('source_id', sourceId)
-    .eq('account_id', accountId);
+    .eq('account_id', accountId) as unknown as Promise<{ error: unknown }>);
   if (error) {
     console.error('[doc-extract] job status update failed', error);
   }
@@ -324,7 +321,7 @@ async function callSummaryLlm(
       maxTokens: 300,
       temperature: 0.3,
     });
-  } catch (err) {
+  } catch {
     await recordModelCall({
       accountId,
       userId: null,
@@ -435,6 +432,9 @@ interface TextExtractionResult {
 
 /** Extract text from a PDF buffer. Returns isScanned=true if < SCANNED_THRESHOLD chars found. */
 async function extractPdfText(buffer: Buffer): Promise<TextExtractionResult> {
+  // Lazy import: pdf-parse loads a test PDF at module init time if imported
+  // statically, which breaks Next.js build. Dynamic import avoids this.
+  const { default: pdfParse } = await import('pdf-parse');
   // Parse the PDF to get selectable text
   const parsed = await pdfParse(buffer);
   const rawText = parsed.text ?? '';
@@ -457,6 +457,8 @@ async function extractPdfText(buffer: Buffer): Promise<TextExtractionResult> {
 
 /** Extract text from a DOCX buffer via mammoth. */
 async function extractDocxText(buffer: Buffer): Promise<string> {
+  // Lazy import: avoids static CJS initialization in Next.js App Router build.
+  const { default: mammoth } = await import('mammoth');
   const result = await mammoth.extractRawText({ buffer });
   return (result.value ?? '').slice(0, RAW_TEXT_CAP);
 }

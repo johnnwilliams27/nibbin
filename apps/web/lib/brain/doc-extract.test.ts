@@ -125,10 +125,6 @@ function makeDocxBuffer(): Buffer {
   return Buffer.from('DOCX binary content');
 }
 
-function makeImageBuffer(): Buffer {
-  return Buffer.from('IMAGE binary content');
-}
-
 /** Default mocks for a clean, text-native PDF extraction run. */
 function setupCleanTextNativePdf(opts: {
   rawText?: string;
