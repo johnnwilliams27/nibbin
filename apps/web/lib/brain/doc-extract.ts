@@ -35,6 +35,7 @@ import { serviceClient } from '../supabase/service';
 import { anthropicGenerate, recordModelCall } from '../llm/client';
 import { groveRouter } from '../grove/router';
 import { buildStoragePath } from './storage-path';
+import { extractFromImage } from './vision-extract';
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
@@ -563,12 +564,41 @@ export async function extractDocument(sourceId: string, accountId: string): Prom
       return;
     }
 
-    // Step 3b: image → TODO(Task 6): wire extractFromImage vision path.
-    // Until Task 6 is implemented, images are stored as unsupported (fail-safe).
-    // Task 6 will replace this branch with: extractFromImage(buffer, mime, ctx) → proposals
+    // Step 3b: image → vision path (Task 6).
+    // SVG is classified as 'phase2' by classifyExtractor and never reaches here.
+    // Fail-closed: any error from extractFromImage propagates to the outer catch
+    // which writes extraction_state='failed' and zero proposals.
     if (kind === 'image') {
-      // TODO(Task 6): wire extractFromImage here instead of unsupported
-      await updateExtractionState(svc, sourceId, 'unsupported');
+      await updateExtractionState(svc, sourceId, 'extracting');
+
+      // Get the generate function + route decision (same pattern as text path)
+      const llm = anthropicGenerate();
+      if (!llm) {
+        // No API key — mark extracted with zero proposals (same as text path)
+        await updateExtractionState(svc, sourceId, 'extracted');
+        await updateJobStatus(svc, sourceId, accountId, 'done');
+        return;
+      }
+
+      const decision = await groveRouter.route({
+        userId: `account:${accountId}`,
+        task: 'doc_extract',
+        origin: 'pipeline',
+      });
+
+      // Download the image file
+      const imageBuffer = await downloadSourceFile(svc, accountId, sourceId, filename);
+
+      // Extract proposals via vision — throws on model error (fail-closed via outer catch)
+      await extractFromImage(imageBuffer, mime, llm, svc.rpc.bind(svc), {
+        accountId,
+        sourceId,
+        filename,
+        model: decision.model,
+      });
+
+      // Success — mark extracted
+      await updateExtractionState(svc, sourceId, 'extracted');
       await updateJobStatus(svc, sourceId, accountId, 'done');
       return;
     }

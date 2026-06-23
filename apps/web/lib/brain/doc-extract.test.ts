@@ -803,7 +803,9 @@ describe('extractDocument — Task 5 state transitions', () => {
     expect(states).toContain('extracted');
   });
 
-  it('T5-5. image/png → extraction_state=unsupported (TODO Task 6 seam), zero proposals', async () => {
+  it('T5-5. image/png → Task 6 vision path: extraction_state=extracted, proposals submitted', async () => {
+    // Task 6: image/png is now dispatched to the vision path (extractFromImage).
+    // This test verifies the full wire: storage download → vision LLM → proposals → extracted.
     mockStorageDownload.mockResolvedValue({
       data: Buffer.from('PNG bytes'),
       error: null,
@@ -813,15 +815,36 @@ describe('extractDocument — Task 5 state transitions', () => {
       error: null,
     });
 
+    // Router decision for vision call
+    mockGroveRouterRoute.mockResolvedValue({
+      model: 'claude-haiku-4-5-20251001',
+      tier: 't1',
+      degraded: false,
+    });
+
+    // LLM returns structured extraction from the image
+    mockGenerateFn.mockResolvedValue({
+      text: JSON.stringify({ facts: 'Photography studio logo' }),
+      model: 'claude-haiku-4-5-20251001',
+      usage: { inputTokens: 100, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 30 },
+      stopReason: 'end_turn',
+    });
+
+    // Redaction: clean
+    mockApplyBattery.mockReturnValue({ text: 'Photography studio logo', rulesHit: [] });
+    mockHeuristicNerRedact.mockResolvedValue({ redacted: 'Photography studio logo', rulesHit: [] });
+
     await extractDocument(SOURCE_ID, ACCOUNT_ID);
 
-    // Zero proposals — image vision is Task 6
-    expect(mockRpc).not.toHaveBeenCalled();
-    expect(mockGenerateFn).not.toHaveBeenCalled();
+    // Vision LLM was called
+    expect(mockGenerateFn).toHaveBeenCalledTimes(1);
+    // Proposals submitted
+    expect(mockRpc).toHaveBeenCalled();
 
     const states = extractionStateWrites();
     expect(states).toContain('extracting');
-    expect(states).toContain('unsupported');
+    expect(states).toContain('extracted');
+    expect(states).not.toContain('unsupported');
   });
 
   it('T5-6. unknown mime → extraction_state=unsupported, zero proposals', async () => {
