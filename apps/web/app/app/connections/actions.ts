@@ -9,6 +9,8 @@ import { storePending } from '../../../lib/connections/pending';
 import { beginConnect } from '../../../lib/connections/begin';
 import { beginWriteConnect } from '../../../lib/connections/begin-write';
 import { revokeAndSuspend } from '../../../lib/connections/revoke-connection';
+import { buildNangoConnectUrl } from '../../../lib/connections/nango-connect';
+import { getConnector } from '@nibbin/connectors';
 
 export async function beginConnectAction(formData: FormData): Promise<void> {
   const provider = String(formData.get('provider') ?? '');
@@ -18,6 +20,25 @@ export async function beginConnectAction(formData: FormData): Promise<void> {
 
   const { user, accountId } = await appSession();
   const svc = serviceClient();
+
+  const descriptor = getConnector(provider);
+
+  // [N] Nango lane — enforce the tester gate then redirect to Nango hosted OAuth.
+  // The [H] hand-built path (beginConnect/beginWriteConnect) is left unchanged below.
+  if (descriptor.method === 'N') {
+    const testerAllowlist = await loadTesterAllowlist(provider, svc);
+    const { url } = buildNangoConnectUrl({
+      provider,
+      accountId,
+      userEmail: user.email ?? null,
+      testerAllowlist,
+      returnTo,
+    });
+    redirect(url);
+    return;
+  }
+
+  // [H] hand-built lane — unchanged.
   const { url } = await beginConnect(
     { provider, accountId, userId: user.id, userEmail: user.email ?? null, returnTo, resumeTemplate, sweepConsent },
     {

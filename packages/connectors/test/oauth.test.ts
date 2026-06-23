@@ -9,8 +9,10 @@ import {
   beginAuthorization,
   beginWriteScopeUpgrade,
   exchangeCode,
+  enforcePlatformGate,
   OAuthFlowError,
   type TesterAllowlist,
+  type PlatformGateRequest,
 } from '../src/oauth/flow';
 import { getConnector } from '../src/registry/registry';
 
@@ -148,5 +150,55 @@ describe('code exchange', () => {
         requestedScopes: [],
       }),
     ).rejects.toThrowError(/state-mismatch/);
+  });
+});
+
+describe('enforcePlatformGate — standalone export (Task 8)', () => {
+  const gmailDescriptor = getConnector('gmail');
+  const allowedList: TesterAllowlist = { isAllowed: () => true, count: () => 0 };
+  const blockedList: TesterAllowlist = { isAllowed: () => false, count: () => 0 };
+  const fullCap: TesterAllowlist = { isAllowed: () => true, count: () => 100 };
+
+  it('is exported as a named function (not private)', () => {
+    expect(typeof enforcePlatformGate).toBe('function');
+  });
+
+  it('throws tester-required for pending provider when no tester provided', () => {
+    const req: PlatformGateRequest = { provider: 'gmail' };
+    expect(() => enforcePlatformGate(gmailDescriptor, req)).toThrowError(/tester-required/);
+  });
+
+  it('throws tester-not-allowed when email is not on allowlist', () => {
+    const req: PlatformGateRequest = {
+      provider: 'gmail',
+      tester: { email: 'evil@example.com', allowlist: blockedList },
+    };
+    expect(() => enforcePlatformGate(gmailDescriptor, req)).toThrowError(/tester-not-allowed/);
+  });
+
+  it('throws tester-cap-reached when cap is at 100', () => {
+    const req: PlatformGateRequest = {
+      provider: 'gmail',
+      tester: { email: 'john@example.com', allowlist: fullCap },
+    };
+    expect(() => enforcePlatformGate(gmailDescriptor, req)).toThrowError(/tester-cap-reached/);
+  });
+
+  it('does not throw when tester is on allowlist and under cap', () => {
+    const req: PlatformGateRequest = {
+      provider: 'gmail',
+      tester: { email: 'john@example.com', allowlist: allowedList },
+    };
+    expect(() => enforcePlatformGate(gmailDescriptor, req)).not.toThrow();
+  });
+
+  it('accepts a narrower PlatformGateRequest without clientId or redirectUri', () => {
+    // This is the type-friction fix: [N] call sites should not need to pass empty strings
+    const req: PlatformGateRequest = {
+      provider: 'gmail',
+      tester: { email: 'john@example.com', allowlist: allowedList },
+    };
+    // TypeScript should accept this without requiring clientId/redirectUri
+    expect(() => enforcePlatformGate(gmailDescriptor, req)).not.toThrow();
   });
 });
