@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import { appSession } from '../../../lib/auth/app-session';
 import { AppShell } from '../../../components/shell/AppShell';
 import { MemoryClient } from './MemoryClient';
+import { seedSectionsFromAnswers } from './seedSections';
+import { forwardMapLegacy, type FieldMetaRow } from './registry';
 import type { FieldMeta } from './provenance';
 import styles from './memory.module.css';
 
@@ -16,54 +18,6 @@ interface MemoryRow {
 }
 interface StateRow {
   answers: Record<string, unknown> | null;
-}
-
-/** One "Label: value" line from a string or string[]; null if there's nothing. */
-function answerLine(label: string, v: unknown): string | null {
-  if (typeof v === 'string' && v.trim() !== '') return `${label}: ${v.trim()}`;
-  if (Array.isArray(v)) {
-    const xs = v.filter((x): x is string => typeof x === 'string' && x.trim() !== '');
-    if (xs.length) return `${label}: ${xs.join(', ')}`;
-  }
-  return null;
-}
-
-/**
- * Seed the "facts" section from the onboarding answers blob. Post-#73 that blob
- * also carries the model's `_understanding`/`_profile` OBJECTS, so we must never
- * blindly stringify it (that yields "[object Object]"). Prefer the model's
- * profile; fall back to the legacy interview scalars. Returns {} when empty.
- */
-function seedSectionsFromAnswers(answers: Record<string, unknown>): Record<string, string> {
-  const lines: string[] = [];
-  const profile = answers._profile;
-  if (profile && typeof profile === 'object' && !Array.isArray(profile)) {
-    const p = profile as Record<string, unknown>;
-    for (const [label, key] of [
-      ['What I do', 'jobTitle'],
-      ['Business model', 'businessModel'],
-      ['Main work', 'workShape'],
-      ['Channels', 'channels'],
-      ['Tools', 'tools'],
-      ['Frustrations', 'pains'],
-    ] as const) {
-      if (key === 'businessModel' && p[key] === 'unknown') continue;
-      const line = answerLine(label, p[key]);
-      if (line) lines.push(line);
-    }
-  }
-  if (lines.length === 0) {
-    // legacy interview scalars only — never the `_`-prefixed state objects
-    for (const [label, key] of [
-      ['What I do', 'craft'],
-      ['Time sinks', 'timeSinks'],
-      ['Channels', 'channels'],
-    ] as const) {
-      const line = answerLine(label, answers[key]);
-      if (line) lines.push(line);
-    }
-  }
-  return lines.length ? { facts: lines.join('\n') } : {};
 }
 
 /** Build a lookup of field key → value for rendering. */
@@ -84,38 +38,74 @@ function allEmpty(values: Record<string, string>): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// F1 provenance loader (graceful-empty pre-F1)
+// F1 provenance + dynamic registry loader (graceful-empty pre-F1)
 // ---------------------------------------------------------------------------
 
 /**
- * Loads per-field provenance from F1's `field_meta` + `field_evidence` + `sources` tables.
+ * Result shape for the combined field_meta load.
+ *
+ * Both halves are optional / gracefully-degraded:
+ *  - `fieldMeta`  → per-field provenance (undefined if tables absent or empty)
+ *  - `metaRows`   → FieldMetaRow[] for the dynamic section registry
+ *                   (empty array when table absent or no rows yet)
+ */
+interface FieldMetaResult {
+  fieldMeta: Record<string, FieldMeta> | undefined;
+  metaRows: FieldMetaRow[];
+}
+
+/**
+ * Loads per-field provenance AND dynamic registry rows from the `field_meta`,
+ * `field_evidence`, and `sources` tables.
  *
  * Strategy:
- *   1. Query field_meta for last_reviewed_at per field.
+ *   1. Query field_meta for ALL columns needed by both the registry (label,
+ *      sort_order, is_custom, is_hidden) and provenance (last_reviewed_at).
  *   2. For each field, find the most recent linked source via field_evidence → sources.
- *   3. If either query throws (tables not yet in schema = pre-F1), return undefined silently.
+ *   3. If the query throws (tables not yet in schema = pre-F1), degrade silently:
+ *      return undefined fieldMeta and empty metaRows.
  *
- * The source linked to a field is determined by the most-recently-captured supporting
- * field_evidence row's source. This is the "which source produced the field" signal.
+ * The `metaRows` result activates the dynamic section registry in MemoryClient
+ * (Task 6 prop). When empty (no rows, pre-migration), MemoryClient falls back
+ * to the legacy static rendering for back-compat.
  *
- * Returns: Record<fieldKey, FieldMeta> or undefined (pre-F1 / any fetch error).
+ * Returns { fieldMeta, metaRows } — both gracefully empty on any error.
  */
-async function loadFieldMeta(
+async function loadFieldMetaAndRows(
   supabase: Awaited<ReturnType<typeof import('../../../lib/auth/app-session').appSession>>['supabase'],
   accountId: string,
-): Promise<Record<string, FieldMeta> | undefined> {
+): Promise<FieldMetaResult> {
   try {
-    // 1. Load all field_meta rows for this account
-    const { data: metaRows, error: metaErr } = await supabase
+    // 1. Load all field_meta rows for this account — include ALL registry columns
+    //    (label, sort_order, is_custom, is_hidden) PLUS provenance column (last_reviewed_at).
+    //    New columns (Task 1 migration) fall back gracefully if absent: PostgREST returns
+    //    null for columns the query references but the row doesn't have.
+    const { data: rawRows, error: metaErr } = await supabase
       .from('field_meta')
-      .select('field_key, last_reviewed_at')
+      .select('field_key, last_reviewed_at, label, sort_order, is_custom, is_hidden')
       .eq('account_id', accountId);
 
-    if (metaErr) return undefined; // table absent or RLS deny → silent
-    if (!metaRows || metaRows.length === 0) return undefined; // no data yet
+    if (metaErr) {
+      // Table absent (pre-F1) or RLS deny → silent degrade
+      return { fieldMeta: undefined, metaRows: [] };
+    }
+    if (!rawRows || rawRows.length === 0) {
+      // No rows yet for this account — return defaults
+      return { fieldMeta: undefined, metaRows: [] };
+    }
 
-    // 2. Load field_evidence with the linked source's captured_at
-    // to determine which source "produced" each field (most recent supports link).
+    // 2. Build FieldMetaRow[] for the dynamic registry (Task 7 activation).
+    //    Coerce nulls from pre-migration columns to safe defaults.
+    const metaRows: FieldMetaRow[] = rawRows.map((row) => ({
+      field_key: row.field_key as string,
+      label: (row.label as string | null) ?? null,
+      sort_order: typeof row.sort_order === 'number' ? row.sort_order : 1000,
+      is_custom: typeof row.is_custom === 'boolean' ? row.is_custom : false,
+      is_hidden: typeof row.is_hidden === 'boolean' ? row.is_hidden : false,
+    }));
+
+    // 3. Load field_evidence with the linked source's captured_at
+    //    to determine which source "produced" each field (most recent supports link).
     const { data: evidenceRows, error: evErr } = await supabase
       .from('field_evidence')
       .select('field_key, source_id, sources!inner(kind, captured_at)')
@@ -131,17 +121,16 @@ async function loadFieldMeta(
       for (const row of evidenceRows!) {
         const src = Array.isArray(row.sources) ? row.sources[0] : row.sources;
         if (!src) continue;
-        const existing = fieldSourceMap[row.field_key];
-        if (!existing) {
-          fieldSourceMap[row.field_key] = src.kind ?? 'user_entered';
+        if (!fieldSourceMap[row.field_key]) {
+          fieldSourceMap[row.field_key] = (src as { kind?: string }).kind ?? 'user_entered';
         }
         // Keep the first hit; the query order is unspecified but this is best-effort
       }
     }
 
-    // 3. Compose the FieldMeta map
-    const result: Record<string, FieldMeta> = {};
-    for (const row of metaRows) {
+    // 4. Compose the FieldMeta provenance map
+    const provenanceResult: Record<string, FieldMeta> = {};
+    for (const row of rawRows) {
       const key = row.field_key as string;
       // Derive source: if field_evidence points to a known connector or document,
       // map it to the sourceLabel vocabulary; otherwise default to 'user_entered'.
@@ -152,16 +141,17 @@ async function loadFieldMeta(
           ? 'field_study'
           : 'user_entered';
 
-      result[key] = {
+      provenanceResult[key] = {
         source,
-        lastReviewedAt: row.last_reviewed_at as string | null ?? null,
+        lastReviewedAt: (row.last_reviewed_at as string | null) ?? null,
       };
     }
 
-    return Object.keys(result).length > 0 ? result : undefined;
+    const fieldMeta = Object.keys(provenanceResult).length > 0 ? provenanceResult : undefined;
+    return { fieldMeta, metaRows };
   } catch {
-    // Any unexpected error (schema not found, type mismatch, etc.) → silent
-    return undefined;
+    // Any unexpected error (schema not found, type mismatch, etc.) → silent degrade
+    return { fieldMeta: undefined, metaRows: [] };
   }
 }
 
@@ -174,8 +164,10 @@ export default async function MemoryPage() {
     .eq('account_id', accountId)
     .maybeSingle<MemoryRow>();
 
-  // Min population: an empty brain seeds "facts" from onboarding so the first
-  // visit isn't a blank page (the user then curates from there).
+  // Min population: an empty brain seeds `about` (the neutral primary field) from
+  // onboarding answers so the first visit isn't a blank page. The user then
+  // curates from there. Any stored legacy `facts` values are handled by
+  // forwardMapLegacy below (non-destructive: copies facts→about on read).
   let sections = mem?.sections ?? {};
   if (!mem) {
     const { data: st } = await supabase
@@ -189,12 +181,18 @@ export default async function MemoryPage() {
   const notes = mem?.notes ?? '';
   const referenceText = mem?.reference_text ?? '';
 
-  const fieldValues = buildFieldValues(sections, rules, notes);
+  // Apply forward-map: legacy `facts` key → `about` when `about` is empty.
+  // This is a non-destructive migration: stored `facts` data continues to work.
+  const rawFieldValues = buildFieldValues(sections, rules, notes);
+  const fieldValues = forwardMapLegacy(rawFieldValues) as Record<string, string>;
   const isEmpty = allEmpty(fieldValues);
 
-  // F1 provenance: try/catch — silently undefined pre-F1 or on any fetch error.
-  // When present, the per-field FieldMeta drives the provenance slot in FieldBlock.
-  const fieldMeta = await loadFieldMeta(supabase, accountId);
+  // F1 provenance + dynamic registry: load field_meta rows including the new
+  // columns (label, sort_order, is_custom, is_hidden) added in Task 1 migration.
+  // Gracefully degrades to empty metaRows pre-migration or on any fetch error.
+  // When metaRows is non-empty, MemoryClient activates the dynamic registry path;
+  // when empty, it falls back to the legacy static rendering.
+  const { fieldMeta, metaRows } = await loadFieldMetaAndRows(supabase, accountId);
 
   return (
     <AppShell active="memory" title="Grove Memory" email={user.email}>
@@ -209,6 +207,7 @@ export default async function MemoryPage() {
         initialReference={referenceText}
         isEmpty={isEmpty}
         fieldMeta={fieldMeta}
+        metaRows={metaRows}
       />
     </AppShell>
   );
