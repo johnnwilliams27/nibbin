@@ -14,7 +14,7 @@ export interface Connection {
   id: string;
   accountId: string;
   provider: string;
-  method: 'A' | 'H' | 'G';
+  method: 'A' | 'H' | 'G' | 'N';
   scopes: string[];
   status: 'pending' | 'active' | 'paused' | 'error' | 'revoked';
   tokenRef: string | null;
