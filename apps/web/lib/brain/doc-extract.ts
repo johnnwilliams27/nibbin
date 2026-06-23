@@ -78,7 +78,6 @@ const QUARANTINE_RULES = new Set<string>(['SSN', 'CARD', 'APIKEY']);
 /** Accepted MIME types for text-native extraction. */
 const PDF_MIME = 'application/pdf';
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-const TXT_MIME = 'text/plain';
 
 /** MIME types for Phase 2 structured parsers (pptx, xlsx) — unsupported until parser added. */
 const PHASE2_MIMES = new Set<string>([
