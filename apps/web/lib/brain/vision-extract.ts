@@ -20,16 +20,21 @@ import 'server-only';
  *   for vision. Since no rasteriser dependency is available in this package,
  *   SVG is classified as 'phase2' (unsupported) by `classifyExtractor` in
  *   doc-extract.ts and never reaches this module.
+ * - Size guard: images > 5 MB or PDFs > 32 MB are rejected before the API call
+ *   to avoid request-limit errors and uncapped cost.
  *
- * @param buffer    Raw image bytes (png / jpeg / webp)
- * @param mime      MIME type matching Anthropic accepted types (image/png, image/jpeg, image/webp)
+ * @param buffer    Raw image bytes (png / jpeg / webp) or PDF bytes
+ * @param mime      MIME type (image/png, image/jpeg, image/webp, application/pdf)
  * @param generate  Router Generate function (from anthropicGenerate() + groveRouter decision)
  * @param rpc       Supabase RPC caller (svc.rpc) for propose_memory_change
  * @param ctx       Account/source context for building proposals
+ * @param recordModelCallFn  Optional hook to record model call cost to the COGS ledger
+ * @param routeDecision      Route decision metadata (tier, degraded, latencyMs) for COGS recording
  */
 
 import { applyBattery, HeuristicNer } from '@nibbin/redaction';
-import type { Generate, ContentBlock } from '@nibbin/router';
+import type { Generate, ContentBlock, Tier } from '@nibbin/router';
+import type { ModelCallRecord } from '../llm/client';
 
 // ── Constants shared with doc-extract (duplicated to keep modules independent) ─
 
@@ -47,6 +52,14 @@ const RATIONALE_CAP = 200;
  * If any fires on the full model reply, we return zero proposals.
  */
 const QUARANTINE_RULES = new Set<string>(['SSN', 'CARD', 'APIKEY']);
+
+/**
+ * Pre-vision size ceilings (I1):
+ * - Images: 5 MB raw (Anthropic image limits).
+ * - PDFs: 32 MB raw (Anthropic document block limits, 100-page cap applies separately).
+ */
+const IMAGE_MAX_BYTES = 5 * 1024 * 1024;   // 5 MB
+const PDF_MAX_BYTES  = 32 * 1024 * 1024;  // 32 MB
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -72,6 +85,29 @@ type SupabaseRpc = (
   name: string,
   args: Record<string, unknown>,
 ) => PromiseLike<{ data?: unknown; error?: { message: string } | null }>;
+
+/**
+ * Metadata for COGS recording (I2).
+ * Passed in from doc-extract.ts which has the route decision and task context.
+ */
+export interface VisionCostCtx {
+  tier: Tier;
+  degraded: boolean;
+  task: string;
+  /** Wall-clock start time (Date.now()) before the generate call — set by caller. */
+  t0: number;
+}
+
+/** Signature of the recordModelCall function from llm/client. */
+export type RecordModelCallFn = (rec: ModelCallRecord) => Promise<void>;
+
+/**
+ * Possible outcomes of extractFromImage for callers that need to set redaction_status.
+ * - 'clean' | 'redacted': vision succeeded; redaction gate determined status
+ * - 'quarantined': quarantine-class rule fired; caller should set quarantined
+ * - 'unsupported': size ceiling exceeded; caller should set unsupported
+ */
+export type VisionRedactionStatus = 'clean' | 'redacted' | 'quarantined' | 'unsupported';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -150,14 +186,17 @@ const VISION_USER_INSTRUCTION = [
 // ── Main export ──────────────────────────────────────────────────────────────
 
 /**
- * Extract structured proposals from an image using Anthropic vision.
+ * Extract structured proposals from an image or PDF using Anthropic vision.
  *
- * @param buffer    Raw image bytes
- * @param mime      MIME type (image/png, image/jpeg, image/webp)
+ * @param buffer    Raw image bytes (png/jpeg/webp) or PDF bytes
+ * @param mime      MIME type (image/png, image/jpeg, image/webp, application/pdf)
  * @param generate  Router Generate function (obtained from anthropicGenerate())
  * @param rpc       Supabase RPC caller — used to call propose_memory_change
  * @param ctx       Account/source context
- * @returns         Array of submitted ProposalDrafts (may be empty if no usable content)
+ * @param recordModelCall  Optional COGS recording hook (same as text path uses)
+ * @param costCtx   Route decision metadata for COGS recording (required if recordModelCall provided)
+ * @returns         Object with proposals array and the redaction status from the vision gate.
+ *                  redactionStatus is 'unsupported' if a size ceiling was exceeded.
  * @throws          On model error (fail-closed: caller marks extraction_state='failed')
  */
 export async function extractFromImage(
@@ -166,20 +205,33 @@ export async function extractFromImage(
   generate: Generate,
   rpc: SupabaseRpc,
   ctx: VisionExtractCtx,
-): Promise<ProposalDraft[]> {
+  recordModelCall?: RecordModelCallFn,
+  costCtx?: VisionCostCtx,
+): Promise<{ proposals: ProposalDraft[]; redactionStatus: VisionRedactionStatus }> {
   const { accountId, sourceId, filename } = ctx;
 
-  // Build the image content block
+  // ── I1: Pre-vision size ceiling ────────────────────────────────────────────
+  const isPdf = mime === 'application/pdf';
+  const maxBytes = isPdf ? PDF_MAX_BYTES : IMAGE_MAX_BYTES;
+  if (buffer.byteLength > maxBytes) {
+    const limitLabel = isPdf ? '32MB' : '5MB';
+    console.warn(
+      `[vision-extract] ${isPdf ? 'pdf' : 'image'} too large for vision: ` +
+      `${buffer.byteLength} bytes > ${limitLabel} — marking unsupported for source ${sourceId}`
+    );
+    return { proposals: [], redactionStatus: 'unsupported' };
+  }
+
+  // ── C1: Build the correct content block for the media type ─────────────────
+  // PDFs MUST use a `document` block; images use an `image` block.
+  // The Anthropic API rejects `type:'image'` + `media_type:'application/pdf'` with 400.
   const base64Data = buffer.toString('base64');
+  const mediaBlock: ContentBlock = isPdf
+    ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64Data } }
+    : { type: 'image', source: { type: 'base64', media_type: mime, data: base64Data } };
+
   const userContent: ContentBlock[] = [
-    {
-      type: 'image',
-      source: {
-        type: 'base64',
-        media_type: mime,
-        data: base64Data,
-      },
-    },
+    mediaBlock,
     {
       type: 'text',
       text: VISION_USER_INSTRUCTION,
@@ -187,23 +239,60 @@ export async function extractFromImage(
   ];
 
   // Call the model — may throw; caller is responsible for fail-closed handling
-  const result = await generate({
-    model: ctx.model,
-    system: [{ text: VISION_EXTRACT_SYSTEM, cache: true }],
-    messages: [{ role: 'user', content: userContent }],
-    maxTokens: 1500,
-    temperature: 0.2,
-  });
+  const t0 = costCtx?.t0 ?? Date.now();
+  let result: Awaited<ReturnType<typeof generate>>;
+  try {
+    result = await generate({
+      model: ctx.model,
+      system: [{ text: VISION_EXTRACT_SYSTEM, cache: true }],
+      messages: [{ role: 'user', content: userContent }],
+      maxTokens: 1500,
+      temperature: 0.2,
+    });
+  } catch (err) {
+    // ── I2: Record cost even on error ─────────────────────────────────────────
+    if (recordModelCall && costCtx) {
+      await recordModelCall({
+        accountId,
+        userId: null,
+        tier: costCtx.tier,
+        task: costCtx.task,
+        model: ctx.model,
+        usage: { inputTokens: 0, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 0 },
+        origin: 'pipeline',
+        degraded: costCtx.degraded,
+        latencyMs: Date.now() - t0,
+        outcome: 'error',
+      });
+    }
+    throw err;
+  }
+
+  // ── I2: Record COGS for the successful vision call ─────────────────────────
+  if (recordModelCall && costCtx) {
+    await recordModelCall({
+      accountId,
+      userId: null,
+      tier: costCtx.tier,
+      task: costCtx.task,
+      model: result.model,
+      usage: result.usage,
+      origin: 'pipeline',
+      degraded: costCtx.degraded,
+      latencyMs: Date.now() - t0,
+      outcome: 'ok',
+    });
+  }
 
   // Empty reply → zero proposals, not a crash
   if (!result.text || !result.text.trim()) {
-    return [];
+    return { proposals: [], redactionStatus: 'clean' };
   }
 
   // Parse the JSON reply — no usable content → empty proposals
   const parsed = extractJson(result.text);
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    return [];
+    return { proposals: [], redactionStatus: 'clean' };
   }
 
   // Run redaction gate on the full reply text before processing fields
@@ -211,7 +300,7 @@ export async function extractFromImage(
   const redactionResult = await runRedactionGate(result.text);
   if (redactionResult.status === 'quarantined') {
     // Quarantine: return zero proposals (fail-closed at field level)
-    return [];
+    return { proposals: [], redactionStatus: 'quarantined' };
   }
 
   // Per-field processing: only known structured fields become proposals
@@ -260,5 +349,7 @@ export async function extractFromImage(
     }
   }
 
-  return drafts;
+  // Report the redaction status so callers can persist it on the source row (I3).
+  // redactionResult.status is 'clean' or 'redacted' at this point (quarantined was handled above).
+  return { proposals: drafts, redactionStatus: redactionResult.status };
 }

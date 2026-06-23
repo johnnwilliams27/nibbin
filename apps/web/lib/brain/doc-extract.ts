@@ -35,6 +35,7 @@ import { serviceClient } from '../supabase/service';
 import { anthropicGenerate, recordModelCall } from '../llm/client';
 import { groveRouter } from '../grove/router';
 import { buildStoragePath } from './storage-path';
+import type { VisionCostCtx } from './vision-extract';
 import { extractFromImage } from './vision-extract';
 
 // ── Constants ───────────────────────────────────────────────────────────────
@@ -588,13 +589,38 @@ export async function extractDocument(sourceId: string, accountId: string): Prom
       // Download the image file
       const imageBuffer = await downloadSourceFile(svc, accountId, sourceId, filename);
 
+      const costCtx: VisionCostCtx = {
+        tier: decision.tier,
+        degraded: decision.degraded,
+        task: 'doc_extract',
+        t0: Date.now(),
+      };
+
       // Extract proposals via vision — throws on model error (fail-closed via outer catch)
-      await extractFromImage(imageBuffer, mime, llm, svc.rpc.bind(svc), {
-        accountId,
-        sourceId,
-        filename,
-        model: decision.model,
-      });
+      const visionResult = await extractFromImage(
+        imageBuffer, mime, llm, svc.rpc.bind(svc),
+        { accountId, sourceId, filename, model: decision.model },
+        recordModelCall,
+        costCtx,
+      );
+
+      if (visionResult.redactionStatus === 'unsupported') {
+        // Size ceiling exceeded — store-never-drop: mark unsupported, not failed
+        await updateExtractionState(svc, sourceId, 'unsupported');
+        await updateJobStatus(svc, sourceId, accountId, 'done');
+        return;
+      }
+
+      // ── I3: Set the terminal redaction_status from the vision gate result ───
+      // Possible values here: 'clean' | 'redacted' | 'quarantined'
+      if (visionResult.redactionStatus === 'quarantined') {
+        await updateRedactionStatus(svc, sourceId, 'quarantined');
+        await updateExtractionState(svc, sourceId, 'failed');
+        await updateJobStatus(svc, sourceId, accountId, 'error', 'Image contains sensitive information that cannot be safely processed');
+        return;
+      }
+      // 'clean' | 'redacted'
+      await updateRedactionStatus(svc, sourceId, visionResult.redactionStatus);
 
       // Success — mark extracted
       await updateExtractionState(svc, sourceId, 'extracted');
@@ -617,28 +643,30 @@ export async function extractDocument(sourceId: string, accountId: string): Prom
       if (pdfResult.isScanned) {
         // Task 7: Scanned-PDF vision OCR fallback.
         //
-        // The @nibbin/router ContentBlock union accepts { type: 'image', source: { type: 'base64',
-        // media_type: string, data: string } }. Anthropic claude-3+ models accept
-        // media_type='application/pdf' in this block — no separate rasteriser is needed.
-        // We pass the raw PDF buffer as a base64 image block directly to extractFromImage,
-        // which handles the model call, redaction, and proposal submission exactly as for
-        // raster images. This gives us exactly ONE vision call per scanned PDF.
+        // PDFs MUST be sent as a `document` content block (C1 fix) — the API
+        // rejects type:'image' + media_type:'application/pdf' with a 400.
+        // extractFromImage now handles the block-type dispatch internally.
         //
         // No silent drop: if the vision call fails, the outer try/catch writes
         // extraction_state='failed' and zero proposals (fail-closed).
-        //
-        // Path taken: PDF bytes → base64 'application/pdf' image block → extractFromImage.
-        // No-rasteriser path NOT taken: a PDF rasteriser dep is unnecessary because the
-        // router's ContentBlock media_type is open-string and Anthropic accepts application/pdf.
         console.warn(
           `[doc-extract] scanned PDF detected for source ${sourceId} — no text layer found; ` +
-          `routing to vision OCR fallback (application/pdf image block).`
+          `routing to vision OCR fallback (document block, application/pdf).`
         );
 
         if (truncatedPages) {
-          // Log that the PDF had more pages than our cap — still attempt vision on full buffer
-          const updatedOrigin = { ...originJsonb, truncated_pages: true };
-          await updateRedactionStatus(svc, sourceId, 'pending', updatedOrigin);
+          // ── I3: Log truncated_pages WITHOUT touching redaction_status ───────
+          // Only patch the origin JSONB — do NOT write redaction_status='pending'
+          // here, as it would flip a non-terminal status on the source row before
+          // the vision gate has run. The terminal redaction_status is set below
+          // after the vision call completes.
+          const { error: originPatchError } = await svc
+            .from('sources')
+            .update({ origin: { ...originJsonb, truncated_pages: true } })
+            .eq('id', sourceId);
+          if (originPatchError) {
+            console.error('[doc-extract] origin truncated_pages patch failed', originPatchError);
+          }
         }
 
         // Get LLM generate function
@@ -656,14 +684,38 @@ export async function extractDocument(sourceId: string, accountId: string): Prom
           origin: 'pipeline',
         });
 
-        // Route through vision: PDF bytes as application/pdf image block.
+        const costCtx: VisionCostCtx = {
+          tier: decision.tier,
+          degraded: decision.degraded,
+          task: 'doc_extract',
+          t0: Date.now(),
+        };
+
+        // Route through vision: PDF bytes as application/pdf document block (C1).
         // extractFromImage throws on model error → outer catch → failed (fail-closed).
-        await extractFromImage(buffer, 'application/pdf', llm, svc.rpc.bind(svc), {
-          accountId,
-          sourceId,
-          filename,
-          model: decision.model,
-        });
+        const visionResult = await extractFromImage(
+          buffer, 'application/pdf', llm, svc.rpc.bind(svc),
+          { accountId, sourceId, filename, model: decision.model },
+          recordModelCall,
+          costCtx,
+        );
+
+        if (visionResult.redactionStatus === 'unsupported') {
+          // Size ceiling exceeded — store-never-drop: mark unsupported, not failed
+          await updateExtractionState(svc, sourceId, 'unsupported');
+          await updateJobStatus(svc, sourceId, accountId, 'done');
+          return;
+        }
+
+        // ── I3: Set terminal redaction_status from the vision gate result ─────
+        if (visionResult.redactionStatus === 'quarantined') {
+          await updateRedactionStatus(svc, sourceId, 'quarantined');
+          await updateExtractionState(svc, sourceId, 'failed');
+          await updateJobStatus(svc, sourceId, accountId, 'error', 'Document contains sensitive information that cannot be safely processed');
+          return;
+        }
+        // 'clean' | 'redacted'
+        await updateRedactionStatus(svc, sourceId, visionResult.redactionStatus);
 
         // Vision succeeded — mark extracted
         await updateExtractionState(svc, sourceId, 'extracted');

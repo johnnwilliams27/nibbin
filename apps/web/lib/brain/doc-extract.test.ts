@@ -242,10 +242,10 @@ describe('extractDocument', () => {
     }
   });
 
-  it('2. scanned PDF (< 100 chars): routes to vision fallback — EXACTLY ONE vision call, proposals submitted, job=done', async () => {
-    // Task 7: scanned PDFs (no text layer) fall back to vision via extractFromImage,
-    // passing the PDF buffer as application/pdf base64 to the model.
-    // The model accepts PDFs via the image block type with media_type='application/pdf'.
+  it('2. scanned PDF (< 100 chars): routes to vision fallback — EXACTLY ONE vision call via document block (C1), proposals submitted, job=done', async () => {
+    // Task 7 + C1 fix: scanned PDFs (no text layer) fall back to vision via extractFromImage,
+    // passing the PDF buffer as application/pdf. The block type MUST be 'document' (not 'image')
+    // because the Anthropic API rejects type:'image' + media_type:'application/pdf' with a 400.
     mockStorageDownload.mockResolvedValue({
       data: makePdfBuffer('Short'),
       error: null,
@@ -289,12 +289,12 @@ describe('extractDocument', () => {
     // EXACTLY ONE vision call (not zero, not two)
     expect(mockGenerateFn).toHaveBeenCalledTimes(1);
 
-    // The vision call must carry an image block with media_type='application/pdf'
+    // C1: The vision call must carry a DOCUMENT block (not an image block) for application/pdf
     const visionCallReq = mockGenerateFn.mock.calls[0][0];
     const userMsg = visionCallReq.messages?.find((m: { role: string }) => m.role === 'user');
     expect(Array.isArray(userMsg?.content)).toBe(true);
     const blocks = userMsg?.content as Array<{ type: string; source?: { media_type: string } }>;
-    expect(blocks[0]?.type).toBe('image');
+    expect(blocks[0]?.type).toBe('document'); // C1 fix: must be 'document', NOT 'image'
     expect(blocks[0]?.source?.media_type).toBe('application/pdf');
 
     // Proposals submitted (at least one)
@@ -304,6 +304,13 @@ describe('extractDocument', () => {
     const jobCalls = mockJobsUpdate.mock.calls;
     const doneCall = jobCalls.find((c) => JSON.stringify(c).includes('"done"'));
     expect(doneCall).toBeDefined();
+
+    // I3: redaction_status must be a terminal value (clean or redacted), not 'pending'
+    const redactionWrites = mockSourcesUpdate.mock.calls
+      .map((c) => (c[0] as Record<string, unknown>)['redaction_status'])
+      .filter(Boolean) as string[];
+    expect(redactionWrites).not.toContain('pending');
+    expect(redactionWrites.some((s) => s === 'clean' || s === 'redacted')).toBe(true);
   });
 
   it('2b. scanned PDF: vision failure → extraction_state=failed, zero proposals (fail-closed)', async () => {
@@ -559,10 +566,11 @@ describe('extractDocument', () => {
     expect(mockGenerateFn).toHaveBeenCalledTimes(1);
   });
 
-  it('9. scanned PDF with > 10 pages: vision fallback fires, truncated_pages logged in origin, EXACTLY ONE vision call', async () => {
+  it('9. scanned PDF with > 10 pages: vision fallback fires, truncated_pages logged in origin WITHOUT touching redaction_status (I3), EXACTLY ONE vision call', async () => {
     // Task 7: scanned PDFs route to vision regardless of page count.
-    // When numPages > SCANNED_PAGE_CAP (10), we still make exactly one vision call
-    // on the full buffer and log truncated_pages=true in sources.origin as a note.
+    // When numPages > SCANNED_PAGE_CAP (10), we log truncated_pages=true in sources.origin
+    // WITHOUT writing redaction_status='pending' (I3 fix) — the status is only set after
+    // the vision gate completes, to a terminal value ('clean' or 'redacted').
     const rawText = 'X'.repeat(30); // < 100 chars → scanned path
     const totalPages = 15;
 
@@ -610,6 +618,17 @@ describe('extractDocument', () => {
     const truncatedCall = updateCalls.find((c) => JSON.stringify(c).includes('truncated_pages'));
     expect(truncatedCall).toBeDefined();
     expect(JSON.stringify(truncatedCall)).toContain('true');
+
+    // I3: The truncated_pages write must NOT carry redaction_status (only origin is patched)
+    const truncatedPayload = truncatedCall![0] as Record<string, unknown>;
+    expect(truncatedPayload['redaction_status']).toBeUndefined();
+
+    // I3: redaction_status must be set to terminal value after vision completes, not 'pending'
+    const redactionWrites = updateCalls
+      .map((c) => (c[0] as Record<string, unknown>)['redaction_status'])
+      .filter(Boolean) as string[];
+    expect(redactionWrites).not.toContain('pending');
+    expect(redactionWrites.some((s) => s === 'clean' || s === 'redacted')).toBe(true);
 
     // Job must be marked 'done' (not 'error') — vision succeeded
     const jobCalls = mockJobsUpdate.mock.calls;

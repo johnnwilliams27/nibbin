@@ -1,14 +1,21 @@
 /**
- * Unit tests for the vision-extract module (Task 6).
+ * Unit tests for the vision-extract module (Task 6 + gate fixes).
  *
  * Tests extractFromImage() in isolation. All LLM calls are mocked — NO live API.
  * Tests also cover the doc-extract.ts integration: image branch calls extractFromImage
  * and submits proposals via propose_memory_change with EXACT branch param names.
  *
+ * Gate-fix coverage:
+ *   C1  — PDF sent as document block, not image block
+ *   I1  — Pre-vision size ceiling (image > 5MB → unsupported; PDF > 32MB → unsupported)
+ *   I2  — COGS ledger recording via recordModelCall hook
+ *   I3  — redactionStatus returned from extractFromImage; no spurious pending write
+ *   M3  — V7 tautological test replaced with real classifyExtractor assertion
+ *
  * Run: npx vitest run apps/web/lib/brain/vision-extract.test.ts
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { Generate, GenerateRequest } from '@nibbin/router';
+import type { Generate, GenerateRequest, Tier } from '@nibbin/router';
 
 // ── Mocks for redaction (needed since vision-extract uses it) ────────────────
 const mockApplyBattery = vi.fn();
@@ -61,9 +68,9 @@ describe('extractFromImage', () => {
   });
 
   // ──────────────────────────────────────────────────────────────────────────
-  // Test V1: The GenerateRequest carries an image block at content[0]
+  // Test V1: The GenerateRequest carries an image block at content[0] for images
   // ──────────────────────────────────────────────────────────────────────────
-  it('V1. request carries image block at content[0] with correct base64 and media_type', async () => {
+  it('V1. request carries image block at content[0] with correct base64 and media_type (image/png)', async () => {
     const buffer = Buffer.from('PNG_FAKE_BYTES');
     const mime = 'image/png';
     const llmReply = JSON.stringify({ facts: 'A receipt for $25 coffee' });
@@ -80,8 +87,9 @@ describe('extractFromImage', () => {
       };
     });
 
-    await extractFromImage(buffer, mime, mockGenerate, mockRpc, CTX);
+    const result = await extractFromImage(buffer, mime, mockGenerate, mockRpc, CTX);
 
+    expect(result.redactionStatus).toBe('clean');
     expect(capturedRequests).toHaveLength(1);
     const req = capturedRequests[0];
 
@@ -92,7 +100,7 @@ describe('extractFromImage', () => {
 
     const blocks = userMsg!.content as Array<{ type: string; source?: { type: string; data: string; media_type: string }; text?: string }>;
 
-    // content[0] must be an image block
+    // content[0] must be an image block (NOT a document block) for image/png
     expect(blocks[0].type).toBe('image');
     expect(blocks[0].source?.type).toBe('base64');
     expect(blocks[0].source?.media_type).toBe('image/png');
@@ -105,6 +113,227 @@ describe('extractFromImage', () => {
     expect(blocks[1].type).toBe('text');
     expect(typeof blocks[1].text).toBe('string');
     expect(blocks[1].text!.length).toBeGreaterThan(10);
+  });
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Test C1: Scanned PDF sent as document block, NOT image block
+  // ──────────────────────────────────────────────────────────────────────────
+  it('C1. scanned PDF: content[0] is a document block (type:document) with media_type application/pdf', async () => {
+    // C1 fix: Anthropic rejects type:'image' + media_type:'application/pdf' with 400.
+    // PDFs must use a document block: { type:'document', source:{ type:'base64', media_type:'application/pdf', data } }
+    const pdfBuffer = Buffer.from('%PDF-1.4 fake scanned PDF bytes');
+    const mime = 'application/pdf';
+    const llmReply = JSON.stringify({ facts: 'Photography studio info' });
+    setupCleanRedaction('Photography studio info');
+
+    const capturedRequests: GenerateRequest[] = [];
+    const mockGenerate: Generate = vi.fn().mockImplementation(async (req: GenerateRequest) => {
+      capturedRequests.push(req);
+      return {
+        text: llmReply,
+        model: 'claude-haiku-4-5-20251001',
+        usage: { inputTokens: 200, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 40 },
+        stopReason: 'end_turn',
+      };
+    });
+
+    const result = await extractFromImage(pdfBuffer, mime, mockGenerate, mockRpc, CTX);
+
+    expect(capturedRequests).toHaveLength(1);
+    const userMsg = capturedRequests[0].messages.find((m) => m.role === 'user');
+    const blocks = userMsg!.content as Array<{ type: string; source?: { type: string; media_type: string; data: string } }>;
+
+    // Must be a document block, NOT an image block
+    expect(blocks[0].type).toBe('document');
+    expect(blocks[0].source?.type).toBe('base64');
+    expect(blocks[0].source?.media_type).toBe('application/pdf');
+    expect(blocks[0].source?.data).toBe(pdfBuffer.toString('base64'));
+
+    // Proposals should still be submitted
+    expect(mockRpc).toHaveBeenCalled();
+    expect(result.redactionStatus).toBe('clean');
+    expect(result.proposals.length).toBeGreaterThan(0);
+  });
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Test C1b: image/jpeg still carries an image block (back-compat)
+  // ──────────────────────────────────────────────────────────────────────────
+  it('C1b. image/jpeg still carries an image block (back-compat)', async () => {
+    const buffer = Buffer.from('JPEG_FAKE');
+    const mime = 'image/jpeg';
+    const llmReply = JSON.stringify({ facts: 'Studio logo' });
+    setupCleanRedaction('Studio logo');
+
+    const capturedRequests: GenerateRequest[] = [];
+    const mockGenerate: Generate = vi.fn().mockImplementation(async (req: GenerateRequest) => {
+      capturedRequests.push(req);
+      return {
+        text: llmReply,
+        model: 'claude-haiku-4-5-20251001',
+        usage: { inputTokens: 60, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 20 },
+        stopReason: 'end_turn',
+      };
+    });
+
+    await extractFromImage(buffer, mime, mockGenerate, mockRpc, CTX);
+
+    const blocks = (capturedRequests[0].messages[0].content as Array<{ type: string }>);
+    // Must still be 'image', not 'document'
+    expect(blocks[0].type).toBe('image');
+  });
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Test I1: Pre-vision size ceiling — oversized image → unsupported, no generate call
+  // ──────────────────────────────────────────────────────────────────────────
+  it('I1a. image > 5MB → no generate call, returns unsupported redactionStatus', async () => {
+    // Create a buffer just over the 5 MB limit
+    const oversizedBuffer = Buffer.alloc(5 * 1024 * 1024 + 1, 0x00);
+    const mime = 'image/png';
+    const mockGenerate = vi.fn() as unknown as Generate;
+
+    const result = await extractFromImage(oversizedBuffer, mime, mockGenerate, mockRpc, CTX);
+
+    // Must NOT call the model
+    expect(mockGenerate).not.toHaveBeenCalled();
+    // Must NOT call RPC
+    expect(mockRpc).not.toHaveBeenCalled();
+    // Returns unsupported
+    expect(result.redactionStatus).toBe('unsupported');
+    expect(result.proposals).toHaveLength(0);
+  });
+
+  it('I1b. image exactly at 5MB → proceeds (in-range)', async () => {
+    // 5 MB exactly is within the limit
+    const okBuffer = Buffer.alloc(5 * 1024 * 1024, 0x42);
+    const mime = 'image/png';
+    const llmReply = JSON.stringify({ facts: 'Just under limit' });
+    setupCleanRedaction('Just under limit');
+
+    const mockGenerate = makeMockGenerate(llmReply);
+    const result = await extractFromImage(okBuffer, mime, mockGenerate, mockRpc, CTX);
+
+    // Model was called (no size rejection)
+    expect(mockGenerate).toHaveBeenCalledTimes(1);
+    expect(result.redactionStatus).not.toBe('unsupported');
+  });
+
+  it('I1c. PDF > 32MB → no generate call, returns unsupported', async () => {
+    const oversizedPdf = Buffer.alloc(32 * 1024 * 1024 + 1, 0x00);
+    const mime = 'application/pdf';
+    const mockGenerate = vi.fn() as unknown as Generate;
+
+    const result = await extractFromImage(oversizedPdf, mime, mockGenerate, mockRpc, CTX);
+
+    expect(mockGenerate).not.toHaveBeenCalled();
+    expect(mockRpc).not.toHaveBeenCalled();
+    expect(result.redactionStatus).toBe('unsupported');
+    expect(result.proposals).toHaveLength(0);
+  });
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Test I2: Vision call cost recorded to COGS ledger
+  // ──────────────────────────────────────────────────────────────────────────
+  it('I2a. vision success → recordModelCall hook called with usage from result', async () => {
+    const buffer = Buffer.from('PNG_FAKE');
+    const mime = 'image/png';
+    const llmReply = JSON.stringify({ facts: 'Studio logo' });
+    setupCleanRedaction('Studio logo');
+
+    const mockGenerate: Generate = vi.fn().mockResolvedValue({
+      text: llmReply,
+      model: 'claude-haiku-4-5-20251001',
+      usage: { inputTokens: 150, cacheWriteTokens: 10, cacheReadTokens: 5, outputTokens: 45 },
+      stopReason: 'end_turn',
+    });
+
+    const mockRecord = vi.fn().mockResolvedValue(undefined);
+    const costCtx = { tier: 't1' as Tier, degraded: false, task: 'doc_extract', t0: Date.now() };
+
+    await extractFromImage(buffer, mime, mockGenerate, mockRpc, CTX, mockRecord, costCtx);
+
+    // recordModelCall must have been called exactly once
+    expect(mockRecord).toHaveBeenCalledTimes(1);
+    const rec = mockRecord.mock.calls[0][0] as Record<string, unknown>;
+    expect(rec.outcome).toBe('ok');
+    expect(rec.task).toBe('doc_extract');
+    expect(rec.accountId).toBe(CTX.accountId);
+    // Usage must match the model result (not zeros)
+    const usage = rec.usage as { inputTokens: number; outputTokens: number };
+    expect(usage.inputTokens).toBe(150);
+    expect(usage.outputTokens).toBe(45);
+  });
+
+  it('I2b. vision error → recordModelCall called with outcome=error + zero usage', async () => {
+    const buffer = Buffer.from('PNG_FAKE');
+    const mime = 'image/png';
+    const errorGenerate: Generate = vi.fn().mockRejectedValue(new Error('Provider timeout'));
+
+    const mockRecord = vi.fn().mockResolvedValue(undefined);
+    const costCtx = { tier: 't1' as Tier, degraded: false, task: 'doc_extract', t0: Date.now() };
+
+    await expect(
+      extractFromImage(buffer, mime, errorGenerate, mockRpc, CTX, mockRecord, costCtx),
+    ).rejects.toThrow('Provider timeout');
+
+    expect(mockRecord).toHaveBeenCalledTimes(1);
+    const rec = mockRecord.mock.calls[0][0] as Record<string, unknown>;
+    expect(rec.outcome).toBe('error');
+    const usage = rec.usage as { inputTokens: number };
+    expect(usage.inputTokens).toBe(0);
+  });
+
+  it('I2c. no recordModelCall provided → no crash (hook is optional)', async () => {
+    const buffer = Buffer.from('PNG_FAKE');
+    const mime = 'image/png';
+    setupCleanRedaction('Studio');
+    const mockGenerate = makeMockGenerate(JSON.stringify({ facts: 'Studio' }));
+
+    // No hook provided — must not crash
+    const result = await extractFromImage(buffer, mime, mockGenerate, mockRpc, CTX);
+    expect(result.proposals.length).toBeGreaterThan(0);
+  });
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Test I3: redactionStatus returned for callers to persist on the source row
+  // ──────────────────────────────────────────────────────────────────────────
+  it('I3a. clean extraction → redactionStatus=clean', async () => {
+    const buffer = Buffer.from('PNG_FAKE');
+    const mime = 'image/png';
+    setupCleanRedaction('Studio info');
+    const mockGenerate = makeMockGenerate(JSON.stringify({ facts: 'Studio info' }));
+
+    const result = await extractFromImage(buffer, mime, mockGenerate, mockRpc, CTX);
+    expect(result.redactionStatus).toBe('clean');
+  });
+
+  it('I3b. redacted extraction → redactionStatus=redacted', async () => {
+    const buffer = Buffer.from('PNG_FAKE');
+    const mime = 'image/png';
+    const llmReply = JSON.stringify({ facts: 'Call 555-1234 for info' });
+    const scrubbedText = 'Call [REDACTED] for info';
+    // Battery fires phone rule (scrubbable, not quarantine-class)
+    mockApplyBattery.mockReturnValue({ text: scrubbedText, rulesHit: ['phone'] });
+    mockHeuristicNerRedact.mockResolvedValue({ redacted: scrubbedText, rulesHit: [] });
+
+    const mockGenerate = makeMockGenerate(llmReply);
+    const result = await extractFromImage(buffer, mime, mockGenerate, mockRpc, CTX);
+
+    expect(result.redactionStatus).toBe('redacted');
+  });
+
+  it('I3c. quarantine → redactionStatus=quarantined, zero proposals', async () => {
+    const buffer = Buffer.from('PNG_FAKE');
+    const mime = 'image/png';
+    const llmReply = JSON.stringify({ facts: 'SSN 123-45-6789' });
+    mockApplyBattery.mockReturnValue({ text: llmReply, rulesHit: ['SSN'] });
+    mockHeuristicNerRedact.mockResolvedValue({ redacted: llmReply, rulesHit: [] });
+
+    const mockGenerate = makeMockGenerate(llmReply);
+    const result = await extractFromImage(buffer, mime, mockGenerate, mockRpc, CTX);
+
+    expect(result.redactionStatus).toBe('quarantined');
+    expect(result.proposals).toHaveLength(0);
+    expect(mockRpc).not.toHaveBeenCalled();
   });
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -198,9 +427,9 @@ describe('extractFromImage', () => {
     const mockGenerate = makeMockGenerate('');
     setupCleanRedaction('');
 
-    const drafts = await extractFromImage(buffer, mime, mockGenerate, mockRpc, CTX);
+    const result = await extractFromImage(buffer, mime, mockGenerate, mockRpc, CTX);
 
-    expect(drafts).toHaveLength(0);
+    expect(result.proposals).toHaveLength(0);
     expect(mockRpc).not.toHaveBeenCalled();
   });
 
@@ -211,9 +440,9 @@ describe('extractFromImage', () => {
     const mockGenerate = makeMockGenerate('Sorry, I cannot read this image.');
     setupCleanRedaction('Sorry, I cannot read this image.');
 
-    const drafts = await extractFromImage(buffer, mime, mockGenerate, mockRpc, CTX);
+    const result = await extractFromImage(buffer, mime, mockGenerate, mockRpc, CTX);
 
-    expect(drafts).toHaveLength(0);
+    expect(result.proposals).toHaveLength(0);
     expect(mockRpc).not.toHaveBeenCalled();
   });
 
@@ -231,11 +460,11 @@ describe('extractFromImage', () => {
     mockApplyBattery.mockReturnValue({ text: llmReply, rulesHit: ['SSN'] });
     mockHeuristicNerRedact.mockResolvedValue({ redacted: llmReply, rulesHit: [] });
 
-    const drafts = await extractFromImage(buffer, mime, mockGenerate, mockRpc, CTX);
+    const result = await extractFromImage(buffer, mime, mockGenerate, mockRpc, CTX);
 
     // No proposals when quarantine fires
     expect(mockRpc).not.toHaveBeenCalled();
-    expect(drafts).toHaveLength(0);
+    expect(result.proposals).toHaveLength(0);
   });
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -273,19 +502,18 @@ describe('extractFromImage', () => {
 
   // ──────────────────────────────────────────────────────────────────────────
   // Test V7: SVG is phase2/unsupported — extractFromImage is NOT called for SVG
-  //   (SVG is text-based XML; needs rasterization for vision → treated as phase2)
-  //   This is tested at the doc-extract level by the classifyExtractor tests.
-  //   Here we document the design decision explicitly.
+  //   (M3 fix: replaced tautological expect(true).toBe(true) with real assertion)
   // ──────────────────────────────────────────────────────────────────────────
-  it('V7. SVG is not passed to extractFromImage (classified as phase2 by classifyExtractor — see doc-extract.test.ts)', () => {
+  it('V7. SVG is classified as phase2 by classifyExtractor and never reaches extractFromImage', async () => {
     // SVG requires rasterization before it can be vision-processed. Since no rasterizer
     // dependency is available in this package, SVG is classified as 'phase2' (unsupported)
     // by classifyExtractor in doc-extract.ts. It never reaches extractFromImage.
     //
-    // This test asserts the design contract — NOT via extractFromImage, but as documentation.
-    // The actual enforcement is in classifyExtractor('image/svg+xml', 'logo.svg') === 'phase2'
-    // which is already tested in doc-extract.test.ts (Task 5 test suite).
-    expect(true).toBe(true); // contract is enforced upstream in classifyExtractor
+    // This test imports classifyExtractor directly to verify the classification.
+    // The actual enforcement (never calling extractFromImage for SVG) is in doc-extract.ts.
+    const { classifyExtractor } = await import('./doc-extract');
+    expect(classifyExtractor('image/svg+xml', 'logo.svg')).toBe('phase2');
+    expect(classifyExtractor('', 'logo.svg')).toBe('phase2');
   });
 });
 
@@ -369,11 +597,18 @@ describe('extractDocument — image/png integration (Task 6 wire)', () => {
     mockSourcesUpdate2.mockResolvedValue({ error: null });
     mockJobsUpdate2.mockResolvedValue({ error: null });
     mockRpc2.mockResolvedValue({ data: 'pid-img', error: null });
+    mockRecordModelCall2.mockResolvedValue(undefined);
   });
 
   function extractionStateWrites(): string[] {
     return mockSourcesUpdate2.mock.calls
       .map((c) => (c[0] as Record<string, unknown>)['extraction_state'])
+      .filter(Boolean) as string[];
+  }
+
+  function redactionStatusWrites(): string[] {
+    return mockSourcesUpdate2.mock.calls
+      .map((c) => (c[0] as Record<string, unknown>)['redaction_status'])
       .filter(Boolean) as string[];
   }
 
@@ -424,6 +659,77 @@ describe('extractDocument — image/png integration (Task 6 wire)', () => {
     expect(states).toContain('extracting');
     expect(states).toContain('extracted');
     expect(states).not.toContain('unsupported'); // no longer unsupported after Task 6
+  });
+
+  it('I2 (integration). image/png: recordModelCall called with vision usage from LLM result', async () => {
+    // I2: Vision COGS must be recorded to the model_calls ledger just like the text path.
+    const fakeImageBytes = Buffer.from('PNG_BYTES_COGS');
+    mockStorageDownload2.mockResolvedValue({ data: fakeImageBytes, error: null });
+    mockSelect2.mockResolvedValue({
+      data: { origin: { filename: 'cogs.png', mime: 'image/png' }, id: SOURCE_ID },
+      error: null,
+    });
+
+    mockApplyBattery.mockReturnValue({ text: 'Studio', rulesHit: [] });
+    mockHeuristicNerRedact.mockResolvedValue({ redacted: 'Studio', rulesHit: [] });
+
+    mockGroveRouterRoute2.mockResolvedValue({
+      model: 'claude-haiku-4-5-20251001',
+      tier: 't1',
+      degraded: false,
+    });
+
+    mockGenerateFn2.mockResolvedValue({
+      text: JSON.stringify({ facts: 'Studio' }),
+      model: 'claude-haiku-4-5-20251001',
+      usage: { inputTokens: 999, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 77 },
+      stopReason: 'end_turn',
+    });
+
+    await extractDocument(SOURCE_ID, ACCOUNT_ID);
+
+    // recordModelCall must have been called (wired from doc-extract → extractFromImage)
+    expect(mockRecordModelCall2).toHaveBeenCalled();
+    const rec = mockRecordModelCall2.mock.calls[0][0] as Record<string, unknown>;
+    expect(rec.outcome).toBe('ok');
+    expect(rec.task).toBe('doc_extract');
+    const usage = rec.usage as { inputTokens: number; outputTokens: number };
+    expect(usage.inputTokens).toBe(999);
+    expect(usage.outputTokens).toBe(77);
+  });
+
+  it('I3 (integration). image/png: redaction_status set to clean after vision success (not stuck at pending)', async () => {
+    // I3: The vision success path must set redaction_status to the terminal value
+    // ('clean' or 'redacted') — never leaving it at 'pending'.
+    const fakeImageBytes = Buffer.from('PNG_BYTES_I3');
+    mockStorageDownload2.mockResolvedValue({ data: fakeImageBytes, error: null });
+    mockSelect2.mockResolvedValue({
+      data: { origin: { filename: 'i3.png', mime: 'image/png' }, id: SOURCE_ID },
+      error: null,
+    });
+
+    mockApplyBattery.mockReturnValue({ text: 'Studio logo', rulesHit: [] });
+    mockHeuristicNerRedact.mockResolvedValue({ redacted: 'Studio logo', rulesHit: [] });
+
+    mockGroveRouterRoute2.mockResolvedValue({
+      model: 'claude-haiku-4-5-20251001',
+      tier: 't1',
+      degraded: false,
+    });
+
+    mockGenerateFn2.mockResolvedValue({
+      text: JSON.stringify({ facts: 'Studio logo' }),
+      model: 'claude-haiku-4-5-20251001',
+      usage: { inputTokens: 100, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 20 },
+      stopReason: 'end_turn',
+    });
+
+    await extractDocument(SOURCE_ID, ACCOUNT_ID);
+
+    // redaction_status must be set to a terminal value (clean or redacted), never 'pending'
+    const redactionWrites = redactionStatusWrites();
+    expect(redactionWrites).not.toContain('pending');
+    expect(redactionWrites.some((s) => s === 'clean' || s === 'redacted')).toBe(true);
   });
 
   it('I2. image/png: LLM error → extraction_state=failed, zero proposals (fail-closed)', async () => {
