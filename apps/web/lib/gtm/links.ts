@@ -65,3 +65,60 @@ export function normalizeUtm(value: unknown): string | null {
   if (!trimmed || trimmed.length > 64) return null;
   return UTM_RE.test(trimmed) ? trimmed : null;
 }
+
+/**
+ * Link-preview crawlers and scrapers will hit /r/<code> the moment a link is
+ * posted (Slack/Telegram/Facebook unfurls, uptime checkers, bots). Logging those
+ * as clicks corrupts the click→signup conversion the funnel exists to measure, so
+ * the redirect skips the click log when the UA is empty or obviously non-human.
+ * Coarse by design — it kills accidental inflation, not a determined attacker.
+ */
+const BOT_UA_RE = /bot|crawl|spider|preview|facebookexternalhit|slackbot|whatsapp|telegram|discord|embedly|curl|wget|python-requests|headless|monitor|uptime/i;
+
+export function isLikelyBot(userAgent: string | null | undefined): boolean {
+  if (!userAgent || !userAgent.trim()) return true;
+  return BOT_UA_RE.test(userAgent);
+}
+
+/** The attribution fields we capture, shared by the form and the server action. */
+export const UTM_FIELDS = ['utm_source', 'utm_medium', 'utm_campaign', 'ref'] as const;
+export type UtmFields = Record<(typeof UTM_FIELDS)[number], string>;
+const EMPTY_UTM: UtmFields = { utm_source: '', utm_medium: '', utm_campaign: '', ref: '' };
+
+function hasAnyUtm(u: Partial<UtmFields> | null | undefined): boolean {
+  if (!u || typeof u !== 'object') return false;
+  return UTM_FIELDS.some((k) => typeof u[k] === 'string' && (u[k] as string).trim() !== '');
+}
+
+/**
+ * First-touch UTM resolution for the landing form (client layer). Prefers a
+ * value already stashed this session, but only if it actually carries UTM — a
+ * malformed or empty stored object must NOT suppress fresh URL attribution.
+ * Pure: the caller supplies the stored object and the location search string.
+ * `fromUrl` signals the resolved set came off the URL and should be persisted.
+ */
+export function pickFirstTouchUtm(
+  stored: Partial<UtmFields> | null,
+  search: string,
+): { utm: UtmFields; fromUrl: boolean } {
+  if (hasAnyUtm(stored)) {
+    const utm: UtmFields = { ...EMPTY_UTM };
+    for (const k of UTM_FIELDS) {
+      const v = stored![k];
+      if (typeof v === 'string') utm[k] = v;
+    }
+    return { utm, fromUrl: false };
+  }
+
+  const params = new URLSearchParams(search);
+  const utm: UtmFields = { ...EMPTY_UTM };
+  let fromUrl = false;
+  for (const k of UTM_FIELDS) {
+    const v = params.get(k);
+    if (v) {
+      utm[k] = v;
+      fromUrl = true;
+    }
+  }
+  return { utm, fromUrl };
+}

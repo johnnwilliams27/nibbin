@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { serviceClient } from '../../../lib/supabase/service';
-import { resolveLinkCode } from '../../../lib/gtm/links';
+import { resolveLinkCode, isLikelyBot } from '../../../lib/gtm/links';
 
 // Click redirect: bio links point at /r/<code> (e.g. /r/tt). We log the click
 // as a cookieless product_event, then 302 to the landing page carrying UTM so
@@ -21,19 +21,22 @@ export async function GET(
   }
 
   // Best-effort click log — a logging failure must never block the redirect.
-  try {
-    const svc = serviceClient();
-    await svc.from('product_events').insert({
-      name: 'link_click',
-      props: {
-        code: resolved.ref,
-        utm_source: resolved.source,
-        utm_medium: resolved.medium,
-        utm_campaign: resolved.campaign,
-      },
-    });
-  } catch (err) {
-    console.error('[gtm-redirect] click log failed', err instanceof Error ? err.message : String(err));
+  // Skip obvious crawlers/link-preview unfurls so they don't pollute the funnel.
+  if (!isLikelyBot(req.headers.get('user-agent'))) {
+    try {
+      const svc = serviceClient();
+      await svc.from('product_events').insert({
+        name: 'link_click',
+        props: {
+          code: resolved.ref,
+          utm_source: resolved.source,
+          utm_medium: resolved.medium,
+          utm_campaign: resolved.campaign,
+        },
+      });
+    } catch (err) {
+      console.error('[gtm-redirect] click log failed', err instanceof Error ? err.message : String(err));
+    }
   }
 
   return NextResponse.redirect(new URL(resolved.redirectPath, req.url), 302);

@@ -67,7 +67,6 @@ export async function joinWaitlist(_prev: JoinResult | null, formData: FormData)
       .eq('email', email)
       .maybeSingle<{ status: string; last_email_sent_at: string | null }>();
     if (exErr) return oops;
-    const isNew = !existing;
     if (existing?.status === 'confirmed') return confirmedAlready;
 
     // Resend cooldown: a re-submit within the window is a silent no-op, so the
@@ -78,15 +77,17 @@ export async function joinWaitlist(_prev: JoinResult | null, formData: FormData)
       return alreadyIn;
     }
 
-    // upsert never downgrades a confirmed row (DB trigger enforces it too). UTM is
-    // written only for a genuinely new row, so first-touch source is preserved — a
-    // later re-submit from a different link can't overwrite the original attribution.
-    const upsertRow = isNew
-      ? { email, status: 'pending', source: 'landing', ...utm }
-      : { email, status: 'pending', source: 'landing' };
-    const { error: upErr } = await svc
-      .from('waitlist')
-      .upsert(upsertRow, { onConflict: 'email' });
+    // Atomic first-touch join: inserts a pending row, or on conflict fills only the
+    // NULL utm columns (COALESCE inside the RPC) so the FIRST tracked link to bring
+    // an email wins — even under two concurrent first-submits. Returns true iff THIS
+    // call inserted the row, the reliable signal for emitting the join event once.
+    const { data: insertedNow, error: upErr } = await svc.rpc('waitlist_join', {
+      p_email: email,
+      p_utm_source: utm.utm_source,
+      p_utm_medium: utm.utm_medium,
+      p_utm_campaign: utm.utm_campaign,
+      p_ref: utm.ref,
+    });
     if (upErr) return oops;
 
     const apiKey = process.env.RESEND_API_KEY;
@@ -102,16 +103,17 @@ export async function joinWaitlist(_prev: JoinResult | null, formData: FormData)
       await svc.from('waitlist').update({ last_email_sent_at: new Date().toISOString() }).eq('email', email);
     }
 
-    // §6.12 cookieless product event (pre-auth, account-less). Best-effort. Only a
-    // genuinely new signup counts — a re-submit by someone already in is not a join.
-    if (isNew) {
+    // §6.12 cookieless product event (pre-auth, account-less). Best-effort. Emitted
+    // only when THIS call inserted the row (insertedNow), so concurrent racers can't
+    // each log a join — keeps the raw event honest alongside the row-counted funnel.
+    if (insertedNow === true) {
       await svc.from('product_events').insert({
         name: 'waitlist_joined',
         props: { source: 'landing', ...utm },
       });
     }
 
-    return isNew ? friendly : alreadyInResent;
+    return insertedNow === true ? friendly : alreadyInResent;
   } catch (err) {
     // PII never reaches the log — message only, no recipient address.
     console.error('[waitlist] join failed', err instanceof Error ? err.message : String(err));
