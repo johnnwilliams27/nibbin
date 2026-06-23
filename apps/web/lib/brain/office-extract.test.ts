@@ -7,7 +7,7 @@
  *
  * Run: npx vitest run apps/web/lib/brain/office-extract.test.ts
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { zipSync, strToU8 } from 'fflate';
 
 // ── Helper: build a minimal in-memory pptx buffer ──────────────────────────

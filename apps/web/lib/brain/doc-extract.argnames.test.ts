@@ -69,6 +69,8 @@ vi.mock('../llm/client', () => ({
 const mockStorageDownload = vi.fn();
 const mockSourcesUpdate = vi.fn();
 const mockJobsUpdate = vi.fn();
+/** Called when updateJobStatus reads back the attempts counter (Task 5 increment path). */
+const mockJobsSelect = vi.fn();
 const mockRpc = vi.fn();
 const mockSelect = vi.fn();
 
@@ -87,6 +89,15 @@ vi.mock('../supabase/service', () => ({
             eq: (k1: string, v1: string) => ({
               eq: (k2: string, v2: string) =>
                 mockJobsUpdate(payload, k1, v1, k2, v2),
+            }),
+          }),
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                limit: () => ({
+                  single: (...args: unknown[]) => mockJobsSelect(...args),
+                }),
+              }),
             }),
           }),
         };
@@ -151,6 +162,8 @@ describe('propose_memory_change arg-name regression guard', () => {
     mockSourcesUpdate.mockResolvedValue({ error: null });
     mockJobsUpdate.mockResolvedValue({ error: null });
     mockRpc.mockResolvedValue({ data: 'pid-guard', error: null });
+    // Default: attempts read returns 0 (supports the Task 5 attempts-increment path)
+    mockJobsSelect.mockResolvedValue({ data: { attempts: 0 }, error: null });
   });
 
   // ──────────────────────────────────────────────────────────────────────────

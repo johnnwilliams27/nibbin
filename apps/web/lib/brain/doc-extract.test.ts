@@ -50,6 +50,8 @@ const mockStorageDownload = vi.fn();
 const mockSourcesUpdate = vi.fn();
 /** Called as mockJobsUpdate(updatePayload, eqKey1, eqVal1, eqKey2, eqVal2) */
 const mockJobsUpdate = vi.fn();
+/** Called when updateJobStatus reads back the attempts counter. */
+const mockJobsSelect = vi.fn();
 const mockRpc = vi.fn();
 const mockSelect = vi.fn();
 const mockFrom = vi.fn();
@@ -65,11 +67,22 @@ vi.mock('../supabase/service', () => ({
     from: (table: string) => {
       if (table === 'source_extraction_jobs') {
         // Captures update(payload).eq(k1,v1).eq(k2,v2)
+        // Also supports select('attempts').eq().eq().limit().single() for the
+        // attempts-increment path added in Task 5.
         return {
           update: (payload: unknown) => ({
             eq: (k1: string, v1: string) => ({
               eq: (k2: string, v2: string) =>
                 mockJobsUpdate(payload, k1, v1, k2, v2),
+            }),
+          }),
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                limit: () => ({
+                  single: (...args: unknown[]) => mockJobsSelect(...args),
+                }),
+              }),
             }),
           }),
         };
@@ -197,6 +210,8 @@ describe('extractDocument', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default: attempts read returns 0 (supports the Task 5 attempts-increment path)
+    mockJobsSelect.mockResolvedValue({ data: { attempts: 0 }, error: null });
   });
 
   it('1. text-native PDF, clean: proposes extracted fields and marks job done', async () => {
@@ -835,6 +850,8 @@ describe('extractDocument — Task 5 state transitions', () => {
     mockSourcesUpdate.mockResolvedValue({ error: null });
     mockJobsUpdate.mockResolvedValue({ error: null });
     mockRpc.mockResolvedValue({ data: 'pid-t5', error: null });
+    // Default: attempts read returns 0 (supports the Task 5 attempts-increment path)
+    mockJobsSelect.mockResolvedValue({ data: { attempts: 0 }, error: null });
   });
 
   // Helper to read all extraction_state values written to sources

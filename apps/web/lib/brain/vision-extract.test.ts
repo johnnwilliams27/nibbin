@@ -563,6 +563,8 @@ describe('extractFromImage', () => {
 const mockStorageDownload2 = vi.fn();
 const mockSourcesUpdate2 = vi.fn();
 const mockJobsUpdate2 = vi.fn();
+/** Called when updateJobStatus reads back the attempts counter (Task 5 increment path). */
+const mockJobsSelect2 = vi.fn();
 const mockRpc2 = vi.fn();
 const mockSelect2 = vi.fn();
 const mockGenerateFn2 = vi.fn();
@@ -585,6 +587,15 @@ vi.mock('../supabase/service', () => ({
           update: (payload: unknown) => ({
             eq: (k1: string, v1: string) => ({
               eq: (k2: string, v2: string) => mockJobsUpdate2(payload, k1, v1, k2, v2),
+            }),
+          }),
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                limit: () => ({
+                  single: (...args: unknown[]) => mockJobsSelect2(...args),
+                }),
+              }),
             }),
           }),
         };
@@ -634,6 +645,8 @@ describe('extractDocument — image/png integration (Task 6 wire)', () => {
     mockJobsUpdate2.mockResolvedValue({ error: null });
     mockRpc2.mockResolvedValue({ data: 'pid-img', error: null });
     mockRecordModelCall2.mockResolvedValue(undefined);
+    // Default: attempts read returns 0 (supports the Task 5 attempts-increment path)
+    mockJobsSelect2.mockResolvedValue({ data: { attempts: 0 }, error: null });
   });
 
   function extractionStateWrites(): string[] {
