@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { AnthropicApiError, costMicroUsd, createAnthropicClient, ratesForModel } from '../src/index';
-import type { GenerateRequest } from '../src/index';
+import type { ContentBlock, GenerateRequest } from '../src/index';
 
 function apiResponse(overrides: Record<string, unknown> = {}): Response {
   return new Response(
@@ -89,6 +89,42 @@ describe('anthropic client', () => {
     const fetchImpl = vi.fn().mockRejectedValue(new Error('ECONNRESET'));
     const generate = createAnthropicClient({ apiKey: 'k', fetchImpl, retryDelayMs: 0 });
     await expect(generate(REQ)).rejects.toBeInstanceOf(AnthropicApiError);
+  });
+});
+
+describe('content-block union (back-compat + multimodal)', () => {
+  it('string content serializes byte-identically to the pre-union shape', async () => {
+    const fetchImpl = vi.fn(async () => apiResponse());
+    const generate = createAnthropicClient({ apiKey: 'k', fetchImpl, retryDelayMs: 0 });
+    await generate(REQ);
+
+    const [, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+    const body = JSON.parse(init.body as string);
+    // The pre-union shape: messages[0].content is a plain string, not wrapped
+    expect(body.messages[0]).toEqual({ role: 'user', content: 'draft a reply' });
+    expect(typeof body.messages[0].content).toBe('string');
+  });
+
+  it('ContentBlock[] content passes the array through unchanged to the API', async () => {
+    const blocks: ContentBlock[] = [
+      { type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'AAAA' } },
+      { type: 'text', text: 'What does this image show?' },
+    ];
+    const multimodalReq: GenerateRequest = {
+      ...REQ,
+      messages: [{ role: 'user', content: blocks }],
+    };
+
+    const fetchImpl = vi.fn(async () => apiResponse());
+    const generate = createAnthropicClient({ apiKey: 'k', fetchImpl, retryDelayMs: 0 });
+    await generate(multimodalReq);
+
+    const [, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+    const body = JSON.parse(init.body as string);
+    expect(body.messages[0].content).toEqual(blocks);
+    // system and max_tokens still present
+    expect(body.system).toHaveLength(2);
+    expect(body.max_tokens).toBe(800);
   });
 });
 
