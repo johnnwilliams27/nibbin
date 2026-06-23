@@ -1,5 +1,6 @@
 /**
  * Task 4 — Dynamic field registry.
+ * Task 5 — Slug helper for server-side custom field key generation.
  *
  * Pure, deterministic helpers — no React, no DOM, no side effects.
  * Guard-free / client-safe: no `server-only` import.
@@ -9,6 +10,7 @@
  *  - FieldMetaRow: a row from field_meta (subset of columns used here)
  *  - buildSectionRegistry: merges DEFAULT_SECTIONS with field_meta overrides
  *  - forwardMapLegacy: maps legacy `facts` → `about` when `about` is empty
+ *  - labelToFieldKey: server-side slug: label → `c_<slug>` matching ^c_[a-z0-9_]{1,40}$
  */
 
 import { DEFAULT_SECTIONS, type SectionEntry, type FieldKind } from '../../../lib/grove/memory-sections';
@@ -137,6 +139,38 @@ export function buildSectionRegistry(metaRows: FieldMetaRow[]): SectionDescripto
   result.sort((a, b) => a.sortOrder - b.sortOrder);
 
   return result;
+}
+
+// ---------------------------------------------------------------------------
+// labelToFieldKey — Task 5 slug helper
+// ---------------------------------------------------------------------------
+
+/**
+ * Converts a human-readable section label into a valid custom field key.
+ *
+ * Algorithm:
+ *  1. Lowercase the label.
+ *  2. Replace every non-alphanumeric character with `_`.
+ *  3. Collapse consecutive `_` into a single `_`.
+ *  4. Trim leading/trailing `_`.
+ *  5. Clamp the body to 40 characters.
+ *  6. If the body is empty after sanitization, use the fallback `section`.
+ *  7. Prefix with `c_`.
+ *
+ * Result always matches `^c_[a-z0-9_]{1,40}$`.
+ *
+ * @param label - The user-supplied section label.
+ * @returns A valid custom field key with `c_` prefix.
+ */
+export function labelToFieldKey(label: string): string {
+  const body = label
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_') // non-alphanumeric → _
+    .replace(/_+/g, '_')          // collapse consecutive underscores
+    .replace(/^_+|_+$/g, '')      // trim leading/trailing underscores
+    .slice(0, 40);                 // clamp body to 40 chars
+
+  return `c_${body || 'section'}`;
 }
 
 // ---------------------------------------------------------------------------

@@ -200,6 +200,271 @@ describe('saveGroveMemory — per-field save via FormData', () => {
 });
 
 // ---------------------------------------------------------------------------
+// saveSectionMeta — section create/rename/reorder/hide (Task 5)
+// ---------------------------------------------------------------------------
+
+describe('saveSectionMeta — upsert_section_meta RPC', () => {
+  beforeEach(() => {
+    rpcSpy.mockClear();
+    redirectSpy.mockClear();
+  });
+
+  it('calls upsert_section_meta with EXACTLY the right arg keys (bidirectional)', async () => {
+    const { saveSectionMeta } = await import('./actions');
+
+    const fd = new FormData();
+    fd.set('field_key', 'voice');
+    fd.set('label', 'House voice');
+    fd.set('sort_order', '1');
+    fd.set('is_custom', 'false');
+    fd.set('is_hidden', 'false');
+
+    await saveSectionMeta(fd);
+
+    expect(rpcSpy).toHaveBeenCalledTimes(1);
+    const [rpcName, rpcArgs] = rpcSpy.mock.calls[0] as unknown as [string, Record<string, unknown>];
+    expect(rpcName).toBe('upsert_section_meta');
+
+    const actualKeys = Object.keys(rpcArgs).sort();
+    const expectedKeys = [
+      'p_field_key',
+      'p_is_custom',
+      'p_is_hidden',
+      'p_label',
+      'p_sort_order',
+      'target_account',
+    ].sort();
+    expect(actualKeys).toEqual(expectedKeys);
+  });
+
+  it('passes the correct values for an existing key (rename/reorder/hide of default)', async () => {
+    const { saveSectionMeta } = await import('./actions');
+
+    const fd = new FormData();
+    fd.set('field_key', 'voice');
+    fd.set('label', 'House voice');
+    fd.set('sort_order', '50');
+    fd.set('is_custom', 'false');
+    fd.set('is_hidden', 'false');
+
+    await saveSectionMeta(fd);
+
+    const [, rpcArgs] = rpcSpy.mock.calls[0] as unknown as [string, Record<string, unknown>];
+    expect(rpcArgs['target_account']).toBe('acct-test-1');
+    expect(rpcArgs['p_field_key']).toBe('voice');
+    expect(rpcArgs['p_label']).toBe('House voice');
+    expect(rpcArgs['p_sort_order']).toBe(50);
+    expect(rpcArgs['p_is_custom']).toBe(false);
+    expect(rpcArgs['p_is_hidden']).toBe(false);
+  });
+
+  it('server-slugs label to p_field_key for a NEW custom section (is_custom=true, no field_key)', async () => {
+    const { saveSectionMeta } = await import('./actions');
+
+    const fd = new FormData();
+    // No field_key → server must generate from label
+    fd.set('label', 'Brand Guidelines!');
+    fd.set('sort_order', '500');
+    fd.set('is_custom', 'true');
+    fd.set('is_hidden', 'false');
+
+    await saveSectionMeta(fd);
+
+    const [rpcName, rpcArgs] = rpcSpy.mock.calls[0] as unknown as [string, Record<string, unknown>];
+    expect(rpcName).toBe('upsert_section_meta');
+    expect(rpcArgs['p_field_key']).toBe('c_brand_guidelines');
+    expect(rpcArgs['p_is_custom']).toBe(true);
+  });
+
+  it('slug: label of all symbols produces a safe fallback key c_section', async () => {
+    const { saveSectionMeta } = await import('./actions');
+
+    const fd = new FormData();
+    fd.set('label', '!!!');
+    fd.set('sort_order', '500');
+    fd.set('is_custom', 'true');
+    fd.set('is_hidden', 'false');
+
+    await saveSectionMeta(fd);
+
+    const [, rpcArgs] = rpcSpy.mock.calls[0] as unknown as [string, Record<string, unknown>];
+    // When the slug body is empty after sanitization, falls back to 'c_section'
+    expect(rpcArgs['p_field_key']).toBe('c_section');
+  });
+
+  it('slug: collapses multiple underscores and trims leading/trailing', async () => {
+    const { saveSectionMeta } = await import('./actions');
+
+    const fd = new FormData();
+    fd.set('label', '  Brand   &   Voice  ');
+    fd.set('sort_order', '200');
+    fd.set('is_custom', 'true');
+    fd.set('is_hidden', 'false');
+
+    await saveSectionMeta(fd);
+
+    const [, rpcArgs] = rpcSpy.mock.calls[0] as unknown as [string, Record<string, unknown>];
+    expect(rpcArgs['p_field_key']).toBe('c_brand_voice');
+  });
+
+  it('slug: clamps body to 40 chars after c_ prefix', async () => {
+    const { saveSectionMeta } = await import('./actions');
+
+    const fd = new FormData();
+    fd.set('label', 'A very long section name that exceeds the forty character limit for field keys');
+    fd.set('sort_order', '300');
+    fd.set('is_custom', 'true');
+    fd.set('is_hidden', 'false');
+
+    await saveSectionMeta(fd);
+
+    const [, rpcArgs] = rpcSpy.mock.calls[0] as unknown as [string, Record<string, unknown>];
+    const key = rpcArgs['p_field_key'] as string;
+    expect(key.startsWith('c_')).toBe(true);
+    // body is the part after 'c_'
+    expect(key.slice(2).length).toBeLessThanOrEqual(40);
+    expect(/^c_[a-z0-9_]{1,40}$/.test(key)).toBe(true);
+  });
+
+  it('returns { ok: true } on success (no redirect)', async () => {
+    const { saveSectionMeta } = await import('./actions');
+
+    const fd = new FormData();
+    fd.set('field_key', 'voice');
+    fd.set('label', 'House voice');
+    fd.set('sort_order', '1');
+    fd.set('is_custom', 'false');
+    fd.set('is_hidden', 'false');
+
+    const result = await saveSectionMeta(fd);
+    expect(result).toEqual({ ok: true });
+    expect(redirectSpy).not.toHaveBeenCalled();
+  });
+
+  it('returns { ok: false, error: string } on RPC error (no redirect)', async () => {
+    rpcSpy.mockResolvedValueOnce({ data: null, error: { message: 'section limit reached' } as unknown as null });
+    const { saveSectionMeta } = await import('./actions');
+
+    const fd = new FormData();
+    fd.set('field_key', 'voice');
+    fd.set('label', 'House voice');
+    fd.set('sort_order', '1');
+    fd.set('is_custom', 'false');
+    fd.set('is_hidden', 'false');
+
+    const result = await saveSectionMeta(fd);
+    expect(result).toHaveProperty('ok', false);
+    expect((result as { ok: false; error: string }).error).toBeTruthy();
+    expect(redirectSpy).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// deleteSection — delete_custom_section RPC (Task 5)
+// ---------------------------------------------------------------------------
+
+describe('deleteSection — delete_custom_section RPC', () => {
+  beforeEach(() => {
+    rpcSpy.mockClear();
+    redirectSpy.mockClear();
+  });
+
+  it('calls delete_custom_section with EXACTLY the right arg keys (bidirectional)', async () => {
+    const { deleteSection } = await import('./actions');
+
+    const fd = new FormData();
+    fd.set('field_key', 'c_brand_guidelines');
+
+    await deleteSection(fd);
+
+    expect(rpcSpy).toHaveBeenCalledTimes(1);
+    const [rpcName, rpcArgs] = rpcSpy.mock.calls[0] as unknown as [string, Record<string, unknown>];
+    expect(rpcName).toBe('delete_custom_section');
+
+    const actualKeys = Object.keys(rpcArgs).sort();
+    const expectedKeys = ['p_field_key', 'target_account'].sort();
+    expect(actualKeys).toEqual(expectedKeys);
+  });
+
+  it('passes the correct field_key and account values', async () => {
+    const { deleteSection } = await import('./actions');
+
+    const fd = new FormData();
+    fd.set('field_key', 'c_brand_guidelines');
+
+    await deleteSection(fd);
+
+    const [, rpcArgs] = rpcSpy.mock.calls[0] as unknown as [string, Record<string, unknown>];
+    expect(rpcArgs['target_account']).toBe('acct-test-1');
+    expect(rpcArgs['p_field_key']).toBe('c_brand_guidelines');
+  });
+
+  it('returns { ok: true } on success (no redirect)', async () => {
+    const { deleteSection } = await import('./actions');
+
+    const fd = new FormData();
+    fd.set('field_key', 'c_brand_guidelines');
+
+    const result = await deleteSection(fd);
+    expect(result).toEqual({ ok: true });
+    expect(redirectSpy).not.toHaveBeenCalled();
+  });
+
+  it('returns { ok: false, error: string } on RPC error (no redirect)', async () => {
+    rpcSpy.mockResolvedValueOnce({ data: null, error: { message: 'not a custom section' } as unknown as null });
+    const { deleteSection } = await import('./actions');
+
+    const fd = new FormData();
+    fd.set('field_key', 'voice'); // not a custom key — RPC would reject it
+
+    const result = await deleteSection(fd);
+    expect(result).toHaveProperty('ok', false);
+    expect((result as { ok: false; error: string }).error).toBeTruthy();
+    expect(redirectSpy).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// labelToFieldKey — slug helper (Task 5, exported from registry.ts)
+// ---------------------------------------------------------------------------
+
+describe('labelToFieldKey — slug helper', () => {
+  it('lowercases and replaces non-alphanumeric with underscores', async () => {
+    const { labelToFieldKey } = await import('./registry');
+    expect(labelToFieldKey('Brand Guidelines!')).toBe('c_brand_guidelines');
+  });
+
+  it('collapses repeated underscores', async () => {
+    const { labelToFieldKey } = await import('./registry');
+    expect(labelToFieldKey('Brand   &   Voice')).toBe('c_brand_voice');
+  });
+
+  it('trims leading and trailing underscores from the body', async () => {
+    const { labelToFieldKey } = await import('./registry');
+    expect(labelToFieldKey('  !!!Hello!!!')).toBe('c_hello');
+  });
+
+  it('falls back to c_section when no alphanumeric chars remain', async () => {
+    const { labelToFieldKey } = await import('./registry');
+    expect(labelToFieldKey('!!!')).toBe('c_section');
+  });
+
+  it('clamps the body to 40 characters', async () => {
+    const { labelToFieldKey } = await import('./registry');
+    const key = labelToFieldKey('A very long section name that exceeds the forty character limit for field keys');
+    expect(key.startsWith('c_')).toBe(true);
+    expect(key.slice(2).length).toBeLessThanOrEqual(40);
+    expect(/^c_[a-z0-9_]{1,40}$/.test(key)).toBe(true);
+  });
+
+  it('handles numeric-only labels', async () => {
+    const { labelToFieldKey } = await import('./registry');
+    const key = labelToFieldKey('2024');
+    expect(key).toBe('c_2024');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // saveReference — per-field save for reference_text (Sources tab)
 // ---------------------------------------------------------------------------
 

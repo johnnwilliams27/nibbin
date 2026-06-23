@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation';
 import { appSession } from '../../../lib/auth/app-session';
 import { toRpcPayload } from './fields';
+import { labelToFieldKey } from './registry';
 
 const MAX_REFERENCE = 8000;
 
@@ -67,6 +68,90 @@ export async function saveReference(
     const msg = typeof error === 'object' && error !== null && 'message' in error
       ? String((error as { message: unknown }).message)
       : 'Save failed';
+    return { ok: false, error: msg };
+  }
+
+  return { ok: true };
+}
+
+/**
+ * Create or update a section's metadata (label, sort order, visibility) via
+ * the `upsert_section_meta` security-definer RPC (Task 2).
+ *
+ * For a NEW custom section (`is_custom=true` and no `field_key` in FormData),
+ * the `p_field_key` is SERVER-SLUGGED from the label: lowercase, non-alphanumeric→`_`,
+ * collapse repeats, trim underscores, clamp body to 40 chars, prefix `c_`.
+ * This matches `^c_[a-z0-9_]{1,40}$`.
+ *
+ * For an existing key (rename/reorder/hide of a default or known custom section),
+ * the `field_key` from FormData is passed through unchanged.
+ *
+ * Always returns `{ ok: true }` or `{ ok: false, error }` — never redirects
+ * (per-field inline save, spec §5.3).
+ */
+export async function saveSectionMeta(
+  formData: FormData,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { supabase, accountId } = await appSession();
+
+  const rawFieldKey = formData.get('field_key');
+  const label = String(formData.get('label') ?? '').trim() || null;
+  const sortOrder = parseInt(String(formData.get('sort_order') ?? '1000'), 10);
+  const isCustom = formData.get('is_custom') === 'true';
+  const isHidden = formData.get('is_hidden') === 'true';
+
+  // Determine the field key: pass through an existing key, or slug from label for new custom sections.
+  let fieldKey: string;
+  if (rawFieldKey && String(rawFieldKey).trim()) {
+    fieldKey = String(rawFieldKey).trim();
+  } else {
+    // New custom section: generate key server-side from the label.
+    fieldKey = labelToFieldKey(label ?? '');
+  }
+
+  const { error } = await supabase.rpc('upsert_section_meta', {
+    target_account: accountId,
+    p_field_key: fieldKey,
+    p_label: label,
+    p_sort_order: isNaN(sortOrder) ? 1000 : sortOrder,
+    p_is_custom: isCustom,
+    p_is_hidden: isHidden,
+  });
+
+  if (error) {
+    const msg = typeof error === 'object' && error !== null && 'message' in error
+      ? String((error as { message: unknown }).message)
+      : 'Save failed';
+    return { ok: false, error: msg };
+  }
+
+  return { ok: true };
+}
+
+/**
+ * Delete a custom section via the `delete_custom_section` security-definer
+ * RPC (Task 3). Only custom sections (`c_*` keys) may be deleted; the RPC
+ * raises for default keys.
+ *
+ * Always returns `{ ok: true }` or `{ ok: false, error }` — never redirects
+ * (per-field inline save, spec §5.3).
+ */
+export async function deleteSection(
+  formData: FormData,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { supabase, accountId } = await appSession();
+
+  const fieldKey = String(formData.get('field_key') ?? '').trim();
+
+  const { error } = await supabase.rpc('delete_custom_section', {
+    target_account: accountId,
+    p_field_key: fieldKey,
+  });
+
+  if (error) {
+    const msg = typeof error === 'object' && error !== null && 'message' in error
+      ? String((error as { message: unknown }).message)
+      : 'Delete failed';
     return { ok: false, error: msg };
   }
 
