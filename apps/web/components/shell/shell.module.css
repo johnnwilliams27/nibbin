@@ -334,6 +334,44 @@
   }
 }
 
+/* ---- Keeper-dock unread badge (§10.3 — same visual language as bell badge) ----
+   Absolutely positioned overlay on panelExpand (desktop tab) and panelToggle (mobile FAB).
+   The badge sits top-right of the parent button; parent must be position:relative.
+   Visual spec mirrors .badge in notification-center.module.css:
+     background: var(--moss), color: var(--canopy), font-family: var(--mono).
+   Position offsets tightened vs the bell badge (button has less surrounding space). */
+.dockBadge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  background: var(--moss);
+  color: var(--canopy);
+  border-radius: var(--r-pill);
+  border: 2px solid var(--paper);
+  pointer-events: none;
+}
+/* Mobile FAB: slightly smaller offset to match the circular button boundary */
+.panelToggle .dockBadge {
+  top: -4px;
+  right: -4px;
+}
+/* Reduced-motion: no animation on badge (already has none, explicit guard) */
+@media (prefers-reduced-motion: reduce) {
+  .dockBadge {
+    transition: none;
+  }
+}
+
 /* keeperGlyph: circular clip for the keeper avatar in the panelExpand tab and
    mobile FAB. The SVG is 420×500 (face/head lives in the top ~36% of height,
    roughly y=140–320). We oversize the SVG relative to the clipping circle and

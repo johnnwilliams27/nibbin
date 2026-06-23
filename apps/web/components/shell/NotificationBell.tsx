@@ -17,18 +17,29 @@ function relTime(iso: string): string {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-export function NotificationBell() {
+export interface NotificationBellProps {
+  /**
+   * Seed the unread badge from a count already fetched by the parent (AppShell).
+   * §10.3: AppShell fetches once on mount and passes this down so the dock badge
+   * and the bell badge always show the same number from the same source.
+   * The bell still calls listLeaves() on open to refresh the item list; setUnread
+   * is also updated then, keeping both surfaces in sync after the first open.
+   */
+  initialUnread?: number;
+}
+
+export function NotificationBell({ initialUnread = 0 }: NotificationBellProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<Leaf[]>([]);
-  const [unread, setUnread] = useState(0);
+  const [unread, setUnread] = useState(initialUnread);
   const wrapRef = useRef<HTMLDivElement>(null);
 
+  // Refresh item list (and update unread count) whenever the bell opens.
+  // We do NOT re-fetch on mount: AppShell already fetched the count.
   const refresh = useCallback(() => {
     void listLeaves().then((r) => { setItems(r.items); setUnread(r.unread); });
   }, []);
-
-  useEffect(() => { refresh(); }, [refresh]);
 
   // Close on outside-click + Esc.
   useEffect(() => {
