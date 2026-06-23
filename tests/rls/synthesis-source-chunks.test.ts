@@ -163,7 +163,7 @@ describe.skipIf(!dbAvailable)('source_chunks RLS + match_sources RPC', () => {
       h.as(anon, (c) =>
         c.query(`select * from public.match_sources($1, null, 'hourly rate', 6, 0.0)`, [accountA]),
       ),
-    ).rejects.toThrow();
+    ).rejects.toThrow(/permission denied/i);
   });
 
   // ── (e) match_sources FTS path ─────────────────────────────────────────────
@@ -239,5 +239,85 @@ describe.skipIf(!dbAvailable)('source_chunks RLS + match_sources RPC', () => {
          and c.relname in ('source_chunks')`,
     );
     expect(r.rows).toEqual([]);
+  });
+
+  // ── (i) cross-account RPC isolation ───────────────────────────────────────
+  // Even though service_role bypasses RLS on direct table access, the
+  // match_sources function uses WHERE sc.account_id = p_account, so passing
+  // accountB should never surface accountA's chunks.
+
+  it('match_sources for account B never returns account A chunks (RPC cross-account isolation)', async () => {
+    // accountB has no chunks — only accountA does. Verify that the RPC
+    // scoped to accountB returns nothing even though the chunks exist for accountA.
+    const rows = await h.as(service, async (c) =>
+      (
+        await c.query(
+          `select chunk_id, source_title from public.match_sources($1, null, 'hourly rate', 6, 0.0)`,
+          [accountB],
+        )
+      ).rows,
+    );
+    // No chunks were seeded under accountB, so even with a matching query,
+    // the account fence must hold.
+    expect(rows).toHaveLength(0);
+  });
+
+  it('service_role match_sources for account A does NOT return chunks belonging to account B', async () => {
+    // Seed a chunk for accountB so there is something to cross-contaminate with.
+    let sourceBId = '';
+    await h.as(service, async (c) => {
+      sourceBId = (
+        await c.query(
+          `insert into public.sources (account_id, kind, title)
+           values ($1, 'document', 'B Contract') returning id`,
+          [accountB],
+        )
+      ).rows[0].id;
+      await c.query(
+        `insert into public.source_chunks (account_id, source_id, chunk_index, text, token_count)
+         values ($1, $2, 0, 'B Corp proprietary hourly rate is $500 per hour.', 30)`,
+        [accountB, sourceBId],
+      );
+    });
+
+    // Now call match_sources scoped to accountA with a query that also matches
+    // the accountB chunk text. The p_account fence must exclude accountB rows.
+    const rows = await h.as(service, async (c) =>
+      (
+        await c.query(
+          `select chunk_id, source_title, text from public.match_sources($1, null, 'hourly rate', 10, 0.0)`,
+          [accountA],
+        )
+      ).rows,
+    );
+
+    // None of the returned rows should belong to B's source.
+    expect(rows.every((r) => r.source_title !== 'B Contract')).toBe(true);
+    // And accountA's own chunks should still appear.
+    expect(rows.some((r) => r.source_title === 'A Rate Sheet')).toBe(true);
+  });
+
+  // ── (j) null-embedding FTS-only fallback is not silent-empty ──────────────
+  // Verifies the architecture decision: when p_embedding is null the engine
+  // must still surface results (recency + tier score > 0) rather than silently
+  // returning an empty set due to a logic short-circuit.
+
+  it('null-embedding path (no VOYAGE_API_KEY): recency+tier score alone yields results', async () => {
+    // Empty query string + null embedding forces the pure recency+tier path.
+    // The score formula gives each chunk:
+    //   0.0 (no FTS, query='') + recency_bonus + tier_bonus
+    // Both bonuses are > 0 for a freshly inserted source, so at least one
+    // row must appear with a positive score.
+    const rows = await h.as(service, async (c) =>
+      (
+        await c.query(
+          `select chunk_id, score from public.match_sources($1, null, '', 10, 0.0)`,
+          [accountA],
+        )
+      ).rows,
+    );
+    expect(rows.length).toBeGreaterThan(0);
+    // Every row must have a strictly positive score (recency + tier bonus).
+    expect(rows.every((r) => Number(r.score) > 0)).toBe(true);
   });
 });
