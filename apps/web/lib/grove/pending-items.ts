@@ -61,7 +61,7 @@ export async function loadPendingItems(
     const sourceIds = notifs.map((n) => n.source_id);
 
     // ── 2. Proposal details (only if we have source_ids to join) ─────────────
-    let proposalMap = new Map<string, ProposalRow>();
+    const proposalMap = new Map<string, ProposalRow>();
     if (sourceIds.length > 0) {
       const { data: propRows } = await (supabase
         .from('proposals')

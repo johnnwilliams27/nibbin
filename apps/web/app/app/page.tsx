@@ -15,7 +15,8 @@ import { AppShell } from '../../components/shell/AppShell';
 import { Card, Badge, InlineFeedback } from '../../components/ui';
 import { OnboardingCanvas } from './grove/OnboardingCanvas';
 import { DesktopOrStudyCard } from '../../components/study/DesktopOrStudyCard';
-import { decideRunAction } from './actions';
+import { decideRunAction, decideProposalAction } from './actions';
+import { computeNeedsYouTotal, renderProposalCards, type PendingProposalRow } from './page-helpers';
 import styles from './app.module.css';
 import dash from './dashboard.module.css';
 import home from './home.module.css';
@@ -302,6 +303,14 @@ export default async function AppPage({ searchParams }: { searchParams: Promise<
     { data: runsData },
     { data: weekCompletedData },
     { data: approvalsData },
+    // Task 7a: unread review_item notifications — extends the "NEEDS YOUR EYES"
+    // chipline total (§10.3 — count comes from notifications, not proposals).
+    { count: reviewItemCount },
+    // Task 7c: pending proposals for the inline-approve card UX only.
+    // The COUNT above is the authoritative NEEDS YOUR EYES number; this query
+    // provides field_key/rationale/stakes for each card. Separate query avoids
+    // a two-round-trip JOIN and keeps the count source clean (notifications only).
+    { data: pendingProposalsData },
   ] = await Promise.all([
     supabase
       .from('nibbins')
@@ -342,6 +351,26 @@ export default async function AppPage({ searchParams }: { searchParams: Promise<
       .select('run_id, decision, edit_distance, decided_at')
       .eq('account_id', accountId)
       .order('decided_at', { ascending: false }),
+    // §10.3 — unread review_item notifications (memory proposal pending reviews).
+    // This is the source-of-truth count for the NEEDS YOUR EYES chipline and the
+    // "Waiting on you" stat. NOT proposals.status='pending' — that would diverge
+    // from the bell/dock badge which both read the notifications table.
+    supabase
+      .from('notifications')
+      .select('id', { count: 'exact', head: true })
+      .eq('account_id', accountId)
+      .eq('kind', 'review_item')
+      .is('read_at', null),
+    // Pending proposal rows — for the inline approve/reject card UX only (Task 7c).
+    // Contains field_key + rationale + stakes so the card can render without a
+    // second JOIN. RLS-scoped via proposals_member_read policy.
+    supabase
+      .from('proposals')
+      .select('id, field_key, rationale, stakes')
+      .eq('account_id', accountId)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(5),
   ]);
 
   const nibbins = (nibbinsData ?? []) as unknown as NibbinRow[];
@@ -362,7 +391,11 @@ export default async function AppPage({ searchParams }: { searchParams: Promise<
   const runCounts = new Map<string, number>();
   for (const run of recentRuns) runCounts.set(run.nibbin_id, (runCounts.get(run.nibbin_id) ?? 0) + 1);
   const activeNibbins = nibbins.filter((n) => n.status === 'active').length;
-  const waiting = waitingCount ?? 0;
+  // Task 7b — "NEEDS YOUR EYES" total: awaiting_approval runs + unread review_item
+  // notifications (memory proposals pending review). §10.3: both counts come from
+  // their respective source tables; the proposal card query is separate (UX only).
+  const waiting = computeNeedsYouTotal(waitingCount, reviewItemCount);
+  const pendingProposals = (pendingProposalsData ?? []) as PendingProposalRow[];
 
   // ── Per-run step counts → time-saved estimate ──────────────────────────────
   // One step query for every run we need a count or description for (the queue,
@@ -550,6 +583,14 @@ export default async function AppPage({ searchParams }: { searchParams: Promise<
               })}
             </div>
           )}
+          {/* Task 7d — P1/P3 MOUNT SLOT: PendingProposalCards
+              This self-contained section renders inline Approve/Reject cards for
+              pending memory proposals. It sits at the bottom of the "Needs you"
+              tcard, after the draftStack (awaiting_approval runs).
+              P1 (Memory redesign) and P3 (capture banner) can merge above/below
+              this slot without touching the renderProposalCards call.
+              The section is absent when pendingProposals is empty (null return). */}
+          {renderProposalCards(pendingProposals, decideProposalAction)}
         </div>
 
         {/* Right: done-while-you-were-working feed + honest coming-up. */}

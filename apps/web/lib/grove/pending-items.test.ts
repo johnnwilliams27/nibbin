@@ -2,7 +2,7 @@
  * Tests for loadPendingItems — Task 2 (P6 attention-queue).
  * Uses a mock Supabase client object; no DB required.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { loadPendingItems } from './pending-items';
 
 const ACCOUNT_ID = 'acc-111';

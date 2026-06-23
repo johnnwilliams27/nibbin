@@ -12,10 +12,12 @@ const UID_B = 'b2222222-7777-4777-8777-777777777777';
 describe.skipIf(!dbAvailable)('Company Brain Foundation — F1 schema + RLS', () => {
   const h = new RlsHarness();
   let accountA = '';
-  let accountB = '';
+  // Created in setup so user B exists as an isolated account; the cross-account
+  // test reads from accountA while running *as* B — accountB itself is not read.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  let _accountB = '';
   const asA = { kind: 'authenticated', uid: UID_A } as const;
   const asB = { kind: 'authenticated', uid: UID_B } as const;
-  const anon = { kind: 'anon' } as const;
   const service = { kind: 'service_role' } as const;
 
   beforeAll(async () => {
@@ -27,7 +29,7 @@ describe.skipIf(!dbAvailable)('Company Brain Foundation — F1 schema + RLS', ()
       });
     }
     accountA = await h.as(asA, async (c) => (await c.query(`select public.create_account_with_owner('A') as id`)).rows[0].id);
-    accountB = await h.as(asB, async (c) => (await c.query(`select public.create_account_with_owner('B') as id`)).rows[0].id);
+    _accountB = await h.as(asB, async (c) => (await c.query(`select public.create_account_with_owner('B') as id`)).rows[0].id);
   });
   afterAll(async () => { await h.close(); });
 
@@ -144,7 +146,11 @@ describe.skipIf(!dbAvailable)('F2 — propose_memory_change + review_item notifi
 
 describe.skipIf(!dbAvailable)('F2 — decide_memory_proposal apply-on-approve', () => {
   const h = new RlsHarness();
-  let acct = ''; let otherAcct = '';
+  let acct = '';
+  // Created so user OTHER exists as an isolated account; the RPC's
+  // is_account_member guard is what's tested — otherAcct itself is not read.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  let _otherAcct = '';
   const UID = 'e5555555-7777-4777-8777-777777777777';
   const OTHER = 'f6666666-7777-4777-8777-777777777777';
   const asU = { kind: 'authenticated', uid: UID } as const;
@@ -157,7 +163,7 @@ describe.skipIf(!dbAvailable)('F2 — decide_memory_proposal apply-on-approve', 
       await h.as(who, async (c) => { await c.query(`insert into public.users (id,email) values ($1,$2)`, [uid, `${uid}@ex.test`]); });
     }
     acct = await h.as(asU, async (c) => (await c.query(`select public.create_account_with_owner('E') as id`)).rows[0].id);
-    otherAcct = await h.as(asOther, async (c) => (await c.query(`select public.create_account_with_owner('F') as id`)).rows[0].id);
+    _otherAcct = await h.as(asOther, async (c) => (await c.query(`select public.create_account_with_owner('F') as id`)).rows[0].id);
   });
   afterAll(async () => { await h.close(); });
 
