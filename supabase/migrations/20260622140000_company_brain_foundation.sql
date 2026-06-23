@@ -83,3 +83,67 @@ begin
     execute format('revoke insert, update, delete, truncate, references, trigger on public.%I from authenticated', t);
   end loop;
 end $$;
+
+-- Extend save_grove_memory: same signature + behavior, now appends per-field
+-- history and stamps field_meta.last_reviewed_at for changed fields.
+create or replace function public.save_grove_memory(
+  target_account uuid, new_sections jsonb, new_hard_rules jsonb, new_notes text
+) returns void language plpgsql security definer set search_path = '' as $$
+declare
+  uid uuid := (select auth.uid());
+  old_sections jsonb; old_hard_rules jsonb; old_notes text;
+  new_version integer; k text;
+  old_rules_txt text; new_rules_txt text;
+begin
+  if uid is null then raise exception 'not authenticated'; end if;
+  if not (select private.is_account_member(target_account)) then raise exception 'not a member of this account'; end if;
+  if new_sections is null or jsonb_typeof(new_sections) <> 'object' or pg_column_size(new_sections) > 32768 then
+    raise exception 'sections must be a json object under 32KB'; end if;
+  if new_hard_rules is null or jsonb_typeof(new_hard_rules) <> 'array' or pg_column_size(new_hard_rules) > 8192 then
+    raise exception 'hard_rules must be a json array under 8KB'; end if;
+  if new_notes is not null and char_length(new_notes) > 8000 then raise exception 'notes too long'; end if;
+
+  perform pg_advisory_xact_lock(hashtext('grove_memory:' || target_account::text));
+  select sections, hard_rules, notes into old_sections, old_hard_rules, old_notes
+    from public.grove_memory where account_id = target_account;
+
+  insert into public.grove_memory (account_id, sections, hard_rules, notes)
+    values (target_account, new_sections, new_hard_rules, new_notes)
+  on conflict (account_id) do update
+    set sections = excluded.sections, hard_rules = excluded.hard_rules, notes = excluded.notes,
+        version = public.grove_memory.version + 1, updated_at = now()
+  returning version into new_version;
+
+  -- per-section diff
+  for k in
+    select jsonb_object_keys(coalesce(old_sections,'{}'::jsonb))
+    union select jsonb_object_keys(coalesce(new_sections,'{}'::jsonb))
+  loop
+    if coalesce(old_sections->>k,'') is distinct from coalesce(new_sections->>k,'') then
+      insert into public.grove_memory_history (account_id, field_key, old_value, new_value, version, change_source, changed_by)
+        values (target_account, k, old_sections->>k, new_sections->>k, new_version, 'manual', uid);
+      insert into public.field_meta (account_id, field_key, last_reviewed_at) values (target_account, k, now())
+        on conflict (account_id, field_key) do update set last_reviewed_at = now();
+    end if;
+  end loop;
+
+  -- hard_rules (compare as text)
+  old_rules_txt := array_to_string(array(select jsonb_array_elements_text(coalesce(old_hard_rules,'[]'::jsonb))), E'\n');
+  new_rules_txt := array_to_string(array(select jsonb_array_elements_text(coalesce(new_hard_rules,'[]'::jsonb))), E'\n');
+  if old_rules_txt is distinct from new_rules_txt then
+    insert into public.grove_memory_history (account_id, field_key, old_value, new_value, version, change_source, changed_by)
+      values (target_account, 'hard_rules', nullif(old_rules_txt,''), nullif(new_rules_txt,''), new_version, 'manual', uid);
+    insert into public.field_meta (account_id, field_key, last_reviewed_at) values (target_account, 'hard_rules', now())
+      on conflict (account_id, field_key) do update set last_reviewed_at = now();
+  end if;
+
+  -- notes
+  if coalesce(old_notes,'') is distinct from coalesce(new_notes,'') then
+    insert into public.grove_memory_history (account_id, field_key, old_value, new_value, version, change_source, changed_by)
+      values (target_account, 'notes', old_notes, new_notes, new_version, 'manual', uid);
+    insert into public.field_meta (account_id, field_key, last_reviewed_at) values (target_account, 'notes', now())
+      on conflict (account_id, field_key) do update set last_reviewed_at = now();
+  end if;
+end; $$;
+revoke execute on function public.save_grove_memory(uuid, jsonb, jsonb, text) from public, anon, service_role;
+grant execute on function public.save_grove_memory(uuid, jsonb, jsonb, text) to authenticated;

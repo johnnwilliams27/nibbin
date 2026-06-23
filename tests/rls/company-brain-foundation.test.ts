@@ -69,3 +69,37 @@ describe.skipIf(!dbAvailable)('Company Brain Foundation — F1 schema + RLS', ()
     expect(r.rows).toEqual([]);
   });
 });
+
+describe.skipIf(!dbAvailable)('F1 — save_grove_memory appends history', () => {
+  const h = new RlsHarness();
+  let acct = '';
+  const UID = 'c3333333-7777-4777-8777-777777777777';
+  const asU = { kind: 'authenticated', uid: UID } as const;
+  beforeAll(async () => {
+    await h.reset();
+    await h.sql(`insert into auth.users (id,email) values ($1,'c@ex.test')`, [UID]);
+    await h.as(asU, async (c) => { await c.query(`insert into public.users (id,email) values ($1,$2)`, [UID, `${UID}@ex.test`]); });
+    acct = await h.as(asU, async (c) => (await c.query(`select public.create_account_with_owner('C') as id`)).rows[0].id);
+  });
+  afterAll(async () => { await h.close(); });
+
+  it('a field edit records one history row + a field_meta review stamp', async () => {
+    await h.as(asU, async (c) => {
+      await c.query(`select public.save_grove_memory($1, $2::jsonb, '[]'::jsonb, null)`, [acct, JSON.stringify({ pricing: '$200/session' })]);
+    });
+    const hist = await h.as(asU, async (c) =>
+      (await c.query(`select field_key, old_value, new_value, change_source, version from public.grove_memory_history where account_id=$1`, [acct])).rows);
+    expect(hist).toEqual([{ field_key: 'pricing', old_value: null, new_value: '$200/session', change_source: 'manual', version: 1 }]);
+    const meta = await h.as(asU, async (c) =>
+      (await c.query(`select field_key from public.field_meta where account_id=$1 and last_reviewed_at is not null`, [acct])).rows);
+    expect(meta).toEqual([{ field_key: 'pricing' }]);
+  });
+
+  it('an unchanged re-save adds no new history rows', async () => {
+    await h.as(asU, async (c) => {
+      await c.query(`select public.save_grove_memory($1, $2::jsonb, '[]'::jsonb, null)`, [acct, JSON.stringify({ pricing: '$200/session' })]);
+    });
+    const n = await h.as(asU, async (c) => (await c.query(`select count(*)::int as n from public.grove_memory_history where account_id=$1`, [acct])).rows[0].n);
+    expect(n).toBe(1);
+  });
+});
