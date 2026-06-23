@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { appSession } from '../../../lib/auth/app-session';
 import { AppShell } from '../../../components/shell/AppShell';
 import { saveGroveMemory } from './actions';
+import { StudySuggestionsBanner } from './StudySuggestionsBanner';
 import styles from './memory.module.css';
 
 export const metadata: Metadata = { title: 'What your grove knows — Nibbin' };
@@ -164,9 +165,9 @@ const FIELD_PLACEHOLDERS: Record<string, string> = {
 export default async function MemoryPage({
   searchParams,
 }: {
-  searchParams: Promise<{ saved?: string; error?: string }>;
+  searchParams: Promise<{ saved?: string; error?: string; from_study?: string }>;
 }) {
-  const { saved, error } = await searchParams;
+  const { saved, error, from_study } = await searchParams;
   const { supabase, accountId, user } = await appSession();
 
   const { data: mem } = await supabase
@@ -192,6 +193,24 @@ export default async function MemoryPage({
   const fieldValues = buildFieldValues(sections, rules, notes);
   const isEmpty = allEmpty(fieldValues);
 
+  // P3 Task 8 — capture proposal count for the post-study banner.
+  // Only query when ?from_study=1 is present to keep the happy path free of the
+  // extra round-trip. Returns 0 on any error so the banner silently stays hidden.
+  let pendingCaptureCount = 0;
+  if (from_study === '1') {
+    try {
+      const { count } = await supabase
+        .from('proposals')
+        .select('id', { count: 'exact', head: true })
+        .eq('account_id', accountId)
+        .eq('origin', 'capture')
+        .eq('status', 'pending');
+      pendingCaptureCount = count ?? 0;
+    } catch {
+      // silently no-op — banner stays hidden
+    }
+  }
+
   return (
     <AppShell active="memory" title="Grove Memory" email={user.email}>
       <h1 className={styles.h1}>What your grove knows</h1>
@@ -204,6 +223,11 @@ export default async function MemoryPage({
         <p className={styles.saved}>Saved — your grove will use this from its next draft.</p>
       )}
       {error && <p className={styles.error}>That didn&apos;t save. Give it another try.</p>}
+
+      {/* P3 Task 8 — post-study suggestions banner.
+          Mount point for P1: StudySuggestionsBanner sits above the F2 review queue.
+          Renders nothing when count=0 or user dismisses it. */}
+      <StudySuggestionsBanner count={pendingCaptureCount} />
 
       {isEmpty && (
         <div className={styles.firstRun}>
