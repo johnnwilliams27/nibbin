@@ -845,3 +845,203 @@
   margin: 0;
   font-style: italic;
 }
+
+/* ── Task 13: SourcesTab — tab panel layout ──────────────────────────────── */
+
+/* Root container for the Sources tab panel */
+.sourcesTab {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Section wrapper (Reference material / Evidence) */
+.sourcesSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 0 24px;
+}
+
+/* Section heading — same weight/treatment as MemorySection headings */
+.sourcesSectionHeading {
+  font-family: var(--display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+/* Section hint line */
+.sourcesSectionHint {
+  font-size: 13px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Divider between Reference and Evidence sections */
+.sourcesDivider {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 0 0 24px;
+}
+
+/* ── Task 13: ReferenceCatchAll — freeform reference_text catch-all ──────── */
+
+/* Root container */
+.referenceBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--canopy);
+  padding: 14px 18px;
+}
+
+/* Header: label + Edit button */
+.referenceHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* Field label */
+.referenceLabel {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: 0.01em;
+}
+
+/* Wrapper around <pre> + Show all affordance */
+.referencePreWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* <pre> element — freeform raw text, no structural formatting (§8.1) */
+.referencePre {
+  margin: 0;
+  padding: 10px 12px;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink);
+  background: var(--understory);
+  border-radius: var(--r-input);
+  white-space: pre-wrap;       /* wrap long lines */
+  word-break: break-word;
+  max-height: 320px;           /* truncated in view mode; "Show all" expands */
+  overflow: hidden;
+}
+
+/* "Show all" / "Collapse" affordance — tertiary link-style button */
+.referenceShowAll {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--moss-deep);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  align-self: flex-start;
+  transition: color var(--dur-1) var(--ease-settle);
+}
+.referenceShowAll:hover {
+  color: var(--ink);
+}
+
+/* Empty nudge copy — §14.5 */
+.referenceEmpty {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--ink-faint);
+  font-style: italic;
+}
+
+/* ── Task 13: EvidenceList — gated F1 evidence store ────────────────────── */
+
+/* Graceful empty banner — understory bg, no spinner */
+.evidenceEmpty {
+  background: var(--understory);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Headline inside empty banner */
+.evidenceEmptyHeadline {
+  font-family: var(--display);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0;
+}
+
+/* Body copy inside empty banner */
+.evidenceEmptyBody {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+/* List container for evidence cards */
+.evidenceList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Individual source card */
+.evidenceCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--canopy);
+  padding: 12px 16px;
+}
+
+/* Source kind/type label — mono eyebrow */
+.evidenceCardKind {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--moss-deep);
+}
+
+/* Excerpt text */
+.evidenceCardExcerpt {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+/* "Last seen" metadata line */
+.evidenceCardMeta {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-faint);
+  font-family: var(--mono);
+}

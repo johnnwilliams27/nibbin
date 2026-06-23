@@ -28,9 +28,10 @@
  * and the client manages all saves from here.
  */
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback } from 'react';
 import { TabBar, PANEL_IDS, TAB_IDS } from './TabBar';
 import { GroveMemoryTab } from './GroveMemoryTab';
+import { SourcesTab } from './SourcesTab';
 import { mergeMirror } from './fields';
 import { saveGroveMemory, saveReference } from './actions';
 import type { TabKey } from './tabBar.logic';
@@ -80,11 +81,8 @@ export function MemoryClient({
 
   const [activeTab, setActiveTab] = useState<TabKey>('memory');
   const [values, setValues] = useState<Record<string, string>>(initialValues);
-  // `referenceRef` holds the reference_text value for the Sources tab (Task 13).
-  // Stored as a ref here so MemoryClient is the single source of truth for all field
-  // mirrors without causing an unused-state lint error. Task 13 promotes this to useState
-  // when it wires the ReferenceCatchAll component.
-  const referenceRef = useRef(initialReference);
+  // Task 13: promoted from useRef to useState so ReferenceCatchAll can consume it.
+  const [referenceValue, setReferenceValue] = useState(initialReference);
 
   // ---------------------------------------------------------------------------
   // Save handlers
@@ -121,20 +119,22 @@ export function MemoryClient({
   }, [values]);
 
   /**
-   * Reference field save (Sources tab catch-all, Task 13 wires the UI).
-   * Defined here so MemoryClient holds the single authority for all save paths;
-   * Task 13 passes it down to ReferenceCatchAll.
+   * Reference field save (Sources tab catch-all — wired in Task 13).
+   * Called by ReferenceCatchAll with the raw string value.
+   * Optimistically updates local state, then writes through the server action.
    */
   const handleSaveReference = useCallback(async (value: string) => {
-    referenceRef.current = value;
+    // Optimistic update — show the new value immediately.
+    setReferenceValue(value);
     const fd = new FormData();
     fd.set('reference', value);
-    await saveReference(fd);
-  }, []);
-  // Mark as intentionally forward-declared for Task 13 (Sources tab).
-  // Task 13 will pass this to ReferenceCatchAll; until then we keep the reference
-  // accessible so the saveReference import is live and tree-shaking does not drop it.
-  void handleSaveReference;
+    const result = await saveReference(fd);
+    if (!result.ok) {
+      // Roll back the optimistic update on failure.
+      setReferenceValue(referenceValue);
+      throw new Error(result.error);
+    }
+  }, [referenceValue]);
 
   // ---------------------------------------------------------------------------
   // EmptyState chip click — open the named field in edit mode
@@ -200,7 +200,7 @@ export function MemoryClient({
         />
       </div>
 
-      {/* Sources tab panel — stub for Task 13 */}
+      {/* Sources tab panel — Task 13: ReferenceCatchAll + EvidenceList */}
       <div
         id={PANEL_IDS.sources}
         role="tabpanel"
@@ -208,12 +208,10 @@ export function MemoryClient({
         hidden={activeTab !== 'sources'}
         className={styles.tabPanel}
       >
-        {/* Task 13 builds ReferenceCatchAll + EvidenceList here */}
-        <div className={styles.sourcesStub}>
-          <p className={styles.sourcesStubCopy}>
-            Reference material and evidence from your connected sources.
-          </p>
-        </div>
+        <SourcesTab
+          referenceValue={referenceValue}
+          onSaveReference={handleSaveReference}
+        />
       </div>
     </div>
   );
