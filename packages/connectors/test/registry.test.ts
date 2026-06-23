@@ -49,7 +49,9 @@ const TIER1_CATALOG = [
   'caldav',
 ];
 
-const M3_HAND_BUILT = ['gmail', 'google-calendar', 'stripe', 'honeybook', 'pixieset', 'instagram-dm'];
+// Task 7: gmail + google-calendar moved to method 'N'; stripe/honeybook/pixieset/instagram-dm stay 'H'
+const M3_HAND_BUILT_H = ['stripe', 'honeybook', 'pixieset', 'instagram-dm'];
+const M3_NANGO = ['gmail', 'google-calendar'];
 
 describe('connector registry (SPEC §4.3)', () => {
   it('every descriptor validates', () => {
@@ -69,12 +71,25 @@ describe('connector registry (SPEC §4.3)', () => {
     }
   });
 
-  it('the six §8-M3 hand-built connectors are live [H]', () => {
-    for (const id of M3_HAND_BUILT) {
+  it('the four §8-M3 remaining hand-built connectors are live [H]', () => {
+    for (const id of M3_HAND_BUILT_H) {
       const d = getConnector(id);
       expect(d.method, id).toBe('H');
       expect(d.availability, id).toBe('live');
     }
+  });
+
+  // Task 7: gmail + google-calendar promoted to Nango lane
+  it('gmail and google-calendar use method N (Task 7)', () => {
+    for (const id of M3_NANGO) {
+      const d = getConnector(id);
+      expect(d.method, id).toBe('N');
+      expect(d.availability, id).toBe('live');
+    }
+  });
+
+  it('stripe stays method H (Nango migration deferred — no Stripe OAuth app)', () => {
+    expect(getConnector('stripe').method).toBe('H');
   });
 
   it('12+ connectors are live (M3 DoD)', () => {
