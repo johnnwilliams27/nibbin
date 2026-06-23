@@ -8,7 +8,7 @@ the way SPEC.md governs the build: changes via decision log, not drift. The Mark
 
 ## 1. Positioning
 
-**Category:** AI agents for people who work for themselves.
+**Category:** AI agents for people who work for themselves — and for the organizations they grow into.
 **Against beige AI:** every competitor sells "automation" in gray dashboards. Nibbin sells
 *employees you can see growing* — agents with report cards. The creature isn't decoration;
 it's the legibility of trust, and it's the most screenshot-able object in the category.
@@ -16,15 +16,16 @@ it's the legibility of trust, and it's the most screenshot-able object in the ca
 of clients and afraid of surveillance. Both answers are architectural and we say them plainly:
 *nothing sends without your approval — you grant what each Nibbin may do* (action level), and *screen
 captures never leave your device* (Observer). Privacy is a growth asset, not fine print.
-**One-liner:** "Little creatures that grow up working for you."
+**Hero/tagline (locked):** "Nibbin is the AI team that learns how you operate — and runs your day so you don't have to."
+**Pitch opener (locked):** "Every other AI makes you explain how you work. Nibbin learns on the job."
+**Spectrum line (locked):** "Simple enough for a layman, extensible to a full enterprise — the same brain either way."
 **Category line:** "AI Agents. Simplified." — used in SEO titles, meta,
 Product Hunt tagline, directories, and the landing eyebrow. Deliberately
 audience-agnostic: the public label names *what* we do, not *who* it's for, so solo
-owners and entrepreneurs beyond freelancers self-ID. Human-voice copy keeps
-"people who work for themselves" (photographers and tattoo artists self-ID as business
-owners, not freelancers; the warmer phrase covers both). (Founder decision 2026-06-15:
+owners, entrepreneurs, and organizations self-ID. Human-voice copy keeps
+"people who work for themselves" for the solo-owner register; the spectrum line ("same brain either way") is the bridge to organizational buyers. (Founder decision 2026-06-15:
 widened the public label from "AI agents for freelancers" so the copy no longer
-prescribes the target audience; the wedge sequence below still governs who we serve first.)
+prescribes the target audience; the wedge sequence below still governs who we serve first. 2026-06-22: broadened further to one-person-or-org per Company Brain repositioning D19.)
 **Proof number:** first agent in 10 minutes (TTFAD is a marketing SLO, per SPEC §6.12).
 
 **Wedge:** solo photographers (weddings/portraits/events). Why: acute admin pain (inquiries,
@@ -214,4 +215,4 @@ enrichment + small search test). Affiliates are CAC paid on results — turn the
 | Marketing run by agents under Agent School rules | One-man scale + the meta-story is the content | Hire #1 (likely community) when approval queue >20 min/day for 30 days |
 | No paid acquisition before Phase 2 | $19 ACV can't carry cold CAC; trust channels compound | If a paid test hits <3-month payback organically |
 | Community posting never automated | Authenticity is the moat in trust-graph channels | Never |
-| Public category line = "AI Agents. Simplified." (audience-agnostic); human copy = "people who work for themselves" | Names what we do, not who it's for; entrepreneurs + solo owners beyond freelancers self-ID; wedge sequence still governs who we serve first | Founder decision 2026-06-15: widened from "AI agents for freelancers" (itself widened from "creative freelancers" on 2026-06-12) so the copy doesn't prescribe the target |
+| Public category line = "AI Agents. Simplified." (audience-agnostic); human copy = "people who work for themselves"; spectrum line = "Simple enough for a layman, extensible to a full enterprise — the same brain either way" | Names what we do, not who it's for; entrepreneurs + solo owners + organizations self-ID; wedge sequence still governs who we serve first | Founder decision 2026-06-15: widened from "AI agents for freelancers" (itself widened from "creative freelancers" on 2026-06-12). 2026-06-22: Company Brain repositioning (D19) adds the spectrum line and removes the individual-only frame from hero copy — the wedge stays, the ceiling moves. |
