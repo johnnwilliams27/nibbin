@@ -48,11 +48,17 @@ describe.skipIf(!dbAvailable)('migration: field_meta + sources columns', () => {
          and cc.check_clause like '%extraction_state%'`,
     );
     expect(r.rows.length).toBeGreaterThan(0);
-    const clause = r.rows[0].check_clause as string;
-    // All five allowed values must appear in the constraint definition
-    for (const val of ['pending', 'extracting', 'extracted', 'unsupported', 'failed']) {
-      expect(clause).toContain(val);
-    }
+    // The column carries TWO constraints whose clause mentions extraction_state:
+    // the NOT NULL constraint ("extraction_state IS NOT NULL") and the IN-list
+    // CHECK. Postgres returns them in an unspecified order, so search ALL matching
+    // clauses for the one that enumerates the allowed values (don't assume rows[0]).
+    const required = ['pending', 'extracting', 'extracted', 'unsupported', 'failed'];
+    const clauses = r.rows.map((row: { check_clause: string }) => row.check_clause);
+    const valueClause = clauses.find((c: string) => required.every((v) => c.includes(v)));
+    expect(
+      valueClause,
+      `no extraction_state value CHECK found among: ${clauses.join(' | ')}`,
+    ).toBeDefined();
   });
 
   it('sources_account_state_idx index exists', async () => {
