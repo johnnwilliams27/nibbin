@@ -518,3 +518,116 @@
   line-height: 1;
   letter-spacing: 0.01em;
 }
+
+/* ── Task 9: HardRulesBlock — coral authority treatment (§7) ─────────────── */
+/*
+ * Coral here is an AUTHORITY signal, not an error signal.
+ * --coral-soft = left border accent (the "church wall" motif)
+ * --coral-deep = eyebrow text + bullet squares (high-contrast authority ink)
+ * No raw hex values — tokens only.
+ */
+
+/* Root container: coral left border marks these as non-negotiable */
+.hardRules {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 18px;
+  border-left: 3px solid var(--coral-soft);
+  border-bottom: 1px solid var(--understory);
+  background: var(--canopy);
+}
+.hardRules:last-child {
+  border-bottom: none;
+}
+
+/* Header row: eyebrow + sub-label + Edit button */
+.hardRulesHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* Left side of the header: eyebrow + sub-label stacked */
+.hardRulesLabels {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* "HARD RULES" mono eyebrow — coral-deep, authority ink */
+.hardRulesEyebrow {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--coral-deep);
+  margin: 0;
+  line-height: 1.2;
+}
+
+/* "Your Nibbins never break these" — sub-label, ink-soft */
+.hardRulesSubLabel {
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Rule list — no default bullets; uses custom coral-square bullets via .ruleBullet */
+.ruleList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+/* Rule list item — flex row for the custom bullet + text */
+.ruleBullet {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+/* Coral square bullet: a small filled square in coral-deep */
+.ruleBullet::before {
+  content: '';
+  display: block;
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  margin-top: 5px; /* optical vertical alignment with the first text line */
+  background-color: var(--coral-deep);
+  border-radius: 1px; /* very slight radius = "square", not "dot" */
+}
+
+/* Empty state placeholder — faint, italic */
+.hardRulesEmpty {
+  font-size: 14px;
+  color: var(--ink-faint);
+  font-style: italic;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Edit mode wrapper: inherits coral context from .hardRules; adds hint */
+.hardRulesEditor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Hint text in edit mode */
+.hardRulesHint {
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin: 0;
+  line-height: 1.5;
+}
