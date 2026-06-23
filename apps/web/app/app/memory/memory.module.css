@@ -1190,6 +1190,303 @@
   color: var(--coral);
 }
 
+/* ── Task 9: SourcesLibrary — drag-drop + list + search/filter/sort ─────── */
+
+/* Root container */
+.sourcesLibrary {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Drop zone */
+.sourcesDropZone {
+  border: 2px dashed var(--line);
+  border-radius: var(--r-card);
+  background: var(--understory);
+  padding: 24px 20px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  transition: border-color var(--dur-1) var(--ease-settle),
+              background-color var(--dur-1) var(--ease-settle);
+}
+
+.sourcesDropZoneActive {
+  border-color: var(--moss);
+  background: var(--canopy);
+}
+
+.sourcesDropZoneCopy {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
+.sourcesDropZoneHint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-faint);
+  line-height: 1.4;
+}
+
+.sourcesDropZoneBtn {
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--moss-deep);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color var(--dur-1) var(--ease-settle);
+}
+.sourcesDropZoneBtn:hover {
+  color: var(--ink);
+}
+
+/* Hidden file input (accessible fallback) */
+.sourcesFileInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Controls row: search + filters + sort */
+.sourcesControls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Search input */
+.sourcesSearch {
+  font: inherit;
+  font-size: 14px;
+  padding: 8px 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-input);
+  background: var(--paper);
+  color: var(--ink);
+  width: 100%;
+  transition: border-color var(--dur-1) var(--ease-settle);
+  box-sizing: border-box;
+}
+.sourcesSearch:focus {
+  outline: none;
+  border-color: var(--moss);
+  background: var(--canopy);
+}
+
+/* Filter chip row */
+.sourcesFilterRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Filter chip */
+.sourcesFilterChip {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-button);
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: background-color var(--dur-1) var(--ease-settle),
+              border-color var(--dur-1) var(--ease-settle);
+  white-space: nowrap;
+}
+.sourcesFilterChip:hover {
+  background: var(--understory);
+  border-color: var(--moss);
+  color: var(--ink);
+}
+.sourcesFilterChipActive {
+  background: var(--understory);
+  border-color: var(--moss);
+  color: var(--ink);
+}
+
+/* Sort row */
+.sourcesSortRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sourcesSortLabel {
+  font-size: 12px;
+  color: var(--ink-faint);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.sourcesSortBtn {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-button);
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: background-color var(--dur-1) var(--ease-settle),
+              border-color var(--dur-1) var(--ease-settle);
+  white-space: nowrap;
+}
+.sourcesSortBtn:hover {
+  background: var(--understory);
+  border-color: var(--moss);
+  color: var(--ink);
+}
+.sourcesSortBtnActive {
+  background: var(--understory);
+  border-color: var(--moss);
+  color: var(--ink);
+}
+.sourcesSortDir {
+  font-family: var(--mono);
+  font-size: 11px;
+  margin-left: 2px;
+}
+
+/* File list */
+.sourcesFileList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--canopy);
+  overflow: hidden;
+}
+
+/* Empty state */
+.sourcesEmpty {
+  padding: 24px 0;
+  text-align: center;
+}
+.sourcesEmptyText {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-faint);
+  font-style: italic;
+}
+
+/* ── SourceRow — individual file entry ────────────────────────────────────── */
+
+.sourceRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--understory);
+}
+.sourceRow:last-child {
+  border-bottom: none;
+}
+
+/* Type icon (emoji) */
+.sourceRowIcon {
+  flex-shrink: 0;
+  font-size: 16px;
+  line-height: 1;
+  width: 20px;
+  text-align: center;
+}
+
+/* Main content: title + meta */
+.sourceRowContent {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Title */
+.sourceRowTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Meta row: size + date */
+.sourceRowMeta {
+  font-size: 12px;
+  color: var(--ink-faint);
+  font-family: var(--mono);
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex-wrap: wrap;
+}
+.sourceRowSize {
+  white-space: nowrap;
+}
+.sourceRowMetaSep {
+  color: var(--line);
+}
+.sourceRowDate {
+  white-space: nowrap;
+}
+
+/* Extraction-state chip */
+.sourceStateChip {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: var(--r-button);
+  white-space: nowrap;
+  font-family: var(--mono);
+  letter-spacing: 0.02em;
+}
+
+/* Chip variants */
+.sourceStateRead {
+  background: var(--moss-tint);
+  color: var(--moss-deep);
+  border: 1px solid var(--moss-soft, var(--moss-tint));
+}
+.sourceStateReading {
+  background: var(--understory);
+  color: var(--ink-soft);
+  border: 1px solid var(--line);
+}
+.sourceStateUnsupported {
+  background: var(--understory);
+  color: var(--ink-soft);
+  border: 1px solid var(--line);
+}
+.sourceStateFailed {
+  background: var(--coral-tint);
+  color: var(--coral-deep);
+  border: 1px solid var(--coral-line);
+}
+.sourceStatePending {
+  background: var(--understory);
+  color: var(--ink-faint);
+  border: 1px solid var(--line);
+}
+
 /* ── Task 13: EvidenceList — gated F1 evidence store ────────────────────── */
 
 /* Graceful empty banner — understory bg, no spinner */

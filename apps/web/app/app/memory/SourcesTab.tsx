@@ -23,6 +23,7 @@
 import React from 'react';
 import { ReferenceCatchAll } from './ReferenceCatchAll';
 import { EvidenceList } from './EvidenceList';
+import { SourcesLibrary } from './SourcesLibrary';
 import type { SourceRow } from './EvidenceList';
 import styles from './memory.module.css';
 
@@ -62,6 +63,18 @@ export function SourcesTab({
 
   return (
     <div className={styles.sourcesTab}>
+      {/* ── Sources library (Task 9: drag-drop + list + search/filter/sort) ── */}
+      <section className={styles.sourcesSection}>
+        <h2 className={styles.sourcesSectionHeading}>Your files</h2>
+        <p className={styles.sourcesSectionHint}>
+          Upload documents, images, and other files for your Nibbins to read.
+        </p>
+        <SourcesLibrary />
+      </section>
+
+      {/* ── Divider ──────────────────────────────────────────────────────── */}
+      <hr className={styles.sourcesDivider} />
+
       {/* ── Reference catch-all ───────────────────────────────────────────── */}
       <section className={styles.sourcesSection}>
         <h2 className={styles.sourcesSectionHeading}>Reference material</h2>
