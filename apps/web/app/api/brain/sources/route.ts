@@ -47,13 +47,13 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         .join(',');
       query = query.or(orClause);
     } else if (predicate.kind === 'notin') {
-      // 'other' group: exclude all known-group mimes via negated OR
-      // Supabase PostgREST: .not('mime_type', 'ilike', ...) for a single pattern,
-      // but for multiple we use .or() with not. syntax on each pattern.
-      const notOrClause = predicate.patterns
-        .map((pat) => `mime_type.not.ilike.${pat}`)
-        .join(',');
-      query = query.not('mime_type', 'or', notOrClause);
+      // 'other' group: exclude every known-group mime. Exclusion is an AND of
+      // negations — NOT(A OR B …) = (NOT A) AND (NOT B) … — so chain one
+      // .not('mime_type','ilike',pattern) per pattern; each adds an AND.
+      // (A single .not('mime_type','or',…) is NOT valid PostgREST and 400s.)
+      for (const pat of predicate.patterns) {
+        query = query.not('mime_type', 'ilike', pat);
+      }
     }
     // kind:'none' → no predicate applied
   }
