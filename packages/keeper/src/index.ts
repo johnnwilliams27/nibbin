@@ -33,6 +33,7 @@ export {
 export type {
   CelebrationCard,
   ChartCard,
+  Citation,
   DraftApprovalCard,
   FieldNotesCard,
   KeeperCard,
@@ -48,6 +49,7 @@ export type {
   QuestionChip,
   RecommendationCard,
   ScanFindingCard,
+  SynthesisCard,
   UnderstandingModelTurn,
   UnderstandingProfile,
   UnderstandingQuestion,
