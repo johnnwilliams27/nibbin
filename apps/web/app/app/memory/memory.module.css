@@ -786,3 +786,62 @@
   border-color: var(--moss);
   color: var(--ink);
 }
+
+/* ── Task 11: MemoryClient shell + TabBar ──────────────────────────────────── */
+
+/* Top-level shell container for the Memory page client */
+.memoryClient {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Tab bar — two-tab layout (Grove Memory | Sources) */
+.tabBar {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--line);
+  margin: 0 0 20px;
+}
+
+/* Individual tab button — pill / underline affordance */
+.tab {
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 16px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: color var(--dur-1) var(--ease-settle),
+              border-color var(--dur-1) var(--ease-settle);
+  white-space: nowrap;
+  margin-bottom: -1px; /* overlap the bar border */
+}
+.tab:hover {
+  color: var(--ink);
+}
+
+/* Active tab — moss underline + ink text */
+.tabActive {
+  color: var(--ink);
+  border-bottom-color: var(--moss);
+}
+
+/* Tab panel container */
+.tabPanel {
+  display: contents; /* let children own layout */
+}
+
+/* Sources tab stub (Task 13 replaces this content) */
+.sourcesStub {
+  padding: 32px 0 16px;
+}
+.sourcesStubCopy {
+  font-size: 14px;
+  color: var(--ink-faint);
+  margin: 0;
+  font-style: italic;
+}
