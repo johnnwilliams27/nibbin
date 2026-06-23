@@ -1,12 +1,20 @@
 /**
  * RLS suite for the additive `reference_text` column on `grove_memory`
- * (migration 20260623120000_grove_memory_reference_text.sql — Task 1).
+ * (migration 20260623120000_grove_memory_reference_text.sql — Task 1)
+ * and the `save_reference` RPC (Task 2, same migration file).
  *
- * Asserts:
+ * Task 1 asserts:
  *  (a) grove_memory.reference_text exists, is text, and is nullable
  *  (b) a CHECK constraint rejects char_length > 8000
  *  (c) an authenticated member can read it under the existing RLS policy
  *  (d) anon cannot read grove_memory at all
+ *
+ * Task 2 asserts:
+ *  (e) save_reference(account, text) as a member upserts the column and bumps version
+ *  (f) non-member call raises 'not a member of this account'
+ *  (g) text > 8000 chars raises 'reference_text too long'
+ *  (h) anon has no execute grant on save_reference
+ *  (i) service_role has no execute grant on save_reference
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { RlsHarness } from './harness';
@@ -139,6 +147,143 @@ describe.skipIf(!dbAvailable)('grove_memory.reference_text column (Task 1)', () 
   it('(d) anon cannot select from grove_memory (revoked)', async () => {
     await expect(
       h.as(anon, async (c) => c.query(`select reference_text from public.grove_memory`)),
+    ).rejects.toThrow();
+  });
+});
+
+describe.skipIf(!dbAvailable)('save_reference RPC (Task 2)', () => {
+  const h = new RlsHarness();
+  let accountA = '';
+  let accountB = '';
+
+  const asA = { kind: 'authenticated', uid: UID_A } as const;
+  const asB = { kind: 'authenticated', uid: UID_B } as const;
+  const anon = { kind: 'anon' } as const;
+  const service = { kind: 'service_role' } as const;
+
+  beforeAll(async () => {
+    await h.reset();
+    await h.sql(
+      `insert into auth.users (id, email) values ($1, 'refa2@example.test'), ($2, 'refb2@example.test')`,
+      [UID_A, UID_B],
+    );
+    for (const [who, uid] of [[asA, UID_A], [asB, UID_B]] as const) {
+      await h.as(who, async (c) => {
+        await c.query(`insert into public.users (id, email) values ($1, $2)`, [uid, `${uid}@example.test`]);
+      });
+    }
+    accountA = await h.as(asA, async (c) =>
+      (await c.query(`select public.create_account_with_owner('RefA2 Grove') as id`)).rows[0].id,
+    );
+    accountB = await h.as(asB, async (c) =>
+      (await c.query(`select public.create_account_with_owner('RefB2 Grove') as id`)).rows[0].id,
+    );
+    // Ensure accountA has an existing grove_memory row so the upsert version-bump test is meaningful.
+    await h.as(service, async (c) =>
+      c.query(
+        `insert into public.grove_memory (account_id, sections, hard_rules)
+         values ($1, '{}'::jsonb, '[]'::jsonb)`,
+        [accountA],
+      ),
+    );
+  });
+
+  afterAll(async () => {
+    await h.close();
+  });
+
+  // ── (e) member upserts reference_text and bumps version ─────────────────────
+  it('(e) save_reference upserts reference_text and bumps version', async () => {
+    const before = await h.sql(
+      `select version from public.grove_memory where account_id = $1`,
+      [accountA],
+    );
+    const vBefore: number = before.rows[0].version;
+
+    await h.as(asA, async (c) =>
+      c.query(`select public.save_reference($1, $2)`, [accountA, 'Hello reference world']),
+    );
+
+    const after = await h.sql(
+      `select reference_text, version from public.grove_memory where account_id = $1`,
+      [accountA],
+    );
+    expect(after.rows[0].reference_text).toBe('Hello reference world');
+    expect(after.rows[0].version).toBe(vBefore + 1);
+  });
+
+  it('(e) save_reference with null text sets reference_text to null', async () => {
+    await h.as(asA, async (c) =>
+      c.query(`select public.save_reference($1, null)`, [accountA]),
+    );
+    const row = await h.sql(
+      `select reference_text from public.grove_memory where account_id = $1`,
+      [accountA],
+    );
+    expect(row.rows[0].reference_text).toBeNull();
+  });
+
+  it('(e) save_reference on an account with no prior row (upsert creates row)', async () => {
+    // accountB has no grove_memory row yet. The INSERT path sets version=1 (default).
+    await h.as(asB, async (c) =>
+      c.query(`select public.save_reference($1, $2)`, [accountB, 'Brand new reference']),
+    );
+    const row = await h.sql(
+      `select reference_text, version from public.grove_memory where account_id = $1`,
+      [accountB],
+    );
+    expect(row.rows[0].reference_text).toBe('Brand new reference');
+    // Fresh INSERT: version starts at the column default (1).
+    expect(row.rows[0].version).toBe(1);
+  });
+
+  // ── (f) non-member call raises ───────────────────────────────────────────────
+  it('(f) non-member cannot call save_reference for another account', async () => {
+    // asA tries to save to accountB
+    await expect(
+      h.as(asA, async (c) =>
+        c.query(`select public.save_reference($1, $2)`, [accountB, 'sneaky']),
+      ),
+    ).rejects.toThrow(/not a member/i);
+  });
+
+  // ── (g) > 8000 chars raises ─────────────────────────────────────────────────
+  it('(g) save_reference with > 8000 chars raises reference_text too long', async () => {
+    const longText = 'z'.repeat(8001);
+    await expect(
+      h.as(asA, async (c) =>
+        c.query(`select public.save_reference($1, $2)`, [accountA, longText]),
+      ),
+    ).rejects.toThrow(/reference_text too long/i);
+  });
+
+  it('(g) save_reference with exactly 8000 chars is accepted', async () => {
+    const maxText = 'w'.repeat(8000);
+    await h.as(asA, async (c) =>
+      c.query(`select public.save_reference($1, $2)`, [accountA, maxText]),
+    );
+    const row = await h.sql(
+      `select char_length(reference_text) as len from public.grove_memory where account_id = $1`,
+      [accountA],
+    );
+    expect(row.rows[0].len).toBe(8000);
+  });
+
+  // ── (h) anon has no execute grant ───────────────────────────────────────────
+  it('(h) anon cannot call save_reference (no execute grant)', async () => {
+    await expect(
+      h.as(anon, async (c) =>
+        c.query(`select public.save_reference($1, $2)`, [accountA, 'anon attempt']),
+      ),
+    ).rejects.toThrow();
+  });
+
+  // ── (i) service_role has no execute grant ───────────────────────────────────
+  it('(i) service_role cannot call save_reference (execute revoked)', async () => {
+    await expect(
+      h.as(service, async (c) =>
+        c.query(`select public.save_reference($1, $2)`, [accountA, 'service attempt']),
+      ),
     ).rejects.toThrow();
   });
 });
