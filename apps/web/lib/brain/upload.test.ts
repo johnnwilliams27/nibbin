@@ -26,6 +26,8 @@ const mockStorageUpload = vi.fn();
 const mockSourcesInsert = vi.fn();
 const mockJobsInsert = vi.fn();
 const mockSourcesSelect = vi.fn();
+/** Controls what source_extraction_jobs.select returns for the status poll (I2). */
+const mockJobsSelect = vi.fn();
 
 vi.mock('../supabase/service', () => ({
   serviceClient: () => ({
@@ -57,7 +59,7 @@ vi.mock('../supabase/service', () => ({
           select: (_cols: unknown) => ({
             eq: (_k1: string, _v1: unknown) => ({
               eq: (_k2: string, _v2: unknown) => ({
-                maybeSingle: () => Promise.resolve({ data: null, error: null }),
+                maybeSingle: (...args: unknown[]) => mockJobsSelect(...args),
               }),
             }),
           }),
@@ -154,6 +156,8 @@ describe('POST /api/brain/documents/upload', () => {
     mockJobsInsert.mockResolvedValue({ error: null });
     // Default: extractDocument is fire-and-forget, resolves immediately
     mockExtractDocument.mockResolvedValue(undefined);
+    // Default: job select returns no row (race / not yet created)
+    mockJobsSelect.mockResolvedValue({ data: null, error: null });
   });
 
   it('1. valid PDF upload → 202 + sourceId, Storage PUT called, sources + jobs rows inserted', async () => {
@@ -270,6 +274,32 @@ describe('POST /api/brain/documents/upload', () => {
     expect(mockSourcesInsert).not.toHaveBeenCalled();
   });
 
+  it('6. image MIME types → 422 with unsupported_type error (vision path is not supported)', async () => {
+    // Image uploads must be rejected: the vision extraction path is a stub and
+    // would hallucinate proposals. Images stay unsupported until the router gets
+    // real multimodal (image content block) support.
+    const imageMimes = [
+      { filename: 'photo.jpg', mimeType: 'image/jpeg' },
+      { filename: 'photo.png', mimeType: 'image/png' },
+      { filename: 'photo.webp', mimeType: 'image/webp' },
+      { filename: 'photo.heic', mimeType: 'image/heic' },
+    ];
+
+    for (const { filename, mimeType } of imageMimes) {
+      mockAuthed();
+      vi.clearAllMocks();
+      mockJobsSelect.mockResolvedValue({ data: null, error: null });
+
+      const req = makeUploadRequest({ filename, mimeType, sizeBytes: 1024 });
+      const res = await POST(req as unknown as Request);
+
+      expect(res.status).toBe(422);
+      const body = await res.json() as { error: string };
+      expect(body.error).toBe('unsupported_type');
+      expect(mockStorageUpload).not.toHaveBeenCalled();
+    }
+  });
+
   it('10. filename with path traversal characters → sanitized path, no directory separators', async () => {
     mockAuthed();
 
@@ -298,6 +328,8 @@ describe('GET /api/brain/sources/[sourceId]/status', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockExtractDocument.mockResolvedValue(undefined);
+    // Default: no job row found (graceful fallback to redaction_status mapping)
+    mockJobsSelect.mockResolvedValue({ data: null, error: null });
   });
 
   it('6. processing state → {status: "processing", proposalCount: 0}', async () => {
@@ -374,5 +406,40 @@ describe('GET /api/brain/sources/[sourceId]/status', () => {
     const body = await res.json() as { status: string; proposalCount: number };
     expect(body.status).toBe('error');
     expect(body.proposalCount).toBe(0);
+  });
+
+  it('I2-regression. job status=error → {status: "error", errorMessage} even when redaction_status=pending', async () => {
+    // A failed job (C1 RPC error, scanned-doc terminal error, any uncaught throw)
+    // previously showed "processing forever" because the status route only read
+    // sources.redaction_status. Now it reads source_extraction_jobs.status first.
+    mockAuthed();
+
+    // sources row still shows 'pending' (the worker never finished setting redaction_status)
+    mockSourcesSelect.mockResolvedValue({
+      data: {
+        id: SOURCE_ID,
+        redaction_status: 'pending',
+        account_id: VALID_ACCOUNT_ID,
+      },
+      error: null,
+    });
+
+    // But the job row shows 'error' with a user-facing message
+    mockJobsSelect.mockResolvedValue({
+      data: {
+        status: 'error',
+        error_message: "Couldn't read this scanned document — try a text-based export (PDF with selectable text, or .docx)",
+      },
+      error: null,
+    });
+
+    const req = makeStatusRequest(SOURCE_ID);
+    const res = await GET(req as unknown as Request, makeParams(SOURCE_ID));
+    expect(res.status).toBe(200);
+
+    const body = await res.json() as { status: string; proposalCount: number; errorMessage?: string };
+    expect(body.status).toBe('error');
+    expect(body.proposalCount).toBe(0);
+    expect(body.errorMessage).toMatch(/scanned document/i);
   });
 });

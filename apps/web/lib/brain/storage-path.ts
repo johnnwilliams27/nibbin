@@ -9,9 +9,12 @@
  *   stripped to prevent path traversal
  *
  * The path-prefix isolation guarantee (account A cannot read account B's files)
- * is enforced at the Storage-bucket level by a Supabase Storage policy applied
- * via `scripts/bootstrap-brain-sources-bucket.ts`. These utility functions
- * ensure no server-side code ever constructs a path outside `{accountId}/`.
+ * is enforced by two layers: (1) service-role-only access to the `brain-sources`
+ * bucket (no public URLs, no presigned URLs minted for end-users), and (2) the
+ * {accountId}/{sourceId}/ path prefix discipline enforced by these utility functions
+ * so that no server-side code ever constructs a path outside `{accountId}/`.
+ * Note: `scripts/bootstrap-brain-sources-bucket.ts` creates the bucket but does
+ * not apply Storage RLS policies — isolation relies on the two layers above.
  */
 
 /**

@@ -22,15 +22,20 @@ import { buildStoragePath } from '../../../../../lib/brain/storage-path';
 /** 20 MB cap enforced before Storage PUT. */
 const MAX_SIZE_BYTES = 20 * 1024 * 1024;
 
-/** Accepted MIME types for document uploads. */
+/**
+ * Accepted MIME types for document uploads.
+ *
+ * Image MIMEs (image/jpeg, image/png, image/webp, image/heic) are intentionally
+ * excluded. The vision extraction path is a stub — the router's Generate type
+ * is text-only and cannot pass real image content blocks, so the model would
+ * receive base64 text and could hallucinate proposals. Images are rejected here
+ * with a 422 unsupported-type until a proper multimodal router extension lands.
+ * TODO: re-add image MIMEs when @nibbin/router supports image content blocks.
+ */
 const ACCEPTED_MIMES = new Set<string>([
   'application/pdf',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
   'text/plain',
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'image/heic',
 ]);
 
 /** Legacy Word format — reject with a save-as nudge. */

@@ -8,7 +8,9 @@ import 'server-only';
  * 2. Download file from brain-sources Storage
  * 3. Type dispatch: PDF (text-native or scanned), DOCX, TXT, image
  * 4. Text-native path: pdf-parse / mammoth / raw read → rawText (capped at 50k)
- * 5. Scanned/vision path: Claude vision model via groveRouter (task='doc_vision_extract')
+ * 5. Scanned PDF path: fail closed — marks job 'error' with a user-facing message; zero proposals.
+ *    Raw image uploads are rejected at the upload route (422). True scanned-doc support
+ *    requires a @nibbin/router multimodal (image content block) extension (TODO).
  * 6. Redaction gate: applyBattery + HeuristicNer on ALL rawText before ANY write
  *    - Quarantine-class rule → redaction_status='quarantined'; job='error'; zero proposals
  *    - Scrubbable rules → replace spans; redaction_status='redacted'
@@ -72,14 +74,17 @@ const CATCHALL_SUMMARY_CAP = 800;
  */
 const QUARANTINE_RULES = new Set<string>(['SSN', 'CARD', 'APIKEY']);
 
-/** Accepted MIME types for text-native or vision extraction. */
+/** Accepted MIME types for text-native extraction. */
 const PDF_MIME = 'application/pdf';
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 const TXT_MIME = 'text/plain';
-const IMAGE_MIMES = new Set<string>(['image/jpeg', 'image/png', 'image/webp', 'image/heic']);
 
 /** Known field keys the LLM may extract. */
 const KNOWN_FIELDS = new Set<string>(['facts', 'pricing', 'policies', 'faq', 'voice', 'hard_rules', 'notes']);
+
+// NOTE: Image MIMEs (image/jpeg, image/png, image/webp, image/heic) are intentionally
+// not accepted. Scanned PDFs also fail closed (see extractDocument). True scanned-doc
+// support requires a @nibbin/router multimodal (image content block) extension.
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -353,74 +358,6 @@ async function callSummaryLlm(
   return result.text.trim().slice(0, CATCHALL_SUMMARY_CAP) || null;
 }
 
-/** Call the vision model for scanned PDF / image content extraction. */
-async function callVisionLlm(
-  imageDataBase64: string,
-  mediaType: string,
-  filename: string,
-  accountId: string,
-): Promise<string | null> {
-  const llm = anthropicGenerate();
-  if (!llm) return null;
-
-  const decision = await groveRouter.route({
-    userId: `account:${accountId}`,
-    task: 'doc_vision_extract',
-    origin: 'pipeline',
-  });
-
-  const t0 = Date.now();
-  let result: Awaited<ReturnType<typeof llm>>;
-  try {
-    // Pass as a user text message describing the image (base64 inline)
-    // The Generate type only accepts text content; we embed the image description
-    // as a text block to stay within the existing client surface.
-    // Full vision multimodal would require a GenerateRequest extension.
-    // For now, pass as text description with base64 data as a structured user message.
-    result = await llm({
-      model: decision.model,
-      system: [{ text: DOC_EXTRACT_SYSTEM, cache: true }],
-      messages: [
-        {
-          role: 'user',
-          content: `Document: ${filename}\n[This is a scanned document image. The image data (base64, ${mediaType}) is: ${imageDataBase64.slice(0, 100)}... (truncated for text mode)]\n\nExtract the structured information you can read from this document and return as JSON.`,
-        },
-      ],
-      maxTokens: 1500,
-      temperature: 0.2,
-    });
-  } catch (err) {
-    await recordModelCall({
-      accountId,
-      userId: null,
-      tier: decision.tier,
-      task: 'doc_vision_extract',
-      model: decision.model,
-      usage: { inputTokens: 0, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 0 },
-      origin: 'pipeline',
-      degraded: decision.degraded,
-      latencyMs: Date.now() - t0,
-      outcome: 'error',
-    });
-    throw err;
-  }
-
-  await recordModelCall({
-    accountId,
-    userId: null,
-    tier: decision.tier,
-    task: 'doc_vision_extract',
-    model: result.model,
-    usage: result.usage,
-    origin: 'pipeline',
-    degraded: decision.degraded,
-    latencyMs: Date.now() - t0,
-    outcome: 'ok',
-  });
-
-  return result.text;
-}
-
 // ── Text extraction helpers ───────────────────────────────────────────────
 
 interface TextExtractionResult {
@@ -542,44 +479,45 @@ export async function extractDocument(sourceId: string, accountId: string): Prom
     // Step 3: Download file
     const buffer = await downloadSourceFile(svc, accountId, sourceId, filename);
 
-    // Step 4+5: Text extraction / vision dispatch
+    // Step 4+5: Text extraction dispatch
+    // NOTE: Image MIMEs are rejected by the upload route before reaching here.
+    // Raw image uploads are unsupported until @nibbin/router supports image content
+    // blocks (multimodal). The IMAGE_MIMES set below is kept for the scanned-PDF
+    // detection branch only — no direct image upload path exists.
     let rawText: string;
-    let isVisionPath = false;
     let truncatedPages = false;
 
     if (mime === PDF_MIME || filename.toLowerCase().endsWith('.pdf')) {
       const pdfResult = await extractPdfText(buffer);
       rawText = pdfResult.rawText;
-      isVisionPath = pdfResult.isScanned;
       truncatedPages = pdfResult.truncatedPages;
+
+      if (pdfResult.isScanned) {
+        // Fail closed: scanned PDFs cannot be processed without real multimodal support.
+        // The stub vision path (passing base64 as text) would cause the model to
+        // hallucinate proposals from truncated base64 data — we must not do this.
+        // TODO: enable scanned-PDF extraction when @nibbin/router supports image
+        // content blocks so the model receives an actual image, not base64 text.
+        if (truncatedPages) {
+          const updatedOrigin = { ...originJsonb, truncated_pages: true };
+          await updateRedactionStatus(svc, sourceId, 'quarantined', updatedOrigin);
+        }
+        await updateRedactionStatus(svc, sourceId, 'quarantined');
+        await updateJobStatus(
+          svc,
+          sourceId,
+          accountId,
+          'error',
+          "Couldn't read this scanned document — try a text-based export (PDF with selectable text, or .docx)",
+        );
+        return;
+      }
     } else if (mime === DOCX_MIME || filename.toLowerCase().endsWith('.docx')) {
       rawText = await extractDocxText(buffer);
     } else if (mime === TXT_MIME || filename.toLowerCase().endsWith('.txt')) {
       rawText = buffer.toString('utf8').slice(0, RAW_TEXT_CAP);
-    } else if (IMAGE_MIMES.has(mime)) {
-      rawText = '';
-      isVisionPath = true;
     } else {
       throw new Error(`Unsupported MIME type: ${mime}`);
-    }
-
-    // Step 5 (vision path): Call vision model for scanned PDFs / images
-    if (isVisionPath) {
-      // Update origin with truncated_pages flag if applicable
-      if (truncatedPages) {
-        const updatedOrigin = { ...originJsonb, truncated_pages: true };
-        await updateRedactionStatus(svc, sourceId, 'pending', updatedOrigin);
-      }
-
-      // For vision path, convert buffer to base64
-      const base64 = buffer.toString('base64');
-      const imageMediaType = IMAGE_MIMES.has(mime) ? mime : 'application/pdf';
-
-      const visionText = await callVisionLlm(base64, imageMediaType, filename, accountId);
-      if (!visionText) {
-        throw new Error('Vision extraction returned no text');
-      }
-      rawText = visionText.slice(0, RAW_TEXT_CAP);
     }
 
     // Step 6: Redaction gate — mandatory before ANY write or proposal
@@ -629,9 +567,12 @@ export async function extractDocument(sourceId: string, accountId: string): Prom
       const rationale = buildRationale(filename, `contains your ${fieldKey.replace(/_/g, ' ')}`);
 
       // Call propose_memory_change via service-role RPC
+      // Parameter names MUST match the migration signature exactly:
+      // propose_memory_change(p_account uuid, p_field_key text, p_op text, p_value text, p_rationale text, p_source_id uuid, p_origin text)
+      // PostgREST resolves args by name — any mismatch silently produces zero proposals.
       const op = fieldKey === 'notes' ? 'append' : 'replace';
       const { error: rpcError } = await svc.rpc('propose_memory_change', {
-        p_account_id: accountId,
+        p_account: accountId,
         p_field_key: fieldKey,
         p_op: op,
         p_value: checkedValue,
@@ -659,7 +600,7 @@ export async function extractDocument(sourceId: string, accountId: string): Prom
         if (checkedSummary) {
           const rationale = buildRationale(filename, 'general summary of document content');
           await svc.rpc('propose_memory_change', {
-            p_account_id: accountId,
+            p_account: accountId,
             p_field_key: 'notes',
             p_op: 'append',
             p_value: checkedSummary,

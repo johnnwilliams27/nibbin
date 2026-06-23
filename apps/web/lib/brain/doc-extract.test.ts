@@ -217,8 +217,9 @@ describe('extractDocument', () => {
     expect(updateArg).toBeDefined();
   });
 
-  it('2. scanned PDF detection: < 100 chars triggers vision path', async () => {
-    // Storage returns a PDF buffer
+  it('2. scanned PDF (< 100 chars): fails closed → job=error, zero proposals, no LLM call', async () => {
+    // Fail-closed: scanned PDFs cannot be processed without real multimodal router support.
+    // The old stub vision path would pass base64 as text and could hallucinate proposals.
     mockStorageDownload.mockResolvedValue({
       data: makePdfBuffer('Short'),
       error: null,
@@ -228,48 +229,33 @@ describe('extractDocument', () => {
       error: null,
     });
 
-    // pdf-parse returns only 30 chars (< 100 threshold)
+    // pdf-parse returns only 30 chars (< 100 threshold → isScanned = true)
     mockPdfParse.mockResolvedValue({
       text: 'A'.repeat(30),
       numpages: 3,
     });
 
-    // Redaction: clean
-    const fakeVisionText = 'Studio pricing: $300/hr for weddings.';
-    mockApplyBattery.mockReturnValue({ text: fakeVisionText, rulesHit: [] });
-    mockHeuristicNerRedact.mockResolvedValue({ redacted: fakeVisionText, rulesHit: [] });
-
-    // Router call for vision
-    mockGroveRouterRoute.mockResolvedValue({
-      model: 'claude-haiku-4-5-20251001',
-      tier: 't1',
-      degraded: false,
-    });
-
-    // Vision model returns text
-    mockGenerateFn.mockResolvedValue({
-      text: JSON.stringify({ pricing: '$300/hr' }),
-      model: 'claude-haiku-4-5-20251001',
-      usage: { inputTokens: 200, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 40 },
-      stopReason: 'end_turn',
-    });
-
     mockSourcesUpdate.mockResolvedValue({ error: null });
     mockJobsUpdate.mockResolvedValue({ error: null });
-    mockRpc.mockResolvedValue({ data: 'pid-2', error: null });
 
     await extractDocument(SOURCE_ID, ACCOUNT_ID);
 
-    // groveRouter.route was called with doc_vision_extract task
-    const visionCall = mockGroveRouterRoute.mock.calls.find(
-      (c) => c[0]?.task === 'doc_vision_extract'
-    );
-    expect(visionCall).toBeDefined();
+    // MUST NOT call the LLM or propose anything
+    expect(mockGenerateFn).not.toHaveBeenCalled();
+    expect(mockRpc).not.toHaveBeenCalled();
+
+    // Job must be marked 'error' with the user-facing message
+    const jobCalls = mockJobsUpdate.mock.calls;
+    const errorCall = jobCalls.find((c) => JSON.stringify(c).includes('error'));
+    expect(errorCall).toBeDefined();
+    const errorPayload = JSON.stringify(errorCall);
+    expect(errorPayload).toMatch(/scanned document/i);
   });
 
   it('3. redaction scrub: phone number replaced with [REDACTED]; redaction_status=redacted', async () => {
-    const rawText = 'Call us at 555-123-4567 for bookings.';
-    const scrubbedText = 'Call us at [REDACTED] for bookings.';
+    // rawText must be > 100 chars (SCANNED_THRESHOLD) so pdf-parse returns a text-native result.
+    const rawText = 'Call us at 555-123-4567 for bookings. We are a full-service photography studio serving weddings, events, and portraits throughout the region.';
+    const scrubbedText = 'Call us at [REDACTED] for bookings. We are a full-service photography studio serving weddings, events, and portraits throughout the region.';
 
     mockStorageDownload.mockResolvedValue({
       data: makePdfBuffer(rawText),
@@ -352,7 +338,8 @@ describe('extractDocument', () => {
   });
 
   it('5. per-field defense-in-depth: field value that trips applyBattery is dropped; other clean fields are proposed', async () => {
-    const rawText = 'Photography studio. Rate: $200/hr. Phone: 555-999-0000 (contact).';
+    // rawText must be > 100 chars (SCANNED_THRESHOLD) so pdf-parse returns a text-native result.
+    const rawText = 'Photography studio. Rate: $200/hr. Phone: 555-999-0000 (contact). We offer studio, outdoor, and destination sessions for all occasions.';
 
     mockStorageDownload.mockResolvedValue({
       data: makePdfBuffer(rawText),
@@ -472,7 +459,9 @@ describe('extractDocument', () => {
     expect(mockGenerateFn).toHaveBeenCalledTimes(1);
   });
 
-  it('9. scanned PDF with > 10 pages: only first 10 rasterized; sources.origin gets truncated_pages=true', async () => {
+  it('9. scanned PDF with > 10 pages: fails closed (truncated_pages flagged) → job=error, zero proposals', async () => {
+    // Scanned PDFs fail closed regardless of page count. When truncated_pages is true,
+    // the origin patch is still recorded before the terminal error is set.
     const rawText = 'X'.repeat(30); // < 100 chars → scanned path
     const totalPages = 15;
 
@@ -485,27 +474,23 @@ describe('extractDocument', () => {
       error: null,
     });
 
-    // pdf-parse called twice: first call for page count detection (returns < 100 chars), second for full parse
     mockPdfParse.mockResolvedValue({ text: rawText, numpages: totalPages });
 
-    const visionText = 'Long scanned doc content';
-    mockApplyBattery.mockReturnValue({ text: visionText, rulesHit: [] });
-    mockHeuristicNerRedact.mockResolvedValue({ redacted: visionText, rulesHit: [] });
-
-    mockGroveRouterRoute.mockResolvedValue({ model: 'claude-haiku-4-5-20251001', tier: 't1', degraded: false });
-    mockGenerateFn.mockResolvedValue({
-      text: JSON.stringify({ facts: 'Long doc' }),
-      model: 'claude-haiku-4-5-20251001',
-      usage: { inputTokens: 500, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 30 },
-      stopReason: 'end_turn',
-    });
     mockSourcesUpdate.mockResolvedValue({ error: null });
     mockJobsUpdate.mockResolvedValue({ error: null });
-    mockRpc.mockResolvedValue({ data: 'pid-9', error: null });
 
     await extractDocument(SOURCE_ID, ACCOUNT_ID);
 
-    // sources.origin should be updated with truncated_pages: true
+    // MUST NOT call the LLM or propose anything
+    expect(mockGenerateFn).not.toHaveBeenCalled();
+    expect(mockRpc).not.toHaveBeenCalled();
+
+    // Job must be marked 'error'
+    const jobCalls = mockJobsUpdate.mock.calls;
+    const errorCall = jobCalls.find((c) => JSON.stringify(c).includes('error'));
+    expect(errorCall).toBeDefined();
+
+    // sources.origin should be updated with truncated_pages: true (recorded before terminal error)
     const updateCalls = mockSourcesUpdate.mock.calls;
     const truncatedCall = updateCalls.find((c) => JSON.stringify(c).includes('truncated_pages'));
     expect(truncatedCall).toBeDefined();
@@ -570,8 +555,41 @@ describe('extractDocument', () => {
     expect(capturedUserMessage.length).toBeLessThanOrEqual(51000); // allow small prompt wrapper overhead
   });
 
+  it('C1-regression. propose_memory_change RPC arg keys exactly match migration signature', async () => {
+    // CRITICAL: PostgREST resolves RPC args by NAME. Any key mismatch (e.g. p_account_id
+    // instead of p_account) silently produces zero proposals in production.
+    // Migration signature: propose_memory_change(p_account uuid, p_field_key text, p_op text,
+    //   p_value text, p_rationale text, p_source_id uuid, p_origin text)
+    const EXPECTED_KEYS = new Set(['p_account', 'p_field_key', 'p_op', 'p_value', 'p_rationale', 'p_source_id', 'p_origin']);
+
+    setupCleanTextNativePdf();
+
+    await extractDocument(SOURCE_ID, ACCOUNT_ID);
+
+    // At least one propose_memory_change call must have been made
+    expect(mockRpc).toHaveBeenCalled();
+
+    for (const call of mockRpc.mock.calls) {
+      const rpcName = call[0] as string;
+      expect(rpcName).toBe('propose_memory_change');
+      const args = call[1] as Record<string, unknown>;
+      const actualKeys = new Set(Object.keys(args));
+
+      // Every key passed must be in the expected set (no unknown / misspelled keys)
+      for (const key of actualKeys) {
+        expect(EXPECTED_KEYS.has(key)).toBe(true);
+      }
+
+      // All expected keys must be present (no missing args)
+      for (const key of EXPECTED_KEYS) {
+        expect(actualKeys.has(key)).toBe(true);
+      }
+    }
+  });
+
   it('12. error handling: LLM throws → job marked error, recordModelCall called with outcome=error, no proposals', async () => {
-    const rawText = 'Valid studio content for testing errors.';
+    // rawText must be > 100 chars (SCANNED_THRESHOLD) so pdf-parse returns a text-native result.
+    const rawText = 'Valid studio content for testing errors. Photography business offering portraits, events, and editorial work for clients throughout the city.';
     setupCleanTextNativePdf({ rawText });
 
     mockGenerateFn.mockRejectedValue(new Error('Provider timeout'));
