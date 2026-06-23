@@ -304,13 +304,12 @@ describe('aggregator adapter (method A)', () => {
 // raw PII (event titles / attendee emails) — derived-not-raw hardening.
 describe('GoogleCalendarClient — derived-not-raw fields restriction (Fix 2)', () => {
   function makeCalConn() {
-    return connection({ provider: 'google-calendar', scopes: ['https://www.googleapis.com/auth/calendar.readonly'] });
+    return connection({ provider: 'google-calendar', method: 'N', scopes: ['https://www.googleapis.com/auth/calendar.readonly'] });
   }
 
   it('listEvents includes fields= that excludes summary and attendee email', async () => {
     const conn = makeCalConn();
-    const vault = await vaultWith({}, conn.id);
-    const client = new GoogleCalendarClient(conn, vault, overrides);
+    const client = new GoogleCalendarClient(conn, makeMockNango(), 'nango-conn-id');
 
     let capturedPath = '';
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -334,8 +333,7 @@ describe('GoogleCalendarClient — derived-not-raw fields restriction (Fix 2)', 
 
   it('listEventsSync (delta path) includes fields= that excludes summary and attendee email', async () => {
     const conn = makeCalConn();
-    const vault = await vaultWith({}, conn.id);
-    const client = new GoogleCalendarClient(conn, vault, overrides);
+    const client = new GoogleCalendarClient(conn, makeMockNango(), 'nango-conn-id');
 
     let capturedPath = '';
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

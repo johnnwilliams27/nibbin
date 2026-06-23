@@ -80,7 +80,7 @@ const TIER1: ConnectorDescriptor[] = [
     rateLimit: { requests: 600, perSeconds: 60 },
     scanModules: ['calendar.meeting-load', 'calendar.no-show-churn', 'calendar.confirmation-gaps'],
     capabilities: ['calendar.read', 'calendar.event-create'],
-    egressAllowlist: GOOGLE_AUTH_HOSTS,
+    egressAllowlist: ['calendar.googleapis.com', ...GOOGLE_AUTH_HOSTS],
     platform: GOOGLE_PENDING,
     availability: 'live',
   },

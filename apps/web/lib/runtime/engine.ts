@@ -82,7 +82,8 @@ function realClient(connection: Connection): ConnectorClient {
       // TODO Task 6: replace with makeGmailClient factory
       return new GmailClient(connection, getNango(), connection.nangoConnectionId ?? '');
     case 'google-calendar':
-      return new GoogleCalendarClient(connection, vault);
+      // TODO Task 6: replace with makeGoogleCalendarClient factory
+      return new GoogleCalendarClient(connection, getNango(), connection.nangoConnectionId ?? '');
     case 'stripe':
       return new StripeConnectorClient(connection, vault);
     case 'honeybook':
@@ -376,13 +377,10 @@ export function buildEffectsExecutor(
           if (testDeps?.createEvent) {
             await testDeps.createEvent(calendarId, event);
           } else {
-            const vault = new SupabaseTokenVault({
-              supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
-              serviceKey: process.env.SUPABASE_SECRET_KEY ?? '',
-            });
             // createEvent throws if the connection lacks calendar.events — a
             // defense-in-depth scope check beneath the runtime grant gate.
-            await new GoogleCalendarClient(connection, vault).createEvent(calendarId, event);
+            // TODO Task 6: replace with makeGoogleCalendarClient factory
+            await new GoogleCalendarClient(connection, getNango(), connection.nangoConnectionId ?? '').createEvent(calendarId, event);
           }
         } catch (err) {
           if (err instanceof ConnectorRequestError) {

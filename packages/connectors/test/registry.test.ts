@@ -159,6 +159,12 @@ describe('connector registry (SPEC §4.3)', () => {
     expect(() => getConnector('myspace')).toThrow(/unknown connector/);
   });
 
+  // Task 5 — egress allowlist fix: Calendar API host must be in the allowlist
+  it('google-calendar egressAllowlist includes calendar.googleapis.com', () => {
+    const d = getConnector('google-calendar');
+    expect(d.egressAllowlist).toContain('calendar.googleapis.com');
+  });
+
   it('gmail descriptor declares both compose and send in scopes.write', () => {
     const gmail = getConnector('gmail');
     const write = gmail.scopes.write;

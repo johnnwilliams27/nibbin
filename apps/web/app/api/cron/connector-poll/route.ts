@@ -1,7 +1,7 @@
 import 'server-only';
 import { NextResponse, type NextRequest } from 'next/server';
 import { serviceClient } from '../../../../lib/supabase/service';
-import { GmailClient, GoogleCalendarClient, SupabaseTokenVault, SupabaseWebhookEventStore, CONNECTOR_REGISTRY, fetchCalendarDelta } from '@nibbin/connectors';
+import { GmailClient, GoogleCalendarClient, SupabaseWebhookEventStore, CONNECTOR_REGISTRY, fetchCalendarDelta } from '@nibbin/connectors';
 import { activeNibbinsForAccount, triggerNibbinRun, connectionFromRow } from '../../../../lib/runtime/engine';
 import { dispatchForConnection, type ConnectorEvent } from '../../../../lib/connections/dispatch';
 import { fetchGmailDelta, advanceGmailCursor } from '../../../../lib/connections/gmail-delta';
@@ -33,11 +33,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
     process.env.SUPABASE_SECRET_KEY ?? '',
   );
-  const vault = new SupabaseTokenVault({
-    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
-    serviceKey: process.env.SUPABASE_SECRET_KEY ?? '',
-  });
-
   const { data: rows, error } = await svc
     .from('connections')
     .select('*')
@@ -87,7 +82,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         events = gmailEvents;
         advanceCursor = () => advanceGmailCursor(svc, connection.id, newHistoryId);
       } else if (connection.provider === 'google-calendar') {
-        const client = new GoogleCalendarClient(connection, vault);
+        // TODO Task 6: replace with makeGoogleCalendarClient factory
+        const client = new GoogleCalendarClient(connection, getNango(), connection.nangoConnectionId ?? '');
         const { events: calEvents, newSyncToken } = await fetchCalendarDelta(
           connection.id,
           connection.accountId,
