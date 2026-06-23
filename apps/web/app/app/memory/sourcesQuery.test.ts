@@ -1,0 +1,207 @@
+/**
+ * Task 8 — sourcesQuery.ts unit tests.
+ *
+ * Pure module — no mocks needed.
+ */
+
+import { describe, it, expect } from 'vitest';
+import {
+  mimeToGroup,
+  parseSourcesParams,
+  mapRowToSourceListItem,
+} from './sourcesQuery';
+
+// ---------------------------------------------------------------------------
+// mimeToGroup
+// ---------------------------------------------------------------------------
+
+describe('mimeToGroup', () => {
+  it('image/png → images', () => {
+    expect(mimeToGroup('image/png', 'photo.png')).toBe('images');
+  });
+
+  it('image/jpeg → images', () => {
+    expect(mimeToGroup('image/jpeg', 'photo.jpg')).toBe('images');
+  });
+
+  it('any image/* → images', () => {
+    expect(mimeToGroup('image/webp', 'x.webp')).toBe('images');
+  });
+
+  it('application/pdf → docs', () => {
+    expect(mimeToGroup('application/pdf', 'report.pdf')).toBe('docs');
+  });
+
+  it('text/plain → docs', () => {
+    expect(mimeToGroup('text/plain', 'notes.txt')).toBe('docs');
+  });
+
+  it('docx mime → docs', () => {
+    expect(
+      mimeToGroup(
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'contract.docx',
+      ),
+    ).toBe('docs');
+  });
+
+  it('docx filename extension with null mime → docs', () => {
+    expect(mimeToGroup(null, 'contract.docx')).toBe('docs');
+  });
+
+  it('.md filename extension with null mime → docs', () => {
+    expect(mimeToGroup(null, 'readme.md')).toBe('docs');
+  });
+
+  it('xlsx mime → sheets', () => {
+    expect(
+      mimeToGroup(
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'data.xlsx',
+      ),
+    ).toBe('sheets');
+  });
+
+  it('text/csv → sheets', () => {
+    expect(mimeToGroup('text/csv', 'export.csv')).toBe('sheets');
+  });
+
+  it('pptx mime → slides', () => {
+    expect(
+      mimeToGroup(
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        'deck.pptx',
+      ),
+    ).toBe('slides');
+  });
+
+  it('pptx filename extension with null mime → slides', () => {
+    expect(mimeToGroup(null, 'deck.pptx')).toBe('slides');
+  });
+
+  it('text/html → web', () => {
+    expect(mimeToGroup('text/html', 'page.html')).toBe('web');
+  });
+
+  it('application/zip → other', () => {
+    expect(mimeToGroup('application/zip', 'archive.zip')).toBe('other');
+  });
+
+  it('null mime + unknown extension → other', () => {
+    expect(mimeToGroup(null, 'file.xyz')).toBe('other');
+  });
+
+  it('null mime + no extension → other', () => {
+    expect(mimeToGroup(null, 'noext')).toBe('other');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// parseSourcesParams
+// ---------------------------------------------------------------------------
+
+describe('parseSourcesParams', () => {
+  function params(obj: Record<string, string>): URLSearchParams {
+    return new URLSearchParams(obj);
+  }
+
+  it('returns safe defaults when no params', () => {
+    const result = parseSourcesParams(new URLSearchParams());
+    expect(result).toEqual({
+      q: null,
+      group: null,
+      state: null,
+      sort: 'captured_at',
+      dir: 'desc',
+      limit: 50,
+      offset: 0,
+    });
+  });
+
+  it('parses q, group, state', () => {
+    const result = parseSourcesParams(params({ q: 'invoice', group: 'docs', state: 'extracted' }));
+    expect(result.q).toBe('invoice');
+    expect(result.group).toBe('docs');
+    expect(result.state).toBe('extracted');
+  });
+
+  it('clamps limit to max 100', () => {
+    expect(parseSourcesParams(params({ limit: '500' })).limit).toBe(100);
+  });
+
+  it('clamps limit to min 1', () => {
+    expect(parseSourcesParams(params({ limit: '0' })).limit).toBe(1);
+  });
+
+  it('enforces offset ≥ 0', () => {
+    expect(parseSourcesParams(params({ offset: '-10' })).offset).toBe(0);
+  });
+
+  it('accepts valid limit within range', () => {
+    expect(parseSourcesParams(params({ limit: '75' })).limit).toBe(75);
+  });
+
+  it('rejects unknown sort column, falls back to captured_at', () => {
+    expect(parseSourcesParams(params({ sort: 'hacked_column' })).sort).toBe('captured_at');
+  });
+
+  it('accepts whitelisted sort columns', () => {
+    const cols = ['captured_at', 'title', 'byte_size', 'mime_type'] as const;
+    for (const col of cols) {
+      expect(parseSourcesParams(params({ sort: col })).sort).toBe(col);
+    }
+  });
+
+  it('dir: asc is accepted', () => {
+    expect(parseSourcesParams(params({ dir: 'asc' })).dir).toBe('asc');
+  });
+
+  it('dir: unknown defaults to desc', () => {
+    expect(parseSourcesParams(params({ dir: 'sideways' })).dir).toBe('desc');
+  });
+
+  it('ignores invalid group, returns null', () => {
+    expect(parseSourcesParams(params({ group: 'invalid_group' })).group).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// mapRowToSourceListItem
+// ---------------------------------------------------------------------------
+
+describe('mapRowToSourceListItem', () => {
+  it('maps a full row correctly', () => {
+    const row = {
+      id: 'src-1',
+      title: 'Invoice March',
+      mime_type: 'application/pdf',
+      byte_size: 204800,
+      captured_at: '2026-06-01T12:00:00Z',
+      extraction_state: 'extracted',
+      storage_path: 'acct/files/invoice.pdf',
+    };
+    expect(mapRowToSourceListItem(row)).toEqual({
+      id: 'src-1',
+      title: 'Invoice March',
+      mimeGroup: 'docs',
+      byteSize: 204800,
+      capturedAt: '2026-06-01T12:00:00Z',
+      extractionState: 'extracted',
+    });
+  });
+
+  it('handles null mime_type, uses filename fallback from storage_path', () => {
+    const row = {
+      id: 'src-2',
+      title: 'Notes',
+      mime_type: null,
+      byte_size: null,
+      captured_at: '2026-06-02T00:00:00Z',
+      extraction_state: 'pending',
+      storage_path: 'acct/files/notes.md',
+    };
+    const item = mapRowToSourceListItem(row);
+    expect(item.mimeGroup).toBe('docs');
+    expect(item.byteSize).toBeNull();
+  });
+});

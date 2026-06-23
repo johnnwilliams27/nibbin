@@ -70,10 +70,10 @@ export interface GroveMemoryTabProps {
 
   /**
    * Ordered, visible section list from buildSectionRegistry(metaRows).
-   * When provided, the first MemorySection renders these fields dynamically.
-   * When absent, falls back to the legacy static field list for back-compat.
+   * Always provided by MemoryClient (never undefined); fresh accounts receive
+   * the 7 neutral default sections. The legacy static fallback has been retired.
    */
-  registry?: SectionDescriptor[];
+  registry: SectionDescriptor[];
   /** Whether the UI is in "editing/management" mode (shows section controls). */
   isEditing?: boolean;
   /** State from sectionControlsReducer (for AddSectionControl + SectionActions). */
@@ -111,78 +111,47 @@ export function GroveMemoryTab({
     return <EmptyState onChipClick={onChipClick} />;
   }
 
-  // ── Field rendering ────────────────────────────────────────────────────────
-
-  // When a registry is provided, render fields dynamically from it.
-  // When absent (pre-Task 6 or Task 7 pending), fall back to legacy static list.
-  const hasRegistry = registry && registry.length > 0;
-
-  // Legacy static fields for fallback (maintains backward compat with existing tests)
-  const legacySection1Fields = ['facts', 'pricing', 'policies'];
-  const legacySection2Fields = ['voice', 'faq'];
-
   return (
     <>
       {/* Framing strip: "Your Nibbins read this as truth…" */}
       <FramingStrip hidden={false} />
 
-      {/* ── Section 1: About your business (or dynamic registry) ────────── */}
+      {/* ── Section 1: About your business — dynamic registry (always) ──── */}
+      {/* Task 7 fix: legacy hardcoded-field fallback retired. The registry is
+          always built from buildSectionRegistry(metaRows ?? []), so fresh
+          accounts see the 7 neutral default sections — never photographer copy. */}
       <MemorySection
         heading="About your business"
         hint="The basics your Nibbins use to keep every draft on-brand and accurate."
       >
-        {hasRegistry ? (
-          // Dynamic: render each registry field with optional section controls
-          <>
-            {registry!.map((descriptor) => {
-              const config = FIELD_CONFIG[descriptor.key];
-              return (
-                <div key={descriptor.key}>
-                  <FieldBlock
-                    fieldKey={descriptor.key}
-                    label={descriptor.label}
-                    rawValue={values[descriptor.key] ?? ''}
-                    onSave={onSave}
-                    fieldMeta={fieldMeta?.[descriptor.key]}
-                  />
-                  {isEditing && sectionControlsState && sectionControlsDispatch && onSectionIntent && (
-                    <SectionActions
-                      section={descriptor}
-                      allSections={sectionControlsState.sections}
-                      dispatch={sectionControlsDispatch}
-                      onIntent={onSectionIntent}
-                      isEditing={isEditing}
-                    />
-                  )}
-                </div>
-              );
-            })}
-            {/* "+ Add a section" affordance — edit mode only */}
-            {sectionControlsState && sectionControlsDispatch && onSectionIntent && (
-              <AddSectionControl
-                state={sectionControlsState}
+        {registry.map((descriptor) => (
+          <div key={descriptor.key}>
+            <FieldBlock
+              fieldKey={descriptor.key}
+              label={descriptor.label}
+              rawValue={values[descriptor.key] ?? ''}
+              onSave={onSave}
+              fieldMeta={fieldMeta?.[descriptor.key]}
+            />
+            {isEditing && sectionControlsState && sectionControlsDispatch && onSectionIntent && (
+              <SectionActions
+                section={descriptor}
+                allSections={sectionControlsState.sections}
                 dispatch={sectionControlsDispatch}
                 onIntent={onSectionIntent}
                 isEditing={isEditing}
               />
             )}
-          </>
-        ) : (
-          // Legacy fallback: hardcoded field list
-          legacySection1Fields.map((fieldKey) => {
-            const config = FIELD_CONFIG[fieldKey];
-            if (!config) return null;
-            return (
-              <FieldBlock
-                key={fieldKey}
-                fieldKey={fieldKey}
-                label={config.label}
-                rawValue={values[fieldKey] ?? ''}
-                onSave={onSave}
-                fieldMeta={fieldMeta?.[fieldKey]}
-              />
-            );
-          })
+          </div>
+        ))}
+        {/* "+ Add a section" affordance — edit mode only */}
+        {sectionControlsState && sectionControlsDispatch && onSectionIntent && (
+          <AddSectionControl
+            state={sectionControlsState}
+            dispatch={sectionControlsDispatch}
+            onIntent={onSectionIntent}
+            isEditing={isEditing}
+          />
         )}
       </MemorySection>
 
@@ -191,22 +160,6 @@ export function GroveMemoryTab({
         heading="Voice & rules"
         hint="How you sound and what's never up for debate — Nibbins treat these as gospel."
       >
-        {/* Legacy voice/faq fields (only in fallback mode) */}
-        {!hasRegistry && legacySection2Fields.map((fieldKey) => {
-          const config = FIELD_CONFIG[fieldKey];
-          if (!config) return null;
-          return (
-            <FieldBlock
-              key={fieldKey}
-              fieldKey={fieldKey}
-              label={config.label}
-              rawValue={values[fieldKey] ?? ''}
-              onSave={onSave}
-              fieldMeta={fieldMeta?.[fieldKey]}
-            />
-          );
-        })}
-
         {/* HardRulesBlock — coral authority treatment (always rendered) */}
         <HardRulesBlock rules={hardRulesArray} onSave={onSave} />
 

@@ -67,10 +67,9 @@ export interface MemoryClientProps {
   fieldMeta?: Record<string, FieldMeta>;
   /**
    * Task 6: field_meta rows from the database (includes new columns:
-   * label, sort_order, is_custom, is_hidden). When provided, the dynamic
-   * registry is built from these rows and passed to GroveMemoryTab.
-   * When absent (pre-migration or fetch error), the static legacy rendering
-   * is used (backward compat).
+   * label, sort_order, is_custom, is_hidden). The dynamic registry is ALWAYS
+   * built from these rows (or the neutral defaults when empty/absent).
+   * The legacy static rendering path has been retired (Task 7 fix).
    */
   metaRows?: FieldMetaRow[];
 }
@@ -95,15 +94,16 @@ export function MemoryClient({
   // Task 13: promoted from useRef to useState so ReferenceCatchAll can consume it.
   const [referenceValue, setReferenceValue] = useState(initialReference);
 
-  // Task 6: dynamic section registry built from metaRows (or empty → no registry)
-  const registry = metaRows && metaRows.length > 0
-    ? buildSectionRegistry(metaRows)
-    : undefined;
+  // Task 7 fix: ALWAYS build from the neutral defaults (or metaRow overrides).
+  // buildSectionRegistry([]) returns the 8 neutral default sections, so fresh
+  // accounts and accounts with no customisations get the correct neutral UI —
+  // never the legacy photographer-flavoured fallback.
+  const registry = buildSectionRegistry(metaRows ?? []);
 
   // Task 6: section controls state machine
   const [sectionControlsState, sectionControlsDispatch] = useReducer(
     sectionControlsReducer,
-    registry ?? [],
+    registry,
     initialSectionControlsState,
   );
 

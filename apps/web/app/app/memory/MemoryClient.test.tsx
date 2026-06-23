@@ -316,6 +316,102 @@ describe('MemoryClient — Sources tab stub', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Task 7 fix — fresh accounts render neutral defaults, never legacy fields
+// ---------------------------------------------------------------------------
+
+describe('MemoryClient — Task 7 fix: fresh-account neutral defaults', () => {
+  /** Forbidden substrings that must NOT appear in any fresh-account render. */
+  const FORBIDDEN = ['deposit', 'session', 'shoot', 'photograph'] as const;
+
+  it('fresh account with metaRows=[] renders the neutral default sections', () => {
+    const html = renderToStaticMarkup(
+      <MemoryClient
+        initialValues={{}}
+        initialReference=""
+        isEmpty={false}
+        metaRows={[]}
+      />,
+    );
+    // The 7 neutral DEFAULT_SECTIONS labels must be present
+    expect(html).toContain('About us');
+    expect(html).toContain('What we do');
+    expect(html).toContain('How we work');
+    expect(html).toContain('Pricing');
+    expect(html).toContain('Policies');
+    expect(html).toContain('Voice');
+    expect(html).toContain('Common questions');
+  });
+
+  it('fresh account with metaRows=undefined renders the neutral default sections', () => {
+    const html = renderToStaticMarkup(
+      <MemoryClient
+        initialValues={{}}
+        initialReference=""
+        isEmpty={false}
+      />,
+    );
+    // Same neutral defaults — metaRows absent is equivalent to metaRows=[]
+    expect(html).toContain('About us');
+    expect(html).toContain('What we do');
+    expect(html).toContain('How we work');
+  });
+
+  it('fresh account with metaRows=[] contains NO forbidden photographer substrings', () => {
+    const html = renderToStaticMarkup(
+      <MemoryClient
+        initialValues={{}}
+        initialReference=""
+        isEmpty={false}
+        metaRows={[]}
+      />,
+    );
+    const lower = html.toLowerCase();
+    for (const forbidden of FORBIDDEN) {
+      expect(lower, `Fresh-account render contains forbidden word "${forbidden}"`).not.toContain(forbidden);
+    }
+  });
+
+  it('fresh account with metaRows=undefined contains NO forbidden photographer substrings', () => {
+    const html = renderToStaticMarkup(
+      <MemoryClient
+        initialValues={{}}
+        initialReference=""
+        isEmpty={false}
+      />,
+    );
+    const lower = html.toLowerCase();
+    for (const forbidden of FORBIDDEN) {
+      expect(lower, `Fresh-account (no metaRows) render contains forbidden word "${forbidden}"`).not.toContain(forbidden);
+    }
+  });
+
+  it('fresh account renders HardRulesBlock coral eyebrow (not gated on registry)', () => {
+    const html = renderToStaticMarkup(
+      <MemoryClient
+        initialValues={{}}
+        initialReference=""
+        isEmpty={false}
+        metaRows={[]}
+      />,
+    );
+    expect(html).toContain('HARD RULES');
+  });
+
+  it('fresh account renders both "About your business" and "Voice & rules" section headings', () => {
+    const html = renderToStaticMarkup(
+      <MemoryClient
+        initialValues={{}}
+        initialReference=""
+        isEmpty={false}
+        metaRows={[]}
+      />,
+    );
+    expect(html).toContain('About your business');
+    expect(html).toMatch(/Voice\s*(?:&amp;|&)\s*rules/i);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Task 14 — Motion + a11y (static markup contract)
 // ---------------------------------------------------------------------------
 
