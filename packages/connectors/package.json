@@ -9,5 +9,8 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@nangohq/node": "0.70.8"
   }
 }
