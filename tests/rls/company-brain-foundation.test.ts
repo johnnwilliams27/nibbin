@@ -25,7 +25,7 @@ describe.skipIf(!dbAvailable)('Company Brain Foundation — F1 schema + RLS', ()
       });
     }
     accountA = await h.as(asA, async (c) => (await c.query(`select public.create_account_with_owner('A') as id`)).rows[0].id);
-    await h.as(asB, async (c) => (await c.query(`select public.create_account_with_owner('B') as id`)).rows[0].id);
+    await h.as(asB, async (c) => { await c.query(`select public.create_account_with_owner('B') as id`); });
   });
   afterAll(async () => { await h.close(); });
 
@@ -155,7 +155,7 @@ describe.skipIf(!dbAvailable)('F2 — decide_memory_proposal apply-on-approve', 
       await h.as(who, async (c) => { await c.query(`insert into public.users (id,email) values ($1,$2)`, [uid, `${uid}@ex.test`]); });
     }
     acct = await h.as(asU, async (c) => (await c.query(`select public.create_account_with_owner('E') as id`)).rows[0].id);
-    await h.as(asOther, async (c) => (await c.query(`select public.create_account_with_owner('F') as id`)).rows[0].id);
+    await h.as(asOther, async (c) => { await c.query(`select public.create_account_with_owner('F') as id`); });
   });
   afterAll(async () => { await h.close(); });
 
