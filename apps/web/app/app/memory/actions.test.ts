@@ -217,7 +217,7 @@ describe('saveReference — input trimming + clamping', () => {
     const [rpcName, rpcArgs] = call0r;
     expect(rpcName).toBe('save_reference');
     expect(rpcArgs).toHaveProperty('target_account', 'acct-test-1');
-    const text = rpcArgs['reference_text'] as string;
+    const text = rpcArgs['new_reference_text'] as string;
     expect(text).toBe('Some reference material');
   });
 
@@ -231,7 +231,7 @@ describe('saveReference — input trimming + clamping', () => {
 
     expect(rpcSpy).toHaveBeenCalledTimes(1);
     const [, rpcArgs] = rpcSpy.mock.calls[0] as unknown as [string, Record<string, unknown>];
-    const text = rpcArgs['reference_text'] as string;
+    const text = rpcArgs['new_reference_text'] as string;
     expect(typeof text === 'string' || text === null).toBe(true);
     if (typeof text === 'string') {
       expect(text.length).toBeLessThanOrEqual(8000);
@@ -247,7 +247,7 @@ describe('saveReference — input trimming + clamping', () => {
 
     expect(rpcSpy).toHaveBeenCalledTimes(1);
     const [, rpcArgs] = rpcSpy.mock.calls[0] as unknown as [string, Record<string, unknown>];
-    expect(rpcArgs['reference_text']).toBeNull();
+    expect(rpcArgs['new_reference_text']).toBeNull();
   });
 
   it('passes null when reference field is absent from FormData', async () => {
@@ -258,7 +258,7 @@ describe('saveReference — input trimming + clamping', () => {
 
     expect(rpcSpy).toHaveBeenCalledTimes(1);
     const [, rpcArgs] = rpcSpy.mock.calls[0] as unknown as [string, Record<string, unknown>];
-    expect(rpcArgs['reference_text']).toBeNull();
+    expect(rpcArgs['new_reference_text']).toBeNull();
   });
 
   it('returns { ok: true } on success (no redirect — per-field inline save, §5.3)', async () => {
