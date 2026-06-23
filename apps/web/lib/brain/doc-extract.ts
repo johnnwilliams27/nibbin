@@ -793,7 +793,7 @@ export async function extractDocument(sourceId: string, accountId: string): Prom
       });
 
       if (rpcError) {
-        console.error(`[doc-extract] propose_memory_change failed for field '${fieldKey}'`, rpcError.message);
+        console.error('[doc-extract] propose_memory_change failed for field', fieldKey, rpcError.message);
       } else {
         proposedCount++;
       }

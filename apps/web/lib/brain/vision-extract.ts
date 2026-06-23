@@ -343,7 +343,7 @@ export async function extractFromImage(
     });
 
     if (rpcError) {
-      console.error(`[vision-extract] propose_memory_change failed for field '${fieldKey}'`, rpcError.message);
+      console.error('[vision-extract] propose_memory_change failed for field', fieldKey, rpcError.message);
     } else {
       drafts.push({ fieldKey, op, value: checkedValue, rationale });
     }
