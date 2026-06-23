@@ -352,3 +352,315 @@ describe('Storage path-prefix — pure unit tests (no DB)', () => {
     expect(parts.length).toBeGreaterThanOrEqual(3);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Task 6 — end-to-end integration: doc_extract proposal → approve → grove_memory
+//
+// Tests use the REAL propose_memory_change / decide_memory_proposal RPCs against
+// the live Postgres DB (no mocks). Only the model and Storage are absent from
+// this layer — the extraction worker is tested in doc-extract.test.ts with those
+// mocked. Here we prove that the document path lands in the same F2 review loop
+// and ratifies correctly end-to-end.
+//
+// Key invariants:
+//   • A 'doc_extract' origin proposal approved via decide_memory_proposal writes
+//     the curated value into grove_memory.
+//   • A field_evidence row (relationship='supports') links the approved field
+//     back to the document source (kind='document').
+//   • The proposal carries origin='doc_extract'.
+//   • grove_memory_history records change_source='proposal' for the ratification.
+//   • audit_log has action='memory.ratified'.
+//   • The review_item notification is resolved (read_at not null) after approval.
+//   • A quarantined source produces zero proposals end-to-end (RPC guard).
+//   • A rejected doc_extract proposal leaves grove_memory unchanged.
+//   • Multiple proposals from one source each create their own field_evidence row.
+//   • Foundation 'manual' origin proposals still work post-P2 migration (regression).
+// ---------------------------------------------------------------------------
+
+const UID_E2E = 'e2e00001-6666-4000-8000-000000000001';
+
+describe.skipIf(!dbAvailable)('P2 — end-to-end doc_extract proposal → approve', () => {
+  const h = new RlsHarness();
+  let acct = '';
+  const asU = { kind: 'authenticated', uid: UID_E2E } as const;
+  const service = { kind: 'service_role' } as const;
+
+  beforeAll(async () => {
+    await h.reset();
+    await h.sql(`insert into auth.users (id,email) values ($1,'e2e@ex.test')`, [UID_E2E]);
+    await h.as(asU, async (c) => {
+      await c.query(`insert into public.users (id,email) values ($1,$2)`, [UID_E2E, `${UID_E2E}@ex.test`]);
+    });
+    acct = await h.as(asU, async (c) =>
+      (await c.query(`select public.create_account_with_owner('E2Etest') as id`)).rows[0].id);
+  });
+  afterAll(async () => { await h.close(); });
+
+  it('doc_extract proposal → approve → curated value written + field_evidence linked + audit logged + notification resolved', async () => {
+    // Service inserts a clean document source (simulating what extractDocument() does)
+    const srcId = await h.as(service, async (c) =>
+      (await c.query(
+        `insert into public.sources (account_id, kind, title, redaction_status)
+         values ($1,'document','rate.pdf','clean') returning id`,
+        [acct],
+      )).rows[0].id);
+
+    // Service calls propose_memory_change with origin='doc_extract' — the real RPC
+    const pid = await h.as(service, async (c) =>
+      (await c.query(
+        `select public.propose_memory_change($1,'pricing','replace','$250/hr','From rate.pdf — contains your pricing',$2,'doc_extract') as id`,
+        [acct, srcId],
+      )).rows[0].id);
+
+    // Verify the proposal was created with the correct origin
+    const proposal = await h.as(asU, async (c) =>
+      (await c.query(
+        `select origin, status, field_key, proposed_value, source_id from public.proposals where id=$1`,
+        [pid],
+      )).rows[0]);
+    expect(proposal.origin).toBe('doc_extract');
+    expect(proposal.status).toBe('pending');
+    expect(proposal.field_key).toBe('pricing');
+    expect(proposal.proposed_value).toBe('$250/hr');
+    expect(proposal.source_id).toBe(srcId);
+
+    // Member approves via the real decide_memory_proposal RPC
+    await h.as(asU, async (c) => {
+      await c.query(`select public.decide_memory_proposal($1,'approved')`, [pid]);
+    });
+
+    // Assert: curated value written to grove_memory
+    const curatedValue = await h.as(asU, async (c) =>
+      (await c.query(
+        `select sections->>'pricing' as v from public.grove_memory where account_id=$1`,
+        [acct],
+      )).rows[0].v);
+    expect(curatedValue).toBe('$250/hr');
+
+    // Assert: field_evidence row links the approved field to the document source
+    const evidence = await h.as(asU, async (c) =>
+      (await c.query(
+        `select relationship, source_id from public.field_evidence where account_id=$1 and field_key='pricing'`,
+        [acct],
+      )).rows);
+    expect(evidence).toHaveLength(1);
+    expect(evidence[0].relationship).toBe('supports');
+    expect(evidence[0].source_id).toBe(srcId);
+
+    // Assert: grove_memory_history records the ratification
+    const hist = await h.as(asU, async (c) =>
+      (await c.query(
+        `select change_source, new_value, proposal_id from public.grove_memory_history
+         where account_id=$1 and field_key='pricing'`,
+        [acct],
+      )).rows);
+    expect(hist).toHaveLength(1);
+    expect(hist[0].change_source).toBe('proposal');
+    expect(hist[0].new_value).toBe('$250/hr');
+    expect(hist[0].proposal_id).toBe(pid);
+
+    // Assert: audit_log has memory.ratified action
+    const audit = await h.as(asU, async (c) =>
+      (await c.query(
+        `select action, subject, meta from public.audit_log where account_id=$1 and action='memory.ratified'`,
+        [acct],
+      )).rows);
+    expect(audit).toHaveLength(1);
+    expect(audit[0].action).toBe('memory.ratified');
+    expect(audit[0].subject).toBe('pricing');
+    expect(audit[0].meta.decision).toBe('approved');
+    expect(audit[0].meta.origin).toBe('doc_extract');
+
+    // Assert: proposal status is 'approved'
+    const status = await h.as(asU, async (c) =>
+      (await c.query(`select status from public.proposals where id=$1`, [pid])).rows[0].status);
+    expect(status).toBe('approved');
+
+    // Assert: review_item notification resolved (read_at not null after approval)
+    const notif = await h.as(asU, async (c) =>
+      (await c.query(
+        `select read_at from public.notifications where account_id=$1 and kind='review_item' and source_id=$2`,
+        [acct, pid],
+      )).rows[0]);
+    expect(notif).toBeTruthy();
+    expect(notif.read_at).not.toBeNull();
+  });
+
+  it('doc_extract proposal → reject → curated value unchanged', async () => {
+    // Insert a clean source
+    const srcId = await h.as(service, async (c) =>
+      (await c.query(
+        `insert into public.sources (account_id, kind, title, redaction_status)
+         values ($1,'document','contract.pdf','clean') returning id`,
+        [acct],
+      )).rows[0].id);
+
+    // Propose a value for a new field
+    const pid = await h.as(service, async (c) =>
+      (await c.query(
+        `select public.propose_memory_change($1,'turnaround','replace','3 business days','From contract.pdf — turnaround time',$2,'doc_extract') as id`,
+        [acct, srcId],
+      )).rows[0].id);
+
+    // Member rejects the proposal
+    await h.as(asU, async (c) => {
+      await c.query(`select public.decide_memory_proposal($1,'rejected')`, [pid]);
+    });
+
+    // Curated value should NOT be written
+    const curatedValue = await h.as(asU, async (c) =>
+      (await c.query(
+        `select sections->>'turnaround' as v from public.grove_memory where account_id=$1`,
+        [acct],
+      )).rows[0]);
+    // Either no row at all, or the key is absent (null)
+    expect(curatedValue?.v ?? null).toBeNull();
+
+    // No field_evidence row for this field
+    const evidenceCount = await h.as(asU, async (c) =>
+      (await c.query(
+        `select count(*)::int as n from public.field_evidence where account_id=$1 and field_key='turnaround'`,
+        [acct],
+      )).rows[0].n);
+    expect(evidenceCount).toBe(0);
+
+    // Proposal status is 'rejected'
+    const status = await h.as(asU, async (c) =>
+      (await c.query(`select status from public.proposals where id=$1`, [pid])).rows[0].status);
+    expect(status).toBe('rejected');
+  });
+
+  it('multiple field proposals from one source: approve all → field_evidence has 3 rows for the same source', async () => {
+    // One document source backing 3 field proposals
+    const srcId = await h.as(service, async (c) =>
+      (await c.query(
+        `insert into public.sources (account_id, kind, title, redaction_status)
+         values ($1,'document','portfolio.pdf','clean') returning id`,
+        [acct],
+      )).rows[0].id);
+
+    const fields = [
+      { key: 'facts', value: 'Photography studio, 5 years in business' },
+      { key: 'target_market', value: 'Couples and families in metro area' },
+      { key: 'packages', value: 'Bronze $500, Silver $800, Gold $1200' },
+    ] as const;
+
+    const pids: string[] = [];
+    for (const f of fields) {
+      const pid = await h.as(service, async (c) =>
+        (await c.query(
+          `select public.propose_memory_change($1,$2,'replace',$3,$4,$5,'doc_extract') as id`,
+          [acct, f.key, f.value, `From portfolio.pdf — ${f.key}`, srcId],
+        )).rows[0].id);
+      pids.push(pid);
+    }
+
+    // Approve all three
+    for (const pid of pids) {
+      await h.as(asU, async (c) => {
+        await c.query(`select public.decide_memory_proposal($1,'approved')`, [pid]);
+      });
+    }
+
+    // All three curated values written
+    for (const f of fields) {
+      const v = await h.as(asU, async (c) =>
+        (await c.query(
+          `select sections->>$2 as v from public.grove_memory where account_id=$1`,
+          [acct, f.key],
+        )).rows[0].v);
+      expect(v).toBe(f.value);
+    }
+
+    // field_evidence has exactly 3 rows pointing to the same source
+    const evidenceRows = await h.as(asU, async (c) =>
+      (await c.query(
+        `select field_key, source_id, relationship from public.field_evidence
+         where account_id=$1 and source_id=$2
+         order by field_key`,
+        [acct, srcId],
+      )).rows);
+    expect(evidenceRows).toHaveLength(3);
+    // All link to the same source with relationship='supports'
+    for (const row of evidenceRows) {
+      expect(row.source_id).toBe(srcId);
+      expect(row.relationship).toBe('supports');
+    }
+    // All three expected field keys are represented
+    const keys = evidenceRows.map((r: { field_key: string }) => r.field_key).sort();
+    expect(keys).toEqual(['facts', 'packages', 'target_market']);
+  });
+
+  it('quarantined source: propose_memory_change raises; zero proposals created end-to-end', async () => {
+    // Service inserts a quarantined source (simulating extractDocument marking it quarantined)
+    const qSrcId = await h.as(service, async (c) =>
+      (await c.query(
+        `insert into public.sources (account_id, kind, title, redaction_status)
+         values ($1,'document','malicious.pdf','quarantined') returning id`,
+        [acct],
+      )).rows[0].id);
+
+    // The quarantine guard in propose_memory_change must block the proposal
+    await expect(
+      h.as(service, (c) =>
+        c.query(
+          `select public.propose_memory_change($1,'pricing','replace','STOLEN DATA','from doc',$2,'doc_extract')`,
+          [acct, qSrcId],
+        )),
+    ).rejects.toThrow(/quarantined/i);
+
+    // Zero proposals were created for this quarantined source
+    const proposalCount = await h.as(asU, async (c) =>
+      (await c.query(
+        `select count(*)::int as n from public.proposals where account_id=$1 and source_id=$2`,
+        [acct, qSrcId],
+      )).rows[0].n);
+    expect(proposalCount).toBe(0);
+
+    // The quarantined source has no field_evidence rows
+    const evidenceCount = await h.as(asU, async (c) =>
+      (await c.query(
+        `select count(*)::int as n from public.field_evidence where account_id=$1 and source_id=$2`,
+        [acct, qSrcId],
+      )).rows[0].n);
+    expect(evidenceCount).toBe(0);
+  });
+
+  it("regression: 'manual' origin proposals still work after P2 migration changes", async () => {
+    // Manual proposal with no source_id — the classic F2 path
+    const pid = await h.as(service, async (c) =>
+      (await c.query(
+        `select public.propose_memory_change($1,'contact_email','replace','hello@example.com',null,null,'manual') as id`,
+        [acct],
+      )).rows[0].id);
+
+    // Approve
+    await h.as(asU, async (c) => {
+      await c.query(`select public.decide_memory_proposal($1,'approved')`, [pid]);
+    });
+
+    // Curated value written
+    const v = await h.as(asU, async (c) =>
+      (await c.query(
+        `select sections->>'contact_email' as v from public.grove_memory where account_id=$1`,
+        [acct],
+      )).rows[0].v);
+    expect(v).toBe('hello@example.com');
+
+    // No field_evidence row (no source_id)
+    const evidenceCount = await h.as(asU, async (c) =>
+      (await c.query(
+        `select count(*)::int as n from public.field_evidence where account_id=$1 and field_key='contact_email'`,
+        [acct],
+      )).rows[0].n);
+    expect(evidenceCount).toBe(0);
+
+    // audit_log has the ratification
+    const auditCount = await h.as(asU, async (c) =>
+      (await c.query(
+        `select count(*)::int as n from public.audit_log where account_id=$1 and action='memory.ratified' and subject='contact_email'`,
+        [acct],
+      )).rows[0].n);
+    expect(auditCount).toBe(1);
+  });
+});
