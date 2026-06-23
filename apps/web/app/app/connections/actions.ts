@@ -10,6 +10,7 @@ import { beginConnect } from '../../../lib/connections/begin';
 import { beginWriteConnect } from '../../../lib/connections/begin-write';
 import { revokeAndSuspend } from '../../../lib/connections/revoke-connection';
 import { buildNangoConnectUrl } from '../../../lib/connections/nango-connect';
+import { getNango } from '../../../lib/connectors/nango';
 import { getConnector } from '@nibbin/connectors';
 
 export async function beginConnectAction(formData: FormData): Promise<void> {
@@ -56,21 +57,41 @@ export async function beginConnectAction(formData: FormData): Promise<void> {
  * Account-scoped lookup so a request can only ever revoke the caller's own
  * connection (never an arbitrary connection_id). revokeAndSuspend destroys the
  * vault secret, flips status → revoked, and suspends dependent write-grants.
+ *
+ * For [N] Nango-lane providers (gmail, google-calendar): nango.deleteConnection()
+ * is called before the local row revoke (fail-open — a Nango error does NOT
+ * block the local revoke). See Global Constraint 8 in the plan.
  */
 export async function disconnectAction(formData: FormData): Promise<void> {
   const provider = String(formData.get('provider') ?? '');
   const { user, accountId } = await appSession();
   const svc = serviceClient();
 
+  const descriptor = getConnector(provider);
+
   const { data: conn } = await svc
     .from('connections')
-    .select('id')
+    .select('id, nango_connection_id, nango_provider_config_key')
     .eq('account_id', accountId)
     .eq('provider', provider)
     .neq('status', 'revoked')
     .maybeSingle();
 
-  if (conn?.id) await revokeAndSuspend(conn.id as string, user.id, svc);
+  if (conn?.id) {
+    // [N] lane: pass Nango deps so deleteConnection is called before revoke.
+    const nangoDeps =
+      descriptor.method === 'N' &&
+      conn.nango_connection_id &&
+      conn.nango_provider_config_key
+        ? {
+            nango: getNango(),
+            nangoConnectionId: conn.nango_connection_id as string,
+            nangoProviderConfigKey: conn.nango_provider_config_key as string,
+          }
+        : undefined;
+
+    await revokeAndSuspend(conn.id as string, user.id, svc, nangoDeps);
+  }
 
   redirect(`/app/connections?disconnected=${encodeURIComponent(provider)}`);
 }
