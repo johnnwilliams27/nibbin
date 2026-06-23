@@ -135,9 +135,12 @@ const TIER1: ConnectorDescriptor[] = [
     method: 'H',
     scopes: {
       // Stripe Connect OAuth: read_only is a real platform-level scope — C8
-      // holds at the provider, not just in our code.
+      // holds at the provider, not just in our code. Stripe is a READ-ONLY
+      // connector (Option B, 2026-06-22): overdue-invoice nudges ride email.send
+      // via Gmail, so we request NO write scope at connect — `beginConnect`
+      // requests only the read scope when `write` is empty.
       read: ['read_only'],
-      write: ['read_write'],
+      write: [],
     },
     webhooks: { supported: true, scheme: 'stripe-v1', replayWindowSecs: 300 },
     rateLimit: { requests: 100, perSeconds: 1 },

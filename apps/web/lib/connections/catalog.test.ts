@@ -13,9 +13,9 @@ describe('connector catalog', () => {
     const set = new Set(CONNECTOR_CATEGORIES);
     for (const c of CONNECTORS) expect(set.has(c.category)).toBe(true);
   });
-  it('marks Gmail and Google Calendar as live (Connector Lever 1)', () => {
+  it('marks Gmail, Google Calendar, and Stripe as live', () => {
     expect(CONNECTORS.filter((c) => c.status === 'live').map((c) => c.id).sort()).toEqual(
-      ['gmail', 'google-calendar'],
+      ['gmail', 'google-calendar', 'stripe'],
     );
   });
   it('gives every non-rail a domain for logos', () => {

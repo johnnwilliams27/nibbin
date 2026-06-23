@@ -1,14 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { CONNECTABLE_PROVIDERS, scopeSummary, isReadOnly } from './providers';
 
-it('lists Gmail and Google Calendar as the wired providers', () => {
+it('lists Gmail, Google Calendar, and Stripe as the wired providers', () => {
   expect(CONNECTABLE_PROVIDERS.find((p) => p.id === 'gmail')?.wired).toBe(true);
   expect(CONNECTABLE_PROVIDERS.find((p) => p.id === 'google-calendar')?.wired).toBe(true);
+  expect(CONNECTABLE_PROVIDERS.find((p) => p.id === 'stripe')?.wired).toBe(true);
   expect(
     CONNECTABLE_PROVIDERS.filter((p) => p.wired)
       .map((p) => p.id)
       .sort(),
-  ).toEqual(['gmail', 'google-calendar']);
+  ).toEqual(['gmail', 'google-calendar', 'stripe']);
 });
 
 describe('scopeSummary', () => {
