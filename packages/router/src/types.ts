@@ -35,7 +35,8 @@ export type RoutedTask =
   | 'custom_spec_draft'
   | 'nibbin_note'
   | 'complex_plan'
-  | 'plan_synthesis';
+  | 'plan_synthesis'
+  | 'synthesis';
 
 /**
  * Where the request came from. Only `chat`-origin T2 grants draw down the

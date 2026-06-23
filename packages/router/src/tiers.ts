@@ -29,6 +29,10 @@ export const TIER_FOR_TASK: Record<Exclude<RoutedTask, 'chat'>, Tier> = {
   // UNBUDGETED_T2_TASKS: it draws the per-user daily frontier budget (the same
   // bound the Composer's draft call takes, per the 2a P1 fix).
   plan_synthesis: 't2',
+  // Company-brain synthesis (P5 §6b): answers user questions from the source
+  // corpus + memory. T1 (mid-tier) — a frequent, interactive retrieval call
+  // that should not draw the frontier budget.
+  synthesis: 't1',
 };
 
 /**
