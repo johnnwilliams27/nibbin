@@ -147,3 +147,68 @@ begin
 end; $$;
 revoke execute on function public.save_grove_memory(uuid, jsonb, jsonb, text) from public, anon, service_role;
 grant execute on function public.save_grove_memory(uuid, jsonb, jsonb, text) to authenticated;
+
+-- F2: proposals (the review queue) + the producer RPC.
+create table public.proposals (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null references public.accounts (id) on delete cascade,
+  field_key text not null check (char_length(field_key) <= 64),
+  op text not null default 'replace' check (op in ('replace','append')),
+  proposed_value text not null check (char_length(proposed_value) <= 6000),
+  rationale text check (rationale is null or char_length(rationale) <= 2000),
+  source_id uuid references public.sources (id) on delete set null,
+  origin text not null check (origin in ('doc_extract','capture','collate','conflict','connector','manual')),
+  status text not null default 'pending' check (status in ('pending','approved','rejected','superseded')),
+  created_at timestamptz not null default now(),
+  decided_at timestamptz,
+  decided_by uuid
+);
+create index proposals_queue_idx on public.proposals (account_id, status, created_at);
+alter table public.proposals enable row level security;
+create policy proposals_member_read on public.proposals for select to authenticated
+  using ((select private.is_account_member(account_id)));
+revoke all on public.proposals from anon;
+revoke insert, update, delete, truncate, references, trigger on public.proposals from authenticated;
+
+-- review_item joins the notification kinds (preserve all existing kinds).
+alter table public.notifications drop constraint notifications_kind_check;
+alter table public.notifications add constraint notifications_kind_check
+  check (kind in ('beat','evolution','graduation','nudge','demotion','reach','review_item'));
+
+-- extend the system-notification guard to allow review_item.
+create or replace function public.insert_system_notification(
+  p_account uuid, p_kind text, p_source_id text, p_title text, p_body text, p_payload jsonb
+) returns void language plpgsql security definer set search_path = '' as $$
+begin
+  if p_kind not in ('nudge','demotion','review_item') then
+    raise exception 'insert_system_notification only authors nudge/demotion/review_item, got %', p_kind;
+  end if;
+  insert into public.notifications (account_id, kind, source_id, title, body, payload)
+  values (p_account, p_kind, p_source_id, p_title, p_body, p_payload)
+  on conflict (account_id, kind, source_id) do nothing;
+end; $$;
+revoke execute on function public.insert_system_notification(uuid, text, text, text, text, jsonb) from public, anon, authenticated;
+grant execute on function public.insert_system_notification(uuid, text, text, text, text, jsonb) to service_role;
+
+-- producer RPC: service-role only. Quarantined sources cannot back a proposal.
+create function public.propose_memory_change(
+  p_account uuid, p_field_key text, p_op text, p_value text, p_rationale text, p_source_id uuid, p_origin text
+) returns uuid language plpgsql security definer set search_path = '' as $$
+declare new_id uuid;
+begin
+  if p_source_id is not null and exists (
+    select 1 from public.sources s where s.id = p_source_id and s.redaction_status = 'quarantined'
+  ) then
+    raise exception 'cannot propose from a quarantined source';
+  end if;
+  insert into public.proposals (account_id, field_key, op, proposed_value, rationale, source_id, origin)
+    values (p_account, p_field_key, coalesce(p_op,'replace'), p_value, p_rationale, p_source_id, p_origin)
+    returning id into new_id;
+  perform public.insert_system_notification(
+    p_account, 'review_item', new_id::text,
+    'A suggested update to your memory', coalesce(p_rationale, 'Review a proposed change to ' || p_field_key),
+    jsonb_build_object('proposal_id', new_id, 'field_key', p_field_key));
+  return new_id;
+end; $$;
+revoke execute on function public.propose_memory_change(uuid, text, text, text, text, uuid, text) from public, anon, authenticated;
+grant execute on function public.propose_memory_change(uuid, text, text, text, text, uuid, text) to service_role;

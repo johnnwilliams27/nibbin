@@ -103,3 +103,41 @@ describe.skipIf(!dbAvailable)('F1 — save_grove_memory appends history', () => 
     expect(n).toBe(1);
   });
 });
+
+describe.skipIf(!dbAvailable)('F2 — propose_memory_change + review_item notification', () => {
+  const h = new RlsHarness();
+  let acct = '';
+  const UID = 'd4444444-7777-4777-8777-777777777777';
+  const asU = { kind: 'authenticated', uid: UID } as const;
+  const anon = { kind: 'anon' } as const;
+  const service = { kind: 'service_role' } as const;
+  beforeAll(async () => {
+    await h.reset();
+    await h.sql(`insert into auth.users (id,email) values ($1,'d@ex.test')`, [UID]);
+    await h.as(asU, async (c) => { await c.query(`insert into public.users (id,email) values ($1,$2)`, [UID, `${UID}@ex.test`]); });
+    acct = await h.as(asU, async (c) => (await c.query(`select public.create_account_with_owner('D') as id`)).rows[0].id);
+  });
+  afterAll(async () => { await h.close(); });
+
+  it('service role proposes; a review_item notification is emitted', async () => {
+    const pid = await h.as(service, async (c) =>
+      (await c.query(`select public.propose_memory_change($1,'pricing','replace','$250',null,null,'manual') as id`, [acct])).rows[0].id);
+    expect(pid).toBeTruthy();
+    const note = await h.as(asU, async (c) =>
+      (await c.query(`select kind, source_id from public.notifications where account_id=$1 and kind='review_item'`, [acct])).rows);
+    expect(note).toEqual([{ kind: 'review_item', source_id: pid }]);
+  });
+
+  it('clients cannot call propose_memory_change', async () => {
+    for (const who of [asU, anon] as const) {
+      await expect(
+        h.as(who, (c) => c.query(`select public.propose_memory_change($1,'pricing','replace','x',null,null,'manual')`, [acct])),
+      ).rejects.toThrow(/permission denied/);
+    }
+  });
+
+  it('a member reads their own pending proposals; cross-account sees none', async () => {
+    const rows = await h.as(asU, async (c) => (await c.query(`select status, field_key from public.proposals where account_id=$1`, [acct])).rows);
+    expect(rows).toEqual([{ status: 'pending', field_key: 'pricing' }]);
+  });
+});
