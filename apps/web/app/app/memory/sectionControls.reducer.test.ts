@@ -18,7 +18,6 @@ import {
   sectionControlsReducer,
   initialSectionControlsState,
   type SectionControlsState,
-  type SectionControlsAction,
 } from './sectionControls.reducer';
 import type { SectionDescriptor } from './registry';
 

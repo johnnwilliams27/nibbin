@@ -182,7 +182,7 @@ describe('GET /api/brain/sources', () => {
       user: { id: 'user-1' },
     }));
 
-    let eqCalls: Array<unknown[]> = [];
+    const eqCalls: Array<unknown[]> = [];
     const chain = makeChain([], 0);
     const originalEq = chain.eq as (...args: unknown[]) => unknown;
     chain.eq = (...args: unknown[]) => {

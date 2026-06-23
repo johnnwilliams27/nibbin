@@ -10,7 +10,7 @@
  *  - forwardMapLegacy: facts→about migration
  */
 import { describe, it, expect } from 'vitest';
-import { buildSectionRegistry, forwardMapLegacy, type SectionDescriptor, type FieldMetaRow } from './registry';
+import { buildSectionRegistry, forwardMapLegacy, type FieldMetaRow } from './registry';
 import { DEFAULT_SECTIONS } from '../../../lib/grove/memory-sections';
 
 // ---------------------------------------------------------------------------

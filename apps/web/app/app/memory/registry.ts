@@ -13,7 +13,7 @@
  *  - labelToFieldKey: server-side slug: label → `c_<slug>` matching ^c_[a-z0-9_]{1,40}$
  */
 
-import { DEFAULT_SECTIONS, type SectionEntry, type FieldKind } from '../../../lib/grove/memory-sections';
+import { DEFAULT_SECTIONS, type FieldKind } from '../../../lib/grove/memory-sections';
 import type { ValuesRecord } from './fields';
 
 // ---------------------------------------------------------------------------

@@ -24,7 +24,6 @@ import { MemoryClient } from './MemoryClient';
 import { DEFAULT_SECTIONS } from '../../../lib/grove/memory-sections';
 import { FIELD_CONFIG } from './fields';
 import { buildSectionRegistry, type FieldMetaRow } from './registry';
-import type { FieldMeta } from './provenance';
 
 // ---------------------------------------------------------------------------
 // Forbidden photographer-specific substrings
