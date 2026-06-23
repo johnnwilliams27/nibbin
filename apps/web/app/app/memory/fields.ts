@@ -15,7 +15,7 @@
  * that could drift apart from the drafter's memory block.
  */
 
-import { MEMORY_SECTIONS } from '../../../lib/grove/memory';
+import { MEMORY_SECTIONS } from '../../../lib/grove/memory-sections';
 import type { FieldKind } from './format';
 
 // ---------------------------------------------------------------------------
