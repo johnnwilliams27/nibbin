@@ -134,4 +134,55 @@ describe('proposeFromCaptureCore', () => {
       proposeFromCaptureCore('acct-1', validSummary, svc, null),
     ).rejects.toThrow('source_insert_failed');
   });
+
+  // ── COGS / recordModelCall wiring ─────────────────────────────────────────
+
+  it('calls recordModelCall with task=capture_propose when a model call is made', async () => {
+    const svc = fakeSvc();
+    const recorded: unknown[] = [];
+    const recordCall = async (rec: unknown) => { recorded.push(rec); };
+
+    const generate = (async () => ({
+      text: JSON.stringify([{ field_key: 'facts', value: 'Pattern-led focus.', rationale: 'r' }]),
+      usage: { inputTokens: 12, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 25 },
+      stopReason: 'end_turn' as const,
+      model: 'claude-haiku-4-5',
+    })) as never;
+
+    await proposeFromCaptureCore('acct-1', validSummary, svc, generate, recordCall as never);
+
+    expect(recorded).toHaveLength(1);
+    const rec = recorded[0] as Record<string, unknown>;
+    expect(rec['task']).toBe('capture_propose');
+    expect(rec['origin']).toBe('pipeline');
+    expect(rec['model']).toBe('claude-haiku-4-5');
+    expect((rec['usage'] as Record<string, number>)['inputTokens']).toBe(12);
+    expect(rec['accountId']).toBe('acct-1');
+  });
+
+  it('does NOT call recordModelCall when generate is null (no API key path)', async () => {
+    const svc = fakeSvc();
+    const recorded: unknown[] = [];
+    const recordCall = async (rec: unknown) => { recorded.push(rec); };
+
+    await proposeFromCaptureCore('acct-1', validSummary, svc, null, recordCall as never);
+
+    // null generate → no model call → recordModelCall must not be invoked
+    expect(recorded).toHaveLength(0);
+  });
+
+  it('does NOT call recordModelCall when recordCall is omitted (backward compat)', async () => {
+    // Calling without the optional recordCall param must not throw
+    const svc = fakeSvc();
+    const generate = (async () => ({
+      text: JSON.stringify([{ field_key: 'facts', value: 'Fine.', rationale: 'r' }]),
+      usage: { inputTokens: 1, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 1 },
+      stopReason: 'end_turn' as const,
+      model: 'claude-haiku-4-5',
+    })) as never;
+    // Should complete without error even though recordCall is not provided
+    await expect(
+      proposeFromCaptureCore('acct-1', validSummary, svc, generate),
+    ).resolves.toBeDefined();
+  });
 });

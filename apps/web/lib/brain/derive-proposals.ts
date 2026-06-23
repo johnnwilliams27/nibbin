@@ -16,10 +16,16 @@ import 'server-only';
  *   being written — an additional derived-not-raw guard at the write boundary.
  * - `hard_rules` is blocked at the filter step below; proposals never target
  *   the hard-rules field.
+ *
+ * COGS (M6.5): the function returns `{ proposals, model, usage }` so the
+ * caller (`proposeFromCaptureCore`) can ledger the model call via
+ * `recordModelCall`. When there is no model call (no-key / thin-data / error
+ * paths), `model` and `usage` are null — the caller must not record in that
+ * case, preserving the "no key = nothing recorded" invariant.
  */
 
 import { DEFAULT_MODELS } from '@nibbin/router';
-import type { Generate } from '@nibbin/router';
+import type { Generate, TokenUsage } from '@nibbin/router';
 import { MEMORY_SECTIONS } from '../grove/memory';
 import type { ObservationSummary } from './observation-schema';
 
@@ -27,6 +33,19 @@ export interface CaptureProposal {
   field_key: string;
   value: string;
   rationale: string;
+}
+
+/**
+ * Result from `deriveProposalsFromObservation`, including COGS metadata.
+ * `model` and `usage` are non-null only when a real model call was made —
+ * the caller must record a model_calls row iff both are present.
+ */
+export interface DeriveProposalResult {
+  proposals: CaptureProposal[];
+  /** The resolved model id returned by the API. Null when no call was made. */
+  model: string | null;
+  /** Full token/cache usage split. Null when no call was made. */
+  usage: TokenUsage | null;
 }
 
 /** Allowed target fields — MEMORY_SECTIONS keys only; hard_rules is never a target. */
@@ -73,25 +92,34 @@ function parseModelOut(parsed: unknown): CaptureProposal[] | null {
   return result;
 }
 
+/** Sentinel returned by early-exit paths (no model call made). */
+const NO_CALL: DeriveProposalResult = { proposals: [], model: null, usage: null };
+
 /**
  * Derive 0–3 capture proposals from an ObservationSummary.
  *
+ * Returns `{ proposals, model, usage }`. The caller is responsible for
+ * recording the model call via `recordModelCall` when `model` and `usage` are
+ * non-null (i.e. when an actual API call was made). This design keeps the
+ * COGS ledger in the orchestration layer where the account context is known,
+ * while keeping this function a pure, DI'd transformation.
+ *
  * @param summary - The validated, already-redaction-scanned boundary payload.
  * @param generate - The DI'd model client; null when ANTHROPIC_API_KEY is absent.
- * @returns Filtered, validated proposal list (may be empty).
+ * @returns DeriveProposalResult — proposals (may be empty) + COGS metadata.
  */
 export async function deriveProposalsFromObservation(
   summary: ObservationSummary,
   generate: Generate | null,
-): Promise<CaptureProposal[]> {
-  // Guard 1 — no model → [].
-  if (!generate) return [];
+): Promise<DeriveProposalResult> {
+  // Guard 1 — no model → NO_CALL (nothing to ledger).
+  if (!generate) return NO_CALL;
 
   // Guard 2 — thin data: mirrors the on-device floor so the model never gets
   // a summary too sparse to reason about (saves tokens; cost-auditor invariant).
-  if (summary.total_events_reviewed < MIN_EVENTS || summary.active_ms < MIN_ACTIVE_MS) return [];
+  if (summary.total_events_reviewed < MIN_EVENTS || summary.active_ms < MIN_ACTIVE_MS) return NO_CALL;
 
-  let raw: { text: string };
+  let raw: { text: string; model: string; usage: TokenUsage };
   try {
     raw = await generate({
       // T0-class call: the cheapest model tier for a small structured extraction.
@@ -106,21 +134,29 @@ export async function deriveProposalsFromObservation(
       temperature: 0.3,
     });
   } catch {
-    // Network / API error → [] (never surfaces to the user).
-    return [];
+    // Network / API error → NO_CALL (never surfaces to the user).
+    // No model call recorded — the call never completed successfully.
+    return NO_CALL;
   }
+
+  // We have model/usage from the response — capture it before parsing.
+  const { model, usage } = raw;
 
   // Parse and validate the model's JSON output.
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw.text.trim());
   } catch {
-    return [];
+    // Parse failure: still surfaces model/usage so the caller can ledger the
+    // (wasted) token spend as an 'ok' outcome with 0-proposal output.
+    return { proposals: [], model, usage };
   }
 
-  const proposals = parseModelOut(parsed);
-  if (proposals === null) return [];
+  const items = parseModelOut(parsed);
+  if (items === null) {
+    return { proposals: [], model, usage };
+  }
 
   // Filter to allowed field_keys only — hard_rules and unknown keys are silently dropped.
-  return proposals.filter((p) => ALLOWED.has(p.field_key));
+  return { proposals: items.filter((p) => ALLOWED.has(p.field_key)), model, usage };
 }

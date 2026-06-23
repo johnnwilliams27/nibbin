@@ -29,7 +29,7 @@ import { serviceClient } from '../../../../lib/supabase/service';
 import { clientForRequest } from '../../../../lib/auth/desktop-client';
 import { ensureAccount } from '../../../../lib/auth/bootstrap';
 import { upsertOwnProfile } from '../../../../lib/auth/profile';
-import { anthropicGenerate } from '../../../../lib/llm/client';
+import { anthropicGenerate, recordModelCall } from '../../../../lib/llm/client';
 import { parseObservationSummary, summaryIsClean } from '../../../../lib/brain/observation-schema';
 import { proposeFromCaptureCore } from '../../../../lib/brain/propose-from-capture';
 
@@ -86,6 +86,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       summary,
       serviceClient(),
       anthropicGenerate(),
+      recordModelCall,
     );
     return NextResponse.json(result);
   } catch {

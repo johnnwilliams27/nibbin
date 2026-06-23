@@ -14,8 +14,11 @@ const summary: ObservationSummary = {
 };
 
 describe('deriveProposalsFromObservation', () => {
-  it('returns [] when no model is configured (null generate)', async () => {
-    expect(await deriveProposalsFromObservation(summary, null)).toEqual([]);
+  it('returns { proposals: [], model: null, usage: null } when no model is configured (null generate)', async () => {
+    const result = await deriveProposalsFromObservation(summary, null);
+    expect(result.proposals).toEqual([]);
+    expect(result.model).toBeNull();
+    expect(result.usage).toBeNull();
   });
 
   it('parses a valid model response, dropping unknown field_keys and hard_rules', async () => {
@@ -30,22 +33,41 @@ describe('deriveProposalsFromObservation', () => {
       model: 'claude-haiku-4-5',
     });
     const out = await deriveProposalsFromObservation(summary, gen as never);
-    expect(out).toHaveLength(1);
-    expect(out[0].field_key).toBe('facts');
-    expect(out[0].value).toBe('Design is the primary daily focus.');
+    expect(out.proposals).toHaveLength(1);
+    expect(out.proposals[0].field_key).toBe('facts');
+    expect(out.proposals[0].value).toBe('Design is the primary daily focus.');
   });
 
-  it('returns [] on a non-JSON / garbage model response (graceful)', async () => {
+  it('surfaces model + usage metadata for COGS ledgering on a successful call', async () => {
+    const gen = async () => ({
+      text: JSON.stringify([{ field_key: 'facts', value: 'Design-led.', rationale: 'r' }]),
+      usage: { inputTokens: 10, cacheWriteTokens: 2, cacheReadTokens: 0, outputTokens: 30 },
+      stopReason: 'end_turn',
+      model: 'claude-haiku-4-5',
+    });
+    const out = await deriveProposalsFromObservation(summary, gen as never);
+    // Caller can ledger: model and usage are both non-null
+    expect(out.model).toBe('claude-haiku-4-5');
+    expect(out.usage).toEqual({ inputTokens: 10, cacheWriteTokens: 2, cacheReadTokens: 0, outputTokens: 30 });
+    expect(out.proposals).toHaveLength(1);
+  });
+
+  it('returns null model/usage (no-call sentinel) on a non-JSON / garbage model response — caller ledgers nothing', async () => {
     const gen = async () => ({
       text: 'sorry, cannot help with that',
       usage: { inputTokens: 1, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 1 },
       stopReason: 'end_turn',
       model: 'claude-haiku-4-5',
     });
-    expect(await deriveProposalsFromObservation(summary, gen as never)).toEqual([]);
+    // Parse failure: still surfaces model/usage (the call did happen — tokens were spent)
+    const out = await deriveProposalsFromObservation(summary, gen as never);
+    expect(out.proposals).toEqual([]);
+    // model/usage are present even on parse failure — the call was made, tokens spent
+    expect(out.model).toBe('claude-haiku-4-5');
+    expect(out.usage).not.toBeNull();
   });
 
-  it('returns [] on a thin/empty summary (no events)', async () => {
+  it('returns null model/usage on a thin/empty summary (no events) — no call made', async () => {
     const thin: ObservationSummary = {
       ...summary,
       total_events_reviewed: 0,
@@ -54,23 +76,27 @@ describe('deriveProposalsFromObservation', () => {
       workflow_shapes: [],
     };
     // Even with a working generate, a thin summary must not produce proposals.
-    // The function detects thin data via the summary fields and returns [].
+    // The function short-circuits before calling the model.
     const gen = async () => ({
       text: JSON.stringify([{ field_key: 'facts', value: 'something', rationale: 'r' }]),
       usage: { inputTokens: 1, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 1 },
       stopReason: 'end_turn',
       model: 'claude-haiku-4-5',
     });
-    expect(await deriveProposalsFromObservation(thin, gen as never)).toEqual([]);
+    const out = await deriveProposalsFromObservation(thin, gen as never);
+    expect(out.proposals).toEqual([]);
+    // Thin-data path: no model call → model/usage are null (nothing to ledger)
+    expect(out.model).toBeNull();
+    expect(out.usage).toBeNull();
   });
 
-  it('caps proposals at 3 even if the model returns more', async () => {
+  it('caps proposals at 3 even if the model returns more (parse failure → [])', async () => {
     const gen = async () => ({
       text: JSON.stringify([
         { field_key: 'facts', value: 'Fact 1.', rationale: 'r1' },
         { field_key: 'pricing', value: 'Pricing 1.', rationale: 'r2' },
         { field_key: 'policies', value: 'Policy 1.', rationale: 'r3' },
-        { field_key: 'faq', value: 'FAQ 1.', rationale: 'r4' }, // 4th — should not pass the Zod .max(3) guard
+        { field_key: 'faq', value: 'FAQ 1.', rationale: 'r4' }, // 4th — should not pass the .max(3) guard
       ]),
       usage: { inputTokens: 1, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 1 },
       stopReason: 'end_turn',
@@ -78,11 +104,17 @@ describe('deriveProposalsFromObservation', () => {
     });
     const out = await deriveProposalsFromObservation(summary, gen as never);
     // modelOut schema is .max(3) — more than 3 proposals → parse failure → []
-    expect(out).toEqual([]);
+    expect(out.proposals).toEqual([]);
+    // Tokens were still spent — model/usage surfaced for COGS ledgering
+    expect(out.model).toBe('claude-haiku-4-5');
   });
 
-  it('returns [] when generate throws', async () => {
+  it('returns null model/usage (no-call sentinel) when generate throws', async () => {
     const gen = async () => { throw new Error('network failure'); };
-    expect(await deriveProposalsFromObservation(summary, gen as never)).toEqual([]);
+    const out = await deriveProposalsFromObservation(summary, gen as never);
+    expect(out.proposals).toEqual([]);
+    // Throw path: call never completed → nothing to ledger
+    expect(out.model).toBeNull();
+    expect(out.usage).toBeNull();
   });
 });

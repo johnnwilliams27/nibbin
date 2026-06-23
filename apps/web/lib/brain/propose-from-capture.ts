@@ -17,18 +17,19 @@ import 'server-only';
  *   existing security-definer RPC `propose_memory_change` (service-role-only),
  *   which enqueues the proposal for the F2 human-review queue.
  *
- * COGS: the model call inside `deriveProposalsFromObservation` (Task 3) does not
- * record a COGS row by itself (it is a pure function). `recordModelCall` is not
- * wired here because `deriveProposalsFromObservation` does not return the model /
- * usage metadata — the cost-auditor caveat from Task 3 applies: one T0 call per
- * completed study, 600 max tokens, acceptable for background pipeline. If COGS
- * tracking is later required, refactor Task 3 to return `{ proposals, model,
- * usage }` and add `recordModelCall` here.
+ * COGS (M6.5): `deriveProposalsFromObservation` now returns `{ proposals, model,
+ * usage }`. When `model` and `usage` are non-null (a real T0 call was made),
+ * this function calls `recordModelCall` with task='capture_propose' and
+ * origin='pipeline'. The no-key / thin-data / error paths return null model/usage
+ * — nothing is ledgered in those cases, preserving the "no key → no record"
+ * invariant. The `recordCall` parameter is DI'd for testability (production
+ * callers pass `recordModelCall` from `lib/llm/client`).
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Generate } from '@nibbin/router';
 import { batteryStillMatches } from '@nibbin/redaction';
+import type { ModelCallRecord } from '../llm/client';
 import type { ObservationSummary } from './observation-schema';
 import { deriveProposalsFromObservation } from './derive-proposals';
 
@@ -36,6 +37,9 @@ export interface ProposeFromCaptureResult {
   source_id: string;
   proposal_ids: string[];
 }
+
+/** Minimal recorder type — matches `recordModelCall` from `lib/llm/client`. */
+type RecordCall = (rec: ModelCallRecord) => Promise<void>;
 
 /**
  * Core orchestration — DI'd so it is testable under vitest without a live route.
@@ -45,6 +49,10 @@ export interface ProposeFromCaptureResult {
  * @param svc        - Service-role Supabase client (bypasses RLS; required for
  *                     sources INSERT and propose_memory_change RPC).
  * @param generate   - Anthropic model client (null → no proposals, [] path).
+ * @param recordCall - COGS recorder DI'd for testability; production callers pass
+ *                     `recordModelCall` from `lib/llm/client`. When omitted,
+ *                     COGS recording is silently skipped (safe for tests that do
+ *                     not care about ledgering).
  */
 export async function proposeFromCaptureCore(
   accountId: string,
@@ -52,6 +60,7 @@ export async function proposeFromCaptureCore(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   svc: any,
   generate: Generate | null,
+  recordCall?: RecordCall,
 ): Promise<ProposeFromCaptureResult> {
   // ── Step 1: Insert sources(kind='observation') row ──────────────────────
   // C1: origin stores ONLY structural fields (aggregate stats + app list + shapes).
@@ -80,7 +89,25 @@ export async function proposeFromCaptureCore(
   const sourceId: string = (src as { id: string }).id;
 
   // ── Step 2: Derive 0–3 pattern proposals (returns [] on no-model / thin) ─
-  const proposals = await deriveProposalsFromObservation(summary, generate);
+  const { proposals, model, usage } = await deriveProposalsFromObservation(summary, generate);
+
+  // ── COGS ledger (M6.5): record the model call when one was actually made ──
+  // `model` and `usage` are non-null only when deriveProposalsFromObservation
+  // made a real API call. We never record on the no-key / thin-data / error
+  // paths (those return null model/usage).
+  if (recordCall && model !== null && usage !== null) {
+    // Fire-and-forget: COGS failure must never fail the user's request.
+    void recordCall({
+      accountId,
+      userId: null,   // pipeline call — no interactive user session
+      runId: null,
+      tier: 't0',
+      task: 'capture_propose',
+      model,
+      usage,
+      origin: 'pipeline',
+    });
+  }
 
   // ── Step 3: Per proposal — battery-scan value, then service-role propose ─
   // C1: each model-proposed value is independently scanned before write.
