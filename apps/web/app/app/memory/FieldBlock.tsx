@@ -37,53 +37,13 @@ import { FieldEditor } from './FieldEditor';
 import { editReducer, initialState } from './fieldEditor.reducer';
 import { formatField } from './format';
 import { FIELD_CONFIG } from './fields';
+import { sourceLabel, staleness } from './provenance';
+import type { FieldMeta } from './provenance';
 import styles from './memory.module.css';
 
-// ---------------------------------------------------------------------------
-// Provenance types (pre-Task 12 inline; Task 12 will extract to provenance.ts)
-// ---------------------------------------------------------------------------
-
-export interface FieldMeta {
-  /** Where the field value came from. */
-  source: 'field_study' | 'connector:gmail' | 'user_entered' | 'seeded' | string;
-  /** ISO 8601 timestamp — when the field was last reviewed/confirmed. */
-  lastReviewedAt: string;
-}
-
-/** Days before a field is considered stale (matches Task 12 spec §11). */
-const STALE_DAYS = 60;
-
-/**
- * Returns a human-readable source label, or null for unknown/absent sources.
- * null → silent (no text rendered), not "unknown".
- */
-function sourceLabel(source: string): string | null {
-  switch (source) {
-    case 'field_study':   return 'From Field Study';
-    case 'connector:gmail': return 'From Gmail';
-    case 'user_entered':  return 'You wrote this';
-    case 'seeded':        return 'From your onboarding';
-    default:              return null;
-  }
-}
-
-/**
- * Computes staleness relative to now.
- * Returns `{ stale: true, text: '— worth a check?' }` when the field
- * hasn't been reviewed in > STALE_DAYS days.
- */
-function staleness(
-  lastReviewedAt: string,
-  now: Date = new Date(),
-): { stale: boolean; text: string } {
-  const reviewed = new Date(lastReviewedAt);
-  const diffMs = now.getTime() - reviewed.getTime();
-  const diffDays = diffMs / (1000 * 60 * 60 * 24);
-  if (diffDays > STALE_DAYS) {
-    return { stale: true, text: '— worth a check?' };
-  }
-  return { stale: false, text: '' };
-}
+// Re-export FieldMeta so existing test imports (`import type { FieldMeta } from './FieldBlock'`)
+// continue to resolve without modification.
+export type { FieldMeta };
 
 // ---------------------------------------------------------------------------
 // Props

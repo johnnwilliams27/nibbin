@@ -34,6 +34,7 @@ import { GroveMemoryTab } from './GroveMemoryTab';
 import { mergeMirror } from './fields';
 import { saveGroveMemory, saveReference } from './actions';
 import type { TabKey } from './tabBar.logic';
+import type { FieldMeta } from './provenance';
 import styles from './memory.module.css';
 
 // ---------------------------------------------------------------------------
@@ -55,6 +56,12 @@ export interface MemoryClientProps {
    * Used to show EmptyState instead of MemorySections on the truth tab.
    */
   isEmpty: boolean;
+  /**
+   * F1 provenance metadata: per-field map from field key → FieldMeta.
+   * Passed to GroveMemoryTab → FieldBlock for the provenance slot.
+   * When undefined (pre-F1 or try/catch silent fail), all provenance slots stay empty.
+   */
+  fieldMeta?: Record<string, FieldMeta>;
 }
 
 // ---------------------------------------------------------------------------
@@ -65,6 +72,7 @@ export function MemoryClient({
   initialValues,
   initialReference,
   isEmpty,
+  fieldMeta,
 }: MemoryClientProps): React.ReactElement {
   // ---------------------------------------------------------------------------
   // State
@@ -188,6 +196,7 @@ export function MemoryClient({
           isEmpty={isEmpty}
           onSave={handleSave}
           onChipClick={handleChipClick}
+          fieldMeta={fieldMeta}
         />
       </div>
 

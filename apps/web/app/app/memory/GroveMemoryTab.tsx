@@ -38,6 +38,7 @@ import { FieldBlock } from './FieldBlock';
 import { HardRulesBlock } from './HardRulesBlock';
 import { EmptyState } from './EmptyState';
 import { FIELD_CONFIG } from './fields';
+import type { FieldMeta } from './provenance';
 
 // ---------------------------------------------------------------------------
 // Section configuration (spec §12 order)
@@ -81,6 +82,11 @@ export interface GroveMemoryTabProps {
    * MemoryClient wires this to scroll + open the target FieldBlock in edit mode.
    */
   onChipClick: (fieldKey: string) => void;
+  /**
+   * F1 provenance metadata: per-field map from field key → FieldMeta.
+   * When undefined (pre-F1), all FieldBlock provenance slots stay silent/empty.
+   */
+  fieldMeta?: Record<string, FieldMeta>;
 }
 
 // ---------------------------------------------------------------------------
@@ -92,6 +98,7 @@ export function GroveMemoryTab({
   isEmpty,
   onSave,
   onChipClick,
+  fieldMeta,
 }: GroveMemoryTabProps): React.ReactElement {
   // Hard rules come from the mirror as a newline-separated string;
   // HardRulesBlock expects a string[] for display.
@@ -124,6 +131,7 @@ export function GroveMemoryTab({
               label={config.label}
               rawValue={values[fieldKey] ?? ''}
               onSave={onSave}
+              fieldMeta={fieldMeta?.[fieldKey]}
             />
           );
         })}
@@ -145,6 +153,7 @@ export function GroveMemoryTab({
               label={config.label}
               rawValue={values[fieldKey] ?? ''}
               onSave={onSave}
+              fieldMeta={fieldMeta?.[fieldKey]}
             />
           );
         })}
@@ -162,6 +171,7 @@ export function GroveMemoryTab({
               label={config.label}
               rawValue={values['notes'] ?? ''}
               onSave={onSave}
+              fieldMeta={fieldMeta?.['notes']}
             />
           );
         })()}
