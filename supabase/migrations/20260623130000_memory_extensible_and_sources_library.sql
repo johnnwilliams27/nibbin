@@ -89,3 +89,57 @@ revoke execute on function public.upsert_section_meta(uuid, text, text, integer,
   from public, anon, service_role;
 grant execute on function public.upsert_section_meta(uuid, text, text, integer, boolean, boolean)
   to authenticated;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Task 3: delete_custom_section — remove a custom section and its sections key
+-- ─────────────────────────────────────────────────────────────────────────────
+create function public.delete_custom_section(
+  target_account uuid,
+  p_field_key    text
+) returns void
+language plpgsql security definer set search_path = '' as $$
+declare
+  uid uuid := (select auth.uid());
+  cur_version integer;
+begin
+  if uid is null then raise exception 'not authenticated'; end if;
+  if not (select private.is_account_member(target_account)) then
+    raise exception 'not a member of this account';
+  end if;
+  if p_field_key !~ '^c_[a-z0-9_]{1,40}$' then
+    raise exception 'not a custom section';
+  end if;
+
+  perform pg_advisory_xact_lock(hashtext('grove_memory:' || target_account::text));
+
+  delete from public.field_meta
+    where account_id = target_account and field_key = p_field_key;
+
+  update public.grove_memory
+    set sections   = sections - p_field_key,
+        version    = version + 1,
+        updated_at = now()
+    where account_id = target_account;
+
+  select version into cur_version
+    from public.grove_memory
+    where account_id = target_account;
+
+  insert into public.grove_memory_history
+    (account_id, field_key, old_value, new_value, version, change_source, changed_by)
+  values (
+    target_account,
+    p_field_key,
+    p_field_key,   -- record the key that was deleted as old_value
+    null,          -- no new value — section is gone
+    coalesce(cur_version, 1),
+    'manual',
+    uid
+  );
+end;
+$$;
+
+revoke execute on function public.delete_custom_section(uuid, text)
+  from public, anon, service_role;
+grant execute on function public.delete_custom_section(uuid, text)
+  to authenticated;
