@@ -31,8 +31,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     .eq('account_id', accountId);
 
   // Title search (title-only; content search via match_sources is P5)
+  // Escape LIKE metacharacters so user input is treated as a literal substring.
   if (params.q) {
-    query = query.ilike('title', `%${params.q}%`);
+    const escapedQ = params.q.replace(/[\\%_]/g, (c) => '\\' + c);
+    query = query.ilike('title', '%' + escapedQ + '%');
   }
 
   // Group filter — translate to mime_type patterns

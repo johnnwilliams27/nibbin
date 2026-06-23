@@ -184,9 +184,17 @@ export function sectionControlsReducer(
       const prev = sections[idx - 1];
       const curr = sections[idx];
 
-      // Swap sort_order values
-      const prevNewOrder = curr.sortOrder;
-      const currNewOrder = prev.sortOrder;
+      // Swap sort_order values, but ensure they are distinct even when equal.
+      // When both share the same sort_order the naive swap is a no-op, so we
+      // normalise: assign index-based orders to the affected pair so the move
+      // is always visible.
+      let prevNewOrder = curr.sortOrder;
+      let currNewOrder = prev.sortOrder;
+      if (prevNewOrder === currNewOrder) {
+        // Assign index-proportional values to guarantee a distinct ordering.
+        prevNewOrder = (idx - 1) * 100 + 100;
+        currNewOrder = prevNewOrder - 100;
+      }
 
       const newSections = sections.map((s) => {
         if (s.key === prev.key) return { ...s, sortOrder: prevNewOrder };
@@ -220,9 +228,17 @@ export function sectionControlsReducer(
       const curr = sections[idx];
       const next = sections[idx + 1];
 
-      // Swap sort_order values
-      const currNewOrder = next.sortOrder;
-      const nextNewOrder = curr.sortOrder;
+      // Swap sort_order values, but ensure they are distinct even when equal.
+      // When both share the same sort_order the naive swap is a no-op, so we
+      // normalise: assign index-based orders to the affected pair so the move
+      // is always visible.
+      let currNewOrder = next.sortOrder;
+      let nextNewOrder = curr.sortOrder;
+      if (currNewOrder === nextNewOrder) {
+        // Assign index-proportional values to guarantee a distinct ordering.
+        nextNewOrder = (idx + 1) * 100 + 100;
+        currNewOrder = nextNewOrder - 100;
+      }
 
       const newSections = sections.map((s) => {
         if (s.key === curr.key) return { ...s, sortOrder: currNewOrder };

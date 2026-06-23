@@ -110,6 +110,32 @@ describe('sectionControlsReducer — MOVE_UP', () => {
       expect(keys).toContain('about');
     }
   });
+
+  it('MOVE_UP is deterministic when two siblings share an equal sort_order', () => {
+    // Both c_a and c_b have sort_order 1000 — naive swap is a no-op; fix ensures movement.
+    const sections = [
+      makeSection('about', 'About', 100),
+      makeSection('c_a', 'A', 1000, true),
+      makeSection('c_b', 'B', 1000, true),
+    ];
+    const state = idleState(sections);
+    // Move c_b (index 2) up over c_a (index 1)
+    const next = sectionControlsReducer(state, { type: 'MOVE_UP', key: 'c_b' });
+
+    // After the move, c_b must appear before c_a
+    const idxA = next.sections.findIndex((s) => s.key === 'c_a');
+    const idxB = next.sections.findIndex((s) => s.key === 'c_b');
+    expect(idxB).toBeLessThan(idxA);
+
+    // The assigned sort_orders must be distinct
+    const orderA = next.sections[idxA].sortOrder;
+    const orderB = next.sections[idxB].sortOrder;
+    expect(orderA).not.toBe(orderB);
+
+    // An upsert_pair intent must be emitted (not a no-op)
+    expect(next.pendingIntent).not.toBeNull();
+    expect(next.pendingIntent!.type).toBe('upsert_pair');
+  });
 });
 
 // ---------------------------------------------------------------------------

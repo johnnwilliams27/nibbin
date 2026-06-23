@@ -32,9 +32,29 @@ vi.mock('next/navigation', () => ({
 
 // ---------------------------------------------------------------------------
 // Mock: appSession — fixed account, captures supabase.rpc calls
+//
+// `from` stub returns a chainable builder that resolves to `fromResult`.
+// By default (empty account) there are no existing field_meta rows, so
+// resolveUniqueFieldKey returns the base slug.  Individual tests can override
+// `fromResult.data` to simulate collisions.
 // ---------------------------------------------------------------------------
 const rpcSpy = vi.fn(async () => ({ data: null, error: null }));
-const supabaseStub = { rpc: rpcSpy };
+
+/** Mutable result returned by the field_meta query chain. Override per-test. */
+const fromResult: { data: Array<{ field_key: string }> | null; error: null } = {
+  data: [],
+  error: null,
+};
+
+const fromChain = {
+  select: () => fromChain,
+  eq: () => Promise.resolve(fromResult),
+};
+
+const supabaseStub = {
+  rpc: rpcSpy,
+  from: (_table: string) => fromChain,
+};
 
 vi.mock('../../../lib/auth/app-session', () => ({
   appSession: vi.fn(async () => ({
@@ -207,6 +227,8 @@ describe('saveSectionMeta — upsert_section_meta RPC', () => {
   beforeEach(() => {
     rpcSpy.mockClear();
     redirectSpy.mockClear();
+    // Reset the field_meta query result so each test starts with an empty account.
+    fromResult.data = [];
   });
 
   it('calls upsert_section_meta with EXACTLY the right arg keys (bidirectional)', async () => {
@@ -356,6 +378,63 @@ describe('saveSectionMeta — upsert_section_meta RPC', () => {
     expect(result).toHaveProperty('ok', false);
     expect((result as { ok: false; error: string }).error).toBeTruthy();
     expect(redirectSpy).not.toHaveBeenCalled();
+  });
+
+  // ---------------------------------------------------------------------------
+  // Slug-collision uniqueness (gate finding: Important 1)
+  // ---------------------------------------------------------------------------
+
+  it('two labels that slug to the same base key get DISTINCT generated keys', async () => {
+    const { saveSectionMeta } = await import('./actions');
+
+    // First label: "My Stuff" → base key c_my_stuff; account starts empty.
+    fromResult.data = [];
+    const fd1 = new FormData();
+    fd1.set('label', 'My Stuff');
+    fd1.set('sort_order', '1000');
+    fd1.set('is_custom', 'true');
+    fd1.set('is_hidden', 'false');
+    await saveSectionMeta(fd1);
+    const [, args1] = rpcSpy.mock.calls[0] as unknown as [string, Record<string, unknown>];
+    const key1 = args1['p_field_key'] as string;
+    expect(key1).toBe('c_my_stuff');
+
+    // Simulate that c_my_stuff now exists in the account.
+    fromResult.data = [{ field_key: 'c_my_stuff' }];
+
+    // Second label: "my-stuff!" → also slugs to c_my_stuff but must get c_my_stuff_2.
+    rpcSpy.mockClear();
+    const fd2 = new FormData();
+    fd2.set('label', 'my-stuff!');
+    fd2.set('sort_order', '1100');
+    fd2.set('is_custom', 'true');
+    fd2.set('is_hidden', 'false');
+    await saveSectionMeta(fd2);
+    const [, args2] = rpcSpy.mock.calls[0] as unknown as [string, Record<string, unknown>];
+    const key2 = args2['p_field_key'] as string;
+
+    expect(key2).toBe('c_my_stuff_2');
+    // The two keys must be distinct
+    expect(key1).not.toBe(key2);
+  });
+
+  it('renaming an existing section does NOT create a new key (edit path passes key through)', async () => {
+    const { saveSectionMeta } = await import('./actions');
+
+    // Editing the existing c_my_stuff section — field_key is supplied.
+    fromResult.data = [{ field_key: 'c_my_stuff' }];
+    rpcSpy.mockClear();
+    const fd = new FormData();
+    fd.set('field_key', 'c_my_stuff');    // existing key passed through
+    fd.set('label', 'My Stuff Renamed');  // new label — does NOT re-slug
+    fd.set('sort_order', '1000');
+    fd.set('is_custom', 'true');
+    fd.set('is_hidden', 'false');
+    await saveSectionMeta(fd);
+
+    const [, args] = rpcSpy.mock.calls[0] as unknown as [string, Record<string, unknown>];
+    // key must be the ORIGINAL key, not a re-slug of the new label
+    expect(args['p_field_key']).toBe('c_my_stuff');
   });
 });
 

@@ -95,7 +95,7 @@ export function MemoryClient({
   const [referenceValue, setReferenceValue] = useState(initialReference);
 
   // Task 7 fix: ALWAYS build from the neutral defaults (or metaRow overrides).
-  // buildSectionRegistry([]) returns the 8 neutral default sections, so fresh
+  // buildSectionRegistry([]) returns the 7 neutral default sections, so fresh
   // accounts and accounts with no customisations get the correct neutral UI —
   // never the legacy photographer-flavoured fallback.
   const registry = buildSectionRegistry(metaRows ?? []);

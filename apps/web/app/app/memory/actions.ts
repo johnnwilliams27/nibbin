@@ -43,6 +43,57 @@ export async function saveGroveMemory(formData: FormData) {
 }
 
 /**
+ * Resolve a unique `c_*` field key for a new custom section.
+ *
+ * Slugs the label, then checks existing `field_meta` rows for the account.
+ * If the base slug collides with an existing key, appends a numeric suffix
+ * (`c_my_stuff_2`, `c_my_stuff_3`, …) until a key not already present in
+ * the account is found.  The body (the part after `c_`) is clamped so the
+ * suffix always fits within the 40-character body limit.
+ *
+ * @param supabase  - Member-scoped Supabase client (already auth-checked via appSession).
+ * @param accountId - The target account whose field_meta rows to inspect.
+ * @param label     - The raw label supplied by the user.
+ * @returns A unique field key matching `^c_[a-z0-9_]{1,40}$`.
+ */
+async function resolveUniqueFieldKey(
+  supabase: Awaited<ReturnType<typeof import('../../../lib/auth/app-session').appSession>>['supabase'],
+  accountId: string,
+  label: string,
+): Promise<string> {
+  const baseKey = labelToFieldKey(label);
+
+  // Fetch all existing custom field_meta keys for this account so we can check
+  // for collisions without a per-attempt round-trip.
+  const { data } = await supabase
+    .from('field_meta')
+    .select('field_key')
+    .eq('account_id', accountId);
+
+  const existingKeys = new Set<string>((data ?? []).map((r: { field_key: string }) => r.field_key));
+
+  // If the base key is already taken, find the smallest numeric suffix that isn't.
+  if (!existingKeys.has(baseKey)) return baseKey;
+
+  const body = baseKey.slice(2); // strip 'c_' prefix
+
+  // Reserve enough room in the 40-char body limit for '_N', '_NN', '_NNN', etc.
+  // The suffix at counter N is `_${N}` so its length is `String(N).length + 1`.
+  // We clamp `baseBody` to leave room for the largest suffix we'll ever need.
+  // In practice counters stay < 100 so 3 extra chars suffice, but we compute it.
+  for (let counter = 2; counter <= 999; counter++) {
+    const suffix = '_' + String(counter);
+    // Clamp the body so body + suffix stays within 40 chars.
+    const clampedBody = body.slice(0, 40 - suffix.length);
+    const candidate = 'c_' + clampedBody + suffix;
+    if (!existingKeys.has(candidate)) return candidate;
+  }
+
+  // Fallback (practically unreachable: user would need >997 colliding sections).
+  return baseKey;
+}
+
+/**
  * Save the Reference catch-all field (Sources tab) through the
  * `save_reference` security-definer RPC.
  *
@@ -100,13 +151,19 @@ export async function saveSectionMeta(
   const isCustom = formData.get('is_custom') === 'true';
   const isHidden = formData.get('is_hidden') === 'true';
 
-  // Determine the field key: pass through an existing key, or slug from label for new custom sections.
+  // Determine the field key:
+  //  - EDIT path (existing key supplied): pass through unchanged.
+  //  - CREATE path (no field_key): slug from label and ensure uniqueness for this account.
   let fieldKey: string;
   if (rawFieldKey && String(rawFieldKey).trim()) {
+    // Rename/reorder/hide of a default or already-known custom section — key unchanged.
     fieldKey = String(rawFieldKey).trim();
   } else {
-    // New custom section: generate key server-side from the label.
-    fieldKey = labelToFieldKey(label ?? '');
+    // New custom section: generate a unique key server-side from the label.
+    // resolveUniqueFieldKey checks existing field_meta rows and appends a numeric
+    // suffix (_2, _3, …) if the base slug is already taken, preventing the silent
+    // upsert-overwrite that would merge two distinct sections under one key.
+    fieldKey = await resolveUniqueFieldKey(supabase, accountId, label ?? '');
   }
 
   const { error } = await supabase.rpc('upsert_section_meta', {

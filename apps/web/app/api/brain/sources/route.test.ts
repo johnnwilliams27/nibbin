@@ -222,4 +222,32 @@ describe('GET /api/brain/sources', () => {
     expect(orderArgs[0]).toBe('title');
     expect((orderArgs[1] as Record<string, unknown>).ascending).toBe(true);
   });
+
+  it('escapes % in q before passing to ilike so it is treated as a literal substring', async () => {
+    const { appSession } = await import('../../../../lib/auth/app-session');
+    (appSession as ReturnType<typeof vi.fn>).mockImplementationOnce(async () => ({
+      supabase: supabaseStub,
+      accountId: 'acct-test-1',
+      user: { id: 'user-1' },
+    }));
+
+    let ilikePattern: unknown = null;
+    const chain = makeChain([], 0);
+    const originalIlike = chain.ilike as (...args: unknown[]) => unknown;
+    chain.ilike = (...args: unknown[]) => {
+      ilikePattern = args[1];
+      return originalIlike(...args);
+    };
+    supabaseStub.from.mockReturnValueOnce(chain as ReturnType<typeof makeChain>);
+
+    const { GET } = await import('./route');
+    // q contains a raw %, which must be escaped to \% in the ilike pattern
+    await GET(makeReq({ q: 'a%b' }));
+
+    expect(typeof ilikePattern).toBe('string');
+    // The raw '%' from the user must be escaped; the pattern wrapping % must remain
+    expect(String(ilikePattern)).toBe('%a\\%b%');
+    // Must NOT contain an unescaped bare % in the middle of the search term
+    expect(String(ilikePattern)).not.toBe('%a%b%');
+  });
 });
