@@ -31,14 +31,20 @@ vi.mock('../../../../lib/supabase/service', () => ({
   })),
 }));
 
-vi.mock('@nibbin/connectors', () => ({
-  GmailClient: vi.fn(function () {
-    return {
-      getProfile: vi.fn().mockResolvedValue({ emailAddress: 'tester@gmail.com', historyId: '1' }),
-      watch: vi.fn().mockResolvedValue({ historyId: '999', expiration: String(Date.now() + 7 * 86400000) }),
-    };
-  }),
-  SupabaseTokenVault: vi.fn(function () { return {}; }),
+vi.mock('@nibbin/connectors', () => {
+  const mockGmailClient = {
+    getProfile: vi.fn().mockResolvedValue({ emailAddress: 'tester@gmail.com', historyId: '1' }),
+    watch: vi.fn().mockResolvedValue({ historyId: '999', expiration: String(Date.now() + 7 * 86400000) }),
+  };
+  return {
+    GmailClient: vi.fn(function () { return mockGmailClient; }),
+    makeGmailClient: vi.fn(function () { return mockGmailClient; }),
+    SupabaseTokenVault: vi.fn(function () { return {}; }),
+  };
+});
+
+vi.mock('../../../../lib/connectors/nango', () => ({
+  getNango: vi.fn(() => ({})),
 }));
 
 vi.mock('../../../../lib/runtime/engine', () => ({

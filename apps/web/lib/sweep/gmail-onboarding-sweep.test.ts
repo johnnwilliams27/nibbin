@@ -77,18 +77,28 @@ vi.mock('../runtime/engine', () => ({
 }));
 
 // GmailClient: return empty results so the sweep finishes quickly.
-const mockListMessages = vi.fn(async () => ({ messages: [], nextPageToken: undefined }));
-const mockListThreads = vi.fn(async () => ({ threads: [] }));
-vi.mock('@nibbin/connectors', () => ({
-  GmailClient: vi.fn().mockImplementation(function () {
-    return {
-      listMessages: mockListMessages,
-      listThreads: mockListThreads,
-    };
-  }),
-  SupabaseTokenVault: vi.fn().mockImplementation(function () {
-    return {};
-  }),
+// Use vi.hoisted so these refs are available inside the vi.mock factory (which is hoisted).
+const { mockListMessages, mockListThreads } = vi.hoisted(() => ({
+  mockListMessages: vi.fn(async () => ({ messages: [], nextPageToken: undefined })),
+  mockListThreads: vi.fn(async () => ({ threads: [] })),
+}));
+
+vi.mock('@nibbin/connectors', () => {
+  const mockClient = {
+    listMessages: mockListMessages,
+    listThreads: mockListThreads,
+    getMessageMetadata: vi.fn(async () => ({ id: 'msg-1', threadId: 't-1', payload: { headers: [] } })),
+    getMessageBody: vi.fn(async () => null),
+  };
+  return {
+    GmailClient: vi.fn().mockImplementation(function () { return mockClient; }),
+    makeGmailClient: vi.fn().mockImplementation(function () { return mockClient; }),
+    SupabaseTokenVault: vi.fn().mockImplementation(function () { return {}; }),
+  };
+});
+
+vi.mock('../connectors/nango', () => ({
+  getNango: vi.fn(() => ({})),
 }));
 
 // anthropicGenerate: not needed when there are no batches.
