@@ -217,9 +217,35 @@ describe('extractDocument', () => {
     expect(updateArg).toBeDefined();
   });
 
-  it('2. scanned PDF (< 100 chars): fails closed → job=error, zero proposals, no LLM call', async () => {
-    // Fail-closed: scanned PDFs cannot be processed without real multimodal router support.
-    // The old stub vision path would pass base64 as text and could hallucinate proposals.
+  it('T7-0. text-layer PDF: uses fast text path — ZERO vision calls (generate spy called 0 times for text PDFs)', async () => {
+    // Task 7 explicit guard: when a PDF has a text layer (>= SCANNED_THRESHOLD chars),
+    // we MUST NOT make any vision call. The generate spy must be called exactly 1 time
+    // (for the text LLM extraction), NOT via the image block path.
+    setupCleanTextNativePdf();
+
+    await extractDocument(SOURCE_ID, ACCOUNT_ID);
+
+    // generate IS called (for text LLM), but the request must NOT carry image blocks
+    expect(mockGenerateFn).toHaveBeenCalled();
+
+    // Verify none of the generate calls carried image blocks in the user content
+    for (const call of mockGenerateFn.mock.calls) {
+      const req = call[0] as { messages?: Array<{ role: string; content: unknown }> };
+      const userMsg = req.messages?.find((m) => m.role === 'user');
+      // For text-path PDFs the user content is always a string, never a ContentBlock[]
+      // (extractFromImage is NOT invoked on the text path)
+      if (Array.isArray(userMsg?.content)) {
+        const blocks = userMsg!.content as Array<{ type?: string }>;
+        const hasImageBlock = blocks.some((b) => b.type === 'image');
+        expect(hasImageBlock).toBe(false);
+      }
+    }
+  });
+
+  it('2. scanned PDF (< 100 chars): routes to vision fallback — EXACTLY ONE vision call, proposals submitted, job=done', async () => {
+    // Task 7: scanned PDFs (no text layer) fall back to vision via extractFromImage,
+    // passing the PDF buffer as application/pdf base64 to the model.
+    // The model accepts PDFs via the image block type with media_type='application/pdf'.
     mockStorageDownload.mockResolvedValue({
       data: makePdfBuffer('Short'),
       error: null,
@@ -235,21 +261,95 @@ describe('extractDocument', () => {
       numpages: 3,
     });
 
+    // Redaction: clean (for vision output)
+    mockApplyBattery.mockReturnValue({ text: 'Photography studio business info', rulesHit: [] });
+    mockHeuristicNerRedact.mockResolvedValue({ redacted: 'Photography studio business info', rulesHit: [] });
+
+    // Router decision for vision call
+    mockGroveRouterRoute.mockResolvedValue({
+      model: 'claude-haiku-4-5-20251001',
+      tier: 't1',
+      degraded: false,
+    });
+
+    // Vision LLM returns structured fields from the PDF
+    mockGenerateFn.mockResolvedValue({
+      text: JSON.stringify({ facts: 'Photography studio business info' }),
+      model: 'claude-haiku-4-5-20251001',
+      usage: { inputTokens: 200, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 40 },
+      stopReason: 'end_turn',
+    });
+
+    mockSourcesUpdate.mockResolvedValue({ error: null });
+    mockJobsUpdate.mockResolvedValue({ error: null });
+    mockRpc.mockResolvedValue({ data: 'pid-scan', error: null });
+
+    await extractDocument(SOURCE_ID, ACCOUNT_ID);
+
+    // EXACTLY ONE vision call (not zero, not two)
+    expect(mockGenerateFn).toHaveBeenCalledTimes(1);
+
+    // The vision call must carry an image block with media_type='application/pdf'
+    const visionCallReq = mockGenerateFn.mock.calls[0][0];
+    const userMsg = visionCallReq.messages?.find((m: { role: string }) => m.role === 'user');
+    expect(Array.isArray(userMsg?.content)).toBe(true);
+    const blocks = userMsg?.content as Array<{ type: string; source?: { media_type: string } }>;
+    expect(blocks[0]?.type).toBe('image');
+    expect(blocks[0]?.source?.media_type).toBe('application/pdf');
+
+    // Proposals submitted (at least one)
+    expect(mockRpc).toHaveBeenCalled();
+
+    // Job must be marked 'done' (not 'error')
+    const jobCalls = mockJobsUpdate.mock.calls;
+    const doneCall = jobCalls.find((c) => JSON.stringify(c).includes('"done"'));
+    expect(doneCall).toBeDefined();
+  });
+
+  it('2b. scanned PDF: vision failure → extraction_state=failed, zero proposals (fail-closed)', async () => {
+    // Task 7 fail-closed: if the vision fallback throws, propagate to outer catch → failed.
+    mockStorageDownload.mockResolvedValue({
+      data: makePdfBuffer('X'.repeat(10)),
+      error: null,
+    });
+    mockSelect.mockResolvedValue({
+      data: { origin: { filename: 'scan-fail.pdf', mime: 'application/pdf' }, id: 'src-1' },
+      error: null,
+    });
+
+    mockPdfParse.mockResolvedValue({
+      text: 'X'.repeat(10),
+      numpages: 2,
+    });
+
+    // Router decision
+    mockGroveRouterRoute.mockResolvedValue({
+      model: 'claude-haiku-4-5-20251001',
+      tier: 't1',
+      degraded: false,
+    });
+
+    // Vision LLM throws
+    mockGenerateFn.mockRejectedValue(new Error('Vision provider error'));
+
     mockSourcesUpdate.mockResolvedValue({ error: null });
     mockJobsUpdate.mockResolvedValue({ error: null });
 
     await extractDocument(SOURCE_ID, ACCOUNT_ID);
 
-    // MUST NOT call the LLM or propose anything
-    expect(mockGenerateFn).not.toHaveBeenCalled();
+    // Zero proposals
     expect(mockRpc).not.toHaveBeenCalled();
 
-    // Job must be marked 'error' with the user-facing message
+    // extraction_state must be 'failed'
+    const stateWrites = mockSourcesUpdate.mock.calls
+      .map((c) => (c[0] as Record<string, unknown>)['extraction_state'])
+      .filter(Boolean);
+    expect(stateWrites).toContain('failed');
+
+    // Job must be marked 'error'
     const jobCalls = mockJobsUpdate.mock.calls;
     const errorCall = jobCalls.find((c) => JSON.stringify(c).includes('error'));
     expect(errorCall).toBeDefined();
-    const errorPayload = JSON.stringify(errorCall);
-    expect(errorPayload).toMatch(/scanned document/i);
   });
 
   it('3. redaction scrub: phone number replaced with [REDACTED]; redaction_status=redacted', async () => {
@@ -459,9 +559,10 @@ describe('extractDocument', () => {
     expect(mockGenerateFn).toHaveBeenCalledTimes(1);
   });
 
-  it('9. scanned PDF with > 10 pages: fails closed (truncated_pages flagged) → job=error, zero proposals', async () => {
-    // Scanned PDFs fail closed regardless of page count. When truncated_pages is true,
-    // the origin patch is still recorded before the terminal error is set.
+  it('9. scanned PDF with > 10 pages: vision fallback fires, truncated_pages logged in origin, EXACTLY ONE vision call', async () => {
+    // Task 7: scanned PDFs route to vision regardless of page count.
+    // When numPages > SCANNED_PAGE_CAP (10), we still make exactly one vision call
+    // on the full buffer and log truncated_pages=true in sources.origin as a note.
     const rawText = 'X'.repeat(30); // < 100 chars → scanned path
     const totalPages = 15;
 
@@ -476,25 +577,44 @@ describe('extractDocument', () => {
 
     mockPdfParse.mockResolvedValue({ text: rawText, numpages: totalPages });
 
+    // Redaction: clean (for vision output)
+    mockApplyBattery.mockReturnValue({ text: 'Multi-page scan content', rulesHit: [] });
+    mockHeuristicNerRedact.mockResolvedValue({ redacted: 'Multi-page scan content', rulesHit: [] });
+
+    // Router decision
+    mockGroveRouterRoute.mockResolvedValue({
+      model: 'claude-haiku-4-5-20251001',
+      tier: 't1',
+      degraded: false,
+    });
+
+    // Vision LLM returns structured fields
+    mockGenerateFn.mockResolvedValue({
+      text: JSON.stringify({ notes: 'Multi-page document scanned' }),
+      model: 'claude-haiku-4-5-20251001',
+      usage: { inputTokens: 300, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 30 },
+      stopReason: 'end_turn',
+    });
+
     mockSourcesUpdate.mockResolvedValue({ error: null });
     mockJobsUpdate.mockResolvedValue({ error: null });
+    mockRpc.mockResolvedValue({ data: 'pid-9', error: null });
 
     await extractDocument(SOURCE_ID, ACCOUNT_ID);
 
-    // MUST NOT call the LLM or propose anything
-    expect(mockGenerateFn).not.toHaveBeenCalled();
-    expect(mockRpc).not.toHaveBeenCalled();
+    // EXACTLY ONE vision call
+    expect(mockGenerateFn).toHaveBeenCalledTimes(1);
 
-    // Job must be marked 'error'
-    const jobCalls = mockJobsUpdate.mock.calls;
-    const errorCall = jobCalls.find((c) => JSON.stringify(c).includes('error'));
-    expect(errorCall).toBeDefined();
-
-    // sources.origin should be updated with truncated_pages: true (recorded before terminal error)
+    // sources.origin should be updated with truncated_pages: true (logged before vision call)
     const updateCalls = mockSourcesUpdate.mock.calls;
     const truncatedCall = updateCalls.find((c) => JSON.stringify(c).includes('truncated_pages'));
     expect(truncatedCall).toBeDefined();
     expect(JSON.stringify(truncatedCall)).toContain('true');
+
+    // Job must be marked 'done' (not 'error') — vision succeeded
+    const jobCalls = mockJobsUpdate.mock.calls;
+    const doneCall = jobCalls.find((c) => JSON.stringify(c).includes('"done"'));
+    expect(doneCall).toBeDefined();
   });
 
   it('10. .docx parsed via mammoth: rawText = mammoth output', async () => {

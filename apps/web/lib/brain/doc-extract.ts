@@ -616,24 +616,59 @@ export async function extractDocument(sourceId: string, accountId: string): Prom
       truncatedPages = pdfResult.truncatedPages;
 
       if (pdfResult.isScanned) {
-        // Fail closed: scanned PDFs cannot be processed without real multimodal support.
-        // The stub vision path (passing base64 as text) would cause the model to
-        // hallucinate proposals from truncated base64 data — we must not do this.
-        // TODO(Task 7): enable scanned-PDF OCR fallback when @nibbin/router supports
-        // image content blocks so the model receives an actual image, not base64 text.
-        if (truncatedPages) {
-          const updatedOrigin = { ...originJsonb, truncated_pages: true };
-          await updateRedactionStatus(svc, sourceId, 'quarantined', updatedOrigin);
-        }
-        await updateRedactionStatus(svc, sourceId, 'quarantined');
-        await updateExtractionState(svc, sourceId, 'failed');
-        await updateJobStatus(
-          svc,
-          sourceId,
-          accountId,
-          'error',
-          "Couldn't read this scanned document — try a text-based export (PDF with selectable text, or .docx)",
+        // Task 7: Scanned-PDF vision OCR fallback.
+        //
+        // The @nibbin/router ContentBlock union accepts { type: 'image', source: { type: 'base64',
+        // media_type: string, data: string } }. Anthropic claude-3+ models accept
+        // media_type='application/pdf' in this block — no separate rasteriser is needed.
+        // We pass the raw PDF buffer as a base64 image block directly to extractFromImage,
+        // which handles the model call, redaction, and proposal submission exactly as for
+        // raster images. This gives us exactly ONE vision call per scanned PDF.
+        //
+        // No silent drop: if the vision call fails, the outer try/catch writes
+        // extraction_state='failed' and zero proposals (fail-closed).
+        //
+        // Path taken: PDF bytes → base64 'application/pdf' image block → extractFromImage.
+        // No-rasteriser path NOT taken: a PDF rasteriser dep is unnecessary because the
+        // router's ContentBlock media_type is open-string and Anthropic accepts application/pdf.
+        console.warn(
+          `[doc-extract] scanned PDF detected for source ${sourceId} — no text layer found; ` +
+          `routing to vision OCR fallback (application/pdf image block).`
         );
+
+        if (truncatedPages) {
+          // Log that the PDF had more pages than our cap — still attempt vision on full buffer
+          const updatedOrigin = { ...originJsonb, truncated_pages: true };
+          await updateRedactionStatus(svc, sourceId, 'pending', updatedOrigin);
+        }
+
+        // Get LLM generate function
+        const llm = anthropicGenerate();
+        if (!llm) {
+          // No API key — mark extracted with zero proposals (same as text path)
+          await updateExtractionState(svc, sourceId, 'extracted');
+          await updateJobStatus(svc, sourceId, accountId, 'done');
+          return;
+        }
+
+        const decision = await groveRouter.route({
+          userId: `account:${accountId}`,
+          task: 'doc_extract',
+          origin: 'pipeline',
+        });
+
+        // Route through vision: PDF bytes as application/pdf image block.
+        // extractFromImage throws on model error → outer catch → failed (fail-closed).
+        await extractFromImage(buffer, 'application/pdf', llm, svc.rpc.bind(svc), {
+          accountId,
+          sourceId,
+          filename,
+          model: decision.model,
+        });
+
+        // Vision succeeded — mark extracted
+        await updateExtractionState(svc, sourceId, 'extracted');
+        await updateJobStatus(svc, sourceId, accountId, 'done');
         return;
       }
     } else if (kind === 'docx') {
