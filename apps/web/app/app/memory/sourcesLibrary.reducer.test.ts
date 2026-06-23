@@ -18,7 +18,6 @@ import { describe, it, expect } from 'vitest';
 import {
   sourcesLibraryReducer,
   initialSourcesLibraryState,
-  derivedItems,
   type SourcesLibraryState,
 } from './sourcesLibrary.reducer';
 import type { SourceListItem } from './sourcesQuery';
@@ -65,11 +64,13 @@ describe('sourcesLibraryReducer — initialSourcesLibraryState', () => {
 // ---------------------------------------------------------------------------
 
 describe('sourcesLibraryReducer — LOAD_OK', () => {
-  it('replaces items with the provided array', () => {
+  it('replaces items with the provided array (append:false)', () => {
     const s = initialSourcesLibraryState();
     const next = sourcesLibraryReducer(s, {
       type: 'LOAD_OK',
       items: [IMG_ITEM, DOC_ITEM],
+      append: false,
+      hasMore: false,
     });
     expect(next.items).toHaveLength(2);
     expect(next.items[0].id).toBe('img-1');
@@ -77,7 +78,7 @@ describe('sourcesLibraryReducer — LOAD_OK', () => {
 
   it('does not mutate the original state', () => {
     const s = initialSourcesLibraryState();
-    sourcesLibraryReducer(s, { type: 'LOAD_OK', items: [IMG_ITEM] });
+    sourcesLibraryReducer(s, { type: 'LOAD_OK', items: [IMG_ITEM], append: false, hasMore: false });
     expect(s.items).toHaveLength(0);
   });
 });
@@ -87,40 +88,46 @@ describe('sourcesLibraryReducer — LOAD_OK', () => {
 // ---------------------------------------------------------------------------
 
 describe('sourcesLibraryReducer — SET_FILTER', () => {
-  it('SET_FILTER group=images narrows derivedItems to images only', () => {
+  it('SET_FILTER group=images sets state.group to "images"', () => {
+    // Server now handles filtering; derivedItems is a passthrough.
+    // Verify the filter state is recorded so the component can build the query string.
     const s = sourcesLibraryReducer(initialSourcesLibraryState(), {
       type: 'LOAD_OK',
       items: [IMG_ITEM, DOC_ITEM, SHEET_ITEM],
+      append: false,
+      hasMore: false,
     });
     const filtered = sourcesLibraryReducer(s, { type: 'SET_FILTER', group: 'images' });
-    const derived = derivedItems(filtered);
-    expect(derived).toHaveLength(1);
-    expect(derived[0].id).toBe('img-1');
+    expect(filtered.group).toBe('images');
+    // items are untouched — server will return the filtered page on next fetch
+    expect(filtered.items).toHaveLength(3);
   });
 
-  it('SET_FILTER group=null shows all items', () => {
+  it('SET_FILTER group=null clears group filter', () => {
     let s = sourcesLibraryReducer(initialSourcesLibraryState(), {
       type: 'LOAD_OK',
       items: [IMG_ITEM, DOC_ITEM],
+      append: false,
+      hasMore: false,
     });
     s = sourcesLibraryReducer(s, { type: 'SET_FILTER', group: 'images' });
     s = sourcesLibraryReducer(s, { type: 'SET_FILTER', group: null });
-    expect(derivedItems(s)).toHaveLength(2);
+    expect(s.group).toBeNull();
   });
 
-  it('SET_FILTER state=pending shows only pending items', () => {
+  it('SET_FILTER state=pending sets state.state to "pending"', () => {
     const pendingItem = makeItem({ id: 'p-1', extractionState: 'pending', mimeGroup: 'docs' });
     let s = sourcesLibraryReducer(initialSourcesLibraryState(), {
       type: 'LOAD_OK',
       items: [DOC_ITEM, pendingItem],
+      append: false,
+      hasMore: false,
     });
     s = sourcesLibraryReducer(s, { type: 'SET_FILTER', state: 'pending' });
-    const derived = derivedItems(s);
-    expect(derived).toHaveLength(1);
-    expect(derived[0].extractionState).toBe('pending');
+    expect(s.state).toBe('pending');
   });
 
-  it('filters are combinable — group AND state', () => {
+  it('filters are combinable — SET_FILTER group AND state both set on state', () => {
     const pendingDoc = makeItem({
       id: 'pd-1',
       mimeGroup: 'docs',
@@ -134,11 +141,12 @@ describe('sourcesLibraryReducer — SET_FILTER', () => {
     let s = sourcesLibraryReducer(initialSourcesLibraryState(), {
       type: 'LOAD_OK',
       items: [pendingDoc, extractedImg],
+      append: false,
+      hasMore: false,
     });
     s = sourcesLibraryReducer(s, { type: 'SET_FILTER', group: 'docs', state: 'pending' });
-    const derived = derivedItems(s);
-    expect(derived).toHaveLength(1);
-    expect(derived[0].id).toBe('pd-1');
+    expect(s.group).toBe('docs');
+    expect(s.state).toBe('pending');
   });
 });
 
@@ -186,19 +194,24 @@ describe('sourcesLibraryReducer — SET_SORT', () => {
     expect(next.dir).toBe('asc');
   });
 
-  it('sort column affects derivedItems order', () => {
+  it('SET_SORT records the sort column on state (server applies the sort on next fetch)', () => {
+    // Server now handles sort; verify state is updated correctly so the component
+    // can build the correct query string on refetch.
     const a = makeItem({ id: 'a', title: 'aardvark.pdf', capturedAt: '2026-01-01T00:00:00Z' });
     const b = makeItem({ id: 'b', title: 'zebra.pdf', capturedAt: '2026-06-01T00:00:00Z' });
     let s = sourcesLibraryReducer(initialSourcesLibraryState(), {
       type: 'LOAD_OK',
       items: [b, a],
+      append: false,
+      hasMore: false,
     });
-    // Sort by title asc
+    // Sort by title asc — two toggles
     s = sourcesLibraryReducer(s, { type: 'SET_SORT', sort: 'title' }); // desc
     s = sourcesLibraryReducer(s, { type: 'SET_SORT', sort: 'title' }); // asc
-    const derived = derivedItems(s);
-    expect(derived[0].id).toBe('a');
-    expect(derived[1].id).toBe('b');
+    expect(s.sort).toBe('title');
+    expect(s.dir).toBe('asc');
+    // Items are still in server order (not client-sorted) — server will return sorted page
+    expect(s.items).toHaveLength(2);
   });
 });
 
@@ -217,6 +230,8 @@ describe('sourcesLibraryReducer — UPLOAD_START', () => {
     const s = sourcesLibraryReducer(initialSourcesLibraryState(), {
       type: 'LOAD_OK',
       items: [DOC_ITEM],
+      append: false,
+      hasMore: false,
     });
     const next = sourcesLibraryReducer(s, { type: 'UPLOAD_START' });
     expect(next.items).toHaveLength(1);
@@ -240,6 +255,8 @@ describe('sourcesLibraryReducer — UPLOAD_DONE', () => {
     const s = sourcesLibraryReducer(initialSourcesLibraryState(), {
       type: 'LOAD_OK',
       items: [DOC_ITEM],
+      append: false,
+      hasMore: false,
     });
     const newItem = makeItem({ id: 'new-1', mimeGroup: 'images' });
     const next = sourcesLibraryReducer(s, { type: 'UPLOAD_DONE', item: newItem });
@@ -274,27 +291,32 @@ describe('sourcesLibraryReducer — SET_QUERY', () => {
     expect(next.q).toBe('invoice');
   });
 
-  it('SET_QUERY narrows derivedItems by title', () => {
+  it('SET_QUERY records q on state (server applies the filter on next fetch)', () => {
+    // Server now handles search; verify state is updated correctly.
     const invoiceItem = makeItem({ id: 'inv-1', title: 'invoice-2026.pdf' });
     const otherItem = makeItem({ id: 'oth-1', title: 'photo.jpg', mimeGroup: 'images' });
     let s = sourcesLibraryReducer(initialSourcesLibraryState(), {
       type: 'LOAD_OK',
       items: [invoiceItem, otherItem],
+      append: false,
+      hasMore: false,
     });
     s = sourcesLibraryReducer(s, { type: 'SET_QUERY', q: 'invoice' });
-    const derived = derivedItems(s);
-    expect(derived).toHaveLength(1);
-    expect(derived[0].id).toBe('inv-1');
+    expect(s.q).toBe('invoice');
+    // items unchanged until next LOAD_OK
+    expect(s.items).toHaveLength(2);
   });
 
-  it('empty query shows all', () => {
+  it('empty query clears q', () => {
     let s = sourcesLibraryReducer(initialSourcesLibraryState(), {
       type: 'LOAD_OK',
       items: [DOC_ITEM, IMG_ITEM],
+      append: false,
+      hasMore: false,
     });
     s = sourcesLibraryReducer(s, { type: 'SET_QUERY', q: 'nomatches' });
     s = sourcesLibraryReducer(s, { type: 'SET_QUERY', q: '' });
-    expect(derivedItems(s)).toHaveLength(2);
+    expect(s.q).toBe('');
   });
 });
 
@@ -317,5 +339,134 @@ describe('sourcesLibraryReducer — purity', () => {
       item: makeItem({ id: 'new-2' }),
     });
     expect(items).toHaveLength(1); // original unchanged
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Task 2 — server-side refetch + load-more additions
+// ---------------------------------------------------------------------------
+
+describe('sourcesLibraryReducer — Task 2: offset / hasMore / loading / REQUEST', () => {
+  it('initialState has offset=0, hasMore=false, loading=false', () => {
+    const s = initialSourcesLibraryState();
+    expect(s.offset).toBe(0);
+    expect(s.hasMore).toBe(false);
+    expect(s.loading).toBe(false);
+  });
+
+  it('REQUEST action sets loading=true', () => {
+    const s = initialSourcesLibraryState();
+    const next = sourcesLibraryReducer(s, { type: 'REQUEST' });
+    expect(next.loading).toBe(true);
+  });
+
+  it('SET_FILTER resets offset to 0 and sets loading=true', () => {
+    const s: SourcesLibraryState = {
+      ...initialSourcesLibraryState(),
+      offset: 50,
+      loading: false,
+    };
+    const next = sourcesLibraryReducer(s, { type: 'SET_FILTER', group: 'images' });
+    expect(next.offset).toBe(0);
+    expect(next.loading).toBe(true);
+  });
+
+  it('SET_QUERY resets offset to 0 and sets loading=true', () => {
+    const s: SourcesLibraryState = {
+      ...initialSourcesLibraryState(),
+      offset: 50,
+      loading: false,
+    };
+    const next = sourcesLibraryReducer(s, { type: 'SET_QUERY', q: 'invoice' });
+    expect(next.offset).toBe(0);
+    expect(next.loading).toBe(true);
+  });
+
+  it('SET_SORT resets offset to 0 and sets loading=true', () => {
+    const s: SourcesLibraryState = {
+      ...initialSourcesLibraryState(),
+      offset: 50,
+      loading: false,
+    };
+    const next = sourcesLibraryReducer(s, { type: 'SET_SORT', sort: 'title' });
+    expect(next.offset).toBe(0);
+    expect(next.loading).toBe(true);
+  });
+
+  it('LOAD_OK with append:false REPLACES items and sets loading=false', () => {
+    const s: SourcesLibraryState = {
+      ...initialSourcesLibraryState(),
+      items: [DOC_ITEM],
+      loading: true,
+    };
+    const next = sourcesLibraryReducer(s, {
+      type: 'LOAD_OK',
+      items: [IMG_ITEM, SHEET_ITEM],
+      append: false,
+      hasMore: false,
+    });
+    expect(next.items).toHaveLength(2);
+    expect(next.items[0].id).toBe('img-1');
+    expect(next.loading).toBe(false);
+  });
+
+  it('LOAD_OK with append:true APPENDS items and sets loading=false', () => {
+    const s: SourcesLibraryState = {
+      ...initialSourcesLibraryState(),
+      items: [DOC_ITEM],
+      loading: true,
+    };
+    const next = sourcesLibraryReducer(s, {
+      type: 'LOAD_OK',
+      items: [IMG_ITEM, SHEET_ITEM],
+      append: true,
+      hasMore: false,
+    });
+    expect(next.items).toHaveLength(3);
+    expect(next.items[0].id).toBe('doc-1'); // original first
+    expect(next.items[1].id).toBe('img-1'); // appended
+    expect(next.loading).toBe(false);
+  });
+
+  it('LOAD_OK sets hasMore=true when a full page returned', () => {
+    const s = initialSourcesLibraryState();
+    const next = sourcesLibraryReducer(s, {
+      type: 'LOAD_OK',
+      items: [IMG_ITEM],
+      append: false,
+      hasMore: true,
+    });
+    expect(next.hasMore).toBe(true);
+  });
+
+  it('LOAD_OK sets hasMore=false when fewer than a full page returned', () => {
+    const s = initialSourcesLibraryState();
+    const next = sourcesLibraryReducer(s, {
+      type: 'LOAD_OK',
+      items: [IMG_ITEM],
+      append: false,
+      hasMore: false,
+    });
+    expect(next.hasMore).toBe(false);
+  });
+
+  it('LOAD_MORE increases offset by limit', () => {
+    const s: SourcesLibraryState = { ...initialSourcesLibraryState(), offset: 0, limit: 50 };
+    const next = sourcesLibraryReducer(s, { type: 'LOAD_MORE' });
+    expect(next.offset).toBe(50);
+    expect(next.loading).toBe(true);
+  });
+
+  it('UPLOAD_DONE still prepends item correctly', () => {
+    const s: SourcesLibraryState = {
+      ...initialSourcesLibraryState(),
+      items: [DOC_ITEM],
+    };
+    const newItem = makeItem({ id: 'up-1', mimeGroup: 'images', extractionState: 'extracted' });
+    const next = sourcesLibraryReducer(s, { type: 'UPLOAD_DONE', item: newItem });
+    expect(next.items[0].id).toBe('up-1');
+    expect(next.items[0].extractionState).toBe('pending'); // forced
+    expect(next.items[1].id).toBe('doc-1');
+    expect(next.uploading).toBe(false);
   });
 });

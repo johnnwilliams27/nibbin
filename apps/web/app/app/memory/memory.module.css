@@ -1387,6 +1387,29 @@
   font-style: italic;
 }
 
+/* Load more */
+.sourcesLoadMore {
+  padding: 12px 16px;
+  text-align: center;
+}
+.sourcesLoadMoreBtn {
+  background: none;
+  border: 1px solid var(--understory);
+  border-radius: 6px;
+  padding: 6px 20px;
+  font-size: 13px;
+  color: var(--ink-faint);
+  cursor: pointer;
+}
+.sourcesLoadMoreBtn:hover:not(:disabled) {
+  color: var(--ink);
+  border-color: var(--ink-faint);
+}
+.sourcesLoadMoreBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* ── SourceRow — individual file entry ────────────────────────────────────── */
 
 .sourceRow {

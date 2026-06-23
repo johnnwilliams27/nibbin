@@ -1,6 +1,6 @@
 'use client';
 /**
- * Task 9 — SourcesLibrary.tsx
+ * Task 9 / Task 2 — SourcesLibrary.tsx
  *
  * The file library panel for the Sources tab.
  * Replaces/extends the current Sources tab body above the Reference catch-all.
@@ -11,13 +11,15 @@
  *    on this branch) — fetch is mocked in tests. This component posts files and
  *    dispatches UPLOAD_START / UPLOAD_DONE to the reducer.
  *
- *  - A file list (maps SourceRow components for each derived item).
+ *  - A file list (maps SourceRow components for each item).
  *
  *  - Search box + filter chips (by mimeGroup + by extraction state) + sort control.
  *    All state lives in the reducer (sourcesLibraryReducer); this component is a
  *    dumb renderer driven by the reducer.
  *
- *  - Loads items on mount via GET /api/brain/sources (dispatches LOAD_OK).
+ *  - Refetches server-side on filter/sort/search change (Task 2):
+ *    builds ?group=&state=&q=&sort=&dir=&limit=&offset= from reducer state;
+ *    debounces the search input (~300ms); "Load more" dispatches LOAD_MORE.
  *
  * testMode prop:
  *  - 'idle'      — renders with no items (empty state)
@@ -26,6 +28,7 @@
  *
  * When testMode is provided, the component skips the useEffect fetch. The caller
  * passes testItems (for populated) and testUploading (for uploading).
+ * testHasMore controls whether the "Load more" button renders in test mode.
  *
  * CSS: adds sourceLibrary-specific classes to memory.module.css.
  */
@@ -34,7 +37,6 @@ import React, { useReducer, useEffect, useRef, useCallback } from 'react';
 import {
   sourcesLibraryReducer,
   initialSourcesLibraryState,
-  derivedItems,
 } from './sourcesLibrary.reducer';
 import { SourceRow } from './SourceRow';
 import type { SourceListItem, MimeGroup } from './sourcesQuery';
@@ -46,6 +48,7 @@ import styles from './memory.module.css';
 
 const UPLOAD_ENDPOINT = '/api/brain/documents/upload';
 const SOURCES_ENDPOINT = '/api/brain/sources';
+const SEARCH_DEBOUNCE_MS = 300;
 
 const MIME_GROUP_LABELS: Record<MimeGroup, string> = {
   docs:   'Docs',
@@ -84,6 +87,10 @@ export interface SourcesLibraryProps {
    * Whether to show uploading state in testMode='uploading'.
    */
   testUploading?: boolean;
+  /**
+   * Whether to show the "Load more" button in test mode.
+   */
+  testHasMore?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -94,6 +101,7 @@ export function SourcesLibrary({
   testMode,
   testItems,
   testUploading,
+  testHasMore,
 }: SourcesLibraryProps): React.ReactElement {
   // ---------------------------------------------------------------------------
   // Reducer
@@ -103,38 +111,81 @@ export function SourcesLibrary({
     const s = initialSourcesLibraryState();
     // In test mode, pre-populate state
     if (testMode === 'populated' && testItems) {
-      return { ...s, items: testItems };
+      return {
+        ...s,
+        items: testItems,
+        hasMore: testHasMore ?? false,
+      };
     }
     if (testMode === 'uploading') {
       return { ...s, uploading: testUploading ?? true };
+    }
+    if (testMode === 'idle') {
+      return { ...s, hasMore: testHasMore ?? false };
     }
     return s;
   });
 
   // ---------------------------------------------------------------------------
-  // Load on mount
+  // Debounced search value — so typing doesn't spam the API
+  // ---------------------------------------------------------------------------
+
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function handleSearchChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const q = e.target.value;
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => {
+      dispatch({ type: 'SET_QUERY', q });
+    }, SEARCH_DEBOUNCE_MS);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Server-side refetch effect — keyed on filter/sort/search/offset
   // ---------------------------------------------------------------------------
 
   useEffect(() => {
     if (testMode) return; // skip fetch in test mode
     let cancelled = false;
 
+    const params = new URLSearchParams();
+    if (state.group) params.set('group', state.group);
+    if (state.state) params.set('state', state.state);
+    if (state.q) params.set('q', state.q);
+    params.set('sort', state.sort);
+    params.set('dir', state.dir);
+    params.set('limit', String(state.limit));
+    params.set('offset', String(state.offset));
+
+    const append = state.offset > 0;
+
     async function load() {
       try {
-        const res = await fetch(SOURCES_ENDPOINT);
-        if (!res.ok) return;
+        const res = await fetch(`${SOURCES_ENDPOINT}?${params.toString()}`);
+        if (!res.ok) {
+          // Clear loading on failure
+          if (!cancelled) {
+            dispatch({ type: 'LOAD_OK', items: [], append, hasMore: false });
+          }
+          return;
+        }
         const data = await res.json() as { items?: SourceListItem[] };
         if (!cancelled && data.items) {
-          dispatch({ type: 'LOAD_OK', items: data.items });
+          const items = data.items;
+          const hasMore = items.length === state.limit;
+          dispatch({ type: 'LOAD_OK', items, append, hasMore });
         }
       } catch {
         // Fail silently — empty list renders gracefully
+        if (!cancelled) {
+          dispatch({ type: 'LOAD_OK', items: [], append, hasMore: false });
+        }
       }
     }
 
     void load();
     return () => { cancelled = true; };
-  }, [testMode]);
+  }, [testMode, state.group, state.state, state.q, state.sort, state.dir, state.offset, state.limit]);
 
   // ---------------------------------------------------------------------------
   // Drag-drop + file input
@@ -226,10 +277,10 @@ export function SourcesLibrary({
   }
 
   // ---------------------------------------------------------------------------
-  // Derived list
+  // Display items — server is source of truth; items are already filtered/sorted
   // ---------------------------------------------------------------------------
 
-  const displayItems = derivedItems(state);
+  const displayItems = state.items;
 
   // ---------------------------------------------------------------------------
   // Render
@@ -281,14 +332,14 @@ export function SourcesLibrary({
 
       {/* ── Search + filters + sort ─────────────────────────────────────── */}
       <div className={styles.sourcesControls}>
-        {/* Search */}
+        {/* Search — debounced so typing doesn't spam the API */}
         <input
           type="search"
           className={styles.sourcesSearch}
           placeholder="Search files…"
-          value={state.q}
+          defaultValue={state.q}
           aria-label="Search files"
-          onChange={testMode ? undefined : (e) => dispatch({ type: 'SET_QUERY', q: e.target.value })}
+          onChange={testMode ? undefined : handleSearchChange}
         />
 
         {/* Group filter chips */}
@@ -366,9 +417,9 @@ export function SourcesLibrary({
       {displayItems.length === 0 ? (
         <div className={styles.sourcesEmpty}>
           <p className={styles.sourcesEmptyText}>
-            {state.items.length === 0
-              ? 'No files yet. Drop some above to get started.'
-              : 'No files match your search or filters.'}
+            {state.loading
+              ? 'Loading…'
+              : 'No files yet. Drop some above to get started.'}
           </p>
         </div>
       ) : (
@@ -377,6 +428,20 @@ export function SourcesLibrary({
             <SourceRow key={item.id} item={item} />
           ))}
         </ul>
+      )}
+
+      {/* ── Load more ──────────────────────────────────────────────────── */}
+      {state.hasMore && (
+        <div className={styles.sourcesLoadMore}>
+          <button
+            type="button"
+            className={styles.sourcesLoadMoreBtn}
+            onClick={testMode ? undefined : () => dispatch({ type: 'LOAD_MORE' })}
+            disabled={state.loading}
+          >
+            {state.loading ? 'Loading…' : 'Load more'}
+          </button>
+        </div>
       )}
     </div>
   );

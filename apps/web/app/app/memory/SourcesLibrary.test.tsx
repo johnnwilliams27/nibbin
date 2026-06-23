@@ -221,6 +221,40 @@ describe('SourcesLibrary — uploading (testMode=uploading)', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Task 2 — "Load more" button visibility
+// ---------------------------------------------------------------------------
+
+describe('SourcesLibrary — Task 2: Load more button', () => {
+  it('renders "Load more" button when testHasMore=true', () => {
+    const html = renderToStaticMarkup(
+      <SourcesLibrary testMode="populated" testItems={SAMPLE_ITEMS} testHasMore={true} />,
+    );
+    expect(html).toContain('Load more');
+  });
+
+  it('does NOT render "Load more" button when testHasMore=false', () => {
+    const html = renderToStaticMarkup(
+      <SourcesLibrary testMode="populated" testItems={SAMPLE_ITEMS} testHasMore={false} />,
+    );
+    expect(html).not.toContain('Load more');
+  });
+
+  it('renders "Load more" even in empty state when testHasMore=true', () => {
+    // The server may have more pages even if none are currently displayed
+    const html = renderToStaticMarkup(
+      <SourcesLibrary testMode="idle" testHasMore={true} />,
+    );
+    expect(html).toContain('Load more');
+  });
+
+  it('renders chips and sort control in empty state', () => {
+    const html = renderToStaticMarkup(<SourcesLibrary testMode="idle" />);
+    expect(html).toContain('Filter by type');
+    expect(html).toContain('Sort:');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Reference catch-all still renders (mount in SourcesTab)
 // ---------------------------------------------------------------------------
 

@@ -5,15 +5,21 @@
  * No React, no DOM, no server imports — all pure functions safe to test in vitest.
  *
  * State shape:
- *   { q, group, state, sort, dir, items, uploading }
+ *   { q, group, state, sort, dir, items, uploading, offset, limit, hasMore, loading }
  *
  * Actions:
- *   SET_QUERY   — update the search query string
- *   SET_FILTER  — set a group or state filter (null = no filter)
- *   SET_SORT    — set sort column; if repeat column, toggle dir; else reset to 'desc'
+ *   REQUEST      — mark a fetch in flight (loading=true)
+ *   SET_QUERY    — update the search query string; resets offset, sets loading
+ *   SET_FILTER   — set a group or state filter (null = no filter); resets offset, sets loading
+ *   SET_SORT     — set sort column; if repeat column, toggle dir; else reset to 'desc'; resets offset, loading
+ *   LOAD_MORE    — advance offset by limit for the next page
  *   UPLOAD_START — mark upload in flight
  *   UPLOAD_DONE  — prepend new item with extractionState 'pending'
- *   LOAD_OK      — load/replace the full items array
+ *   LOAD_OK      — load/replace or append the items array (server now filters)
+ *
+ * NOTE: derivedItems is preserved for backward-compat but no longer narrows
+ * group/state/q — the server is the source of truth for filtering. It still
+ * applies the sort client-side so that UPLOAD_DONE prepended items stay at top.
  */
 
 import type { SourceListItem, MimeGroup } from './sourcesQuery';
@@ -33,10 +39,18 @@ export interface SourcesLibraryState {
   sort: 'captured_at' | 'title' | 'byte_size' | 'mime_type';
   /** Sort direction. */
   dir: 'asc' | 'desc';
-  /** Full unfiltered/unsorted items list (from the last LOAD_OK). */
+  /** Loaded items (from the last LOAD_OK). Server is source of truth for filter/sort. */
   items: SourceListItem[];
   /** Whether a file upload is currently in flight. */
   uploading: boolean;
+  /** Current page offset for load-more paging. */
+  offset: number;
+  /** Page size used for load-more paging. */
+  limit: number;
+  /** Whether the server indicated there are more items beyond the current page. */
+  hasMore: boolean;
+  /** Whether a server fetch is currently in flight. */
+  loading: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -44,12 +58,14 @@ export interface SourcesLibraryState {
 // ---------------------------------------------------------------------------
 
 export type SourcesLibraryAction =
+  | { type: 'REQUEST' }
   | { type: 'SET_QUERY'; q: string }
   | { type: 'SET_FILTER'; group?: MimeGroup | null; state?: string | null }
   | { type: 'SET_SORT'; sort: SourcesLibraryState['sort'] }
+  | { type: 'LOAD_MORE' }
   | { type: 'UPLOAD_START' }
   | { type: 'UPLOAD_DONE'; item: SourceListItem }
-  | { type: 'LOAD_OK'; items: SourceListItem[] };
+  | { type: 'LOAD_OK'; items: SourceListItem[]; append: boolean; hasMore: boolean };
 
 // ---------------------------------------------------------------------------
 // Initial state
@@ -64,54 +80,21 @@ export function initialSourcesLibraryState(): SourcesLibraryState {
     dir: 'desc',
     items: [],
     uploading: false,
+    offset: 0,
+    limit: 50,
+    hasMore: false,
+    loading: false,
   };
 }
 
 // ---------------------------------------------------------------------------
-// Derived list — applies q / group / state filters to items
+// Derived list — server now handles filter/sort/search, so this is a no-op
+// passthrough kept for backward compatibility. The component uses state.items
+// directly; any old callers using derivedItems still get back the full list.
 // ---------------------------------------------------------------------------
 
 export function derivedItems(s: SourcesLibraryState): SourceListItem[] {
-  let result = s.items;
-
-  // Filter by group
-  if (s.group !== null) {
-    result = result.filter((item) => item.mimeGroup === s.group);
-  }
-
-  // Filter by extraction state
-  if (s.state !== null) {
-    result = result.filter((item) => item.extractionState === s.state);
-  }
-
-  // Filter by search query (case-insensitive title match)
-  if (s.q.trim() !== '') {
-    const qLower = s.q.trim().toLowerCase();
-    result = result.filter((item) => item.title.toLowerCase().includes(qLower));
-  }
-
-  // Sort
-  result = [...result].sort((a, b) => {
-    let cmp = 0;
-    switch (s.sort) {
-      case 'title':
-        cmp = a.title.localeCompare(b.title);
-        break;
-      case 'byte_size':
-        cmp = (a.byteSize ?? 0) - (b.byteSize ?? 0);
-        break;
-      case 'mime_type':
-        cmp = a.mimeGroup.localeCompare(b.mimeGroup);
-        break;
-      case 'captured_at':
-      default:
-        cmp = a.capturedAt.localeCompare(b.capturedAt);
-        break;
-    }
-    return s.dir === 'asc' ? cmp : -cmp;
-  });
-
-  return result;
+  return s.items;
 }
 
 // ---------------------------------------------------------------------------
@@ -123,14 +106,19 @@ export function sourcesLibraryReducer(
   action: SourcesLibraryAction,
 ): SourcesLibraryState {
   switch (action.type) {
+    case 'REQUEST':
+      return { ...state, loading: true };
+
     case 'SET_QUERY':
-      return { ...state, q: action.q };
+      return { ...state, q: action.q, offset: 0, loading: true };
 
     case 'SET_FILTER':
       return {
         ...state,
         group: action.group !== undefined ? action.group : state.group,
         state: action.state !== undefined ? action.state : state.state,
+        offset: 0,
+        loading: true,
       };
 
     case 'SET_SORT': {
@@ -140,8 +128,13 @@ export function sourcesLibraryReducer(
         ...state,
         sort: action.sort,
         dir: sameCol ? (state.dir === 'asc' ? 'desc' : 'asc') : 'desc',
+        offset: 0,
+        loading: true,
       };
     }
+
+    case 'LOAD_MORE':
+      return { ...state, offset: state.offset + state.limit, loading: true };
 
     case 'UPLOAD_START':
       return { ...state, uploading: true };
@@ -155,7 +148,12 @@ export function sourcesLibraryReducer(
       };
 
     case 'LOAD_OK':
-      return { ...state, items: action.items };
+      return {
+        ...state,
+        loading: false,
+        hasMore: action.hasMore,
+        items: action.append ? [...state.items, ...action.items] : action.items,
+      };
 
     default:
       return state;
