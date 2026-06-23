@@ -1,26 +1,8 @@
 import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { PendingProposal, PendingQueue, PendingRun } from '@nibbin/keeper';
 
-export interface PendingProposal {
-  proposalId: string;
-  fieldKey: string;
-  rationale: string; // truncated to 80 chars at read time
-  stakes: 'normal' | 'high';
-  createdAt: string;
-}
-
-export interface PendingRun {
-  runId: string;
-  nibbinName: string;
-  title: string | null;
-}
-
-export interface PendingQueue {
-  proposals: PendingProposal[];
-  runs: PendingRun[];
-  total: number;
-  hasHighStakes: boolean;
-}
+export type { PendingProposal, PendingQueue, PendingRun };
 
 const EMPTY: PendingQueue = { proposals: [], runs: [], total: 0, hasHighStakes: false };
 
