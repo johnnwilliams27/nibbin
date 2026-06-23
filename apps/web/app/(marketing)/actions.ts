@@ -3,6 +3,7 @@
 import { normalizeEmail, renderTransactional, resendProvider, waitlistConfirmEmail } from '@nibbin/email';
 import { serviceClient } from '../../lib/supabase/service';
 import { waitlistToken } from '../../lib/waitlist/token';
+import { normalizeUtm } from '../../lib/gtm/links';
 
 export interface JoinResult {
   ok: boolean;
@@ -23,6 +24,15 @@ export async function joinWaitlist(_prev: JoinResult | null, formData: FormData)
   if (!email || !EMAIL_RE.test(email) || email.length > 254) {
     return { ok: false, message: 'That email doesn’t look right — mind checking it?' };
   }
+
+  // GTM attribution (first-touch): sanitized UTM from the landing form's hidden
+  // fields. Untrusted client input — normalizeUtm bounds + url-safe-filters each.
+  const utm = {
+    utm_source: normalizeUtm(formData.get('utm_source')),
+    utm_medium: normalizeUtm(formData.get('utm_medium')),
+    utm_campaign: normalizeUtm(formData.get('utm_campaign')),
+    ref: normalizeUtm(formData.get('ref')),
+  };
 
   const friendly: JoinResult = {
     ok: true,
@@ -68,10 +78,15 @@ export async function joinWaitlist(_prev: JoinResult | null, formData: FormData)
       return alreadyIn;
     }
 
-    // upsert never downgrades a confirmed row (DB trigger enforces it too).
+    // upsert never downgrades a confirmed row (DB trigger enforces it too). UTM is
+    // written only for a genuinely new row, so first-touch source is preserved — a
+    // later re-submit from a different link can't overwrite the original attribution.
+    const upsertRow = isNew
+      ? { email, status: 'pending', source: 'landing', ...utm }
+      : { email, status: 'pending', source: 'landing' };
     const { error: upErr } = await svc
       .from('waitlist')
-      .upsert({ email, status: 'pending', source: 'landing' }, { onConflict: 'email' });
+      .upsert(upsertRow, { onConflict: 'email' });
     if (upErr) return oops;
 
     const apiKey = process.env.RESEND_API_KEY;
@@ -90,7 +105,10 @@ export async function joinWaitlist(_prev: JoinResult | null, formData: FormData)
     // §6.12 cookieless product event (pre-auth, account-less). Best-effort. Only a
     // genuinely new signup counts — a re-submit by someone already in is not a join.
     if (isNew) {
-      await svc.from('product_events').insert({ name: 'waitlist_joined', props: { source: 'landing' } });
+      await svc.from('product_events').insert({
+        name: 'waitlist_joined',
+        props: { source: 'landing', ...utm },
+      });
     }
 
     return isNew ? friendly : alreadyInResent;
