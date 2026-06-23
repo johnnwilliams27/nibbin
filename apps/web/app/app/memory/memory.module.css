@@ -631,3 +631,158 @@
   margin: 0;
   line-height: 1.5;
 }
+
+/* ── Task 10: FramingStrip — "Your Nibbins read this as truth" (§10) ──────── */
+
+/* Strip container: understory background, card radius, 10×14 padding */
+.framingStrip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--understory);
+  border-radius: var(--r-card);
+  padding: 10px 14px;
+  margin: 0 0 16px;
+}
+
+/* Leaf glyph: decorative, moss-deep color */
+.framingGlyph {
+  flex-shrink: 0;
+  color: var(--moss-deep);
+}
+
+/* Copy text: sans 13px, ink-soft */
+.framingCopy {
+  font-size: 13px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
+/* ── Task 10: MemorySection — grouped section wrapper (§3 / §12) ───────────── */
+
+/* Root section container */
+.memorySection {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0 0 24px;
+}
+.memorySection:last-child {
+  margin-bottom: 0;
+}
+
+/* Section header: heading + optional hint */
+.sectionHeader {
+  padding: 8px 0 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Section heading — h2, display font, ink */
+.sectionHeading {
+  font-family: var(--display);
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--ink-soft);
+}
+
+/* Section hint — optional supplemental line below the heading */
+.sectionHint {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Fields container: card border + background wraps the field list */
+.sectionFields {
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--canopy);
+  overflow: hidden;
+}
+
+/* ── Task 10: EmptyState — first-run creature + affordance chips (§9) ──────── */
+
+/* Root container: centered column layout */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 40px 24px 32px;
+  gap: 12px;
+}
+
+/* Creature illustration wrapper: 80×80 SVG display area */
+.emptyCreature {
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 0 8px;
+}
+
+/* Ensures the SVG inside fills the wrapper */
+.emptyCreature svg {
+  width: 80px;
+  height: 80px;
+}
+
+/* Headline: display font, ink, moderate weight */
+.emptyHeadline {
+  font-family: var(--display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+/* Body copy: 14px, ink-soft, comfortable line height */
+.emptyBody {
+  font-size: 14px;
+  color: var(--ink-soft);
+  line-height: 1.65;
+  margin: 0;
+  max-width: 360px;
+}
+
+/* Chip row: horizontal pair of ghost affordance buttons */
+.emptyChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+/* Individual ghost affordance chip */
+.chip {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-button);
+  background: transparent;
+  color: var(--moss-deep);
+  cursor: pointer;
+  transition: background-color var(--dur-1) var(--ease-settle),
+              border-color var(--dur-1) var(--ease-settle);
+  white-space: nowrap;
+}
+.chip:hover {
+  background: var(--understory);
+  border-color: var(--moss);
+  color: var(--ink);
+}
