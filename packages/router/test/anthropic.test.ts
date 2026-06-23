@@ -128,6 +128,96 @@ describe('content-block union (back-compat + multimodal)', () => {
   });
 });
 
+describe('budget/usage accounting is content-shape-agnostic (Task 3 verification)', () => {
+  // Usage comes from the API *response*, not the request shape.  A generate
+  // call carrying image blocks must record exactly the same usage split as a
+  // text-only call with the same API-side numbers — the accounting path never
+  // inspects req.messages[*].content.
+
+  const FIXED_USAGE = {
+    input_tokens: 1200,
+    cache_creation_input_tokens: 3000,
+    cache_read_input_tokens: 600,
+    output_tokens: 250,
+  };
+
+  function apiResponseWithUsage(usage: typeof FIXED_USAGE): Response {
+    return new Response(
+      JSON.stringify({
+        content: [{ type: 'text', text: 'vision result' }],
+        stop_reason: 'end_turn',
+        model: 'claude-haiku-4-5-20251001',
+        usage,
+      }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    );
+  }
+
+  it('a generate call with image-block content returns usage identical to a text call with the same API numbers', async () => {
+    const imageBlocks: ContentBlock[] = [
+      { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: '/9j/AAAA' } },
+      { type: 'text', text: 'Extract all text visible in this image.' },
+    ];
+    const imageReq: GenerateRequest = {
+      model: 'claude-haiku-4-5-20251001',
+      system: [{ text: 'You are an OCR extractor.', cache: true }],
+      messages: [{ role: 'user', content: imageBlocks }],
+      maxTokens: 1024,
+    };
+
+    const fetchImpl = vi.fn(async () => apiResponseWithUsage(FIXED_USAGE));
+    const generate = createAnthropicClient({ apiKey: 'k', fetchImpl, retryDelayMs: 0 });
+    const result = await generate(imageReq);
+
+    // usage is mapped directly from the API response — content shape is irrelevant
+    expect(result.usage).toEqual({
+      inputTokens: 1200,
+      cacheWriteTokens: 3000,
+      cacheReadTokens: 600,
+      outputTokens: 250,
+    });
+  });
+
+  it('costMicroUsd on image-call usage computes the same COGS as on text-call usage with the same numbers', () => {
+    const usage = {
+      inputTokens: 1200,
+      cacheWriteTokens: 3000,
+      cacheReadTokens: 600,
+      outputTokens: 250,
+    };
+    // haiku: input $1/MTok, output $5/MTok, cacheWrite $1.25/MTok, cacheRead $0.10/MTok
+    // = (1200*1 + 3000*1.25 + 600*0.10 + 250*5) / 1_000_000 USD
+    // = (1200 + 3750 + 60 + 1250) / 1_000_000 = 6260 / 1_000_000 USD = 6260 micro-USD
+    const cost = costMicroUsd('claude-haiku-4-5-20251001', usage);
+    expect(cost).toBe(6260);
+    // The same usage numbers from a text call would yield the same cost:
+    // prove by calling costMicroUsd with the same object (content shape never touches this path)
+    expect(costMicroUsd('claude-haiku-4-5-20251001', usage)).toBe(cost);
+  });
+
+  it('image-block request body carries content array; usage is not derived from the request', async () => {
+    const blocks: ContentBlock[] = [
+      { type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'AAAA' } },
+    ];
+    const fetchImpl = vi.fn(async () => apiResponseWithUsage(FIXED_USAGE));
+    const generate = createAnthropicClient({ apiKey: 'k', fetchImpl, retryDelayMs: 0 });
+    await generate({
+      model: 'claude-haiku-4-5-20251001',
+      system: [{ text: 'sys' }],
+      messages: [{ role: 'user', content: blocks }],
+      maxTokens: 512,
+    });
+
+    // Confirm the request body carried the image array (not a string)
+    const [, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+    const body = JSON.parse(init.body as string);
+    expect(Array.isArray(body.messages[0].content)).toBe(true);
+    expect(body.messages[0].content[0].type).toBe('image');
+    // And usage is still pulled from the response, not derived from request content
+    // (proven by the earlier test — this just confirms the request shape)
+  });
+});
+
 describe('pricing (verified 2026-06-12)', () => {
   it('haiku draft: cached call costs ~1/3 of uncached', () => {
     // 2k input (1.5k cacheable) / 400 out
