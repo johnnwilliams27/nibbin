@@ -442,3 +442,79 @@
   background: var(--canopy);
   color: var(--ink);
 }
+
+/* ── Task 8: FieldBlock — view/edit toggle + provenance slot ─────────────── */
+
+/* Root container for a single curated field */
+.fieldBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--understory);
+}
+.fieldBlock:last-child {
+  border-bottom: none;
+}
+
+/* Header row: label + Edit button */
+.fieldHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* Field label in the header */
+.fieldLabel {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: 0.01em;
+}
+
+/* Edit button — ghost style, moss tint (§8, "deliberate" affordance) */
+.editBtn {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-button);
+  background: transparent;
+  color: var(--moss-deep);
+  cursor: pointer;
+  transition: background-color var(--dur-1) var(--ease-settle),
+              border-color var(--dur-1) var(--ease-settle);
+  white-space: nowrap;
+}
+.editBtn:hover {
+  background: var(--understory);
+  border-color: var(--moss);
+}
+
+/* Provenance/staleness slot — fixed min-height prevents layout shift pre-F1.
+   Silent and empty until F1 field_meta data is present (§11 / §226). */
+.provenanceSlot {
+  min-height: 18px;  /* reserves space; collapses gracefully to 0 if truly empty */
+  display: flex;
+  align-items: center;
+}
+
+/* Normal provenance line — shown when field has metadata (ink-faint, mono) */
+.provenanceLine {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-faint);
+  line-height: 1;
+  letter-spacing: 0.01em;
+}
+
+/* Stale provenance line — amber warning when last reviewed > 60 days ago */
+.provenanceStale {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--honey-deep);
+  line-height: 1;
+  letter-spacing: 0.01em;
+}
