@@ -88,8 +88,8 @@ describe('FieldBlock — view mode', () => {
       />,
     );
     // FieldView in empty mode renders the field's placeholder text (from FIELD_CONFIG)
-    // The pricing placeholder is "Standard session: $400..."
-    expect(html).toContain('Standard session:');
+    // The pricing placeholder is "Standard plan: $X / month..."
+    expect(html).toContain('Standard plan:');
   });
 
   it('does NOT render a <textarea> in view mode', () => {

@@ -98,9 +98,11 @@ describe('toRpcPayload → save_grove_memory arg shape', () => {
     expect(payload.sections).not.toHaveProperty('notes');
   });
 
-  it('transmits all five MEMORY_SECTIONS keys when all are present', () => {
+  it('transmits all neutral section keys when all are present', () => {
     const values: ValuesRecord = {
-      facts: 'Facts',
+      about: 'About us',
+      offering: 'Offering',
+      how: 'How we work',
       pricing: 'Pricing',
       policies: 'Policies',
       faq: 'FAQ',
@@ -109,7 +111,9 @@ describe('toRpcPayload → save_grove_memory arg shape', () => {
       notes: '',
     };
     const payload = toRpcPayload(values);
-    expect(payload.sections).toHaveProperty('facts', 'Facts');
+    expect(payload.sections).toHaveProperty('about', 'About us');
+    expect(payload.sections).toHaveProperty('offering', 'Offering');
+    expect(payload.sections).toHaveProperty('how', 'How we work');
     expect(payload.sections).toHaveProperty('pricing', 'Pricing');
     expect(payload.sections).toHaveProperty('policies', 'Policies');
     expect(payload.sections).toHaveProperty('faq', 'FAQ');
@@ -128,9 +132,9 @@ describe('toRpcPayload → save_grove_memory arg shape', () => {
     // not just the one changed key. This test confirms that toRpcPayload
     // faithfully includes whatever is in the mirror passed to it.
     const mirrorAfterPricingEdit: ValuesRecord = {
-      facts: 'Location: Portland',
-      pricing: 'UPDATED: $500/session', // the changed field
-      policies: '48hr cancel',
+      about: 'Design studio in Portland',
+      pricing: 'UPDATED: $500/month', // the changed field
+      policies: 'Net-30 terms',
       faq: 'Travel? Yes.',
       voice: 'Warm and direct',
       hard_rules: 'No alcohol',
@@ -138,10 +142,10 @@ describe('toRpcPayload → save_grove_memory arg shape', () => {
     };
     const payload = toRpcPayload(mirrorAfterPricingEdit);
     // The changed field is present
-    expect(payload.sections.pricing).toBe('UPDATED: $500/session');
+    expect(payload.sections.pricing).toBe('UPDATED: $500/month');
     // The unchanged fields are also present (the RPC replaces the whole object)
-    expect(payload.sections.facts).toBe('Location: Portland');
-    expect(payload.sections.policies).toBe('48hr cancel');
+    expect(payload.sections.about).toBe('Design studio in Portland');
+    expect(payload.sections.policies).toBe('Net-30 terms');
   });
 });
 

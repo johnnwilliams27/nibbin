@@ -5,17 +5,19 @@
  *
  * Exports:
  *  - FIELD_CONFIG: per-key metadata (label, kind, placeholder, hint?)
- *  - CURATED_FIELD_KEYS: ordered list of all 7 curated field keys
+ *  - CURATED_FIELD_KEYS: ordered list of all 9 curated field keys
+ *    (7 neutral sections + hard_rules + notes)
  *  - mergeMirror: Option-A per-field mirror update (returns new object)
  *  - toRpcPayload: transforms the full mirror into the exact shape that
  *    save_grove_memory RPC expects: { sections, hard_rules[], notes }
  *
- * Label values MUST stay in sync with MEMORY_SECTIONS in lib/grove/memory.ts.
- * This file imports MEMORY_SECTIONS to derive them — no manual label strings
- * that could drift apart from the drafter's memory block.
+ * Task 4 update: rewritten for 7 neutral sections (about/offering/how/pricing/
+ * policies/voice/faq). `toRpcPayload` now iterates the dynamic key set
+ * (DEFAULT_SECTIONS keys ∪ custom c_* keys present in the mirror) instead of
+ * the old fixed five. hard_rules and notes remain separate exactly as before.
  */
 
-import { MEMORY_SECTIONS } from '../../../lib/grove/memory-sections';
+import { DEFAULT_SECTIONS } from '../../../lib/grove/memory-sections';
 import type { FieldKind } from './format';
 
 // ---------------------------------------------------------------------------
@@ -23,7 +25,7 @@ import type { FieldKind } from './format';
 // ---------------------------------------------------------------------------
 
 export interface FieldConfig {
-  /** Human-readable label shown in the UI (matches MEMORY_SECTIONS where applicable). */
+  /** Human-readable label shown in the UI. */
   label: string;
   /** Controls which formatter Task 3's formatField uses for this field. */
   kind: FieldKind | 'list';
@@ -54,51 +56,30 @@ const MAX_HARD_RULES = 50;
 // ---------------------------------------------------------------------------
 // FIELD_CONFIG
 //
-// Keys in the MEMORY_SECTIONS array (facts/pricing/policies/faq/voice) re-use
-// the labels from that array to guarantee no drift. hard_rules and notes are
-// stored separately in the RPC but behave as fields on the UI.
+// The 7 neutral default sections (from DEFAULT_SECTIONS) plus the two special
+// fields hard_rules and notes (stored separately in the RPC, not as sections).
 // ---------------------------------------------------------------------------
 
-/** Build the label lookup from MEMORY_SECTIONS once at module init. */
-const _sectionLabels: Record<string, string> = Object.fromEntries(
-  MEMORY_SECTIONS.map(({ key, label }) => [key, label]),
-);
+/** Build the base config entries from DEFAULT_SECTIONS. */
+function buildDefaultFieldConfig(): Record<string, FieldConfig> {
+  const out: Record<string, FieldConfig> = {};
+  for (const s of DEFAULT_SECTIONS) {
+    out[s.key] = {
+      label: s.label,
+      kind: s.kind,
+      placeholder: s.placeholder,
+      hint: s.hint,
+    };
+  }
+  return out;
+}
 
 export const FIELD_CONFIG: Record<string, FieldConfig> = {
-  facts: {
-    label: _sectionLabels['facts'] ?? 'Business facts',
-    kind: 'dl',
-    placeholder: 'Business type: Photography\nLocation: Portland, OR\nFounded: 2018',
-    hint: 'Use "Label: value" lines — one fact per line.',
-  },
-  pricing: {
-    label: _sectionLabels['pricing'] ?? 'Pricing',
-    kind: 'list',
-    placeholder: 'Standard session: $400\nMini session: $150\nFull-day coverage: $1,200',
-    hint: 'List your packages, one per line. Blank lines create visual breaks.',
-  },
-  policies: {
-    label: _sectionLabels['policies'] ?? 'Policies',
-    kind: 'list',
-    placeholder: '48-hour cancellation policy\n50% deposit required\nTravel within 50 miles included',
-    hint: 'One policy per line.',
-  },
-  faq: {
-    label: _sectionLabels['faq'] ?? 'Common questions',
-    kind: 'list',
-    placeholder: 'Do you travel? Yes, within Oregon.\nHow long until I get photos? 2–3 weeks.',
-    hint: 'One question-answer pair per line.',
-  },
-  voice: {
-    label: _sectionLabels['voice'] ?? 'Voice & tone',
-    kind: 'quote',
-    placeholder: "Warm, direct, and never jargon-heavy. Every client is a person, not a project.",
-    hint: 'Write how you naturally speak. Your Nibbins will match this.',
-  },
+  ...buildDefaultFieldConfig(),
   hard_rules: {
     label: 'Hard rules',
     kind: 'list',
-    placeholder: 'Never offer a discount without checking with me first\nNo alcohol-related shoots',
+    placeholder: 'Never offer a discount without checking with me first\nNo out-of-scope work without a change order',
     hint: 'Your Nibbins never break these. One rule per line.',
   },
   notes: {
@@ -108,13 +89,15 @@ export const FIELD_CONFIG: Record<string, FieldConfig> = {
   },
 } as const;
 
-/** Ordered array of all 7 curated field keys, in display order. */
+/**
+ * The set of default section keys, in canonical order.
+ * Does NOT include hard_rules or notes (those are separate RPC params).
+ */
+export const DEFAULT_SECTION_KEYS: ReadonlyArray<string> = DEFAULT_SECTIONS.map((s) => s.key);
+
+/** Ordered array of all curated field keys, in display order. */
 export const CURATED_FIELD_KEYS: ReadonlyArray<string> = [
-  'facts',
-  'pricing',
-  'policies',
-  'faq',
-  'voice',
+  ...DEFAULT_SECTION_KEYS,
   'hard_rules',
   'notes',
 ] as const;
@@ -139,11 +122,15 @@ export function mergeMirror(values: ValuesRecord, key: string, newValue: string)
 // toRpcPayload — pure core of the server action
 // ---------------------------------------------------------------------------
 
+/** The keys that must NEVER appear in sections (handled separately). */
+const SECTION_EXCLUDED = new Set(['hard_rules', 'notes']);
+
 /**
  * Transforms the full per-field mirror into the exact args that
  * `save_grove_memory` expects.
  *
- * - `sections` — only MEMORY_SECTIONS keys, trimmed, ≤6000 chars, omitted if blank.
+ * - `sections` — DEFAULT_SECTION_KEYS ∪ any custom `c_*` keys present in the
+ *   mirror, trimmed, ≤6000 chars, omitted if blank. hard_rules/notes excluded.
  * - `hard_rules` — split on `\n`, each rule trimmed + filtered, capped at 50.
  * - `notes` — trimmed, ≤8000 chars; null when blank/absent.
  *
@@ -151,9 +138,20 @@ export function mergeMirror(values: ValuesRecord, key: string, newValue: string)
  * unit-testable without needing a server environment.
  */
 export function toRpcPayload(values: ValuesRecord): RpcPayload {
-  // Build sections: only the keys that live in MEMORY_SECTIONS
+  // Build the dynamic section key set:
+  // 1. Start with the ordered defaults
+  // 2. Append any custom c_* keys present in the mirror (in insertion order)
+  const sectionKeys = new Set<string>(DEFAULT_SECTION_KEYS);
+  for (const k of Object.keys(values)) {
+    if (!SECTION_EXCLUDED.has(k) && !sectionKeys.has(k) && k.startsWith('c_')) {
+      sectionKeys.add(k);
+    }
+  }
+
+  // Build sections: only the computed key set, trimmed and non-blank
   const sections: Record<string, string> = {};
-  for (const { key } of MEMORY_SECTIONS) {
+  for (const key of sectionKeys) {
+    if (SECTION_EXCLUDED.has(key)) continue;
     const raw = values[key];
     if (raw === undefined || raw === null) continue;
     const trimmed = String(raw).trim().slice(0, MAX_SECTION_CHARS);
