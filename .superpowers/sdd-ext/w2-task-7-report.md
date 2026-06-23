@@ -1,3 +1,63 @@
+# Task 7 Gate-Fix Report — Zip-bomb guard + Reaper terminal-fail
+
+**Date:** 2026-06-23
+**Branch:** feature/company-brain-docs-ingest
+**Gate verdict addressed:** CHANGES-REQUIRED (2026-06-23-extraction-gaps-gate.md)
+
+## Finding 1 — [CRITICAL] Zip-bomb DoS in Office parsing
+
+**Change:** `apps/web/lib/brain/office-extract.ts`
+
+- Added `makeBombSafeFilter(pathMatcher)` — a closure factory that wraps `unzipSync`'s `filter` option. The filter:
+  - Accepts only entries matching the caller-supplied `pathMatcher` (slide*.xml for pptx; sharedStrings.xml + sheet*.xml for xlsx — media/binaries never selected).
+  - Rejects any entry whose `originalSize` (declared uncompressed size, read from zip header BEFORE inflation) exceeds `ZIP_ENTRY_MAX_BYTES = 10 MB`. Throws immediately → no allocation.
+  - Tracks cumulative `originalSize` across selected entries; throws if total exceeds `ZIP_TOTAL_MAX_BYTES = 50 MB`.
+  - Throws if selected entry count exceeds `ZIP_MAX_ENTRY_COUNT = 512`.
+  - All throws propagate through `extractPptxText`/`extractXlsxText` → caught by `extractDocument`'s outer try/catch → `extraction_state='failed'`, zero proposals (fail-closed preserved).
+- `extractPptxText` now calls `unzipSync(buf, { filter: makeBombSafeFilter(slideRegex.test) })`.
+- `extractXlsxText` now calls `unzipSync(buf, { filter: makeBombSafeFilter(xlsxPathMatcher) })`.
+- Removed duplicate `sheetRegex` declaration from xlsx body (declared once above the unzip call).
+
+**Covering tests:** `apps/web/lib/brain/office-extract.test.ts` — 6 new tests in 2 suites:
+- `zip-bomb guard — extractPptxText`: per-entry cap throws; count cap throws; normal pptx still extracts.
+- `zip-bomb guard — extractXlsxText`: per-entry cap throws; count cap throws; normal xlsx still extracts.
+- All 26 tests PASS (20 original + 6 new).
+
+## Finding 2 — [IMPORTANT] Reaper re-enqueue dead-end
+
+**Change 1:** `supabase/migrations/20260623140000_extraction_reaper.sql`
+
+- Replaced the two-branch (re-enqueue vs give-up) logic with a single terminal-fail path: any stale `status='processing'` job (started_at older than `p_stale_minutes`) is immediately set to `status='error'`, `error_message='extraction timed out'` AND `sources.extraction_state='failed'`.
+- Removed `p_max_attempts` parameter from the function signature (was unreachable; now gone). Function is now `reap_stale_extractions(p_stale_minutes integer default 10)`.
+- Updated grant/revoke to cover the new `(integer)` signature.
+- Architecture rationale documented in comment: fire-and-forget, no re-driver, re-enqueue would strand sources forever.
+
+**Change 2:** `apps/web/lib/brain/doc-extract.ts`
+
+- Removed the racy read-then-write `attempts` increment from `updateJobStatus` (the two-query select+update block that required a mock chain and was flagged as a Minor race). The `attempts` column is retained as informational but no longer incremented by the worker.
+
+**Change 3:** Cron route unchanged — `rpc('reap_stale_extractions', {})` still works (p_stale_minutes defaults to 10); only the removed p_max_attempts matters.
+
+**Covering tests:** `tests/rls/extraction-reaper.rpc.test.ts` — updated 7 tests:
+- Stale job with any attempts count → `error` + `extraction_state='failed'` (two tests covering low and high attempts).
+- Fresh job untouched; done job untouched; count correct; anon/auth permission denied.
+- (Note: test suite skips if no DB available — same as before.)
+
+## Test Summary
+
+```
+npm run lint           → PASS (0 errors)
+npm run typecheck      → PASS (2 pre-existing .next/types stale errors only)
+office-extract suite   → 26/26 PASS (includes 6 new bomb-guard tests)
+brain suite (full)     → 123/123 PASS
+cron route suite       → 7/7 PASS
+```
+
+## Remaining Red
+None. RLS reaper test requires a live DB (skipped in local/CI without one — same gating as before).
+
+---
+
 # Task 7: Full-Suite Green Report
 
 **Date:** 2026-06-23  

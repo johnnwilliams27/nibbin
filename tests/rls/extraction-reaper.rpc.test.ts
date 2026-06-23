@@ -27,7 +27,7 @@ describe.skipIf(!dbAvailable)('reap_stale_extractions RPC', () => {
 
   /**
    * Helper: inserts a source + job row with the given parameters.
-   * Returns { srcId, jobId }.
+   * Returns { srcId }.
    */
   async function insertJobWithSource(params: {
     status: string;
@@ -51,7 +51,7 @@ describe.skipIf(!dbAvailable)('reap_stale_extractions RPC', () => {
     return { srcId };
   }
 
-  it('stale processing job (attempts < max) → reset to pending, source extraction_state unchanged', async () => {
+  it('stale processing job → error + source extraction_state=failed (no re-enqueue)', async () => {
     const startedAt = new Date(Date.now() - 20 * 60 * 1000).toISOString(); // 20 minutes ago
     const { srcId } = await insertJobWithSource({ status: 'processing', startedAt, attempts: 1 });
 
@@ -61,26 +61,27 @@ describe.skipIf(!dbAvailable)('reap_stale_extractions RPC', () => {
     });
 
     const reaped = await h.as(service, async (c) =>
-      (await c.query(`select public.reap_stale_extractions(10, 3) as n`)).rows[0].n);
+      (await c.query(`select public.reap_stale_extractions(10) as n`)).rows[0].n);
     expect(reaped).toBeGreaterThanOrEqual(1);
 
     const job = await h.as(service, async (c) =>
       (await c.query(
-        `select status, started_at from public.source_extraction_jobs where source_id=$1`,
+        `select status, error_message from public.source_extraction_jobs where source_id=$1`,
         [srcId],
       )).rows[0]);
-    expect(job.status).toBe('pending');
-    expect(job.started_at).toBeNull();
+    // Stale job → terminally error (no re-enqueue in fire-and-forget architecture)
+    expect(job.status).toBe('error');
+    expect(job.error_message).toMatch(/timed out/i);
 
-    // Source extraction_state should be unchanged (NOT 'failed')
+    // Source must be marked failed
     const src = await h.as(service, async (c) =>
       (await c.query(`select extraction_state from public.sources where id=$1`, [srcId])).rows[0]);
-    expect(src.extraction_state).toBe('extracting');
+    expect(src.extraction_state).toBe('failed');
   });
 
-  it('stale processing job (attempts >= max) → error + source extraction_state=failed', async () => {
+  it('stale processing job with high attempts also → error + source extraction_state=failed', async () => {
     const startedAt = new Date(Date.now() - 20 * 60 * 1000).toISOString(); // 20 minutes ago
-    const { srcId } = await insertJobWithSource({ status: 'processing', startedAt, attempts: 3 });
+    const { srcId } = await insertJobWithSource({ status: 'processing', startedAt, attempts: 5 });
 
     // Set source extraction_state = 'extracting'
     await h.as(service, async (c) => {
@@ -88,7 +89,7 @@ describe.skipIf(!dbAvailable)('reap_stale_extractions RPC', () => {
     });
 
     const reaped = await h.as(service, async (c) =>
-      (await c.query(`select public.reap_stale_extractions(10, 3) as n`)).rows[0].n);
+      (await c.query(`select public.reap_stale_extractions(10) as n`)).rows[0].n);
     expect(reaped).toBeGreaterThanOrEqual(1);
 
     const job = await h.as(service, async (c) =>
@@ -109,7 +110,7 @@ describe.skipIf(!dbAvailable)('reap_stale_extractions RPC', () => {
     const { srcId } = await insertJobWithSource({ status: 'processing', startedAt, attempts: 1 });
 
     const reaped = await h.as(service, async (c) =>
-      (await c.query(`select public.reap_stale_extractions(10, 3) as n`)).rows[0].n);
+      (await c.query(`select public.reap_stale_extractions(10) as n`)).rows[0].n);
     // Count may be > 0 from prior rows, but our fresh job must not change
     expect(typeof reaped).toBe('number');
 
@@ -127,7 +128,7 @@ describe.skipIf(!dbAvailable)('reap_stale_extractions RPC', () => {
 
     await h.as(service, async (c) => {
       // reap again — done job should be untouched
-      await c.query(`select public.reap_stale_extractions(10, 3) as n`);
+      await c.query(`select public.reap_stale_extractions(10) as n`);
     });
 
     const job = await h.as(service, async (c) =>
@@ -140,19 +141,19 @@ describe.skipIf(!dbAvailable)('reap_stale_extractions RPC', () => {
 
   it('returns correct count when multiple stale jobs exist', async () => {
     const startedAt = new Date(Date.now() - 25 * 60 * 1000).toISOString();
-    // Insert 2 stale processing jobs with attempts < max
+    // Insert 2 stale processing jobs
     await insertJobWithSource({ status: 'processing', startedAt, attempts: 1 });
     await insertJobWithSource({ status: 'processing', startedAt, attempts: 2 });
 
     const reaped = await h.as(service, async (c) =>
-      (await c.query(`select public.reap_stale_extractions(10, 3) as n`)).rows[0].n);
+      (await c.query(`select public.reap_stale_extractions(10) as n`)).rows[0].n);
     expect(reaped).toBeGreaterThanOrEqual(2);
   });
 
   it('anon cannot execute reap_stale_extractions', async () => {
     await expect(
       h.as({ kind: 'anon' }, (c) =>
-        c.query(`select public.reap_stale_extractions(10, 3)`),
+        c.query(`select public.reap_stale_extractions(10)`),
       ),
     ).rejects.toThrow(/permission denied/i);
   });
@@ -160,7 +161,7 @@ describe.skipIf(!dbAvailable)('reap_stale_extractions RPC', () => {
   it('authenticated user cannot execute reap_stale_extractions', async () => {
     await expect(
       h.as(asU, (c) =>
-        c.query(`select public.reap_stale_extractions(10, 3)`),
+        c.query(`select public.reap_stale_extractions(10)`),
       ),
     ).rejects.toThrow(/permission denied/i);
   });

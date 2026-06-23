@@ -19,11 +19,92 @@
  *   - Fail-closed: throw on unzip failure → caller writes extraction_state='failed'.
  *   - Empty / no-slides / no-sheets → '' → caller marks extraction_state='unsupported'.
  *   - Length cap mirrors doc-extract.ts RAW_TEXT_CAP (50 000 chars).
+ *
+ * Zip-bomb protection:
+ *   fflate's unzipSync filter callback is used to select ONLY the entries we
+ *   actually read.  Per-entry and cumulative originalSize caps are checked on
+ *   the *declared* uncompressed size BEFORE inflation so we never allocate
+ *   multi-GB buffers from a crafted archive.  Violation → throw → fail-closed.
  */
 import { unzipSync, strFromU8 } from 'fflate';
+import type { UnzipFileInfo } from 'fflate';
 
 /** Maximum raw text returned by any extractor (mirrors doc-extract.ts). */
 const RAW_TEXT_CAP = 50_000;
+
+// ── Zip-bomb guard constants ─────────────────────────────────────────────────
+
+/**
+ * Maximum declared uncompressed size for a single zip entry we select (bytes).
+ * 10 MB is generous for a slide or sheet XML file; real files are typically <1 MB.
+ */
+const ZIP_ENTRY_MAX_BYTES = 10 * 1024 * 1024; // 10 MB
+
+/**
+ * Maximum total declared uncompressed size across ALL selected entries (bytes).
+ * Guards against many small-looking entries that collectively expand to GBs.
+ * Set to 50 MB — comfortably above any realistic office file's XML content.
+ */
+const ZIP_TOTAL_MAX_BYTES = 50 * 1024 * 1024; // 50 MB
+
+/**
+ * Maximum number of entries we will select from a single archive.
+ * Guards against crafted files with thousands of "matching" entries.
+ */
+const ZIP_MAX_ENTRY_COUNT = 512;
+
+/**
+ * Build a zip-bomb-safe unzipSync filter for office files.
+ *
+ * The filter is called once per entry in the archive (before inflation).
+ * It receives the entry metadata — crucially `originalSize` (declared
+ * uncompressed size) and `name` — and returns true to select the entry.
+ *
+ * We:
+ *   1. Accept only entries whose path matches `pathMatcher`.
+ *   2. Reject entries whose declared `originalSize` exceeds ZIP_ENTRY_MAX_BYTES.
+ *   3. Accumulate selected `originalSize`; reject (and throw) if the running
+ *      total would exceed ZIP_TOTAL_MAX_BYTES.
+ *   4. Reject if the selected entry count would exceed ZIP_MAX_ENTRY_COUNT.
+ *
+ * @param pathMatcher  Predicate deciding which paths to include.
+ * @returns            An fflate filter function.
+ */
+function makeBombSafeFilter(
+  pathMatcher: (name: string) => boolean,
+): (file: UnzipFileInfo) => boolean {
+  let cumulativeBytes = 0;
+  let entryCount = 0;
+
+  return (file: UnzipFileInfo): boolean => {
+    if (!pathMatcher(file.name)) return false;
+
+    // Per-entry size guard (declared size, checked before inflation)
+    if (file.originalSize > ZIP_ENTRY_MAX_BYTES) {
+      throw new Error(
+        `zip entry '${file.name}' declares originalSize ${file.originalSize} bytes exceeding the ${ZIP_ENTRY_MAX_BYTES}-byte per-entry cap — aborting to prevent zip-bomb`,
+      );
+    }
+
+    // Entry count guard
+    if (entryCount >= ZIP_MAX_ENTRY_COUNT) {
+      throw new Error(
+        `archive contains more than ${ZIP_MAX_ENTRY_COUNT} matching entries — aborting to prevent zip-bomb`,
+      );
+    }
+
+    // Cumulative size guard
+    cumulativeBytes += file.originalSize;
+    if (cumulativeBytes > ZIP_TOTAL_MAX_BYTES) {
+      throw new Error(
+        `archive selected entries total declared size exceeds ${ZIP_TOTAL_MAX_BYTES}-byte cumulative cap — aborting to prevent zip-bomb`,
+      );
+    }
+
+    entryCount += 1;
+    return true;
+  };
+}
 
 /**
  * Extract all text from a .pptx buffer.
@@ -40,11 +121,15 @@ const RAW_TEXT_CAP = 50_000;
  * Throws on corrupt zip / unzip failure (fail-closed — caller handles).
  */
 export async function extractPptxText(buffer: Buffer): Promise<string> {
-  // unzipSync throws if the buffer is not a valid zip archive.
-  const zip = unzipSync(new Uint8Array(buffer));
+  // Zip-bomb-safe unzip: only inflate ppt/slides/slide*.xml entries.
+  // makeBombSafeFilter throws on per-entry or cumulative size/count violations →
+  // caught by the caller's outer try/catch → extraction_state='failed'.
+  const slideRegex = /^ppt\/slides\/slide(\d+)\.xml$/i;
+  const zip = unzipSync(new Uint8Array(buffer), {
+    filter: makeBombSafeFilter((name) => slideRegex.test(name)),
+  });
 
   // Collect slide entries: key = 'ppt/slides/slide<N>.xml', value = Uint8Array
-  const slideRegex = /^ppt\/slides\/slide(\d+)\.xml$/i;
 
   const slides: Array<{ n: number; data: Uint8Array }> = [];
   for (const [path, data] of Object.entries(zip)) {
@@ -199,8 +284,16 @@ function extractSheetText(xml: string, sharedStrings: string[]): string {
  * Throws on corrupt zip / unzip failure (fail-closed — caller handles).
  */
 export async function extractXlsxText(buffer: Buffer): Promise<string> {
-  // unzipSync throws if the buffer is not a valid zip archive.
-  const zip = unzipSync(new Uint8Array(buffer));
+  // Zip-bomb-safe unzip: only inflate xl/sharedStrings.xml and
+  // xl/worksheets/sheet*.xml entries — never media or embedded binaries.
+  // makeBombSafeFilter throws on size/count violations → fail-closed.
+  const sheetRegex = /^xl\/worksheets\/sheet(\d+)\.xml$/i;
+  const xlsxPathMatcher = (name: string): boolean =>
+    name === 'xl/sharedStrings.xml' || sheetRegex.test(name);
+
+  const zip = unzipSync(new Uint8Array(buffer), {
+    filter: makeBombSafeFilter(xlsxPathMatcher),
+  });
 
   // Step 2: Parse shared strings (optional part — not all workbooks have one).
   let sharedStrings: string[] = [];
@@ -209,8 +302,7 @@ export async function extractXlsxText(buffer: Buffer): Promise<string> {
     sharedStrings = parseSharedStrings(strFromU8(ssEntry));
   }
 
-  // Step 3: Collect sheet entries.
-  const sheetRegex = /^xl\/worksheets\/sheet(\d+)\.xml$/i;
+  // Step 3: Collect sheet entries (sheetRegex already defined above for the filter).
   const sheets: Array<{ n: number; data: Uint8Array }> = [];
   for (const [path, data] of Object.entries(zip)) {
     const match = sheetRegex.exec(path);

@@ -261,32 +261,9 @@ async function updateJobStatus(
   if (error) {
     console.error('[doc-extract] job status update failed', error);
   }
-
-  // When claiming a job (transitioning to 'processing'), also increment the
-  // attempts counter so the reaper can distinguish transient crashes from
-  // repeated failures. PostgREST does not support server-side increment
-  // expressions in .update() objects, so we do a second query. This is safe
-  // because the service role is the only writer and jobs are unique per
-  // (source_id, account_id).
-  if (status === 'processing') {
-    const { data: jobRow } = await (svc
-      .from('source_extraction_jobs')
-      .select('attempts')
-      .eq('source_id', sourceId)
-      .eq('account_id', accountId)
-      .limit(1)
-      .single() as unknown as Promise<{ data: { attempts: number } | null; error: unknown }>);
-    if (jobRow != null) {
-      const { error: incrErr } = await (svc
-        .from('source_extraction_jobs')
-        .update({ attempts: jobRow.attempts + 1 })
-        .eq('source_id', sourceId)
-        .eq('account_id', accountId) as unknown as Promise<{ error: unknown }>);
-      if (incrErr) {
-        console.error('[doc-extract] job attempts increment failed', incrErr);
-      }
-    }
-  }
+  // Note: the attempts column is an informational field stamped by the reaper
+  // and is NOT incremented here.  The reaper terminally fails stale jobs
+  // directly (no re-enqueue), so the racy read-then-write increment was removed.
 }
 
 /** Update sources.extraction_state. Best-effort — logs failures. */
