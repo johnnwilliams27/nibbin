@@ -112,7 +112,7 @@ vi.mock('mammoth', () => ({
 }));
 
 // ── Import the module under test ───────────────────────────────────────────
-import { extractDocument } from './doc-extract';
+import { extractDocument, classifyExtractor } from './doc-extract';
 
 // ── Shared test helpers ────────────────────────────────────────────────────
 
@@ -609,5 +609,236 @@ describe('extractDocument', () => {
     const jobCalls = mockJobsUpdate.mock.calls;
     const errorJobCall = jobCalls.find((c) => JSON.stringify(c).includes('error'));
     expect(errorJobCall).toBeDefined();
+  });
+});
+
+// ── Task 5: classifyExtractor unit tests ──────────────────────────────────
+
+describe('classifyExtractor', () => {
+  it('text/plain → textnative', () => {
+    expect(classifyExtractor('text/plain', 'file.txt')).toBe('textnative');
+  });
+  it('text/markdown → textnative', () => {
+    expect(classifyExtractor('text/markdown', 'file.md')).toBe('textnative');
+  });
+  it('text/csv → textnative', () => {
+    expect(classifyExtractor('text/csv', 'file.csv')).toBe('textnative');
+  });
+  it('text/html → textnative', () => {
+    expect(classifyExtractor('text/html', 'file.html')).toBe('textnative');
+  });
+  it('application/pdf → pdf', () => {
+    expect(classifyExtractor('application/pdf', 'doc.pdf')).toBe('pdf');
+  });
+  it('.pdf extension fallback → pdf', () => {
+    expect(classifyExtractor('', 'doc.pdf')).toBe('pdf');
+  });
+  it('docx mime → docx', () => {
+    expect(classifyExtractor('application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'doc.docx')).toBe('docx');
+  });
+  it('.docx extension fallback → docx', () => {
+    expect(classifyExtractor('', 'doc.docx')).toBe('docx');
+  });
+  it('image/png → image', () => {
+    expect(classifyExtractor('image/png', 'photo.png')).toBe('image');
+  });
+  it('image/jpeg → image', () => {
+    expect(classifyExtractor('image/jpeg', 'photo.jpg')).toBe('image');
+  });
+  it('image/webp → image', () => {
+    expect(classifyExtractor('image/webp', 'photo.webp')).toBe('image');
+  });
+  it('image/svg+xml → phase2 (SVG cannot be vision-processed; treated as phase2)', () => {
+    // SVG is text-based, but requires rasterisation for vision. Stored as phase2/unsupported for now.
+    expect(classifyExtractor('image/svg+xml', 'logo.svg')).toBe('phase2');
+  });
+  it('pptx mime → phase2', () => {
+    expect(classifyExtractor('application/vnd.openxmlformats-officedocument.presentationml.presentation', 'deck.pptx')).toBe('phase2');
+  });
+  it('xlsx mime → phase2', () => {
+    expect(classifyExtractor('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'data.xlsx')).toBe('phase2');
+  });
+  it('unknown mime → unknown', () => {
+    expect(classifyExtractor('application/octet-stream', 'file.bin')).toBe('unknown');
+  });
+  it('empty mime + no known extension → unknown', () => {
+    expect(classifyExtractor('', 'weirdfile.xyz')).toBe('unknown');
+  });
+});
+
+// ── Task 5: extractDocument state-transition tests ────────────────────────
+
+describe('extractDocument — Task 5 state transitions', () => {
+  const SOURCE_ID = 'src-t5-001';
+  const ACCOUNT_ID = 'acct-t5-001';
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Default: DB updates succeed
+    mockSourcesUpdate.mockResolvedValue({ error: null });
+    mockJobsUpdate.mockResolvedValue({ error: null });
+    mockRpc.mockResolvedValue({ data: 'pid-t5', error: null });
+  });
+
+  // Helper to read all extraction_state values written to sources
+  function extractionStateWrites(): string[] {
+    return mockSourcesUpdate.mock.calls
+      .map((c) => (c[0] as Record<string, unknown>)['extraction_state'])
+      .filter(Boolean) as string[];
+  }
+
+  it('T5-1. docx happy path: extraction_state=extracting then extracted', async () => {
+    mockStorageDownload.mockResolvedValue({
+      data: Buffer.from('DOCX bytes'),
+      error: null,
+    });
+    mockSelect.mockResolvedValue({
+      data: {
+        origin: { filename: 'doc.docx', mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' },
+        id: SOURCE_ID,
+      },
+      error: null,
+    });
+    const longText = 'This is a business document with lots of useful content about our products and services for clients.';
+    mockMammothExtract.mockResolvedValue({ value: longText });
+    mockApplyBattery.mockReturnValue({ text: longText, rulesHit: [] });
+    mockHeuristicNerRedact.mockResolvedValue({ redacted: longText, rulesHit: [] });
+    mockGroveRouterRoute.mockResolvedValue({ model: 'claude-haiku-4-5-20251001', tier: 't1', degraded: false });
+    mockGenerateFn.mockResolvedValue({
+      text: JSON.stringify({ facts: 'Business document' }),
+      model: 'claude-haiku-4-5-20251001',
+      usage: { inputTokens: 30, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 10 },
+      stopReason: 'end_turn',
+    });
+
+    await extractDocument(SOURCE_ID, ACCOUNT_ID);
+
+    const states = extractionStateWrites();
+    expect(states).toContain('extracting');
+    expect(states).toContain('extracted');
+    // extracting must come before extracted
+    expect(states.indexOf('extracting')).toBeLessThan(states.indexOf('extracted'));
+  });
+
+  it('T5-2. pptx (phase2) → extraction_state=unsupported, zero proposals', async () => {
+    mockStorageDownload.mockResolvedValue({
+      data: Buffer.from('PPTX bytes'),
+      error: null,
+    });
+    mockSelect.mockResolvedValue({
+      data: {
+        origin: {
+          filename: 'deck.pptx',
+          mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        },
+        id: SOURCE_ID,
+      },
+      error: null,
+    });
+
+    await extractDocument(SOURCE_ID, ACCOUNT_ID);
+
+    // Zero proposals
+    expect(mockRpc).not.toHaveBeenCalled();
+    // No LLM call
+    expect(mockGenerateFn).not.toHaveBeenCalled();
+
+    const states = extractionStateWrites();
+    expect(states).toContain('extracting');
+    expect(states).toContain('unsupported');
+  });
+
+  it('T5-3. extractor throws → extraction_state=failed, zero proposals', async () => {
+    // Simulate a mammoth parse failure
+    mockStorageDownload.mockResolvedValue({
+      data: Buffer.from('bad bytes'),
+      error: null,
+    });
+    mockSelect.mockResolvedValue({
+      data: {
+        origin: { filename: 'broken.docx', mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' },
+        id: SOURCE_ID,
+      },
+      error: null,
+    });
+    mockMammothExtract.mockRejectedValue(new Error('Mammoth parse error'));
+
+    await extractDocument(SOURCE_ID, ACCOUNT_ID);
+
+    // Zero proposals
+    expect(mockRpc).not.toHaveBeenCalled();
+
+    const states = extractionStateWrites();
+    expect(states).toContain('extracting');
+    expect(states).toContain('failed');
+  });
+
+  it('T5-4. text/plain (text-native) happy path: extracts + proposes', async () => {
+    const plainText = 'We are a photography studio offering portrait, event, and wedding photography packages starting at $250 per hour for all occasions.';
+    mockStorageDownload.mockResolvedValue({
+      data: Buffer.from(plainText, 'utf8'),
+      error: null,
+    });
+    mockSelect.mockResolvedValue({
+      data: { origin: { filename: 'readme.txt', mime: 'text/plain' }, id: SOURCE_ID },
+      error: null,
+    });
+    mockApplyBattery.mockReturnValue({ text: plainText, rulesHit: [] });
+    mockHeuristicNerRedact.mockResolvedValue({ redacted: plainText, rulesHit: [] });
+    mockGroveRouterRoute.mockResolvedValue({ model: 'claude-haiku-4-5-20251001', tier: 't1', degraded: false });
+    mockGenerateFn.mockResolvedValue({
+      text: JSON.stringify({ facts: 'Photography studio' }),
+      model: 'claude-haiku-4-5-20251001',
+      usage: { inputTokens: 40, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 15 },
+      stopReason: 'end_turn',
+    });
+
+    await extractDocument(SOURCE_ID, ACCOUNT_ID);
+
+    // At least one proposal made
+    expect(mockRpc).toHaveBeenCalled();
+    // extraction_state transitions: extracting → extracted
+    const states = extractionStateWrites();
+    expect(states).toContain('extracting');
+    expect(states).toContain('extracted');
+  });
+
+  it('T5-5. image/png → extraction_state=unsupported (TODO Task 6 seam), zero proposals', async () => {
+    mockStorageDownload.mockResolvedValue({
+      data: Buffer.from('PNG bytes'),
+      error: null,
+    });
+    mockSelect.mockResolvedValue({
+      data: { origin: { filename: 'photo.png', mime: 'image/png' }, id: SOURCE_ID },
+      error: null,
+    });
+
+    await extractDocument(SOURCE_ID, ACCOUNT_ID);
+
+    // Zero proposals — image vision is Task 6
+    expect(mockRpc).not.toHaveBeenCalled();
+    expect(mockGenerateFn).not.toHaveBeenCalled();
+
+    const states = extractionStateWrites();
+    expect(states).toContain('extracting');
+    expect(states).toContain('unsupported');
+  });
+
+  it('T5-6. unknown mime → extraction_state=unsupported, zero proposals', async () => {
+    mockStorageDownload.mockResolvedValue({
+      data: Buffer.from('binary junk'),
+      error: null,
+    });
+    mockSelect.mockResolvedValue({
+      data: { origin: { filename: 'file.bin', mime: 'application/octet-stream' }, id: SOURCE_ID },
+      error: null,
+    });
+
+    await extractDocument(SOURCE_ID, ACCOUNT_ID);
+
+    expect(mockRpc).not.toHaveBeenCalled();
+    const states = extractionStateWrites();
+    expect(states).toContain('extracting');
+    expect(states).toContain('unsupported');
   });
 });

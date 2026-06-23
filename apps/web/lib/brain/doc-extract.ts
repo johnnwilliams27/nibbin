@@ -79,6 +79,62 @@ const PDF_MIME = 'application/pdf';
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 const TXT_MIME = 'text/plain';
 
+/** MIME types for Phase 2 structured parsers (pptx, xlsx) — unsupported until parser added. */
+const PHASE2_MIMES = new Set<string>([
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+]);
+
+// ── Type-router classifier ────────────────────────────────────────────────
+
+/**
+ * Classify a file by MIME type (+ filename extension fallback) into an
+ * extractor kind. Pure function — no side effects.
+ *
+ * Returns:
+ *   'textnative' — plain text, markdown, CSV, HTML (utf-8 decode path)
+ *   'docx'       — Word Open XML (.docx)
+ *   'pdf'        — PDF (text-native fast path; scanned fallback is Task 7)
+ *   'image'      — raster images (png/jpeg/webp); vision path is Task 6
+ *                  NOTE: SVG is text-based XML but needs rasterisation for
+ *                  vision — treated as 'phase2' until a rasteriser is wired.
+ *   'phase2'     — pptx, xlsx, svg; structured parsers deferred to Phase 2
+ *   'unknown'    — anything else; stored as-is with extraction_state='unsupported'
+ */
+export function classifyExtractor(
+  mime: string,
+  filename: string,
+): 'textnative' | 'docx' | 'pdf' | 'image' | 'phase2' | 'unknown' {
+  const ext = filename.toLowerCase().split('.').pop() ?? '';
+
+  // text-native: utf-8 decode + existing strip/cap pipeline
+  if (
+    mime === 'text/plain' || mime === 'text/markdown' ||
+    mime === 'text/csv' || mime === 'text/html'
+  ) return 'textnative';
+
+  // PDF
+  if (mime === PDF_MIME || ext === 'pdf') return 'pdf';
+
+  // DOCX
+  if (mime === DOCX_MIME || ext === 'docx') return 'docx';
+
+  // Images — raster only; svg is phase2 (see JSDoc above)
+  if (
+    mime === 'image/png' || mime === 'image/jpeg' ||
+    ext === 'jpg' || ext === 'jpeg' ||
+    mime === 'image/webp'
+  ) return 'image';
+
+  // SVG: text-based, but vision-only, needs rasteriser → phase2 for now
+  if (mime === 'image/svg+xml' || ext === 'svg') return 'phase2';
+
+  // Phase 2 structured parsers not yet implemented
+  if (PHASE2_MIMES.has(mime) || ext === 'pptx' || ext === 'xlsx') return 'phase2';
+
+  return 'unknown';
+}
+
 /** Known field keys the LLM may extract. */
 const KNOWN_FIELDS = new Set<string>(['facts', 'pricing', 'policies', 'faq', 'voice', 'hard_rules', 'notes']);
 
@@ -187,6 +243,18 @@ async function updateJobStatus(
     .eq('account_id', accountId) as unknown as Promise<{ error: unknown }>);
   if (error) {
     console.error('[doc-extract] job status update failed', error);
+  }
+}
+
+/** Update sources.extraction_state. Best-effort — logs failures. */
+async function updateExtractionState(
+  svc: ReturnType<typeof serviceClient>,
+  sourceId: string,
+  state: 'extracting' | 'extracted' | 'unsupported' | 'failed',
+): Promise<void> {
+  const { error } = await svc.from('sources').update({ extraction_state: state }).eq('id', sourceId);
+  if (error) {
+    console.error('[doc-extract] sources extraction_state update failed', error);
   }
 }
 
@@ -458,14 +526,23 @@ async function downloadSourceFile(
 /**
  * Document extraction worker entry point.
  * Called by the upload route (fire-and-forget) or a job runner.
- * Updates source_extraction_jobs.status and sources.redaction_status throughout.
+ * Updates source_extraction_jobs.status, sources.redaction_status, and
+ * sources.extraction_state throughout.
  * Never throws — all errors are handled and logged.
+ *
+ * extraction_state lifecycle (Task 5):
+ *   pending → extracting → extracted   (success)
+ *                        → unsupported (phase2 / image stub / unknown)
+ *                        → failed      (any extractor throw — fail-closed)
  */
 export async function extractDocument(sourceId: string, accountId: string): Promise<void> {
   const svc = serviceClient();
 
   // Step 1: Mark job processing
   await updateJobStatus(svc, sourceId, accountId, 'processing');
+
+  // Step 1b: Mark extraction_state = 'extracting' immediately
+  await updateExtractionState(svc, sourceId, 'extracting');
 
   try {
     // Step 2: Fetch source metadata (filename, mime type)
@@ -476,18 +553,34 @@ export async function extractDocument(sourceId: string, accountId: string): Prom
 
     const { filename, mime, originJsonb } = meta;
 
-    // Step 3: Download file
+    // Step 3: Classify extractor kind — drives all branching below
+    const kind = classifyExtractor(mime, filename);
+
+    // Step 3a: phase2 / unknown → stored but not extracted; zero proposals
+    if (kind === 'phase2' || kind === 'unknown') {
+      await updateExtractionState(svc, sourceId, 'unsupported');
+      await updateJobStatus(svc, sourceId, accountId, 'done');
+      return;
+    }
+
+    // Step 3b: image → TODO(Task 6): wire extractFromImage vision path.
+    // Until Task 6 is implemented, images are stored as unsupported (fail-safe).
+    // Task 6 will replace this branch with: extractFromImage(buffer, mime, ctx) → proposals
+    if (kind === 'image') {
+      // TODO(Task 6): wire extractFromImage here instead of unsupported
+      await updateExtractionState(svc, sourceId, 'unsupported');
+      await updateJobStatus(svc, sourceId, accountId, 'done');
+      return;
+    }
+
+    // Step 4: Download file (only for extractable types that need text)
     const buffer = await downloadSourceFile(svc, accountId, sourceId, filename);
 
-    // Step 4+5: Text extraction dispatch
-    // NOTE: Image MIMEs are rejected by the upload route before reaching here.
-    // Raw image uploads are unsupported until @nibbin/router supports image content
-    // blocks (multimodal). The IMAGE_MIMES set below is kept for the scanned-PDF
-    // detection branch only — no direct image upload path exists.
+    // Step 5: Text extraction dispatch by kind
     let rawText: string;
     let truncatedPages = false;
 
-    if (mime === PDF_MIME || filename.toLowerCase().endsWith('.pdf')) {
+    if (kind === 'pdf') {
       const pdfResult = await extractPdfText(buffer);
       rawText = pdfResult.rawText;
       truncatedPages = pdfResult.truncatedPages;
@@ -496,13 +589,14 @@ export async function extractDocument(sourceId: string, accountId: string): Prom
         // Fail closed: scanned PDFs cannot be processed without real multimodal support.
         // The stub vision path (passing base64 as text) would cause the model to
         // hallucinate proposals from truncated base64 data — we must not do this.
-        // TODO: enable scanned-PDF extraction when @nibbin/router supports image
-        // content blocks so the model receives an actual image, not base64 text.
+        // TODO(Task 7): enable scanned-PDF OCR fallback when @nibbin/router supports
+        // image content blocks so the model receives an actual image, not base64 text.
         if (truncatedPages) {
           const updatedOrigin = { ...originJsonb, truncated_pages: true };
           await updateRedactionStatus(svc, sourceId, 'quarantined', updatedOrigin);
         }
         await updateRedactionStatus(svc, sourceId, 'quarantined');
+        await updateExtractionState(svc, sourceId, 'failed');
         await updateJobStatus(
           svc,
           sourceId,
@@ -512,20 +606,20 @@ export async function extractDocument(sourceId: string, accountId: string): Prom
         );
         return;
       }
-    } else if (mime === DOCX_MIME || filename.toLowerCase().endsWith('.docx')) {
+    } else if (kind === 'docx') {
       rawText = await extractDocxText(buffer);
-    } else if (mime === TXT_MIME || filename.toLowerCase().endsWith('.txt')) {
-      rawText = buffer.toString('utf8').slice(0, RAW_TEXT_CAP);
     } else {
-      throw new Error(`Unsupported MIME type: ${mime}`);
+      // kind === 'textnative': plain text, markdown, CSV, HTML — utf-8 decode + cap
+      rawText = buffer.toString('utf8').slice(0, RAW_TEXT_CAP);
     }
 
     // Step 6: Redaction gate — mandatory before ANY write or proposal
     const redactionResult = await runRedactionGate(rawText);
 
     if (redactionResult.status === 'quarantined') {
-      // Quarantine: zero proposals, mark error
+      // Quarantine: zero proposals, mark failed (fail-closed)
       await updateRedactionStatus(svc, sourceId, 'quarantined');
+      await updateExtractionState(svc, sourceId, 'failed');
       await updateJobStatus(svc, sourceId, accountId, 'error', 'Document contains sensitive information that cannot be safely processed');
       return;
     }
@@ -539,6 +633,7 @@ export async function extractDocument(sourceId: string, accountId: string): Prom
     if (!extractionResult) {
       // No model → update status and exit (graceful degradation)
       await updateRedactionStatus(svc, sourceId, redactionStatus);
+      await updateExtractionState(svc, sourceId, 'extracted');
       await updateJobStatus(svc, sourceId, accountId, 'done');
       return;
     }
@@ -614,10 +709,13 @@ export async function extractDocument(sourceId: string, accountId: string): Prom
 
     // Step 10: Mark complete
     await updateRedactionStatus(svc, sourceId, redactionStatus);
+    await updateExtractionState(svc, sourceId, 'extracted');
     await updateJobStatus(svc, sourceId, accountId, 'done');
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error('[doc-extract] extraction failed', message);
+    // Fail-closed: write 'failed' state + zero proposals already guaranteed (no partial write)
+    await updateExtractionState(svc, sourceId, 'failed');
     await updateJobStatus(svc, sourceId, accountId, 'error', message);
   }
 }
