@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { appSession } from '../../../lib/auth/app-session';
 import { AppShell } from '../../../components/shell/AppShell';
+import { DocUploadCard } from '../../../components/brain/DocUploadCard';
 import { saveGroveMemory } from './actions';
 import styles from './memory.module.css';
 
@@ -251,6 +252,9 @@ export default async function MemoryPage({
           Save
         </button>
       </form>
+
+      {/* P2 document upload — self-contained; P1 Sources tab will relocate this slot */}
+      <DocUploadCard />
     </AppShell>
   );
 }
