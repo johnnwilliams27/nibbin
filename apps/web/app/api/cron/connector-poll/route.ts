@@ -1,7 +1,7 @@
 import 'server-only';
 import { NextResponse, type NextRequest } from 'next/server';
 import { serviceClient } from '../../../../lib/supabase/service';
-import { GmailClient, GoogleCalendarClient, SupabaseWebhookEventStore, CONNECTOR_REGISTRY, fetchCalendarDelta } from '@nibbin/connectors';
+import { makeGmailClient, makeGoogleCalendarClient, SupabaseWebhookEventStore, CONNECTOR_REGISTRY, fetchCalendarDelta } from '@nibbin/connectors';
 import { activeNibbinsForAccount, triggerNibbinRun, connectionFromRow } from '../../../../lib/runtime/engine';
 import { dispatchForConnection, type ConnectorEvent } from '../../../../lib/connections/dispatch';
 import { fetchGmailDelta, advanceGmailCursor } from '../../../../lib/connections/gmail-delta';
@@ -61,8 +61,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       let advanceCursor: () => Promise<void> = async () => {};
 
       if (connection.provider === 'gmail') {
-        // TODO Task 6: replace with makeGmailClient factory
-        const client = new GmailClient(connection, getNango(), connection.nangoConnectionId ?? '');
+        const client = makeGmailClient(connection, getNango());
         const { events: gmailEvents, newHistoryId } = await fetchGmailDelta(
           connection.id,
           connection.accountId,
@@ -82,8 +81,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         events = gmailEvents;
         advanceCursor = () => advanceGmailCursor(svc, connection.id, newHistoryId);
       } else if (connection.provider === 'google-calendar') {
-        // TODO Task 6: replace with makeGoogleCalendarClient factory
-        const client = new GoogleCalendarClient(connection, getNango(), connection.nangoConnectionId ?? '');
+        const client = makeGoogleCalendarClient(connection, getNango());
         const { events: calEvents, newSyncToken } = await fetchCalendarDelta(
           connection.id,
           connection.accountId,

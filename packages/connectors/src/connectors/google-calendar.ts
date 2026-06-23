@@ -9,6 +9,23 @@
 import { NangoConnectorClient } from './nango-base';
 import type { Nango } from '../nango-client';
 import type { Connection } from '../types';
+import { NangoConnectionMissingError } from './gmail';
+
+/**
+ * Factory for GoogleCalendarClient — the preferred way to instantiate the
+ * client in apps/web. Validates that method=N connections have a non-null
+ * nangoConnectionId. N connections have no live vault token; an empty string
+ * would silently send invalid Nango requests.
+ */
+export function makeGoogleCalendarClient(connection: Connection, nango: Nango): GoogleCalendarClient {
+  if (connection.provider !== 'google-calendar') {
+    throw new Error(`provider mismatch: expected google-calendar, got ${connection.provider}`);
+  }
+  if (connection.method === 'N' && !connection.nangoConnectionId) {
+    throw new NangoConnectionMissingError(connection.provider, connection.id);
+  }
+  return new GoogleCalendarClient(connection, nango, connection.nangoConnectionId ?? '');
+}
 
 const SCOPE_EVENTS = 'https://www.googleapis.com/auth/calendar.events';
 

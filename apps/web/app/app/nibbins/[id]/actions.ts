@@ -2,7 +2,7 @@
 
 import { appSession } from '../../../../lib/auth/app-session';
 import { serviceClient } from '../../../../lib/supabase/service';
-import { GmailClient } from '@nibbin/connectors';
+import { makeGmailClient } from '@nibbin/connectors';
 import { pushDraftToGmail } from '../../../../lib/connections/push-draft';
 import { revokeWriteGrant, type WriteCapability } from '../../../../lib/connections/grants';
 import { connectionFromRow } from '../../../../lib/runtime/engine';
@@ -108,8 +108,7 @@ export async function pushDraftToGmailAction(
           .single();
         if (!connRow) throw new Error('no active gmail connection');
         const conn = connectionFromRow(connRow as Record<string, unknown>);
-        // TODO Task 6: replace with makeGmailClient factory
-        const client = new GmailClient(conn, getNango(), conn.nangoConnectionId ?? '');
+        const client = makeGmailClient(conn, getNango());
         return client.createDraft(rfc822);
       },
     },

@@ -1,7 +1,7 @@
 import 'server-only';
 import { NextResponse, type NextRequest } from 'next/server';
 import { serviceClient } from '../../../../../lib/supabase/service';
-import { GmailClient, SupabaseWebhookEventStore } from '@nibbin/connectors';
+import { makeGmailClient, SupabaseWebhookEventStore } from '@nibbin/connectors';
 import { connectionFromRow, activeNibbinsForAccount, triggerNibbinRun } from '../../../../../lib/runtime/engine';
 import { dispatchForConnection } from '../../../../../lib/connections/dispatch';
 import { fetchGmailDelta, advanceGmailCursor } from '../../../../../lib/connections/gmail-delta';
@@ -71,8 +71,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const ctrl = new AbortController();
   const timeout = setTimeout(() => { ctrl.abort(); }, DISPATCH_TIMEOUT_MS);
   try {
-    // TODO Task 6: replace with makeGmailClient factory
-    const client = new GmailClient(connection, getNango(), connection.nangoConnectionId ?? '');
+    const client = makeGmailClient(connection, getNango());
     const { events, newHistoryId } = await fetchGmailDelta(
       connection.id,
       connection.accountId,

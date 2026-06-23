@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { GmailClient } from '@nibbin/connectors';
+import { makeGmailClient } from '@nibbin/connectors';
 import { getNango } from '../connectors/nango';
 import { serviceClient } from '../supabase/service';
 import { anthropicGenerate } from '../llm/client';
@@ -148,8 +148,7 @@ export async function gmailOnboardingSweep(
 
   const { connectionFromRow } = await import('../runtime/engine');
   const connection = connectionFromRow(connRow as Record<string, unknown>);
-  // TODO Task 6: replace with makeGmailClient factory
-  const client = new GmailClient(connection, getNango(), connection.nangoConnectionId ?? '');
+  const client = makeGmailClient(connection, getNango());
 
   const generate = anthropicGenerate();
   const cutoff = new Date(Date.now() - SWEEP_WINDOW_DAYS * 24 * 60 * 60 * 1000);

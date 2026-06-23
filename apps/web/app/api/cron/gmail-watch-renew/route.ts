@@ -1,7 +1,7 @@
 import 'server-only';
 import { NextResponse, type NextRequest } from 'next/server';
 import { serviceClient } from '../../../../lib/supabase/service';
-import { GmailClient } from '@nibbin/connectors';
+import { makeGmailClient } from '@nibbin/connectors';
 import { connectionFromRow } from '../../../../lib/runtime/engine';
 import { isAuthorizedCronRequest } from '../../../../lib/connections/cron-auth';
 import { getNango } from '../../../../lib/connectors/nango';
@@ -50,8 +50,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       const connection = connectionFromRow(row as Record<string, unknown>);
       const ws = (row as { webhook_state?: Record<string, unknown> | null }).webhook_state;
       const existingCursor = ws && typeof ws.historyId === 'string' ? ws.historyId : null;
-      // TODO Task 6: replace with makeGmailClient factory
-      const client = new GmailClient(connection, getNango(), connection.nangoConnectionId ?? '');
+      const client = makeGmailClient(connection, getNango());
       // Seed the mailbox address: a Pub/Sub push notification carries only the
       // emailAddress, and the push webhook maps it back to this connection via
       // webhook_state.email. Without this the push handler never matches a

@@ -9,8 +9,8 @@ import 'server-only';
  */
 import {
   ConnectorRequestError,
-  GmailClient,
-  GoogleCalendarClient,
+  makeGmailClient,
+  makeGoogleCalendarClient,
   HoneyBookClient,
   InstagramDmClient,
   PixiesetClient,
@@ -73,37 +73,54 @@ export function connectionFromRow(row: Record<string, unknown>): Connection {
 }
 
 function realClient(connection: Connection): ConnectorClient {
-  const vault = new SupabaseTokenVault({
-    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
-    serviceKey: process.env.SUPABASE_SECRET_KEY ?? '',
-  });
+  // Vault-read guard: N-method connections have no live vault token — vault
+  // reads must never be attempted for them (constraint 7 from the plan).
+  // Nango holds the tokens; makeGmailClient/makeGoogleCalendarClient handle routing.
+  if (connection.method !== 'N') {
+    // Only instantiate the vault for H/A/G connectors that actually use it.
+    const vault = new SupabaseTokenVault({
+      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
+      serviceKey: process.env.SUPABASE_SECRET_KEY ?? '',
+    });
+    switch (connection.provider) {
+      case 'stripe':
+        return new StripeConnectorClient(connection, vault);
+      case 'honeybook':
+        return new HoneyBookClient(connection, vault);
+      case 'pixieset':
+        return new PixiesetClient(connection, vault);
+      case 'instagram-dm':
+        return new InstagramDmClient(connection, vault);
+      default:
+        throw new Error(`no hand-built client for ${connection.provider} yet`);
+    }
+  }
+
+  // N-method connectors: use Nango proxy lane. Vault is never consulted.
   switch (connection.provider) {
     case 'gmail':
-      // TODO Task 6: replace with makeGmailClient factory
-      return new GmailClient(connection, getNango(), connection.nangoConnectionId ?? '');
+      return makeGmailClient(connection, getNango());
     case 'google-calendar':
-      // TODO Task 6: replace with makeGoogleCalendarClient factory
-      return new GoogleCalendarClient(connection, getNango(), connection.nangoConnectionId ?? '');
-    case 'stripe':
-      return new StripeConnectorClient(connection, vault);
-    case 'honeybook':
-      return new HoneyBookClient(connection, vault);
-    case 'pixieset':
-      return new PixiesetClient(connection, vault);
-    case 'instagram-dm':
-      return new InstagramDmClient(connection, vault);
+      return makeGoogleCalendarClient(connection, getNango());
     default:
-      throw new Error(`no hand-built client for ${connection.provider} yet`);
+      throw new Error(`no Nango client for ${connection.provider} yet`);
   }
 }
 
 /**
- * Reader for one connection: real client when a vault token exists, fixtures
- * on seeded accounts (token_ref null + dev seed flag). A connection that is
- * neither is unusable — fail loud, never fabricate.
+ * Reader for one connection: real client for active connections, fixtures
+ * on seeded accounts (token_ref null + dev seed flag for H connectors).
+ *
+ * Vault-read guard (Task 6): N-method connections route directly to realClient
+ * without gating on tokenRef — N connections have no vault token by design
+ * (Nango holds the token). Gating on tokenRef would always fall through to
+ * fixtures/error for N connections, silently breaking all Gmail/Calendar scans.
  */
 export function readerForConnection(connection: Connection, nowMs: number): ScanResourceReader {
   if (connection.status !== 'active') throw new Error(`connection ${connection.id} is ${connection.status}`);
+  // N-method connections: token is held by Nango, not the vault. Route directly.
+  if (connection.method === 'N') return realClient(connection);
+  // H/A/G connections: use vault token (tokenRef must be non-null) or fixtures.
   if (connection.tokenRef) return realClient(connection);
   if (devSeedEnabled() && FIXTURE_PROVIDERS.includes(connection.provider)) {
     return fixtureReader(connection.provider, nowMs);
@@ -268,8 +285,7 @@ export function buildEffectsExecutor(
             if (testDeps) {
               await testDeps.deleteDraft?.(nativeDraftRef);
             } else {
-              // TODO Task 6: replace with makeGmailClient factory
-              await new GmailClient(connection, getNango(), connection.nangoConnectionId ?? '').deleteDraft(nativeDraftRef);
+              await makeGmailClient(connection, getNango()).deleteDraft(nativeDraftRef);
             }
           } catch (err) {
             // Best-effort: logged, never blocks dismissal.
@@ -289,8 +305,7 @@ export function buildEffectsExecutor(
               const r = await testDeps.createDraft(rfc822);
               draftId = r.id;
             } else {
-              // TODO Task 6: replace with makeGmailClient factory
-              const r = await new GmailClient(connection, getNango(), connection.nangoConnectionId ?? '').createDraft(rfc822);
+              const r = await makeGmailClient(connection, getNango()).createDraft(rfc822);
               draftId = r.id;
             }
           } catch (err) {
@@ -336,18 +351,16 @@ export function buildEffectsExecutor(
             if (testDeps) {
               await testDeps.sendDraft?.(nativeDraftRef);
             } else {
-              // TODO Task 6: replace with makeGmailClient factory
-              await new GmailClient(connection, getNango(), connection.nangoConnectionId ?? '').sendDraft(nativeDraftRef);
+              await makeGmailClient(connection, getNango()).sendDraft(nativeDraftRef);
             }
           } else if (testDeps) {
             await testDeps.sendMessage(rfc822);
           } else {
-            // TODO Task 6: replace with makeGmailClient factory
             // Velocity already atomically consumed above via send_velocity_consume RPC
             // (which INSERTs the send_records row). Use sendMessageDirect so the
             // in-process limiter does NOT insert a second send_records row — that
             // double-consume would halve the effective cap (FIX 1, Spec 2 review).
-            await new GmailClient(connection, getNango(), connection.nangoConnectionId ?? '').sendMessageDirect(rfc822);
+            await makeGmailClient(connection, getNango()).sendMessageDirect(rfc822);
           }
         } catch (err) {
           // Fleet-learning telemetry: emit connector_blocked on auth/connection-state errors.
@@ -379,8 +392,7 @@ export function buildEffectsExecutor(
           } else {
             // createEvent throws if the connection lacks calendar.events — a
             // defense-in-depth scope check beneath the runtime grant gate.
-            // TODO Task 6: replace with makeGoogleCalendarClient factory
-            await new GoogleCalendarClient(connection, getNango(), connection.nangoConnectionId ?? '').createEvent(calendarId, event);
+            await makeGoogleCalendarClient(connection, getNango()).createEvent(calendarId, event);
           }
         } catch (err) {
           if (err instanceof ConnectorRequestError) {

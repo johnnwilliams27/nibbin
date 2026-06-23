@@ -17,6 +17,41 @@ import type { Nango } from '../nango-client';
 import type { Connection } from '../types';
 import { SendVelocityLimiter } from '../send-velocity';
 
+/**
+ * Thrown by makeGmailClient when a method=N connection has no nangoConnectionId.
+ * N-method connections MUST have a nangoConnectionId — vault reads are blocked
+ * for N connections (no live vault token). This typed error lets callers surface
+ * a "reconnect required" message rather than silently calling Nango with ''.
+ */
+export class NangoConnectionMissingError extends Error {
+  constructor(
+    readonly provider: string,
+    readonly connectionId: string,
+  ) {
+    super(
+      `${provider} connection ${connectionId} is method=N but has no nangoConnectionId — reconnect required`,
+    );
+    this.name = 'NangoConnectionMissingError';
+  }
+}
+
+/**
+ * Factory for GmailClient — the preferred way to instantiate the client in
+ * apps/web. Validates that method=N connections have a non-null nangoConnectionId
+ * (N connections have no live vault token; an empty string would silently
+ * send invalid Nango requests). Non-N connections are passed through with
+ * an empty string id for backward compatibility.
+ */
+export function makeGmailClient(connection: Connection, nango: Nango): GmailClient {
+  if (connection.provider !== 'gmail') {
+    throw new Error(`provider mismatch: expected gmail, got ${connection.provider}`);
+  }
+  if (connection.method === 'N' && !connection.nangoConnectionId) {
+    throw new NangoConnectionMissingError(connection.provider, connection.id);
+  }
+  return new GmailClient(connection, nango, connection.nangoConnectionId ?? '');
+}
+
 const SCOPE_COMPOSE = 'https://www.googleapis.com/auth/gmail.compose';
 const SCOPE_SEND = 'https://www.googleapis.com/auth/gmail.send';
 
