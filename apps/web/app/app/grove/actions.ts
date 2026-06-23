@@ -31,6 +31,7 @@ import { upsertOwnProfile } from '../../../lib/auth/profile';
 import { groveRouter } from '../../../lib/grove/router';
 import { anthropicGenerate, recordModelCall } from '../../../lib/llm/client';
 import { answersForSave, sanitizeInput, stateFromRow, type GroveRow } from '../../../lib/grove/state';
+import { loadPendingItems } from '../../../lib/grove/pending-items';
 import { createClient } from '../../../lib/supabase/server';
 import { serviceClient } from '../../../lib/supabase/service';
 import { DONE, NEXT_STEP } from '@nibbin/keeper';
@@ -163,7 +164,11 @@ export async function keeperChatAction(rawText: unknown): Promise<GroveChatPaylo
   // read the plan to size the daily chat ceiling (#230) — a runaway backstop
   // scaled by plan so paying users get more headroom. No subscription row =
   // free tier (the tightest ceiling), matching the adopt-RPC convention.
-  const [{ data: row }, { data: sub }] = await Promise.all([
+  //
+  // P6: loadPendingItems runs in the same Promise.all batch for a single round-
+  // trip. It is read-only (C10) and fail-safe: a DB error returns an empty queue
+  // rather than breaking the chat turn.
+  const [{ data: row }, { data: sub }, pendingItems] = await Promise.all([
     supabase
       .from('grove_state')
       .select('keeper_name')
@@ -174,6 +179,11 @@ export async function keeperChatAction(rawText: unknown): Promise<GroveChatPaylo
       .select('tier')
       .eq('account_id', accountId)
       .maybeSingle<{ tier: Tier | null }>(),
+    loadPendingItems(supabase, accountId).catch((err) => {
+      // Fail-safe: a pending-items read error must not break the chat reply.
+      console.error('[keeper] loadPendingItems failed — proceeding without pending context', err instanceof Error ? err.message : err);
+      return { proposals: [], runs: [], total: 0, hasHighStakes: false };
+    }),
   ]);
   const dailyChatCeiling = CHAT_DAILY_CEILING[(sub?.tier ?? 'hatchling') as Tier];
 
@@ -195,7 +205,7 @@ export async function keeperChatAction(rawText: unknown): Promise<GroveChatPaylo
             model,
             system: [
               { text: KEEPER_SYSTEM_PROMPT, cache: true },
-              { text: buildKeeperContext({ keeperName: row?.keeper_name }) },
+              { text: buildKeeperContext({ keeperName: row?.keeper_name, pendingItems }) },
             ],
             messages: [{ role: 'user', content: userText }],
             maxTokens: 400,
