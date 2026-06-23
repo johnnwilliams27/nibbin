@@ -282,8 +282,8 @@ export const CONNECTORS: ConnectorEntry[] = [
     id: 'stripe',
     name: 'Stripe',
     category: 'Payments & Invoicing',
-    status: 'coming_soon',
-    whatItDoes: 'Flag overdue invoices and prompt you to chase late-paying clients.',
+    status: 'live',
+    whatItDoes: 'Flag overdue invoices and draft a personal reminder email to chase late-paying clients.',
     domain: 'stripe.com',
   },
   {

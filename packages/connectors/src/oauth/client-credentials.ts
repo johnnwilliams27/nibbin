@@ -13,5 +13,10 @@ export function oauthClientCredentials(provider: string): { clientId: string; cl
     const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
     if (clientId && clientSecret) return { clientId, clientSecret };
   }
+  if (provider === 'stripe') {
+    const clientId = process.env.STRIPE_OAUTH_CLIENT_ID;
+    const clientSecret = process.env.STRIPE_OAUTH_CLIENT_SECRET;
+    if (clientId && clientSecret) return { clientId, clientSecret };
+  }
   return null;
 }

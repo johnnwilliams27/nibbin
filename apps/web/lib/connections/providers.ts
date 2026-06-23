@@ -6,11 +6,14 @@ export interface ConnectableProvider {
 }
 
 // The short "Accounts your Nibbins work from" list only carries connectables we
-// can actually wire up. Coming-soon providers (Google Calendar, Stripe, …) live
-// in the "Browse all connectors" directory below, not in this list.
+// can actually wire up. Still-coming-soon providers live in the "Browse all
+// connectors" directory below, not in this list.
 export const CONNECTABLE_PROVIDERS: ConnectableProvider[] = [
   { id: 'gmail', label: 'Gmail', wired: true, domain: 'gmail.com' },
   { id: 'google-calendar', label: 'Google Calendar', wired: true, domain: 'calendar.google.com' },
+  // Read-only payments connector (overdue-invoice nudges ride email.send via
+  // Gmail; Stripe itself is never written to). Live once STRIPE_OAUTH_* are set.
+  { id: 'stripe', label: 'Stripe', wired: true, domain: 'stripe.com' },
 ];
 
 /** Plain-language summary for each granted OAuth scope (no raw URLs in the UI). */

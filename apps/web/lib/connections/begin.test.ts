@@ -48,6 +48,25 @@ it('Calendar connect requests calendar.readonly + calendar.events in one consent
   expect(saved[0].scopes).toContain('https://www.googleapis.com/auth/calendar.events');
 });
 
+it('Stripe connect requests read_only ONLY — no write scope (Option B: read-only connector)', async () => {
+  const saved: StorePendingInput[] = [];
+  const res = await beginConnect(
+    { provider: 'stripe', accountId: 'a', userId: 'u', userEmail: 'john@gmail.com' },
+    {
+      config,
+      allowlistFor: async () => makeTesterAllowlist(['john@gmail.com']),
+      save: async (i) => { saved.push(i); },
+      nowMs: 1000,
+    },
+  );
+  const url = new URL(res.url);
+  expect(url.origin + url.pathname).toBe('https://connect.stripe.com/oauth/authorize');
+  const scope = url.searchParams.get('scope') ?? '';
+  expect(scope).toContain('read_only');
+  expect(scope).not.toContain('read_write'); // Stripe is never written to — no write scope at connect
+  expect(saved[0].scopes).toEqual(['read_only']);
+});
+
 it('throws a friendly tester error when email is not allowlisted', async () => {
   await expect(beginConnect(
     { provider: 'gmail', accountId: 'a', userId: 'u', userEmail: 'nope@gmail.com' },
