@@ -60,7 +60,7 @@ export async function saveReference(
 
   const { error } = await supabase.rpc('save_reference', {
     target_account: accountId,
-    reference_text,
+    new_reference_text: reference_text,
   });
 
   if (error) {
