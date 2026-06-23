@@ -9,6 +9,10 @@
  *                             xl/worksheets/sheet*.xml (numeric order) → resolve
  *                             shared-string, inline-string, and numeric cells →
  *                             join with tabs/newlines → cap at RAW_TEXT_CAP.
+ *   extractSvgText(buffer):  utf-8 decode → extract text inside <text>, <title>,
+ *                             <desc> elements (strip nested tags, collapse whitespace)
+ *                             → join with spaces → cap at RAW_TEXT_CAP.
+ *                             Returns '' if none found (caller marks unsupported).
  *
  * Design constraints:
  *   - Text only — never raw bytes into proposals (derived-not-raw preserved).
@@ -232,4 +236,57 @@ export async function extractXlsxText(buffer: Buffer): Promise<string> {
 
   // Step 5: Cap total length.
   return sheetTexts.join('\n').slice(0, RAW_TEXT_CAP);
+}
+
+// ── svg extractor ─────────────────────────────────────────────────────────────
+
+/**
+ * Extract text content from an SVG buffer.
+ *
+ * Algorithm:
+ *   1. Decode the buffer as UTF-8 (SVG is plain XML text — no unzip needed).
+ *   2. For each of the three text-bearing element types (<text>, <title>, <desc>):
+ *      a. Extract the full element block (including nested child tags like <tspan>).
+ *      b. Strip all nested tags (e.g. <tspan>, <a>) leaving only text nodes.
+ *      c. Collapse internal whitespace to a single space; trim.
+ *   3. Join all collected text values with spaces.
+ *   4. Cap total length at RAW_TEXT_CAP.
+ *
+ * Returns '' if no text-bearing elements are found or all are whitespace-only.
+ * This is a synchronous function — SVG is plain text, no unzip required.
+ *
+ * Note: <text> in SVG can contain nested elements (<tspan>, <a>, etc.).
+ * We strip all tags with a simple regex because SVG text element content is
+ * shallow and well-structured in practice.
+ */
+export function extractSvgText(buffer: Buffer): string {
+  // Step 1: UTF-8 decode
+  const xml = buffer.toString('utf8');
+
+  const parts: string[] = [];
+
+  // Step 2: Extract content from each text-bearing element type.
+  // We capture everything between opening and closing tags (non-greedy),
+  // then strip any nested XML tags to get the raw text nodes.
+  const elementRe = /<(text|title|desc)[^>]*>([\s\S]*?)<\/\1>/gi;
+  let match: RegExpExecArray | null;
+
+  while ((match = elementRe.exec(xml)) !== null) {
+    const rawContent = match[2];
+
+    // Strip nested tags (e.g. <tspan dy="1em">, <a href="…">, </tspan>)
+    const textOnly = rawContent.replace(/<[^>]*>/g, ' ');
+
+    // Collapse whitespace and trim
+    const collapsed = textOnly.replace(/\s+/g, ' ').trim();
+
+    if (collapsed) {
+      parts.push(collapsed);
+    }
+  }
+
+  if (parts.length === 0) return '';
+
+  // Step 3+4: Join and cap.
+  return parts.join(' ').slice(0, RAW_TEXT_CAP);
 }

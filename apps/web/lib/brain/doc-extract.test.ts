@@ -111,12 +111,14 @@ vi.mock('mammoth', () => ({
   },
 }));
 
-// ── Mock: office-extract (pptx + xlsx extractors) ─────────────────────────
+// ── Mock: office-extract (pptx + xlsx + svg extractors) ───────────────────
 const mockExtractPptxText = vi.fn();
 const mockExtractXlsxText = vi.fn();
+const mockExtractSvgText = vi.fn();
 vi.mock('./office-extract', () => ({
   extractPptxText: (...args: unknown[]) => mockExtractPptxText(...args),
   extractXlsxText: (...args: unknown[]) => mockExtractXlsxText(...args),
+  extractSvgText: (...args: unknown[]) => mockExtractSvgText(...args),
 }));
 
 // ── Import the module under test ───────────────────────────────────────────
@@ -795,9 +797,11 @@ describe('classifyExtractor', () => {
   it('image/webp → image', () => {
     expect(classifyExtractor('image/webp', 'photo.webp')).toBe('image');
   });
-  it('image/svg+xml → phase2 (SVG cannot be vision-processed; treated as phase2)', () => {
-    // SVG is text-based, but requires rasterisation for vision. Stored as phase2/unsupported for now.
-    expect(classifyExtractor('image/svg+xml', 'logo.svg')).toBe('phase2');
+  it('image/svg+xml → svg (Task 3: SVG now has a real text extractor)', () => {
+    expect(classifyExtractor('image/svg+xml', 'logo.svg')).toBe('svg');
+  });
+  it('.svg extension fallback → svg', () => {
+    expect(classifyExtractor('', 'logo.svg')).toBe('svg');
   });
   it('pptx mime → pptx', () => {
     expect(classifyExtractor('application/vnd.openxmlformats-officedocument.presentationml.presentation', 'deck.pptx')).toBe('pptx');
@@ -1242,5 +1246,140 @@ describe('extractDocument — Task 5 state transitions', () => {
         expect(call[1]).toMatchObject({ p_op: 'append' });
       }
     }
+  });
+
+  // ── Task 3: svg dispatch tests ───────────────────────────────────────────
+
+  it('T3-1. svg with text → redaction gate + LLM + APPEND-ONLY proposals → extracted', async () => {
+    const svgText = 'Acme Logo Company branding mark';
+    mockStorageDownload.mockResolvedValue({
+      data: Buffer.from('<svg><title>Acme</title></svg>', 'utf8'),
+      error: null,
+    });
+    mockSelect.mockResolvedValue({
+      data: {
+        origin: { filename: 'logo.svg', mime: 'image/svg+xml' },
+        id: SOURCE_ID,
+      },
+      error: null,
+    });
+
+    // svg extractor (sync) returns text
+    mockExtractSvgText.mockReturnValue(svgText);
+
+    // Redaction: clean
+    mockApplyBattery.mockReturnValue({ text: svgText, rulesHit: [] });
+    mockHeuristicNerRedact.mockResolvedValue({ redacted: svgText, rulesHit: [] });
+
+    // Router + LLM
+    mockGroveRouterRoute.mockResolvedValue({ model: 'claude-haiku-4-5-20251001', tier: 't1', degraded: false });
+    mockGenerateFn.mockResolvedValue({
+      text: JSON.stringify({ facts: 'Company logo' }),
+      model: 'claude-haiku-4-5-20251001',
+      usage: { inputTokens: 50, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 20 },
+      stopReason: 'end_turn',
+    });
+
+    await extractDocument(SOURCE_ID, ACCOUNT_ID);
+
+    // At least one proposal submitted
+    expect(mockRpc).toHaveBeenCalled();
+
+    // ALL proposals must be append-only (svg is additive like pptx/xlsx)
+    for (const call of mockRpc.mock.calls) {
+      if (call[0] === 'propose_memory_change') {
+        expect(call[1]).toMatchObject({ p_op: 'append' });
+      }
+    }
+
+    const states = extractionStateWrites();
+    expect(states).toContain('extracting');
+    expect(states).toContain('extracted');
+    expect(states).not.toContain('unsupported');
+  });
+
+  it('T3-2. svg with no text content → extraction_state=unsupported, zero proposals', async () => {
+    mockStorageDownload.mockResolvedValue({
+      data: Buffer.from('<svg><rect/></svg>', 'utf8'),
+      error: null,
+    });
+    mockSelect.mockResolvedValue({
+      data: {
+        origin: { filename: 'empty.svg', mime: 'image/svg+xml' },
+        id: SOURCE_ID,
+      },
+      error: null,
+    });
+
+    // svg extractor returns empty string → unsupported
+    mockExtractSvgText.mockReturnValue('');
+
+    await extractDocument(SOURCE_ID, ACCOUNT_ID);
+
+    expect(mockRpc).not.toHaveBeenCalled();
+    expect(mockGenerateFn).not.toHaveBeenCalled();
+
+    const states = extractionStateWrites();
+    expect(states).toContain('extracting');
+    expect(states).toContain('unsupported');
+  });
+
+  it('T3-3. .svg extension (no mime) → classifies as svg → dispatched to extractSvgText', async () => {
+    const svgText = 'Brand name text';
+    mockStorageDownload.mockResolvedValue({
+      data: Buffer.from('<svg><title>Brand</title></svg>', 'utf8'),
+      error: null,
+    });
+    mockSelect.mockResolvedValue({
+      data: {
+        origin: { filename: 'brand.svg', mime: '' },
+        id: SOURCE_ID,
+      },
+      error: null,
+    });
+
+    mockExtractSvgText.mockReturnValue(svgText);
+    mockApplyBattery.mockReturnValue({ text: svgText, rulesHit: [] });
+    mockHeuristicNerRedact.mockResolvedValue({ redacted: svgText, rulesHit: [] });
+    mockGroveRouterRoute.mockResolvedValue({ model: 'claude-haiku-4-5-20251001', tier: 't1', degraded: false });
+    mockGenerateFn.mockResolvedValue({
+      text: JSON.stringify({ facts: 'Brand name text' }),
+      model: 'claude-haiku-4-5-20251001',
+      usage: { inputTokens: 30, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 10 },
+      stopReason: 'end_turn',
+    });
+
+    await extractDocument(SOURCE_ID, ACCOUNT_ID);
+
+    // The svg extractor was called
+    expect(mockExtractSvgText).toHaveBeenCalledTimes(1);
+    expect(mockExtractPptxText).not.toHaveBeenCalled();
+    expect(mockExtractXlsxText).not.toHaveBeenCalled();
+
+    // Proposals submitted
+    expect(mockRpc).toHaveBeenCalled();
+  });
+
+  it('T3-4. svg extractor throws → extraction_state=failed, zero proposals (fail-closed)', async () => {
+    mockStorageDownload.mockResolvedValue({
+      data: Buffer.from('not valid SVG'),
+      error: null,
+    });
+    mockSelect.mockResolvedValue({
+      data: {
+        origin: { filename: 'bad.svg', mime: 'image/svg+xml' },
+        id: SOURCE_ID,
+      },
+      error: null,
+    });
+
+    // Extractor throws
+    mockExtractSvgText.mockImplementation(() => { throw new Error('SVG parse error'); });
+
+    await extractDocument(SOURCE_ID, ACCOUNT_ID);
+
+    expect(mockRpc).not.toHaveBeenCalled();
+    const states = extractionStateWrites();
+    expect(states).toContain('failed');
   });
 });

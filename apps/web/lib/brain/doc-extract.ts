@@ -37,7 +37,7 @@ import { groveRouter } from '../grove/router';
 import { buildStoragePath } from './storage-path';
 import type { VisionCostCtx } from './vision-extract';
 import { extractFromImage } from './vision-extract';
-import { extractPptxText, extractXlsxText } from './office-extract';
+import { extractPptxText, extractXlsxText, extractSvgText } from './office-extract';
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
@@ -106,16 +106,16 @@ const PHASE2_MIMES = new Set<string>([
  *   'docx'       — Word Open XML (.docx)
  *   'pdf'        — PDF (text-native fast path; scanned fallback is Task 7)
  *   'image'      — raster images (png/jpeg/webp); vision path is Task 6
- *                  NOTE: SVG is text-based XML but needs rasterisation for
- *                  vision — treated as 'phase2' until a rasteriser is wired.
  *   'pptx'       — PowerPoint Open XML (.pptx); text extracted via office-extract
- *   'phase2'     — xlsx, svg; structured parsers deferred to Phase 2
+ *   'xlsx'       — Excel Open XML (.xlsx); text extracted via office-extract (Task 2)
+ *   'svg'        — SVG XML; text extracted from <text>/<title>/<desc> elements (Task 3)
+ *   'phase2'     — structured parsers deferred to Phase 2 (currently empty)
  *   'unknown'    — anything else; stored as-is with extraction_state='unsupported'
  */
 export function classifyExtractor(
   mime: string,
   filename: string,
-): 'textnative' | 'docx' | 'pdf' | 'image' | 'pptx' | 'xlsx' | 'phase2' | 'unknown' {
+): 'textnative' | 'docx' | 'pdf' | 'image' | 'pptx' | 'xlsx' | 'svg' | 'phase2' | 'unknown' {
   const ext = filename.toLowerCase().split('.').pop() ?? '';
 
   // text-native: utf-8 decode + existing strip/cap pipeline
@@ -137,8 +137,8 @@ export function classifyExtractor(
     mime === 'image/webp'
   ) return 'image';
 
-  // SVG: text-based, but vision-only, needs rasteriser → phase2 for now
-  if (mime === 'image/svg+xml' || ext === 'svg') return 'phase2';
+  // SVG: text-based XML; extract text from <text>, <title>, <desc> elements (Task 3)
+  if (mime === 'image/svg+xml' || ext === 'svg') return 'svg';
 
   // PPTX: real text extractor available (office-extract.ts)
   if (mime === PPTX_MIME || ext === 'pptx') return 'pptx';
@@ -581,7 +581,7 @@ export async function extractDocument(sourceId: string, accountId: string): Prom
     }
 
     // Step 3b: image → vision path (Task 6).
-    // SVG is classified as 'phase2' by classifyExtractor and never reaches here.
+    // SVG is now classified as 'svg' and dispatched below (Task 3).
     // Fail-closed: any error from extractFromImage propagates to the outer catch
     // which writes extraction_state='failed' and zero proposals.
     if (kind === 'image') {
@@ -650,9 +650,9 @@ export async function extractDocument(sourceId: string, accountId: string): Prom
     // Step 5: Text extraction dispatch by kind
     let rawText: string;
     let truncatedPages = false;
-    // pptx and xlsx proposals are append-only (extraction is additive; Task 1+2 constraint).
+    // pptx, xlsx, and svg proposals are append-only (extraction is additive; Task 1+2+3 constraint).
     // Task 4 will extend append-only to all text extractors.
-    let appendOnly = kind === 'pptx' || kind === 'xlsx';
+    let appendOnly = kind === 'pptx' || kind === 'xlsx' || kind === 'svg';
 
     if (kind === 'pptx') {
       // pptx text extraction via office-extract.ts (unzip + <a:t> concatenation).
@@ -676,6 +676,18 @@ export async function extractDocument(sourceId: string, accountId: string): Prom
         return;
       }
       rawText = xlsxText;
+    } else if (kind === 'svg') {
+      // SVG text extraction via office-extract.ts (UTF-8 decode + <text>/<title>/<desc> parsing).
+      // Synchronous — SVG is plain XML text, no unzip needed.
+      // Throws on unexpected errors → outer catch → failed (fail-closed).
+      const svgText = extractSvgText(buffer);
+      if (!svgText) {
+        // No text-bearing elements found → stored-but-not-extracted (store-never-drop)
+        await updateExtractionState(svc, sourceId, 'unsupported');
+        await updateJobStatus(svc, sourceId, accountId, 'done');
+        return;
+      }
+      rawText = svgText;
     } else if (kind === 'pdf') {
       const pdfResult = await extractPdfText(buffer);
       rawText = pdfResult.rawText;

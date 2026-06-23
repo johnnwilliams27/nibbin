@@ -34,7 +34,7 @@ function slideXml(...texts: string[]): string {
 }
 
 // ── Import after helpers so vitest hoisting doesn't break anything ──────────
-import { extractPptxText, extractXlsxText } from './office-extract';
+import { extractPptxText, extractXlsxText, extractSvgText } from './office-extract';
 
 // ── Helper: build a minimal in-memory xlsx buffer ──────────────────────────
 
@@ -251,5 +251,67 @@ describe('extractXlsxText', () => {
     expect(result).toContain('Name');
     expect(result).toContain('Alice');
     expect(result).toContain('99');
+  });
+});
+
+// ── extractSvgText tests ───────────────────────────────────────────────────
+
+describe('extractSvgText', () => {
+  it('svg with <title> and <text> (with nested <tspan>) → contains both text values', () => {
+    const svgXml = `<?xml version="1.0"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">
+  <title>Acme</title>
+  <text x="10" y="20">Logo<tspan>!</tspan></text>
+</svg>`;
+    const buf = Buffer.from(svgXml, 'utf8');
+    const result = extractSvgText(buf);
+    expect(result).toContain('Acme');
+    expect(result).toContain('Logo');
+  });
+
+  it('svg with <desc> element → desc text included', () => {
+    const svgXml = `<svg xmlns="http://www.w3.org/2000/svg">
+  <desc>Company logo for Acme Corp</desc>
+</svg>`;
+    const buf = Buffer.from(svgXml, 'utf8');
+    const result = extractSvgText(buf);
+    expect(result).toContain('Company logo for Acme Corp');
+  });
+
+  it('text-less svg (<svg><rect/></svg>) → empty string', () => {
+    const svgXml = `<svg xmlns="http://www.w3.org/2000/svg"><rect width="10" height="10"/></svg>`;
+    const buf = Buffer.from(svgXml, 'utf8');
+    const result = extractSvgText(buf);
+    expect(result).toBe('');
+  });
+
+  it('svg with only whitespace inside text elements → empty string', () => {
+    const svgXml = `<svg xmlns="http://www.w3.org/2000/svg">
+  <text>   </text>
+  <title>  </title>
+</svg>`;
+    const buf = Buffer.from(svgXml, 'utf8');
+    const result = extractSvgText(buf);
+    expect(result).toBe('');
+  });
+
+  it('output is capped at 50 000 chars', () => {
+    const longText = 'X'.repeat(60_000);
+    const svgXml = `<svg xmlns="http://www.w3.org/2000/svg"><text>${longText}</text></svg>`;
+    const buf = Buffer.from(svgXml, 'utf8');
+    const result = extractSvgText(buf);
+    expect(result.length).toBeLessThanOrEqual(50_000);
+  });
+
+  it('nested tags inside <text> are stripped (only text content retained)', () => {
+    const svgXml = `<svg xmlns="http://www.w3.org/2000/svg">
+  <text>Hello<tspan dy="1em">World</tspan></text>
+</svg>`;
+    const buf = Buffer.from(svgXml, 'utf8');
+    const result = extractSvgText(buf);
+    // Should contain the text words but not tag markup
+    expect(result).toContain('Hello');
+    expect(result).toContain('World');
+    expect(result).not.toContain('<tspan');
   });
 });
