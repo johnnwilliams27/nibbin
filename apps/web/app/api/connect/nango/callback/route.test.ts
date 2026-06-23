@@ -2,11 +2,11 @@
  * Task 9 TDD — POST /api/connect/nango/callback
  *
  * Covers:
- *  - Valid Nango auth webhook writes nango_connection_id + nango_provider_config_key
- *    + scopes + status=active to the connections row
+ *  - Valid Nango auth webhook with NO pre-existing row INSERTs a new active method:'N' row (C1)
+ *  - Valid Nango auth webhook with an existing non-revoked row UPDATEs it (no duplicate insert)
+ *  - Reconnect: existing revoked row + valid callback → new INSERT (F-A)
+ *  - Replay: idempotent — second valid callback on already-active row updates without error
  *  - Webhook signature verification (unsigned / bad sig → 401)
- *  - Unknown connectionId → 400 (no matching connection row)
- *  - Idempotency: replayed valid callback upserts without error
  *  - Non-auth type events (e.g. 'sync') → 200 no-op
  *  - Auth failure event (success:false) → 200 no-op
  *  - Gmail: watch() triggered on successful callback
@@ -30,39 +30,68 @@ const CALENDAR_CHANNEL_TOKEN = 'cal-token-test';
 
 // ── hoisted shared mocks ─────────────────────────────────────────────────────
 
-const { updateSpy, maybeSingleFn, gmailWatchSpy, calendarWatchSpy, verifyWebhookSpy, getConnectionSpy } =
-  vi.hoisted(() => {
-    const updateEqFn = vi.fn(() => Promise.resolve({ error: null }));
-    const updateSpy = vi.fn(() => ({ eq: updateEqFn }));
+const {
+  updateSpy,
+  insertSingleFn,
+  insertSpy,
+  maybeSingleFn,
+  gmailWatchSpy,
+  calendarWatchSpy,
+  verifyWebhookSpy,
+  getConnectionSpy,
+} = vi.hoisted(() => {
+  // update chain: .update(payload).eq('id', id)
+  const updateEqFn = vi.fn(() => Promise.resolve({ error: null }));
+  const updateSpy = vi.fn(() => ({ eq: updateEqFn }));
 
-    const maybeSingleFn = vi.fn(async () => ({ data: null as Record<string, unknown> | null, error: null }));
+  // insert chain: .insert(payload).select('id').single()
+  const insertSingleFn = vi.fn(async () => ({
+    data: { id: 'new-conn-uuid' } as Record<string, unknown> | null,
+    error: null,
+  }));
+  const insertSelectFn = vi.fn(() => ({ single: insertSingleFn }));
+  const insertSpy = vi.fn(() => ({ select: insertSelectFn }));
 
-    const gmailWatchSpy = vi.fn(async (_topic: string) => ({
-      historyId: '100',
-      expiration: String(Date.now() + 7 * 86400000),
-    }));
-    const calendarWatchSpy = vi.fn(async () => ({}));
+  // select chain: .select('id').eq().eq().neq().maybeSingle()
+  const maybeSingleFn = vi.fn(async () => ({
+    data: null as Record<string, unknown> | null,
+    error: null,
+  }));
 
-    let signingKey = 'test-webhook-signing-key';
-    const verifyWebhookSpy = vi.fn((rawBody: string, headers: Record<string, unknown>) => {
-      if (!signingKey) return false;
-      const sig = createHmac('sha256', signingKey).update(rawBody).digest('hex');
-      const headerSig = headers['x-nango-hmac-sha256'];
-      return typeof headerSig === 'string' && headerSig === sig;
-    });
-    // Expose the key mutator for the "no signing key" test
-    (verifyWebhookSpy as unknown as { _setKey: (k: string) => void })._setKey = (k: string) => {
-      signingKey = k;
-    };
+  const gmailWatchSpy = vi.fn(async (_topic: string) => ({
+    historyId: '100',
+    expiration: String(Date.now() + 7 * 86400000),
+  }));
+  const calendarWatchSpy = vi.fn(async () => ({}));
 
-    const getConnectionSpy = vi.fn(async () => ({
-      credentials: {
-        raw: { scope: 'https://www.googleapis.com/auth/gmail.readonly https://mail.google.com/' },
-      },
-    }));
-
-    return { updateSpy, maybeSingleFn, gmailWatchSpy, calendarWatchSpy, verifyWebhookSpy, getConnectionSpy };
+  let signingKey = 'test-webhook-signing-key';
+  const verifyWebhookSpy = vi.fn((rawBody: string, headers: Record<string, unknown>) => {
+    if (!signingKey) return false;
+    const sig = createHmac('sha256', signingKey).update(rawBody).digest('hex');
+    const headerSig = headers['x-nango-hmac-sha256'];
+    return typeof headerSig === 'string' && headerSig === sig;
   });
+  (verifyWebhookSpy as unknown as { _setKey: (k: string) => void })._setKey = (k: string) => {
+    signingKey = k;
+  };
+
+  const getConnectionSpy = vi.fn(async () => ({
+    credentials: {
+      raw: { scope: 'https://www.googleapis.com/auth/gmail.readonly https://mail.google.com/' },
+    },
+  }));
+
+  return {
+    updateSpy,
+    insertSingleFn,
+    insertSpy,
+    maybeSingleFn,
+    gmailWatchSpy,
+    calendarWatchSpy,
+    verifyWebhookSpy,
+    getConnectionSpy,
+  };
+});
 
 // ── vi.mock declarations ─────────────────────────────────────────────────────
 
@@ -74,17 +103,19 @@ vi.mock('../../../../../lib/supabase/service', () => ({
       select: vi.fn(() => ({
         eq: vi.fn(() => ({
           eq: vi.fn(() => ({
-            maybeSingle: maybySingleProxy,
+            neq: vi.fn(() => ({
+              maybeSingle: maybySingleProxy,
+            })),
           })),
         })),
       })),
       update: updateSpy,
+      insert: insertSpy,
     })),
   })),
 }));
 
-// We need a thin proxy because vi.hoisted runs before vi.mock factories, but
-// maybeSingleFn needs to be swappable per-test. Use a stable wrapper.
+// Thin proxy so maybeSingleFn is swappable per-test.
 function maybySingleProxy() {
   return maybeSingleFn();
 }
@@ -93,24 +124,6 @@ vi.mock('../../../../../lib/connectors/nango', () => ({
   getNango: vi.fn(() => ({
     verifyIncomingWebhookRequest: verifyWebhookSpy,
     getConnection: getConnectionSpy,
-  })),
-}));
-
-vi.mock('../../../../../lib/runtime/engine', () => ({
-  connectionFromRow: vi.fn((row: Record<string, unknown>) => ({
-    id: row.id as string,
-    accountId: row.account_id as string,
-    provider: row.provider as string,
-    method: (row.method ?? 'N') as 'N',
-    scopes: (row.scopes as string[]) ?? [],
-    status: row.status as string,
-    tokenRef: null,
-    webhookState: {},
-    createdBy: null,
-    createdAt: new Date(0).toISOString(),
-    revokedAt: null,
-    nangoConnectionId: (row.nango_connection_id as string | null) ?? null,
-    nangoProviderConfigKey: (row.nango_provider_config_key as string | null) ?? null,
   })),
 }));
 
@@ -167,7 +180,7 @@ function makeAuthEvent(
   };
 }
 
-function pendingGmailRow(
+function existingRow(
   overrides: Record<string, unknown> = {},
 ): Record<string, unknown> {
   return {
@@ -188,16 +201,17 @@ function pendingGmailRow(
 describe('POST /api/connect/nango/callback', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default: no pre-existing non-revoked row (covers the C1 insert path)
     maybeSingleFn.mockResolvedValue({ data: null, error: null });
+    // Default insert returns a new row id
+    insertSingleFn.mockResolvedValue({ data: { id: 'new-conn-uuid' }, error: null });
     process.env.NANGO_WEBHOOK_SIGNING_KEY = WEBHOOK_SIGNING_KEY;
     process.env.GMAIL_PUBSUB_TOPIC = GMAIL_PUBSUB_TOPIC;
     process.env.CALENDAR_WEBHOOK_ADDRESS = CALENDAR_CHANNEL_ADDR;
     process.env.CALENDAR_WEBHOOK_TOKEN = CALENDAR_CHANNEL_TOKEN;
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
     process.env.SUPABASE_SECRET_KEY = 'test-key';
-    // Reset verifyWebhookSpy signing key
     (verifyWebhookSpy as unknown as { _setKey: (k: string) => void })._setKey(WEBHOOK_SIGNING_KEY);
-    // Reset getConnection to gmail scopes
     getConnectionSpy.mockResolvedValue({
       credentials: {
         raw: { scope: 'https://www.googleapis.com/auth/gmail.readonly https://mail.google.com/' },
@@ -205,40 +219,99 @@ describe('POST /api/connect/nango/callback', () => {
     });
   });
 
-  // ── a. Valid event writes nango ids + scopes + status=active ──────────────
+  // ── C1: first-time connect — NO pre-existing row → INSERT ─────────────────
 
-  it('writes nango_connection_id + nango_provider_config_key + scopes + status=active on valid auth event', async () => {
-    maybeSingleFn.mockResolvedValueOnce({ data: pendingGmailRow(), error: null });
+  it('INSERTs a new active method:N connections row when no pre-existing row exists (C1 fix)', async () => {
+    // maybeSingleFn returns null — no pre-existing row (default from beforeEach)
 
     const { POST } = await import('./route');
     const req = makeRequest(makeAuthEvent());
     const res = await POST(req);
     expect(res.status).toBe(200);
 
+    // Must INSERT, not UPDATE
+    expect(insertSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        account_id: 'acc-123',
+        provider: 'gmail',
+        method: 'N',
+        nango_connection_id: 'nibbin-acc-123-gmail',
+        nango_provider_config_key: 'google-mail',
+        status: 'active',
+        scopes: expect.arrayContaining(['https://www.googleapis.com/auth/gmail.readonly']),
+      }),
+    );
+    expect(updateSpy).not.toHaveBeenCalled();
+  });
+
+  // ── UPDATE path: existing non-revoked row → UPDATE ───────────────────────
+
+  it('UPDATEs an existing non-revoked row (no duplicate insert)', async () => {
+    maybeSingleFn.mockResolvedValueOnce({ data: existingRow({ id: 'conn-uuid-001' }), error: null });
+
+    const { POST } = await import('./route');
+    const req = makeRequest(makeAuthEvent());
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+
+    // Must UPDATE, not INSERT
     expect(updateSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         nango_connection_id: 'nibbin-acc-123-gmail',
         nango_provider_config_key: 'google-mail',
         status: 'active',
-        scopes: expect.arrayContaining([
-          'https://www.googleapis.com/auth/gmail.readonly',
-        ]),
+        scopes: expect.arrayContaining(['https://www.googleapis.com/auth/gmail.readonly']),
       }),
     );
+    expect(insertSpy).not.toHaveBeenCalled();
   });
 
-  // ── b. Unknown connectionId → 400 ────────────────────────────────────────
+  // ── F-A: reconnect after revoke — revoked row is ignored → INSERT ─────────
 
-  it('returns 400 when connectionId does not match any connection row', async () => {
+  it('INSERTs a new row on reconnect when only a revoked row exists (F-A fix)', async () => {
+    // The lookup uses .neq('status','revoked') so it returns null even though a
+    // revoked row exists in the DB — the mock simulates this correctly.
     maybeSingleFn.mockResolvedValueOnce({ data: null, error: null });
 
     const { POST } = await import('./route');
-    const req = makeRequest(makeAuthEvent({ connectionId: 'nibbin-unknown-account-gmail' }));
+    const req = makeRequest(makeAuthEvent());
     const res = await POST(req);
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(200);
+
+    // Reconnect should INSERT a fresh row, not 400
+    expect(insertSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        account_id: 'acc-123',
+        provider: 'gmail',
+        method: 'N',
+        status: 'active',
+      }),
+    );
+    expect(updateSpy).not.toHaveBeenCalled();
   });
 
-  // ── c. Webhook signature validation ──────────────────────────────────────
+  // ── Idempotency: replay of valid callback on already-active row ───────────
+
+  it('is idempotent: replayed callback with already-active row updates without error or duplicate insert', async () => {
+    maybeSingleFn.mockResolvedValueOnce({
+      data: existingRow({
+        status: 'active',
+        nango_connection_id: 'nibbin-acc-123-gmail',
+        nango_provider_config_key: 'google-mail',
+        scopes: ['https://www.googleapis.com/auth/gmail.readonly'],
+      }),
+      error: null,
+    });
+
+    const { POST } = await import('./route');
+    const req = makeRequest(makeAuthEvent());
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    expect(updateSpy).toHaveBeenCalledTimes(1);
+    expect(insertSpy).not.toHaveBeenCalled();
+  });
+
+  // ── Webhook signature validation ──────────────────────────────────────────
 
   it('returns 401 when X-Nango-Hmac-Sha256 header is absent', async () => {
     const { POST } = await import('./route');
@@ -255,7 +328,6 @@ describe('POST /api/connect/nango/callback', () => {
   });
 
   it('returns 401 when NANGO_WEBHOOK_SIGNING_KEY is not set (verifyIncomingWebhookRequest returns false)', async () => {
-    // Simulate no signing key: the verifyWebhookSpy returns false
     (verifyWebhookSpy as unknown as { _setKey: (k: string) => void })._setKey('');
 
     const { POST } = await import('./route');
@@ -264,28 +336,7 @@ describe('POST /api/connect/nango/callback', () => {
     expect(res.status).toBe(401);
   });
 
-  // ── d. Idempotency ────────────────────────────────────────────────────────
-
-  it('is idempotent: replayed callback with already-active row upserts safely without error', async () => {
-    maybeSingleFn.mockResolvedValueOnce({
-      data: pendingGmailRow({
-        status: 'active',
-        nango_connection_id: 'nibbin-acc-123-gmail',
-        nango_provider_config_key: 'google-mail',
-        scopes: ['https://www.googleapis.com/auth/gmail.readonly'],
-      }),
-      error: null,
-    });
-
-    const { POST } = await import('./route');
-    const req = makeRequest(makeAuthEvent());
-    const res = await POST(req);
-    expect(res.status).toBe(200);
-    // upsert runs once (idempotent) — update called exactly once
-    expect(updateSpy).toHaveBeenCalledTimes(1);
-  });
-
-  // ── e. Non-auth events → 200 no-op ───────────────────────────────────────
+  // ── Non-auth events → 200 no-op ──────────────────────────────────────────
 
   it('returns 200 no-op for type=sync events', async () => {
     const { POST } = await import('./route');
@@ -306,11 +357,11 @@ describe('POST /api/connect/nango/callback', () => {
     const req = makeRequest(syncEvent);
     const res = await POST(req);
     expect(res.status).toBe(200);
-    // No DB write, no watch
     expect(updateSpy).not.toHaveBeenCalled();
+    expect(insertSpy).not.toHaveBeenCalled();
   });
 
-  // ── f. Auth failure → 200 no-op ──────────────────────────────────────────
+  // ── Auth failure → 200 no-op ──────────────────────────────────────────────
 
   it('returns 200 no-op for auth failure events (success:false)', async () => {
     const { POST } = await import('./route');
@@ -323,12 +374,22 @@ describe('POST /api/connect/nango/callback', () => {
     const res = await POST(req);
     expect(res.status).toBe(200);
     expect(updateSpy).not.toHaveBeenCalled();
+    expect(insertSpy).not.toHaveBeenCalled();
   });
 
-  // ── g. Gmail watch() triggered ────────────────────────────────────────────
+  // ── Gmail watch() triggered ───────────────────────────────────────────────
 
-  it('calls gmail.watch(topicName) after successful connect for gmail', async () => {
-    maybeSingleFn.mockResolvedValueOnce({ data: pendingGmailRow(), error: null });
+  it('calls gmail.watch(topicName) after successful connect for gmail (insert path)', async () => {
+    // No pre-existing row → INSERT path
+    const { POST } = await import('./route');
+    const req = makeRequest(makeAuthEvent());
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    expect(gmailWatchSpy).toHaveBeenCalledWith(GMAIL_PUBSUB_TOPIC);
+  });
+
+  it('calls gmail.watch(topicName) after successful connect for gmail (update path)', async () => {
+    maybeSingleFn.mockResolvedValueOnce({ data: existingRow(), error: null });
 
     const { POST } = await import('./route');
     const req = makeRequest(makeAuthEvent());
@@ -337,7 +398,7 @@ describe('POST /api/connect/nango/callback', () => {
     expect(gmailWatchSpy).toHaveBeenCalledWith(GMAIL_PUBSUB_TOPIC);
   });
 
-  // ── h. Google Calendar watchEvents() triggered ────────────────────────────
+  // ── Google Calendar watchEvents() triggered ────────────────────────────────
 
   it('calls calendarClient.watchEvents() after successful connect for google-calendar', async () => {
     getConnectionSpy.mockResolvedValueOnce({
@@ -346,13 +407,6 @@ describe('POST /api/connect/nango/callback', () => {
           scope: 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events',
         },
       },
-    });
-    maybeSingleFn.mockResolvedValueOnce({
-      data: pendingGmailRow({
-        provider: 'google-calendar',
-        account_id: 'acc-123',
-      }),
-      error: null,
     });
 
     const { POST } = await import('./route');
@@ -367,18 +421,17 @@ describe('POST /api/connect/nango/callback', () => {
     expect(calendarWatchSpy).toHaveBeenCalled();
   });
 
-  // ── i. Watch failure is non-fatal ─────────────────────────────────────────
+  // ── Watch failure is non-fatal ─────────────────────────────────────────────
 
   it('returns 200 even when watch() throws — row write is the critical step', async () => {
     gmailWatchSpy.mockRejectedValueOnce(new Error('pubsub quota exceeded'));
-    maybeSingleFn.mockResolvedValueOnce({ data: pendingGmailRow(), error: null });
 
     const { POST } = await import('./route');
     const req = makeRequest(makeAuthEvent());
     const res = await POST(req);
-    // Row write succeeded; watch failure must not surface as a 5xx
+    // Row write (insert) succeeded; watch failure must not surface as a 5xx
     expect(res.status).toBe(200);
-    // But the row update still happened
-    expect(updateSpy).toHaveBeenCalledTimes(1);
+    // Insert still happened
+    expect(insertSpy).toHaveBeenCalledTimes(1);
   });
 });

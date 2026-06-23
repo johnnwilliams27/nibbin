@@ -48,7 +48,6 @@ import { NextResponse, type NextRequest } from 'next/server';
 import type { NangoAuthWebhookBodySuccess, NangoWebhookBody } from '@nangohq/types';
 import { getNango } from '../../../../../lib/connectors/nango';
 import { serviceClient } from '../../../../../lib/supabase/service';
-import { connectionFromRow } from '../../../../../lib/runtime/engine';
 import { makeGmailClient, makeGoogleCalendarClient } from '@nibbin/connectors';
 
 export const dynamic = 'force-dynamic';
@@ -205,32 +204,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'unknown_provider_config_key' }, { status: 400 });
   }
 
-  // 6. Look up the connection row by (provider, nango_connection_id OR pending status)
-  //    We match on nango_connection_id OR on a pending row for this provider on the
-  //    account encoded in the connectionId (nibbin-{accountId}-{provider}).
+  // 6. Derive account from the connectionId and set up the service client.
   //    Derivation: connectionId = 'nibbin-{accountId}-{provider}' (Task 8).
   const accountId = deriveAccountId(connectionId, provider);
   const svc = serviceClient();
 
-  // Query: find the connection row for this (account, provider) — pending or active.
-  // An already-active row handles the idempotent replay case.
-  const { data: row, error: selectError } = await svc
-    .from('connections')
-    .select('*')
-    .eq('account_id', accountId)
-    .eq('provider', provider)
-    .maybeSingle();
-
-  if (selectError || !row) {
-    return NextResponse.json(
-      { error: 'connection_not_found', connectionId },
-      { status: 400 },
-    );
-  }
-
-  const connection = connectionFromRow(row as Record<string, unknown>);
-
   // 7. Read the granted scopes back from Nango (C8 scope-at-connect invariant)
+  //    Done BEFORE the row write so scopes are always from the live Nango token.
   let scopes: string[] = [];
   try {
     const connData = await nango.getConnection(providerConfigKey, connectionId);
@@ -244,28 +224,71 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     scopes = [];
   }
 
-  // 8. Upsert the connection row with Nango identifiers + scopes + active status
-  const { error: updateError } = await svc
+  // 8. Look up the non-revoked connection row for this (account, provider).
+  //    Scoped to non-revoked: a revoked row from a previous disconnect must not
+  //    block a reconnect (F-A fix). If no non-revoked row exists we INSERT one
+  //    instead of returning 400 (C1 fix: first-time [N] connect has no pre-existing row).
+  const { data: existingRow, error: selectError } = await svc
     .from('connections')
-    .update({
-      nango_connection_id: connectionId,
-      nango_provider_config_key: providerConfigKey,
-      scopes,
-      status: 'active',
-    })
-    .eq('id', connection.id);
+    .select('id')
+    .eq('account_id', accountId)
+    .eq('provider', provider)
+    .neq('status', 'revoked')
+    .maybeSingle();
 
-  if (updateError) {
-    console.error('[nango/callback] connection update failed', connection.id, updateError.message);
-    return NextResponse.json({ error: 'update_failed' }, { status: 500 });
+  if (selectError) {
+    console.error('[nango/callback] connection lookup failed', selectError.message);
+    return NextResponse.json({ error: 'lookup_failed' }, { status: 500 });
+  }
+
+  let rowId: string;
+
+  if (existingRow) {
+    // Non-revoked row exists → UPDATE it (idempotent replay / re-auth).
+    const { error: updateError } = await svc
+      .from('connections')
+      .update({
+        nango_connection_id: connectionId,
+        nango_provider_config_key: providerConfigKey,
+        scopes,
+        status: 'active',
+      })
+      .eq('id', existingRow.id);
+
+    if (updateError) {
+      console.error('[nango/callback] connection update failed', existingRow.id, updateError.message);
+      return NextResponse.json({ error: 'update_failed' }, { status: 500 });
+    }
+    rowId = existingRow.id as string;
+  } else {
+    // No non-revoked row → INSERT a new active [N] row (first-time connect).
+    const { data: inserted, error: insertError } = await svc
+      .from('connections')
+      .insert({
+        account_id: accountId,
+        provider,
+        method: 'N',
+        nango_connection_id: connectionId,
+        nango_provider_config_key: providerConfigKey,
+        scopes,
+        status: 'active',
+      })
+      .select('id')
+      .single();
+
+    if (insertError || !inserted) {
+      console.error('[nango/callback] connection insert failed', insertError?.message);
+      return NextResponse.json({ error: 'insert_failed' }, { status: 500 });
+    }
+    rowId = inserted.id as string;
   }
 
   // 9. Trigger push watch registration — fire-and-forget (non-fatal)
   try {
     if (provider === 'gmail') {
-      await registerGmailWatch(nango, connection.id, connectionId, provider, scopes, accountId);
+      await registerGmailWatch(nango, rowId, connectionId, provider, scopes, accountId);
     } else if (provider === 'google-calendar') {
-      await registerCalendarWatch(nango, connection.id, connectionId, provider, scopes, accountId);
+      await registerCalendarWatch(nango, rowId, connectionId, provider, scopes, accountId);
     }
   } catch (e) {
     // Log but do not fail the response — the cron will bootstrap the watch.

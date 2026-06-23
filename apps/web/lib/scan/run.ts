@@ -17,6 +17,11 @@ import { serviceClient } from '../supabase/service';
 import { SupabaseEventSink } from '../runtime/stores';
 import { activeConnections, connectionFromRow, devSeedEnabled, readerForConnection } from '../runtime/engine';
 
+// Dev-fixture intentional mismatch: gmail + google-calendar are method:'N' in
+// production (registry) but seeded as 'H' here so readerForConnection falls
+// through to fixtureReader (token_ref=null + devSeedEnabled). Seeding 'N' with
+// a null nango_connection_id would cause makeGmailClient to throw. The seed is
+// non-production only (NIBBIN_DEV_SEED=1) and never touches real OAuth tokens.
 const SEED_PROVIDERS: Array<{ provider: string; method: 'A' | 'H' | 'G' }> = [
   { provider: 'gmail', method: 'H' },
   { provider: 'google-calendar', method: 'H' },
