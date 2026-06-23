@@ -16,3 +16,76 @@ alter table public.sources
     check (extraction_state in ('pending','extracting','extracted','unsupported','failed'));
 
 create index sources_account_state_idx on public.sources (account_id, extraction_state);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Task 2: upsert_section_meta — create / rename / reorder / hide a section
+-- ─────────────────────────────────────────────────────────────────────────────
+create function public.upsert_section_meta(
+  target_account uuid,
+  p_field_key    text,
+  p_label        text,
+  p_sort_order   integer,
+  p_is_custom    boolean,
+  p_is_hidden    boolean
+) returns void
+language plpgsql security definer set search_path = '' as $$
+declare
+  uid            uuid    := (select auth.uid());
+  existing_count integer;
+begin
+  if uid is null then raise exception 'not authenticated'; end if;
+  if not (select private.is_account_member(target_account)) then
+    raise exception 'not a member of this account';
+  end if;
+  if p_is_custom and p_field_key !~ '^c_[a-z0-9_]{1,40}$' then
+    raise exception 'invalid custom field key';
+  end if;
+  if p_label is not null and char_length(p_label) > 60 then
+    raise exception 'label too long';
+  end if;
+
+  perform pg_advisory_xact_lock(hashtext('grove_memory:' || target_account::text));
+
+  -- enforce 40-section cap on NEW custom rows only
+  if p_is_custom and not exists (
+    select 1 from public.field_meta
+     where account_id = target_account and field_key = p_field_key
+  ) then
+    select count(*) into existing_count from public.field_meta
+      where account_id = target_account and is_custom and not is_hidden;
+    if existing_count >= 40 then
+      raise exception 'section limit reached (max 40)';
+    end if;
+  end if;
+
+  insert into public.field_meta (account_id, field_key, label, sort_order, is_custom, is_hidden)
+    values (target_account, p_field_key, p_label, coalesce(p_sort_order, 1000), p_is_custom, p_is_hidden)
+  on conflict (account_id, field_key) do update
+    set label      = excluded.label,
+        sort_order = excluded.sort_order,
+        is_hidden  = excluded.is_hidden;
+
+  update public.grove_memory set version = version + 1, updated_at = now()
+    where account_id = target_account;
+
+  insert into public.grove_memory_history
+    (account_id, field_key, old_value, new_value, version, change_source, changed_by)
+  values (
+    target_account,
+    p_field_key,
+    null,
+    coalesce(p_label, p_field_key),
+    coalesce(
+      (select version from public.grove_memory where account_id = target_account),
+      1
+    ),
+    'manual',
+    uid
+  );
+end;
+$$;
+
+revoke execute on function public.upsert_section_meta(uuid, text, text, integer, boolean, boolean)
+  from public, anon, service_role;
+grant execute on function public.upsert_section_meta(uuid, text, text, integer, boolean, boolean)
+  to authenticated;
