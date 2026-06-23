@@ -217,6 +217,77 @@ describe('ReferenceCatchAll — edit mode', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Task 14 — Show-all toggle a11y + motion classes (static markup contract)
+// ---------------------------------------------------------------------------
+
+describe('ReferenceCatchAll — Task 14: Show-all toggle a11y', () => {
+  it('Show-all button carries aria-expanded="false" when collapsed (default)', () => {
+    const html = renderToStaticMarkup(
+      <ReferenceCatchAll value={LONG_VALUE} onSave={noop} testMode="view" />,
+    );
+    // Default (collapsed) state: aria-expanded must be false
+    expect(html).toContain('aria-expanded="false"');
+  });
+
+  it('Show-all button has label "Show all" when collapsed', () => {
+    const html = renderToStaticMarkup(
+      <ReferenceCatchAll value={LONG_VALUE} onSave={noop} testMode="view" />,
+    );
+    expect(html).toContain('Show all');
+  });
+
+  it('the <pre> does NOT carry the referencePreExpanded class when collapsed', () => {
+    const html = renderToStaticMarkup(
+      <ReferenceCatchAll value={LONG_VALUE} onSave={noop} testMode="view" />,
+    );
+    // referencePreExpanded class should not appear in the default (collapsed) render
+    expect(html).not.toContain('referencePreExpanded');
+  });
+
+  it('Show-all toggle is keyboard-operable (is a <button>)', () => {
+    const html = renderToStaticMarkup(
+      <ReferenceCatchAll value={LONG_VALUE} onSave={noop} testMode="view" />,
+    );
+    // Confirm the affordance is a <button> (natively keyboard-operable)
+    // The button should have type="button"
+    expect(html).toContain('type="button"');
+    // And it should contain the toggle label
+    expect(html).toContain('Show all');
+  });
+
+  it('referenceShowAll class is present on the toggle button', () => {
+    const html = renderToStaticMarkup(
+      <ReferenceCatchAll value={LONG_VALUE} onSave={noop} testMode="view" />,
+    );
+    expect(html).toContain('referenceShowAll');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Task 14 — Show-all reducer tested via pure function (no DOM)
+// ---------------------------------------------------------------------------
+
+import { showAllReducer, initialShowAllState } from './showAll.reducer';
+
+describe('ReferenceCatchAll — Task 14: showAllReducer integration', () => {
+  it('initial state matches the collapsed default (aria-expanded="false")', () => {
+    // The component renders with initialShowAllState (false) → aria-expanded="false"
+    expect(initialShowAllState).toBe(false);
+  });
+
+  it('toggle from collapsed → expanded (simulates clicking "Show all")', () => {
+    const expanded = showAllReducer(initialShowAllState, 'toggle');
+    expect(expanded).toBe(true);
+  });
+
+  it('toggle from expanded → collapsed (simulates clicking "Collapse")', () => {
+    const expanded = showAllReducer(initialShowAllState, 'toggle');
+    const collapsed = showAllReducer(expanded, 'toggle');
+    expect(collapsed).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Pure reducer logic (via editReducer from Task 7) — no DOM needed
 // ---------------------------------------------------------------------------
 

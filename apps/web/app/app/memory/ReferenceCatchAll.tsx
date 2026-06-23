@@ -28,6 +28,7 @@
 
 import React, { useState, useReducer, useRef, useEffect } from 'react';
 import { editReducer, initialState } from './fieldEditor.reducer';
+import { showAllReducer, initialShowAllState } from './showAll.reducer';
 import styles from './memory.module.css';
 
 // ---------------------------------------------------------------------------
@@ -86,6 +87,16 @@ export function ReferenceCatchAll({
 
   // Reducer for editor interaction state (reuses the Task 7 reducer).
   const [editorState, editorDispatch] = useReducer(editReducer, localValue, initialState);
+
+  // Task 14 — Show-all toggle state (pure reducer).
+  // `showExpanded` drives:
+  //   - aria-expanded on the toggle button (reflects state to assistive tech)
+  //   - the .referencePreExpanded CSS class that lifts the max-height cap
+  //   - the toggle button label ("Show all" / "Collapse")
+  const [showExpanded, dispatchShowAll] = useReducer(
+    showAllReducer,
+    initialShowAllState,
+  );
 
   // When editorState.mode transitions to 'viewing' (cancel or saveSuccess),
   // switch back to view mode and return focus to Edit button.
@@ -152,15 +163,33 @@ export function ReferenceCatchAll({
           ) : (
             /* Value rendered as <pre> — no structural formatting (§8.1) */
             <div className={styles.referencePreWrap}>
-              <pre className={styles.referencePre}>{localValue}</pre>
+              {/* Motion: .referencePreExpanded lifts the max-height constraint
+                  when the user expands. The .referencePre class already carries
+                  a max-height transition; the global prefers-reduced-motion rule
+                  in globals.css collapses it to 0.01ms automatically. */}
+              <pre
+                className={
+                  showExpanded
+                    ? `${styles.referencePre} ${styles.referencePreExpanded}`
+                    : styles.referencePre
+                }
+              >
+                {localValue}
+              </pre>
               {isLong && (
+                /* Show all / Collapse affordance.
+                   a11y: aria-expanded reflects the toggle state so screen readers
+                   announce "Show all, collapsed" / "Collapse, expanded".
+                   keyboard: standard button — Enter/Space activate.
+                   Focus stays on this button after toggle (no focus management
+                   needed — the button stays in place). */
                 <button
                   type="button"
                   className={styles.referenceShowAll}
-                  aria-expanded="false"
-                  onClick={undefined /* Task 14 wires this toggle */}
+                  aria-expanded={showExpanded}
+                  onClick={testMode ? undefined : () => dispatchShowAll('toggle')}
                 >
-                  Show all
+                  {showExpanded ? 'Collapse' : 'Show all'}
                 </button>
               )}
             </div>
@@ -253,7 +282,7 @@ function ReferenceEditor({
       {/* Inline confirmation region */}
       <div aria-live="assertive" className={styles.confirmRegion}>
         {confirming === 'cancel' && (
-          <div className={styles.confirmPrompt}>
+          <div className={`${styles.confirmPrompt} ${styles.confirmFade}`}>
             <span>Discard changes?</span>
             <button
               type="button"
@@ -272,7 +301,7 @@ function ReferenceEditor({
           </div>
         )}
         {confirming === 'clear' && (
-          <div className={styles.confirmPrompt}>
+          <div className={`${styles.confirmPrompt} ${styles.confirmFade}`}>
             <span>Clear Reference material?</span>
             <button
               type="button"

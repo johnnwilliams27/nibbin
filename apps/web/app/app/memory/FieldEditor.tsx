@@ -156,10 +156,12 @@ function FieldEditorInner({
       </div>
 
       {/* Inline confirmation region — aria-live so screen readers announce it.
-          Rendered unconditionally as a live region; content appears/disappears. */}
+          Rendered unconditionally as a live region; content appears/disappears.
+          Motion: .confirmFade is applied to the prompt row so it fades in when
+          it appears. Duration --dur-1 (~100ms) keeps it snappy. */}
       <div aria-live="assertive" className={styles.confirmRegion}>
         {confirming === 'cancel' && (
-          <div className={styles.confirmPrompt}>
+          <div className={`${styles.confirmPrompt} ${styles.confirmFade}`}>
             <span>Discard changes?</span>
             <button
               type="button"
@@ -178,7 +180,7 @@ function FieldEditorInner({
           </div>
         )}
         {confirming === 'clear' && (
-          <div className={styles.confirmPrompt}>
+          <div className={`${styles.confirmPrompt} ${styles.confirmFade}`}>
             <span>Clear {label}?</span>
             <button
               type="button"

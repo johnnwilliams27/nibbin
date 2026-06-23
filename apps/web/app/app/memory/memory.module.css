@@ -969,6 +969,102 @@
   font-style: italic;
 }
 
+/* ── Task 14: Motion + a11y polish ──────────────────────────────────────── */
+/*
+ * Motion philosophy (§13 / frontend-design skill):
+ *   - Subtle, fast, purposeful — nothing that delays the deliberate Edit→Save feel.
+ *   - All transitions respect prefers-reduced-motion via the global rule in
+ *     globals.css (collapses all animation/transition-duration to 0.01ms).
+ *   - Token-only: --dur-1 / --dur-2 / --ease-settle are the only timing values.
+ *
+ * Patterns used:
+ *   1. view↔edit crossfade — opacity fade on the content area swap (fieldContent /
+ *      fieldContentEdit). Uses opacity transition rather than grid-template-rows
+ *      because the textarea height is dynamic; opacity is cleaner here.
+ *   2. Tab panel fade — tabFadeIn animation on each panel when it becomes visible.
+ *   3. Inline-confirm fade — confirmFadeIn on the confirmPrompt when it appears.
+ *   4. Reference Show-all — max-height transition lifts the truncation cap.
+ *
+ * Reduced-motion: the globals.css rule
+ *     `* { animation-duration: 0.01ms; transition-duration: 0.01ms }`
+ *   covers all transitions below automatically.  No per-class duplication needed.
+ */
+
+/* ── Content area: view↔edit crossfade ──────────────────────────────────── */
+/*
+ * Wraps the FieldView or FieldEditor in FieldBlock.
+ * In view mode: .fieldContent (fadeIn on appearance)
+ * In edit mode: .fieldContentEdit (same animation — entering the editor)
+ *
+ * Uses an opacity keyframe so the transition feels like a gentle swap,
+ * not a hard cut. Duration is --dur-2 (≈150ms) — fast enough to feel instant,
+ * slow enough to read as intentional.
+ */
+@keyframes fieldFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.fieldContent {
+  animation: fieldFadeIn var(--dur-2, 150ms) var(--ease-settle) both;
+}
+
+.fieldContentEdit {
+  animation: fieldFadeIn var(--dur-2, 150ms) var(--ease-settle) both;
+}
+
+/* ── Tab panel fade ──────────────────────────────────────────────────────── */
+/*
+ * Applied to the tab panel wrapper in MemoryClient when a tab becomes active.
+ * A gentle upward-fade-in (translateY 4px → 0) so the panel feels like it
+ * "arrives" rather than blinking. Duration: --dur-2.
+ */
+@keyframes tabPanelFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.tabPanelActive {
+  animation: tabPanelFadeIn var(--dur-2, 150ms) var(--ease-settle) both;
+}
+
+/* ── Inline-confirm fade ─────────────────────────────────────────────────── */
+/*
+ * Fades in the confirm prompt row when it appears inside the aria-live region.
+ * Quick --dur-1 (≈100ms) — confirmation is urgent, shouldn't feel slow.
+ */
+@keyframes confirmFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.confirmFade {
+  animation: confirmFadeIn var(--dur-1, 100ms) var(--ease-settle) both;
+}
+
+/* ── Reference Show-all expansion ───────────────────────────────────────── */
+/*
+ * The <pre> starts at max-height: 320px (truncated).
+ * When .referencePreExpanded is applied, max-height is lifted to a large value
+ * (9999px) to reveal all content. Transitioning max-height creates the
+ * slide-expand effect.
+ *
+ * max-height transition is the standard safe pattern for dynamic-height expand
+ * because the browser doesn't animate height: auto directly.
+ *
+ * Transition duration: --dur-3 (≈240ms) — slightly slower because the content
+ * can be long; the animation needs time to feel smooth.
+ */
+.referencePreExpanded {
+  max-height: 9999px !important;
+  transition: max-height var(--dur-3, 240ms) var(--ease-settle);
+}
+
+/* The collapsed pre also transitions its max-height so collapse feels smooth */
+.referencePre {
+  transition: max-height var(--dur-3, 240ms) var(--ease-settle);
+}
+
 /* ── Task 13: EvidenceList — gated F1 evidence store ────────────────────── */
 
 /* Graceful empty banner — understory bg, no spinner */

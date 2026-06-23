@@ -183,13 +183,16 @@ export function MemoryClient({
       {/* Tab bar */}
       <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
 
-      {/* Grove Memory tab panel */}
+      {/* Grove Memory tab panel.
+          Motion: .tabPanelActive applies a gentle fade-in when the panel becomes
+          visible. The hidden attribute suppresses the panel when inactive, and the
+          animation re-fires on reveal. Reduced-motion is handled globally. */}
       <div
         id={PANEL_IDS.memory}
         role="tabpanel"
         aria-labelledby={TAB_IDS.memory}
         hidden={activeTab !== 'memory'}
-        className={styles.tabPanel}
+        className={`${styles.tabPanel} ${styles.tabPanelActive}`}
       >
         <GroveMemoryTab
           values={values}
@@ -200,13 +203,14 @@ export function MemoryClient({
         />
       </div>
 
-      {/* Sources tab panel — Task 13: ReferenceCatchAll + EvidenceList */}
+      {/* Sources tab panel — Task 13: ReferenceCatchAll + EvidenceList.
+          Motion: same tabPanelActive fade applied on reveal. */}
       <div
         id={PANEL_IDS.sources}
         role="tabpanel"
         aria-labelledby={TAB_IDS.sources}
         hidden={activeTab !== 'sources'}
-        className={styles.tabPanel}
+        className={`${styles.tabPanel} ${styles.tabPanelActive}`}
       >
         <SourcesTab
           referenceValue={referenceValue}

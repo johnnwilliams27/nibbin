@@ -234,6 +234,40 @@ describe('FieldBlock — provenance slot (pre-F1, graceful empty)', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Task 14 — Motion classes (static markup contract)
+// ---------------------------------------------------------------------------
+
+describe('FieldBlock — Task 14: motion classes', () => {
+  it('view mode content area carries the fieldContent motion class', () => {
+    const html = renderToStaticMarkup(
+      <FieldBlock
+        fieldKey="pricing"
+        label="Pricing"
+        rawValue="$400"
+        onSave={noopSave}
+        testMode="view"
+      />,
+    );
+    // Task 14: fieldContent class provides the view↔edit crossfade
+    expect(html).toContain('fieldContent');
+  });
+
+  it('edit mode content area carries the fieldContentEdit motion class', () => {
+    const html = renderToStaticMarkup(
+      <FieldBlock
+        fieldKey="pricing"
+        label="Pricing"
+        rawValue="$400"
+        onSave={noopSave}
+        testMode="edit"
+      />,
+    );
+    // Task 14: fieldContentEdit class provides the edit-mode fade-in
+    expect(html).toContain('fieldContentEdit');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // CSS classes — structural contract
 // ---------------------------------------------------------------------------
 

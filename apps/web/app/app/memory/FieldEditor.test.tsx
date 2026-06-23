@@ -372,6 +372,61 @@ describe('FieldEditor — saving mode (disabled state)', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Task 14 — Motion class presence (static markup contract)
+// ---------------------------------------------------------------------------
+
+describe('FieldEditor — Task 14: motion + a11y classes', () => {
+  it('confirm prompt carries the confirmFade motion class (cancel)', () => {
+    const state = editingState('changed', {
+      original: 'original',
+      dirty: true,
+      confirming: 'cancel',
+    });
+    const html = renderToStaticMarkup(
+      <FieldEditor
+        fieldKey="facts"
+        label="Business facts"
+        state={state}
+        dispatch={noop}
+        onSave={async () => {}}
+      />,
+    );
+    // Task 14: confirmFade class must be present on the confirm prompt row
+    expect(html).toContain('confirmFade');
+  });
+
+  it('confirm prompt carries the confirmFade motion class (clear)', () => {
+    const state = editingState('text', { confirming: 'clear' });
+    const html = renderToStaticMarkup(
+      <FieldEditor
+        fieldKey="pricing"
+        label="Pricing"
+        state={state}
+        dispatch={noop}
+        onSave={async () => {}}
+      />,
+    );
+    expect(html).toContain('confirmFade');
+  });
+
+  it('aria-live="assertive" region is always present (even when no confirmation showing)', () => {
+    const state = editingState('text', { confirming: null });
+    const html = renderToStaticMarkup(
+      <FieldEditor
+        fieldKey="facts"
+        label="Business facts"
+        state={state}
+        dispatch={noop}
+        onSave={async () => {}}
+      />,
+    );
+    // The live region must always be in the DOM (not conditionally rendered)
+    // so screen readers have a stable target to announce into
+    expect(html).toContain('aria-live="assertive"');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // No <ul>, <dl>, <blockquote> in editor (those are FieldView territory)
 // ---------------------------------------------------------------------------
 

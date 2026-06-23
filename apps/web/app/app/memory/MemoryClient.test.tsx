@@ -314,3 +314,58 @@ describe('MemoryClient — Sources tab stub', () => {
     expect(html).toContain('Sources');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Task 14 — Motion + a11y (static markup contract)
+// ---------------------------------------------------------------------------
+
+describe('MemoryClient — Task 14: motion + a11y', () => {
+  it('tab panel carries the tabPanelActive motion class', () => {
+    const html = renderToStaticMarkup(
+      <MemoryClient
+        initialValues={filledValues}
+        initialReference=""
+        isEmpty={false}
+      />,
+    );
+    // Task 14: tabPanelActive class provides the fade-in on tab reveal
+    expect(html).toContain('tabPanelActive');
+  });
+
+  it('tab container still carries role="tablist"', () => {
+    const html = renderToStaticMarkup(
+      <MemoryClient
+        initialValues={filledValues}
+        initialReference=""
+        isEmpty={false}
+      />,
+    );
+    expect(html).toContain('role="tablist"');
+  });
+
+  it('tab buttons still carry role="tab"', () => {
+    const html = renderToStaticMarkup(
+      <MemoryClient
+        initialValues={filledValues}
+        initialReference=""
+        isEmpty={false}
+      />,
+    );
+    expect(html).toContain('role="tab"');
+  });
+
+  it('both tab panels carry role="tabpanel"', () => {
+    const html = renderToStaticMarkup(
+      <MemoryClient
+        initialValues={filledValues}
+        initialReference=""
+        isEmpty={false}
+      />,
+    );
+    // Count occurrences of role="tabpanel"
+    const matches = html.match(/role="tabpanel"/g);
+    expect(matches).not.toBeNull();
+    // Should have at least 2 (one per tab)
+    expect(matches!.length).toBeGreaterThanOrEqual(2);
+  });
+});

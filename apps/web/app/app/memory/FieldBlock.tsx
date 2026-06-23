@@ -209,21 +209,27 @@ export function FieldBlock({
         )}
       </div>
 
-      {/* Content area: switches between FieldView and FieldEditor */}
+      {/* Content area: switches between FieldView and FieldEditor.
+          Motion: each mode switch is wrapped in a fade-in class so the content
+          swap feels like a gentle crossfade rather than a hard cut.
+          The global prefers-reduced-motion rule in globals.css collapses the
+          animation-duration to 0.01ms automatically — no duplicate media query needed. */}
       {mode === 'view' ? (
-        <div className={styles.fieldView}>
+        <div className={`${styles.fieldView} ${styles.fieldContent}`}>
           <FieldView descriptor={descriptor} placeholder={placeholder} />
         </div>
       ) : (
-        <FieldEditor
-          fieldKey={fieldKey}
-          label={label}
-          hint={hint}
-          state={editorState}
-          dispatch={editorDispatch}
-          initialValue={localValue}
-          onSave={handleEditorSave}
-        />
+        <div className={styles.fieldContentEdit}>
+          <FieldEditor
+            fieldKey={fieldKey}
+            label={label}
+            hint={hint}
+            state={editorState}
+            dispatch={editorDispatch}
+            initialValue={localValue}
+            onSave={handleEditorSave}
+          />
+        </div>
       )}
 
       {/* Provenance slot: always rendered, empty pre-F1 (§11 / §226) */}
