@@ -111,6 +111,12 @@ vi.mock('mammoth', () => ({
   },
 }));
 
+// ── Mock: office-extract (pptx extractor) ─────────────────────────────────
+const mockExtractPptxText = vi.fn();
+vi.mock('./office-extract', () => ({
+  extractPptxText: (...args: unknown[]) => mockExtractPptxText(...args),
+}));
+
 // ── Import the module under test ───────────────────────────────────────────
 import { extractDocument, classifyExtractor } from './doc-extract';
 
@@ -791,8 +797,11 @@ describe('classifyExtractor', () => {
     // SVG is text-based, but requires rasterisation for vision. Stored as phase2/unsupported for now.
     expect(classifyExtractor('image/svg+xml', 'logo.svg')).toBe('phase2');
   });
-  it('pptx mime → phase2', () => {
-    expect(classifyExtractor('application/vnd.openxmlformats-officedocument.presentationml.presentation', 'deck.pptx')).toBe('phase2');
+  it('pptx mime → pptx', () => {
+    expect(classifyExtractor('application/vnd.openxmlformats-officedocument.presentationml.presentation', 'deck.pptx')).toBe('pptx');
+  });
+  it('.pptx extension fallback → pptx', () => {
+    expect(classifyExtractor('', 'deck.pptx')).toBe('pptx');
   });
   it('xlsx mime → phase2', () => {
     expect(classifyExtractor('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'data.xlsx')).toBe('phase2');
@@ -859,7 +868,8 @@ describe('extractDocument — Task 5 state transitions', () => {
     expect(states.indexOf('extracting')).toBeLessThan(states.indexOf('extracted'));
   });
 
-  it('T5-2. pptx (phase2) → extraction_state=unsupported, zero proposals', async () => {
+  it('T5-2. pptx empty text → extraction_state=unsupported, zero proposals', async () => {
+    // pptx is now a real extractor. When the pptx yields no text, mark unsupported.
     mockStorageDownload.mockResolvedValue({
       data: Buffer.from('PPTX bytes'),
       error: null,
@@ -875,16 +885,95 @@ describe('extractDocument — Task 5 state transitions', () => {
       error: null,
     });
 
+    // pptx extractor returns empty string → unsupported
+    mockExtractPptxText.mockResolvedValue('');
+
     await extractDocument(SOURCE_ID, ACCOUNT_ID);
 
     // Zero proposals
     expect(mockRpc).not.toHaveBeenCalled();
-    // No LLM call
+    // No LLM call (no text to process)
     expect(mockGenerateFn).not.toHaveBeenCalled();
 
     const states = extractionStateWrites();
     expect(states).toContain('extracting');
     expect(states).toContain('unsupported');
+  });
+
+  it('T5-2b. pptx with text → redaction gate + LLM + proposals → extracted', async () => {
+    // When pptx yields text, the pipeline continues through redaction + LLM.
+    const pptxText = 'This is a photography pricing deck with our studio packages and rates for 2026.';
+    mockStorageDownload.mockResolvedValue({
+      data: Buffer.from('PPTX bytes'),
+      error: null,
+    });
+    mockSelect.mockResolvedValue({
+      data: {
+        origin: {
+          filename: 'pricing.pptx',
+          mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        },
+        id: SOURCE_ID,
+      },
+      error: null,
+    });
+
+    // pptx extractor returns real text
+    mockExtractPptxText.mockResolvedValue(pptxText);
+
+    // Redaction: clean
+    mockApplyBattery.mockReturnValue({ text: pptxText, rulesHit: [] });
+    mockHeuristicNerRedact.mockResolvedValue({ redacted: pptxText, rulesHit: [] });
+
+    // Router + LLM
+    mockGroveRouterRoute.mockResolvedValue({ model: 'claude-haiku-4-5-20251001', tier: 't1', degraded: false });
+    mockGenerateFn.mockResolvedValue({
+      text: JSON.stringify({ pricing: 'Studio packages', facts: 'Photography studio' }),
+      model: 'claude-haiku-4-5-20251001',
+      usage: { inputTokens: 80, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 30 },
+      stopReason: 'end_turn',
+    });
+
+    await extractDocument(SOURCE_ID, ACCOUNT_ID);
+
+    // At least one proposal
+    expect(mockRpc).toHaveBeenCalled();
+    // All proposals must be append-only
+    for (const call of mockRpc.mock.calls) {
+      if (call[0] === 'propose_memory_change') {
+        expect(call[1]).toMatchObject({ p_op: 'append' });
+      }
+    }
+
+    const states = extractionStateWrites();
+    expect(states).toContain('extracting');
+    expect(states).toContain('extracted');
+  });
+
+  it('T5-2c. pptx extractor throws → extraction_state=failed, zero proposals (fail-closed)', async () => {
+    mockStorageDownload.mockResolvedValue({
+      data: Buffer.from('PPTX bytes'),
+      error: null,
+    });
+    mockSelect.mockResolvedValue({
+      data: {
+        origin: {
+          filename: 'bad.pptx',
+          mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        },
+        id: SOURCE_ID,
+      },
+      error: null,
+    });
+
+    // Extractor throws
+    mockExtractPptxText.mockRejectedValue(new Error('corrupt zip'));
+
+    await extractDocument(SOURCE_ID, ACCOUNT_ID);
+
+    expect(mockRpc).not.toHaveBeenCalled();
+    const states = extractionStateWrites();
+    expect(states).toContain('failed');
   });
 
   it('T5-3. extractor throws → extraction_state=failed, zero proposals', async () => {

@@ -37,6 +37,7 @@ import { groveRouter } from '../grove/router';
 import { buildStoragePath } from './storage-path';
 import type { VisionCostCtx } from './vision-extract';
 import { extractFromImage } from './vision-extract';
+import { extractPptxText } from './office-extract';
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
@@ -80,9 +81,11 @@ const QUARANTINE_RULES = new Set<string>(['SSN', 'CARD', 'APIKEY']);
 const PDF_MIME = 'application/pdf';
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
-/** MIME types for Phase 2 structured parsers (pptx, xlsx) — unsupported until parser added. */
+/** MIME for pptx — now has a real extractor. */
+const PPTX_MIME = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+
+/** MIME types for Phase 2 structured parsers (xlsx) — unsupported until parser added. */
 const PHASE2_MIMES = new Set<string>([
-  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 ]);
 
@@ -99,13 +102,14 @@ const PHASE2_MIMES = new Set<string>([
  *   'image'      — raster images (png/jpeg/webp); vision path is Task 6
  *                  NOTE: SVG is text-based XML but needs rasterisation for
  *                  vision — treated as 'phase2' until a rasteriser is wired.
- *   'phase2'     — pptx, xlsx, svg; structured parsers deferred to Phase 2
+ *   'pptx'       — PowerPoint Open XML (.pptx); text extracted via office-extract
+ *   'phase2'     — xlsx, svg; structured parsers deferred to Phase 2
  *   'unknown'    — anything else; stored as-is with extraction_state='unsupported'
  */
 export function classifyExtractor(
   mime: string,
   filename: string,
-): 'textnative' | 'docx' | 'pdf' | 'image' | 'phase2' | 'unknown' {
+): 'textnative' | 'docx' | 'pdf' | 'image' | 'pptx' | 'phase2' | 'unknown' {
   const ext = filename.toLowerCase().split('.').pop() ?? '';
 
   // text-native: utf-8 decode + existing strip/cap pipeline
@@ -130,8 +134,11 @@ export function classifyExtractor(
   // SVG: text-based, but vision-only, needs rasteriser → phase2 for now
   if (mime === 'image/svg+xml' || ext === 'svg') return 'phase2';
 
-  // Phase 2 structured parsers not yet implemented
-  if (PHASE2_MIMES.has(mime) || ext === 'pptx' || ext === 'xlsx') return 'phase2';
+  // PPTX: real text extractor available (office-extract.ts)
+  if (mime === PPTX_MIME || ext === 'pptx') return 'pptx';
+
+  // Phase 2 structured parsers not yet implemented (xlsx)
+  if (PHASE2_MIMES.has(mime) || ext === 'xlsx') return 'phase2';
 
   return 'unknown';
 }
@@ -634,8 +641,22 @@ export async function extractDocument(sourceId: string, accountId: string): Prom
     // Step 5: Text extraction dispatch by kind
     let rawText: string;
     let truncatedPages = false;
+    // pptx proposals are append-only (extraction is additive; Task 1 constraint).
+    // Task 4 will extend append-only to all text extractors.
+    let appendOnly = kind === 'pptx';
 
-    if (kind === 'pdf') {
+    if (kind === 'pptx') {
+      // pptx text extraction via office-extract.ts (unzip + <a:t> concatenation).
+      // Throws on corrupt zip → outer catch → failed (fail-closed).
+      const pptxText = await extractPptxText(buffer);
+      if (!pptxText) {
+        // No text found → stored-but-not-extracted (store-never-drop)
+        await updateExtractionState(svc, sourceId, 'unsupported');
+        await updateJobStatus(svc, sourceId, accountId, 'done');
+        return;
+      }
+      rawText = pptxText;
+    } else if (kind === 'pdf') {
       const pdfResult = await extractPdfText(buffer);
       rawText = pdfResult.rawText;
       truncatedPages = pdfResult.truncatedPages;
@@ -781,7 +802,8 @@ export async function extractDocument(sourceId: string, accountId: string): Prom
       // Parameter names MUST match the migration signature exactly:
       // propose_memory_change(p_account uuid, p_field_key text, p_op text, p_value text, p_rationale text, p_source_id uuid, p_origin text)
       // PostgREST resolves args by name — any mismatch silently produces zero proposals.
-      const op = fieldKey === 'notes' ? 'append' : 'replace';
+      // pptx uses append-only (Task 1); notes always append; other fields use replace until Task 4.
+      const op = (appendOnly || fieldKey === 'notes') ? 'append' : 'replace';
       const { error: rpcError } = await svc.rpc('propose_memory_change', {
         p_account: accountId,
         p_field_key: fieldKey,
