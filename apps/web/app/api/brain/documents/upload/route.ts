@@ -17,6 +17,7 @@ export const runtime = 'nodejs';
 import { appSession } from '../../../../../lib/auth/app-session';
 import { serviceClient } from '../../../../../lib/supabase/service';
 import { extractDocument } from '../../../../../lib/brain/doc-extract';
+import { buildStoragePath } from '../../../../../lib/brain/storage-path';
 
 /** 20 MB cap enforced before Storage PUT. */
 const MAX_SIZE_BYTES = 20 * 1024 * 1024;
@@ -34,16 +35,6 @@ const ACCEPTED_MIMES = new Set<string>([
 
 /** Legacy Word format — reject with a save-as nudge. */
 const DOC_MIME = 'application/msword';
-
-/**
- * Sanitize a filename for use as a Storage path segment.
- * Strips `/`, `\`, null bytes, and leading dots to prevent path traversal.
- */
-function sanitizeFilename(name: string): string {
-  return name
-    .replace(/[/\\\x00]/g, '_') // strip path separators + null bytes
-    .replace(/^\.+/, '_');       // replace leading dots
-}
 
 export async function POST(req: Request): Promise<Response> {
   // 1. Authenticate
@@ -115,9 +106,8 @@ export async function POST(req: Request): Promise<Response> {
   // 4. Generate a new sourceId (UUID)
   const sourceId = crypto.randomUUID();
 
-  // 5. Sanitize filename and build storage path
-  const sanitizedFilename = sanitizeFilename(file.name || 'document');
-  const storagePath = `${accountId}/${sourceId}/${sanitizedFilename}`;
+  // 5. Sanitize filename and build storage path (always prefixed {accountId}/{sourceId}/)
+  const storagePath = buildStoragePath(accountId, sourceId, file.name || 'document');
 
   // 6. Upload to brain-sources Storage
   const buffer = Buffer.from(await file.arrayBuffer());

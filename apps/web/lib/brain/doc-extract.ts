@@ -32,6 +32,7 @@ import { applyBattery, HeuristicNer } from '@nibbin/redaction';
 import { serviceClient } from '../supabase/service';
 import { anthropicGenerate, recordModelCall } from '../llm/client';
 import { groveRouter } from '../grove/router';
+import { buildStoragePath } from './storage-path';
 import pdfParse from 'pdf-parse';
 import mammoth from 'mammoth';
 
@@ -499,8 +500,7 @@ async function downloadSourceFile(
   sourceId: string,
   filename: string,
 ): Promise<Buffer> {
-  const sanitizedFilename = filename.replace(/[/\\\x00.]/g, '_');
-  const path = `${accountId}/${sourceId}/${sanitizedFilename}`;
+  const path = buildStoragePath(accountId, sourceId, filename);
 
   const { data, error } = await svc.storage.from('brain-sources').download(path);
   if (error || !data) {
