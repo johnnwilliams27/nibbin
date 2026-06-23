@@ -34,7 +34,61 @@ function slideXml(...texts: string[]): string {
 }
 
 // ── Import after helpers so vitest hoisting doesn't break anything ──────────
-import { extractPptxText } from './office-extract';
+import { extractPptxText, extractXlsxText } from './office-extract';
+
+// ── Helper: build a minimal in-memory xlsx buffer ──────────────────────────
+
+/**
+ * Make a minimal .xlsx buffer (zip) with optional sharedStrings and sheets.
+ *
+ * @param sharedStrings  Array of string values for xl/sharedStrings.xml <si><t>…</t></si> items.
+ *                       Pass [] or omit to produce an xlsx without a sharedStrings file.
+ * @param sheets         Map of sheet name → XML string for xl/worksheets/sheet<N>.xml.
+ *                       Keys are sorted alphabetically so sheet1 < sheet2.
+ *
+ * An empty call makXlsx() produces an archive with no shared strings and no sheets.
+ */
+function makeXlsx(
+  sharedStrings: string[] = [],
+  sheets: Record<string, string> = {},
+): Buffer {
+  const files: Record<string, Uint8Array> = {};
+
+  if (sharedStrings.length > 0) {
+    const sis = sharedStrings.map((s) => `<si><t>${s}</t></si>`).join('');
+    const xml = `<?xml version="1.0" encoding="UTF-8"?><sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="${sharedStrings.length}" uniqueCount="${sharedStrings.length}">${sis}</sst>`;
+    files['xl/sharedStrings.xml'] = strToU8(xml);
+  }
+
+  let sheetIndex = 1;
+  for (const [, xml] of Object.entries(sheets).sort()) {
+    files[`xl/worksheets/sheet${sheetIndex}.xml`] = strToU8(xml);
+    sheetIndex++;
+  }
+
+  return Buffer.from(zipSync(files));
+}
+
+/** Build a minimal xl/worksheets/sheet.xml with given rows of cell descriptors. */
+interface CellDef {
+  /** 'A1', 'B2', etc. */
+  ref: string;
+  /** 's' = shared string, 'inlineStr' = inline string, undefined/other = numeric/literal */
+  t?: 's' | 'inlineStr' | string;
+  /** For t='s': shared-string index as string; for t='inlineStr': the text; for other: the literal value */
+  value: string;
+}
+
+function sheetXml(cells: CellDef[]): string {
+  const cellXmls = cells.map((c) => {
+    const tAttr = c.t ? ` t="${c.t}"` : '';
+    if (c.t === 'inlineStr') {
+      return `<c r="${c.ref}"${tAttr}><is><t>${c.value}</t></is></c>`;
+    }
+    return `<c r="${c.ref}"${tAttr}><v>${c.value}</v></c>`;
+  });
+  return `<?xml version="1.0" encoding="UTF-8"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row>${cellXmls.join('')}</row></sheetData></worksheet>`;
+}
 
 // ── Tests ──────────────────────────────────────────────────────────────────
 
@@ -89,5 +143,113 @@ describe('extractPptxText', () => {
     const idxThird = result.indexOf('Third');
     expect(idxFirst).toBeLessThan(idxSecond);
     expect(idxSecond).toBeLessThan(idxThird);
+  });
+});
+
+// ── extractXlsxText tests ──────────────────────────────────────────────────
+
+describe('extractXlsxText', () => {
+  it('shared-string cells → text contains the shared string values', async () => {
+    // Build an xlsx with sharedStrings ["Price", "100"] and a sheet referencing them.
+    const buf = makeXlsx(
+      ['Price', '100'],
+      {
+        sheet1: sheetXml([
+          { ref: 'A1', t: 's', value: '0' }, // → "Price"
+          { ref: 'B1', t: 's', value: '1' }, // → "100"
+        ]),
+      },
+    );
+    const result = await extractXlsxText(buf);
+    expect(result).toContain('Price');
+    expect(result).toContain('100');
+  });
+
+  it('inline string cells → text contains the inline values', async () => {
+    const buf = makeXlsx(
+      [],
+      {
+        sheet1: sheetXml([
+          { ref: 'A1', t: 'inlineStr', value: 'Hello' },
+          { ref: 'B1', t: 'inlineStr', value: 'World' },
+        ]),
+      },
+    );
+    const result = await extractXlsxText(buf);
+    expect(result).toContain('Hello');
+    expect(result).toContain('World');
+  });
+
+  it('numeric/literal cell values → text contains the literal value', async () => {
+    const buf = makeXlsx(
+      [],
+      {
+        sheet1: sheetXml([
+          { ref: 'A1', value: '42' },
+          { ref: 'B1', value: '3.14' },
+        ]),
+      },
+    );
+    const result = await extractXlsxText(buf);
+    expect(result).toContain('42');
+    expect(result).toContain('3.14');
+  });
+
+  it('empty workbook (no sheets, no sharedStrings) → empty string', async () => {
+    const buf = makeXlsx(); // no entries at all
+    const result = await extractXlsxText(buf);
+    expect(result).toBe('');
+  });
+
+  it('workbook with sheets but no cells → empty string', async () => {
+    const emptySheetXml = `<?xml version="1.0"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData/></worksheet>`;
+    const buf = makeXlsx([], { sheet1: emptySheetXml });
+    const result = await extractXlsxText(buf);
+    expect(result).toBe('');
+  });
+
+  it('output is capped at 50 000 chars', async () => {
+    // Build a sheet with many shared-string cells totalling > 50k chars.
+    const longValue = 'X'.repeat(1000);
+    const sharedStrings = Array.from({ length: 60 }, () => longValue);
+    const cells: CellDef[] = sharedStrings.map((_, i) => ({
+      ref: `A${i + 1}`,
+      t: 's' as const,
+      value: String(i),
+    }));
+    const buf = makeXlsx(sharedStrings, { sheet1: sheetXml(cells) });
+    const result = await extractXlsxText(buf);
+    expect(result.length).toBeLessThanOrEqual(50_000);
+  });
+
+  it('multiple sheets → text from all sheets present', async () => {
+    const buf = makeXlsx(
+      ['Sheet1Value', 'Sheet2Value'],
+      {
+        // Both are named differently but sheet index is determined by sort order.
+        sheet1: sheetXml([{ ref: 'A1', t: 's', value: '0' }]),
+        sheet2: sheetXml([{ ref: 'A1', t: 's', value: '1' }]),
+      },
+    );
+    const result = await extractXlsxText(buf);
+    expect(result).toContain('Sheet1Value');
+    expect(result).toContain('Sheet2Value');
+  });
+
+  it('mixed shared-string + inline + numeric in same sheet', async () => {
+    const buf = makeXlsx(
+      ['Name'],
+      {
+        sheet1: sheetXml([
+          { ref: 'A1', t: 's', value: '0' },        // shared → "Name"
+          { ref: 'B1', t: 'inlineStr', value: 'Alice' }, // inline
+          { ref: 'C1', value: '99' },                // numeric
+        ]),
+      },
+    );
+    const result = await extractXlsxText(buf);
+    expect(result).toContain('Name');
+    expect(result).toContain('Alice');
+    expect(result).toContain('99');
   });
 });

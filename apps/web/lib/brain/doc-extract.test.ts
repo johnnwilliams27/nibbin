@@ -111,10 +111,12 @@ vi.mock('mammoth', () => ({
   },
 }));
 
-// ── Mock: office-extract (pptx extractor) ─────────────────────────────────
+// ── Mock: office-extract (pptx + xlsx extractors) ─────────────────────────
 const mockExtractPptxText = vi.fn();
+const mockExtractXlsxText = vi.fn();
 vi.mock('./office-extract', () => ({
   extractPptxText: (...args: unknown[]) => mockExtractPptxText(...args),
+  extractXlsxText: (...args: unknown[]) => mockExtractXlsxText(...args),
 }));
 
 // ── Import the module under test ───────────────────────────────────────────
@@ -803,8 +805,11 @@ describe('classifyExtractor', () => {
   it('.pptx extension fallback → pptx', () => {
     expect(classifyExtractor('', 'deck.pptx')).toBe('pptx');
   });
-  it('xlsx mime → phase2', () => {
-    expect(classifyExtractor('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'data.xlsx')).toBe('phase2');
+  it('xlsx mime → xlsx', () => {
+    expect(classifyExtractor('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'data.xlsx')).toBe('xlsx');
+  });
+  it('.xlsx extension fallback → xlsx', () => {
+    expect(classifyExtractor('', 'data.xlsx')).toBe('xlsx');
   });
   it('unknown mime → unknown', () => {
     expect(classifyExtractor('application/octet-stream', 'file.bin')).toBe('unknown');
@@ -1091,5 +1096,151 @@ describe('extractDocument — Task 5 state transitions', () => {
     const states = extractionStateWrites();
     expect(states).toContain('extracting');
     expect(states).toContain('unsupported');
+  });
+
+  // ── Task 2: xlsx dispatch tests ──────────────────────────────────────────
+
+  it('T2-1. xlsx with text → redaction gate + LLM + APPEND-ONLY proposals → extracted', async () => {
+    const xlsxText = 'Price\t100\nName\tAlice';
+    mockStorageDownload.mockResolvedValue({
+      data: Buffer.from('XLSX bytes'),
+      error: null,
+    });
+    mockSelect.mockResolvedValue({
+      data: {
+        origin: {
+          filename: 'pricing.xlsx',
+          mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        },
+        id: SOURCE_ID,
+      },
+      error: null,
+    });
+
+    mockExtractXlsxText.mockResolvedValue(xlsxText);
+
+    mockApplyBattery.mockReturnValue({ text: xlsxText, rulesHit: [] });
+    mockHeuristicNerRedact.mockResolvedValue({ redacted: xlsxText, rulesHit: [] });
+
+    mockGroveRouterRoute.mockResolvedValue({ model: 'claude-haiku-4-5-20251001', tier: 't1', degraded: false });
+    mockGenerateFn.mockResolvedValue({
+      text: JSON.stringify({ pricing: '$100 per session', facts: 'Pricing sheet' }),
+      model: 'claude-haiku-4-5-20251001',
+      usage: { inputTokens: 80, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 30 },
+      stopReason: 'end_turn',
+    });
+
+    await extractDocument(SOURCE_ID, ACCOUNT_ID);
+
+    // At least one proposal submitted
+    expect(mockRpc).toHaveBeenCalled();
+
+    // ALL proposals must be append-only (Task 2 constraint)
+    for (const call of mockRpc.mock.calls) {
+      if (call[0] === 'propose_memory_change') {
+        expect(call[1]).toMatchObject({ p_op: 'append' });
+      }
+    }
+
+    const states = extractionStateWrites();
+    expect(states).toContain('extracting');
+    expect(states).toContain('extracted');
+    expect(states).not.toContain('unsupported');
+  });
+
+  it('T2-2. xlsx empty text → extraction_state=unsupported, zero proposals', async () => {
+    mockStorageDownload.mockResolvedValue({
+      data: Buffer.from('XLSX bytes'),
+      error: null,
+    });
+    mockSelect.mockResolvedValue({
+      data: {
+        origin: {
+          filename: 'empty.xlsx',
+          mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        },
+        id: SOURCE_ID,
+      },
+      error: null,
+    });
+
+    // xlsx extractor returns empty string → unsupported
+    mockExtractXlsxText.mockResolvedValue('');
+
+    await extractDocument(SOURCE_ID, ACCOUNT_ID);
+
+    expect(mockRpc).not.toHaveBeenCalled();
+    expect(mockGenerateFn).not.toHaveBeenCalled();
+
+    const states = extractionStateWrites();
+    expect(states).toContain('extracting');
+    expect(states).toContain('unsupported');
+  });
+
+  it('T2-3. xlsx extractor throws → extraction_state=failed, zero proposals (fail-closed)', async () => {
+    mockStorageDownload.mockResolvedValue({
+      data: Buffer.from('XLSX bytes'),
+      error: null,
+    });
+    mockSelect.mockResolvedValue({
+      data: {
+        origin: {
+          filename: 'bad.xlsx',
+          mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        },
+        id: SOURCE_ID,
+      },
+      error: null,
+    });
+
+    mockExtractXlsxText.mockRejectedValue(new Error('corrupt zip'));
+
+    await extractDocument(SOURCE_ID, ACCOUNT_ID);
+
+    expect(mockRpc).not.toHaveBeenCalled();
+    const states = extractionStateWrites();
+    expect(states).toContain('failed');
+  });
+
+  it('T2-4. .xlsx extension (no mime) → classifies as xlsx → dispatched to extractXlsxText', async () => {
+    const xlsxText = 'ProductA\t250';
+    mockStorageDownload.mockResolvedValue({
+      data: Buffer.from('XLSX bytes'),
+      error: null,
+    });
+    mockSelect.mockResolvedValue({
+      data: {
+        origin: { filename: 'data.xlsx', mime: '' },
+        id: SOURCE_ID,
+      },
+      error: null,
+    });
+
+    mockExtractXlsxText.mockResolvedValue(xlsxText);
+    mockApplyBattery.mockReturnValue({ text: xlsxText, rulesHit: [] });
+    mockHeuristicNerRedact.mockResolvedValue({ redacted: xlsxText, rulesHit: [] });
+    mockGroveRouterRoute.mockResolvedValue({ model: 'claude-haiku-4-5-20251001', tier: 't1', degraded: false });
+    mockGenerateFn.mockResolvedValue({
+      text: JSON.stringify({ facts: 'Product data' }),
+      model: 'claude-haiku-4-5-20251001',
+      usage: { inputTokens: 30, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 10 },
+      stopReason: 'end_turn',
+    });
+
+    await extractDocument(SOURCE_ID, ACCOUNT_ID);
+
+    // The xlsx extractor was called (not the pptx one)
+    expect(mockExtractXlsxText).toHaveBeenCalledTimes(1);
+    expect(mockExtractPptxText).not.toHaveBeenCalled();
+
+    // Proposals submitted
+    expect(mockRpc).toHaveBeenCalled();
+
+    // All proposals are append-only
+    for (const call of mockRpc.mock.calls) {
+      if (call[0] === 'propose_memory_change') {
+        expect(call[1]).toMatchObject({ p_op: 'append' });
+      }
+    }
   });
 });

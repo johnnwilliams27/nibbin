@@ -5,11 +5,15 @@
  * Exports:
  *   extractPptxText(buffer): unzip → read ppt/slides/slide*.xml (numeric order)
  *                             → concatenate <a:t>…</a:t> runs → cap at RAW_TEXT_CAP.
+ *   extractXlsxText(buffer): unzip → parse xl/sharedStrings.xml → read
+ *                             xl/worksheets/sheet*.xml (numeric order) → resolve
+ *                             shared-string, inline-string, and numeric cells →
+ *                             join with tabs/newlines → cap at RAW_TEXT_CAP.
  *
  * Design constraints:
  *   - Text only — never raw bytes into proposals (derived-not-raw preserved).
  *   - Fail-closed: throw on unzip failure → caller writes extraction_state='failed'.
- *   - Empty / no-slides → '' → caller marks extraction_state='unsupported'.
+ *   - Empty / no-slides / no-sheets → '' → caller marks extraction_state='unsupported'.
  *   - Length cap mirrors doc-extract.ts RAW_TEXT_CAP (50 000 chars).
  */
 import { unzipSync, strFromU8 } from 'fflate';
@@ -81,4 +85,151 @@ function extractAtTextRuns(xml: string): string {
     if (text) runs.push(text);
   }
   return runs.join(' ');
+}
+
+// ── xlsx extractor ───────────────────────────────────────────────────────────
+
+/**
+ * Parse the shared-strings table from `xl/sharedStrings.xml`.
+ *
+ * The shared-strings file is a flat sequence of `<si>` elements; each may
+ * contain a single `<t>` child (simple string) or multiple `<r><t>` runs for
+ * rich text.  We collect all `<t>` text nodes within each `<si>` and
+ * concatenate them — this covers both simple strings and rich-text runs.
+ *
+ * Returns an ordered array where index N is the resolved string for shared-
+ * string ID N (zero-based, matching the `<v>` integer in sheet cell refs).
+ */
+function parseSharedStrings(xml: string): string[] {
+  const strings: string[] = [];
+
+  // Split into <si>…</si> blocks first so we handle rich-text runs correctly.
+  const siRe = /<si[^>]*>([\s\S]*?)<\/si>/g;
+  let siMatch: RegExpExecArray | null;
+  while ((siMatch = siRe.exec(xml)) !== null) {
+    const siContent = siMatch[1];
+    // Collect all <t>…</t> text nodes within this <si> (may be multiple for rich text runs).
+    const tRe = /<t[^>]*>([^<]*)<\/t>/g;
+    const parts: string[] = [];
+    let tMatch: RegExpExecArray | null;
+    while ((tMatch = tRe.exec(siContent)) !== null) {
+      parts.push(tMatch[1]);
+    }
+    strings.push(parts.join(''));
+  }
+
+  return strings;
+}
+
+/**
+ * Extract all text from an `xl/worksheets/sheet*.xml` string.
+ *
+ * Cell types:
+ *   - `t="s"` → shared-string reference: `<v>IDX</v>` resolves via sharedStrings[IDX]
+ *   - `t="inlineStr"` → inline string: `<is><t>…</t></is>`
+ *   - no `t` or other → numeric/formula/other: use literal `<v>…</v>` text
+ *
+ * Cells are tab-separated; rows are newline-separated (best-effort — the XML
+ * does not guarantee a wrapping `<row>` per spreadsheet row so we join all
+ * cells in encounter order with tabs and use a newline at the end of the sheet).
+ */
+function extractSheetText(xml: string, sharedStrings: string[]): string {
+  const cellValues: string[] = [];
+
+  // Match each <c …>…</c> block (cells never nest).
+  const cellRe = /<c\b([^>]*)>([\s\S]*?)<\/c>/g;
+  let cellMatch: RegExpExecArray | null;
+
+  while ((cellMatch = cellRe.exec(xml)) !== null) {
+    const attrs = cellMatch[1];
+    const body = cellMatch[2];
+
+    // Detect cell type from t="…" attribute.
+    const tAttrMatch = /\bt="([^"]*)"/.exec(attrs);
+    const cellType = tAttrMatch ? tAttrMatch[1] : '';
+
+    let value = '';
+
+    if (cellType === 's') {
+      // Shared-string reference: <v>IDX</v>
+      const vMatch = /<v[^>]*>([^<]*)<\/v>/.exec(body);
+      if (vMatch) {
+        const idx = parseInt(vMatch[1], 10);
+        value = (!isNaN(idx) && idx >= 0 && idx < sharedStrings.length)
+          ? sharedStrings[idx]
+          : '';
+      }
+    } else if (cellType === 'inlineStr') {
+      // Inline string: <is><t>…</t></is> (may have multiple <t> runs for rich text)
+      const tRe = /<t[^>]*>([^<]*)<\/t>/g;
+      const parts: string[] = [];
+      let tMatch: RegExpExecArray | null;
+      while ((tMatch = tRe.exec(body)) !== null) {
+        parts.push(tMatch[1]);
+      }
+      value = parts.join('');
+    } else {
+      // Numeric / formula / other: use the raw <v> value.
+      const vMatch = /<v[^>]*>([^<]*)<\/v>/.exec(body);
+      if (vMatch) value = vMatch[1];
+    }
+
+    if (value) cellValues.push(value);
+  }
+
+  return cellValues.join('\t');
+}
+
+/**
+ * Extract all text from an .xlsx buffer.
+ *
+ * Algorithm:
+ *   1. Unzip the buffer (xlsx = zip-of-XML).
+ *   2. Parse `xl/sharedStrings.xml` into an ordered string array (may be absent).
+ *   3. Collect every entry matching `xl/worksheets/sheet<N>.xml` (N = integer),
+ *      sort by N ascending (numeric order), extract text from each.
+ *   4. Join sheets with newlines, cells with tabs (see extractSheetText).
+ *   5. Cap total length at RAW_TEXT_CAP.
+ *
+ * Returns '' if there are no sheets or no text found.
+ * Throws on corrupt zip / unzip failure (fail-closed — caller handles).
+ */
+export async function extractXlsxText(buffer: Buffer): Promise<string> {
+  // unzipSync throws if the buffer is not a valid zip archive.
+  const zip = unzipSync(new Uint8Array(buffer));
+
+  // Step 2: Parse shared strings (optional part — not all workbooks have one).
+  let sharedStrings: string[] = [];
+  const ssEntry = zip['xl/sharedStrings.xml'];
+  if (ssEntry) {
+    sharedStrings = parseSharedStrings(strFromU8(ssEntry));
+  }
+
+  // Step 3: Collect sheet entries.
+  const sheetRegex = /^xl\/worksheets\/sheet(\d+)\.xml$/i;
+  const sheets: Array<{ n: number; data: Uint8Array }> = [];
+  for (const [path, data] of Object.entries(zip)) {
+    const match = sheetRegex.exec(path);
+    if (match) {
+      sheets.push({ n: parseInt(match[1], 10), data });
+    }
+  }
+
+  if (sheets.length === 0) return '';
+
+  // Sort sheets by numeric index.
+  sheets.sort((a, b) => a.n - b.n);
+
+  // Step 4: Extract text from each sheet.
+  const sheetTexts: string[] = [];
+  for (const { data } of sheets) {
+    const xml = strFromU8(data);
+    const text = extractSheetText(xml, sharedStrings);
+    if (text) sheetTexts.push(text);
+  }
+
+  if (sheetTexts.length === 0) return '';
+
+  // Step 5: Cap total length.
+  return sheetTexts.join('\n').slice(0, RAW_TEXT_CAP);
 }

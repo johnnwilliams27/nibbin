@@ -37,7 +37,7 @@ import { groveRouter } from '../grove/router';
 import { buildStoragePath } from './storage-path';
 import type { VisionCostCtx } from './vision-extract';
 import { extractFromImage } from './vision-extract';
-import { extractPptxText } from './office-extract';
+import { extractPptxText, extractXlsxText } from './office-extract';
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
@@ -84,9 +84,15 @@ const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingm
 /** MIME for pptx — now has a real extractor. */
 const PPTX_MIME = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
 
-/** MIME types for Phase 2 structured parsers (xlsx) — unsupported until parser added. */
+/** MIME for xlsx — now has a real extractor (Task 2). */
+const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+/**
+ * MIME types for Phase 2 structured parsers — unsupported until parser added.
+ * xlsx has been promoted to its own 'xlsx' kind (Task 2).
+ */
 const PHASE2_MIMES = new Set<string>([
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  // (xlsx removed — now classified as 'xlsx' and dispatched to extractXlsxText)
 ]);
 
 // ── Type-router classifier ────────────────────────────────────────────────
@@ -109,7 +115,7 @@ const PHASE2_MIMES = new Set<string>([
 export function classifyExtractor(
   mime: string,
   filename: string,
-): 'textnative' | 'docx' | 'pdf' | 'image' | 'pptx' | 'phase2' | 'unknown' {
+): 'textnative' | 'docx' | 'pdf' | 'image' | 'pptx' | 'xlsx' | 'phase2' | 'unknown' {
   const ext = filename.toLowerCase().split('.').pop() ?? '';
 
   // text-native: utf-8 decode + existing strip/cap pipeline
@@ -137,8 +143,11 @@ export function classifyExtractor(
   // PPTX: real text extractor available (office-extract.ts)
   if (mime === PPTX_MIME || ext === 'pptx') return 'pptx';
 
-  // Phase 2 structured parsers not yet implemented (xlsx)
-  if (PHASE2_MIMES.has(mime) || ext === 'xlsx') return 'phase2';
+  // XLSX: real text extractor available (office-extract.ts, Task 2)
+  if (mime === XLSX_MIME || ext === 'xlsx') return 'xlsx';
+
+  // Phase 2 structured parsers not yet implemented (empty — xlsx promoted above)
+  if (PHASE2_MIMES.has(mime)) return 'phase2';
 
   return 'unknown';
 }
@@ -641,9 +650,9 @@ export async function extractDocument(sourceId: string, accountId: string): Prom
     // Step 5: Text extraction dispatch by kind
     let rawText: string;
     let truncatedPages = false;
-    // pptx proposals are append-only (extraction is additive; Task 1 constraint).
+    // pptx and xlsx proposals are append-only (extraction is additive; Task 1+2 constraint).
     // Task 4 will extend append-only to all text extractors.
-    let appendOnly = kind === 'pptx';
+    let appendOnly = kind === 'pptx' || kind === 'xlsx';
 
     if (kind === 'pptx') {
       // pptx text extraction via office-extract.ts (unzip + <a:t> concatenation).
@@ -656,6 +665,17 @@ export async function extractDocument(sourceId: string, accountId: string): Prom
         return;
       }
       rawText = pptxText;
+    } else if (kind === 'xlsx') {
+      // xlsx text extraction via office-extract.ts (unzip + XML cell-value resolution).
+      // Throws on corrupt zip → outer catch → failed (fail-closed).
+      const xlsxText = await extractXlsxText(buffer);
+      if (!xlsxText) {
+        // Empty workbook → stored-but-not-extracted (store-never-drop)
+        await updateExtractionState(svc, sourceId, 'unsupported');
+        await updateJobStatus(svc, sourceId, accountId, 'done');
+        return;
+      }
+      rawText = xlsxText;
     } else if (kind === 'pdf') {
       const pdfResult = await extractPdfText(buffer);
       rawText = pdfResult.rawText;
