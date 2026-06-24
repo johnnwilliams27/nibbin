@@ -27,6 +27,7 @@
 import type { ReactNode } from 'react';
 import { appSession } from '../../lib/auth/app-session';
 import { loadGroveState } from '../../lib/grove/load';
+import { loadReachMeData } from '../../lib/privacy/reach-me';
 import { KeeperDock } from './grove/KeeperDock';
 import type { Celebration } from './grove/KeeperChat';
 
@@ -38,7 +39,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   try {
     const { supabase, user, accountId } = await appSession();
 
-    const [groveLoad, { count: activeConnectionCount }, { data: promoNotifData }] =
+    const [groveLoad, { count: activeConnectionCount }, { data: promoNotifData }, reachMe] =
       await Promise.all([
         loadGroveState(supabase, accountId, user.id),
         supabase
@@ -57,6 +58,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           )
           .order('created_at', { ascending: false })
           .limit(5),
+        loadReachMeData(supabase),
       ]);
 
     const { state: grove, initialMessages, expression, credits } = groveLoad;
@@ -107,6 +109,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           initialProfile={grove.profile}
           hasConnection={hasConnection}
           pendingCelebrations={pendingCelebrations}
+          reachMe={reachMe}
         />
       );
     }

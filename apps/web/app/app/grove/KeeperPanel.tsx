@@ -15,6 +15,8 @@
 import { Grovekeeper } from '../../../components/grovekeeper/Grovekeeper';
 import type { KeeperExpression, KeeperMessage, OnboardingStep, UnderstandingProfile } from '@nibbin/keeper';
 import { KeeperChat, type Celebration } from './KeeperChat';
+import { ReachMeButton } from './ReachMeButton';
+import type { ReachMeData } from '../../../lib/privacy/reach-me';
 import styles from './keeper-panel.module.css';
 
 export interface KeeperPanelProps {
@@ -28,6 +30,8 @@ export interface KeeperPanelProps {
   hasConnection: boolean;
   /** Recent promotions to celebrate in-grove (Beat 3). */
   pendingCelebrations: Celebration[];
+  /** Reach-me channel state for the "Reach me on the go" header button. */
+  reachMe: ReachMeData;
   /**
    * Close the panel. On mobile (bottom sheet) a ✕ button in the header calls
    * this; on desktop the header close button is hidden via CSS and the
@@ -46,6 +50,7 @@ export function KeeperPanel({
   initialProfile,
   hasConnection,
   pendingCelebrations,
+  reachMe,
   onClose,
 }: KeeperPanelProps) {
   return (
@@ -60,6 +65,14 @@ export function KeeperPanel({
           <p className={styles.eyebrow}>Your Keeper</p>
           <p className={styles.name}>{keeperName ?? 'Your Grovekeeper'}</p>
         </div>
+        {/* "Reach me on the go" — settled state only, never mid-onboarding. The
+            dock that mounts this panel (KeeperDock via app/layout.tsx) is itself
+            only rendered when grove.step === 'done', so initialStep is the right
+            (and stable) gate here: the panel never hosts a live onboarding-completing
+            session — that happens in the focal OnboardingCanvas, where KeeperChat
+            gates the button on its LIVE step instead. Same invariant as
+            OnboardingNextStep (shown only at step === 'done'). */}
+        {initialStep === 'done' && <ReachMeButton reachMe={reachMe} />}
         <p className={styles.credits}>
           <span className={styles.creditsValue}>{credits}</span>
           {' '}cr

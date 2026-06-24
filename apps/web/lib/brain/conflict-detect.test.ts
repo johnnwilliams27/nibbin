@@ -72,6 +72,21 @@ describe('detectFieldConflicts — basic conflict', () => {
     // manual(65) > connector_artifact(50)
     expect(conflicts[0].suggestedSourceId).toBe('manual-src');
   });
+
+  it('exposes the distinct ORIGINAL competing values (for the LLM judge)', () => {
+    const fields: FieldInput[] = [
+      makeField('pricing', '', [
+        { sourceId: 'src-1', sourceKind: 'document', value: '  50% Deposit  ' },
+        { sourceId: 'src-2', sourceKind: 'observation', value: '30% deposit' },
+        // duplicate of src-2 by normalized identity → must NOT appear twice
+        { sourceId: 'src-3', sourceKind: 'manual', value: '30%   DEPOSIT' },
+      ]),
+    ];
+    const conflicts = detectFieldConflicts(fields, DEFAULT_AUTHORITY);
+    expect(conflicts).toHaveLength(1);
+    // Original (trimmed) text, de-duped by normalized identity, first-appearance order.
+    expect(conflicts[0].distinctValues).toEqual(['50% Deposit', '30% deposit']);
+  });
 });
 
 // ── No-conflict cases ─────────────────────────────────────────────────────────

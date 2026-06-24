@@ -74,8 +74,9 @@ describe('tier table (§6.3)', () => {
     // + memory_extract (§12A agent memory) + plan_synthesis (Slice 3a)
     // + style_extraction (§4A style profile) = 20
     // + doc_extract + doc_vision_extract (P2 document ingestion) = 22
-    // + synthesis (P5 §6b) = 23.
-    expect(Object.keys(TIER_FOR_TASK)).toHaveLength(23);
+    // + synthesis (P5 §6b) = 23
+    // + contradiction_judge (C2 follow-up semantic contradiction) = 24.
+    expect(Object.keys(TIER_FOR_TASK)).toHaveLength(24);
   });
 });
 

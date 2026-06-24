@@ -39,6 +39,10 @@ export const TIER_FOR_TASK: Record<Exclude<RoutedTask, 'chat'>, Tier> = {
   // corpus + memory. T1 (mid-tier) — a frequent, interactive retrieval call
   // that should not draw the frontier budget.
   synthesis: 't1',
+  // C2 follow-up: semantic contradiction judging (collate pass). T1 — a short,
+  // structured yes/no classification over already-derived field values; a
+  // background pipeline call that must never draw the frontier budget.
+  contradiction_judge: 't1',
 };
 
 /**

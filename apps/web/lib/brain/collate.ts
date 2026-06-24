@@ -25,6 +25,9 @@ import {
   type FieldInput,
   type SourceKind,
 } from './conflict-detect';
+import { judgeContradiction, shouldSuppress, type JudgeDeps } from './conflict-judge';
+import { anthropicGenerate, recordModelCall } from '../llm/client';
+import { groveRouter } from '../grove/router';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -72,6 +75,15 @@ interface AuthorityRow {
 
 /** Minimum days since last review before a field is considered stale. */
 const STALE_DAYS = 60;
+
+/**
+ * Max LLM contradiction-judge calls per collate run (cost-auditor P3). Beyond
+ * this, remaining candidates are flagged WITHOUT judging (fail-open). Generous:
+ * a healthy account has 0-3 standing conflicts; this only bites a pathological
+ * account with dozens of conflicting custom fields, and only caps spend — it
+ * never suppresses a flag.
+ */
+const MAX_JUDGE_CALLS_PER_RUN = 25;
 
 /** Default per-kind authority weights (mirrors ensure_source_authority seed). */
 const DEFAULT_AUTHORITY: Record<SourceKind, number> = {
@@ -226,7 +238,74 @@ export async function collateAccount(
 
     const detected = detectFieldConflicts(fields, typedAuthority);
 
+    // LLM judge dependencies — resolved ONCE per run. When no API key is set,
+    // judgeDeps is null and we behave exactly as the heuristic-only pass (flag
+    // every candidate), identical to doc-extract.ts graceful degradation.
+    let judgeDeps: JudgeDeps | null = null;
+    const llm = anthropicGenerate();
+    if (llm) {
+      try {
+        const decision = await groveRouter.route({
+          userId: `account:${accountId}`,
+          task: 'contradiction_judge',
+          origin: 'pipeline',
+        });
+        judgeDeps = {
+          generate: llm,
+          model: decision.model,
+          tier: decision.tier,
+          recordCall: recordModelCall,
+        };
+      } catch (routeErr) {
+        console.error(
+          '[collate] contradiction_judge route failed; flagging all candidates:',
+          routeErr instanceof Error ? routeErr.message : String(routeErr),
+        );
+        judgeDeps = null;
+      }
+    }
+
+    // Per-run ceiling on judge calls — cheap insurance against a pathological
+    // account with many conflicting custom fields fanning out unboundedly
+    // (cost-auditor P3). Past the cap we fail-open: flag without judging.
+    let judgeCalls = 0;
+
     for (const conflict of detected) {
+      // Semantic judging pass: only a confident 'compatible' suppresses a
+      // heuristic candidate. Fail-open — error/uncertain/no-model → flag.
+      let judgeVerdict: string | null = null;
+      let judgeReason: string | null = null;
+      if (judgeDeps && judgeCalls < MAX_JUDGE_CALLS_PER_RUN) {
+        judgeCalls++;
+        try {
+          const outcome = await judgeContradiction(
+            // Pass the EXACT distinct competing values the heuristic flagged
+            // (conflict.distinctValues) — NOT a re-derived set — so the judge
+            // can never suppress on a value the heuristic did not compare
+            // (logic-skeptic P1).
+            { fieldKey: conflict.fieldKey, values: conflict.distinctValues },
+            accountId,
+            judgeDeps,
+          );
+          judgeVerdict = outcome.verdict;
+          judgeReason = outcome.reason || null;
+          // A confident 'compatible' suppresses — EXCEPT on a high-stakes
+          // conflict, where the judge is ADVISORY ONLY: a single T1 verdict must
+          // never silently delete a pricing/policy/hard-rule conflict from the
+          // owner's review queue (red-team P2-1 / logic-skeptic P2). High-stakes
+          // candidates are always flagged; the verdict is recorded for context.
+          if (shouldSuppress(outcome, conflict.stakes)) {
+            continue;
+          }
+        } catch (judgeErr) {
+          // Fail-open: a judge crash never suppresses a candidate.
+          console.error(
+            '[collate] contradiction judge crashed for field', conflict.fieldKey, '; flagging:',
+            judgeErr instanceof Error ? judgeErr.message : String(judgeErr),
+          );
+        }
+      }
+
       try {
         await svc.rpc('flag_field_conflict', {
           p_account: accountId,
@@ -235,6 +314,8 @@ export async function collateAccount(
           p_detail: conflict.detail,
           p_stakes: conflict.stakes,
           p_suggested_source_id: conflict.suggestedSourceId,
+          p_judge_verdict: judgeVerdict,
+          p_judge_reason: judgeReason,
         });
         conflicts++;
       } catch (flagErr) {
