@@ -43,3 +43,36 @@ Added `.conflictFlag`, `.conflictFlagHeader`, `.conflictFlagTitle`, `.conflictFl
 ## Concerns
 - None. The `loadOpenConflicts` uses a heuristic for `suggested` (last source_id in `competing_source_ids` array). The flag_field_conflict RPC doesn't store the suggested source explicitly — v1 pragmatic fallback is fine; can be improved when source_authority weights are loaded in the query.
 - `useTransition` in ConflictPickForm means the pick action is fire-and-forget in v1; no optimistic "resolved" state to hide the flag after pick. Full optimistic hiding requires React state lifting or a router.refresh() — deferred to polish pass.
+
+---
+
+## Task 8 Fix — Thread authority-suggested source through flag → UI
+
+**STATUS: DONE**
+**Commit:** `54801878`
+
+### What changed per layer
+
+**Migration** (`20260624120000_collate_conflict_source_authority.sql`):
+- `ALTER TABLE public.field_flags ADD COLUMN IF NOT EXISTS suggested_source_id uuid` — additive, idempotent.
+- Dropped old 5-param `flag_field_conflict` overload (arity changed), recreated as 6-param with `p_suggested_source_id uuid default null` as last param; writes it on both UPDATE (upsert) and INSERT branches. Re-applied revoke/grant to new signature.
+
+**collate.ts**: Added `p_suggested_source_id: conflict.suggestedSourceId` to the `flag_field_conflict` RPC call. `detectFieldConflicts` already computed this; now it lands in the DB.
+
+**page.tsx** (`loadOpenConflicts`): Extended select to include `suggested_source_id`; replaced last-entry heuristic with stored value (validated against competing set); falls back to `null` (no badge) for older flags — graceful.
+
+**ConflictFlag.tsx**: `suggested: suggestedId !== null && sid === suggestedId`. `router.refresh()` is TODO'd: `useRouter()` at component level causes `invariant expected app router to be mounted` in `renderToStaticMarkup`. Detailed TODO with 3 resolution options left in the file.
+
+### Test summary
+
+- brain + memory: 39 files, 847 tests, PASS
+- RLS flag-field-conflict: 1 file, 11 tests (incl. 3 new), PASS (DB live)
+- Total: 40 files, 858 tests, PASS
+
+New tests: collate (p_suggested_source_id in args + value check); ConflictFlag (no-badge fallback, single-badge); RLS (insert, upsert update, null backward compat).
+
+Lint: 3 pre-existing errors only (verified by stash comparison). Typecheck: clean.
+
+### router.refresh — TODO'd
+Not done. Blocked by `renderToStaticMarkup` test path. Clear TODO with options (jsdom migration, callback prop, or `revalidatePath`) left in `ConflictFlag.tsx`.
+

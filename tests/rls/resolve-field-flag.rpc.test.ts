@@ -372,4 +372,83 @@ describe.skipIf(!dbAvailable)('resolve_field_flag RPC', () => {
     expect(rules).toContain('Rule one');
     expect(rules).toContain('Rule two');
   });
+
+  // ── Guard: chosen source must be among competing_source_ids ──────────────
+
+  it('resolving with a chosen source NOT in competing_source_ids raises', async () => {
+    // Fresh flag whose only competing source is srcDoc.
+    const flagSrc = await h.as(service, async (c) =>
+      (await c.query(
+        `insert into public.sources (account_id, kind, title)
+         values ($1, 'document', 'competing-only') returning id`,
+        [acct],
+      )).rows[0].id,
+    );
+    const outsiderSrc = await h.as(service, async (c) =>
+      (await c.query(
+        `insert into public.sources (account_id, kind, title)
+         values ($1, 'manual', 'not-a-candidate') returning id`,
+        [acct],
+      )).rows[0].id,
+    );
+    const flag = await h.as(service, async (c) =>
+      (await c.query(
+        `select public.flag_field_conflict($1, $2, $3::uuid[], $4) as id`,
+        [acct, 'validate_competing', `{${flagSrc}}`, 'only flagSrc competes'],
+      )).rows[0].id,
+    );
+
+    await expect(
+      h.as(asA, (c) =>
+        c.query(
+          `select public.resolve_field_flag(
+             p_flag_id          := $1,
+             p_chosen_source_id := $2,
+             p_chosen_value     := $3
+           )`,
+          [flag, outsiderSrc, 'tries a non-candidate source'],
+        ),
+      ),
+    ).rejects.toThrow(/not among this conflict/i);
+
+    // The flag must still be open (the bad resolve aborted before any write)
+    const stillOpen = await h.as(service, async (c) =>
+      (await c.query(`select status from public.field_flags where id=$1`, [flag])).rows[0],
+    );
+    expect(stillOpen.status).toBe('needs_review');
+  });
+
+  it('resolving with a NULL chosen source raises (and does not abort mid-write on the FK)', async () => {
+    const nsrc = await h.as(service, async (c) =>
+      (await c.query(
+        `insert into public.sources (account_id, kind, title)
+         values ($1, 'document', 'null-test-src') returning id`,
+        [acct],
+      )).rows[0].id,
+    );
+    const flag = await h.as(service, async (c) =>
+      (await c.query(
+        `select public.flag_field_conflict($1, $2, $3::uuid[], $4) as id`,
+        [acct, 'validate_null', `{${nsrc}}`, 'null source test'],
+      )).rows[0].id,
+    );
+
+    await expect(
+      h.as(asA, (c) =>
+        c.query(
+          `select public.resolve_field_flag(
+             p_flag_id          := $1,
+             p_chosen_source_id := $2,
+             p_chosen_value     := $3
+           )`,
+          [flag, null, 'null chosen source'],
+        ),
+      ),
+    ).rejects.toThrow(/not among this conflict/i);
+
+    const stillOpen = await h.as(service, async (c) =>
+      (await c.query(`select status from public.field_flags where id=$1`, [flag])).rows[0],
+    );
+    expect(stillOpen.status).toBe('needs_review');
+  });
 });

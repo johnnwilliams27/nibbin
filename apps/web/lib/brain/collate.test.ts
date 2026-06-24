@@ -41,13 +41,23 @@ function buildSvc(cfg: {
   flagConflictError?: Error;
   insertNotifError?: Error;
   proposalUpdateError?: Error;
+  // The account collateAccount will be called with. The mock returns canned
+  // data ONLY for reads scoped to this account via `.eq('account_id', …)`.
+  // A read missing that filter sees EMPTY data — so a regression that drops the
+  // account scope makes the conflict/dedup/stale tests fail (not silently pass).
+  expectedAccount?: string;
 }) {
   const rpcCalls: Array<{ name: string; args: Record<string, unknown> }> = [];
-  const updateCalls: Array<{ payload: Record<string, unknown>; ids: string[] }> = [];
+  const updateCalls: Array<{ payload: Record<string, unknown>; ids: string[]; filters: Array<{ op: string; col: string; val: unknown }> }> = [];
+  // Records every read against a table: which select string + which eq filters
+  // ran. The conflict/account-scope tests assert against this so a missing
+  // `.eq('account_id', …)` or a missing `sources(kind)` embed FAILS the test.
+  const reads: Array<{ table: string; select: string | null; filters: Array<{ op: string; col: string; val: unknown }> }> = [];
 
   const svc = {
     _rpcCalls: rpcCalls,
     _updateCalls: updateCalls,
+    _reads: reads,
 
     rpc: async (name: string, args: Record<string, unknown>) => {
       rpcCalls.push({ name, args: { ...args } });
@@ -67,10 +77,15 @@ function buildSvc(cfg: {
       // The chainable builder collects eq/in calls and resolves on await
       const builder = {
         _table: table,
+        _select: null as string | null,
         _filters: [] as Array<{ op: string; col: string; val: unknown }>,
         _payload: null as Record<string, unknown> | null,
+        _recorded: false,
 
-        select: (_cols?: string) => builder,
+        select: (cols?: string) => {
+          builder._select = cols ?? null;
+          return builder;
+        },
         eq: (col: string, val: unknown) => {
           builder._filters.push({ op: 'eq', col, val });
           return builder;
@@ -80,13 +95,21 @@ function buildSvc(cfg: {
           return builder;
         },
         single: () => builder,
+        maybeSingle: () => builder,
         update: (payload: Record<string, unknown>) => {
           builder._payload = payload;
-          // Return a new builder that records the update call when .in() is called
+          // The update chain collects eq/in filters then resolves on the
+          // terminal .in() call. Records the filters so a missing
+          // account-scope on the dedup write is caught.
+          const updFilters: Array<{ op: string; col: string; val: unknown }> = [];
           const updateBuilder = {
+            eq: (col: string, val: unknown) => {
+              updFilters.push({ op: 'eq', col, val });
+              return updateBuilder;
+            },
             in: async (col: string, ids: string[]) => {
-              void col;
-              updateCalls.push({ payload: builder._payload!, ids });
+              updFilters.push({ op: 'in', col, val: ids });
+              updateCalls.push({ payload: builder._payload!, ids, filters: updFilters });
               if (cfg.proposalUpdateError) throw cfg.proposalUpdateError;
               return { data: null, error: null };
             },
@@ -94,27 +117,40 @@ function buildSvc(cfg: {
           return updateBuilder;
         },
 
+        _record: () => {
+          if (builder._recorded) return;
+          builder._recorded = true;
+          reads.push({ table, select: builder._select, filters: builder._filters });
+        },
+
         // Make the select chain awaitable
         then: (
           onFulfilled: (v: { data: unknown; error: null | { message: string } }) => unknown,
           onRejected?: (e: unknown) => unknown,
         ): Promise<unknown> => {
+          builder._record();
+          // Account-scope gate: if an expectedAccount is configured, a read that
+          // did NOT `.eq('account_id', expectedAccount)` sees no data. This is
+          // what makes a missing-scope regression visibly fail.
+          const scoped =
+            cfg.expectedAccount === undefined ||
+            builder._filters.some((f) => f.op === 'eq' && f.col === 'account_id' && f.val === cfg.expectedAccount);
           try {
             if (table === 'source_authority') {
-              return Promise.resolve(onFulfilled({ data: cfg.authority ?? [], error: null }));
+              return Promise.resolve(onFulfilled({ data: scoped ? (cfg.authority ?? []) : [], error: null }));
             }
             if (table === 'proposals') {
-              return Promise.resolve(onFulfilled({ data: cfg.proposals ?? [], error: null }));
+              return Promise.resolve(onFulfilled({ data: scoped ? (cfg.proposals ?? []) : [], error: null }));
             }
             if (table === 'grove_memory') {
-              if (cfg.memory === null) {
+              if (!scoped || cfg.memory === null) {
                 return Promise.resolve(onFulfilled({ data: null, error: null }));
               }
               const mem = cfg.memory ?? { sections: {}, hard_rules: [], notes: null };
               return Promise.resolve(onFulfilled({ data: mem, error: null }));
             }
             if (table === 'field_meta') {
-              return Promise.resolve(onFulfilled({ data: cfg.fieldMeta ?? [], error: null }));
+              return Promise.resolve(onFulfilled({ data: scoped ? (cfg.fieldMeta ?? []) : [], error: null }));
             }
             return Promise.resolve(onFulfilled({ data: [], error: null }));
           } catch (e) {
@@ -205,6 +241,7 @@ describe('collateAccount — conflict detection', () => {
       ],
       memory: { sections: {}, hard_rules: [], notes: null },
       fieldMeta: [],
+      expectedAccount: 'acct-conflict',
     });
 
     const result = await collateAccount(svc, 'acct-conflict');
@@ -778,5 +815,159 @@ describe('collateAccount — morning brief arg-name regression guard', () => {
 
     const argKeys = Object.keys(ensureCall!.args).sort();
     expect(argKeys).toEqual(['p_account']);
+  });
+});
+
+// ── Account-scope + source-join regression guards (gate Critical + Important) ─
+//
+// These are the tests that would have CAUGHT the two defects the gate found:
+//   1. every account-owned read must be `.eq('account_id', accountId)`-scoped
+//      (under service-role there is no RLS — an unscoped read is cross-tenant);
+//   2. the proposals read must embed `sources(kind)` or conflict detection is
+//      dead (p.sources?.kind is undefined for every row → zero conflicts).
+//
+// The mock now gates canned data on the account scope and records the select
+// string + filters per table, so a regression makes these fail loudly.
+
+type ReadRecord = { table: string; select: string | null; filters: Array<{ op: string; col: string; val: unknown }> };
+
+function readsOf(svc: unknown): ReadRecord[] {
+  return (svc as { _reads: ReadRecord[] })._reads;
+}
+
+function isScoped(r: ReadRecord, accountId: string): boolean {
+  return r.filters.some((f) => f.op === 'eq' && f.col === 'account_id' && f.val === accountId);
+}
+
+describe('collateAccount — every account-owned read is account-scoped', () => {
+  const ACCOUNT = 'acct-scope-guard';
+  const srcA = 'src-scope-aaa';
+  const srcB = 'src-scope-bbb';
+
+  function buildScopedSvc() {
+    return buildSvc({
+      authority: [
+        { source_kind: 'document', weight: 70 },
+        { source_kind: 'manual', weight: 65 },
+        { source_kind: 'connector_artifact', weight: 50 },
+        { source_kind: 'observation', weight: 40 },
+      ],
+      proposals: [
+        {
+          id: 'prop-1',
+          field_key: 'pricing',
+          proposed_value: '50% deposit required',
+          source_id: srcA,
+          status: 'pending',
+          created_at: daysAgo(5),
+          sources: { kind: 'document' },
+        },
+        {
+          id: 'prop-2',
+          field_key: 'pricing',
+          proposed_value: 'full payment upfront',
+          source_id: srcB,
+          status: 'pending',
+          created_at: daysAgo(3),
+          sources: { kind: 'connector_artifact' },
+        },
+      ],
+      memory: { sections: {}, hard_rules: [], notes: null },
+      fieldMeta: [{ field_key: 'facts', last_reviewed_at: daysAgo(90) }],
+      expectedAccount: ACCOUNT,
+    });
+  }
+
+  it('scopes source_authority, proposals, grove_memory, and field_meta reads to accountId', async () => {
+    const svc = buildScopedSvc();
+    await collateAccount(svc, ACCOUNT);
+
+    const reads = readsOf(svc);
+    const ownedTables = ['source_authority', 'proposals', 'grove_memory', 'field_meta'];
+    for (const table of ownedTables) {
+      const tableReads = reads.filter((r) => r.table === table);
+      expect(tableReads.length, `expected at least one read of ${table}`).toBeGreaterThan(0);
+      for (const r of tableReads) {
+        expect(
+          isScoped(r, ACCOUNT),
+          `read of ${table} is missing .eq('account_id', accountId) — cross-account bleed under service-role`,
+        ).toBe(true);
+      }
+    }
+  });
+
+  it('the proposals select embeds sources(kind) so conflict detection can read the real kind', async () => {
+    const svc = buildScopedSvc();
+    await collateAccount(svc, ACCOUNT);
+
+    const proposalRead = readsOf(svc).find((r) => r.table === 'proposals');
+    expect(proposalRead).toBeDefined();
+    expect(proposalRead!.select, 'proposals select must embed sources(kind)').toMatch(/sources\s*\(\s*kind\s*\)/);
+  });
+
+  it('produces a conflict only because reads were account-scoped (canned data is scope-gated)', async () => {
+    // Sanity: with the correct account, the scope-gated mock returns data and a
+    // 2-source disagreement flags. (The failing-mirror test below proves the gate bites.)
+    const svc = buildScopedSvc();
+    const result = await collateAccount(svc, ACCOUNT);
+    expect(result.conflicts).toBe(1);
+  });
+
+  it('FAILS to detect conflicts when called with the WRONG account — proving the scope filter is load-bearing', async () => {
+    // buildScopedSvc gates its canned data on ACCOUNT. Running collate for a
+    // different account means none of the (correctly account-scoped) reads match,
+    // so no proposals are seen → zero conflicts. If collate.ts ever dropped the
+    // `.eq('account_id', …)` filter, this account would instead see ACCOUNT's
+    // proposals and wrongly flag — so this asymmetry is the regression sentinel.
+    const svc = buildScopedSvc();
+    const result = await collateAccount(svc, 'acct-some-other-tenant');
+    expect(result.conflicts).toBe(0);
+    expect(result.deduped).toBe(0);
+    expect(result.stale).toBe(0);
+  });
+
+  it('the dedup update is account-scoped', async () => {
+    const svc = buildSvc({
+      authority: [
+        { source_kind: 'document', weight: 70 },
+        { source_kind: 'manual', weight: 65 },
+        { source_kind: 'connector_artifact', weight: 50 },
+        { source_kind: 'observation', weight: 40 },
+      ],
+      proposals: [
+        {
+          id: 'prop-early',
+          field_key: 'facts',
+          proposed_value: 'Photography Studio',
+          source_id: 'src-1',
+          status: 'pending',
+          created_at: daysAgo(10),
+          sources: { kind: 'document' },
+        },
+        {
+          id: 'prop-dup',
+          field_key: 'facts',
+          proposed_value: 'photography studio',
+          source_id: 'src-2',
+          status: 'pending',
+          created_at: daysAgo(5),
+          sources: { kind: 'document' },
+        },
+      ],
+      memory: { sections: {}, hard_rules: [], notes: null },
+      fieldMeta: [],
+      expectedAccount: ACCOUNT,
+    });
+
+    await collateAccount(svc, ACCOUNT);
+
+    const updateCalls = (svc as unknown as {
+      _updateCalls: Array<{ ids: string[]; filters: Array<{ op: string; col: string; val: unknown }> }>;
+    })._updateCalls;
+    expect(updateCalls).toHaveLength(1);
+    expect(
+      updateCalls[0].filters.some((f) => f.op === 'eq' && f.col === 'account_id' && f.val === ACCOUNT),
+      'dedup update must be scoped to this account (defense-in-depth)',
+    ).toBe(true);
   });
 });

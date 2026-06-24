@@ -135,7 +135,10 @@ export async function collateAccount(
     await svc.rpc('ensure_source_authority', { p_account: accountId });
 
     const authRows = await safeAwait<AuthorityRow[]>(
-      svc.from('source_authority') as PromiseLike<{ data: AuthorityRow[] | null; error: unknown }>,
+      svc
+        .from('source_authority')
+        .select('source_kind, weight')
+        .eq('account_id', accountId) as PromiseLike<{ data: AuthorityRow[] | null; error: unknown }>,
     );
     if (authRows) {
       for (const row of authRows) {
@@ -156,7 +159,10 @@ export async function collateAccount(
 
   try {
     const proposalRows = await safeAwait<ProposalRow[]>(
-      svc.from('proposals') as PromiseLike<{ data: ProposalRow[] | null; error: unknown }>,
+      svc
+        .from('proposals')
+        .select('id, field_key, proposed_value, source_id, status, created_at, sources(kind)')
+        .eq('account_id', accountId) as PromiseLike<{ data: ProposalRow[] | null; error: unknown }>,
     );
     if (proposalRows) proposals = proposalRows;
   } catch (err) {
@@ -167,7 +173,11 @@ export async function collateAccount(
 
   try {
     const memRow = await safeAwait<MemoryRow>(
-      svc.from('grove_memory') as PromiseLike<{ data: MemoryRow | null; error: unknown }>,
+      svc
+        .from('grove_memory')
+        .select('sections, hard_rules, notes')
+        .eq('account_id', accountId)
+        .maybeSingle() as PromiseLike<{ data: MemoryRow | null; error: unknown }>,
     );
     if (memRow) memory = memRow;
   } catch (err) {
@@ -262,7 +272,11 @@ export async function collateAccount(
       if (dupIds.length === 0) continue;
 
       try {
-        await svc.from('proposals').update({ status: 'superseded' }).in('id', dupIds);
+        await svc
+          .from('proposals')
+          .update({ status: 'superseded' })
+          .eq('account_id', accountId)
+          .in('id', dupIds);
         deduped += dupIds.length;
       } catch (updateErr) {
         console.error(
@@ -279,7 +293,10 @@ export async function collateAccount(
 
   try {
     const metaRows = await safeAwait<FieldMetaRow[]>(
-      svc.from('field_meta') as PromiseLike<{ data: FieldMetaRow[] | null; error: unknown }>,
+      svc
+        .from('field_meta')
+        .select('field_key, last_reviewed_at')
+        .eq('account_id', accountId) as PromiseLike<{ data: FieldMetaRow[] | null; error: unknown }>,
     );
     if (metaRows) {
       const cutoff = new Date();

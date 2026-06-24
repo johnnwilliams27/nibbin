@@ -7,7 +7,7 @@
 alter table public.field_flags
   add column if not exists suggested_source_id uuid;
 
-create table public.source_authority (
+create table if not exists public.source_authority (
   account_id  uuid not null references public.accounts (id) on delete cascade,
   source_kind text not null check (source_kind in ('document','connector_artifact','observation','manual')),
   weight      numeric not null default 50 check (weight >= 0 and weight <= 100),
@@ -18,6 +18,7 @@ create table public.source_authority (
 -- RLS: member-read, no direct client writes (service_role / RPCs only)
 alter table public.source_authority enable row level security;
 
+drop policy if exists source_authority_member_read on public.source_authority;
 create policy source_authority_member_read on public.source_authority
   for select to authenticated
   using ((select private.is_account_member(account_id)));
@@ -145,6 +146,15 @@ begin
   -- Status guard
   if v_flag.status <> 'needs_review' then
     raise exception 'conflict already resolved';
+  end if;
+
+  -- Validate the chosen source is one of this conflict's competing sources.
+  -- Guards both authorization (can't ratify an arbitrary/foreign source) and the
+  -- NOT-NULL field_evidence(source_id) FK insert below — a bad/null id would
+  -- otherwise abort the whole transaction mid-write.
+  if p_chosen_source_id is null
+     or not (p_chosen_source_id = any(v_flag.competing_source_ids)) then
+    raise exception 'chosen source is not among this conflict''s competing sources';
   end if;
 
   -- 3. Advisory lock so we don't race with save_grove_memory / decide_memory_proposal
