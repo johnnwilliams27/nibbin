@@ -52,7 +52,13 @@ export default async function ConnectionsPage({
       domain: fromList?.domain ?? fromCatalog?.domain ?? null,
     };
   };
-  const wiredIds = CONNECTABLE_PROVIDERS.filter((p) => p.wired).map((p) => p.id);
+  // Default "work from" entries = wired connectables your nibbins actively work
+  // FROM. Read-only connectors (e.g. Stripe) are intentionally excluded here:
+  // they're never written to, so they don't belong in "work from" until the
+  // account genuinely connects one. They remain connectable in the directory
+  // below. A read-only connector that DOES have a (non-revoked) connection row
+  // still surfaces here via the union below so it can be reviewed/disconnected.
+  const wiredIds = CONNECTABLE_PROVIDERS.filter((p) => p.wired && !p.readOnly).map((p) => p.id);
   const shortListIds = Array.from(
     new Set([...wiredIds, ...(data ?? []).map((c) => c.provider as string)]),
   );

@@ -107,16 +107,15 @@ vi.mock('server-only', () => ({}));
 vi.mock('../../../../../lib/supabase/service', () => ({
   serviceClient: vi.fn(() => ({
     from: vi.fn(() => ({
-      // Lookup chain: .select('id, account_id').eq().eq().eq().neq().maybeSingle()
-      // (account_id, provider, nango_connection_id, status<>revoked)
+      // Lookup chain: .select('id, account_id, provider').eq(nango_connection_id)
+      //   .neq(status,'revoked').maybeSingle()
+      // The pre-issued row is now matched by nango_connection_id ALONE (the
+      // server-minted, account-bound secret) — account_id + provider are read
+      // back FROM the row, not re-derived from the connectionId string.
       select: vi.fn(() => ({
         eq: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            eq: vi.fn(() => ({
-              neq: vi.fn(() => ({
-                maybeSingle: maybySingleProxy,
-              })),
-            })),
+          neq: vi.fn(() => ({
+            maybeSingle: maybySingleProxy,
           })),
         })),
       })),
@@ -434,6 +433,97 @@ describe('POST /api/connect/nango/callback', () => {
     const res = await POST(req);
     expect(res.status).toBe(200);
     expect(calendarWatchSpy).toHaveBeenCalled();
+  });
+
+  // ── Bug 4 regression: pending row flips to active, matched by nango_connection_id ──
+
+  it('flips a pending google-calendar row to active and watches calendar (the stuck-pending bug)', async () => {
+    // Reproduces the reported bug: a pending row with nango_connection_id set
+    // (nibbin-<acct>-google-calendar) must be activated on the completing webhook.
+    // account_id + provider are read FROM the row, so activation no longer depends
+    // on parsing the connectionId or reverse-mapping the providerConfigKey.
+    maybeSingleFn.mockResolvedValueOnce({
+      data: existingRow({
+        id: 'conn-uuid-cal-stuck',
+        account_id: 'acc-777',
+        provider: 'google-calendar',
+        status: 'pending',
+        nango_connection_id: 'nibbin-acc-777-google-calendar',
+      }),
+      error: null,
+    });
+    getConnectionSpy.mockResolvedValueOnce({
+      credentials: { raw: { scope: 'https://www.googleapis.com/auth/calendar.readonly' } },
+    });
+
+    const { POST } = await import('./route');
+    const req = makeRequest(
+      makeAuthEvent({
+        connectionId: 'nibbin-acc-777-google-calendar',
+        providerConfigKey: 'google-calendar',
+      }),
+    );
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    // Exactly this row is flipped to active.
+    expect(updateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'active', nango_connection_id: 'nibbin-acc-777-google-calendar' }),
+    );
+    // Provider read from the row routes to the calendar watch (not gmail).
+    expect(calendarWatchSpy).toHaveBeenCalled();
+    expect(gmailWatchSpy).not.toHaveBeenCalled();
+  });
+
+  it('activates even when the inbound providerConfigKey is not in the old hard-coded allowlist', async () => {
+    // The pre-issued row is the source of truth. Even if Nango reports a
+    // providerConfigKey the route never hard-codes (e.g. a renamed integration
+    // key), the row is found by nango_connection_id and activated — the old
+    // nangoKeyToProvider allowlist would have 400'd here and left it pending.
+    maybeSingleFn.mockResolvedValueOnce({
+      data: existingRow({
+        id: 'conn-uuid-cal-renamed',
+        account_id: 'acc-888',
+        provider: 'google-calendar',
+        status: 'pending',
+        nango_connection_id: 'nibbin-acc-888-google-calendar',
+      }),
+      error: null,
+    });
+    getConnectionSpy.mockResolvedValueOnce({
+      credentials: { raw: { scope: 'https://www.googleapis.com/auth/calendar.readonly' } },
+    });
+
+    const { POST } = await import('./route');
+    const req = makeRequest(
+      makeAuthEvent({
+        connectionId: 'nibbin-acc-888-google-calendar',
+        providerConfigKey: 'google-calendar-prod', // not in the old MAP
+      }),
+    );
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    expect(updateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'active', nango_provider_config_key: 'google-calendar-prod' }),
+    );
+  });
+
+  it('does NOT touch another account when its connectionId has no pre-issued row', async () => {
+    // The lookup is keyed on nango_connection_id. A connectionId with no matching
+    // pre-issued row returns null → 400, and no row anywhere is mutated. This is
+    // the cross-account binding guarantee preserved under the new match.
+    maybeSingleFn.mockResolvedValueOnce({ data: null, error: null });
+
+    const { POST } = await import('./route');
+    const req = makeRequest(
+      makeAuthEvent({
+        connectionId: 'nibbin-acc-victim-google-calendar',
+        providerConfigKey: 'google-calendar',
+      }),
+    );
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    expect(updateSpy).not.toHaveBeenCalled();
+    expect(insertSpy).not.toHaveBeenCalled();
   });
 
   // ── Watch failure is non-fatal ─────────────────────────────────────────────

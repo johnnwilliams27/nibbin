@@ -12,6 +12,21 @@ it('lists Gmail, Google Calendar, and Stripe as the wired providers', () => {
   ).toEqual(['gmail', 'google-calendar', 'stripe']);
 });
 
+it('marks Stripe read-only and Gmail/Calendar writable (drives the "work from" short-list)', () => {
+  // Stripe is observe-only — must be flagged so it is kept OUT of the default
+  // top "Accounts your Nibbins work from" list until a real connection exists.
+  expect(CONNECTABLE_PROVIDERS.find((p) => p.id === 'stripe')?.readOnly).toBe(true);
+  // Providers your nibbins act FROM are not read-only.
+  expect(CONNECTABLE_PROVIDERS.find((p) => p.id === 'gmail')?.readOnly ?? false).toBe(false);
+  expect(CONNECTABLE_PROVIDERS.find((p) => p.id === 'google-calendar')?.readOnly ?? false).toBe(false);
+  // The default short-list = wired AND not read-only.
+  expect(
+    CONNECTABLE_PROVIDERS.filter((p) => p.wired && !p.readOnly)
+      .map((p) => p.id)
+      .sort(),
+  ).toEqual(['gmail', 'google-calendar']);
+});
+
 describe('scopeSummary', () => {
   it('maps the Gmail read scope to plain language, never a raw URL', () => {
     const s = scopeSummary(['https://www.googleapis.com/auth/gmail.readonly']);

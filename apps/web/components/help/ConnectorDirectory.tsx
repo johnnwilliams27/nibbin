@@ -13,6 +13,7 @@ const STATUS_LABEL: Record<ConnectorEntry['status'], { label: string; tone: 'mos
 };
 
 const POPULAR_KEY = '__popular__';
+const ALL_KEY = '__all__';
 
 function ConnectorGrid({ items, connectedIds }: { items: ConnectorEntry[]; connectedIds: Set<string> }) {
   return (
@@ -73,24 +74,27 @@ export function ConnectorDirectory({
     );
   }, [connectors, q]);
 
-  // Tabs across the top: Popular first (curated), then each non-empty category.
-  // Exactly one tab's grid shows at a time — no vertical accordion stack.
-  const tabs = useMemo(() => {
-    const t: { key: string; label: string; items: ConnectorEntry[] }[] = [];
-    const pop = popularConnectors(connectors);
-    if (pop.length) t.push({ key: POPULAR_KEY, label: 'Popular', items: pop });
-    for (const g of groupConnectors(connectors)) {
-      t.push({ key: g.category, label: g.category, items: g.items });
-    }
-    return t;
-  }, [connectors]);
+  // Category views: Popular (curated) first, then "All connectors", then each
+  // non-empty category. A single <select> drives which view shows — far more
+  // scannable than a 27-chip horizontal rail when there are 26 categories.
+  const groups = useMemo(() => groupConnectors(connectors), [connectors]);
+  const popular = useMemo(() => popularConnectors(connectors), [connectors]);
+
+  type View = { key: string; label: string; items: ConnectorEntry[] };
+  const views = useMemo<View[]>(() => {
+    const v: View[] = [];
+    if (popular.length) v.push({ key: POPULAR_KEY, label: 'Popular', items: popular });
+    v.push({ key: ALL_KEY, label: 'All connectors', items: connectors });
+    for (const g of groups) v.push({ key: g.category, label: g.category, items: g.items });
+    return v;
+  }, [connectors, groups, popular]);
 
   const [activeKey, setActiveKey] = useState<string>(POPULAR_KEY);
-  // Resolve the active tab; fall back to the first tab if the key ever goes stale.
-  const active = tabs.find((t) => t.key === activeKey) ?? tabs[0];
+  // Resolve the active view; fall back to the first view if the key goes stale.
+  const active = views.find((v) => v.key === activeKey) ?? views[0];
   const isPopular = active?.key === POPULAR_KEY;
 
-  // Popular keeps its curated order; category tabs respect the Sort control.
+  // Popular keeps its curated order; every other view respects the Sort control.
   const activeItems = active ? (isPopular ? active.items : sortConnectors(active.items, mode)) : [];
 
   return (
@@ -106,6 +110,26 @@ export function ConnectorDirectory({
             placeholder="Search connectors…"
             aria-label="Search connectors"
           />
+          <label className={styles.sort}>
+            Category
+            <span className={styles.sortWrapper}>
+              <select
+                className={styles.sortSelect}
+                value={active?.key ?? POPULAR_KEY}
+                onChange={(e) => setActiveKey(e.target.value)}
+                // While searching we show cross-category matches, so the category
+                // picker has no effect — disable it to signal that.
+                disabled={searching}
+                aria-label="Filter connectors by category"
+              >
+                {views.map((v) => (
+                  <option key={v.key} value={v.key}>
+                    {v.label} ({v.items.length})
+                  </option>
+                ))}
+              </select>
+            </span>
+          </label>
           {showSort && (
             <label className={styles.sort}>
               Sort
@@ -114,8 +138,8 @@ export function ConnectorDirectory({
                   className={styles.sortSelect}
                   value={mode}
                   onChange={(e) => setMode(e.target.value as 'available' | 'alpha')}
-                  // Sort orders a category grid; no effect while searching
-                  // (always available-first) or on the curated Popular tab.
+                  // Sort orders the active grid; no effect while searching
+                  // (always available-first) or on the curated Popular view.
                   disabled={searching || isPopular}
                 >
                   <option value="available">Available first, then A–Z</option>
@@ -134,23 +158,7 @@ export function ConnectorDirectory({
           <ConnectorGrid items={matches} connectedIds={connectedSet} />
         )
       ) : (
-        <>
-          <nav className={styles.tabBar} aria-label="Connector categories">
-            {tabs.map((t) => (
-              <button
-                key={t.key}
-                type="button"
-                className={`${styles.catTab} ${t.key === active?.key ? styles.catTabActive : ''}`}
-                aria-pressed={t.key === active?.key}
-                onClick={() => setActiveKey(t.key)}
-              >
-                {t.label}
-                <span className={styles.catTabCount}>{t.items.length}</span>
-              </button>
-            ))}
-          </nav>
-          {active && <ConnectorGrid items={activeItems} connectedIds={connectedSet} />}
-        </>
+        active && <ConnectorGrid items={activeItems} connectedIds={connectedSet} />
       )}
     </section>
   );

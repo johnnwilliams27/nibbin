@@ -3,6 +3,15 @@ export interface ConnectableProvider {
   label: string;
   wired: boolean; // false → shown as "Coming soon", non-interactive
   domain: string | null; // brand root domain for the connector logo
+  /**
+   * Read-only connector — your nibbins only observe it; they never write to it
+   * (e.g. Stripe, where overdue-invoice nudges ride email.send via Gmail and
+   * Stripe itself is never mutated). Read-only providers are NOT surfaced in the
+   * top "Accounts your Nibbins work from" section by default; they live in the
+   * "Browse all connectors" directory as connectable, and only appear in the
+   * "work from" list once the account has a real (non-revoked) connection.
+   */
+  readOnly?: boolean;
 }
 
 // The short "Accounts your Nibbins work from" list only carries connectables we
@@ -13,7 +22,9 @@ export const CONNECTABLE_PROVIDERS: ConnectableProvider[] = [
   { id: 'google-calendar', label: 'Google Calendar', wired: true, domain: 'calendar.google.com' },
   // Read-only payments connector (overdue-invoice nudges ride email.send via
   // Gmail; Stripe itself is never written to). Live once STRIPE_OAUTH_* are set.
-  { id: 'stripe', label: 'Stripe', wired: true, domain: 'stripe.com' },
+  // readOnly → kept out of the default "work from" short-list (directory only)
+  // until the account actually has a Stripe connection.
+  { id: 'stripe', label: 'Stripe', wired: true, domain: 'stripe.com', readOnly: true },
 ];
 
 /** Plain-language summary for each granted OAuth scope (no raw URLs in the UI). */
