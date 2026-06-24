@@ -16,6 +16,7 @@ import type {
   IdempotencyClaim,
   IdempotencyStore,
   NibbinCurrentState,
+  NudgeFloorStore,
   OpenTrainingRequest,
   ProductEvent,
   ResourceClaimResult,
@@ -353,6 +354,46 @@ export class SupabaseResourceClaimStore implements ResourceClaimStore {
       | undefined;
     if (!row) throw new Error('claim_resource returned no row');
     return { granted: row.granted, holderRun: row.holder_run, holderNibbin: row.holder_nibbin };
+  }
+}
+
+/**
+ * Re-nudge cadence / safety floor ledger (Task 5a). `history` reads the
+ * RLS-scoped nudge_ledger directly (a plain account-scoped select — service
+ * role); `record` rides the service-role `record_nudge` RPC (no client write).
+ * On a history infra error the runner fails open (proceeds with the send), and
+ * a record failure is non-fatal (the send already fired) — so the cross-run
+ * bound degrading never drops a legitimate nudge.
+ */
+export class SupabaseNudgeFloorStore implements NudgeFloorStore {
+  constructor(private readonly svc: Service) {}
+
+  async history(nibbinId: string, resourceKind: string, resourceId: string, sinceMs: number): Promise<number[]> {
+    const { data, error } = await this.svc
+      .from('nudge_ledger')
+      .select('nudged_at')
+      .eq('nibbin_id', nibbinId)
+      .eq('resource_kind', resourceKind)
+      .eq('resource_id', resourceId)
+      .gt('nudged_at', new Date(sinceMs).toISOString());
+    if (error) throw new Error(`nudge history failed: ${error.message}`);
+    return (data ?? []).map((r) => new Date(r.nudged_at as string).getTime());
+  }
+
+  async record(req: {
+    accountId: string;
+    nibbinId: string;
+    resourceKind: string;
+    resourceId: string;
+    atMs: number;
+  }): Promise<void> {
+    const { error } = await this.svc.rpc('record_nudge', {
+      p_account: req.accountId,
+      p_nibbin: req.nibbinId,
+      p_resource_kind: req.resourceKind,
+      p_resource_id: req.resourceId,
+    });
+    if (error) throw new Error(`record_nudge failed: ${error.message}`);
   }
 }
 

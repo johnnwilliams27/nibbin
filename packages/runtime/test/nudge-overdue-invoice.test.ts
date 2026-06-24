@@ -212,8 +212,14 @@ describe('nudge.overdue-invoice — primitive unit', () => {
     expect(draft.title).toContain('20 days past due');
     // The pay link rides the body so the client can pay.
     expect(draft.draft).toContain(PAY_LINK);
-    // effectArgs: {invoiceId, to} (the safeAddress'd customer email).
-    expect(draft.effectArgs).toEqual({ invoiceId: OVERDUE_INVOICE, to: CUSTOMER_EMAIL });
+    // effectArgs: {invoiceId, to, nudgeResourceKind} (the safeAddress'd customer
+    // email + the Task 5a re-nudge resource identity). No cadence override here,
+    // so nudgeCadence is absent (the runtime applies the clamped defaults).
+    expect(draft.effectArgs).toEqual({
+      invoiceId: OVERDUE_INVOICE,
+      to: CUSTOMER_EMAIL,
+      nudgeResourceKind: 'invoice',
+    });
     // No reserved keys.
     expect(draft.effectArgs.nativeDraft).toBeUndefined();
     expect(draft.effectArgs.nativeDraftRef).toBeUndefined();
