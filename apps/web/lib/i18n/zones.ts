@@ -39,8 +39,6 @@ export const COMMON_TIMEZONES: Option[] = [
   { value: 'Pacific/Auckland', label: 'Auckland' },
 ];
 
-const TIMEZONE_VALUES = new Set(COMMON_TIMEZONES.map((t) => t.value));
-
 /** Common locales (BCP-47), labelled in English. */
 export const COMMON_LOCALES: Option[] = [
   { value: 'en-US', label: 'English (United States)' },
@@ -61,16 +59,6 @@ export const COMMON_LOCALES: Option[] = [
   { value: 'zh-CN', label: 'Chinese (Simplified)' },
   { value: 'zh-TW', label: 'Chinese (Traditional)' },
 ];
-
-const LOCALE_VALUES = new Set(COMMON_LOCALES.map((l) => l.value));
-
-export function isKnownTimezone(tz: string): boolean {
-  return TIMEZONE_VALUES.has(tz);
-}
-
-export function isKnownLocale(locale: string): boolean {
-  return LOCALE_VALUES.has(locale);
-}
 
 /**
  * Options to render in a select, guaranteeing the user's current value is

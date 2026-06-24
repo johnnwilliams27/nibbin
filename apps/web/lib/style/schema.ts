@@ -39,15 +39,6 @@ export interface StyleProfile {
   updated_at: string;
 }
 
-/** Safe defaults for a fresh profile with no data yet. */
-export const DEFAULT_TONE_PROFILE: ToneProfile = {
-  formality: null,
-  sentiment: null,
-  pace: null,
-  signature_sign_offs: [],
-  removals: [],
-};
-
 export const DEFAULT_STATS: StyleStats = {
   edits_analyzed: 0,
   confidence: 0,
