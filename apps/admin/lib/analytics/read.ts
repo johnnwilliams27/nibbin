@@ -155,6 +155,56 @@ export async function loadAnalyticsDaily(
 }
 
 // ---------------------------------------------------------------------------
+// analytics_gtm_funnel — per-source clicks vs signups
+// ---------------------------------------------------------------------------
+
+/** One row from analytics_gtm_funnel(): a source with its click + signup counts. */
+export interface GtmFunnelRow {
+  source: string;
+  clicks: number;
+  signups: number;
+}
+
+/** Shape guard for one analytics_gtm_funnel() row. */
+function isGtmFunnelRow(row: unknown): row is GtmFunnelRow {
+  if (!row || typeof row !== 'object') return false;
+  const r = row as Record<string, unknown>;
+  return (
+    typeof r.source === 'string' &&
+    typeof r.clicks === 'number' &&
+    Number.isFinite(r.clicks) &&
+    typeof r.signups === 'number' &&
+    Number.isFinite(r.signups)
+  );
+}
+
+/**
+ * Click→signup conversion for one source. Returns null when there are no
+ * clicks (e.g. signups arrived before tracking, or a '(none)' bucket).
+ */
+export function gtmConversion(row: GtmFunnelRow): number | null {
+  return rate(row.signups, row.clicks);
+}
+
+/**
+ * Load the GTM funnel (clicks vs signups by source) via the service_role client.
+ * Rows are ordered most-clicked first by the RPC.
+ */
+export async function loadGtmFunnel(admin: SupabaseClient): Promise<GtmFunnelRow[]> {
+  const { data, error } = await admin.rpc('analytics_gtm_funnel');
+  if (error) throw new Error(`analytics_gtm_funnel failed: ${error.message}`);
+  const raw = Array.isArray(data) ? data : [];
+  const rows: GtmFunnelRow[] = [];
+  for (const row of raw) {
+    if (!isGtmFunnelRow(row)) {
+      throw new Error('analytics_gtm_funnel returned an unexpected row shape');
+    }
+    rows.push(row);
+  }
+  return rows;
+}
+
+// ---------------------------------------------------------------------------
 // Desktop download counts — GitHub Releases API (public repo, no token)
 // ---------------------------------------------------------------------------
 
