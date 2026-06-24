@@ -52,17 +52,6 @@ import { makeGmailClient, makeGoogleCalendarClient } from '@nibbin/connectors';
 
 export const dynamic = 'force-dynamic';
 
-// ── Provider key reverse-mapping ────────────────────────────────────────────
-
-/** Reverse of providerToNangoKey: maps Nango providerConfigKey → Nibbin provider id. */
-function nangoKeyToProvider(providerConfigKey: string): string | null {
-  const MAP: Record<string, string> = {
-    'google-mail': 'gmail',
-    'google-calendar': 'google-calendar',
-  };
-  return MAP[providerConfigKey] ?? null;
-}
-
 // ── Scope parsing ────────────────────────────────────────────────────────────
 
 /**
@@ -196,20 +185,56 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   const { connectionId, providerConfigKey } = authEvent;
-
-  // 5. Derive the Nibbin provider id from the Nango providerConfigKey
-  const provider = nangoKeyToProvider(providerConfigKey);
-  if (!provider) {
-    // Unknown integration key — not one we manage
-    return NextResponse.json({ error: 'unknown_provider_config_key' }, { status: 400 });
-  }
-
-  // 6. Derive account from the connectionId and set up the service client.
-  //    Derivation: connectionId = 'nibbin-{accountId}-{provider}' (Task 8).
-  const accountId = deriveAccountId(connectionId, provider);
   const svc = serviceClient();
 
-  // 7. Read the granted scopes back from Nango (C8 scope-at-connect invariant)
+  // 5. Look up the PRE-ISSUED connection row for this connect — keyed ONLY by the
+  //    server-minted nango_connection_id.
+  //
+  //    SECURITY (cross-account binding): nango_connection_id is the unique,
+  //    account-bound secret beginConnectAction wrote server-side at connect time.
+  //    Matching on it alone is the entire takeover defense — a forged connectionId
+  //    (e.g. an attacker completing OAuth under nibbin-{victimAccount}-{provider})
+  //    has NO pre-issued row, so this returns null and we refuse below. We never
+  //    INSERT a fresh row from an unverified id.
+  //
+  //    We read account_id + provider BACK from the matched row rather than
+  //    re-deriving them by parsing the connectionId string and reverse-mapping
+  //    the Nango providerConfigKey. Those derivations (deriveAccountId's suffix
+  //    strip + a hard-coded providerConfigKey→provider allowlist) were a brittle
+  //    three-way string coupling: if the real integration's providerConfigKey for
+  //    a provider ever differed from the literal we hard-coded (notably
+  //    google-calendar, whose provider id, config key, and connectionId suffix
+  //    are all the same string), activation silently 400'd and the pending row
+  //    was never flipped to active. The row is the source of truth for what was
+  //    actually pre-issued, so trust it.
+  //
+  //    Scoped to non-revoked so a revoked row from a previous disconnect does
+  //    not block a reconnect (the reconnect pre-issues a fresh pending row).
+  const { data: existingRow, error: selectError } = await svc
+    .from('connections')
+    .select('id, account_id, provider')
+    .eq('nango_connection_id', connectionId)
+    .neq('status', 'revoked')
+    .maybeSingle();
+
+  if (selectError) {
+    console.error('[nango/callback] connection lookup failed', selectError.message);
+    return NextResponse.json({ error: 'lookup_failed' }, { status: 500 });
+  }
+
+  if (!existingRow) {
+    // No pre-issued row for this connectionId → reject. Either the connect was
+    // never initiated by Nibbin, or the connectionId was forged. Do NOT create a
+    // connection from an unverified id.
+    console.error('[nango/callback] no pre-issued connection row for connectionId');
+    return NextResponse.json({ error: 'connection_not_pre_issued' }, { status: 400 });
+  }
+
+  // account_id + provider are authoritative from the pre-issued row.
+  const accountId = existingRow.account_id as string;
+  const provider = existingRow.provider as string;
+
+  // 6. Read the granted scopes back from Nango (C8 scope-at-connect invariant)
   //    Done BEFORE the row write so scopes are always from the live Nango token.
   let scopes: string[] = [];
   try {
@@ -222,41 +247,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Nango unavailable — fall back to empty scopes; the cron watch-renew will retry
     // and the scope-check in requireGrantedScope will block write actions safely.
     scopes = [];
-  }
-
-  // 8. Look up the PRE-ISSUED connection row for this connect.
-  //
-  //    SECURITY (cross-account binding): the row must have been pre-issued by
-  //    beginConnectAction for THIS exact (account_id, nango_connection_id).
-  //    We match on nango_connection_id — the binding Nibbin created server-side
-  //    at connect — not just the account parsed from the connectionId string.
-  //    A forged connectionId (e.g. an attacker completing OAuth under
-  //    connection_id=nibbin-{victimAccount}-{provider}) has NO pre-issued row,
-  //    so this lookup returns null and we refuse below. We never INSERT a fresh
-  //    row from a parsed-but-unverified connectionId.
-  //
-  //    Scoped to non-revoked so a revoked row from a previous disconnect does
-  //    not block a reconnect (the reconnect pre-issues a fresh pending row).
-  const { data: existingRow, error: selectError } = await svc
-    .from('connections')
-    .select('id, account_id')
-    .eq('account_id', accountId)
-    .eq('provider', provider)
-    .eq('nango_connection_id', connectionId)
-    .neq('status', 'revoked')
-    .maybeSingle();
-
-  if (selectError) {
-    console.error('[nango/callback] connection lookup failed', selectError.message);
-    return NextResponse.json({ error: 'lookup_failed' }, { status: 500 });
-  }
-
-  if (!existingRow) {
-    // No pre-issued row for this (account, connectionId) → reject. Either the
-    // connect was never initiated by Nibbin for this account, or the
-    // connectionId was forged. Do NOT create a connection from an unverified id.
-    console.error('[nango/callback] no pre-issued connection row for connectionId', provider);
-    return NextResponse.json({ error: 'connection_not_pre_issued' }, { status: 400 });
   }
 
   // Pre-issued row exists → activate it (idempotent replay / re-auth).
@@ -289,25 +279,4 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   return NextResponse.json({ ok: true, connectionId, provider });
-}
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-/**
- * Extract the accountId from a Nango connectionId.
- * Format: 'nibbin-{accountId}-{provider}' (set in buildNangoConnectUrl, Task 8).
- *
- * Examples:
- *   'nibbin-acc-123-gmail'            → 'acc-123'
- *   'nibbin-acc-123-google-calendar'  → 'acc-123'
- *
- * Edge case: provider names with hyphens (e.g. 'google-calendar') — we strip
- * the trailing '-{provider}' by using the known provider list. If parsing
- * fails, we return '' (which will result in a row-not-found 400).
- */
-function deriveAccountId(connectionId: string, provider: string): string {
-  const prefix = 'nibbin-';
-  const suffix = `-${provider}`;
-  if (!connectionId.startsWith(prefix) || !connectionId.endsWith(suffix)) return '';
-  return connectionId.slice(prefix.length, connectionId.length - suffix.length);
 }

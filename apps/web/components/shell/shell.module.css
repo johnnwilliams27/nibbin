@@ -407,11 +407,22 @@
 .topbar {
   position: sticky;
   top: 0;
-  z-index: 20;
+  /* Above the keeper dock (z-index 22 in keeper-dock.module.css) so the header
+     reads as one continuous bar across the FULL width and the dock — which is
+     position:fixed and starts at top:60px — tucks underneath it instead of
+     overlapping/clipping the header's right edge when it opens. The padding-right
+     push below (html.keeper-dock-open .main) reflows the header content cleanly
+     into the freed strip; this z-index keeps the bar itself unbroken. */
+  z-index: 23;
+  /* Fixed height matching --topbar-h so the dock's top:60px is always flush with
+     the header's bottom edge — a taller/auto header would let the dock cut across
+     its lower strip and look misaligned as it opens. */
+  height: var(--topbar-h, 60px);
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px var(--pad-page, 24px);
+  padding: 0 var(--pad-page, 24px);
   background: color-mix(in srgb, var(--paper) 88%, transparent);
   backdrop-filter: blur(6px);
   border-bottom: 1px solid var(--line);

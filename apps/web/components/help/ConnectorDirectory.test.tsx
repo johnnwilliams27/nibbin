@@ -59,18 +59,27 @@ describe('ConnectorDirectory data helpers', () => {
   });
 });
 
-describe('ConnectorDirectory tabbed navigation', () => {
-  it('defaults to the Popular tab and renders one section at a time', () => {
+describe('ConnectorDirectory category navigation', () => {
+  it('defaults to the Popular view and renders one section at a time', () => {
     const html = renderToStaticMarkup(<ConnectorDirectory connectors={FIXTURE} />);
-    // Popular is the default-active tab; Gmail (a curated-popular connector) renders.
+    // Popular is the default-active view; Gmail (a curated-popular connector) renders.
     expect(html).toContain('Popular');
     expect(html).toContain('Gmail');
-    // Category tabs appear across the top for navigation (labels present)...
+    // The category <select> carries every category + an "All connectors" option
+    // (labels present as <option>s for scannable navigation)...
+    expect(html).toContain('All connectors');
     expect(html).toContain('Email');
     expect(html).toContain('Messaging &amp; Meetings');
     // ...but only the active (Popular) grid renders: a non-popular connector in a
     // non-active category is NOT in the markup (one section at a time, bounding
     // logo requests). iCloud Mail is in Email (not active) and not curated-popular.
     expect(html).not.toContain('iCloud Mail');
+  });
+
+  it('exposes a category picker rather than a wall of category chips', () => {
+    const html = renderToStaticMarkup(<ConnectorDirectory connectors={FIXTURE} />);
+    // A single <select> drives category navigation (no per-category button rail).
+    expect(html).toContain('Filter connectors by category');
+    expect(html).toContain('<select');
   });
 });
