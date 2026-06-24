@@ -224,15 +224,25 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     scopes = [];
   }
 
-  // 8. Look up the non-revoked connection row for this (account, provider).
-  //    Scoped to non-revoked: a revoked row from a previous disconnect must not
-  //    block a reconnect (F-A fix). If no non-revoked row exists we INSERT one
-  //    instead of returning 400 (C1 fix: first-time [N] connect has no pre-existing row).
+  // 8. Look up the PRE-ISSUED connection row for this connect.
+  //
+  //    SECURITY (cross-account binding): the row must have been pre-issued by
+  //    beginConnectAction for THIS exact (account_id, nango_connection_id).
+  //    We match on nango_connection_id — the binding Nibbin created server-side
+  //    at connect — not just the account parsed from the connectionId string.
+  //    A forged connectionId (e.g. an attacker completing OAuth under
+  //    connection_id=nibbin-{victimAccount}-{provider}) has NO pre-issued row,
+  //    so this lookup returns null and we refuse below. We never INSERT a fresh
+  //    row from a parsed-but-unverified connectionId.
+  //
+  //    Scoped to non-revoked so a revoked row from a previous disconnect does
+  //    not block a reconnect (the reconnect pre-issues a fresh pending row).
   const { data: existingRow, error: selectError } = await svc
     .from('connections')
-    .select('id')
+    .select('id, account_id')
     .eq('account_id', accountId)
     .eq('provider', provider)
+    .eq('nango_connection_id', connectionId)
     .neq('status', 'revoked')
     .maybeSingle();
 
@@ -241,47 +251,30 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'lookup_failed' }, { status: 500 });
   }
 
-  let rowId: string;
-
-  if (existingRow) {
-    // Non-revoked row exists → UPDATE it (idempotent replay / re-auth).
-    const { error: updateError } = await svc
-      .from('connections')
-      .update({
-        nango_connection_id: connectionId,
-        nango_provider_config_key: providerConfigKey,
-        scopes,
-        status: 'active',
-      })
-      .eq('id', existingRow.id);
-
-    if (updateError) {
-      console.error('[nango/callback] connection update failed', existingRow.id, updateError.message);
-      return NextResponse.json({ error: 'update_failed' }, { status: 500 });
-    }
-    rowId = existingRow.id as string;
-  } else {
-    // No non-revoked row → INSERT a new active [N] row (first-time connect).
-    const { data: inserted, error: insertError } = await svc
-      .from('connections')
-      .insert({
-        account_id: accountId,
-        provider,
-        method: 'N',
-        nango_connection_id: connectionId,
-        nango_provider_config_key: providerConfigKey,
-        scopes,
-        status: 'active',
-      })
-      .select('id')
-      .single();
-
-    if (insertError || !inserted) {
-      console.error('[nango/callback] connection insert failed', insertError?.message);
-      return NextResponse.json({ error: 'insert_failed' }, { status: 500 });
-    }
-    rowId = inserted.id as string;
+  if (!existingRow) {
+    // No pre-issued row for this (account, connectionId) → reject. Either the
+    // connect was never initiated by Nibbin for this account, or the
+    // connectionId was forged. Do NOT create a connection from an unverified id.
+    console.error('[nango/callback] no pre-issued connection row for connectionId', provider);
+    return NextResponse.json({ error: 'connection_not_pre_issued' }, { status: 400 });
   }
+
+  // Pre-issued row exists → activate it (idempotent replay / re-auth).
+  const { error: updateError } = await svc
+    .from('connections')
+    .update({
+      nango_connection_id: connectionId,
+      nango_provider_config_key: providerConfigKey,
+      scopes,
+      status: 'active',
+    })
+    .eq('id', existingRow.id);
+
+  if (updateError) {
+    console.error('[nango/callback] connection update failed', existingRow.id, updateError.message);
+    return NextResponse.json({ error: 'update_failed' }, { status: 500 });
+  }
+  const rowId = existingRow.id as string;
 
   // 9. Trigger push watch registration — fire-and-forget (non-fatal)
   try {
