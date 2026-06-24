@@ -40,7 +40,10 @@ export type RoutedTask =
   | 'doc_extract'
   | 'doc_vision_extract'
   // Company-brain synthesis (P5 §6b)
-  | 'synthesis';
+  | 'synthesis'
+  // C2 follow-up: semantic contradiction judging over heuristic conflict
+  // candidates. T1 — frequent background classification over short derived text.
+  | 'contradiction_judge';
 
 /**
  * Where the request came from. Only `chat`-origin T2 grants draw down the

@@ -17,13 +17,18 @@
  *      weight; tie-break = first in input order.
  *   7. detail = short human one-liner naming the fieldKey and the distinct competing values
  *      (each truncated to ~60 chars, joined by " vs "; capped at ~300 chars total).
- *   8. stakes = 'high' iff fieldKey ∈ {pricing, policies, hard_rules}; else 'normal'.
+ *   8. stakes = scoreStakes(signals) — a weighted score over field criticality,
+ *      competing-source count, authority spread, and divergence magnitude
+ *      (see stakes-score.ts), thresholded to 'normal' | 'high'. (Was: a flat
+ *      lookup against a 3-field set; that set is now one input to the score.)
  *
  * Design constraints:
  *   - Pure TypeScript — no I/O, no model calls, no DB access.
  *   - Deterministic: same inputs → same output on every call.
  *   - Fail-safe: individual field errors do NOT propagate (caller handles per-field).
  */
+
+import { scoreStakes } from './stakes-score';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -63,14 +68,20 @@ export interface FieldConflict {
   suggestedSourceId: string;
   /** A short human one-liner describing the conflict and the competing values. */
   detail: string;
+  /**
+   * The DISTINCT competing values (original/trimmed text) the heuristic actually
+   * deemed in conflict — first-appearance order, one per distinct normalized
+   * value among the competing entries. This is the EXACT set the LLM judge must
+   * see (conflict-judge.ts): it byte-for-byte matches what the heuristic
+   * compared, so the judge cannot suppress on a value the heuristic never
+   * flagged (logic-skeptic P1).
+   */
+  distinctValues: string[];
   /** 'high' for pricing/policies/hard_rules; 'normal' otherwise. */
   stakes: 'normal' | 'high';
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-
-/** Fields whose conflicts must be surfaced proactively (high stakes). */
-const HIGH_STAKES_FIELDS = new Set(['pricing', 'policies', 'hard_rules']);
 
 /** Maximum characters for each truncated value snippet in the detail string. */
 const DETAIL_VALUE_TRUNCATE = 60;
@@ -141,11 +152,13 @@ function detectForField(
   const { fieldKey, contributions } = field;
 
   // Step 1: Build effective contributions — normalized, non-empty only.
-  const effective: Array<{ sourceId: string; sourceKind: SourceKind; normalized: string }> = [];
+  // `original` is the trimmed source text, retained so the LLM judge can see
+  // the real values (not the lowercased/whitespace-collapsed normalized form).
+  const effective: Array<{ sourceId: string; sourceKind: SourceKind; normalized: string; original: string }> = [];
   for (const c of contributions) {
     const norm = normalize(c.value);
     if (norm.length > 0) {
-      effective.push({ sourceId: c.sourceId, sourceKind: c.sourceKind, normalized: norm });
+      effective.push({ sourceId: c.sourceId, sourceKind: c.sourceKind, normalized: norm, original: c.value.trim() });
     }
   }
 
@@ -185,29 +198,43 @@ function detectForField(
   }
 
   // Step 5: Build detail string.
-  // Collect the distinct normalized values in the order they first appear.
+  // Collect the distinct values by normalized identity, in first-appearance
+  // order. We keep two parallel lists: the normalized form (for the human
+  // detail snippet, unchanged) and the ORIGINAL trimmed text (for the LLM judge
+  // and the returned distinctValues — the judge must see real values, and they
+  // must be exactly the heuristic's competing set: logic-skeptic P1).
   const seenValues = new Set<string>();
+  const distinctNormalized: string[] = [];
   const distinctValues: string[] = [];
   for (const e of competingEntries) {
     if (!seenValues.has(e.normalized)) {
       seenValues.add(e.normalized);
-      distinctValues.push(e.normalized);
+      distinctNormalized.push(e.normalized);
+      distinctValues.push(e.original);
     }
   }
-  const snippets = distinctValues.map((v) => `"${truncate(v, DETAIL_VALUE_TRUNCATE)}"`);
+  const snippets = distinctNormalized.map((v) => `"${truncate(v, DETAIL_VALUE_TRUNCATE)}"`);
   const rawDetail = `Sources disagree on "${fieldKey}": ${snippets.join(' vs ')}`;
   const detail = rawDetail.length <= DETAIL_MAX_LENGTH
     ? rawDetail
     : rawDetail.slice(0, DETAIL_MAX_LENGTH - 1) + '…';
 
-  // Step 6: Determine stakes.
-  const stakes: 'normal' | 'high' = HIGH_STAKES_FIELDS.has(fieldKey) ? 'high' : 'normal';
+  // Step 6: Determine stakes via the real weighted score (stakes-score.ts).
+  // Signals: field criticality, competing-source count, authority spread, and
+  // divergence magnitude (distinct value count).
+  const stakes: 'normal' | 'high' = scoreStakes({
+    fieldKey,
+    competingKinds: competingEntries.map((e) => e.sourceKind),
+    distinctValueCount: distinctValues.length,
+    authority,
+  });
 
   return {
     fieldKey,
     competingSourceIds,
     suggestedSourceId: suggested.sourceId,
     detail,
+    distinctValues,
     stakes,
   };
 }
