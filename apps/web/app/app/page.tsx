@@ -11,6 +11,7 @@ import { createClient } from '../../lib/supabase/server';
 import { ensureAccount } from '../../lib/auth/bootstrap';
 import { upsertOwnProfile } from '../../lib/auth/profile';
 import { loadGroveState } from '../../lib/grove/load';
+import { loadReachMeData } from '../../lib/privacy/reach-me';
 import { AppShell } from '../../components/shell/AppShell';
 import { Card, Badge, InlineFeedback } from '../../components/ui';
 import { OnboardingCanvas } from './grove/OnboardingCanvas';
@@ -238,7 +239,7 @@ export default async function AppPage({ searchParams }: { searchParams: Promise<
 
   // Every read below is gated by RLS on the user's own session — this is the
   // live demonstration that membership scoping holds at the database layer.
-  const [groveLoad, { data: account }, { count: activeConnectionCount }, { data: activeStudy }] =
+  const [groveLoad, { data: account }, { count: activeConnectionCount }, { data: activeStudy }, reachMe] =
     await Promise.all([
       loadGroveState(supabase, accountId, user.id),
       supabase.from('accounts').select('name').eq('id', accountId).single(),
@@ -257,6 +258,9 @@ export default async function AppPage({ searchParams }: { searchParams: Promise<
         .eq('account_id', accountId)
         .eq('status', 'active')
         .maybeSingle(),
+      // Reach-me channel state for the focal header "Reach me on the go" button
+      // (shown once onboarding settles at step === 'done').
+      loadReachMeData(supabase),
     ]);
 
   const { state: grove, initialMessages, expression, credits } = groveLoad;
@@ -279,6 +283,7 @@ export default async function AppPage({ searchParams }: { searchParams: Promise<
           credits={credits}
           initialProfile={grove.profile}
           hasConnection={hasConnection}
+          reachMe={reachMe}
         />
       </AppShell>
     );

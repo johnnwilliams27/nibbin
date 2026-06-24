@@ -15,6 +15,8 @@
 import { Grovekeeper } from '../../../components/grovekeeper/Grovekeeper';
 import type { KeeperExpression, KeeperMessage, OnboardingStep, UnderstandingProfile } from '@nibbin/keeper';
 import { KeeperChat, type Celebration } from './KeeperChat';
+import { ReachMeButton } from './ReachMeButton';
+import type { ReachMeData } from '../../../lib/privacy/reach-me';
 import styles from './keeper-panel.module.css';
 
 export interface KeeperPanelProps {
@@ -28,6 +30,8 @@ export interface KeeperPanelProps {
   hasConnection: boolean;
   /** Recent promotions to celebrate in-grove (Beat 3). */
   pendingCelebrations: Celebration[];
+  /** Reach-me channel state for the "Reach me on the go" header button. */
+  reachMe: ReachMeData;
   /**
    * Close the panel. On mobile (bottom sheet) a ✕ button in the header calls
    * this; on desktop the header close button is hidden via CSS and the
@@ -46,6 +50,7 @@ export function KeeperPanel({
   initialProfile,
   hasConnection,
   pendingCelebrations,
+  reachMe,
   onClose,
 }: KeeperPanelProps) {
   return (
@@ -60,6 +65,9 @@ export function KeeperPanel({
           <p className={styles.eyebrow}>Your Keeper</p>
           <p className={styles.name}>{keeperName ?? 'Your Grovekeeper'}</p>
         </div>
+        {/* "Reach me on the go" — only in the settled state, never mid-onboarding
+            (mirrors how OnboardingNextStep gates on step === 'done'). */}
+        {initialStep === 'done' && <ReachMeButton reachMe={reachMe} />}
         <p className={styles.credits}>
           <span className={styles.creditsValue}>{credits}</span>
           {' '}cr
