@@ -834,6 +834,13 @@
 .tabPanel {
   display: contents; /* let children own layout */
 }
+/* `display: contents` overrides the UA `[hidden] { display: none }`, which would
+   otherwise hide the inactive tab panel. Re-assert it so the `hidden` attribute
+   (set when activeTab !== this panel) actually hides the inactive panel — without
+   this both the Grove Memory and Sources panels render stacked on every tab. */
+.tabPanel[hidden] {
+  display: none;
+}
 
 /* Sources tab stub (Task 13 replaces this content) */
 .sourcesStub {

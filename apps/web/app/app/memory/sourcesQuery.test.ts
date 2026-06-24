@@ -10,6 +10,7 @@ import {
   parseSourcesParams,
   mapRowToSourceListItem,
   groupToMimePredicate,
+  parseSourcesListResponse,
 } from './sourcesQuery';
 
 // ---------------------------------------------------------------------------
@@ -284,5 +285,30 @@ describe('groupToMimePredicate', () => {
     const p = groupToMimePredicate(null);
     expect(p.kind).toBe('none');
     expect(p.patterns).toHaveLength(0);
+  });
+});
+
+describe('parseSourcesListResponse — route↔client response contract', () => {
+  const item = {
+    id: 's1', title: 'a.md', mimeGroup: 'docs' as const,
+    byteSize: 10, capturedAt: '2026-06-23', extractionState: 'pending',
+  };
+
+  it('reads the `sources` key the route actually returns', () => {
+    expect(parseSourcesListResponse({ sources: [item], total: 1 })).toEqual([item]);
+  });
+
+  it('returns [] for the WRONG key `items` (guards the shipped bug)', () => {
+    // The client previously read `data.items`, which the route never sends —
+    // so every server fetch/search was silently dropped. Lock the right key.
+    expect(parseSourcesListResponse({ items: [item] })).toEqual([]);
+  });
+
+  it('returns [] for empty / null / non-object / missing array', () => {
+    expect(parseSourcesListResponse({ sources: [] })).toEqual([]);
+    expect(parseSourcesListResponse({})).toEqual([]);
+    expect(parseSourcesListResponse(null)).toEqual([]);
+    expect(parseSourcesListResponse('nope')).toEqual([]);
+    expect(parseSourcesListResponse({ sources: 'x' })).toEqual([]);
   });
 });

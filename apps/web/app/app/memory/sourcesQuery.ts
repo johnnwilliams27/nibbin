@@ -214,3 +214,19 @@ export function mapRowToSourceListItem(row: Record<string, unknown>): SourceList
   };
 }
 
+// ---------------------------------------------------------------------------
+// parseSourcesListResponse
+//
+// Reads the items array out of the GET /api/brain/sources response. The route
+// returns `{ sources, total }` — this helper is the single place that knows the
+// response key, so the client and the route can't silently drift (they did:
+// the client previously read `data.items`, which is always undefined, so every
+// server fetch/search/filter was ignored and only optimistic uploads showed).
+// ---------------------------------------------------------------------------
+
+export function parseSourcesListResponse(json: unknown): SourceListItem[] {
+  if (!json || typeof json !== 'object') return [];
+  const sources = (json as { sources?: unknown }).sources;
+  return Array.isArray(sources) ? (sources as SourceListItem[]) : [];
+}
+
