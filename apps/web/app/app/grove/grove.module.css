@@ -236,6 +236,37 @@
   color: var(--g-ink-soft);
 }
 
+/* ── synthesis card (P5 §8b) ─────────────────────────────────────────────── */
+
+.synthesisCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.synthesisDetailBtn {
+  align-self: flex-start;
+  font: 600 12px/1 var(--sans);
+  color: var(--moss-deep);
+  background: var(--moss-tint);
+  border: 1px solid color-mix(in srgb, var(--moss) 30%, transparent);
+  border-radius: var(--r-pill);
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease-settle),
+              color var(--dur-1) var(--ease-settle);
+}
+
+.synthesisDetailBtn:hover {
+  background: color-mix(in srgb, var(--moss) 16%, transparent);
+  color: var(--moss);
+}
+
+.synthesisDetailBtn:focus-visible {
+  outline: 2px solid var(--moss);
+  outline-offset: 2px;
+}
+
 /* ── small screens ───────────────────────────────────────────────────────── */
 
 @media (max-width: 720px) {

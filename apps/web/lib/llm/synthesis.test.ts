@@ -144,8 +144,9 @@ describe('diagnosisSynthesis', () => {
       })),
     };
     let receivedBody = '';
-    const generate: Generate = vi.fn(async (req: { messages: { content: string }[] }) => {
-      receivedBody = req.messages[0].content;
+    const generate: Generate = vi.fn(async (req) => {
+      const firstContent = req.messages[0].content;
+      receivedBody = typeof firstContent === 'string' ? firstContent : '';
       return fakeResult('A diagnosis on the part that fit.', 'claude-opus-4-8');
     });
     const out = await diagnosisSynthesis('acct-1', 'user-1', huge, generate);
@@ -162,8 +163,9 @@ describe('diagnosisSynthesis', () => {
     // One pathological 8M-char section — alone it dwarfs the 100k-token budget.
     const giant = { sections: [{ title: 'Everything', content: 'x'.repeat(8_000_000) }] };
     let receivedBody = '';
-    const generate: Generate = vi.fn(async (req: { messages: { content: string }[] }) => {
-      receivedBody = req.messages[0].content;
+    const generate: Generate = vi.fn(async (req) => {
+      const firstContent = req.messages[0].content;
+      receivedBody = typeof firstContent === 'string' ? firstContent : '';
       return fakeResult('A diagnosis on the part that fit.', 'claude-opus-4-8');
     });
     const out = await diagnosisSynthesis('acct-1', 'user-1', giant, generate);
