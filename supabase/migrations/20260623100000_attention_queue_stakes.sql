@@ -52,6 +52,13 @@ create or replace function public.propose_memory_change(
 ) returns uuid language plpgsql security definer set search_path = '' as $$
 declare new_id uuid;
 begin
+  -- Foundation Minor (carried from P2's 7-arg version, 20260622150000): friendly
+  -- blank-value guard. The proposals.proposed_value CHECK also enforces this, but
+  -- this yields a clearer error than a raw constraint violation.
+  if trim(p_value) = '' then
+    raise exception 'proposed_value must not be blank';
+  end if;
+
   if p_source_id is not null and exists (
     select 1 from public.sources s where s.id = p_source_id and s.redaction_status = 'quarantined'
   ) then
