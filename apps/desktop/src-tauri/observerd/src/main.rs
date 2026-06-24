@@ -11,6 +11,7 @@
     windows_subsystem = "windows"
 )]
 
+use observerd::watchdog::Watchdog;
 use observerd::Daemon;
 use std::path::PathBuf;
 use std::time::Duration;
@@ -39,6 +40,12 @@ fn main() -> anyhow::Result<()> {
 
     let mut daemon = Daemon::open(&store, nibbin_capture::platform_source())?;
 
+    // 0.2.5: self-suspend watchdog (defense-in-depth). Claims the daemon lease
+    // on startup (a strictly-newer start time than any prior daemon's, so an
+    // orphaned old instance sees itself superseded). Skipped in --once mode,
+    // which is a single synchronous heartbeat for health checks/tests.
+    let mut watchdog = (!once).then(|| Watchdog::new(&store));
+
     loop {
         daemon.drain_control()?;
         daemon.tick()?;
@@ -47,6 +54,16 @@ fn main() -> anyhow::Result<()> {
         daemon.write_status()?;
         if once {
             return Ok(());
+        }
+        // After a full pass, ask the watchdog whether this daemon still has any
+        // reason to run. If not, stop the capture source and exit the process —
+        // the daemon must never keep capturing (or lingering) when it shouldn't.
+        if let Some(wd) = watchdog.as_mut() {
+            if let Some(reason) = wd.should_exit() {
+                daemon.shutdown_capture();
+                eprintln!("observerd self-exit: {reason:?}");
+                return Ok(());
+            }
         }
         std::thread::sleep(Duration::from_millis(interval_ms));
     }

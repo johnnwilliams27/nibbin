@@ -1,5 +1,12 @@
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU32, Ordering};
 use tauri::{AppHandle, Manager, Runtime};
+
+/// PID of the `observerd` instance THIS app spawned (Windows). 0 = none spawned
+/// by us (e.g. the daemon was already running, or we're on a platform where the
+/// OS service manager owns it). Read on `RunEvent::Exit` to stop capture
+/// deterministically when Nibbin quits. (0.2.5 lifecycle fix #3.)
+static SPAWNED_OBSERVERD_PID: AtomicU32 = AtomicU32::new(0);
 
 /// Returns true if the daemon wrote a heartbeat recently (within the last
 /// 5 seconds). Used to guard against double-spawning on Windows.
@@ -116,12 +123,19 @@ pub fn register_windows(observerd: &Path, store: &Path) -> anyhow::Result<()> {
             .to_string();
         // CREATE_NO_WINDOW (0x08000000) prevents a console window flashing on
         // Windows. The spawned process is detached — we don't wait for it.
-        Command::new(observerd)
+        match Command::new(observerd)
             .args(["--store", &store_str])
             .creation_flags(0x0800_0000)
             .spawn()
-            .ok(); // best-effort: a spawn failure here is non-fatal; the
-                   // daemon-health note will surface it on the next status poll.
+        {
+            // Record the PID so RunEvent::Exit can stop capture deterministically
+            // when Nibbin quits (0.2.5 lifecycle fix #3), rather than leaving the
+            // daemon running until its own watchdog notices.
+            Ok(child) => SPAWNED_OBSERVERD_PID.store(child.id(), Ordering::SeqCst),
+            // best-effort: a spawn failure here is non-fatal; the daemon-health
+            // note will surface it on the next status poll.
+            Err(e) => eprintln!("observerd spawn failed: {e}"),
+        }
     }
 
     Ok(())
@@ -195,5 +209,46 @@ pub fn ensure_daemon_running<R: Runtime>(app: &AppHandle<R>) {
                 let _ = std::fs::remove_file(store.join("daemon.health")); // clear stale failure
             }
         }
+    }
+}
+
+/// Refresh the parent-liveness heartbeat the daemon watchdog reads. Called
+/// ~1×/sec from the app's status-refresher thread; a stale (or absent) file
+/// tells the daemon its supervising app is gone. Best-effort — a write failure
+/// just means the watchdog falls back to its other (study-state) triggers.
+/// (0.2.5 lifecycle fix #5, app side.)
+pub fn touch_app_heartbeat<R: Runtime>(app: &AppHandle<R>) {
+    if let Ok(store) = crate::commands::store_root(app) {
+        let _ = std::fs::write(store.join("app.heartbeat"), chrono::Utc::now().to_rfc3339());
+    }
+}
+
+/// Stop the `observerd` instance this app spawned (Windows), called on
+/// `RunEvent::Exit` so quitting Nibbin deterministically stops capture instead
+/// of relying solely on the daemon's own watchdog (0.2.5 lifecycle fix #3).
+///
+/// Uses `taskkill /PID` to kill the EXACT instance we launched (not a broad
+/// `/IM` match), so we never tear down a newer daemon a concurrent install may
+/// have started. No-op if we didn't spawn one (PID 0) or off Windows.
+pub fn stop_spawned_daemon() {
+    let pid = SPAWNED_OBSERVERD_PID.load(Ordering::SeqCst);
+    if pid == 0 {
+        return;
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        use std::process::Command;
+        // /T also kills children (e.g. the NER sidecar). CREATE_NO_WINDOW avoids
+        // a console flash. Best-effort: ignore the result (process may already
+        // be gone, e.g. via its own watchdog).
+        let _ = Command::new("taskkill")
+            .args(["/F", "/T", "/PID", &pid.to_string()])
+            .creation_flags(0x0800_0000)
+            .status();
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = pid; // macOS/Linux: the OS service manager owns the lifecycle.
     }
 }
