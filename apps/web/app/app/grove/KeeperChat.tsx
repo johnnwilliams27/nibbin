@@ -23,6 +23,8 @@ import { advanceGroveAction, keeperChatAction, skipUnderstandingAction, understa
 import { CardView } from './cards';
 import { KeeperSprite } from './KeeperSprite';
 import { OnboardingNextStep } from './OnboardingNextStep';
+import { ReachMeButton } from './ReachMeButton';
+import type { ReachMeData } from '../../../lib/privacy/reach-me';
 import { Button } from '../../../components/ui';
 import styles from './keeper-chat.module.css';
 
@@ -113,6 +115,7 @@ export function KeeperChat({
   variant,
   hasConnection = false,
   pendingCelebrations = [],
+  reachMe,
   onStep,
 }: {
   initialMessages: KeeperMessage[];
@@ -123,6 +126,9 @@ export function KeeperChat({
   credits: number;
   initialProfile: UnderstandingProfile | null;
   variant: 'focal' | 'panel';
+  /** Reach-me channel state for the focal header "Reach me on the go" button.
+   *  Optional: the panel variant renders the button in KeeperPanel's header. */
+  reachMe?: ReachMeData;
   /** Server-derived: account has ≥1 `active` connection (drives the NIB-4
    *  next-step affordance shown at step === 'done'). */
   hasConnection?: boolean;
@@ -522,6 +528,9 @@ export function KeeperChat({
               <h1 className={styles.title}>{keeperName ?? 'A new arrival'}</h1>
             </div>
             <div className={styles.headerRight}>
+              {/* "Reach me on the go" — settled state only, never mid-onboarding
+                  (mirrors the OnboardingNextStep step === 'done' gate). */}
+              {step === 'done' && reachMe && <ReachMeButton reachMe={reachMe} />}
               <p className={styles.meter}>
                 <span className={styles.meterValue}>{credits}</span> credits
               </p>

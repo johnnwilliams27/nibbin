@@ -23,6 +23,7 @@ import { useRouter } from 'next/navigation';
 import type { KeeperExpression, KeeperMessage, OnboardingStep, UnderstandingProfile } from '@nibbin/keeper';
 import { KeeperChat } from './KeeperChat';
 import { OnboardingStepper, type StepperStep } from './OnboardingStepper';
+import type { ReachMeData } from '../../../lib/privacy/reach-me';
 import styles from './onboarding-canvas.module.css';
 
 /** Map OnboardingStep → StepperStep for the quiet progress indicator. */
@@ -51,6 +52,8 @@ export interface OnboardingCanvasProps {
   initialProfile: UnderstandingProfile | null;
   /** Server-derived: account has ≥1 `active` connection (NIB-4 next step). */
   hasConnection: boolean;
+  /** Reach-me channel state for the focal header button (shown at step==='done'). */
+  reachMe: ReachMeData;
 }
 
 export function OnboardingCanvas({
@@ -62,6 +65,7 @@ export function OnboardingCanvas({
   credits,
   initialProfile,
   hasConnection,
+  reachMe,
 }: OnboardingCanvasProps) {
   const router = useRouter();
   const [stepperStep, setStepperStep] = useState<StepperStep>(toStepperStep(initialStep));
@@ -99,6 +103,7 @@ export function OnboardingCanvas({
             credits={credits}
             initialProfile={initialProfile}
             hasConnection={hasConnection}
+            reachMe={reachMe}
             onStep={handleStep}
           />
         </div>
