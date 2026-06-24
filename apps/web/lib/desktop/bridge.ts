@@ -12,6 +12,44 @@
 import type { ObserverEvent, SynthesisPacket } from '@nibbin/redaction';
 
 // ---------------------------------------------------------------------------
+// P3 — Passive-capture propose loop types
+//
+// ObservationSummary is the ONLY thing that crosses the trust boundary from
+// the on-device Tauri process to the cloud.  This is a structural re-declaration
+// of the canonical type defined in apps/desktop/src/core/observation-summary.ts
+// kept here to avoid a cross-app tsconfig boundary import.  Shape MUST stay in
+// sync with that file and with apps/web/lib/brain/observation-schema.ts.
+// ---------------------------------------------------------------------------
+
+export interface ObservationApp {
+  name: string;
+  durationMs: number;
+  category?: string;
+}
+
+export interface WorkflowShape {
+  pattern: string;
+  frequency: number;
+}
+
+export interface ObservationSummary {
+  study_id: string;
+  study_period: { start: string; end: string };
+  total_events_reviewed: number;
+  active_ms: number;
+  top_apps: ObservationApp[];
+  busiest_hour: number | null;
+  workflow_shapes: WorkflowShape[];
+  gap_count: number;
+}
+
+/** Returned by `finalizeReview()`. */
+export interface FinalizeResult {
+  /** True when the Rust command dispatched a POST to /api/brain/propose-from-capture. */
+  proposals_requested: boolean;
+}
+
+// ---------------------------------------------------------------------------
 // Tauri global type shim — matches what Tauri v2 injects into the global
 // object (window in the browser, globalThis everywhere).
 // We only need invoke; the full API surface is declared by @tauri-apps/api
@@ -315,5 +353,43 @@ export const desktopBridge = {
     } catch {
       return () => {};
     }
+  },
+
+  // -------------------------------------------------------------------------
+  // P3 — Passive-capture observe loop (Task 5 Rust commands — degrade gracefully
+  // when not yet registered; the web track ships on the fallback values)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Run the on-device pattern derivation over the post-review survivor events.
+   *
+   * Returns `null` when:
+   *   • not running inside the Tauri shell, OR
+   *   • the Rust `derive_observation_summary` command is not yet registered
+   *     (Task 5 is deferred — see plan §5), OR
+   *   • the survivor set is below the minimum floor (< 10 events / < 5 min active).
+   *
+   * C1/C7: the returned `ObservationSummary` contains ONLY structural fields
+   * (app names, timing, workflow shapes).  No raw event content ever appears.
+   */
+  deriveObservationSummary(): Promise<ObservationSummary | null> {
+    return call<ObservationSummary | null>('derive_observation_summary', undefined, null);
+  },
+
+  /**
+   * Flush pending deletions → mark study COMPLETE → derive observation summary
+   * → upload it to /api/brain/propose-from-capture (fire-and-forget from the
+   * UX perspective).
+   *
+   * Returns `{ proposals_requested: false }` when:
+   *   • not running inside the Tauri shell, OR
+   *   • the Rust `finalize_review` command is not yet registered (Task 5 deferred).
+   *
+   * The web-track review CTA (`/app/study/review`) reads this result to decide
+   * whether to navigate to `/app/memory?from_study=1` (proposals landing) or
+   * plain `/app/memory` (no proposals / fallback).
+   */
+  finalizeReview(): Promise<FinalizeResult> {
+    return call<FinalizeResult>('finalize_review', undefined, { proposals_requested: false });
   },
 };

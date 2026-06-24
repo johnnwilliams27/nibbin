@@ -5,6 +5,7 @@ import { MemoryClient } from './MemoryClient';
 import { seedSectionsFromAnswers } from './seedSections';
 import { forwardMapLegacy, type FieldMetaRow } from './registry';
 import type { FieldMeta } from './provenance';
+import { StudySuggestionsBanner } from './StudySuggestionsBanner';
 import styles from './memory.module.css';
 
 export const metadata: Metadata = { title: 'What your grove knows — Nibbin' };
@@ -155,7 +156,12 @@ async function loadFieldMetaAndRows(
   }
 }
 
-export default async function MemoryPage() {
+export default async function MemoryPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ from_study?: string }>;
+}) {
+  const { from_study } = await searchParams;
   const { supabase, accountId, user } = await appSession();
 
   const { data: mem } = await supabase
@@ -194,6 +200,24 @@ export default async function MemoryPage() {
   // when empty, it falls back to the legacy static rendering.
   const { fieldMeta, metaRows } = await loadFieldMetaAndRows(supabase, accountId);
 
+  // P3 — capture proposal count for the post-study banner. Only query when
+  // ?from_study=1 to keep the happy path free of the extra round-trip. Returns
+  // 0 on any error so the banner silently stays hidden.
+  let pendingCaptureCount = 0;
+  if (from_study === '1') {
+    try {
+      const { count } = await supabase
+        .from('proposals')
+        .select('id', { count: 'exact', head: true })
+        .eq('account_id', accountId)
+        .eq('origin', 'capture')
+        .eq('status', 'pending');
+      pendingCaptureCount = count ?? 0;
+    } catch {
+      // silently no-op — banner stays hidden
+    }
+  }
+
   return (
     <AppShell active="memory" title="Grove Memory" email={user.email}>
       <h1 className={styles.h1}>What your grove knows</h1>
@@ -201,6 +225,8 @@ export default async function MemoryPage() {
         Everything here is shared with your Nibbins so their drafts sound like you — not a generic
         assistant. Edit or clear any of it, anytime; it&apos;s yours.
       </p>
+
+      <StudySuggestionsBanner count={pendingCaptureCount} />
 
       <MemoryClient
         initialValues={fieldValues}
