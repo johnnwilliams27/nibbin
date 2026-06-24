@@ -200,6 +200,25 @@ jobs:
           codesign --verify --strict --verbose=2 "$SIDECAR"
           rm -f "$RUNNER_TEMP/sidecar-cert.p12"
 
+      # Wipe stale installer bundles before building. The cargo cache above
+      # restores apps/desktop/src-tauri/target keyed on Cargo.lock (which rarely
+      # changes between releases), so the PRIOR version's installers linger in
+      # target/**/release/bundle/{dmg,msi,nsis} and get swept into the release by
+      # the upload-artifact glob below — the 0.2.5 cut shipped stale 0.2.4
+      # .exe/.msi this way. Removing the bundle dirs leaves only the version this
+      # run builds. (No-op on a cache miss, when target/ doesn't exist yet.)
+      - name: Clean stale installer bundles
+        shell: bash
+        run: |
+          set -euo pipefail
+          TARGET=apps/desktop/src-tauri/target
+          if [ -d "$TARGET" ]; then
+            find "$TARGET" -type d -path '*/release/bundle' -prune -exec rm -rf {} +
+            echo "cleaned stale bundle dirs under $TARGET"
+          else
+            echo "no target dir yet (cache miss) — nothing to clean"
+          fi
+
       - name: Build installers (tauri-action, build only)
         uses: tauri-apps/tauri-action@84b9d35b5fc46c1e45415bdb6144030364f7ebc5 # v0 (action-v0.6.2)
         env:
