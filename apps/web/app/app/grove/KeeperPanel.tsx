@@ -65,8 +65,13 @@ export function KeeperPanel({
           <p className={styles.eyebrow}>Your Keeper</p>
           <p className={styles.name}>{keeperName ?? 'Your Grovekeeper'}</p>
         </div>
-        {/* "Reach me on the go" — only in the settled state, never mid-onboarding
-            (mirrors how OnboardingNextStep gates on step === 'done'). */}
+        {/* "Reach me on the go" — settled state only, never mid-onboarding. The
+            dock that mounts this panel (KeeperDock via app/layout.tsx) is itself
+            only rendered when grove.step === 'done', so initialStep is the right
+            (and stable) gate here: the panel never hosts a live onboarding-completing
+            session — that happens in the focal OnboardingCanvas, where KeeperChat
+            gates the button on its LIVE step instead. Same invariant as
+            OnboardingNextStep (shown only at step === 'done'). */}
         {initialStep === 'done' && <ReachMeButton reachMe={reachMe} />}
         <p className={styles.credits}>
           <span className={styles.creditsValue}>{credits}</span>

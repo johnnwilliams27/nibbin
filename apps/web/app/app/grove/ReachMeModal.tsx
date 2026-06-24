@@ -17,15 +17,23 @@
  *      with priority/urgency carried as hidden inputs so they aren't clobbered),
  *      Disconnect, and a link to /app/settings/privacy for granular controls.
  *
- * Focus-poll auto-refresh: when the window regains focus (or the modal opens),
- * we router.refresh() to re-query connection status so the connected state
- * appears after the Telegram handoff. Simple focus listener — not a tight poll.
+ * Focus-poll auto-refresh: when the window regains focus while a live channel
+ * is still unverified, we router.refresh() to re-query connection status so the
+ * connected state appears after the Telegram handoff. Simple focus listener —
+ * not a tight poll.
  *
  * Accessibility mirrors SynthesisModal: role="dialog", aria-modal, Escape to
  * close, close button focused on open, backdrop click closes.
  *
- * Known accepted edge: connectChannel redirects to /app/settings/privacy on its
- * error / non-Telegram-live branches. Fine for the Telegram-live happy path.
+ * Navigation note (accepted by design — no new server action permitted): the
+ * reused privacy actions ALL end in redirect('/app/settings/privacy?...'):
+ * connectChannel on its error / non-Telegram-live branches, and disconnectChannel
+ * + saveChannelPrefs unconditionally on success. So toggling "Reach me here",
+ * disconnecting, or connecting a non-live channel navigates the user to the Data
+ * & Privacy page (where the same success/error InlineFeedback shows) — it is not
+ * a broken state, just a route change. Only the Telegram-connect happy path stays
+ * outside that page (it redirects to t.me first). Building a return-path variant
+ * would mean a new server action, which this feature deliberately does not add.
  */
 
 import { useEffect, useRef } from 'react';
@@ -68,17 +76,25 @@ export function ReachMeModal({ channels, botHandle, onClose }: ReachMeModalProps
   }, [onClose]);
 
   // Focus-poll auto-refresh: re-query connection status when the window regains
-  // focus (e.g. coming back from the Telegram handoff) and once on open. Keeps
-  // it simple — a focus listener, not a tight interval. router.refresh() re-runs
-  // the server component tree (layout/page) which re-reads notification_channels.
+  // focus (e.g. coming back from the Telegram handoff) so a freshly-bound
+  // channel flips into the connected state. Simple focus listener — not a tight
+  // interval. router.refresh() re-runs the server component tree (layout/page)
+  // which re-reads notification_channels.
+  //
+  // Gated to "something could still change": fire only while a LIVE channel is
+  // not yet verified (unconnected or mid-handoff). Once every live channel is
+  // connected there is nothing to re-fetch, so an open-but-idle modal must not
+  // re-render the whole route (and its resumeQueuedRuns pass) on every alt-tab.
+  // No refresh on mount — props are already fresh from the render that opened it.
+  const mayChange = channels.some((c) => c.live && c.status !== 'verified');
   useEffect(() => {
-    router.refresh();
+    if (!mayChange) return;
     function onFocus() {
       router.refresh();
     }
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
-  }, [router]);
+  }, [router, mayChange]);
 
   const content = (
     <div
