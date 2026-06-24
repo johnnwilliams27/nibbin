@@ -442,8 +442,13 @@ export function KeeperChat({
         </div>
       )}
 
+      {/* autoComplete="off" on the form reinforces the per-input attr.
+          Chrome routinely ignores autocomplete=off on inputs; the data-*
+          attrs below suppress GPay / address autofill classifiers that fire
+          on payment-form heuristics (single short text field inside a form). */}
       <form
         className={styles.inputRow}
+        autoComplete="off"
         onSubmit={(e) => {
           e.preventDefault();
           submitText();
@@ -454,11 +459,16 @@ export function KeeperChat({
         </label>
         <input
           id="grove-say"
+          name="grove-message"
           ref={inputRef}
           className={styles.input}
           value={draft}
           placeholder={placeholder}
           autoComplete="off"
+          inputMode="text"
+          data-1p-ignore
+          data-lpignore="true"
+          data-form-type="other"
           maxLength={2000}
           /* Stay enabled during a turn so the input keeps focus on Enter —
              `runTurn` already guards against double-submit (`if (busy) return`).

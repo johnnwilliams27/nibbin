@@ -85,7 +85,7 @@
 
 .stagepill {
   font-family: var(--sans);
-  font-size: 9.5px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -132,7 +132,7 @@
 }
 .schoolLbl {
   font-family: var(--sans);
-  font-size: 9.5px;
+  font-size: 13px;
   letter-spacing: 0.02em;
   color: var(--ink-soft);
   font-weight: 600;
@@ -172,7 +172,7 @@
 .ladderNames span {
   flex: 1;
   font-family: var(--sans);
-  font-size: 8.5px;
+  font-size: 11px;
   letter-spacing: 0.02em;
   color: var(--ink-soft);
   text-align: center;
@@ -193,7 +193,7 @@
 }
 .badge {
   font-family: var(--sans);
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.02em;
   background: #fff;
@@ -210,7 +210,7 @@
 }
 .streak {
   font-family: var(--sans);
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.02em;
   background: var(--coral-tint);
@@ -232,7 +232,7 @@
 }
 .ll {
   font-family: var(--sans);
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: 0.02em;
   color: var(--moss-deep);
   font-weight: 600;
@@ -241,7 +241,6 @@
 .learned p {
   font-size: 12px;
   color: var(--ink-soft);
-  font-style: italic;
 }
 
 .foot {
