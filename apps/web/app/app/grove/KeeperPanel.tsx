@@ -28,6 +28,13 @@ export interface KeeperPanelProps {
   hasConnection: boolean;
   /** Recent promotions to celebrate in-grove (Beat 3). */
   pendingCelebrations: Celebration[];
+  /**
+   * Close the panel. On mobile (bottom sheet) a ✕ button in the header calls
+   * this; on desktop the header close button is hidden via CSS and the
+   * collapse rail handles dismissal. Optional so the panel can render
+   * standalone (e.g. in tests/storybook) without a handler.
+   */
+  onClose?: () => void;
 }
 
 export function KeeperPanel({
@@ -39,6 +46,7 @@ export function KeeperPanel({
   initialProfile,
   hasConnection,
   pendingCelebrations,
+  onClose,
 }: KeeperPanelProps) {
   return (
     <div className={styles.panel}>
@@ -56,6 +64,18 @@ export function KeeperPanel({
           <span className={styles.creditsValue}>{credits}</span>
           {' '}cr
         </p>
+        {/* Mobile-only close ✕ — hidden on desktop via CSS. Lives in the header
+            (top-right) so it never overlaps the chat input's Send button. */}
+        {onClose && (
+          <button
+            type="button"
+            className={styles.closeBtn}
+            aria-label="Close Keeper"
+            onClick={onClose}
+          >
+            ✕
+          </button>
+        )}
       </header>
 
       <div className={styles.chatWrap}>

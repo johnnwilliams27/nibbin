@@ -95,7 +95,7 @@ export function KeeperDock(props: KeeperPanelProps) {
         >
           ›
         </button>
-        <KeeperPanel {...props} />
+        <KeeperPanel {...props} onClose={toggle} />
       </aside>
 
       {/* Mobile backdrop — rendered only when open; CSS hides it on desktop. */}
@@ -121,21 +121,23 @@ export function KeeperDock(props: KeeperPanelProps) {
         </span>
       </button>
 
-      {/* Mobile FAB — CSS hides on desktop. */}
+      {/*
+       * Mobile FAB — opens the sheet. CSS hides it on desktop AND when the
+       * sheet is open (`.fabHidden`), because an open sheet is closed from the
+       * header ✕ (see KeeperPanel). Previously this FAB stayed bottom-right and
+       * rendered a ✕ while open, which sat on top of the chat's Send button and
+       * made Send untappable. Closing it via the header frees the input row.
+       */}
       <button
-        className={styles.fab}
+        className={`${styles.fab} ${open ? styles.fabHidden : ''}`}
         type="button"
-        aria-label={open ? 'Close Keeper' : 'Open Keeper'}
+        aria-label="Open Keeper"
         aria-expanded={open}
         onClick={toggle}
       >
-        {open ? (
-          '✕'
-        ) : (
-          <span className={styles.keeperGlyph} aria-hidden="true">
-            <Grovekeeper size={32} />
-          </span>
-        )}
+        <span className={styles.keeperGlyph} aria-hidden="true">
+          <Grovekeeper size={32} />
+        </span>
       </button>
     </>
   );

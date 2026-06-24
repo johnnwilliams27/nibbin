@@ -238,6 +238,13 @@
     transform: scale(1.05);
   }
 
+  /* When the sheet is open, the FAB is hidden — the sheet is dismissed from the
+     header ✕ (see KeeperPanel.closeBtn). This frees the bottom-right corner for
+     the chat input's Send button, which the open-state ✕ FAB used to cover. */
+  .fabHidden {
+    display: none;
+  }
+
   /* Mobile FAB keeperGlyph: 52×52px circle. Contain the whole keeper inside the
      circle (scale to fit, centred) so the head/antennae never crop. */
   .fab .keeperGlyph :global(svg) {

@@ -207,46 +207,38 @@ export function SourcesLibrary({
         body.set('file', file);
         const res = await fetch(UPLOAD_ENDPOINT, { method: 'POST', body });
         if (res.ok) {
+          // The upload route returns the REAL persisted source row as `item`.
+          // We render that (not a phantom placeholder) so the file survives a
+          // server refetch triggered by a filter/sort/search change.
           const data = await res.json() as { item?: SourceListItem };
-          if (data.item) {
+          if (data.item && data.item.id) {
             dispatch({ type: 'UPLOAD_DONE', item: data.item });
           } else {
-            // Optimistic placeholder
-            const placeholder: SourceListItem = {
-              id: `upload-${Date.now()}`,
-              title: file.name,
-              mimeGroup: 'other',
-              byteSize: file.size,
-              capturedAt: new Date().toISOString(),
-              extractionState: 'pending',
-            };
-            dispatch({ type: 'UPLOAD_DONE', item: placeholder });
+            // 2xx without a usable item means the server did not actually return
+            // the persisted row — treat it as a failure rather than fabricating
+            // a phantom item that vanishes on the next refetch.
+            dispatch({
+              type: 'UPLOAD_FAILED',
+              message: `Couldn't save “${file.name}”. Please try again.`,
+            });
           }
         } else {
-          // Upload failed — mark as not uploading
-          dispatch({
-            type: 'UPLOAD_DONE',
-            item: {
-              id: `upload-failed-${Date.now()}`,
-              title: file.name,
-              mimeGroup: 'other',
-              byteSize: file.size,
-              capturedAt: new Date().toISOString(),
-              extractionState: 'failed',
-            },
-          });
+          // Upload failed — surface the server's reason, no phantom item.
+          let message = `Couldn't upload “${file.name}”. Please try again.`;
+          try {
+            const err = await res.json() as { message?: string };
+            if (err && typeof err.message === 'string' && err.message) {
+              message = err.message;
+            }
+          } catch {
+            // non-JSON body — keep the generic message
+          }
+          dispatch({ type: 'UPLOAD_FAILED', message });
         }
       } catch {
         dispatch({
-          type: 'UPLOAD_DONE',
-          item: {
-            id: `upload-failed-${Date.now()}`,
-            title: file.name,
-            mimeGroup: 'other',
-            byteSize: file.size,
-            capturedAt: new Date().toISOString(),
-            extractionState: 'failed',
-          },
+          type: 'UPLOAD_FAILED',
+          message: `Couldn't upload “${file.name}”. Check your connection and try again.`,
         });
       }
     }
@@ -331,6 +323,13 @@ export function SourcesLibrary({
           tabIndex={-1}
         />
       </div>
+
+      {/* ── Upload error ───────────────────────────────────────────────── */}
+      {state.uploadError && (
+        <p className={styles.sourcesUploadError} role="alert">
+          {state.uploadError}
+        </p>
+      )}
 
       {/* ── Search + filters + sort ─────────────────────────────────────── */}
       <div className={styles.sourcesControls}>

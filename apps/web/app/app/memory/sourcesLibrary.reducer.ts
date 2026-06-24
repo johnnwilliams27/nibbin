@@ -51,6 +51,8 @@ export interface SourcesLibraryState {
   hasMore: boolean;
   /** Whether a server fetch is currently in flight. */
   loading: boolean;
+  /** Last upload error message (null = no error). Cleared on the next UPLOAD_START. */
+  uploadError: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -65,6 +67,7 @@ export type SourcesLibraryAction =
   | { type: 'LOAD_MORE' }
   | { type: 'UPLOAD_START' }
   | { type: 'UPLOAD_DONE'; item: SourceListItem }
+  | { type: 'UPLOAD_FAILED'; message: string }
   | { type: 'LOAD_OK'; items: SourceListItem[]; append: boolean; hasMore: boolean };
 
 // ---------------------------------------------------------------------------
@@ -84,6 +87,7 @@ export function initialSourcesLibraryState(): SourcesLibraryState {
     limit: 50,
     hasMore: false,
     loading: false,
+    uploadError: null,
   };
 }
 
@@ -137,15 +141,24 @@ export function sourcesLibraryReducer(
       return { ...state, offset: state.offset + state.limit, loading: true };
 
     case 'UPLOAD_START':
-      return { ...state, uploading: true };
+      return { ...state, uploading: true, uploadError: null };
 
     case 'UPLOAD_DONE':
       return {
         ...state,
         uploading: false,
-        // Prepend with extractionState forced to 'pending'
-        items: [{ ...action.item, extractionState: 'pending' }, ...state.items],
+        uploadError: null,
+        // Prepend the REAL persisted item, de-duped by id so a subsequent server
+        // refetch that also returns this row doesn't render it twice. We keep the
+        // item's own extractionState (e.g. 'unsupported' for non-extractable files)
+        // rather than forcing 'pending'.
+        items: [action.item, ...state.items.filter((i) => i.id !== action.item.id)],
       };
+
+    case 'UPLOAD_FAILED':
+      // No phantom item is inserted — the list reflects only what actually
+      // persisted. The error message is surfaced to the user instead.
+      return { ...state, uploading: false, uploadError: action.message };
 
     case 'LOAD_OK':
       return {

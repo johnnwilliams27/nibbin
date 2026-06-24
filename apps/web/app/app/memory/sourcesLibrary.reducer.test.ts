@@ -264,11 +264,32 @@ describe('sourcesLibraryReducer — UPLOAD_DONE', () => {
     expect(next.items[1].id).toBe('doc-1');
   });
 
-  it('forces extractionState to "pending" on the prepended item', () => {
+  it('keeps the item\'s own extractionState (does NOT force "pending")', () => {
+    // The persisted row from the upload route already carries the correct
+    // extraction state (e.g. 'unsupported' for non-extractable files). Forcing
+    // 'pending' would misrepresent those, so the prepended item is used verbatim.
     const s = initialSourcesLibraryState();
-    const newItem = makeItem({ id: 'new-1', extractionState: 'extracted' });
+    const newItem = makeItem({ id: 'new-1', extractionState: 'unsupported' });
     const next = sourcesLibraryReducer(s, { type: 'UPLOAD_DONE', item: newItem });
-    expect(next.items[0].extractionState).toBe('pending');
+    expect(next.items[0].extractionState).toBe('unsupported');
+  });
+
+  it('de-dupes by id so a later server refetch does not double-render the row', () => {
+    // Simulate: the row already exists in the list (from a prior server load),
+    // then UPLOAD_DONE prepends the same id — it should appear exactly once.
+    const existing = makeItem({ id: 'dup-1', title: 'old title' });
+    const s: SourcesLibraryState = { ...initialSourcesLibraryState(), items: [existing, DOC_ITEM] };
+    const fresh = makeItem({ id: 'dup-1', title: 'new title' });
+    const next = sourcesLibraryReducer(s, { type: 'UPLOAD_DONE', item: fresh });
+    expect(next.items.filter((i) => i.id === 'dup-1')).toHaveLength(1);
+    expect(next.items[0].id).toBe('dup-1');
+    expect(next.items[0].title).toBe('new title'); // the fresh copy wins, at the top
+  });
+
+  it('clears any prior uploadError on success', () => {
+    const s: SourcesLibraryState = { ...initialSourcesLibraryState(), uploadError: 'old error' };
+    const next = sourcesLibraryReducer(s, { type: 'UPLOAD_DONE', item: makeItem({ id: 'ok-1' }) });
+    expect(next.uploadError).toBeNull();
   });
 
   it('does not mutate the item passed in', () => {
@@ -457,7 +478,7 @@ describe('sourcesLibraryReducer — Task 2: offset / hasMore / loading / REQUEST
     expect(next.loading).toBe(true);
   });
 
-  it('UPLOAD_DONE still prepends item correctly', () => {
+  it('UPLOAD_DONE still prepends item correctly (state preserved verbatim)', () => {
     const s: SourcesLibraryState = {
       ...initialSourcesLibraryState(),
       items: [DOC_ITEM],
@@ -465,8 +486,35 @@ describe('sourcesLibraryReducer — Task 2: offset / hasMore / loading / REQUEST
     const newItem = makeItem({ id: 'up-1', mimeGroup: 'images', extractionState: 'extracted' });
     const next = sourcesLibraryReducer(s, { type: 'UPLOAD_DONE', item: newItem });
     expect(next.items[0].id).toBe('up-1');
-    expect(next.items[0].extractionState).toBe('pending'); // forced
+    expect(next.items[0].extractionState).toBe('extracted'); // preserved, not forced
     expect(next.items[1].id).toBe('doc-1');
     expect(next.uploading).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// UPLOAD_FAILED — surfaces an error, inserts NO phantom item
+// ---------------------------------------------------------------------------
+
+describe('sourcesLibraryReducer — UPLOAD_FAILED', () => {
+  it('sets uploadError and clears uploading, without adding any item', () => {
+    const s: SourcesLibraryState = {
+      ...initialSourcesLibraryState(),
+      items: [DOC_ITEM],
+      uploading: true,
+    };
+    const next = sourcesLibraryReducer(s, { type: 'UPLOAD_FAILED', message: 'File storage failed.' });
+    expect(next.uploading).toBe(false);
+    expect(next.uploadError).toBe('File storage failed.');
+    // No phantom item — the list reflects only what actually persisted.
+    expect(next.items).toHaveLength(1);
+    expect(next.items[0].id).toBe('doc-1');
+  });
+
+  it('UPLOAD_START clears a prior uploadError', () => {
+    const s: SourcesLibraryState = { ...initialSourcesLibraryState(), uploadError: 'previous error' };
+    const next = sourcesLibraryReducer(s, { type: 'UPLOAD_START' });
+    expect(next.uploadError).toBeNull();
+    expect(next.uploading).toBe(true);
   });
 });
