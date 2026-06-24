@@ -224,3 +224,31 @@ export interface OnboardingInput {
   skip?: boolean;
   channels?: string[];
 }
+
+/* ── Attention-queue types (P6 §3) ─────────────────────────────────────────
+ * Defined here so packages/keeper can reference them without importing from
+ * apps/web (which would invert the dependency hierarchy). The actual query
+ * lives in apps/web/lib/grove/pending-items.ts and re-exports these types.
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+export interface PendingProposal {
+  proposalId: string;
+  fieldKey: string;
+  /** Truncated to 80 chars at read time. */
+  rationale: string;
+  stakes: 'normal' | 'high';
+  createdAt: string;
+}
+
+export interface PendingRun {
+  runId: string;
+  nibbinName: string;
+  title: string | null;
+}
+
+export interface PendingQueue {
+  proposals: PendingProposal[];
+  runs: PendingRun[];
+  total: number;
+  hasHighStakes: boolean;
+}

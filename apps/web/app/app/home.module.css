@@ -198,3 +198,57 @@
   color: var(--ink-soft);
   font-size: 13.5px;
 }
+
+/* ---- Pending memory proposal cards (Task 7 — P6 attention-queue) ---- */
+.proposalStack {
+  margin-top: 14px;
+  display: grid;
+  gap: 10px;
+}
+.proposalSectionHead {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-mid, var(--ink-soft));
+  margin-bottom: 8px;
+}
+.proposalCard {
+  background: var(--canopy);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  padding: 10px 12px;
+  transition: transform var(--dur-1) var(--ease-spring, var(--ease-settle)),
+    box-shadow var(--dur-1) var(--ease-spring, var(--ease-settle));
+}
+.proposalCard:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-2);
+}
+.proposalField {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--ink);
+}
+.proposalRationale {
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin: 2px 0 6px;
+}
+.proposalHighStakes {
+  background: var(--coral-muted, color-mix(in srgb, var(--coral) 12%, transparent));
+  color: var(--coral-deep, var(--coral));
+  font-size: 10px;
+  font-family: var(--mono);
+  letter-spacing: 0.08em;
+  padding: 2px 6px;
+  border-radius: var(--r-pill);
+  margin-bottom: 6px;
+  display: inline-block;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .proposalCard {
+    transition: none;
+  }
+}

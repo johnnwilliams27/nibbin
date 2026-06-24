@@ -33,6 +33,7 @@ import { upsertOwnProfile } from '../../../lib/auth/profile';
 import { groveRouter } from '../../../lib/grove/router';
 import { anthropicGenerate, recordModelCall } from '../../../lib/llm/client';
 import { answersForSave, sanitizeInput, stateFromRow, type GroveRow } from '../../../lib/grove/state';
+import { loadPendingItems } from '../../../lib/grove/pending-items';
 import { createClient } from '../../../lib/supabase/server';
 import { serviceClient } from '../../../lib/supabase/service';
 import { DONE, NEXT_STEP } from '@nibbin/keeper';
@@ -171,7 +172,10 @@ export async function keeperChatAction(rawText: unknown): Promise<GroveChatPaylo
   // nibbinId to scope its memory retrieval. Best-effort: null nibbinId
   // still works (engine uses accountId as the primary scope; nibbinId is
   // used for memory provenance filtering only).
-  const [{ data: row }, { data: sub }, { data: keeperNibbins }] = await Promise.all([
+  // P6: loadPendingItems runs in the same Promise.all batch for a single round-
+  // trip. It is read-only (C10) and fail-safe: a DB error returns an empty queue
+  // rather than breaking the chat turn.
+  const [{ data: row }, { data: sub }, { data: keeperNibbins }, pendingItems] = await Promise.all([
     supabase
       .from('grove_state')
       .select('keeper_name')
@@ -187,6 +191,11 @@ export async function keeperChatAction(rawText: unknown): Promise<GroveChatPaylo
       .select('id')
       .eq('account_id', accountId)
       .eq('kind', 'keeper'),
+    loadPendingItems(supabase, accountId).catch((err) => {
+      // Fail-safe: a pending-items read error must not break the chat reply.
+      console.error('[keeper] loadPendingItems failed — proceeding without pending context', err instanceof Error ? err.message : err);
+      return { proposals: [], runs: [], total: 0, hasHighStakes: false };
+    }),
   ]);
   // Pick the first keeper nibbin for this account (each account has exactly one).
   const nibbinId: string | null = (keeperNibbins as Array<{ id: string }> | null)?.[0]?.id ?? null;
@@ -210,7 +219,7 @@ export async function keeperChatAction(rawText: unknown): Promise<GroveChatPaylo
             model,
             system: [
               { text: KEEPER_SYSTEM_PROMPT, cache: true },
-              { text: buildKeeperContext({ keeperName: row?.keeper_name }) },
+              { text: buildKeeperContext({ keeperName: row?.keeper_name, pendingItems }) },
             ],
             messages: [{ role: 'user', content: userText }],
             maxTokens: 400,
