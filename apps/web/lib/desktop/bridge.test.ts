@@ -336,4 +336,38 @@ describe('desktopBridge (in-shell)', () => {
     const result = await desktopBridge.finalizeReview();
     expect(result).toEqual({ proposals_requested: false });
   });
+
+  it('onStudyStateChange() subscribes to the "study:status" event the shell actually emits', async () => {
+    // Regression: the bridge previously listened for "study_state_change", which
+    // nothing emits. The Tauri shell emits "study:status" ~1×/sec (see
+    // apps/desktop/src-tauri/app/src/lib.rs countdown refresher). If this name
+    // drifts again the live countdown freezes and pause/stop stop reflecting.
+    const listen = vi.fn<() => Promise<() => void>>().mockResolvedValue(() => {});
+    g['__TAURI_INTERNALS__'] = { invoke: vi.fn(), event: { listen } };
+
+    const cb = vi.fn();
+    await desktopBridge.onStudyStateChange(cb);
+
+    expect(listen).toHaveBeenCalledTimes(1);
+    expect(listen).toHaveBeenCalledWith('study:status', expect.any(Function));
+  });
+
+  it('onStudyStateChange() forwards the event payload to the callback', async () => {
+    type Handler = (e: { payload: unknown }) => void;
+    let captured: Handler | null = null;
+    const listen = vi
+      .fn<(event: string, handler: Handler) => Promise<() => void>>()
+      .mockImplementation((_event, handler) => {
+        captured = handler;
+        return Promise.resolve(() => {});
+      });
+    g['__TAURI_INTERNALS__'] = { invoke: vi.fn(), event: { listen } };
+
+    const cb = vi.fn();
+    await desktopBridge.onStudyStateChange(cb);
+
+    const payload = { state: 'ACTIVE', remaining_ms: 12345 };
+    (captured as Handler | null)?.({ payload });
+    expect(cb).toHaveBeenCalledWith(payload);
+  });
 });

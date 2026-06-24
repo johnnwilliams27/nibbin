@@ -328,14 +328,22 @@ export const desktopBridge = {
   // -------------------------------------------------------------------------
 
   /**
-   * Subscribe to study-state-change events from the daemon.
+   * Subscribe to live study-status pushes from the daemon.
+   *
+   * The Tauri shell re-reads `daemon.status` once a second and emits it under
+   * the event name `study:status` (see apps/desktop/src-tauri/app/src/lib.rs —
+   * the countdown refresher thread). We MUST listen for that exact name: an
+   * earlier mismatch (`study_state_change`, which nothing emits) meant the
+   * callback never fired, so the countdown sat frozen at its mount-time value
+   * and the UI never reflected a pause/stop the daemon had already applied.
+   *
    * Returns an unsubscribe function; no-op when not in shell.
    */
   async onStudyStateChange(cb: (payload: StudyStatus) => void): Promise<() => void> {
     const emitter = await getEventListener();
     if (!emitter) return () => {};
     try {
-      return await emitter.listen<StudyStatus>('study_state_change', (e) => cb(e.payload));
+      return await emitter.listen<StudyStatus>('study:status', (e) => cb(e.payload));
     } catch {
       return () => {};
     }
