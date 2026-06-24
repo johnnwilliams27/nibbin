@@ -260,18 +260,35 @@ pub fn run() {
             // countdown refresher: read daemon.status once a second and push
             // it to the webview + tray tooltip
             let handle = app.handle().clone();
+            // Tracks the last KNOWN study state's deleted-ness across ticks.
+            // Updated only on a successful read; retained on a failed one.
+            let mut last_known_deleted = false;
             std::thread::spawn(move || loop {
-                if let Ok(status) = commands::read_status(&handle) {
-                    // Refresh the parent-liveness heartbeat the daemon watchdog
-                    // reads (0.2.5): while this app is alive, the daemon must not
-                    // consider itself orphaned. Skip when the study is DELETED so
-                    // we never re-create a residue file after a C3 deletion has
-                    // verified the store is clean (the verifier allows only
-                    // study.json to survive).
-                    let deleted = status.get("state").and_then(|v| v.as_str()) == Some("DELETED");
-                    if !deleted {
-                        daemon_supervisor::touch_app_heartbeat(&handle);
-                    }
+                let status = commands::read_status(&handle).ok();
+                // Refresh the parent-liveness heartbeat the daemon watchdog
+                // reads (0.2.5): while this app is alive, the daemon must not
+                // consider itself orphaned. This must NOT be gated on
+                // read_status succeeding (MINOR-1) — the daemon rewrites
+                // daemon.status/study.json ~1×/sec, so a torn (mid-write) read
+                // returns Err, and skipping the beat on Err would let a live
+                // app look dead and trip the daemon's fail-closed self-suspend.
+                //
+                // We still must not re-create a residue file after a C3 deletion
+                // verified the store clean (the verifier allows only study.json
+                // to survive). So suppress the beat whenever the last KNOWN
+                // state is DELETED — sticky across a torn read of study.json that
+                // would otherwise return Err post-deletion — and resume it once a
+                // successful read shows a non-DELETED state (e.g. a new study
+                // started in the same session, which create_study allows from
+                // DELETED). A read that fails before any state is known leaves
+                // last_known_deleted=false, so a live app keeps beating.
+                if let Some(s) = status.as_ref() {
+                    last_known_deleted = s.get("state").and_then(|v| v.as_str()) == Some("DELETED");
+                }
+                if !last_known_deleted {
+                    daemon_supervisor::touch_app_heartbeat(&handle);
+                }
+                if let Some(status) = status {
                     let _ = handle.emit("study:status", &status);
                     if let Some(tray) = handle.tray_by_id("observer-tray") {
                         let remaining_ms = status
