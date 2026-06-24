@@ -30,6 +30,7 @@ export * from './crystallize';
 export * from './school';
 export * from './training';
 export * from './stores';
+export * from './nudge-floor';
 export * from './runner';
 export * from './planner';
 export * from './templates';

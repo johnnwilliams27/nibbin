@@ -31,6 +31,13 @@ export const PRODUCT_EVENT_NAMES = [
   'capability_unfulfilled',
   /** Fleet-learning: a run couldn't proceed due to a connector blocker. */
   'connector_blocked',
+  /**
+   * Task 5a: the re-nudge ledger WRITE failed after a send executed. A SUSTAINED
+   * failure (writes down, reads up) would let the cadence/count cap silently
+   * reset and resume per-tick spam, so this is alarmed (not just logged) for
+   * observability. Props: { resourceKind } only — no PII, no resource id.
+   */
+  'nudge_record_failed',
 ] as const;
 
 export type StaticProductEventName = (typeof PRODUCT_EVENT_NAMES)[number];

@@ -260,7 +260,7 @@ describe('interpreter dispatches the nudge-family primitives through the runner'
     expect(outcome.draft.capability).toBe('email.send');
     expect(outcome.draft.connectionId).toBe(GMAIL);
     expect(outcome.draft.patternKey).toBe('email.send:invoice-nudge');
-    expect(outcome.draft.effectArgs).toEqual({ invoiceId: OVERDUE_INVOICE, to: INVOICE_CUSTOMER_EMAIL });
+    expect(outcome.draft.effectArgs).toEqual({ invoiceId: OVERDUE_INVOICE, to: INVOICE_CUSTOMER_EMAIL, nudgeResourceKind: 'invoice' });
     // The payment link travels in the email body so the client can pay.
     expect(outcome.draft.draft).toContain(INVOICE_PAY_LINK);
   });
@@ -342,7 +342,7 @@ describe('parameterization beyond the templates (minDaysLate / withinDays)', () 
     const out40 = await executeRun(nib(s), TRIGGER, interpretSpec(s, { stripe: STRIPE, gmail: GMAIL }, NOW), h40.deps);
     expect(out40.kind).toBe('awaiting_approval');
     if (out40.kind !== 'awaiting_approval') throw new Error('expected awaiting_approval');
-    expect(out40.draft.effectArgs).toEqual({ invoiceId: 'in_40', to: INVOICE_CUSTOMER_EMAIL });
+    expect(out40.draft.effectArgs).toEqual({ invoiceId: 'in_40', to: INVOICE_CUSTOMER_EMAIL, nudgeResourceKind: 'invoice' });
   });
 
   it('nudge.unconfirmed-event withinDays=30 widens the calendar timeMax to now + 30 days', async () => {
@@ -407,7 +407,7 @@ describe('template ↔ primitive parity (identical yielded steps + effectArgs)',
     expect(draft.connectionId).toBe(GMAIL);
     expect(draft.capability).toBe('email.send');
     expect(draft.patternKey).toBe('email.send:invoice-nudge');
-    expect(draft.effectArgs).toEqual({ invoiceId: OVERDUE_INVOICE, to: INVOICE_CUSTOMER_EMAIL });
+    expect(draft.effectArgs).toEqual({ invoiceId: OVERDUE_INVOICE, to: INVOICE_CUSTOMER_EMAIL, nudgeResourceKind: 'invoice' });
     expect(draft.draft).toContain(INVOICE_PAY_LINK);
   });
 
