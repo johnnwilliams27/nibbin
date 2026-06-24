@@ -54,7 +54,17 @@ function EggCreature({ species, color }: { species: SpeciesName; color: string }
   );
 }
 
-export function HatchWizard({ chores, apps }: { chores: ChoreOption[]; apps: string[] }) {
+export function HatchWizard({
+  chores,
+  apps,
+  initialChoreText = '',
+}: {
+  chores: ChoreOption[];
+  apps: string[];
+  /** Pre-fills the step-1 chore textarea — e.g. an intent carried over from the
+   *  unified Agent Builder entry. Optional; empty string keeps the blank start. */
+  initialChoreText?: string;
+}) {
   const [step, setStep] = useState(1);
   const [chore, setChore] = useState<number | null>(null);
   /**
@@ -63,7 +73,7 @@ export function HatchWizard({ chores, apps }: { chores: ChoreOption[]; apps: str
    * quick-fill, not a selection gate). `choreText` is what gets passed to the
    * server action; the `chore` index is kept for the fallback path only.
    */
-  const [choreText, setChoreText] = useState('');
+  const [choreText, setChoreText] = useState(initialChoreText);
   const [selApps, setSelApps] = useState<Set<string>>(new Set());
   const [name, setName] = useState('');
   const [submitting, setSubmitting] = useState(false);

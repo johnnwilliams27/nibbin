@@ -89,7 +89,7 @@ export const HELP_CONTENT: HelpContent = [
         id: "gs-adopt-first-nibbin",
         q: "How do I adopt my first Nibbin?",
         body:
-          "Three paths:\n1. Tap “Adopt” on a recommendation in your diagnosis.\n2. Browse the Agent Shop (/app/shop) and pick one of the six ready-made helpers: Sweep, Echo, Brief, Tally, Hopper, or Scribe.\n3. Go to Hatch Your Own (/app/hatch) and build one around a single chore (three steps: what’s the chore → where does it happen → name your egg).\n\nEvery Nibbin starts as an Egg, observing only. In a few days it becomes a Student and starts leaving drafts for your approval on Grove Home under “Needs you — your only to-do.”",
+          "Three paths:\n1. Tap “Adopt” on a recommendation in your diagnosis.\n2. Browse the Agent Shop (/app/shop) and pick one of the six ready-made helpers: Sweep, Echo, Brief, Tally, Hopper, or Scribe.\n3. Go to Agent Builder (/app/build), describe a chore, and choose “Build a Nibbin that does this regularly” to build one around a single chore (three steps: what’s the chore → where does it happen → name your egg).\n\nEvery Nibbin starts as an Egg, observing only. In a few days it becomes a Student and starts leaving drafts for your approval on Grove Home under “Needs you — your only to-do.”",
         keywords: ["adopt", "shop", "hatch", "egg", "student", "first nibbin"],
       },
       {
@@ -329,7 +329,7 @@ export const HELP_CONTENT: HelpContent = [
         id: "agents-hatch-your-own",
         q: "How do I build my own Nibbin from scratch?",
         body:
-          "Go to Hatch Your Own (/app/hatch) — “Build a Nibbin for one chore.” It takes three steps:\n1. What’s the chore? (plain description of what you want handled)\n2. Where does it happen? (which apps or tools)\n3. Name your egg and optionally customize its look.\n\nYour custom Nibbin hatches as an Egg and is graded by Agent School the same way every other Nibbin is — you set its action level (Observe / Draft / Act) whenever you’re ready.",
+          "Go to Agent Builder (/app/build), describe the chore, and choose “Build a Nibbin that does this regularly.” It takes three steps:\n1. What’s the chore? (plain description of what you want handled — pre-filled from what you typed)\n2. Where does it happen? (which apps or tools)\n3. Name your egg and optionally customize its look.\n\nYour custom Nibbin hatches as an Egg and is graded by Agent School the same way every other Nibbin is — you set its action level (Observe / Draft / Act) whenever you’re ready.\n\n(If you just want it done once rather than set up to recur, choose “Run a one-off task” instead.)",
         keywords: ["hatch", "custom", "build your own", "chore", "name", "egg", "from scratch"],
       },
       {

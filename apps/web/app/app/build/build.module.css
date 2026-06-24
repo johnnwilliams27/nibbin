@@ -1,0 +1,113 @@
+/*
+ * Agent Builder — unified entry that merges the old Hatch + Planner surfaces.
+ * Token-only; mirrors the hatch/planner visual language (display title, moss
+ * accents, rounded cards). No hardcoded brand hex.
+ */
+
+.inner {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.header {
+  margin-bottom: 24px;
+}
+.title {
+  font-family: var(--display);
+  font-size: 26px;
+  line-height: 1.15;
+  color: var(--ink);
+}
+.lede {
+  font-size: 14px;
+  color: var(--ink-soft);
+  margin-top: 8px;
+  max-width: 58ch;
+}
+
+.fieldLabel {
+  display: block;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+.intentInput {
+  width: 100%;
+  min-height: 84px;
+  resize: vertical;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+}
+.intentInput:focus {
+  outline: none;
+  border-color: var(--moss);
+  box-shadow: 0 0 0 3px var(--moss-wash);
+}
+
+.chooseLabel {
+  margin: 22px 0 12px;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.modeGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+@media (max-width: 640px) {
+  .modeGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.modeCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px 18px 20px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+.modeCard > :global(button) {
+  margin-top: auto;
+  align-self: flex-start;
+}
+
+.modeEyebrow {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--moss-deep);
+  font-weight: 600;
+}
+.modeTitle {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 17px;
+  line-height: 1.2;
+  color: var(--ink);
+  margin: 2px 0 0;
+}
+.modeBody {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-soft);
+  margin: 0 0 4px;
+}
+
+.hint {
+  margin-top: 18px;
+  font-size: 13px;
+  color: var(--ink-faint);
+  max-width: 58ch;
+}
