@@ -58,6 +58,10 @@ export interface KeeperPromptContext {
  * Render a one-line summary of pending items for the volatile context suffix.
  * Kept deliberately compact — every token is paid per turn.
  * Returns null when there is nothing to render.
+ *
+ * C10: this is READ context only. No write capability is surfaced here.
+ * Conflicts are referenced with a deep-link to Memory; the Keeper cannot
+ * resolve them — resolution is the Memory UI (Task 8).
  */
 function renderPendingItems(queue: PendingQueue): string | null {
   if (queue.total === 0) return null;
@@ -78,6 +82,15 @@ function renderPendingItems(queue: PendingQueue): string | null {
     const top = queue.runs[0];
     const label = top.title ? `${top.nibbinName} drafted ${top.title}` : `${top.nibbinName} awaiting approval`;
     parts.push(`Awaiting-approval drafts (${queue.runs.length}): [${label} — approve at Grove Home]`);
+  }
+
+  // Task 7: surface open field_flags conflicts. READ-ONLY reference only — the
+  // Keeper has no hands and cannot resolve these. Point to /app/memory.
+  if (queue.conflicts && queue.conflicts.length > 0) {
+    const top = queue.conflicts[0];
+    parts.push(
+      `Memory conflicts (${queue.conflicts.length}): [${top.fieldKey} conflict needs your review — open Memory at /app/memory to resolve]`,
+    );
   }
 
   if (queue.hasHighStakes) {

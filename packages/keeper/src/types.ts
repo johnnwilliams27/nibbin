@@ -246,9 +246,21 @@ export interface PendingRun {
   title: string | null;
 }
 
+/**
+ * A pending conflict from field_flags (status='needs_review').
+ * Read-only; resolution happens via the Memory UI (Task 8). C10 preserved.
+ */
+export interface PendingConflict {
+  fieldKey: string;
+  detail: string;
+  stakes: 'normal' | 'high';
+}
+
 export interface PendingQueue {
   proposals: PendingProposal[];
   runs: PendingRun[];
+  /** Open field_flags (needs_review) that need the user's attention. */
+  conflicts: PendingConflict[];
   total: number;
   hasHighStakes: boolean;
 }

@@ -17,7 +17,7 @@ import type { PendingQueue } from '../src/types';
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
 
-const EMPTY_QUEUE: PendingQueue = { proposals: [], runs: [], total: 0, hasHighStakes: false };
+const EMPTY_QUEUE: PendingQueue = { proposals: [], runs: [], conflicts: [], total: 0, hasHighStakes: false };
 
 function makeProposal(overrides: Partial<{ stakes: 'normal' | 'high'; rationale: string; fieldKey: string }> = {}) {
   return {
@@ -73,6 +73,7 @@ describe('3c — proposals present, no high stakes', () => {
     const queue: PendingQueue = {
       proposals: [makeProposal(), makeProposal({ fieldKey: 'retainer', rationale: 'from contract' })],
       runs: [],
+      conflicts: [],
       total: 2,
       hasHighStakes: false,
     };
@@ -88,6 +89,7 @@ describe('3c — proposals present, no high stakes', () => {
     const queue: PendingQueue = {
       proposals: [makeProposal({ rationale: 'from rate sheet' })],
       runs: [],
+      conflicts: [],
       total: 1,
       hasHighStakes: false,
     };
@@ -100,6 +102,7 @@ describe('3c — proposals present, no high stakes', () => {
     const queue: PendingQueue = {
       proposals: [makeProposal({ rationale: '', fieldKey: 'contact_email' })],
       runs: [],
+      conflicts: [],
       total: 1,
       hasHighStakes: false,
     };
@@ -113,6 +116,7 @@ describe('3c — proposals present, no high stakes', () => {
     const queue: PendingQueue = {
       proposals: [makeProposal()],
       runs: [],
+      conflicts: [],
       total: 1,
       hasHighStakes: false,
     };
@@ -125,6 +129,7 @@ describe('3c — proposals present, no high stakes', () => {
     const queue: PendingQueue = {
       proposals: [makeProposal({ stakes: 'normal' })],
       runs: [],
+      conflicts: [],
       total: 1,
       hasHighStakes: false,
     };
@@ -140,6 +145,7 @@ describe('3d — high-stakes item', () => {
     const queue: PendingQueue = {
       proposals: [makeProposal({ stakes: 'high' })],
       runs: [],
+      conflicts: [],
       total: 1,
       hasHighStakes: true,
     };
@@ -152,6 +158,7 @@ describe('3d — high-stakes item', () => {
     const queue: PendingQueue = {
       proposals: [makeProposal({ stakes: 'high', rationale: 'urgent rate change' })],
       runs: [],
+      conflicts: [],
       total: 1,
       hasHighStakes: true,
     };
@@ -170,6 +177,7 @@ describe('3e — awaiting-approval runs', () => {
     const queue: PendingQueue = {
       proposals: [],
       runs: [makeRun({ nibbinName: 'Email Nibbin', title: 'Invoice follow-up' })],
+      conflicts: [],
       total: 1,
       hasHighStakes: false,
     };
@@ -184,6 +192,7 @@ describe('3e — awaiting-approval runs', () => {
     const queue: PendingQueue = {
       proposals: [],
       runs: [makeRun({ nibbinName: 'Calendar Nibbin', title: null })],
+      conflicts: [],
       total: 1,
       hasHighStakes: false,
     };
@@ -196,6 +205,7 @@ describe('3e — awaiting-approval runs', () => {
     const queue: PendingQueue = {
       proposals: [makeProposal()],
       runs: [makeRun()],
+      conflicts: [],
       total: 2,
       hasHighStakes: false,
     };
@@ -224,6 +234,7 @@ describe('3f — token discipline (< 1500 chars for max realistic queue)', () =>
     const queue: PendingQueue = {
       proposals,
       runs,
+      conflicts: [],
       total: 15,
       hasHighStakes: true,
     };
@@ -253,6 +264,75 @@ describe('KEEPER_SYSTEM_PROMPT stable block', () => {
   });
 });
 
+// ── Task 7: conflict line in keeper context ───────────────────────────────────
+
+describe('7 — conflict surfacing in keeper context', () => {
+  it('adds a conflict line when conflicts are present', () => {
+    const queue: PendingQueue = {
+      proposals: [],
+      runs: [],
+      conflicts: [{ fieldKey: 'pricing', detail: 'Rate sheet vs connector', stakes: 'high' }],
+      total: 1,
+      hasHighStakes: true,
+    };
+    const result = buildKeeperContext({ pendingItems: queue });
+
+    expect(result).toContain('conflict');
+    expect(result).toContain('Memory');
+    expect(result).toContain('pricing');
+  });
+
+  it('omits conflict line when conflicts array is empty', () => {
+    const queue: PendingQueue = {
+      proposals: [makeProposal()],
+      runs: [],
+      conflicts: [],
+      total: 1,
+      hasHighStakes: false,
+    };
+    const result = buildKeeperContext({ pendingItems: queue });
+    expect(result).not.toContain('conflict');
+  });
+
+  it('conflict count and deep-link reference appear in context', () => {
+    const queue: PendingQueue = {
+      proposals: [],
+      runs: [],
+      conflicts: [
+        { fieldKey: 'policies', detail: 'Policy mismatch', stakes: 'high' },
+        { fieldKey: 'voice', detail: 'Voice conflict', stakes: 'normal' },
+      ],
+      total: 2,
+      hasHighStakes: true,
+    };
+    const result = buildKeeperContext({ pendingItems: queue });
+
+    expect(result).toContain('2');
+    expect(result).toContain('/app/memory');
+  });
+
+  it('C10 preserved — keeper context never claims to resolve conflicts', () => {
+    const queue: PendingQueue = {
+      proposals: [],
+      runs: [],
+      conflicts: [{ fieldKey: 'pricing', detail: 'Conflict', stakes: 'high' }],
+      total: 1,
+      hasHighStakes: true,
+    };
+    const result = buildKeeperContext({ pendingItems: queue });
+
+    // Keeper must only mention/reference, never claim to resolve
+    expect(result).not.toMatch(/I (can|will) resolve/i);
+    expect(result).not.toMatch(/resolv(e|ing) (the )?conflict/i);
+    expect(result).not.toContain('resolve_field_flag');
+  });
+
+  it('keeper SYSTEM_PROMPT also never claims to resolve conflicts', () => {
+    expect(KEEPER_SYSTEM_PROMPT).not.toMatch(/resolve.*conflict/i);
+    expect(KEEPER_SYSTEM_PROMPT).not.toContain('resolve_field_flag');
+  });
+});
+
 // ── Names are preserved when pending items are also present ──────────────────
 
 describe('context composition', () => {
@@ -260,6 +340,7 @@ describe('context composition', () => {
     const queue: PendingQueue = {
       proposals: [makeProposal()],
       runs: [],
+      conflicts: [],
       total: 1,
       hasHighStakes: false,
     };
@@ -278,6 +359,7 @@ describe('context composition', () => {
     const queue: PendingQueue = {
       proposals: [makeProposal()],
       runs: [],
+      conflicts: [],
       total: 1,
       hasHighStakes: false,
     };

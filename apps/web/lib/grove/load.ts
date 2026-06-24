@@ -14,7 +14,7 @@ import { stateFromRow, type GroveRow } from './state';
 import { loadPendingItems } from './pending-items';
 import type { KeeperExpression, KeeperMessage, OnboardingState, PendingQueue } from '@nibbin/keeper';
 
-const EMPTY_QUEUE: PendingQueue = { proposals: [], runs: [], total: 0, hasHighStakes: false };
+const EMPTY_QUEUE: PendingQueue = { proposals: [], runs: [], conflicts: [], total: 0, hasHighStakes: false };
 
 export interface GroveLoad {
   state: OnboardingState;

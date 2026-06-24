@@ -49,6 +49,7 @@ export type {
   OnboardingInput,
   OnboardingState,
   OnboardingStep,
+  PendingConflict,
   PendingProposal,
   PendingQueue,
   PendingRun,
