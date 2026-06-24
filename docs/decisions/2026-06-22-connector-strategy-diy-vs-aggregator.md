@@ -1,7 +1,15 @@
 # ADR: Connector strategy — in-house builds vs. an aggregator (Nango / Composio)
 
+> **SUPERSEDED — 2026-06-22 (D17, Company Brain program)**
+>
+> Decision D17 (recorded in `docs/superpowers/specs/2026-06-22-company-brain-program-decomposition.md` §4) adopts Nango **now** for the out-of-box connector lane. Specifically: wire the existing Google (Gmail + Calendar) and Stripe connectors into Nango this batch (a contained migration, not a replatform). The inflection-point trigger in the original decision below has been reached early — the Company Brain program requires connector breadth that DIY linear build cannot supply at the needed pace.
+>
+> **What is retained from this ADR:** The generic MCP/API rail (`packages/connectors/src/rails/mcp.ts`) is kept for proprietary/company systems that are not out-of-the-box. The primitive + action-level safety model is unchanged — Nango operates as a transport layer *underneath* the primitive boundary (Scenario A in the diagram below), not as a Composio-style raw-tool router (Scenario B remains rejected). Composio remains rejected outright for the reasons in §Rationale.
+>
+> **Build scope of D17:** P4 worktree — migrate Gmail/Calendar/Stripe to Nango proxy mode; retain generic MCP/API rail; then seed calendar/files/contacts into memory.
+
 **Date:** 2026-06-22
-**Status:** Accepted
+**Status:** ~~Accepted~~ **Superseded by D17** (see note above)
 **Deciders:** John (owner)
 **Context window:** follows the Action Levels permission-model rewrite (PR #231) and Connector Lever 1 (PR #217).
 

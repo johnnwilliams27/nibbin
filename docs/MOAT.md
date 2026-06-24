@@ -66,7 +66,7 @@ down June 2026).
 | Vertical incumbents + assistive AI | HoneyBook (photo), GlossGenius (beauty, 100K+), EngineEars (audio), Bonsai/Moxie (suites — Bonsai has NO AI as of 4/2026) | Distribution | Doctrinally/structurally copilot; connect TO them (ride rails), out-position on autonomy. Agentic, whole-loop automation unclaimed by every incumbent suite |
 | Front-desk bots | Studioflo "Athena" ($138–197/mo solo), Inky, AI SmartTalk, Telegate | Inbound-DM slice, vertical | Single-channel, full-autonomy-by-hope, no loop. Line: "Receptionist bots book the job. Nibbins run the business." Their pricing validates our premium tiers |
 | Horizontal gravity | Claude Cowork (GA, scheduled tasks, connectors), OpenAI screen control, Read "Ada" | Generic task execution | Enterprise vector (admin, FactSet, DocuSign) — moving AWAY from our ICP. Static scope-grant trust. Blank-canvas problem: their user needs delegation literacy; ours needs to say yes. NOTE: Anthropic is supplier AND gravity — no public comparison fights with the model vendor; FAQ-only handling |
-| Enterprise agent trainers | Sierra ($15.8B, 40% of F50, $150M ARR), Decagon ($4.5B), Notch | Account-level agent training, team-supervised | **Category validation, not competition**: they prove trained agents are worth ~$20B combined — at the account level with CX teams supervising. The individual, zero-effort, autonomy-earning version is unbuilt. "Decagon for a Fortune 500's ticket queue; Nibbin for the photographer who IS the company" |
+| Enterprise agent trainers | Sierra ($15.8B, 40% of F50, $150M ARR), Decagon ($4.5B), Notch | Account-level agent training, team-supervised | **Category validation, not competition**: they prove trained agents are worth ~$20B combined — at the account level with CX teams supervising. The individual, zero-effort, autonomy-earning version is unbuilt. "Decagon for a Fortune 500's ticket queue; Nibbin for the photographer who IS the company" — and later, for the company those photographers grow into. The same brain either way. |
 | Observer lane | Screenpipe (productized, $400 lifetime, relicensed MIT→commercial) | Local capture tech | Developer audience; no bounded study, diagnosis, trust staging, or verticals. Validates our architecture; we're pinned pre-relicense |
 
 ## 5. Why each moat layer compounds (defensibility tests)
@@ -94,14 +94,9 @@ down June 2026).
 
 **Category line:** "AI Agents. Simplified." (SEO/meta/PH/eyebrow) — deliberately
 audience-agnostic; the public label names *what* we do, not *who* it's for. Human copy:
-"people who work for themselves." (Founder decision 2026-06-15: widened the public label
-from "AI agents for freelancers" so the copy no longer prescribes the target audience —
-entrepreneurs and solo owners beyond freelancers self-ID. The wedge sequence below still
-governs *who we serve first*; only the public label changed, not the targeting.)
+"people who work for themselves." Spectrum line (locked): "Simple enough for a layman, extensible to a full enterprise — the same brain either way." (Founder decision 2026-06-15: widened the public label from "AI agents for freelancers" so the copy no longer prescribes the target audience — entrepreneurs, solo owners, and organizations self-ID. The wedge sequence below still governs *who we serve first*. 2026-06-22: Company Brain repositioning D19 adds the spectrum line — the brain scales from one person to an organization without changing shape. Multi-user is roadmap, not present-tense.)
 
-**ICP filter (every vertical must pass):** solo or ≤2 people; client-services revenue loop
-(inquiry→quote→deposit→schedule→deliver→revise→invoice→review); ≥5 hrs/week admin; lives in
-email/IG/portals; dense communities with educator trust graphs; no regulated data.
+**ICP filter (every vertical must pass):** solo or ≤2 people in the consumer phase; client-services revenue loop (inquiry→quote→deposit→schedule→deliver→revise→invoice→review); ≥5 hrs/week admin; lives in email/IG/portals; dense communities with educator trust graphs; no regulated data. (The ICP filter governs the consumer wedge phase; organizational buyers enter when multi-seat ships and SOC 2 is closed.)
 
 **Wedge sequence (GTM.md §1.5 governs):** A1 photographers → A2 videographers/RE media →
 A3 tattoo artists (inbound slice contested; whole-loop open) → A4 designers/illustrators →

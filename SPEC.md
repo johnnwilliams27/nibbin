@@ -14,13 +14,17 @@
 - **Project memory (progressive disclosure):** `CLAUDE.md` is a thin router (<50 lines) — auto-loaded every session, it directs to task-specific docs instead of dumping context: `docs/STATE.md` (current milestone, open P0/P1), `docs/INVARIANTS.md`, `docs/AGREEMENTS.md`, `docs/ENVIRONMENT.md`, `docs/RISKS.md`, `docs/GOTCHAS.md`, `LEARNINGS.md`. Read only what the task needs. Domain expertise lives as **skills** in `.claude/skills/` (creature-engine, connector-builder, redaction-corpus, brand-voice) that load on demand; the adversarial reviewers live as **subagents** in `.claude/agents/` (red-team, claims-auditor, logic-skeptic, cost-auditor) invoked by the `/gate` command. Updating STATE/GOTCHAS/LEARNINGS at every gate is part of the DoD — memory is how this project gets smarter instead of older.
 - **Grovemap:** `node tools/grovemap/grovemap.mjs` regenerates the interactive codebase map (files = nodes, imports + doc links = edges; Obsidian-style). Regenerated at every gate and published as a CI artifact — the living picture of what exists and what touches what.
 - Every milestone ends with the **adversarial review gate** (§6.7) before the next begins.
-- All copy uses the locked vocabulary: Nibbin(s), grove, hatch, adopt, Agent School (Egg → Student → Senior → Graduate), Grovekeeper, nibble, Field Notes, diagnosis, study. Brand reference: `nibbin-demo.html`. Tagline: *AI agents that nibble your busywork away.*
+- All copy uses the locked vocabulary: Nibbin(s), grove, hatch, adopt, Agent School (Egg → Student → Senior → Graduate), Grovekeeper, nibble, Field Notes, diagnosis, study. Brand reference: `nibbin-demo.html`. Tagline: *Nibbin is the AI team that learns how you operate — and runs your day so you don't have to.*
 
 ---
 
 ## 1. What Nibbin is
 
-Nibbin is a consumer product for people who work for themselves — solo entrepreneurs, creatives, sole-proprietor businesses. It delivers value in two stages:
+Nibbin is the AI team that learns how you operate — and runs your day so you don't have to. Every other AI makes you explain how you work. Nibbin learns on the job.
+
+The product works for one person or an entire organization — the same brain either way. Simple enough for a sole-proprietor to be up and running in minutes; extensible to a full enterprise once multi-user permissions open (see §12 — that is the planned next phase, not a present-day claim). The account hierarchy (§6.1) is built for this from day one: every table scopes to the account, not the user, so multi-seat is a permissions feature, not a migration.
+
+Nibbin delivers value in two stages:
 
 - **Day One (minutes):** the user hatches their **Grovekeeper**, connects their accounts, gets an instant **connector scan** (a mini-diagnosis from API data), and adopts ready-made Nibbins from the Agent Shop that start working immediately.
 - **Day Fourteen (the study):** in parallel, the desktop **Observer** runs a bounded two-week study of how the user actually works — the cross-app glue and API-less portals that connectors can't see — producing the full **diagnosis** and bespoke Nibbin recommendations.
@@ -111,9 +115,9 @@ The two surfaces share one identity (§6.1). The Observer authenticates to assoc
 
 ### 4.2 The Grovekeeper
 
-**Identity.** A reserved 7th species, **Keeper**: larger silhouette, lantern accessory, satchel of seeds, no graduation cap ever — the Grovekeeper is faculty, the headmaster of the user's Agent School, not a student in it. One per account. It evolves in *appearance of wisdom* (lantern glow, foliage) as the account matures, but its autonomy never increases: C10 is permanent.
+**Identity.** A reserved 7th species, **Keeper**: larger silhouette, lantern accessory, satchel of seeds, no graduation cap ever — the Grovekeeper is faculty, the headmaster of the account's Agent School, not a student in it. One per account — shared by everyone on the account in the multi-seat phase. It evolves in *appearance of wisdom* (lantern glow, foliage) as the account matures, but its autonomy never increases: C10 is permanent.
 
-**Role.** Welcome guide and walkthrough helper; runs the connector scan; proposes adoptions; takes freeform requests in chat and routes them to specialists by name ("I'll ask Penny to draft that — she'll show you before anything sends"); narrates Field Notes; hosts ceremonies (hatches, evolutions, graduations, hatch-days); surfaces each Nibbin's journal. It is the conductor who makes the band more loved, never the interface that hides them.
+**Role.** Welcome guide and walkthrough helper; runs the connector scan; proposes adoptions; takes freeform requests in chat and routes them to specialists by name ("I'll ask Penny to draft that — she'll show you before anything sends"); narrates Field Notes; hosts ceremonies (hatches, evolutions, graduations, hatch-days); surfaces each Nibbin's journal. It is the conductor who makes the band more loved, never the interface that hides them. In the single-user phase, "the user" and "the account" are the same person; in the multi-seat phase, the Grovekeeper serves the whole account — authority resolution (whose instruction governs when two members disagree) is a §12 expansion item.
 
 **Hard rules.**
 1. **No hands (C10):** zero side-effect tools. It reads (scan results, run reports, journals), plans, talks, and delegates.
@@ -241,13 +245,7 @@ The push approval card supports one-tap decisions. Quiet hours and max-1-push-pe
 do NOT apply to approval requests (they are work the user asked for), only to drip/celebration
 notifications. Approval pushes batch if >3 are pending within 10 minutes.
 
-Grove Memory (business brain). A per-account, user-editable knowledge layer shared by
-all agents: structured sections (facts, pricing, policies, FAQ, voice samples, hard rules)
-plus freeform notes. Versioned; injected into agent context by the router with per-section
-toggles; populated initially by the Day-One scan and the Keeper interview (including the
-scan-empty fallback), then curated by the user. Hard rules in Grove Memory are enforced as
-draft-time constraints, not suggestions. Covered by §6.11 retention/export/deletion
-guarantees and rendered inspectable in plain language ("what the grove knows").
+Grove Memory (business brain). A per-account, editable knowledge layer shared by all agents and all members of the account: structured sections (facts, pricing, policies, FAQ, voice samples, hard rules) plus freeform notes. Versioned; injected into agent context by the router with per-section toggles; populated initially by the Day-One scan and the Keeper interview (including the scan-empty fallback), then curated by account members. Hard rules in Grove Memory are enforced as draft-time constraints, not suggestions. Covered by §6.11 retention/export/deletion guarantees and rendered inspectable in plain language ("what the grove knows"). Grove Memory is the same brain whether one person or a full team is using the account — the per-account scope is the design, not a limitation. In the multi-seat phase, shared-skill governance (who may approve a memory change that affects all agents) is a §12 expansion item.
 
 ---
 
@@ -497,7 +495,7 @@ for approvals); push opt-in flow honest and revocable.
 | Re-diagnosis is ad-hoc + tiered, never a fixed quarterly cadence (§4.6) | Work changes irregularly; synthesis COGS is trivial (~$0.025) and the Observer runs on-device, so the real cost is user time + farming, not compute. Continuous weekly scan + hatch-anytime cover most change; a cheap log-based map refresh + an occasional deep re-study cover the rest (decided 2026-06-13) | If re-study farming appears, or users ask for scheduled re-maps |
 | Thin-router CLAUDE.md + docs tree + skills/subagents | Progressive disclosure: sessions load only task-relevant context instead of a monolith | If routing misses cause repeated mistakes, promote items into the router |
 | Grovemap (in-repo graph tool) | AI-native repos need a live structural picture for humans and agents alike | Replace with richer tooling if the repo outgrows it |
-| Account→Membership hierarchy from day one | Multi-seat later becomes a permissions feature, not a migration; single-user is just the default shape | Never — scoping to user_id alone is the mistake |
+| Account→Membership hierarchy from day one | Multi-seat is the planned company-brain expansion: every table scopes to account_id from day one, so the pivot to multi-user is RBAC + SOC 2 + governance, not a re-architecture. Single-user is the current default shape, not the intended ceiling. (Repositioned 2026-06-22 per Company Brain D19.) | Never — scoping to user_id alone is the mistake |
 | The approval queue is the flagship surface, mobile-first | Approval latency gates Agent School velocity; trust ceremony must be a pleasure, not triage | If usage shows desktop-only behavior at scale |
 | Grove Memory is explicit, user-editable, and enforced | Implicit knowledge caps draft quality; editable memory is also the trust answer to "what does it know" | Never — extend sections instead |
 | Anti-feature register adopted (no canvas builder, client portal, native payments, voice, marketplace, team seats in v1) | Each concedes the thesis, fights incumbents on their ground, or exceeds current security/compliance maturity | Each row carries its own revisit trigger in PRODUCT-FOUNDATION.md §4 |
