@@ -39,6 +39,7 @@ import {
   initialSourcesLibraryState,
 } from './sourcesLibrary.reducer';
 import { SourceRow } from './SourceRow';
+import { parseSourcesListResponse } from './sourcesQuery';
 import type { SourceListItem, MimeGroup } from './sourcesQuery';
 import styles from './memory.module.css';
 
@@ -169,9 +170,10 @@ export function SourcesLibrary({
           }
           return;
         }
-        const data = await res.json() as { items?: SourceListItem[] };
-        if (!cancelled && data.items) {
-          const items = data.items;
+        // The route returns `{ sources, total }` — read via parseSourcesListResponse
+        // so the client and route share one source of truth for the response key.
+        const items = parseSourcesListResponse(await res.json());
+        if (!cancelled) {
           const hasMore = items.length === state.limit;
           dispatch({ type: 'LOAD_OK', items, append, hasMore });
         }
