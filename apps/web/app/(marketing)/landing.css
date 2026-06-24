@@ -757,6 +757,23 @@
   opacity: 0.6;
   cursor: default;
 }
+.landing .foot-links {
+  align-items: center;
+}
+.landing .foot-social {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+}
+.landing .foot-social a {
+  display: inline-flex;
+  align-items: center;
+}
+.landing .foot-social svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
 
 /* ---------- motion layer ---------- */
 @keyframes nibrise {
