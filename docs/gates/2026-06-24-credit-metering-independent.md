@@ -94,3 +94,84 @@ Because each `recordModelCall` mints a fresh `model_calls.id`, the per-call idem
 - **Important / Finding A:** planner ReAct-loop calls (`runId`-tagged, but no flat charge exists for `plan_runs`) escape both flat and usage charging → the most expensive surface bills $0. Fix: post a flat run charge at `plan_run_create`, OR usage-charge planner-loop calls, OR scope the claims.
 - **Important / Finding B:** make the migration replay-safe — `drop constraint if exists` (line 36), `create unique index if not exists` (line 45), `create or replace function` (line 54) — before applying to dev/staging/prod given the tracker drift.
 - Rate math, authz, overdraw exemption, the soft-gate fail-closed behavior, and the test suite are all sound and verified (93 focused tests green).
+
+---
+
+## Re-gate of fix 66dcb51c
+
+Focused re-verification of the fix pushed after the original gate's CHANGES-REQUIRED.
+Scope: the charging-correctness invariant only — **every model call posts exactly one
+charge, never zero, never two.** Independent enumeration; did not re-review the rest of
+the PR.
+
+### Verdict: **PASS**
+
+The fix fully closes both findings (A: planner-loop money leak; B: migration replay
+safety) and introduces no new money leak or double-charge. All 7 verification points hold.
+
+### Per-point findings
+
+**1. Every `recordModelCall` callsite enumerated; flatCharged correctness.**
+Enumerated all non-test production callsites (≈24 invocations across grove/actions,
+brain/doc-extract, brain/vision-extract, channels/ingest-deps, composer/compose,
+composer/freeform, diagnosis/label, llm/drafting, llm/synthesis, llm/understanding,
+memory/extract, nibbins/learned-note, planner/crystallize, planner/plan, planner/run,
+style/extract, sweep/derive, synthesis/engine). **Exactly four** set `flatCharged: true`:
+`apps/web/lib/llm/drafting.ts:99,127` and `apps/web/lib/llm/synthesis.ts:246,276` — the
+two flat-charge surfaces (ok + error branch each). Every other callsite leaves it falsy
+and usage-charges. ✓ Correct.
+- Note: the fixer's claim "exactly three callsites carry a non-null runId" is **inaccurate
+  but harmless.** `apps/web/lib/memory/extract.ts:167,182` and
+  `apps/web/lib/style/extract.ts:161,177` ALSO pass a non-null `runId` (the source run's
+  id) — they are post-run derivations that correctly DO NOT set `flatCharged` and now
+  usage-charge. Under the new `flatCharged` key (not `runId`), the miscount changes
+  nothing; these were part of the very leak being closed. No defect.
+
+**2. The two flat-charge surfaces actually post a flat credit_ledger charge.**
+- `run_begin` (Nibbin runs): `supabase/migrations/20260611120000_m4_runtime_shop_scan.sql:521-522`
+  inserts `credit_ledger (delta=-v_weight, reason='run', run_id)`. ✓
+- `chargeDiagnosis`: `apps/web/lib/llm/diagnosis-entitlement.ts:118-123` inserts
+  `credit_ledger (delta, reason, run_id)` via `chargeForRun`. ✓
+Both genuinely flat-charge, so setting `flatCharged: true` there is correct (prevents a
+double charge, not a NEW leak).
+
+**3. Both ok AND error rows on the flat-charge surfaces set flatCharged consistently.**
+drafting.ts: ok=`:99`, error=`:127` both `flatCharged: true`. synthesis.ts: ok=`:246`,
+error=`:276` both `flatCharged: true`. ✓ No path on a flat-charge surface can flip to
+usage-charging. (Both error branches hardcode zero tokens → cost 0 anyway, so even the
+no-charge-on-error case in synthesis cannot leak a positive-COGS charge.)
+
+**4. Planner posts no other charge (so usage-charging it now is exactly one charge).**
+`apps/web/lib/planner/run.ts` — only RPCs are `match_memory`, `plan_run_create`,
+`plan_run_save`, `plan_run_resolve`; zero `credit_ledger` / `chargeForRun` / `run_begin`.
+The plan_run migrations (`20260618060000_plan_runs.sql`,
+`20260619230000_reap_stale_plan_runs.sql`) contain **zero** `credit_ledger` writes. ✓
+Planner-loop call now charges exactly once (usage), closing the $0-billing leak.
+
+**5. `flatCharged` is NOT persisted into the model_calls insert.**
+`apps/web/lib/llm/client.ts:88-105` insert payload is unchanged — no `flat_charged`
+column; `flatCharged` is read only at `:148` to gate the charge. The test allowlist
+(`client.test.ts:287-293`) pins the exact 16-key insert payload and excludes it. ✓
+
+**6. Migration idempotency.**
+`supabase/migrations/20260624130000_credit_usage_metering.sql`: `:37` `drop constraint
+if exists credit_ledger_sign_by_reason`; `:46` `create unique index if not exists
+credit_ledger_one_usage_per_call`; `:54` `create or replace function charge_model_usage`.
+All three replay-safe. ✓ (`:32` drop is also `if exists`.)
+
+**7. Tests.**
+`apps/web/lib/llm/client.test.ts`: planner-loop (runId, no flatCharged) DOES charge
+(`:131`, asserts `mockRpc` called once + `charge_model_usage`); Nibbin-run
+(flatCharged:true) does NOT (`:144`); diagnosis (flatCharged:true) does NOT (`:152`);
+ordinary non-run call DOES (`:108`). The old buggy test
+`'does NOT charge usage for a run-tagged call'` was **replaced, not duplicated** (git
+show 66dcb51c: the `-` line is the removed buggy assertion, swapped for the planner-loop
+test asserting the opposite). Ran the suite: **21/21 pass**. ✓
+
+### New issues: none
+No new money leak, no new double-charge, no over-broad `flatCharged` application. The
+two prior Important findings are resolved; the two prior Minor findings (no explicit
+`on conflict` target; theoretical full-retry double-charge if a future refactor wraps
+`recordModelCall`) are unchanged and remain Minor / non-blocking.
+
+**Re-gate verdict: PASS — clear to merge.**
