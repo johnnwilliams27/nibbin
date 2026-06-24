@@ -1,6 +1,6 @@
 import { CONNECTOR_CATEGORIES, type ConnectorEntry, type ConnectorStatus } from './catalog';
 
-export const STATUS_ORDER: Record<ConnectorStatus, number> = {
+const STATUS_ORDER: Record<ConnectorStatus, number> = {
   live: 0,
   early_access: 1,
   coming_soon: 2,
@@ -22,7 +22,7 @@ export function groupConnectors(list: ConnectorEntry[]): { category: string; ite
 // Curated "most-used" connectors for the Popular tab, ordered by likely demand
 // for a solo professional / small business. Ids must exist in the catalog;
 // popularConnectors() silently drops any that don't, so this stays safe.
-export const POPULAR_CONNECTOR_IDS: string[] = [
+const POPULAR_CONNECTOR_IDS: string[] = [
   'gmail',
   'google-calendar',
   'outlook-m365',
