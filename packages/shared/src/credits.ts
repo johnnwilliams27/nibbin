@@ -153,7 +153,7 @@ const GRANT_AMOUNTS: ReadonlySet<number> = new Set(
   Object.values(TIERS).map((t) => t.monthlyCredits),
 );
 
-export type LedgerReason = 'run' | 'topup' | 'grant' | 'refund' | 'clawback' | 'usage';
+export type LedgerReason = 'run' | 'topup' | 'grant' | 'refund' | 'clawback' | 'usage' | 'refill';
 
 export interface LedgerEntry {
   /** Signed weighted units. Debits negative, credits positive. Always a safe integer. */
@@ -190,6 +190,8 @@ export function validateEntry(entry: LedgerEntry): void {
   if (reason === 'grant') assertId(sourceId, `'grant' period sourceId`);
   // usage debits carry the model_calls row id as their idempotency/source key.
   if (reason === 'usage') assertId(sourceId, `'usage' call sourceId`);
+  // refill (free-tier top-up) carries the calendar-period key as its source key.
+  if (reason === 'refill') assertId(sourceId, `'refill' period sourceId`);
 }
 
 /**
@@ -229,6 +231,21 @@ export function validateAppend(entries: readonly LedgerEntry[], entry: LedgerEnt
     case 'topup': {
       if (entry.delta % TOP_UP.credits !== 0) {
         throw new RangeError(`top-up of ${entry.delta} is not a whole number of ${TOP_UP.credits}-credit top-ups`);
+      }
+      break;
+    }
+    case 'refill': {
+      // Free-tier monthly top-up. Unlike 'grant' (fixed tier amounts), a refill
+      // is a VARIABLE deficit (top up to the allotment), so it is NOT bound to
+      // GRANT_AMOUNTS — but it is bounded above by the free allotment (a refill
+      // can never credit more than one allotment) and deduped one-per-period.
+      if (entry.delta > FREE_TIER_MONTHLY_ALLOTMENT) {
+        throw new RangeError(
+          `refill of ${entry.delta} exceeds the free allotment ${FREE_TIER_MONTHLY_ALLOTMENT}`,
+        );
+      }
+      if (entries.some((e) => e.reason === 'refill' && e.sourceId === entry.sourceId)) {
+        throw new RangeError(`refill for period '${entry.sourceId}' already applied`);
       }
       break;
     }
@@ -340,6 +357,91 @@ export function refundEntry(entries: readonly LedgerEntry[], runId: string): Led
     throw new RangeError(`run '${runId}' has nothing refundable (${refundable})`);
   }
   const entry: LedgerEntry = { delta: refundable, reason: 'refund', runId };
+  validateEntry(entry);
+  return entry;
+}
+
+/**
+ * Free-tier ("Hatchling") monthly credit refresh — feat/freetier-credit-refresh.
+ *
+ * WHY: usage metering (#259) now charges credits on ALL model usage, but the
+ * free tier never receives a recurring grant. Paid tiers (grove/canopy) get
+ * their monthly allowance from the Stripe webhook on each paid invoice; a
+ * Hatchling account pays no invoice, so once it spends its initial 100 credits
+ * it stays at (or below) zero forever. A monthly job tops it back up.
+ *
+ * SEMANTICS — "top UP to the allotment", NOT "add the allotment":
+ * A free monthly refresh means "ensure the account has at least its monthly
+ * allotment at the start of each period", not "stack another N credits every
+ * month forever". We therefore TOP UP to the allotment: credit the deficit
+ * `clamp(allotment - currentBalance, 0, allotment)`. Consequences:
+ *   - A dormant free account is refilled to the allotment (not 2N, 3N, ...).
+ *   - An account already at/above the allotment gets 0 (no free stacking; this
+ *     also means a churn-farming reset can never push a balance above the cap).
+ *   - A NEGATIVE balance (usage soft-gate drove it below 0) is forgiven only up
+ *     to ONE allotment: the refill is CAPPED at the allotment, so a deep
+ *     overdraft (e.g. -500) is NOT fully wiped — the account is brought UP by at
+ *     most one allotment (gate logic-skeptic P2: bound overdraft forgiveness).
+ * These rows use the dedicated `refill` ledger reason (NOT `grant`): a refill is
+ * a VARIABLE top-up deficit, whereas `grant` is a FIXED paid tier amount bound to
+ * GRANT_AMOUNTS. Keeping them separate preserves the "grant ⇒ tier amount"
+ * invariant (gate F1/P2) and keeps free/paid idempotency keys in distinct index
+ * spaces.
+ *
+ * IDEMPOTENCY: the delta is keyed to the calendar period (see
+ * `freeRefreshPeriodKey`). Persistence dedupes on (account_id, source_id) for
+ * reason='refill' (a dedicated partial unique index), so a re-run within the
+ * same period is a no-op — never a double top-up.
+ */
+export const FREE_TIER: Tier = 'hatchling';
+
+/** The Hatchling monthly free allotment (credits). Derived from the tier table. */
+export const FREE_TIER_MONTHLY_ALLOTMENT: number = TIERS[FREE_TIER].monthlyCredits;
+
+/**
+ * Credits to refill a free account UP TO its monthly allotment, CAPPED at one
+ * allotment. Returns `clamp(allotment - currentBalance, 0, allotment)`:
+ *   - 0 when the account already holds at least the allotment (no stacking),
+ *   - the exact deficit when 0 <= balance < allotment,
+ *   - at most `allotment` when balance is negative (overdraft forgiveness is
+ *     bounded to one allotment — a deep negative is not fully wiped),
+ *   - 0 on garbage input (fail-safe: never refill on a non-finite balance).
+ * The caller skips the ledger write when this is 0.
+ */
+export function freeRefreshDelta(
+  currentBalance: number,
+  allotment: number = FREE_TIER_MONTHLY_ALLOTMENT,
+): number {
+  if (!Number.isFinite(currentBalance) || !Number.isSafeInteger(allotment) || allotment <= 0) {
+    return 0;
+  }
+  const deficit = allotment - currentBalance;
+  if (deficit <= 0) return 0;
+  return Math.min(Math.floor(deficit), allotment);
+}
+
+/**
+ * Idempotency / ledger source key for a free monthly refill, derived from the
+ * calendar month in UTC: `freemonthly_YYYY-MM`. One key per account per month,
+ * so a re-run inside the same month is deduped by the refill unique index.
+ */
+export function freeRefreshPeriodKey(now: Date = new Date()): string {
+  if (Number.isNaN(now.getTime())) {
+    throw new RangeError('freeRefreshPeriodKey: invalid date');
+  }
+  const y = now.getUTCFullYear();
+  const m = String(now.getUTCMonth() + 1).padStart(2, '0');
+  return `freemonthly_${y}-${m}`;
+}
+
+/**
+ * A free-tier refill entry for one account+period. `delta` is the (already
+ * computed and capped) deficit from `freeRefreshDelta`; `periodKey` is the
+ * dedupe/source key. Returns null when there is nothing to refill (delta <= 0).
+ */
+export function refillEntry(delta: number, periodKey: string): LedgerEntry | null {
+  if (!Number.isSafeInteger(delta) || delta <= 0) return null;
+  const entry: LedgerEntry = { delta, reason: 'refill', sourceId: periodKey };
   validateEntry(entry);
   return entry;
 }
