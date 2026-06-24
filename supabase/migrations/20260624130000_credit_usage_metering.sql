@@ -9,10 +9,11 @@
 -- into credits and appends one usage debit per (non-run) call.
 --
 -- DESIGN (reconciles the existing flat run charge — no double charge):
---   * A run's model calls are part of ONE unit of work that the flat run charge
---     (run_begin / chargeDiagnosis) already pays for. recordModelCall therefore
---     usage-charges ONLY calls with run_id IS NULL. Calls tagged with a run_id
---     skip the usage charge (the run charged for them).
+--   * The two surfaces that post a flat per-run charge (Nibbin run_begin and
+--     diagnosis / chargeDiagnosis) cover their own model calls, so recordModelCall
+--     skips usage for those (flagged in app code as flatCharged). EVERY other call
+--     usage-charges — including the planner ReAct loop, which carries a run_id but
+--     posts no flat charge. (We charge on NOT-flat-charged, not on run_id absence.)
 --   * Usage charges are POST-HOC and may drive the balance NEGATIVE — a model
 --     call that already completed ALWAYS records its charge and its result
 --     posts, even for a broke account (the soft-gate protects completed work).
@@ -25,15 +26,15 @@
 
 -- ── 'usage' becomes a first-class debit reason ──────────────────────────────
 -- It debits (negative delta) like 'run'/'clawback'. It carries run_id NULL
--- (run-tagged calls don't usage-charge) and source_id = the model_calls row id
--- for one-to-one auditability + replay-dedup.
+-- (the ledger row is per-call, not per-run) and source_id = the model_calls row
+-- id for one-to-one auditability + replay-dedup.
 
 alter table public.credit_ledger drop constraint if exists credit_ledger_reason_check;
 alter table public.credit_ledger
   add constraint credit_ledger_reason_check
   check (reason in ('run', 'topup', 'grant', 'refund', 'clawback', 'usage'));
 
-alter table public.credit_ledger drop constraint credit_ledger_sign_by_reason;
+alter table public.credit_ledger drop constraint if exists credit_ledger_sign_by_reason;
 alter table public.credit_ledger
   add constraint credit_ledger_sign_by_reason check (
     (reason in ('run', 'clawback', 'usage') and delta < 0)
@@ -42,7 +43,7 @@ alter table public.credit_ledger
 
 -- One usage debit per model_calls row: source_id is the call id. A unique index
 -- makes the charge idempotent — a retried recordModelCall can never double-debit.
-create unique index credit_ledger_one_usage_per_call
+create unique index if not exists credit_ledger_one_usage_per_call
   on public.credit_ledger (source_id) where reason = 'usage';
 
 -- ── the conversion constant lives in code (packages/shared USD_PER_CREDIT); the
@@ -50,7 +51,7 @@ create unique index credit_ledger_one_usage_per_call
 --    charge_model_usage(account, model_calls id, credits>0) appends the debit.
 --    Idempotent on the call id; may overdraw (soft-gate); service-role only. ──
 
-create function public.charge_model_usage(
+create or replace function public.charge_model_usage(
   p_account uuid,
   p_call_id uuid,
   p_credits integer

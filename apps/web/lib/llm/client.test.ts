@@ -128,8 +128,31 @@ describe('recordModelCall — usage credit metering (feat/credit-metering-usage)
     expect(args.p_credits).toBe(20);
   });
 
-  it('does NOT charge usage for a run-tagged call (the run charge covers it — no double charge)', async () => {
-    await recordModelCall({ ...BASE_REC, runId: 'run-7' });
+  it('DOES charge usage for a planner-loop call (has runId, flatCharged falsy — planner posts no flat charge)', async () => {
+    // The leak this feature closes: planner ReAct-loop calls carry
+    // runId = plan_runs.id but pay no flat charge. Keying off runId previously
+    // zero-billed them; keying off flatCharged usage-charges them.
+    await recordModelCall({ ...BASE_REC, runId: 'plan-run-7' });
+    expect(mockFrom).toHaveBeenCalledWith('model_calls'); // COGS row still written
+    expect(mockRpc).toHaveBeenCalledTimes(1); // AND usage charged
+    const [fn, args] = mockRpc.mock.calls[0] as [string, Record<string, unknown>];
+    expect(fn).toBe('charge_model_usage');
+    expect(args.p_account).toBe('acct-1');
+    expect(args.p_credits).toBe(1);
+  });
+
+  it('does NOT charge usage for a Nibbin-run call (flatCharged: true — run_begin covers it)', async () => {
+    // The Nibbin-run drafting path sets flatCharged:true; the run_begin flat
+    // charge already paid for the whole run, so no double charge.
+    await recordModelCall({ ...BASE_REC, runId: 'run-7', flatCharged: true });
+    expect(mockFrom).toHaveBeenCalledWith('model_calls'); // COGS row still written
+    expect(mockRpc).not.toHaveBeenCalled(); // but no usage charge
+  });
+
+  it('does NOT charge usage for a diagnosis call (flatCharged: true — chargeDiagnosis covers it)', async () => {
+    // The diagnosis path sets flatCharged:true; chargeDiagnosis posts the flat
+    // charge, so usage must not double-charge.
+    await recordModelCall({ ...BASE_REC, runId: 'diag-run-7', origin: 'pipeline', flatCharged: true });
     expect(mockFrom).toHaveBeenCalledWith('model_calls'); // COGS row still written
     expect(mockRpc).not.toHaveBeenCalled(); // but no usage charge
   });

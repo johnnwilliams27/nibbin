@@ -95,6 +95,8 @@ export function modelDrafterFor(accountId: string): ModelDrafter | undefined {
           degraded: decision.degraded,
           latencyMs: Date.now() - t0,
           outcome: 'ok',
+          // Nibbin run: the run_begin flat charge covers this call — no usage charge.
+          flatCharged: true,
         });
         const text = result.text.trim();
         if (text === '') return null;
@@ -121,6 +123,8 @@ export function modelDrafterFor(accountId: string): ModelDrafter | undefined {
           outcome: 'error',
           degraded: resolvedDegraded,
           latencyMs: null,
+          // Nibbin run: the run_begin flat charge covers this call — no usage charge.
+          flatCharged: true,
         });
         return null;
       }

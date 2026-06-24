@@ -57,6 +57,20 @@ export interface ModelCallRecord {
    * may omit this field (it defaults to true, preserving existing behaviour).
    */
   modelContributionEnabled?: boolean;
+  /**
+   * "This call's run already posted a FLAT credit charge, so do NOT usage-charge
+   * it (avoids double-charging)." Set true by exactly the two surfaces that post a
+   * flat per-run charge: the Nibbin-run drafting path (run_begin) and the diagnosis
+   * path (chargeDiagnosis). Everything else — including the planner ReAct loop
+   * (which posts NO ledger charge of its own) and all post-run derivations
+   * (style/memory extraction) — leaves this falsy and is usage-charged.
+   *
+   * This REPLACES the old `runId`-presence heuristic, which silently zero-billed
+   * every planner-loop model call (the most expensive frontier / computer_use
+   * loop in the product) because they carry runId = plan_runs.id but pay no flat
+   * charge. Usage is now charged iff NOT flatCharged ("charge on everything").
+   */
+  flatCharged?: boolean;
 }
 
 export async function recordModelCall(rec: ModelCallRecord): Promise<void> {
@@ -105,12 +119,15 @@ export async function recordModelCall(rec: ModelCallRecord): Promise<void> {
  * Usage-based credit metering (feat/credit-metering-usage). After a model_calls
  * COGS row lands, decrement the account's credits by the call's cost.
  *
- * Reconciliation with the flat per-run charge (no double charge): a run's model
- * calls are part of ONE unit of work the run charge (run_begin / chargeDiagnosis)
- * already paid for — so calls that carry a run_id are NOT usage-charged here.
- * Only ad-hoc calls (run_id null: chat, onboarding, plan synthesis, doc/vision
- * extraction, style/memory derivation) charge usage. This is the leak the
- * feature closes — most paid model usage previously charged nothing.
+ * Reconciliation with the flat per-run charge (no double charge): the two
+ * surfaces that post a flat per-run charge — the Nibbin-run drafting path
+ * (run_begin) and diagnosis (chargeDiagnosis) — set `flatCharged: true`, so their
+ * model calls are NOT usage-charged here (that single unit of work was already
+ * paid for). EVERY other call usage-charges, including the planner ReAct loop
+ * (which carries runId = plan_runs.id but posts no flat charge — the leak this
+ * closes) and post-run derivations (chat, onboarding, plan synthesis, doc/vision
+ * extraction, style/memory derivation). Charge usage iff NOT flatCharged — we no
+ * longer key off run_id presence, which zero-billed the planner.
  *
  * SOFT-GATE: this charge is POST-HOC for a call that already completed, so it
  * ALWAYS lands and the result ALWAYS posts — even into a negative balance. The
@@ -125,8 +142,10 @@ async function chargeUsage(
   costMicroUsd: number,
   callId: string | null,
 ): Promise<void> {
-  // Run-tagged calls are covered by the flat run charge — never usage-charge them.
-  if (rec.runId) return;
+  // Calls whose run already posted a flat charge (Nibbin run_begin / diagnosis)
+  // are covered — never usage-charge them. Do NOT key off runId: the planner loop
+  // carries runId but pays no flat charge, so it must usage-charge.
+  if (rec.flatCharged) return;
   if (!rec.accountId || !callId) return;
   const credits = creditsForCostMicroUsd(costMicroUsd);
   if (credits <= 0) return; // near-free call rounds to 0 — nothing to charge
