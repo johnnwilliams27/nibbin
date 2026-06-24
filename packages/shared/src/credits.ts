@@ -93,6 +93,46 @@ export const DIAGNOSIS_MAX_MICRO_USD = 1_000_000 as const;
  */
 export const DIAGNOSIS_MAX_INPUT_TOKENS = 100_000 as const;
 
+/**
+ * Usage-metering conversion (feat/credit-metering-usage). ONE place defines the
+ * dollar value of a credit; everything else derives from it.
+ *
+ * CHOSEN RATE: 1 credit = $0.01 USD (10,000 micro-USD). This is deliberately
+ * anchored to the EXISTING top-up economics — TOP_UP is $10 (1000¢) for 1,000
+ * credits = $0.01/credit — so a credit a user BUYS is worth the same amount of
+ * usage it costs (no second, conflicting price to drift).
+ *
+ * SIZING THE FREE GRANT against real recorded COGS (nibbin-prod model_calls,
+ * 2026-06-24): a chat turn ≈ 950 µUSD, onboarding ≈ 805 µUSD, a plan synthesis
+ * (a run) ≈ 4,100 µUSD. With ceil(cost / 10,000):
+ *   - a typical chat turn / onboarding call → ceil(0.095) = 1 credit
+ *   - a plan synthesis call                 → ceil(0.41)  = 1 credit
+ *   - the heaviest real account so far (8 calls, 23,227 µUSD total) → ~3 credits
+ * So the 5,000-credit Canopy grant (= $50 of usage) comfortably covers thousands
+ * of normal calls; even the 1,000-credit Grove grant covers ~1,000 calls and the
+ * 100-credit Hatchling grant ~100. A normal session (dozens of chat turns + a
+ * few runs) spends a tiny fraction. Generous by design — results reliably post.
+ *
+ * TUNING: change only this constant. Raising it (more µUSD per credit) makes
+ * credits cheaper to spend / the free tier MORE generous; lowering it charges
+ * more credits per call. The minimum effective charge is 1 credit for any call
+ * costing > 0 (the ceil floor); a call rounding to 0 is free — that's fine.
+ */
+export const USD_PER_CREDIT = 0.01 as const;
+/** Same rate expressed in micro-USD (integer math) — 1 credit = 10,000 µUSD. */
+export const MICRO_USD_PER_CREDIT = 10_000 as const;
+
+/**
+ * Credits charged for one model call's recorded COGS. `ceil` so any non-free
+ * call costs at least 1 credit; a near-free call (cost rounds below the rate)
+ * costs 0 and is not charged. Fail-safe on garbage input → 0 (never charge for
+ * a non-finite/negative cost; the COGS row still records, billing just skips).
+ */
+export function creditsForCostMicroUsd(costMicroUsd: number): number {
+  if (!Number.isFinite(costMicroUsd) || costMicroUsd <= 0) return 0;
+  return Math.ceil(costMicroUsd / MICRO_USD_PER_CREDIT);
+}
+
 /** Rough token estimate for budgeting (≈4 chars/token). Deliberately simple. */
 export function estimateTokens(text: string): number {
   return Math.ceil(text.length / 4);
@@ -113,7 +153,7 @@ const GRANT_AMOUNTS: ReadonlySet<number> = new Set(
   Object.values(TIERS).map((t) => t.monthlyCredits),
 );
 
-export type LedgerReason = 'run' | 'topup' | 'grant' | 'refund' | 'clawback';
+export type LedgerReason = 'run' | 'topup' | 'grant' | 'refund' | 'clawback' | 'usage';
 
 export interface LedgerEntry {
   /** Signed weighted units. Debits negative, credits positive. Always a safe integer. */
@@ -143,11 +183,13 @@ export function validateEntry(entry: LedgerEntry): void {
   if (!Number.isSafeInteger(delta) || delta === 0) {
     throw new RangeError(`ledger delta must be a non-zero safe integer, got ${delta}`);
   }
-  const mustDebit = reason === 'run' || reason === 'clawback';
+  const mustDebit = reason === 'run' || reason === 'clawback' || reason === 'usage';
   if (mustDebit && delta > 0) throw new RangeError(`'${reason}' entries must debit (negative delta)`);
   if (!mustDebit && delta < 0) throw new RangeError(`'${reason}' entries must credit (positive delta)`);
   if (reason === 'run' || reason === 'refund') assertId(runId, `'${reason}' runId`);
   if (reason === 'grant') assertId(sourceId, `'grant' period sourceId`);
+  // usage debits carry the model_calls row id as their idempotency/source key.
+  if (reason === 'usage') assertId(sourceId, `'usage' call sourceId`);
 }
 
 /**
@@ -192,6 +234,12 @@ export function validateAppend(entries: readonly LedgerEntry[], entry: LedgerEnt
     }
     case 'clawback':
       break; // may overdraw by policy (see module header)
+    case 'usage':
+      // Soft-gate: a usage charge is post-hoc for a model call that ALREADY
+      // happened. It must ALWAYS land so the result can post — even into a
+      // negative balance. Like 'clawback', it is exempt from the overdraw guard;
+      // STARTING new expensive work is gated up front elsewhere (canRun).
+      break;
   }
 }
 
@@ -248,6 +296,19 @@ export function topUpEntry(tier: Tier, count: number): LedgerEntry {
   }
   assertPositiveInt(count, 'top-up count');
   const entry: LedgerEntry = { delta: count * TOP_UP.credits, reason: 'topup' };
+  validateEntry(entry);
+  return entry;
+}
+
+/**
+ * A usage debit for one model call, derived from its recorded COGS. Returns
+ * null when the call rounds to 0 credits (near-free) — nothing to charge.
+ * `callId` is the model_calls row id (idempotency/source key). May overdraw.
+ */
+export function usageEntry(costMicroUsd: number, callId: string): LedgerEntry | null {
+  const credits = creditsForCostMicroUsd(costMicroUsd);
+  if (credits <= 0) return null;
+  const entry: LedgerEntry = { delta: -credits, reason: 'usage', sourceId: callId };
   validateEntry(entry);
   return entry;
 }

@@ -14,6 +14,7 @@ import 'server-only';
  *   are logged loudly but never fail the user's request.
  */
 import { costMicroUsd, createAnthropicClient, type Generate, type TokenUsage, type Tier } from '@nibbin/router';
+import { creditsForCostMicroUsd } from '@nibbin/shared';
 import { serviceClient } from '../supabase/service';
 
 const forGlobal = globalThis as typeof globalThis & { __nibbinGenerate?: Generate | null };
@@ -67,26 +68,72 @@ export async function recordModelCall(rec: ModelCallRecord): Promise<void> {
   if (rec.modelContributionEnabled === false) return;
   try {
     const svc = serviceClient();
-    const { error } = await svc.from('model_calls').insert({
-      account_id: rec.accountId,
-      user_id: rec.userId,
-      run_id: rec.runId ?? null,
-      tier: rec.tier,
-      task: rec.task,
-      model: rec.model,
-      input_tokens: rec.usage.inputTokens,
-      cache_write_tokens: rec.usage.cacheWriteTokens,
-      cache_read_tokens: rec.usage.cacheReadTokens,
-      output_tokens: rec.usage.outputTokens,
-      cost_microusd: costMicroUsd(rec.model, rec.usage),
-      origin: rec.origin ?? null,
-      channel: rec.channel ?? null,
-      outcome: rec.outcome ?? 'ok',
-      degraded: rec.degraded ?? false,
-      latency_ms: rec.latencyMs ?? null,
-    });
-    if (error) console.error('[cogs] model_calls insert failed', error.message);
+    const cost = costMicroUsd(rec.model, rec.usage);
+    const { data, error } = await svc
+      .from('model_calls')
+      .insert({
+        account_id: rec.accountId,
+        user_id: rec.userId,
+        run_id: rec.runId ?? null,
+        tier: rec.tier,
+        task: rec.task,
+        model: rec.model,
+        input_tokens: rec.usage.inputTokens,
+        cache_write_tokens: rec.usage.cacheWriteTokens,
+        cache_read_tokens: rec.usage.cacheReadTokens,
+        output_tokens: rec.usage.outputTokens,
+        cost_microusd: cost,
+        origin: rec.origin ?? null,
+        channel: rec.channel ?? null,
+        outcome: rec.outcome ?? 'ok',
+        degraded: rec.degraded ?? false,
+        latency_ms: rec.latencyMs ?? null,
+      })
+      .select('id')
+      .single();
+    if (error) {
+      console.error('[cogs] model_calls insert failed', error.message);
+      return;
+    }
+    await chargeUsage(svc, rec, cost, (data as { id: string } | null)?.id ?? null);
   } catch (err) {
     console.error('[cogs] model_calls insert crashed', err instanceof Error ? err.message : err);
   }
+}
+
+/**
+ * Usage-based credit metering (feat/credit-metering-usage). After a model_calls
+ * COGS row lands, decrement the account's credits by the call's cost.
+ *
+ * Reconciliation with the flat per-run charge (no double charge): a run's model
+ * calls are part of ONE unit of work the run charge (run_begin / chargeDiagnosis)
+ * already paid for — so calls that carry a run_id are NOT usage-charged here.
+ * Only ad-hoc calls (run_id null: chat, onboarding, plan synthesis, doc/vision
+ * extraction, style/memory derivation) charge usage. This is the leak the
+ * feature closes — most paid model usage previously charged nothing.
+ *
+ * SOFT-GATE: this charge is POST-HOC for a call that already completed, so it
+ * ALWAYS lands and the result ALWAYS posts — even into a negative balance. The
+ * DB 'usage' reason is exempt from the overdraw guard by design. Starting NEW
+ * expensive work (a run / planner run) is gated up front elsewhere. A charge
+ * failure is logged loudly but never fails the user's request (best-effort,
+ * like the COGS write itself).
+ */
+async function chargeUsage(
+  svc: ReturnType<typeof serviceClient>,
+  rec: ModelCallRecord,
+  costMicroUsd: number,
+  callId: string | null,
+): Promise<void> {
+  // Run-tagged calls are covered by the flat run charge — never usage-charge them.
+  if (rec.runId) return;
+  if (!rec.accountId || !callId) return;
+  const credits = creditsForCostMicroUsd(costMicroUsd);
+  if (credits <= 0) return; // near-free call rounds to 0 — nothing to charge
+  const { error } = await svc.rpc('charge_model_usage', {
+    p_account: rec.accountId,
+    p_call_id: callId,
+    p_credits: credits,
+  });
+  if (error) console.error('[cogs] usage charge failed', error.message);
 }

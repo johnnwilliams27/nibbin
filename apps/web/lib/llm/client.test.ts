@@ -8,11 +8,32 @@ import type { Tier } from '@nibbin/router';
 
 // Mock the service module before importing client so the module-level
 // serviceClient() call is intercepted regardless of import order.
-const mockInsert = vi.fn().mockResolvedValue({ error: null });
-const mockFrom = vi.fn(() => ({ insert: mockInsert }));
+//
+// recordModelCall now: insert(...).select('id').single() → { data:{id}, error },
+// then (for non-run calls) rpc('charge_model_usage', ...). The mock models that
+// chain. `mockInsert` captures the insert payload; `mockSingle` controls the
+// returned row id/error; `mockRpc` captures the usage charge.
+const mockSingle = vi.fn().mockResolvedValue({ data: { id: 'call-1' }, error: null });
+const mockSelect = vi.fn((_cols?: string) => ({ single: mockSingle }));
+const mockInsert = vi.fn((_payload?: Record<string, unknown>) => ({ select: mockSelect }));
+const mockFrom = vi.fn((_table?: string) => ({ insert: mockInsert }));
+const mockRpc = vi.fn(
+  (_fn?: string, _args?: Record<string, unknown>): Promise<{ error: { message: string } | null }> =>
+    Promise.resolve({ error: null }),
+);
+
+function resetServiceMocks(): void {
+  mockFrom.mockClear();
+  mockInsert.mockClear();
+  mockSelect.mockClear();
+  mockSingle.mockClear();
+  mockSingle.mockResolvedValue({ data: { id: 'call-1' }, error: null });
+  mockRpc.mockClear();
+  mockRpc.mockResolvedValue({ error: null });
+}
 
 vi.mock('../supabase/service', () => ({
-  serviceClient: () => ({ from: mockFrom }),
+  serviceClient: () => ({ from: mockFrom, rpc: mockRpc }),
 }));
 
 // Import after mock registration so the mocked serviceClient is used.
@@ -34,9 +55,7 @@ const BASE_REC = {
 
 describe('recordModelCall — N17 origin + channel attribution', () => {
   beforeEach(() => {
-    mockFrom.mockClear();
-    mockInsert.mockClear();
-    mockInsert.mockResolvedValue({ error: null });
+    resetServiceMocks();
   });
 
   it('includes origin and channel in the insert payload when provided', async () => {
@@ -73,17 +92,76 @@ describe('recordModelCall — N17 origin + channel attribution', () => {
   });
 
   it('swallows insert errors without throwing (non-fatal COGS recording)', async () => {
-    mockInsert.mockResolvedValue({ error: { message: 'db down' } });
+    mockSingle.mockResolvedValue({ data: null, error: { message: 'db down' } });
     // Must not throw — failures are logged, never user-visible
     await expect(recordModelCall({ ...BASE_REC })).resolves.toBeUndefined();
+    // A failed insert means no row id → no usage charge attempted.
+    expect(mockRpc).not.toHaveBeenCalled();
+  });
+});
+
+describe('recordModelCall — usage credit metering (feat/credit-metering-usage)', () => {
+  beforeEach(() => {
+    resetServiceMocks();
+  });
+
+  it('charges usage proportional to the call cost for a non-run call', async () => {
+    // claude-haiku-4-5 = $1/MTok input, $5/MTok output. BASE_REC = 100 in + 50
+    // out = (100*1 + 50*5)/1e6 USD = 350 µUSD → ceil(350/10000) = 1 credit.
+    await recordModelCall({ ...BASE_REC });
+    expect(mockRpc).toHaveBeenCalledTimes(1);
+    const [fn, args] = mockRpc.mock.calls[0] as [string, Record<string, unknown>];
+    expect(fn).toBe('charge_model_usage');
+    expect(args.p_account).toBe('acct-1');
+    expect(args.p_call_id).toBe('call-1');
+    expect(args.p_credits).toBe(1);
+  });
+
+  it('charges MORE credits for a more expensive call (proportional)', async () => {
+    // 100k input + 20k output on haiku = (100000*1 + 20000*5)/1e6 = 200,000 µUSD
+    // → ceil(200000/10000) = 20 credits.
+    await recordModelCall({
+      ...BASE_REC,
+      usage: { inputTokens: 100_000, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 20_000 },
+    });
+    const args = mockRpc.mock.calls[0][1] as Record<string, unknown>;
+    expect(args.p_credits).toBe(20);
+  });
+
+  it('does NOT charge usage for a run-tagged call (the run charge covers it — no double charge)', async () => {
+    await recordModelCall({ ...BASE_REC, runId: 'run-7' });
+    expect(mockFrom).toHaveBeenCalledWith('model_calls'); // COGS row still written
+    expect(mockRpc).not.toHaveBeenCalled(); // but no usage charge
+  });
+
+  it('does NOT charge a near-free call that rounds to 0 credits', async () => {
+    // 1 input token on haiku = 1 µUSD → ceil(1/10000) = ... 1? No: ceil(0.0001)=1.
+    // Use zero tokens (a graceful-failure row) → cost 0 → 0 credits → no charge.
+    await recordModelCall({
+      ...BASE_REC,
+      usage: { inputTokens: 0, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 0 },
+      outcome: 'error',
+    });
+    expect(mockFrom).toHaveBeenCalledWith('model_calls');
+    expect(mockRpc).not.toHaveBeenCalled();
+  });
+
+  it('does NOT charge when there is no account (unattributed call)', async () => {
+    await recordModelCall({ ...BASE_REC, accountId: null });
+    expect(mockRpc).not.toHaveBeenCalled();
+  });
+
+  it('the result still posts even if the usage charge fails (soft-gate, best-effort)', async () => {
+    mockRpc.mockResolvedValue({ error: { message: 'charge down' } });
+    // Charge failure is logged, never thrown — the COGS row landed, result posts.
+    await expect(recordModelCall({ ...BASE_REC })).resolves.toBeUndefined();
+    expect(mockRpc).toHaveBeenCalledTimes(1);
   });
 });
 
 describe('recordModelCall — N17 pipeline-origin sites (COGS-by-origin completeness)', () => {
   beforeEach(() => {
-    mockFrom.mockClear();
-    mockInsert.mockClear();
-    mockInsert.mockResolvedValue({ error: null });
+    resetServiceMocks();
   });
 
   it("pipeline calls record origin:'pipeline', never null", async () => {
@@ -110,9 +188,7 @@ describe('recordModelCall — N17 pipeline-origin sites (COGS-by-origin complete
 
 describe('recordModelCall — model_contribution_enabled opt-out gate (#24)', () => {
   beforeEach(() => {
-    mockFrom.mockClear();
-    mockInsert.mockClear();
-    mockInsert.mockResolvedValue({ error: null });
+    resetServiceMocks();
   });
 
   it('skips the model_calls insert when modelContributionEnabled is false', async () => {
@@ -137,9 +213,7 @@ describe('recordModelCall — model_contribution_enabled opt-out gate (#24)', ()
 
 describe('recordModelCall — Slice A signals (outcome / degraded / latency_ms)', () => {
   beforeEach(() => {
-    mockFrom.mockClear();
-    mockInsert.mockClear();
-    mockInsert.mockResolvedValue({ error: null });
+    resetServiceMocks();
   });
 
   it('writes outcome, degraded, and latency_ms when provided', async () => {

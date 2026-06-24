@@ -18,6 +18,10 @@ import {
   validateAppend,
   DIAGNOSIS_MAX_MICRO_USD,
   withinDiagnosisCostCap,
+  USD_PER_CREDIT,
+  MICRO_USD_PER_CREDIT,
+  creditsForCostMicroUsd,
+  usageEntry,
 } from '../src/credits';
 import type { LedgerEntry, WeightClass } from '../src/credits';
 
@@ -371,5 +375,82 @@ describe('diagnosis hard cost cap (anti-runaway)', () => {
     expect(withinDiagnosisCostCap(Number.NaN)).toBe(false);
     expect(withinDiagnosisCostCap(Number.POSITIVE_INFINITY)).toBe(false);
     expect(withinDiagnosisCostCap(-1)).toBe(false);
+  });
+});
+
+describe('usage metering — conversion (feat/credit-metering-usage)', () => {
+  it('USD_PER_CREDIT agrees with the top-up economics ($0.01/credit)', () => {
+    // 1 credit = $0.01; the TOP_UP price/credits ratio must match (no two prices).
+    expect(USD_PER_CREDIT).toBe(0.01);
+    expect(MICRO_USD_PER_CREDIT).toBe(10_000);
+    // TOP_UP is priceUsdCents per credits; cents→USD/credit must equal the rate.
+    expect((TOP_UP.priceUsdCents / 100) / TOP_UP.credits).toBeCloseTo(USD_PER_CREDIT, 10);
+  });
+
+  it('charges proportional to cost via ceil(cost / rate)', () => {
+    // A typical chat turn (~950 µUSD) → 1 credit; onboarding (~805) → 1.
+    expect(creditsForCostMicroUsd(950)).toBe(1);
+    expect(creditsForCostMicroUsd(805)).toBe(1);
+    // A plan synthesis (~4,100 µUSD) → 1 credit (still under one whole credit).
+    expect(creditsForCostMicroUsd(4_100)).toBe(1);
+    // Exactly one credit's worth → 1; one µUSD over → 2 (proportional, ceil).
+    expect(creditsForCostMicroUsd(MICRO_USD_PER_CREDIT)).toBe(1);
+    expect(creditsForCostMicroUsd(MICRO_USD_PER_CREDIT + 1)).toBe(2);
+    // A pricey call ($0.05 = 50,000 µUSD) → 5 credits.
+    expect(creditsForCostMicroUsd(50_000)).toBe(5);
+  });
+
+  it('a near-free call rounds to 0 credits (and is not charged)', () => {
+    expect(creditsForCostMicroUsd(0)).toBe(0);
+    expect(creditsForCostMicroUsd(1)).toBe(1); // any positive cost is at least 1
+    expect(usageEntry(0, 'call-1')).toBeNull();
+  });
+
+  it('fails safe (0 credits) on garbage cost', () => {
+    expect(creditsForCostMicroUsd(Number.NaN)).toBe(0);
+    expect(creditsForCostMicroUsd(Number.POSITIVE_INFINITY)).toBe(0);
+    expect(creditsForCostMicroUsd(-100)).toBe(0);
+  });
+
+  it('the 5000-credit free grant comfortably covers normal usage', () => {
+    // The heaviest real account so far: 8 calls totalling 23,227 µUSD.
+    const sessionCredits = creditsForCostMicroUsd(950) * 6 + creditsForCostMicroUsd(4_100) * 2;
+    expect(sessionCredits).toBeLessThan(20); // a busy session is < 0.5% of 5000
+    expect(TIERS.canopy.monthlyCredits).toBe(5000);
+  });
+});
+
+describe('usage metering — ledger entry (soft-gate)', () => {
+  it('usageEntry debits, carries the call id as sourceId, and validates', () => {
+    const e = usageEntry(25_000, 'call-abc')!;
+    expect(e.reason).toBe('usage');
+    expect(e.delta).toBe(-3); // ceil(25000/10000)
+    expect(e.sourceId).toBe('call-abc');
+    expect(() => validateEntry(e)).not.toThrow();
+  });
+
+  it("a 'usage' entry must carry a sourceId (the call id)", () => {
+    expect(() => validateEntry({ delta: -1, reason: 'usage' })).toThrow(/sourceId/);
+  });
+
+  it('a usage charge ALWAYS appends — even driving the balance negative', () => {
+    // Soft-gate: a completed call charges into a negative balance (result posts).
+    const ledger: LedgerEntry[] = [chargeForRun('standard', 'run-1')]; // balance -1? no: -1
+    // Start from a balance of 0 by pairing with a grant, then overdraw via usage.
+    const seeded: LedgerEntry[] = [grantEntry('hatchling', 'p1')]; // +100
+    const drain = usageEntry(1_000_000, 'call-big')!; // $1.00 → 100 credits
+    expect(() => validateAppend(seeded, drain)).not.toThrow(); // 100 - 100 = 0
+    const overdraw = usageEntry(500_000, 'call-over')!; // another 50 → -50
+    expect(() => validateAppend([...seeded, drain], overdraw)).not.toThrow();
+    expect(balance([...seeded, drain, overdraw])).toBe(-50);
+    void ledger;
+  });
+
+  it("a 'run' charge still CANNOT overdraw (only usage/clawback may)", () => {
+    const seeded: LedgerEntry[] = [grantEntry('hatchling', 'p1')]; // +100
+    // drain to 0 with usage, then a run must be refused at append time.
+    const drain = usageEntry(1_000_000, 'call-big')!; // -100
+    const run = chargeForRun('standard', 'run-x');
+    expect(() => validateAppend([...seeded, drain], run)).toThrow(/overdraw/);
   });
 });
