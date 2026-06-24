@@ -66,3 +66,37 @@ end;
 $$;
 revoke execute on function public.record_nudge(uuid, uuid, text, text) from public, anon, authenticated;
 grant execute on function public.record_nudge(uuid, uuid, text, text) to service_role;
+
+-- ---------------------------------------------------------------------------
+-- Add the 'nudge_record_failed' telemetry event to the product_events
+-- allowlist. The runner emits it when a nudge-ledger WRITE fails after a send
+-- executed; a SUSTAINED failure would silently reset the cadence/count cap and
+-- resume per-tick spam, so it must be observable (alarmed), not just logged.
+-- Recreated byte-for-byte from the live emit_product_event (membership gate +
+-- drip pattern preserved); the only change is the one new name in the IN-list.
+-- ---------------------------------------------------------------------------
+create or replace function public.emit_product_event(p_account uuid, p_name text, p_props jsonb default '{}'::jsonb)
+returns void
+language plpgsql
+security definer
+set search_path to ''
+as $function$
+declare
+  uid uuid := (select auth.uid());
+begin
+  if p_name not in (
+    'account_created', 'connector_linked', 'scan_completed', 'scan_empty', 'nibbin_adopted',
+    'first_draft_approved', 'run_approved', 'run_edited', 'run_rejected', 'stage_promoted',
+    'stage_demoted', 'study_started', 'study_completed', 'study_aborted', 'diagnosis_viewed',
+    'plan_upgraded', 'topup_purchased', 'capability_unfulfilled', 'connector_blocked',
+    'nudge_record_failed'
+  ) and p_name !~ '^drip_[a-z0-9_]+_(sent|opened)$' then
+    raise exception 'unknown product event %', p_name;
+  end if;
+  if uid is not null and (p_account is null or not (select private.is_account_member(p_account))) then
+    raise exception 'cannot emit events for this account';
+  end if;
+  insert into public.product_events (account_id, user_id, name, props)
+  values (p_account, uid, p_name, coalesce(p_props, '{}'::jsonb));
+end;
+$function$;

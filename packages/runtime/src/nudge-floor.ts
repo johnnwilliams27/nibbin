@@ -43,7 +43,7 @@ const DAY = 24 * HOUR;
  * always slower). Changing these is a safety-invariant change.
  */
 export const FLOOR_MIN_INTERVAL_MS = 3 * DAY; // never re-nudge the same invoice within 3 days
-export const FLOOR_MAX_NUDGES = 4;            // never nudge the same invoice more than 4 times, ever
+export const FLOOR_MAX_NUDGES = 4;            // never nudge the same invoice more than 4 times within the lookback window
 
 /**
  * The default cadence WHEN the owner has set no business rule and no learned
@@ -53,7 +53,15 @@ export const FLOOR_MAX_NUDGES = 4;            // never nudge the same invoice mo
 export const DEFAULT_CADENCE_INTERVAL_MS = 7 * DAY;
 export const DEFAULT_CADENCE_MAX_NUDGES = 3;
 
-/** How far back the ledger lookback runs (covers the max count window comfortably). */
+/**
+ * How far back the count gate looks. The max-count cap is therefore a ROLLING
+ * 180-day cap, not a literal lifetime cap: a genuinely long-lived overdue
+ * invoice (left `open` > 180 days) could accrue up to FLOOR_MAX_NUDGES more
+ * nudges in the next window. That is an accepted, tiny residual (≤4 emails per
+ * 180 days for a never-paid invoice), and 180 days comfortably exceeds the
+ * primitive's 90-day overdue-invoice read window so a normally-aged invoice's
+ * full nudge history is always in scope.
+ */
 export const NUDGE_LOOKBACK_MS = 180 * DAY;
 
 /**
@@ -64,14 +72,22 @@ export const NUDGE_LOOKBACK_MS = 180 * DAY;
 export interface NudgeCadencePolicy {
   /** Minimum ms between nudges. Clamped up to FLOOR_MIN_INTERVAL_MS. */
   intervalMs: number;
-  /** Max nudges ever for one resource. Clamped down to FLOOR_MAX_NUDGES. */
+  /** Max nudges for one resource within the lookback window. Clamped down to FLOOR_MAX_NUDGES. */
   maxNudges: number;
 }
 
 /** Build a clamped policy from owner/learned inputs (any field optional). */
 export function resolveCadencePolicy(input?: Partial<NudgeCadencePolicy>): NudgeCadencePolicy {
-  const intervalMs = Math.max(FLOOR_MIN_INTERVAL_MS, input?.intervalMs ?? DEFAULT_CADENCE_INTERVAL_MS);
-  const maxNudges = Math.min(FLOOR_MAX_NUDGES, Math.max(1, input?.maxNudges ?? DEFAULT_CADENCE_MAX_NUDGES));
+  // Coerce non-finite input (NaN/Infinity) to the default BEFORE clamping.
+  // `typeof NaN === 'number'` slips past deriveNudgeFloor's type guard, and
+  // `Math.max(FLOOR, NaN) === NaN` / `Math.min(CAP, NaN) === NaN` would silently
+  // DISABLE the gate it feeds (`x < NaN` and `x >= NaN` are both false) — a
+  // crafted `nudgeCadence: { maxNudges: NaN }` would otherwise defeat the hard
+  // count cap. Coercing to the default keeps the floor un-bypassable (red-team P2-1).
+  const rawInterval = Number.isFinite(input?.intervalMs) ? (input!.intervalMs as number) : DEFAULT_CADENCE_INTERVAL_MS;
+  const rawMax = Number.isFinite(input?.maxNudges) ? (input!.maxNudges as number) : DEFAULT_CADENCE_MAX_NUDGES;
+  const intervalMs = Math.max(FLOOR_MIN_INTERVAL_MS, rawInterval);
+  const maxNudges = Math.min(FLOOR_MAX_NUDGES, Math.max(1, rawMax));
   return { intervalMs, maxNudges };
 }
 

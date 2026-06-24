@@ -607,8 +607,12 @@ export async function dispatchStep(
     // Task 5a: record the nudge AFTER the send executes so the next run's floor
     // check sees it. Only on a real send (claim === 'claimed'), never on a
     // dedup. Best-effort: a record failure must NOT undo the send (the send
-    // already fired) — log and continue. A missed record can only let ONE extra
-    // nudge through next run; the hard count cap still backstops it.
+    // already fired) — log and continue. A missed record lets ONE extra nudge
+    // through on the next tick: it under-counts (eroding the count cap by one)
+    // AND, because the missed row is the most-recent one, the interval gate sees
+    // an older `last` and can fire one send inside the interval floor. The send-
+    // velocity cap is the absolute-volume backstop; a SUSTAINED record failure is
+    // alarmed via the nudge_record_failed event below (logic-skeptic P3-1).
     if (deps.nudgeFloor) {
       const nf = deriveNudgeFloor(step);
       if (nf) {
@@ -625,6 +629,19 @@ export async function dispatchStep(
             '[runner] nudge-floor record failed (non-fatal, send already executed):',
             err instanceof Error ? err.message : String(err),
           );
+          // Cost-auditor P2: a SUSTAINED record failure (writes down, reads up)
+          // would silently reset the cadence/count cap and resume per-tick spam.
+          // Alarm it (structural only — resourceKind, no id/PII) so a sustained
+          // failure is observable, not just a console line. Best-effort.
+          try {
+            await deps.events.emit({
+              name: 'nudge_record_failed',
+              accountId: nibbin.accountId,
+              props: { resourceKind: nf.resourceKind },
+            });
+          } catch {
+            // best-effort — never change run behavior
+          }
         }
       }
     }

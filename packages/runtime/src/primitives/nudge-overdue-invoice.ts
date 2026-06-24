@@ -39,6 +39,18 @@ import { DAY, parseQuarantinedJson, safeAddress, safeStripeUrl, stripeInvoicesPa
 
 type ConnectionMap = Record<string, string | undefined>;
 
+/**
+ * How far back the overdue-invoice scan reads Stripe invoices. This is coupled
+ * to the Task 5a count cap: the floor's "≤ FLOOR_MAX_NUDGES per invoice"
+ * property is effectively a LIFETIME cap only while this read window stays
+ * SMALLER than NUDGE_LOOKBACK_MS (an invoice that can no longer be read can no
+ * longer be nudged, so its full nudge history is always inside the lookback).
+ * A test (`nudge-floor.test.ts`) asserts NUDGE_LOOKBACK_MS > this — widening it
+ * past the lookback would let a long-lived invoice be nudged more than the cap,
+ * so that change must also widen the lookback. (logic-skeptic P2-1.)
+ */
+export const OVERDUE_INVOICE_READ_WINDOW_MS = 90 * DAY;
+
 export interface NudgeOverdueInvoiceInputs {
   /** Only nudge invoices at least this many days past due. Default 0 (tally). */
   minDaysLate?: number;
@@ -98,7 +110,7 @@ export function nudgeOverdueInvoice(
       kind: 'read',
       capability: 'payments.read',
       connectionId: stripe,
-      path: stripeInvoicesPath(nowMs - 90 * DAY),
+      path: stripeInvoicesPath(nowMs - OVERDUE_INVOICE_READ_WINDOW_MS),
     };
     const invoices = (res && parseQuarantinedJson<{ data?: StripeInvoice[] }>(res))?.data ?? [];
     const cutoff = nowMs - minDaysLate * DAY;
@@ -117,6 +129,11 @@ export function nudgeOverdueInvoice(
     // email on top. Read-only signal off the already-fetched invoice — no extra
     // Stripe call, no write. The owner can still see the overdue invoice; we just
     // don't pile on a personal nudge while Stripe is auto-dunning.
+    //
+    // A null/past `next_payment_attempt` is INTENTIONALLY treated as "Stripe not
+    // currently dunning" (smart-retries exhausted, or manual `send_invoice`
+    // collection) → we DO nudge. Only an actively-scheduled FUTURE Stripe retry
+    // suppresses our nudge (logic-skeptic P3-3).
     const stripeAutoDunning =
       worst.collection_method === 'charge_automatically' &&
       worst.auto_advance === true &&

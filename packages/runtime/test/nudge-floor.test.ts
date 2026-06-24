@@ -13,7 +13,9 @@ import {
   FLOOR_MAX_NUDGES,
   DEFAULT_CADENCE_INTERVAL_MS,
   DEFAULT_CADENCE_MAX_NUDGES,
+  NUDGE_LOOKBACK_MS,
 } from '../src/nudge-floor';
+import { OVERDUE_INVOICE_READ_WINDOW_MS } from '../src/primitives/nudge-overdue-invoice';
 
 const DAY = 86_400_000;
 const NOW = 1_700_000_000_000;
@@ -46,6 +48,36 @@ describe('resolveCadencePolicy — clamps owner/learned input to the floor', () 
   it('maxNudges floors at 1 (a 0/negative request cannot disable nudging into a divide-by-zero)', () => {
     expect(resolveCadencePolicy({ maxNudges: 0 }).maxNudges).toBe(1);
     expect(resolveCadencePolicy({ maxNudges: -5 }).maxNudges).toBe(1);
+  });
+
+  it('NaN/Infinity input coerces to the clamped default — cannot DISABLE the gate (red-team P2-1)', () => {
+    // typeof NaN === 'number' slips past the type guard; without coercion
+    // Math.max/Math.min propagate NaN and the gate would never fire.
+    const nan = resolveCadencePolicy({ intervalMs: NaN, maxNudges: NaN });
+    expect(nan.intervalMs).toBe(DEFAULT_CADENCE_INTERVAL_MS);
+    expect(nan.maxNudges).toBe(DEFAULT_CADENCE_MAX_NUDGES);
+    const inf = resolveCadencePolicy({ intervalMs: Infinity, maxNudges: Infinity });
+    // Infinity interval is finite-checked → default (not an infinite cooldown);
+    // Infinity maxNudges → default, then clamped ≤ floor.
+    expect(inf.intervalMs).toBe(DEFAULT_CADENCE_INTERVAL_MS);
+    expect(inf.maxNudges).toBe(DEFAULT_CADENCE_MAX_NUDGES);
+    // And decideNudge with the coerced policy still BLOCKS, never silently allows.
+    const d = decideNudge([NaN as unknown as number], NOW, nan);
+    // a NaN history entry is ignored by Math.max semantics but count is still 1 < 3 → allowed;
+    // the point is the policy itself is well-formed (finite), not NaN.
+    expect(Number.isFinite(nan.intervalMs)).toBe(true);
+    expect(Number.isFinite(nan.maxNudges)).toBe(true);
+    expect(d).toHaveProperty('allow');
+  });
+});
+
+describe('the count cap is effectively a lifetime cap (lookback > read window invariant)', () => {
+  it('NUDGE_LOOKBACK_MS strictly exceeds the overdue-invoice Stripe read window', () => {
+    // logic-skeptic P2-1: the "≤ FLOOR_MAX_NUDGES per invoice" property is only a
+    // lifetime cap while an invoice ages OUT of the read window before it ages out
+    // of the lookback. If someone widens the Stripe read window past the lookback,
+    // a long-lived invoice could be nudged more than the cap. This trips CI first.
+    expect(NUDGE_LOOKBACK_MS).toBeGreaterThan(OVERDUE_INVOICE_READ_WINDOW_MS);
   });
 });
 

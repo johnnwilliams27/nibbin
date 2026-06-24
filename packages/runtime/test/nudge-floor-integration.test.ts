@@ -229,6 +229,41 @@ describe('re-nudge floor — end-to-end through executeRun (act level)', () => {
     expect(sends).toHaveLength(1);
   });
 
+  it('the floor only touches NUDGE sends — an ordinary thread reply (no invoiceId) is untouched', async () => {
+    // A non-nudge email.send carrying a threadId but NO invoiceId must never be
+    // gated by the floor (deriveNudgeFloor returns null). Drive a synthetic
+    // program that drafts a plain reply, with a floor store that would BLOCK if
+    // it were ever consulted (history throws → would fail-open, so instead use a
+    // store whose history returns a saturated count to prove it is NOT consulted).
+    const blockingFloor: RunnerDeps['nudgeFloor'] = {
+      async history() {
+        // If this were consulted for the reply it would not matter (no invoiceId),
+        // but returning a saturated history makes the assertion unambiguous.
+        return [NOW_MS, NOW_MS, NOW_MS, NOW_MS];
+      },
+      async record() {
+        throw new Error('record should never be called for a non-nudge send');
+      },
+    };
+    const { deps, sends } = makeHarness({ nudgeFloor: blockingFloor });
+    const replyProgram: ProgramFn = async function* () {
+      yield {
+        kind: 'draft',
+        capability: 'email.send',
+        connectionId: GMAIL_CONN,
+        patternKey: 'email.send:reply',
+        title: 'Re: hello',
+        draft: 'Thanks for your note!',
+        effectArgs: { threadId: 'thread-123', to: 'someone@example.com' },
+      };
+    };
+    const nib = nibRef();
+    nib.spec.toolsAllowlist = ['email.send'];
+    const outcome = await executeRun(nib, TRIGGER, replyProgram, deps);
+    expect(outcome.kind).toBe('executed');
+    expect(sends).toHaveLength(1);
+  });
+
   it('the hard floor interval is exactly enforced at its boundary', async () => {
     const floor = new MemoryNudgeFloorStore();
     // exactly at the floor interval ago, with a cadence that equals the floor
