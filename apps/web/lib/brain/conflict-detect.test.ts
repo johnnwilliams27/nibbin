@@ -8,7 +8,6 @@ import { describe, it, expect } from 'vitest';
 import {
   detectFieldConflicts,
   type FieldInput,
-  type FieldConflict,
 } from './conflict-detect';
 
 // Default authority weights matching the plan's seeded defaults.
