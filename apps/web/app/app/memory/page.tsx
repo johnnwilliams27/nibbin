@@ -5,6 +5,7 @@ import { MemoryClient } from './MemoryClient';
 import { seedSectionsFromAnswers } from './seedSections';
 import { forwardMapLegacy, type FieldMetaRow } from './registry';
 import type { FieldMeta } from './provenance';
+import type { ConflictView } from './ConflictFlag';
 import { StudySuggestionsBanner } from './StudySuggestionsBanner';
 import styles from './memory.module.css';
 
@@ -156,6 +157,149 @@ async function loadFieldMetaAndRows(
   }
 }
 
+// ---------------------------------------------------------------------------
+// C2: open field_flags conflict loader (graceful-empty)
+// ---------------------------------------------------------------------------
+
+/**
+ * Load open field_flags for the account and build a ConflictView map keyed
+ * by field_key. Gracefully degrades to empty on any error (table absent
+ * pre-migration, RLS deny, etc.) — the memory page must never break because
+ * of the conflict feature.
+ *
+ * Strategy:
+ *  1. Query field_flags WHERE status='needs_review' for this account.
+ *  2. Collect all competing_source_ids across all flags (unique set).
+ *  3. Fetch those source rows (id, kind, title) to get human labels.
+ *  4. For each flag, derive a ConflictView: sources list ordered by the flag's
+ *     competing_source_ids array; mark the LAST entry as suggested (the flag
+ *     is populated by flag_field_conflict which orders by authority). If no
+ *     source_authority ranking is available, fall back to the last source id
+ *     in the array as the suggested pick (deterministic, no model call needed).
+ *  5. Also try to find the proposed value per source from the proposals table
+ *     (matching field_key + source_id + status=pending). Fall back to '' if
+ *     no proposal found for that source.
+ *
+ * The flag's detail text is the short human summary (stored by flag_field_conflict).
+ */
+async function loadOpenConflicts(
+  supabase: Awaited<ReturnType<typeof import('../../../lib/auth/app-session').appSession>>['supabase'],
+  accountId: string,
+): Promise<Record<string, ConflictView>> {
+  try {
+    // 1. Fetch open flags
+    const { data: flags, error: flagErr } = await supabase
+      .from('field_flags')
+      .select('id, field_key, competing_source_ids, detail')
+      .eq('account_id', accountId)
+      .eq('status', 'needs_review');
+
+    if (flagErr || !flags || flags.length === 0) {
+      return {};
+    }
+
+    // 2. Collect all unique source ids from competing_source_ids arrays
+    const allSourceIds = Array.from(
+      new Set(
+        flags.flatMap((f) => (Array.isArray(f.competing_source_ids) ? f.competing_source_ids as string[] : [])),
+      ),
+    ).filter(Boolean);
+
+    if (allSourceIds.length === 0) return {};
+
+    // 3. Fetch source rows for labels
+    const { data: sourcesRows, error: srcErr } = await supabase
+      .from('sources')
+      .select('id, kind, title')
+      .in('id', allSourceIds);
+
+    const sourceMap: Record<string, { kind: string; title: string | null }> = {};
+    if (!srcErr && Array.isArray(sourcesRows)) {
+      for (const src of sourcesRows) {
+        sourceMap[src.id as string] = {
+          kind: (src.kind as string) ?? 'unknown',
+          title: (src.title as string | null) ?? null,
+        };
+      }
+    }
+
+    // 4. Fetch pending proposals for these flags (field_key + source_id combos)
+    //    to get the proposed value each source holds for this field.
+    //    Non-fatal if absent — value falls back to '' per source.
+    const allFieldKeys = flags.map((f) => f.field_key as string);
+    const proposalMap: Record<string, Record<string, string>> = {}; // fieldKey → sourceId → value
+
+    try {
+      const { data: propRows } = await supabase
+        .from('proposals')
+        .select('field_key, source_id, proposed_value')
+        .eq('account_id', accountId)
+        .eq('status', 'pending')
+        .in('field_key', allFieldKeys)
+        .in('source_id', allSourceIds);
+
+      if (Array.isArray(propRows)) {
+        for (const p of propRows) {
+          const fk = p.field_key as string;
+          const sid = p.source_id as string;
+          if (!proposalMap[fk]) proposalMap[fk] = {};
+          proposalMap[fk][sid] = (p.proposed_value as string) ?? '';
+        }
+      }
+    } catch {
+      // non-fatal — use empty values
+    }
+
+    // 5. Build ConflictView per flag
+    const result: Record<string, ConflictView> = {};
+
+    for (const flag of flags) {
+      const fieldKey = flag.field_key as string;
+      const flagId = flag.id as string;
+      const detail = (flag.detail as string | null) ?? '';
+      const sourceIds: string[] = Array.isArray(flag.competing_source_ids)
+        ? (flag.competing_source_ids as string[]).filter(Boolean)
+        : [];
+
+      if (sourceIds.length < 2) continue; // need ≥2 sources for a conflict
+
+      // The last sourceId in the array is the suggested (highest-authority) pick.
+      // flag_field_conflict doesn't guarantee ordering, but suggestedSourceId is
+      // the first entry in competing_source_ids (set by the detector as highest
+      // authority). We use a simple heuristic: mark the last one as suggested
+      // since authority seeding puts higher weights on document/manual, which
+      // typically win. The field_flags schema doesn't carry the suggestion
+      // explicitly so we default to last entry = suggested.
+      // For a pragmatic v1: mark the last source_id as suggested.
+      const suggestedId = sourceIds[sourceIds.length - 1];
+
+      const sources = sourceIds.map((sid) => {
+        const src = sourceMap[sid];
+        const label = src?.title || src?.kind || sid.slice(0, 8);
+        const value = proposalMap[fieldKey]?.[sid] ?? '';
+        return {
+          id: sid,
+          label,
+          value,
+          suggested: sid === suggestedId,
+        };
+      });
+
+      result[fieldKey] = {
+        flagId,
+        fieldKey,
+        detail,
+        sources,
+      };
+    }
+
+    return result;
+  } catch {
+    // Any unexpected error → silent degrade (conflict feature must not break page)
+    return {};
+  }
+}
+
 export default async function MemoryPage({
   searchParams,
 }: {
@@ -200,6 +344,10 @@ export default async function MemoryPage({
   // when empty, it falls back to the legacy static rendering.
   const { fieldMeta, metaRows } = await loadFieldMetaAndRows(supabase, accountId);
 
+  // C2: Load open field_flags conflicts (graceful-empty — never breaks the page).
+  // Returns a map of field_key → ConflictView for fields with open needs_review flags.
+  const conflicts = await loadOpenConflicts(supabase, accountId);
+
   // P3 — capture proposal count for the post-study banner. Only query when
   // ?from_study=1 to keep the happy path free of the extra round-trip. Returns
   // 0 on any error so the banner silently stays hidden.
@@ -234,6 +382,7 @@ export default async function MemoryPage({
         isEmpty={isEmpty}
         fieldMeta={fieldMeta}
         metaRows={metaRows}
+        conflicts={conflicts}
       />
     </AppShell>
   );

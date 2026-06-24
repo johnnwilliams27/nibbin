@@ -34,11 +34,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FieldView } from './FieldView';
 import { FieldEditor } from './FieldEditor';
+import { ConflictFlag } from './ConflictFlag';
 import { editReducer, initialState } from './fieldEditor.reducer';
 import { formatField } from './format';
 import { FIELD_CONFIG } from './fields';
 import { sourceLabel, staleness } from './provenance';
 import type { FieldMeta } from './provenance';
+import type { ConflictView } from './ConflictFlag';
 import styles from './memory.module.css';
 
 // Re-export FieldMeta so existing test imports (`import type { FieldMeta } from './FieldBlock'`)
@@ -73,6 +75,12 @@ export interface FieldBlockProps {
    * At runtime, leave this undefined — the component manages state internally.
    */
   testMode?: 'view' | 'edit';
+  /**
+   * Task 8 (C2): open field_flags conflict for this field (if any).
+   * When provided, a ConflictFlag banner is rendered above the field content.
+   * When absent, the field renders normally (no conflict banner).
+   */
+  conflict?: ConflictView;
 }
 
 // ---------------------------------------------------------------------------
@@ -121,6 +129,7 @@ export function FieldBlock({
   onSave,
   fieldMeta,
   testMode,
+  conflict,
 }: FieldBlockProps): React.ReactElement {
   // Internal mode state — bypassed when testMode is set (for static tests).
   const [internalMode, setInternalMode] = useState<'view' | 'edit'>('view');
@@ -208,6 +217,10 @@ export function FieldBlock({
           </button>
         )}
       </div>
+
+      {/* Task 8 (C2): ConflictFlag banner — shown when this field has an open conflict.
+          Renders above the field content so the user sees it before editing. */}
+      {conflict && <ConflictFlag conflict={conflict} />}
 
       {/* Content area: switches between FieldView and FieldEditor.
           Motion: each mode switch is wrapped in a fade-in class so the content

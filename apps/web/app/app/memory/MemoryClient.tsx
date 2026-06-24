@@ -38,6 +38,7 @@ import {
 } from './sectionControls.reducer';
 import type { TabKey } from './tabBar.logic';
 import type { FieldMeta } from './provenance';
+import type { ConflictView } from './ConflictFlag';
 import styles from './memory.module.css';
 
 // ---------------------------------------------------------------------------
@@ -72,6 +73,12 @@ export interface MemoryClientProps {
    * The legacy static rendering path has been retired (Task 7 fix).
    */
   metaRows?: FieldMetaRow[];
+  /**
+   * Task 8 (C2): open field_flags conflicts for this account, keyed by field_key.
+   * When provided, FieldBlocks with a matching key render a ConflictFlag banner.
+   * Gracefully-empty when absent (no flags → no banners).
+   */
+  conflicts?: Record<string, ConflictView>;
 }
 
 // ---------------------------------------------------------------------------
@@ -84,6 +91,7 @@ export function MemoryClient({
   isEmpty,
   fieldMeta,
   metaRows,
+  conflicts,
 }: MemoryClientProps): React.ReactElement {
   // ---------------------------------------------------------------------------
   // State
@@ -278,6 +286,7 @@ export function MemoryClient({
           sectionControlsState={sectionControlsState}
           sectionControlsDispatch={sectionControlsDispatch}
           onSectionIntent={handleSectionIntent}
+          conflicts={conflicts}
         />
       </div>
 

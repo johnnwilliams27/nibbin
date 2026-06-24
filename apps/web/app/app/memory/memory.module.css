@@ -1517,6 +1517,150 @@
   border: 1px solid var(--line);
 }
 
+/* ── Task 8 (C2): ConflictFlag — "Needs your review" banner on a field ──── */
+/*
+ * Accent: --honey-deep (amber) for the "needs attention" signal.
+ * Not alarming coral (that's authority), not silent ink-faint (that's provenance).
+ * Amber = "pause and decide" — tasteful, not alarming.
+ */
+
+/* Root banner: amber left-border, understory background */
+.conflictFlag {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--honey-tint, rgba(200, 150, 50, 0.06));
+  border: 1px solid var(--honey-soft, rgba(200, 150, 50, 0.25));
+  border-left: 3px solid var(--honey-deep, #b07820);
+  border-radius: var(--r-input);
+  margin: 6px 0 2px;
+}
+
+/* Banner header: icon + "Needs your review" title */
+.conflictFlagHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.conflictFlagIcon {
+  font-size: 13px;
+  color: var(--honey-deep, #b07820);
+  flex-shrink: 0;
+}
+
+.conflictFlagTitle {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--honey-deep, #b07820);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-family: var(--mono);
+}
+
+/* Detail text: brief human-readable summary of the disagreement */
+.conflictFlagDetail {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
+/* Container for the competing source option rows */
+.conflictSources {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Single competing source row */
+.conflictSourceRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-input);
+  background: var(--canopy);
+}
+
+/* Highlighted row for the suggested (highest-authority) pick */
+.conflictSourceSuggested {
+  border-color: var(--moss-soft, var(--moss));
+  background: var(--understory);
+}
+
+/* Source meta row: label + suggested badge */
+.conflictSourceMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* Source label */
+.conflictSourceLabel {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+  font-family: var(--mono);
+  letter-spacing: 0.01em;
+}
+
+/* "suggested" badge — moss accent to mark the authority pick */
+.conflictSuggestedBadge {
+  font-size: 10px;
+  font-weight: 700;
+  font-family: var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: var(--r-button);
+  background: var(--moss-tint);
+  color: var(--moss-deep);
+  border: 1px solid var(--moss-soft, var(--moss-tint));
+}
+
+/* Candidate value text for a competing source */
+.conflictSourceValue {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+/* "no value" italics inside conflictSourceValue */
+.conflictSourceEmpty {
+  color: var(--ink-faint);
+}
+
+/* "This is right" pick button — compact ghost style */
+.conflictPickBtn {
+  align-self: flex-start;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-button);
+  background: transparent;
+  color: var(--moss-deep);
+  cursor: pointer;
+  transition: background-color var(--dur-1) var(--ease-settle),
+              border-color var(--dur-1) var(--ease-settle);
+  white-space: nowrap;
+}
+.conflictPickBtn:hover {
+  background: var(--understory);
+  border-color: var(--moss);
+  color: var(--ink);
+}
+.conflictPickBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 /* ── Task 13: EvidenceList — gated F1 evidence store ────────────────────── */
 
 /* Graceful empty banner — understory bg, no spinner */
