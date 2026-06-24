@@ -8,7 +8,7 @@
  *   3. Battery-dirty proposal value → source row created, RPC dropped silently
  *   4. Source insert failure → throws (the only hard failure path)
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { proposeFromCaptureCore } from './propose-from-capture';
 import type { ObservationSummary } from './observation-schema';
 

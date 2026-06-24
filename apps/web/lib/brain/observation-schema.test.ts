@@ -20,7 +20,8 @@ describe('parseObservationSummary', () => {
     expect(parseObservationSummary({ ...valid, ax_label: 'secret' })).toBeNull();
   });
   it('rejects missing required fields', () => {
-    const { active_ms, ...bad } = valid;
+    const bad = { ...valid } as Record<string, unknown>;
+    delete bad.active_ms;
     expect(parseObservationSummary(bad)).toBeNull();
   });
 });

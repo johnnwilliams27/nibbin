@@ -31,7 +31,6 @@ const UID_B = 'bb222222-7777-4777-8777-777777777700';
 describe.skipIf(!dbAvailable)('P3 — capture→propose→ratify (sources + propose_memory_change + decide)', () => {
   const h = new RlsHarness();
   let accountA = '';
-  let accountB = '';
   const asA = { kind: 'authenticated', uid: UID_A } as const;
   const asB = { kind: 'authenticated', uid: UID_B } as const;
   const anon = { kind: 'anon' } as const;
@@ -54,9 +53,11 @@ describe.skipIf(!dbAvailable)('P3 — capture→propose→ratify (sources + prop
     accountA = await h.as(asA, async (c) =>
       (await c.query(`select public.create_account_with_owner('CapPropA') as id`)).rows[0].id,
     );
-    accountB = await h.as(asB, async (c) =>
-      (await c.query(`select public.create_account_with_owner('CapPropB') as id`)).rows[0].id,
-    );
+    // Seed account B for asB (RLS cross-account isolation uses the asB identity;
+    // the returned id is not needed).
+    await h.as(asB, async (c) => {
+      await c.query(`select public.create_account_with_owner('CapPropB') as id`);
+    });
   });
   afterAll(async () => { await h.close(); });
 
