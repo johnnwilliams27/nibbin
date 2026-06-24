@@ -200,7 +200,7 @@ function gradLine(d: Derived): string {
  */
 function learnedFallback(name: string, job: string, d: Derived): string {
   if (d.completedCount < NOTE_MIN_COMPLETED) {
-    return 'Just getting started — first drafts are on the way.';
+    return 'No drafts yet.';
   }
   if (d.matchPct !== null && d.matchPct >= 85) {
     return `You send ${name}'s drafts as-is most of the time — it's got your ${job} style down.`;
@@ -371,9 +371,8 @@ export default async function NibbinsPage() {
             ['100 Runs', d.hundredRuns],
           ];
 
-          // "What {name} knows about your work" — the cached Opus note when
-          // present, else an honest deterministic line grounded in real signals.
-          // Stale/missing notes are regenerated in the background (NoteRefresher).
+          // What the nibbin has learned — cached note when present, else a
+          // deterministic line grounded in real run signals (NoteRefresher refreshes stale).
           const jobLower = jobOf(n).toLowerCase();
           const learnedText = n.learned_note ?? learnedFallback(n.name, jobLower, d);
 
@@ -444,7 +443,7 @@ export default async function NibbinsPage() {
               </div>
 
               <div className={styles.learned}>
-                <div className={styles.ll}>What {n.name} knows about your work</div>
+                <div className={styles.ll}>What {n.name} has learned</div>
                 <p>{learnedText}</p>
               </div>
 

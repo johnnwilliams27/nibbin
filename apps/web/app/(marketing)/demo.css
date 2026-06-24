@@ -487,7 +487,6 @@
 .landing .learned p {
   font-size: 12px;
   color: var(--ink-soft);
-  font-style: italic;
 }
 .landing .badge-row {
   display: flex;

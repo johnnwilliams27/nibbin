@@ -316,7 +316,7 @@ export function MayaDemo() {
                 </div>
                 <p className="desc">{a.desc}</p>
                 <div className="learned">
-                  <div className="ll">What {a.name} has learned about you</div>
+                  <div className="ll">What {a.name} has learned</div>
                   <p>{a.learned}</p>
                 </div>
                 <div className="badge-row">

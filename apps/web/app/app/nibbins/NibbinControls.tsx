@@ -13,7 +13,6 @@ import { useRouter } from 'next/navigation';
 import { pauseNibbinAction, resumeNibbinAction, sleepNibbinAction } from './actions';
 import { setNibbinActionLevel, type ActionLevel } from './action-level-actions';
 import { SegmentedControl } from '../../../components/ui/SegmentedControl';
-import { Badge } from '../../../components/ui';
 import styles from './nibbins.module.css';
 
 const SYSTEM_PAUSE_LABELS: Record<string, string> = {
@@ -131,16 +130,6 @@ export function NibbinControls({
   const isSystemPause = status === 'paused' && pausedReason !== null && pausedReason !== 'user';
   const systemLabel   = isSystemPause ? (SYSTEM_PAUSE_LABELS[pausedReason!] ?? 'Paused') : null;
 
-  // Advisory grade badge text
-  const gradeBadgeText = stage
-    ? matchPct !== null && matchPct !== undefined
-      ? `${STAGE_GRADE_LABEL[stage]} · ${matchPct}% approved as-is`
-      : STAGE_GRADE_LABEL[stage]
-    : null;
-
-  // Badge tone: grad = moss, senior = honey, student/egg = neutral
-  const gradeBadgeTone = stage === 'grad' ? 'moss' : stage === 'senior' ? 'honey' : 'neutral';
-
   return (
     <span className={styles.draftConfirm}>
       {/* Action level segmented control */}
@@ -152,15 +141,6 @@ export function NibbinControls({
           disabled={levelPending || pending}
           aria-label="Action level"
         />
-
-        {/* Advisory grade badge — informational only */}
-        {gradeBadgeText && (
-          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <Badge tone={gradeBadgeTone} title="Agent School grade — advisory, not a gate">
-              {gradeBadgeText}
-            </Badge>
-          </span>
-        )}
 
         {/* Non-blocking Act-below-Graduate warning */}
         {confirmSend && (
