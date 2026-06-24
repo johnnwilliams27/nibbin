@@ -48,8 +48,14 @@ export interface DeriveProposalResult {
   usage: TokenUsage | null;
 }
 
-/** Allowed target fields — MEMORY_SECTIONS keys only; hard_rules is never a target. */
-const ALLOWED = new Set(MEMORY_SECTIONS.map((s) => s.key));
+/**
+ * Allowed target fields — the neutral MEMORY_SECTIONS keys, PLUS the legacy
+ * `facts` alias. P1's field-model rename dropped `facts` from MEMORY_SECTIONS
+ * (it became `about`), but extraction prompts/observations still emit `facts`
+ * and P1's `forwardMapLegacy` bridges `facts→about` on read — so accepting it
+ * here keeps capture→propose working end-to-end. hard_rules is never a target.
+ */
+const ALLOWED = new Set([...MEMORY_SECTIONS.map((s) => s.key), 'facts']);
 
 /** Thin-data floor: mirrors buildObservationSummary's floor from Task 1. */
 const MIN_EVENTS = 10;
