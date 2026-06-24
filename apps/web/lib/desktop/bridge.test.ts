@@ -136,6 +136,14 @@ describe('desktopBridge (non-shell)', () => {
     expect(typeof unsub).toBe('function');
     expect(() => unsub()).not.toThrow();
   });
+
+  it('finalizeReview() returns inert fallback off-shell', async () => {
+    await expect(desktopBridge.finalizeReview()).resolves.toEqual({ proposals_requested: false });
+  });
+
+  it('deriveObservationSummary() returns null off-shell', async () => {
+    await expect(desktopBridge.deriveObservationSummary()).resolves.toBeNull();
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -289,5 +297,43 @@ describe('desktopBridge (in-shell)', () => {
     mockInvoke.mockRejectedValue(new Error('command not found: exclusions'));
     const result = await desktopBridge.exclusions();
     expect(result).toEqual([]);
+  });
+
+  it('finalizeReview() invokes "finalize_review" and returns the mocked result', async () => {
+    installTauriInternals({ proposals_requested: true });
+    const result = await desktopBridge.finalizeReview();
+    expect(mockInvoke).toHaveBeenCalledWith('finalize_review', undefined);
+    expect(result).toEqual({ proposals_requested: true });
+  });
+
+  it('deriveObservationSummary() invokes "derive_observation_summary" and returns the mocked result', async () => {
+    const summary = {
+      study_id: 's1',
+      study_period: { start: '2026-06-20', end: '2026-06-21' },
+      total_events_reviewed: 20,
+      active_ms: 600_000,
+      top_apps: [{ name: 'Figma', durationMs: 400_000 }],
+      busiest_hour: 9,
+      workflow_shapes: [{ pattern: 'Figma→Slack', frequency: 3 }],
+      gap_count: 1,
+    };
+    installTauriInternals(summary);
+    const result = await desktopBridge.deriveObservationSummary();
+    expect(mockInvoke).toHaveBeenCalledWith('derive_observation_summary', undefined);
+    expect(result).toEqual(summary);
+  });
+
+  it('deriveObservationSummary() degrades to null when command throws (absent Rust command)', async () => {
+    installTauriInternals(undefined);
+    mockInvoke.mockRejectedValue(new Error('command not found: derive_observation_summary'));
+    const result = await desktopBridge.deriveObservationSummary();
+    expect(result).toBeNull();
+  });
+
+  it('finalizeReview() degrades to inert fallback when command throws (absent Rust command)', async () => {
+    installTauriInternals(undefined);
+    mockInvoke.mockRejectedValue(new Error('command not found: finalize_review'));
+    const result = await desktopBridge.finalizeReview();
+    expect(result).toEqual({ proposals_requested: false });
   });
 });

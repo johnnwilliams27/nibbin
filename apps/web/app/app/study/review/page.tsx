@@ -1,11 +1,14 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { desktopBridge, type Exclusion } from '../../../../lib/desktop/bridge';
 import type { ObserverEvent } from '@nibbin/redaction';
 import { ShellGate } from '../../../../components/study/ShellGate';
 import { Card, Button, EmptyState } from '../../../../components/ui';
 import styles from '../../../../components/study/study.module.css';
+import { ReviewDoneCta } from './ReviewDoneCta';
+import { handleDone } from './review-cta-logic';
 
 function groupByApp(events: ObserverEvent[]): Map<string, ObserverEvent[]> {
   const map = new Map<string, ObserverEvent[]>();
@@ -23,12 +26,22 @@ function plural(n: number, word: string): string {
 }
 
 function ReviewContent() {
+  const router = useRouter();
   const [events, setEvents] = useState<ObserverEvent[]>([]);
   const [deleted, setDeleted] = useState<Set<string>>(new Set());
   const [exclusionInput, setExclusionInput] = useState('');
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [finalizing, setFinalizing] = useState(false);
+
+  const onDone = useCallback(() => {
+    setFinalizing(true);
+    void handleDone(
+      () => desktopBridge.finalizeReview(),
+      (url) => router.push(url),
+    );
+  }, [router]);
 
   useEffect(() => {
     void desktopBridge.reviewData().then((data) => {
@@ -148,6 +161,9 @@ function ReviewContent() {
           <p style={{ color: 'var(--coral-deep)', fontSize: 13, marginTop: 6 }}>{addError}</p>
         )}
       </Card>
+
+      {/* P3 Task 7 — consent gate: proposals derive ONLY from what the user kept */}
+      <ReviewDoneCta finalizing={finalizing} onDone={onDone} />
     </>
   );
 }

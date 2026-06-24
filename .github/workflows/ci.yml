@@ -56,6 +56,12 @@ jobs:
         # (they also run inside `npm test` above — this step makes a
         # regression unmissable in the required-checks list)
         run: npx vitest run packages/runtime/test/trigger-graph.test.ts packages/runtime/test/trust-gate.test.ts
+      - name: synthesis-quality-eval
+        # P5 T10 gating check: citation precision ≥0.90, gap recall ≥0.80,
+        # hallucination rate =0.00. Runs after the full test suite so the DB
+        # (already seeded by the RLS suites) is available. Exits 1 on threshold
+        # miss — this step MUST remain in the required-checks list.
+        run: npm run eval:synthesis
 
   audit:
     name: Dependency audit

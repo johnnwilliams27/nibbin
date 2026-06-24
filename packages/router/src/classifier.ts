@@ -61,6 +61,18 @@ export function classifyComplexity(text: string): Classification {
     signals.push('enumerated-steps');
   }
 
+  /** Knowledge-lookup marker — retrieval-shaped questions.
+   *  Fires before the tier threshold check so the signal is present on the
+   *  RouteDecision regardless of complexity tier. No score contribution:
+   *  a short lookup question stays T0; the synthesis engine handles the
+   *  retrieval work, not the router's LLM tier. */
+  const KNOWLEDGE_LOOKUP =
+    /\b(what do I charge|my (policy|rate|policies|rates|pricing)|do I have|what('?s| is) in my (notes|memory|files)|what('?ve| have) I|tell me (about|what)|what do (you|I) know about)\b/i;
+
+  if (KNOWLEDGE_LOOKUP.test(trimmed)) {
+    signals.push('knowledge_lookup');
+  }
+
   score = Math.min(1, score);
 
   // T0 default; T1 on classified need; T2 only for genuinely complex

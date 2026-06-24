@@ -20,6 +20,11 @@ export { NEXT_STEP } from './copy';
 export { CHAT_INPUT_MAX, keeperChat } from './chat';
 export type { KeeperChatContext, KeeperChatDeps, KeeperChatReply } from './chat';
 export { buildKeeperContext, KEEPER_SYSTEM_PROMPT } from './prompt';
+export {
+  SYNTHESIS_SYSTEM_PROMPT,
+  buildSynthesisInput,
+} from './synthesis-prompt';
+export type { SynthesisPassage } from './synthesis-prompt';
 export type { KeeperPromptContext } from './prompt';
 export { ANSWER_MAX, CHANNEL_CHIPS, DONE, NAME_MAX, SKIP_CHIP } from './copy';
 export {
@@ -33,6 +38,7 @@ export {
 export type {
   CelebrationCard,
   ChartCard,
+  Citation,
   DraftApprovalCard,
   FieldNotesCard,
   KeeperCard,
@@ -43,11 +49,15 @@ export type {
   OnboardingInput,
   OnboardingState,
   OnboardingStep,
+  PendingProposal,
+  PendingQueue,
+  PendingRun,
   ProseCard,
   QuestionCard,
   QuestionChip,
   RecommendationCard,
   ScanFindingCard,
+  SynthesisCard,
   UnderstandingModelTurn,
   UnderstandingProfile,
   UnderstandingQuestion,

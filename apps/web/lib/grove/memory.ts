@@ -7,21 +7,15 @@ import 'server-only';
  * and may be system-triggered (no user session); the row is account-scoped.
  */
 import { serviceClient } from '../supabase/service';
+import { MEMORY_SECTIONS } from './memory-sections';
+
+export { MEMORY_SECTIONS };
 
 interface GroveMemoryRow {
   sections: Record<string, string> | null;
   hard_rules: string[] | null;
   notes: string | null;
 }
-
-/** Section keys → human labels, in the order they're shown to the model. */
-export const MEMORY_SECTIONS: ReadonlyArray<{ key: string; label: string }> = [
-  { key: 'facts', label: 'Business facts' },
-  { key: 'pricing', label: 'Pricing' },
-  { key: 'policies', label: 'Policies' },
-  { key: 'faq', label: 'Common questions' },
-  { key: 'voice', label: 'Voice & tone' },
-];
 
 export async function loadGroveMemoryBlock(accountId: string): Promise<string | null> {
   try {

@@ -6,10 +6,13 @@ import {
   loadAnalyticsOverview,
   loadAnalyticsDaily,
   loadDesktopDownloads,
+  loadGtmFunnel,
   approvalRate,
+  gtmConversion,
   type AnalyticsOverview,
   type AnalyticsDay,
   type DesktopDownloads,
+  type GtmFunnelRow,
 } from '../../lib/analytics/read';
 import styles from '../admin.module.css';
 
@@ -32,10 +35,11 @@ export default async function AnalyticsPage() {
 
   // RPC loaders: throw on failure (matches scoreboard behaviour).
   // Desktop loader: never throws (self-fails-soft).
-  const [overview, daily, desktop] = await Promise.all([
+  const [overview, daily, desktop, gtm] = await Promise.all([
     loadAnalyticsOverview(admin) as Promise<AnalyticsOverview>,
     loadAnalyticsDaily(admin, 30) as Promise<AnalyticsDay[]>,
     loadDesktopDownloads() as Promise<DesktopDownloads>,
+    loadGtmFunnel(admin) as Promise<GtmFunnelRow[]>,
   ]);
 
   await admin.rpc('staff_log_access', {
@@ -90,6 +94,37 @@ export default async function AnalyticsPage() {
           <span className={styles.statValue}>{n(overview.waitlist_confirmed)}</span>
         </div>
       </div>
+
+      {/* GTM funnel (clicks → signups by source) */}
+      <h2 className={styles.h2}>GTM funnel (clicks → signups by source)</h2>
+      {gtm.length === 0 ? (
+        <p className={styles.muted}>No link clicks or attributed signups recorded yet.</p>
+      ) : (
+        <section className={styles.panel}>
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Source</th>
+                  <th>Clicks</th>
+                  <th>Signups</th>
+                  <th>Conversion</th>
+                </tr>
+              </thead>
+              <tbody>
+                {gtm.map((row) => (
+                  <tr key={row.source}>
+                    <td className={styles.mono}>{row.source}</td>
+                    <td className={styles.mono}>{n(row.clicks)}</td>
+                    <td className={styles.mono}>{n(row.signups)}</td>
+                    <td className={styles.mono}>{pct(gtmConversion(row))}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       {/* Accounts */}
       <h2 className={styles.h2}>Accounts</h2>

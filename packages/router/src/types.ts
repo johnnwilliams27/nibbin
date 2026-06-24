@@ -35,7 +35,12 @@ export type RoutedTask =
   | 'custom_spec_draft'
   | 'nibbin_note'
   | 'complex_plan'
-  | 'plan_synthesis';
+  | 'plan_synthesis'
+  // Document ingestion (P2)
+  | 'doc_extract'
+  | 'doc_vision_extract'
+  // Company-brain synthesis (P5 §6b)
+  | 'synthesis';
 
 /**
  * Where the request came from. Only `chat`-origin T2 grants draw down the
