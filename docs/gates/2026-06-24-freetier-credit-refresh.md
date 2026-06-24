@@ -113,3 +113,94 @@ service-role RPC (`refresh_free_tier_credits`) to top every Hatchling account
 - Non-blocking tracked: ☑  (two P3 cost advisories flagged for John)
 - **Gate verdict:** PASS
 - **Signed:** Claude Opus 4.8 (feature lead) on 2026-06-24 — pending John's review
+
+---
+
+# Addendum — fleet-level free-tier spend KILL-SWITCH (2026-06-24, same PR #262)
+
+Owner (John) decision: do NOT ship the recurring free giveaway without a
+fleet-level spend ceiling + an instant off-switch. This addendum closes the
+prior gate's own advisory (cost-auditor P3: "no fleet-level free-tier spend
+cap") and re-runs the billing-sensitive adversarial gate against the full
+updated diff.
+
+## What the kill-switch does
+- **Fleet monthly budget cap** (`FREE_TIER_FLEET_MONTHLY_BUDGET_CREDITS`,
+  default **50,000 credits = $500/mo** at $0.01/credit). The RPC now takes a
+  `p_budget` argument and grants free refills **oldest-account-first** until the
+  PERIOD budget is exhausted, then stops (fail-safe: remaining accounts skipped,
+  no error). Enforced INSIDE the set-based RPC (atomic), not in app code.
+  - **Greedy partial fill:** the boundary account takes a partial refill of the
+    remaining headroom (not all-or-nothing), so 100% of the budget is used and a
+    large-deficit oldest account cannot permanently starve the smaller accounts
+    behind it (logic-skeptic P2 fix).
+  - **Idempotent under the cap:** credits already granted this period count
+    toward the budget (`v_already`), so a re-run never double-spends.
+  - **Concurrency-safe:** a period-scoped `pg_advisory_xact_lock` serializes
+    same-period invocations (Vercel cron double-invoke / manual re-run), so two
+    runs can't each read stale headroom and overshoot the cap (red-team P2 fix).
+  - **Observable:** emits a `freetier_budget_capped` product event (fleet-level,
+    `account_id = null`) when a non-zero ceiling clips wanted spend. Added to the
+    `emit_product_event` allowlist (full prior allowlist preserved verbatim;
+    exactly one new name).
+- **Hard disable flag** (`FREETIER_REFRESH_ENABLED`, default ON). Set falsy
+  (`false`/`0`/`no`/`off`) to turn the whole giveaway off **instantly, no
+  deploy-revert** — the route returns `{ok:true, disabled:true}` and never calls
+  the RPC.
+
+### Knobs for John (both env-configurable)
+| Env var | Default | Meaning |
+|---|---|---|
+| `FREETIER_REFRESH_ENABLED` | unset = ON | falsy ⇒ free grant fully off, instantly |
+| `FREETIER_MONTHLY_BUDGET_CREDITS` | 50,000 (=$500/mo) | aggregate ceiling on free refill credits/calendar month; `0` = soft-pause |
+
+**Default budget rationale:** deliberately round + conservative for a pre-GTM
+product (≈ 500 fully-dormant free accounts fully topped, more for partially-spent
+ones). **John's to tune** once real free-tier signup + spend telemetry lands.
+Malformed/negative/absent env values fall back to the default (never silently
+lifts the cap).
+
+## CI step
+- typecheck ☑  lint ☑  test (3644 passed / 8 skipped) ☑  build ☑  audit n/a (no dep change)
+- SQL cap logic verified empirically against a real Postgres (nibbin-staging,
+  in a rolled-back transaction): oldest-first partial fill, idempotent re-run no
+  double-spend, paid accounts never refilled, at-allotment accounts skipped,
+  capped flag pre-insert, starvation case (budget 50 / A1 deficit 100 / A2
+  deficit 40 → A1 partial 50, full budget used, A2 advances next period), paused
+  (budget 0 → no grant, no alert), advisory lock present.
+
+## Adversarial reviewers (full updated diff)
+| Reviewer | Verdict | Findings |
+|---|---|---|
+| red-team | PASS (after fix) | **P2 concurrency double-spend → FIXED** (advisory lock); rest of attack surface HELD |
+| claims-auditor | PASS | 0 — every code/comment/doc claim verified (allowlist exact, $500=50k×$0.01, disable skips RPC) |
+| logic-skeptic | PASS (after fix) | **P2 head-of-line starvation → FIXED** (partial fill); **P3 budget=0 alert noise → FIXED** (suppressed); P3 concurrent cap-flag → moot (lock serializes) |
+| cost-auditor | PASS | prior advisory CLOSED; $500/mo default endorsed as conservative + tunable; job is pure SQL (~zero LLM cost); P3 ledger-scan scaling (inherited, revisit ~10M rows) |
+
+## Kill-switch findings (resolved)
+- **KS-1 — P2 (red-team): cap racy across concurrent invocations.** Two
+  same-period cron fires could each read `v_already` pre-insert and each grant up
+  to the headroom, overshooting by ~1×. **FIXED:** `pg_advisory_xact_lock` on the
+  period key serializes them; the second reads the committed `v_already`.
+- **KS-2 — P2 (logic-skeptic): head-of-line starvation.** Strict
+  `cumulative <= v_remaining` was all-or-nothing per account, so an oldest account
+  whose deficit exceeded the headroom blocked every younger account behind it,
+  recurring monthly. **FIXED:** greedy partial fill — each account gets
+  `least(deficit, headroom-before-it)`; the tail always advances and 100% of the
+  budget is used.
+- **KS-3 — P3 (logic-skeptic): paused-state alert noise.** `budget=0` (soft
+  pause) reported `capped=true` and would emit the alert every paused month.
+  **FIXED:** the capped flag + event are suppressed for the pure operator-pause
+  case (`p_budget=0` with nothing yet granted).
+
+## Accepted / inherited (unchanged)
+- **F-upgrade — P1 (accepted, documented above):** free→paid mid-month upgrade
+  keeps one free refill + gets the paid grant — bounded one-time ≈ $1, not
+  clawed back. Still accepted.
+- **P3 (cost-auditor): ledger-scan scaling** — the RPC full-aggregates
+  `credit_ledger`; fine now, revisit batching before ~10M rows.
+
+## Disposition (addendum)
+- Blocking (P0/P1) from the kill-switch: none (the two P2s are FIXED + re-verified).
+- **Gate verdict (addendum): PASS**
+- **Signed:** Claude Opus 4.8 (feature lead) on 2026-06-24 — pending John's review

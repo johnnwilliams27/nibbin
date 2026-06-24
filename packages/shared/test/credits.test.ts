@@ -607,3 +607,59 @@ describe('refillEntry + refill validation (free-tier top-up, distinct from grant
     expect(balance([refill, grantEntry('grove', 'sub_X_p123')])).toBe(1100);
   });
 });
+
+describe('fleet-level free-tier spend kill-switch', () => {
+  it('the default fleet budget is a positive, round, conservative ceiling', async () => {
+    const { FREE_TIER_FLEET_MONTHLY_BUDGET_CREDITS, FREE_TIER_MONTHLY_ALLOTMENT } = await import(
+      '../src/credits'
+    );
+    expect(Number.isSafeInteger(FREE_TIER_FLEET_MONTHLY_BUDGET_CREDITS)).toBe(true);
+    expect(FREE_TIER_FLEET_MONTHLY_BUDGET_CREDITS).toBeGreaterThan(0);
+    // = $500 of usage at $0.01/credit; comfortably above one allotment.
+    expect(FREE_TIER_FLEET_MONTHLY_BUDGET_CREDITS).toBe(50_000);
+    expect(FREE_TIER_FLEET_MONTHLY_BUDGET_CREDITS % FREE_TIER_MONTHLY_ALLOTMENT).toBe(0);
+  });
+
+  it('resolveFleetBudgetCredits: parses a valid non-negative integer string', async () => {
+    const { resolveFleetBudgetCredits } = await import('../src/credits');
+    expect(resolveFleetBudgetCredits('250')).toBe(250);
+    expect(resolveFleetBudgetCredits('0')).toBe(0); // explicit soft-pause
+  });
+
+  it('resolveFleetBudgetCredits: falls back on absent/blank/malformed/negative (never lifts the cap)', async () => {
+    const { resolveFleetBudgetCredits, FREE_TIER_FLEET_MONTHLY_BUDGET_CREDITS } = await import(
+      '../src/credits'
+    );
+    const d = FREE_TIER_FLEET_MONTHLY_BUDGET_CREDITS;
+    expect(resolveFleetBudgetCredits(undefined)).toBe(d);
+    expect(resolveFleetBudgetCredits('')).toBe(d);
+    expect(resolveFleetBudgetCredits('   ')).toBe(d);
+    expect(resolveFleetBudgetCredits('banana')).toBe(d);
+    expect(resolveFleetBudgetCredits('-5')).toBe(d);
+    expect(resolveFleetBudgetCredits('1.5')).toBe(d);
+    expect(resolveFleetBudgetCredits('1e9')).toBe(d); // not a plain integer string
+  });
+
+  it('resolveFleetBudgetCredits: respects a custom fallback', async () => {
+    const { resolveFleetBudgetCredits } = await import('../src/credits');
+    expect(resolveFleetBudgetCredits(undefined, 999)).toBe(999);
+    expect(resolveFleetBudgetCredits('bad', 999)).toBe(999);
+  });
+
+  it('freeTierRefreshEnabled: default-on when unset/blank', async () => {
+    const { freeTierRefreshEnabled } = await import('../src/credits');
+    expect(freeTierRefreshEnabled(undefined)).toBe(true);
+    expect(freeTierRefreshEnabled('')).toBe(true);
+    expect(freeTierRefreshEnabled('   ')).toBe(true);
+  });
+
+  it('freeTierRefreshEnabled: off only for explicit falsy tokens', async () => {
+    const { freeTierRefreshEnabled } = await import('../src/credits');
+    for (const off of ['false', '0', 'no', 'off', 'FALSE', 'Off', ' no ']) {
+      expect(freeTierRefreshEnabled(off)).toBe(false);
+    }
+    for (const on of ['true', '1', 'yes', 'on', 'anything']) {
+      expect(freeTierRefreshEnabled(on)).toBe(true);
+    }
+  });
+});

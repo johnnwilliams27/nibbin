@@ -399,6 +399,57 @@ export const FREE_TIER: Tier = 'hatchling';
 export const FREE_TIER_MONTHLY_ALLOTMENT: number = TIERS[FREE_TIER].monthlyCredits;
 
 /**
+ * FLEET-LEVEL free-tier spend kill-switch — the aggregate ceiling on TOTAL free
+ * refill credits granted per calendar month across ALL accounts. Per-account
+ * exposure is already capped at one allotment by `freeRefreshDelta`; THIS bounds
+ * the aggregate so a GTM signup spike can't run unbounded free spend.
+ *
+ * DEFAULT: 50,000 credits/month = $500 of free usage at $0.01/credit (≈ 500
+ * fully-dormant free accounts fully topped up, or proportionally more partially
+ * spent ones). This is a DELIBERATELY ROUND, CONSERVATIVE starting ceiling —
+ * John's to tune via FREETIER_MONTHLY_BUDGET_CREDITS once real free-tier signup
+ * + spend telemetry is in. When the cap is hit in a period the cron STOPS
+ * granting (oldest accounts first) and emits a `freetier_budget_capped` alert
+ * event; remaining accounts simply aren't refilled that period (fail-safe, no
+ * error).
+ */
+export const FREE_TIER_FLEET_MONTHLY_BUDGET_CREDITS: number = 50_000;
+
+/**
+ * Resolve the fleet monthly free-tier budget from an env value, falling back to
+ * the conservative default. Accepts a non-negative integer string; a 0 means
+ * "grant nothing this period" (a soft pause). Any malformed / negative / absent
+ * value falls back to the default (fail-safe: never silently lift the cap).
+ */
+export function resolveFleetBudgetCredits(
+  raw: string | undefined,
+  fallback: number = FREE_TIER_FLEET_MONTHLY_BUDGET_CREDITS,
+): number {
+  if (raw == null || raw.trim() === '') return fallback;
+  const trimmed = raw.trim();
+  // Plain non-negative integer string only — reject decimals, scientific
+  // notation, signs, etc. (fail-safe: never silently lift the cap).
+  if (!/^\d+$/.test(trimmed)) return fallback;
+  const n = Number(trimmed);
+  if (!Number.isSafeInteger(n) || n < 0) return fallback;
+  return n;
+}
+
+/**
+ * Hard disable flag for the WHOLE free-tier grant. Env-gated kill-switch so the
+ * recurring giveaway can be turned off instantly without a deploy-revert.
+ *
+ * DEFAULT (unset) = ENABLED: the feature ships on, and the FLEET BUDGET is the
+ * always-on guardrail. To turn the grant fully OFF, set FREETIER_REFRESH_ENABLED
+ * to a falsy value ('false', '0', 'no', 'off'). Anything else (including unset)
+ * is treated as enabled.
+ */
+export function freeTierRefreshEnabled(raw: string | undefined): boolean {
+  if (raw == null || raw.trim() === '') return true; // default-on
+  return !['false', '0', 'no', 'off'].includes(raw.trim().toLowerCase());
+}
+
+/**
  * Credits to refill a free account UP TO its monthly allotment, CAPPED at one
  * allotment. Returns `clamp(allotment - currentBalance, 0, allotment)`:
  *   - 0 when the account already holds at least the allotment (no stacking),
