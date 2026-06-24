@@ -38,6 +38,12 @@ export const PRODUCT_EVENT_NAMES = [
    * observability. Props: { resourceKind } only — no PII, no resource id.
    */
   'nudge_record_failed',
+  /**
+   * Fleet kill-switch: the monthly free-tier credit refresh hit its aggregate
+   * budget ceiling and stopped granting (fail-safe). Emitted from the RPC so a
+   * GTM signup spike that exhausts the free-tier budget is observable/alarmed.
+   */
+  'freetier_budget_capped',
 ] as const;
 
 export type StaticProductEventName = (typeof PRODUCT_EVENT_NAMES)[number];

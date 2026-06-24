@@ -49,7 +49,7 @@ begin
     'first_draft_approved', 'run_approved', 'run_edited', 'run_rejected', 'stage_promoted',
     'stage_demoted', 'study_started', 'study_completed', 'study_aborted', 'diagnosis_viewed',
     'plan_upgraded', 'topup_purchased', 'capability_unfulfilled', 'connector_blocked',
-    'freetier_budget_capped'
+    'nudge_record_failed', 'freetier_budget_capped'
   ) and p_name !~ '^drip_[a-z0-9_]+_(sent|opened)$' then
     raise exception 'unknown product event %', p_name;
   end if;
