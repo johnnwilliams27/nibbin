@@ -38,13 +38,13 @@ checking on your creatures, it's the retention engine. Promote it to first-class
   approval card.
 
 ### 2.3 Grove Memory (the business brain)
-- Per-account, user-editable knowledge layer ALL agents share: pricing, policies, FAQ
-  answers, voice samples, hard rules ("never discount; offer payment plans").
+- Per-account, editable knowledge layer ALL agents share: pricing, policies, FAQ
+  answers, voice samples, hard rules ("never discount; offer payment plans"). Scoped to the account, not the individual user — this is the same brain whether one person or a full team is using the account (Company Brain D19, 2026-06-22).
 - Competitive table stakes: Sintra ships "Brain AI"; Lindy runs on knowledge bases. Ours is
   implicit today (scan results + per-agent specs) — make it explicit.
 - Effects: draft quality multiplies across every agent at once; switching costs deepen;
   the Keeper's day-one interview (and the scan-empty fallback) finally has a home for its
-  output; "what does the grove know about me" gets a trust-architecture answer (inspectable,
+  output; "what does the grove know about me/us" gets a trust-architecture answer (inspectable,
   editable, deletable).
 - Mechanics: structured sections (facts / voice / rules / FAQ) + freeform notes; versioned;
   injected into agent context by the router with per-section toggles; covered by the same
@@ -68,7 +68,7 @@ reshape — building them now is building twice.
 | Native payments processing (GlossGenius 2.6%, HoneyBook, Bonsai) | Long-term monetization candidate and a founder-wheelhouse edge ("agents that chase invoices" → "agents that collect them"), but a company-defining compliance scope change. Decision-logged, not drifted into. Revisit: post-PMF, ≥1K paying accounts |
 | Voice/phone agents (Telegate, AI receptionist cluster) | Latency, trust, brand mismatch at this stage. Future connector-class capability per vertical |
 | Template marketplace (user-contributed agent specs) | Real Phase 3 network effect AND a prompt-injection attack surface. Needs post-M8 security maturity + moderation |
-| Team seats | ICP is solo. Future exception: read-only "bookkeeper guest" |
+| Team seats | ICP is solo for the consumer phase. Full multi-seat is the planned company-brain expansion (Company Brain D19, 2026-06-22) — sequenced after SOC 2 closes and the single-user loop is proven; it is roadmap, not refused. Current exception: read-only "bookkeeper guest" only. |
 | Browser extension | Observer covers capture; portal-action extension is an [H]-class idea for later |
 
 ## 5. Pocketed for later (cheap once data flows)
