@@ -1,6 +1,6 @@
 # Adversarial gate — feat/c2-llm-contradiction-stakes (2026-06-24)
 
-- **Branch / PR:** `feat/c2-llm-contradiction-stakes` → `main` (#TBD)
+- **Branch / PR:** `feat/c2-llm-contradiction-stakes` → `main` (#261)
 - **Reviewed diff:** `git diff main..feat/c2-llm-contradiction-stakes`
 - **Gate run by:** Claude (Opus 4.8) on 2026-06-24, four parallel adversarial subagents
 
