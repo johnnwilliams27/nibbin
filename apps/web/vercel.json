@@ -6,6 +6,7 @@
     { "path": "/api/cron/gmail-watch-renew", "schedule": "0 10 * * *" },
     { "path": "/api/cron/plan-run-reaper", "schedule": "*/15 * * * *" },
     { "path": "/api/cron/source-extraction-reaper", "schedule": "*/15 * * * *" },
-    { "path": "/api/cron/collate-pass", "schedule": "0 6 * * *" }
+    { "path": "/api/cron/collate-pass", "schedule": "0 6 * * *" },
+    { "path": "/api/cron/freetier-credit-refresh", "schedule": "0 3 1 * *" }
   ]
 }

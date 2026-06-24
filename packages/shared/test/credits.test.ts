@@ -454,3 +454,212 @@ describe('usage metering — ledger entry (soft-gate)', () => {
     expect(() => validateAppend([...seeded, drain], run)).toThrow(/overdraw/);
   });
 });
+
+describe('free-tier monthly refresh helpers', () => {
+  it('FREE_TIER is hatchling and the allotment matches the tier table', async () => {
+    const m = await import('../src/credits');
+    expect(m.FREE_TIER).toBe('hatchling');
+    expect(m.FREE_TIER_MONTHLY_ALLOTMENT).toBe(TIERS.hatchling.monthlyCredits);
+    expect(m.FREE_TIER_MONTHLY_ALLOTMENT).toBe(100);
+  });
+
+  it('tops UP to the allotment from a low balance', async () => {
+    const { freeRefreshDelta } = await import('../src/credits');
+    expect(freeRefreshDelta(0, 100)).toBe(100);
+    expect(freeRefreshDelta(40, 100)).toBe(60);
+    expect(freeRefreshDelta(99, 100)).toBe(1);
+  });
+
+  it('forgives a NEGATIVE balance only UP TO one allotment (capped)', async () => {
+    const { freeRefreshDelta } = await import('../src/credits');
+    // A negative balance is brought up by at MOST one allotment — not fully wiped.
+    expect(freeRefreshDelta(-50, 100)).toBe(100); // -50 + 100 = 50, NOT restored to 100
+    expect(freeRefreshDelta(-100, 100)).toBe(100); // capped at the allotment
+    expect(freeRefreshDelta(-500, 100)).toBe(100); // deep overdraft: still only +100
+  });
+
+  it('grants NOTHING when already at or above the allotment (no stacking)', async () => {
+    const { freeRefreshDelta } = await import('../src/credits');
+    expect(freeRefreshDelta(100, 100)).toBe(0);
+    expect(freeRefreshDelta(101, 100)).toBe(0);
+    expect(freeRefreshDelta(5000, 100)).toBe(0); // a topped-up/upgraded account
+  });
+
+  it('is fail-safe on garbage input (never grants)', async () => {
+    const { freeRefreshDelta } = await import('../src/credits');
+    expect(freeRefreshDelta(Number.NaN, 100)).toBe(0);
+    expect(freeRefreshDelta(Infinity, 100)).toBe(0);
+    expect(freeRefreshDelta(0, 0)).toBe(0);
+    expect(freeRefreshDelta(0, -5)).toBe(0);
+  });
+
+  it('uses the default allotment when omitted', async () => {
+    const { freeRefreshDelta, FREE_TIER_MONTHLY_ALLOTMENT } = await import('../src/credits');
+    expect(freeRefreshDelta(0)).toBe(FREE_TIER_MONTHLY_ALLOTMENT);
+  });
+
+  it('NON-STACKING property: balance after a refresh never exceeds the allotment when it started <= allotment', async () => {
+    const { freeRefreshDelta } = await import('../src/credits');
+    fc.assert(
+      fc.property(fc.integer({ min: -10_000, max: 100 }), (start) => {
+        const after = start + freeRefreshDelta(start, 100);
+        return after <= 100 && after >= Math.min(start, 100);
+      }),
+    );
+  });
+
+  it('IDEMPOTENCY: a second refresh in the SAME balance state grants 0 (top-up already applied)', async () => {
+    const { freeRefreshDelta } = await import('../src/credits');
+    const start = 30;
+    const first = freeRefreshDelta(start, 100); // 70
+    const afterFirst = start + first; // 100
+    const second = freeRefreshDelta(afterFirst, 100); // 0 — nothing left to top up
+    expect(first).toBe(70);
+    expect(second).toBe(0);
+  });
+
+  it('period key is YYYY-MM in UTC with a freemonthly_ prefix', async () => {
+    const { freeRefreshPeriodKey } = await import('../src/credits');
+    expect(freeRefreshPeriodKey(new Date('2026-06-24T23:30:00Z'))).toBe('freemonthly_2026-06');
+    expect(freeRefreshPeriodKey(new Date('2026-01-01T00:00:00Z'))).toBe('freemonthly_2026-01');
+    expect(freeRefreshPeriodKey(new Date('2026-12-31T23:59:59Z'))).toBe('freemonthly_2026-12');
+  });
+
+  it('period key is disjoint from paid sub_ grant keys', async () => {
+    const { freeRefreshPeriodKey } = await import('../src/credits');
+    expect(freeRefreshPeriodKey(new Date('2026-06-24T00:00:00Z')).startsWith('freemonthly_')).toBe(true);
+  });
+
+  it('throws on an invalid date', async () => {
+    const { freeRefreshPeriodKey } = await import('../src/credits');
+    expect(() => freeRefreshPeriodKey(new Date('not-a-date'))).toThrow();
+  });
+
+  it('NON-STACKING property: balance after a refill of a sub-allotment start never exceeds the allotment', async () => {
+    const { freeRefreshDelta } = await import('../src/credits');
+    fc.assert(
+      // refill is capped at the allotment, so a negative start lands at most at allotment.
+      fc.property(fc.integer({ min: -10_000, max: 99 }), (start) => {
+        const delta = freeRefreshDelta(start, 100);
+        const after = start + delta;
+        return delta >= 0 && delta <= 100 && after <= 100 && after > start;
+      }),
+    );
+  });
+});
+
+describe('refillEntry + refill validation (free-tier top-up, distinct from grant)', () => {
+  it('builds a refill entry with the period key as source_id', async () => {
+    const { refillEntry } = await import('../src/credits');
+    expect(refillEntry(70, 'freemonthly_2026-06')).toEqual({
+      delta: 70,
+      reason: 'refill',
+      sourceId: 'freemonthly_2026-06',
+    });
+  });
+
+  it('returns null when there is nothing to refill (delta <= 0)', async () => {
+    const { refillEntry } = await import('../src/credits');
+    expect(refillEntry(0, 'freemonthly_2026-06')).toBeNull();
+    expect(refillEntry(-5, 'freemonthly_2026-06')).toBeNull();
+  });
+
+  it('a VARIABLE refill delta (not a tier amount) is a valid refill but an INVALID grant', () => {
+    // The core F1/P2 fix: a deficit of 30 is a legal refill, but would be
+    // rejected as a grant (grants are bound to GRANT_AMOUNTS). Distinct reasons.
+    const refill: LedgerEntry = { delta: 30, reason: 'refill', sourceId: 'freemonthly_2026-06' };
+    expect(() => validateEntry(refill)).not.toThrow();
+    expect(() => validateAppend([], refill)).not.toThrow();
+    const asGrant: LedgerEntry = { delta: 30, reason: 'grant', sourceId: 'freemonthly_2026-06' };
+    expect(() => validateAppend([], asGrant)).toThrow(/no tier monthly allowance/);
+  });
+
+  it('a refill must debit positive and carry a source key', () => {
+    expect(() => validateEntry({ delta: -10, reason: 'refill', sourceId: 's' })).toThrow();
+    expect(() => validateEntry({ delta: 10, reason: 'refill' })).toThrow();
+  });
+
+  it('a refill can never exceed one allotment', () => {
+    const ok: LedgerEntry = { delta: 100, reason: 'refill', sourceId: 'freemonthly_2026-06' };
+    expect(() => validateAppend([], ok)).not.toThrow();
+    const tooBig: LedgerEntry = { delta: 101, reason: 'refill', sourceId: 'freemonthly_2026-06' };
+    expect(() => validateAppend([], tooBig)).toThrow(/exceeds the free allotment/);
+  });
+
+  it('IDEMPOTENCY: a second refill for the SAME period is rejected (no double top-up)', async () => {
+    const { refillEntry } = await import('../src/credits');
+    const first = refillEntry(70, 'freemonthly_2026-06')!;
+    const ledger: LedgerEntry[] = [first];
+    // same period → rejected; a NEW period is fine.
+    expect(() => validateAppend(ledger, refillEntry(30, 'freemonthly_2026-06')!)).toThrow(
+      /already applied/,
+    );
+    expect(() => validateAppend(ledger, refillEntry(30, 'freemonthly_2026-07')!)).not.toThrow();
+  });
+
+  it('a refill does NOT collide with a paid grant for the same month (disjoint keys/reasons)', () => {
+    // A free account refilled then upgraded mid-month: both rows coexist (the
+    // documented, bounded P1 behavior). The two are different reasons, so neither
+    // dedupes the other and the invariant for each is independently satisfied.
+    const refill: LedgerEntry = { delta: 100, reason: 'refill', sourceId: 'freemonthly_2026-06' };
+    const ledger: LedgerEntry[] = [refill];
+    expect(() => validateAppend(ledger, grantEntry('grove', 'sub_X_p123'))).not.toThrow();
+    expect(balance([refill, grantEntry('grove', 'sub_X_p123')])).toBe(1100);
+  });
+});
+
+describe('fleet-level free-tier spend kill-switch', () => {
+  it('the default fleet budget is a positive, round, conservative ceiling', async () => {
+    const { FREE_TIER_FLEET_MONTHLY_BUDGET_CREDITS, FREE_TIER_MONTHLY_ALLOTMENT } = await import(
+      '../src/credits'
+    );
+    expect(Number.isSafeInteger(FREE_TIER_FLEET_MONTHLY_BUDGET_CREDITS)).toBe(true);
+    expect(FREE_TIER_FLEET_MONTHLY_BUDGET_CREDITS).toBeGreaterThan(0);
+    // = $500 of usage at $0.01/credit; comfortably above one allotment.
+    expect(FREE_TIER_FLEET_MONTHLY_BUDGET_CREDITS).toBe(50_000);
+    expect(FREE_TIER_FLEET_MONTHLY_BUDGET_CREDITS % FREE_TIER_MONTHLY_ALLOTMENT).toBe(0);
+  });
+
+  it('resolveFleetBudgetCredits: parses a valid non-negative integer string', async () => {
+    const { resolveFleetBudgetCredits } = await import('../src/credits');
+    expect(resolveFleetBudgetCredits('250')).toBe(250);
+    expect(resolveFleetBudgetCredits('0')).toBe(0); // explicit soft-pause
+  });
+
+  it('resolveFleetBudgetCredits: falls back on absent/blank/malformed/negative (never lifts the cap)', async () => {
+    const { resolveFleetBudgetCredits, FREE_TIER_FLEET_MONTHLY_BUDGET_CREDITS } = await import(
+      '../src/credits'
+    );
+    const d = FREE_TIER_FLEET_MONTHLY_BUDGET_CREDITS;
+    expect(resolveFleetBudgetCredits(undefined)).toBe(d);
+    expect(resolveFleetBudgetCredits('')).toBe(d);
+    expect(resolveFleetBudgetCredits('   ')).toBe(d);
+    expect(resolveFleetBudgetCredits('banana')).toBe(d);
+    expect(resolveFleetBudgetCredits('-5')).toBe(d);
+    expect(resolveFleetBudgetCredits('1.5')).toBe(d);
+    expect(resolveFleetBudgetCredits('1e9')).toBe(d); // not a plain integer string
+  });
+
+  it('resolveFleetBudgetCredits: respects a custom fallback', async () => {
+    const { resolveFleetBudgetCredits } = await import('../src/credits');
+    expect(resolveFleetBudgetCredits(undefined, 999)).toBe(999);
+    expect(resolveFleetBudgetCredits('bad', 999)).toBe(999);
+  });
+
+  it('freeTierRefreshEnabled: default-on when unset/blank', async () => {
+    const { freeTierRefreshEnabled } = await import('../src/credits');
+    expect(freeTierRefreshEnabled(undefined)).toBe(true);
+    expect(freeTierRefreshEnabled('')).toBe(true);
+    expect(freeTierRefreshEnabled('   ')).toBe(true);
+  });
+
+  it('freeTierRefreshEnabled: off only for explicit falsy tokens', async () => {
+    const { freeTierRefreshEnabled } = await import('../src/credits');
+    for (const off of ['false', '0', 'no', 'off', 'FALSE', 'Off', ' no ']) {
+      expect(freeTierRefreshEnabled(off)).toBe(false);
+    }
+    for (const on of ['true', '1', 'yes', 'on', 'anything']) {
+      expect(freeTierRefreshEnabled(on)).toBe(true);
+    }
+  });
+});
