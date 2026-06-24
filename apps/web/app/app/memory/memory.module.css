@@ -1240,6 +1240,13 @@
   line-height: 1.4;
 }
 
+.sourcesUploadError {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--danger, #c0392b);
+}
+
 .sourcesDropZoneBtn {
   font: inherit;
   font-size: 14px;

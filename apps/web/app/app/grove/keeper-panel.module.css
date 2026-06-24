@@ -97,6 +97,43 @@
   font-weight: 600;
 }
 
+/* ── mobile close button ─────────────────────────────────────────────────────
+   Hidden on desktop (the rail collapse affordance handles dismissal there).
+   On mobile (≤880px) the sheet is closed from this header ✕ instead of a
+   bottom-right FAB, so the FAB no longer overlaps the chat's Send button. */
+.closeBtn {
+  display: none;
+}
+
+@media (max-width: 880px) {
+  .header {
+    /* The desktop collapse button is hidden on mobile, so reclaim its reserved
+       right padding for the header ✕. */
+    padding-right: 16px;
+  }
+
+  .closeBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    margin-left: 2px;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    background: var(--understory);
+    color: var(--moss-deep);
+    font-size: 15px;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .closeBtn:hover {
+    background: var(--line);
+  }
+}
+
 /* ── chat area ────────────────────────────────────────────────────────────── */
 
 .chatWrap {

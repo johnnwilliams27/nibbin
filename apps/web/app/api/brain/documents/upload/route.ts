@@ -18,6 +18,7 @@ import { appSession } from '../../../../../lib/auth/app-session';
 import { serviceClient } from '../../../../../lib/supabase/service';
 import { extractDocument } from '../../../../../lib/brain/doc-extract';
 import { buildStoragePath } from '../../../../../lib/brain/storage-path';
+import { mapRowToSourceListItem } from '../../../../app/memory/sourcesQuery';
 
 /** 20 MB cap enforced before Storage PUT. */
 const MAX_SIZE_BYTES = 20 * 1024 * 1024;
@@ -142,7 +143,17 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   // 7. Insert sources row
-  const { error: sourceError } = await svc
+  //
+  // NOTE: `redaction_status` is intentionally NOT set here. The column default
+  // is 'clean' and its CHECK constraint only permits ('clean','redacted',
+  // 'quarantined'). The extraction worker (doc-extract) sets the *terminal*
+  // redaction_status from the redaction gate result after the row is created.
+  // Writing 'pending' here (the old behavior) violated the CHECK constraint, so
+  // EVERY upload insert failed — which then triggered the storage cleanup below,
+  // leaving 0 sources rows AND 0 storage objects. That was the upload-persistence
+  // bug. Leave redaction_status to its default.
+  const insertExtractionState = extractionClass === 'extractable' ? 'pending' : 'unsupported';
+  const { data: insertedSource, error: sourceError } = await svc
     .from('sources')
     .insert({
       id: sourceId,
@@ -156,17 +167,16 @@ export async function POST(req: Request): Promise<Response> {
         size_bytes: file.size,
       },
       source_tier: 60,
-      redaction_status: 'pending',
       // Task 4: new columns added by P1 branch migration
       mime_type: file.type,
       byte_size: file.size,
-      extraction_state: extractionClass === 'extractable' ? 'pending' : 'unsupported',
+      extraction_state: insertExtractionState,
     })
-    .select()
+    .select('id, title, mime_type, byte_size, captured_at, extraction_state')
     .single();
 
-  if (sourceError) {
-    console.error('[upload] sources insert failed', sourceError.message);
+  if (sourceError || !insertedSource) {
+    console.error('[upload] sources insert failed', sourceError?.message);
     // Best-effort cleanup of the uploaded file
     void svc.storage.from('brain-sources').remove([storagePath]);
     return Response.json({ error: 'store_failed', message: 'Failed to register document. Please try again.' }, { status: 502 });
@@ -194,6 +204,9 @@ export async function POST(req: Request): Promise<Response> {
   // For unsupported types: file is stored + sources row created with
   // extraction_state='unsupported'. No job enqueued; retained + searchable by name.
 
-  // 10. Return 202 immediately
-  return Response.json({ sourceId }, { status: 202 });
+  // 10. Return 202 with the persisted source row so the client can render the
+  // REAL item (it survives a server refetch) instead of a phantom optimistic
+  // placeholder. `item` is shaped like the GET /api/brain/sources list rows.
+  const item = mapRowToSourceListItem(insertedSource as Record<string, unknown>);
+  return Response.json({ sourceId, item }, { status: 202 });
 }

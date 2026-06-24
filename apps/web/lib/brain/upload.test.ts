@@ -188,7 +188,11 @@ describe('POST /api/brain/documents/upload', () => {
     const insertedSource = mockSourcesInsert.mock.calls[0][0] as Record<string, unknown>;
     expect(insertedSource.kind).toBe('document');
     expect(insertedSource.source_tier).toBe(60);
-    expect(insertedSource.redaction_status).toBe('pending');
+    // Regression guard: the route must NOT set redaction_status (the DB default
+    // 'clean' applies; the extraction worker stamps the terminal status after the
+    // redaction gate runs). Writing 'pending' here violated the column CHECK
+    // ('clean'|'redacted'|'quarantined'), failing every insert in prod.
+    expect(insertedSource.redaction_status).toBeUndefined();
 
     // source_extraction_jobs insert called
     expect(mockJobsInsert).toHaveBeenCalledTimes(1);
