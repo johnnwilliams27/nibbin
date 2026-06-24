@@ -64,6 +64,14 @@ vi.mock('../../../lib/runtime/engine', () => ({
 }));
 vi.mock('../../../lib/supabase/service', () => ({ serviceClient: () => ({}) }));
 
+// Pre-flight credit gate. Default: account has credits (allow start). Tests that
+// exercise the broke path override canStartNewWork per-case.
+const canStartNewWork = vi.fn(async (_accountId: string) => true);
+vi.mock('../../../lib/credits/gate', () => ({
+  canStartNewWork: (accountId: string) => canStartNewWork(accountId),
+  OUT_OF_CREDITS_MESSAGE: 'out-of-credits',
+}));
+
 // runPlan should never be reached for a tampered plan
 const runPlan = vi.fn(async () => ({ kind: 'done', runId: 'r', artifact: {} }));
 vi.mock('@nibbin/runtime', async (orig) => {
@@ -150,6 +158,40 @@ describe('startPlanRun — concurrency cap (FIX 4)', () => {
     expect('error' in out).toBe(true);
     expect(create).not.toHaveBeenCalled();
     expect(runPlan).not.toHaveBeenCalled();
+  });
+});
+
+describe('startPlanRun — pre-flight credit gate (soft-gate: gates STARTING only)', () => {
+  it('refuses to START a run when the account is broke (balance ≤ 0); no run, no model call', async () => {
+    appSession.mockResolvedValueOnce({ user: { id: 'user-1' }, accountId: 'acct-broke' });
+    runPlan.mockClear();
+    create.mockClear();
+    canStartNewWork.mockResolvedValueOnce(false); // out of credits
+    const out = await startPlanRun(craftedTokensPlan());
+    expect(out).toEqual({ error: 'out-of-credits' });
+    expect(create).not.toHaveBeenCalled(); // no run row provisioned
+    expect(runPlan).not.toHaveBeenCalled(); // no expensive loop / model call started
+  });
+
+  it('starts normally when the account has credits (balance > 0)', async () => {
+    appSession.mockResolvedValueOnce({ user: { id: 'user-1' }, accountId: 'acct-ok' });
+    runPlan.mockClear();
+    create.mockClear();
+    canStartNewWork.mockResolvedValueOnce(true);
+    const out = await startPlanRun(craftedTokensPlan());
+    expect('error' in out).toBe(false);
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(runPlan).toHaveBeenCalledTimes(1);
+  });
+
+  it('the gate is the LAST check — a completed run is never aborted by it (it only blocks the start)', async () => {
+    // respondToPlanRun (resuming/finishing a run already in flight) does NOT call
+    // the gate: completed/in-flight work is never aborted for being broke.
+    canStartNewWork.mockClear();
+    respondToRequest.mockClear();
+    await respondToPlanRun('run-inflight', { requestId: 'req-1', value: 'hi' });
+    expect(canStartNewWork).not.toHaveBeenCalled();
+    expect(respondToRequest).toHaveBeenCalledTimes(1);
   });
 });
 

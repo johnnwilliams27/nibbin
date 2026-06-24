@@ -24,6 +24,7 @@ import {
   type TriggerDef,
 } from '@nibbin/runtime';
 import { appSession } from '../../../lib/auth/app-session';
+import { canStartNewWork, OUT_OF_CREDITS_MESSAGE } from '../../../lib/credits/gate';
 import { serviceClient } from '../../../lib/supabase/service';
 import { activeConnections } from '../../../lib/runtime/engine';
 import { planForIntent, PLAN_CEILINGS, type PlanPreview } from '../../../lib/planner/plan';
@@ -121,6 +122,15 @@ export async function startPlanRun(plan: PlanSpec): Promise<PlanOutcome | { erro
   } catch (err) {
     console.error('[planner] countRunning failed (fail-safe: refuse start)', err instanceof Error ? err.message : err);
     return { error: 'Could not start the run right now — please try again in a moment.' };
+  }
+
+  // Pre-flight credit gate (soft-gate, SPEC §6.2): STARTING a planner run — an
+  // expensive frontier ReAct loop — requires a positive balance. A broke
+  // account is refused cleanly with no run created and no model call. (Calls
+  // that have ALREADY happened still charge + post via recordModelCall; only
+  // new work is gated here.) Fail-closed: an unreadable ledger refuses.
+  if (!(await canStartNewWork(accountId))) {
+    return { error: OUT_OF_CREDITS_MESSAGE };
   }
 
   // Create the ephemeral run row (plan snapshot), then drive the loop.

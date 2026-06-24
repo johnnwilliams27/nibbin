@@ -242,6 +242,8 @@ export async function diagnosisSynthesis(
       degraded: decision.degraded,
       latencyMs: Date.now() - t0,
       outcome: 'ok',
+      // Diagnosis: chargeDiagnosis posts the flat charge — no usage charge here.
+      flatCharged: true,
     });
 
     const text = result.text.trim();
@@ -270,6 +272,8 @@ export async function diagnosisSynthesis(
       outcome: 'error',
       degraded: resolvedDegraded,
       latencyMs: null,
+      // Diagnosis: chargeDiagnosis posts the flat charge — no usage charge here.
+      flatCharged: true,
     });
     return { kind: 'unavailable' };
   }
