@@ -17,10 +17,16 @@ export const dynamic = 'force-dynamic';
 // so it is set here (the page that renders the action-bearing components).
 export const maxDuration = 60;
 
-export default async function PlannerPage() {
+export default async function PlannerPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ intent?: string }>;
+}) {
   const { user } = await appSession();
+  // Optional intent carried over from the unified Agent Builder entry (/app/build).
+  const intent = (await searchParams)?.intent ?? '';
   return (
-    <AppShell title="Ask a Nibbin" active="planner" email={user.email}>
+    <AppShell title="Ask a Nibbin" active="build" email={user.email}>
       <div className={styles.header}>
         <h1 className={styles.title}>Ask a Nibbin to look into something</h1>
         <p className={styles.sub}>
@@ -28,7 +34,7 @@ export default async function PlannerPage() {
           can use before anything runs, and nothing sends or leaves without your okay.
         </p>
       </div>
-      <PlanComposer />
+      <PlanComposer initialIntent={intent} />
     </AppShell>
   );
 }

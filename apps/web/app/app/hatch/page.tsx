@@ -11,7 +11,11 @@ export const metadata: Metadata = { title: 'Hatch Your Own — Nibbin' };
 // Per-request session read — never statically cached.
 export const dynamic = 'force-dynamic';
 
-export default async function HatchPage() {
+export default async function HatchPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ intent?: string }>;
+}) {
   let session;
   try {
     session = await appSession();
@@ -19,9 +23,11 @@ export default async function HatchPage() {
     redirect('/login');
   }
   const { user } = session;
+  // Optional intent carried over from the unified Agent Builder entry (/app/build).
+  const intent = (await searchParams)?.intent ?? '';
 
   return (
-    <AppShell active="hatch" title="Hatch Your Own" email={user.email}>
+    <AppShell active="build" title="Hatch Your Own" email={user.email}>
       <div className={styles.inner}>
         <header className={styles.header}>
           <h1 className={styles.title}>Build a Nibbin for one chore</h1>
@@ -31,7 +37,7 @@ export default async function HatchPage() {
             does the work.
           </p>
         </header>
-        <HatchWizard chores={[...HATCH_CHORES]} apps={[...HATCH_APPS]} />
+        <HatchWizard chores={[...HATCH_CHORES]} apps={[...HATCH_APPS]} initialChoreText={intent} />
       </div>
     </AppShell>
   );

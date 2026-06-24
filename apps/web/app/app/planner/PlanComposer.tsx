@@ -17,8 +17,8 @@ import type { PlanOutcome, PlanSpec } from '@nibbin/runtime';
 import type { PlanPreview } from '../../../lib/planner/plan';
 import styles from './planner.module.css';
 
-export function PlanComposer() {
-  const [intent, setIntent] = useState('');
+export function PlanComposer({ initialIntent = '' }: { initialIntent?: string } = {}) {
+  const [intent, setIntent] = useState(initialIntent);
   const [proposal, setProposal] = useState<{ plan: PlanSpec; preview: PlanPreview } | null>(null);
   const [outcome, setOutcome] = useState<PlanOutcome | null>(null);
   const [error, setError] = useState<string | null>(null);

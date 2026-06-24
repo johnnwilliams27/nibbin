@@ -2,6 +2,8 @@ node_modules/
 .next/
 dist/
 build/
+# …but the Agent Builder app route is source, not build output — keep it tracked.
+!apps/web/app/app/build/
 coverage/
 target/
 .vercel/

@@ -59,9 +59,8 @@ export type NavKey =
   | 'grove'
   | 'nibbins'
   | 'connections'
-  | 'hatch'
+  | 'build'
   | 'diagnosis'
-  | 'planner'
   | 'memory'
   | 'shop'
   | 'notifications'
@@ -96,21 +95,16 @@ function NavIcon({ k }: { k: NavKey }) {
         <path d="M21 21v-2a4 4 0 0 0-3-3.87" />
       </>
     ),
-    // an egg with a crack — "hatch your own"
-    hatch: (
+    // Agent Builder — an egg with a spark, signalling "describe it, we build it"
+    // (one-off run or a saved Nibbin). Combines the hatch egg with a sparkle.
+    build: (
       <>
-        <path d="M12 3c3.3 0 6 4 6 8a6 6 0 0 1-12 0c0-4 2.7-8 6-8Z" />
-        <path d="m10.5 10 1.5 1.5-1 1.5 1.5 1" />
+        <path d="M11 3c3.3 0 6 4 6 8a6 6 0 0 1-12 0c0-4 2.7-8 6-8Z" />
+        <path d="m9.5 10 1.5 1.5-1 1.5 1.5 1" />
+        <path d="M19 3v4M21 5h-4" />
       </>
     ),
     diagnosis: <path d="M22 12h-4l-3 9L9 3l-3 9H2" />,
-    planner: (
-      <>
-        <circle cx="6" cy="19" r="3" />
-        <path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15" />
-        <circle cx="18" cy="5" r="3" />
-      </>
-    ),
     memory: (
       <>
         <path d="M12 7v14" />
@@ -182,9 +176,8 @@ const NAV: { key: NavKey; label: string; href: string }[] = [
   { key: 'grove', label: 'Grove Home', href: '/app' },
   { key: 'nibbins', label: 'Your Nibbins', href: '/app/nibbins' },
   { key: 'connections', label: 'Connections', href: '/app/connections' },
-  { key: 'hatch', label: 'Hatch your own', href: '/app/hatch' },
+  { key: 'build', label: 'Agent Builder', href: '/app/build' },
   { key: 'diagnosis', label: 'Diagnosis', href: '/app/diagnosis' },
-  { key: 'planner', label: 'Planner', href: '/app/planner' },
   { key: 'memory', label: 'Memory', href: '/app/memory' },
   { key: 'shop', label: 'Agent Shop', href: '/app/shop' },
   { key: 'billing', label: 'Plan & credits', href: '/billing' },
