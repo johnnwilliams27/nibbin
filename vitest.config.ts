@@ -39,6 +39,7 @@ export default defineConfig({
       'apps/*/components/**/*.test.ts',
       'apps/*/components/**/*.test.tsx',
       'tests/**/*.test.ts',
+      'scripts/**/*.test.ts',
     ],
     // The RLS test files share one Postgres and each drops/recreates the public
     // schema in setup; running files in parallel races that reset. The suite is
