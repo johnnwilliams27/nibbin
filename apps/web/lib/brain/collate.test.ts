@@ -364,15 +364,19 @@ describe('collateAccount — conflict detection', () => {
       p_competing_source_ids: expect.arrayContaining([srcA, srcB]),
       p_detail: expect.any(String),
       p_stakes: expect.stringMatching(/^(normal|high)$/),
+      p_suggested_source_id: expect.any(String),
     });
 
     // stakes must be 'high' for pricing
     expect(flagCall!.args['p_stakes']).toBe('high');
 
-    // Arg names present and nothing extra unexpected
+    // p_suggested_source_id must be one of the competing source ids
+    expect([srcA, srcB]).toContain(flagCall!.args['p_suggested_source_id']);
+
+    // Arg names present and nothing extra unexpected (Task 8: p_suggested_source_id added)
     const argKeys = Object.keys(flagCall!.args).sort();
     expect(argKeys).toEqual(
-      ['p_account', 'p_competing_source_ids', 'p_detail', 'p_field_key', 'p_stakes'].sort(),
+      ['p_account', 'p_competing_source_ids', 'p_detail', 'p_field_key', 'p_stakes', 'p_suggested_source_id'].sort(),
     );
   });
 

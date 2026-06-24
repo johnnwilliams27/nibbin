@@ -187,10 +187,10 @@ async function loadOpenConflicts(
   accountId: string,
 ): Promise<Record<string, ConflictView>> {
   try {
-    // 1. Fetch open flags
+    // 1. Fetch open flags (suggested_source_id added in Task 8 migration — null for older flags)
     const { data: flags, error: flagErr } = await supabase
       .from('field_flags')
-      .select('id, field_key, competing_source_ids, detail')
+      .select('id, field_key, competing_source_ids, detail, suggested_source_id')
       .eq('account_id', accountId)
       .eq('status', 'needs_review');
 
@@ -263,15 +263,12 @@ async function loadOpenConflicts(
 
       if (sourceIds.length < 2) continue; // need ≥2 sources for a conflict
 
-      // The last sourceId in the array is the suggested (highest-authority) pick.
-      // flag_field_conflict doesn't guarantee ordering, but suggestedSourceId is
-      // the first entry in competing_source_ids (set by the detector as highest
-      // authority). We use a simple heuristic: mark the last one as suggested
-      // since authority seeding puts higher weights on document/manual, which
-      // typically win. The field_flags schema doesn't carry the suggestion
-      // explicitly so we default to last entry = suggested.
-      // For a pragmatic v1: mark the last source_id as suggested.
-      const suggestedId = sourceIds[sourceIds.length - 1];
+      // Use the authority-computed suggested_source_id stored on the flag (Task 8).
+      // Fall back gracefully to null when the column is absent or null (older flags
+      // pre-migration): in that case no source is highlighted as suggested.
+      const rawSuggested = flag.suggested_source_id as string | null | undefined;
+      const suggestedId: string | null =
+        rawSuggested && sourceIds.includes(rawSuggested) ? rawSuggested : null;
 
       const sources = sourceIds.map((sid) => {
         const src = sourceMap[sid];
@@ -281,7 +278,8 @@ async function loadOpenConflicts(
           id: sid,
           label,
           value,
-          suggested: sid === suggestedId,
+          // suggestedId is null for pre-Task-8 flags → no source highlighted
+          suggested: suggestedId !== null && sid === suggestedId,
         };
       });
 

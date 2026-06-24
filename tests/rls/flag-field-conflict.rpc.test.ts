@@ -204,6 +204,106 @@ describe.skipIf(!dbAvailable)('flag_field_conflict + ensure_source_authority RPC
     ).rejects.toThrow(/stakes/i);
   });
 
+  // ── Task 8: suggested_source_id threading ───────────────────────────────────
+
+  it('stores suggested_source_id on insert when p_suggested_source_id is provided', async () => {
+    const srcSug1 = await h.as(service, async (c) =>
+      (await c.query(
+        `insert into public.sources (account_id, kind, title) values ($1, 'document', 'suggested-doc') returning id`,
+        [acct],
+      )).rows[0].id,
+    );
+    const srcSug2 = await h.as(service, async (c) =>
+      (await c.query(
+        `insert into public.sources (account_id, kind, title) values ($1, 'connector_artifact', 'competing-conn') returning id`,
+        [acct],
+      )).rows[0].id,
+    );
+
+    const flagId = await h.as(service, async (c) =>
+      (await c.query(
+        `select public.flag_field_conflict($1, $2, $3::uuid[], $4, $5, $6) as id`,
+        [acct, 'about', `{${srcSug1},${srcSug2}}`, 'About conflict detail', 'normal', srcSug1],
+      )).rows[0].id,
+    );
+    expect(flagId).toBeTruthy();
+
+    const flag = await h.as(service, async (c) =>
+      (await c.query(
+        `select suggested_source_id from public.field_flags where id = $1`,
+        [flagId],
+      )).rows[0],
+    );
+    expect(flag.suggested_source_id).toBe(srcSug1);
+  });
+
+  it('updates suggested_source_id in place on the upsert (update branch)', async () => {
+    const srcUpd1 = await h.as(service, async (c) =>
+      (await c.query(
+        `insert into public.sources (account_id, kind, title) values ($1, 'document', 'upd-doc') returning id`,
+        [acct],
+      )).rows[0].id,
+    );
+    const srcUpd2 = await h.as(service, async (c) =>
+      (await c.query(
+        `insert into public.sources (account_id, kind, title) values ($1, 'manual', 'upd-manual') returning id`,
+        [acct],
+      )).rows[0].id,
+    );
+
+    // First call: suggest srcUpd1
+    const flagId = await h.as(service, async (c) =>
+      (await c.query(
+        `select public.flag_field_conflict($1, $2, $3::uuid[], $4, $5, $6) as id`,
+        [acct, 'notes_sug_test', `{${srcUpd1},${srcUpd2}}`, 'First detail', 'normal', srcUpd1],
+      )).rows[0].id,
+    );
+
+    // Second call: same (account, field_key) open flag → update branch, now suggest srcUpd2
+    const flagId2 = await h.as(service, async (c) =>
+      (await c.query(
+        `select public.flag_field_conflict($1, $2, $3::uuid[], $4, $5, $6) as id`,
+        [acct, 'notes_sug_test', `{${srcUpd1},${srcUpd2}}`, 'Updated detail', 'normal', srcUpd2],
+      )).rows[0].id,
+    );
+
+    expect(flagId2).toBe(flagId); // idempotent — same row
+
+    const flag = await h.as(service, async (c) =>
+      (await c.query(
+        `select suggested_source_id, detail from public.field_flags where id = $1`,
+        [flagId],
+      )).rows[0],
+    );
+    expect(flag.suggested_source_id).toBe(srcUpd2);
+    expect(flag.detail).toBe('Updated detail');
+  });
+
+  it('stores null suggested_source_id when p_suggested_source_id is omitted (backward compat)', async () => {
+    const srcBk = await h.as(service, async (c) =>
+      (await c.query(
+        `insert into public.sources (account_id, kind, title) values ($1, 'manual', 'bk-src') returning id`,
+        [acct],
+      )).rows[0].id,
+    );
+
+    const flagId = await h.as(service, async (c) =>
+      (await c.query(
+        `select public.flag_field_conflict($1, $2, $3::uuid[], $4) as id`,
+        [acct, 'tagline_bk', `{${srcBk}}`, 'Backward compat detail'],
+      )).rows[0].id,
+    );
+    expect(flagId).toBeTruthy();
+
+    const flag = await h.as(service, async (c) =>
+      (await c.query(
+        `select suggested_source_id from public.field_flags where id = $1`,
+        [flagId],
+      )).rows[0],
+    );
+    expect(flag.suggested_source_id).toBeNull();
+  });
+
   it('authenticated caller cannot execute flag_field_conflict', async () => {
     await expect(
       h.as(asU, (c) =>

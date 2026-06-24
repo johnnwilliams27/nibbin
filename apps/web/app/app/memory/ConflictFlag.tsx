@@ -73,8 +73,18 @@ function ConflictPickForm({ flagId, source }: ConflictPickFormProps): React.Reac
     fd.set('p_flag_id', flagId);
     fd.set('p_chosen_source_id', source.id);
     fd.set('p_chosen_value', source.value);
-    startTransition(() => {
-      void resolveFieldFlag(fd);
+    startTransition(async () => {
+      const result = await resolveFieldFlag(fd);
+      if (result.ok) {
+        // TODO(Task 8): call router.refresh() here to clear the conflict banner
+        // after a successful resolve. Blocked: useRouter() (from next/navigation)
+        // throws an invariant when called at render time inside renderToStaticMarkup
+        // (the current test path), so adding it at the component level breaks all
+        // ConflictFlag tests. Options: (a) migrate tests to jsdom+react-testing-library
+        // and mock the router, (b) thread an optional onResolved callback prop, or
+        // (c) move refresh to the server action via revalidatePath('/app/memory').
+        // For now the page refreshes on next navigation; the banner clears on reload.
+      }
     });
   }
 

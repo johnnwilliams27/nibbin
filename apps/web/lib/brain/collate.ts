@@ -224,6 +224,7 @@ export async function collateAccount(
           p_competing_source_ids: conflict.competingSourceIds,
           p_detail: conflict.detail,
           p_stakes: conflict.stakes,
+          p_suggested_source_id: conflict.suggestedSourceId,
         });
         conflicts++;
       } catch (flagErr) {

@@ -175,3 +175,39 @@ describe('ConflictFlag — CSS structure', () => {
     expect(html).toContain('conflictFlag');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Task 8: suggested_source_id threading — graceful fallback when no suggestion
+// ---------------------------------------------------------------------------
+
+describe('ConflictFlag — suggested_source_id → no suggestion when all false', () => {
+  it('renders without any "suggested" badge when no source has suggested=true (null suggested_source_id fallback)', () => {
+    const noSuggestionConflict: ConflictView = {
+      flagId: 'flag-uuid-3',
+      fieldKey: 'policies',
+      detail: 'Old flag without suggestion tracking',
+      sources: [
+        { id: 'src-old-1', label: 'Source A', value: 'Value A', suggested: false },
+        { id: 'src-old-2', label: 'Source B', value: 'Value B', suggested: false },
+      ],
+    };
+    const html = renderToStaticMarkup(<ConflictFlag conflict={noSuggestionConflict} />);
+    // Banner renders without crashing
+    expect(html).toContain('Needs your review');
+    // Both sources are present
+    expect(html).toContain('Source A');
+    expect(html).toContain('Source B');
+    // No suggested badge emitted (no source has suggested=true)
+    expect(html).not.toContain('conflictSourceSuggested');
+  });
+
+  it('marks exactly the source whose suggested=true (driven by stored suggested_source_id)', () => {
+    // This mirrors how page.tsx now sets suggested: sid === suggestedId (from DB)
+    const html = renderToStaticMarkup(<ConflictFlag conflict={conflict} />);
+    // src-uuid-2 (Rate sheet PDF) has suggested=true → should have the suggested class
+    expect(html).toContain('conflictSourceSuggested');
+    // src-uuid-1 (Gmail connector) has suggested=false → the suggested badge word appears once
+    const suggestedBadgeCount = (html.match(/conflictSuggestedBadge/g) ?? []).length;
+    expect(suggestedBadgeCount).toBe(1);
+  });
+});

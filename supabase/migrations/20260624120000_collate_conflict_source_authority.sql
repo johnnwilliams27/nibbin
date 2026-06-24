@@ -2,6 +2,11 @@
 -- Tasks 2 and 3 RPCs (flag_field_conflict, resolve_field_flag) will be
 -- appended to this file in their respective tasks.
 
+-- Task 8: Thread the authority-suggested source through to field_flags so the
+-- UI can highlight it without guessing.
+alter table public.field_flags
+  add column if not exists suggested_source_id uuid;
+
 create table public.source_authority (
   account_id  uuid not null references public.accounts (id) on delete cascade,
   source_kind text not null check (source_kind in ('document','connector_artifact','observation','manual')),
@@ -45,12 +50,20 @@ grant  execute on function public.ensure_source_authority(uuid) to service_role;
 -- Idempotent: if an open needs_review flag already exists for (account, field_key),
 -- update it in place (the unique index field_flags_one_open_idx enforces at most
 -- one open flag per field). Returns the flag id.
+--
+-- Task 8: p_suggested_source_id (last param, default null) threads the
+-- authority-computed suggestion into field_flags.suggested_source_id so the
+-- Memory conflict UI can highlight the right source without guessing.
+-- Drop the old 5-param overload so Postgres doesn't keep a phantom stub.
+drop function if exists public.flag_field_conflict(uuid, text, uuid[], text, text);
+
 create or replace function public.flag_field_conflict(
   p_account              uuid,
   p_field_key            text,
   p_competing_source_ids uuid[],
   p_detail               text,
-  p_stakes               text default 'normal'
+  p_stakes               text    default 'normal',
+  p_suggested_source_id  uuid    default null
 ) returns uuid language plpgsql security definer set search_path = '' as $$
 declare
   v_id uuid;
@@ -61,17 +74,18 @@ begin
 
   -- Upsert: update if an open flag exists, else insert.
   update public.field_flags
-  set competing_source_ids = p_competing_source_ids,
-      detail               = p_detail,
-      detected_at          = now()
+  set competing_source_ids  = p_competing_source_ids,
+      detail                = p_detail,
+      suggested_source_id   = p_suggested_source_id,
+      detected_at           = now()
   where account_id = p_account
     and field_key  = p_field_key
     and status     = 'needs_review'
   returning id into v_id;
 
   if v_id is null then
-    insert into public.field_flags (account_id, field_key, competing_source_ids, detail)
-    values (p_account, p_field_key, p_competing_source_ids, p_detail)
+    insert into public.field_flags (account_id, field_key, competing_source_ids, detail, suggested_source_id)
+    values (p_account, p_field_key, p_competing_source_ids, p_detail, p_suggested_source_id)
     returning id into v_id;
   end if;
 
@@ -87,8 +101,8 @@ begin
 
   return v_id;
 end; $$;
-revoke execute on function public.flag_field_conflict(uuid, text, uuid[], text, text) from public, anon, authenticated;
-grant  execute on function public.flag_field_conflict(uuid, text, uuid[], text, text) to service_role;
+revoke execute on function public.flag_field_conflict(uuid, text, uuid[], text, text, uuid) from public, anon, authenticated;
+grant  execute on function public.flag_field_conflict(uuid, text, uuid[], text, text, uuid) to service_role;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Task 3: resolve_field_flag RPC (member-only)
