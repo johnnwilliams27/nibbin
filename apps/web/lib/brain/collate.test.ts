@@ -268,11 +268,25 @@ describe('collateAccount — conflict detection', () => {
     // p_suggested_source_id must be one of the competing source ids
     expect([srcA, srcB]).toContain(flagCall!.args['p_suggested_source_id']);
 
-    // Arg names present and nothing extra unexpected (Task 8: p_suggested_source_id added)
+    // Arg names present and nothing extra unexpected (Task 8: p_suggested_source_id;
+    // C2 follow-up: p_judge_verdict + p_judge_reason — both null on the no-API-key
+    // path this test runs under).
     const argKeys = Object.keys(flagCall!.args).sort();
     expect(argKeys).toEqual(
-      ['p_account', 'p_competing_source_ids', 'p_detail', 'p_field_key', 'p_stakes', 'p_suggested_source_id'].sort(),
+      [
+        'p_account',
+        'p_competing_source_ids',
+        'p_detail',
+        'p_field_key',
+        'p_stakes',
+        'p_suggested_source_id',
+        'p_judge_verdict',
+        'p_judge_reason',
+      ].sort(),
     );
+    // No API key in tests → judge does not run → verdict/reason stay null.
+    expect(flagCall!.args['p_judge_verdict']).toBeNull();
+    expect(flagCall!.args['p_judge_reason']).toBeNull();
   });
 
   it('does not call flag_field_conflict when sources agree', async () => {
