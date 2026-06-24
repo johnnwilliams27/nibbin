@@ -66,6 +66,7 @@ const USER_ID = 'user-t4-test';
 const EMPTY_QUEUE: PendingQueue = {
   proposals: [],
   runs: [],
+  conflicts: [],
   total: 0,
   hasHighStakes: false,
 };
@@ -81,6 +82,7 @@ const ONE_PROPOSAL_QUEUE: PendingQueue = {
     },
   ],
   runs: [],
+  conflicts: [],
   total: 1,
   hasHighStakes: false,
 };

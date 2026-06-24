@@ -186,6 +186,46 @@ export async function saveSectionMeta(
 }
 
 /**
+ * Resolve an open field_flags conflict (Task 8, C2 surface).
+ *
+ * The user's pick IS the approval: calls resolve_field_flag which writes the
+ * chosen value to the curated field, marks the flag resolved, logs the audit
+ * trail, and bumps source-authority weights.
+ *
+ * Arg-name contract (PostgREST resolves by name — must be exact):
+ *   p_flag_id          uuid
+ *   p_chosen_source_id uuid
+ *   p_chosen_value     text
+ *
+ * Returns `{ ok: true }` on success or `{ ok: false, error }` on failure.
+ * Never redirects (inline per-field action, §5.3).
+ */
+export async function resolveFieldFlag(
+  formData: FormData,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { supabase } = await appSession();
+
+  const p_flag_id = String(formData.get('p_flag_id') ?? '').trim();
+  const p_chosen_source_id = String(formData.get('p_chosen_source_id') ?? '').trim();
+  const p_chosen_value = String(formData.get('p_chosen_value') ?? '');
+
+  const { error } = await supabase.rpc('resolve_field_flag', {
+    p_flag_id,
+    p_chosen_source_id,
+    p_chosen_value,
+  });
+
+  if (error) {
+    const msg = typeof error === 'object' && error !== null && 'message' in error
+      ? String((error as { message: unknown }).message)
+      : 'Resolve failed';
+    return { ok: false, error: msg };
+  }
+
+  return { ok: true };
+}
+
+/**
  * Delete a custom section via the `delete_custom_section` security-definer
  * RPC (Task 3). Only custom sections (`c_*` keys) may be deleted; the RPC
  * raises for default keys.

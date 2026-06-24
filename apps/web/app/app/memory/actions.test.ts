@@ -631,3 +631,92 @@ describe('saveReference — input trimming + clamping', () => {
     expect(redirectSpy).not.toHaveBeenCalled();
   });
 });
+
+// ---------------------------------------------------------------------------
+// resolveFieldFlag — C2 conflict resolution action (Task 8)
+// ---------------------------------------------------------------------------
+
+describe('resolveFieldFlag — resolve_field_flag RPC', () => {
+  beforeEach(() => {
+    rpcSpy.mockClear();
+    redirectSpy.mockClear();
+  });
+
+  it('calls resolve_field_flag with EXACTLY the right arg-name shape (bidirectional)', async () => {
+    const { resolveFieldFlag } = await import('./actions');
+
+    const fd = new FormData();
+    fd.set('p_flag_id', 'flag-uuid-1');
+    fd.set('p_chosen_source_id', 'src-uuid-2');
+    fd.set('p_chosen_value', '$400/hr');
+
+    await resolveFieldFlag(fd);
+
+    expect(rpcSpy).toHaveBeenCalledTimes(1);
+    const [rpcName, rpcArgs] = rpcSpy.mock.calls[0] as unknown as [string, Record<string, unknown>];
+    expect(rpcName).toBe('resolve_field_flag');
+
+    // Bidirectional: assert the EXACT keys — no extra keys, no missing keys.
+    const actualKeys = Object.keys(rpcArgs).sort();
+    const expectedKeys = ['p_flag_id', 'p_chosen_source_id', 'p_chosen_value'].sort();
+    expect(actualKeys).toEqual(expectedKeys);
+  });
+
+  it('passes the correct values from FormData to the RPC', async () => {
+    const { resolveFieldFlag } = await import('./actions');
+
+    const fd = new FormData();
+    fd.set('p_flag_id', 'flag-uuid-123');
+    fd.set('p_chosen_source_id', 'src-uuid-456');
+    fd.set('p_chosen_value', 'The canonical pricing value');
+
+    await resolveFieldFlag(fd);
+
+    const [, rpcArgs] = rpcSpy.mock.calls[0] as unknown as [string, Record<string, unknown>];
+    expect(rpcArgs['p_flag_id']).toBe('flag-uuid-123');
+    expect(rpcArgs['p_chosen_source_id']).toBe('src-uuid-456');
+    expect(rpcArgs['p_chosen_value']).toBe('The canonical pricing value');
+  });
+
+  it('returns { ok: true } on success (no redirect)', async () => {
+    const { resolveFieldFlag } = await import('./actions');
+
+    const fd = new FormData();
+    fd.set('p_flag_id', 'flag-uuid-1');
+    fd.set('p_chosen_source_id', 'src-uuid-1');
+    fd.set('p_chosen_value', '$300/hr');
+
+    const result = await resolveFieldFlag(fd);
+    expect(result).toEqual({ ok: true });
+    expect(redirectSpy).not.toHaveBeenCalled();
+  });
+
+  it('returns { ok: false, error: string } on RPC error (inline, no redirect)', async () => {
+    rpcSpy.mockResolvedValueOnce({ data: null, error: { message: 'flag already resolved' } as unknown as null });
+    const { resolveFieldFlag } = await import('./actions');
+
+    const fd = new FormData();
+    fd.set('p_flag_id', 'flag-uuid-1');
+    fd.set('p_chosen_source_id', 'src-uuid-1');
+    fd.set('p_chosen_value', 'some value');
+
+    const result = await resolveFieldFlag(fd);
+    expect(result).toHaveProperty('ok', false);
+    expect((result as { ok: false; error: string }).error).toBeTruthy();
+    expect(redirectSpy).not.toHaveBeenCalled();
+  });
+
+  it('passes p_chosen_value as empty string when not supplied', async () => {
+    const { resolveFieldFlag } = await import('./actions');
+
+    const fd = new FormData();
+    fd.set('p_flag_id', 'flag-uuid-1');
+    fd.set('p_chosen_source_id', 'src-uuid-1');
+    // p_chosen_value not set
+
+    await resolveFieldFlag(fd);
+
+    const [, rpcArgs] = rpcSpy.mock.calls[0] as unknown as [string, Record<string, unknown>];
+    expect(rpcArgs['p_chosen_value']).toBe('');
+  });
+});

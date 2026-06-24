@@ -1,10 +1,13 @@
 import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { PendingProposal, PendingQueue, PendingRun } from '@nibbin/keeper';
+import type { PendingConflict, PendingProposal, PendingQueue, PendingRun } from '@nibbin/keeper';
 
-export type { PendingProposal, PendingQueue, PendingRun };
+export type { PendingConflict, PendingProposal, PendingQueue, PendingRun };
 
-const EMPTY: PendingQueue = { proposals: [], runs: [], total: 0, hasHighStakes: false };
+const EMPTY: PendingQueue = { proposals: [], runs: [], conflicts: [], total: 0, hasHighStakes: false };
+
+/** High-stakes field keys — conflicts on these push proactively. */
+const HIGH_STAKES_FIELDS = new Set(['pricing', 'policies', 'hard_rules']);
 
 function truncate(s: string | null | undefined, max = 80): string {
   if (!s) return '';
@@ -29,6 +32,14 @@ interface RunRow {
   id: string;
   nibbins: { name: string } | null;
   run_steps: Array<{ kind: string; payload: Record<string, unknown> }>;
+}
+
+interface FlagRow {
+  id: string;
+  field_key: string;
+  detail: string | null;
+  status: string;
+  detected_at: string;
 }
 
 /**
@@ -106,11 +117,37 @@ export async function loadPendingItems(
       };
     });
 
-    // ── 4. Assemble ───────────────────────────────────────────────────────────
-    const total = proposals.length + runs.length;
-    const hasHighStakes = proposals.some((p) => p.stakes === 'high');
+    // ── 4. Open field_flags (needs_review) — Task 7 ──────────────────────────
+    // Read-only; C10 preserved. Fail-safe: error → empty conflicts, no throw.
+    let conflicts: PendingConflict[] = [];
+    try {
+      const { data: flagRows, error: flagErr } = await (supabase
+        .from('field_flags')
+        .select('id, field_key, detail, status, detected_at')
+        .eq('account_id', accountId)
+        .eq('status', 'needs_review')
+        .limit(10) as unknown as Promise<{ data: FlagRow[] | null; error: { message: string } | null }>);
 
-    return { proposals, runs, total, hasHighStakes };
+      if (flagErr) {
+        console.error('[pending-items] field_flags query failed', flagErr.message);
+      } else {
+        conflicts = (flagRows ?? []).map((f) => ({
+          fieldKey: f.field_key,
+          detail: truncate(f.detail),
+          stakes: HIGH_STAKES_FIELDS.has(f.field_key) ? 'high' : 'normal',
+        }));
+      }
+    } catch (flagCatchErr) {
+      console.error('[pending-items] field_flags unexpected error', flagCatchErr instanceof Error ? flagCatchErr.message : flagCatchErr);
+    }
+
+    // ── 5. Assemble ───────────────────────────────────────────────────────────
+    const total = proposals.length + runs.length + conflicts.length;
+    const hasHighStakes =
+      proposals.some((p) => p.stakes === 'high') ||
+      conflicts.some((c) => c.stakes === 'high');
+
+    return { proposals, runs, conflicts, total, hasHighStakes };
   } catch (err) {
     console.error('[pending-items] unexpected error', err instanceof Error ? err.message : err);
     return EMPTY;

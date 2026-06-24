@@ -40,6 +40,7 @@ import { FIELD_CONFIG } from './fields';
 import type { FieldMeta } from './provenance';
 import type { SectionDescriptor } from './registry';
 import type { SectionControlsState, SectionControlsAction, SectionControlsIntent } from './sectionControls.reducer';
+import type { ConflictView } from './ConflictFlag';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -82,6 +83,12 @@ export interface GroveMemoryTabProps {
   sectionControlsDispatch?: (action: SectionControlsAction) => void;
   /** Called when a pending section intent needs to be submitted to the server. */
   onSectionIntent?: (intent: SectionControlsIntent) => Promise<void>;
+  /**
+   * Task 8 (C2): open field_flags conflicts keyed by field_key.
+   * When provided, FieldBlocks with a matching key render a ConflictFlag banner.
+   * Gracefully empty when absent.
+   */
+  conflicts?: Record<string, ConflictView>;
 }
 
 // ---------------------------------------------------------------------------
@@ -99,6 +106,7 @@ export function GroveMemoryTab({
   sectionControlsState,
   sectionControlsDispatch,
   onSectionIntent,
+  conflicts,
 }: GroveMemoryTabProps): React.ReactElement {
   // Hard rules come from the mirror as a newline-separated string;
   // HardRulesBlock expects a string[] for display.
@@ -132,6 +140,7 @@ export function GroveMemoryTab({
               rawValue={values[descriptor.key] ?? ''}
               onSave={onSave}
               fieldMeta={fieldMeta?.[descriptor.key]}
+              conflict={conflicts?.[descriptor.key]}
             />
             {isEditing && sectionControlsState && sectionControlsDispatch && onSectionIntent && (
               <SectionActions

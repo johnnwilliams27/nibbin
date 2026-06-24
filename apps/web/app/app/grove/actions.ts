@@ -194,7 +194,7 @@ export async function keeperChatAction(rawText: unknown): Promise<GroveChatPaylo
     loadPendingItems(supabase, accountId).catch((err) => {
       // Fail-safe: a pending-items read error must not break the chat reply.
       console.error('[keeper] loadPendingItems failed — proceeding without pending context', err instanceof Error ? err.message : err);
-      return { proposals: [], runs: [], total: 0, hasHighStakes: false };
+      return { proposals: [], runs: [], conflicts: [], total: 0, hasHighStakes: false };
     }),
   ]);
   // Pick the first keeper nibbin for this account (each account has exactly one).

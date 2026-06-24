@@ -36,13 +36,15 @@ describe('loadPendingItems', () => {
   it('2a. empty state — returns zero-filled PendingQueue', async () => {
     const notifChain = makeChain(async () => ({ data: [], error: null }));
     const runsChain = makeChain(async () => ({ data: [], error: null }));
-    const supabase = makeSupabase([notifChain, runsChain]);
+    const conflictsChain = makeChain(async () => ({ data: [], error: null }));
+    const supabase = makeSupabase([notifChain, runsChain, conflictsChain]);
 
     const result = await loadPendingItems(supabase as never, ACCOUNT_ID);
 
     expect(result).toEqual({
       proposals: [],
       runs: [],
+      conflicts: [],
       total: 0,
       hasHighStakes: false,
     });
@@ -67,7 +69,8 @@ describe('loadPendingItems', () => {
       error: null,
     }));
     const runsChain = makeChain(async () => ({ data: [], error: null }));
-    const supabase = makeSupabase([notifChain, proposalsChain, runsChain]);
+    const conflictsChain = makeChain(async () => ({ data: [], error: null }));
+    const supabase = makeSupabase([notifChain, proposalsChain, runsChain, conflictsChain]);
 
     const result = await loadPendingItems(supabase as never, ACCOUNT_ID);
 
@@ -100,7 +103,8 @@ describe('loadPendingItems', () => {
       error: null,
     }));
     const runsChain = makeChain(async () => ({ data: [], error: null }));
-    const supabase = makeSupabase([notifChain, proposalsChain, runsChain]);
+    const conflictsChain = makeChain(async () => ({ data: [], error: null }));
+    const supabase = makeSupabase([notifChain, proposalsChain, runsChain, conflictsChain]);
 
     const result = await loadPendingItems(supabase as never, ACCOUNT_ID);
 
@@ -133,7 +137,8 @@ describe('loadPendingItems', () => {
       ],
       error: null,
     }));
-    const supabase = makeSupabase([notifChain, proposalsChain, runsChain]);
+    const conflictsChain = makeChain(async () => ({ data: [], error: null }));
+    const supabase = makeSupabase([notifChain, proposalsChain, runsChain, conflictsChain]);
 
     const result = await loadPendingItems(supabase as never, ACCOUNT_ID);
 
@@ -162,7 +167,8 @@ describe('loadPendingItems', () => {
       error: null,
     }));
     const runsChain = makeChain(async () => ({ data: [], error: null }));
-    const supabase = makeSupabase([notifChain, proposalsChain, runsChain]);
+    const conflictsChain = makeChain(async () => ({ data: [], error: null }));
+    const supabase = makeSupabase([notifChain, proposalsChain, runsChain, conflictsChain]);
 
     const result = await loadPendingItems(supabase as never, ACCOUNT_ID);
 
@@ -190,7 +196,8 @@ describe('loadPendingItems', () => {
       error: null,
     }));
     const runsChain = makeChain(async () => ({ data: [], error: null }));
-    const supabase = makeSupabase([notifChain, proposalsChain, runsChain]);
+    const conflictsChain = makeChain(async () => ({ data: [], error: null }));
+    const supabase = makeSupabase([notifChain, proposalsChain, runsChain, conflictsChain]);
 
     const result = await loadPendingItems(supabase as never, ACCOUNT_ID);
 
@@ -213,7 +220,8 @@ describe('loadPendingItems', () => {
       ],
       error: null,
     }));
-    const supabase = makeSupabase([notifChain, runsChain]);
+    const conflictsChain = makeChain(async () => ({ data: [], error: null }));
+    const supabase = makeSupabase([notifChain, runsChain, conflictsChain]);
 
     const result = await loadPendingItems(supabase as never, ACCOUNT_ID);
 
@@ -234,7 +242,8 @@ describe('loadPendingItems', () => {
       ],
       error: null,
     }));
-    const supabase = makeSupabase([notifChain, runsChain]);
+    const conflictsChain = makeChain(async () => ({ data: [], error: null }));
+    const supabase = makeSupabase([notifChain, runsChain, conflictsChain]);
 
     const result = await loadPendingItems(supabase as never, ACCOUNT_ID);
 
@@ -244,10 +253,143 @@ describe('loadPendingItems', () => {
   it('DB error on notif query — returns empty queue without throwing', async () => {
     const notifChain = makeChain(async () => ({ data: null, error: { message: 'db error' } }));
     const runsChain = makeChain(async () => ({ data: [], error: null }));
-    const supabase = makeSupabase([notifChain, runsChain]);
+    const conflictsChain = makeChain(async () => ({ data: [], error: null }));
+    const supabase = makeSupabase([notifChain, runsChain, conflictsChain]);
 
     const result = await loadPendingItems(supabase as never, ACCOUNT_ID);
 
-    expect(result).toEqual({ proposals: [], runs: [], total: 0, hasHighStakes: false });
+    expect(result).toEqual({ proposals: [], runs: [], conflicts: [], total: 0, hasHighStakes: false });
+  });
+
+  // ── Task 7: field_flags conflict surfacing ────────────────────────────────
+
+  it('7a. open field_flags included — conflicts array populated, total updated', async () => {
+    const notifChain = makeChain(async () => ({ data: [], error: null }));
+    const runsChain = makeChain(async () => ({ data: [], error: null }));
+    const conflictsChain = makeChain(async () => ({
+      data: [
+        {
+          id: 'flag-1',
+          field_key: 'pricing',
+          detail: 'Rate conflict between doc and connector',
+          status: 'needs_review',
+          detected_at: '2026-06-23T08:00:00Z',
+        },
+      ],
+      error: null,
+    }));
+    const supabase = makeSupabase([notifChain, runsChain, conflictsChain]);
+
+    const result = await loadPendingItems(supabase as never, ACCOUNT_ID);
+
+    expect(result.conflicts).toHaveLength(1);
+    expect(result.conflicts[0].fieldKey).toBe('pricing');
+    expect(result.conflicts[0].detail).toBe('Rate conflict between doc and connector');
+    expect(result.conflicts[0].stakes).toBe('high'); // pricing → high
+    expect(result.total).toBe(1);
+  });
+
+  it('7b. high-stakes conflict — hasHighStakes=true', async () => {
+    const notifChain = makeChain(async () => ({ data: [], error: null }));
+    const runsChain = makeChain(async () => ({ data: [], error: null }));
+    const conflictsChain = makeChain(async () => ({
+      data: [
+        {
+          id: 'flag-hs',
+          field_key: 'hard_rules',
+          detail: 'Hard rule conflict',
+          status: 'needs_review',
+          detected_at: '2026-06-23T08:00:00Z',
+        },
+      ],
+      error: null,
+    }));
+    const supabase = makeSupabase([notifChain, runsChain, conflictsChain]);
+
+    const result = await loadPendingItems(supabase as never, ACCOUNT_ID);
+
+    expect(result.hasHighStakes).toBe(true);
+    expect(result.conflicts[0].stakes).toBe('high');
+  });
+
+  it('7c. normal-stakes conflict (non-high-stakes field_key)', async () => {
+    const notifChain = makeChain(async () => ({ data: [], error: null }));
+    const runsChain = makeChain(async () => ({ data: [], error: null }));
+    const conflictsChain = makeChain(async () => ({
+      data: [
+        {
+          id: 'flag-normal',
+          field_key: 'voice',
+          detail: 'Voice tone conflict',
+          status: 'needs_review',
+          detected_at: '2026-06-23T08:00:00Z',
+        },
+      ],
+      error: null,
+    }));
+    const supabase = makeSupabase([notifChain, runsChain, conflictsChain]);
+
+    const result = await loadPendingItems(supabase as never, ACCOUNT_ID);
+
+    expect(result.conflicts[0].stakes).toBe('normal');
+    expect(result.hasHighStakes).toBe(false);
+  });
+
+  it('7d. DB error on field_flags query — conflicts returns empty, function does not throw (fail-safe)', async () => {
+    const notifChain = makeChain(async () => ({ data: [], error: null }));
+    const runsChain = makeChain(async () => ({ data: [], error: null }));
+    const conflictsChain = makeChain(async () => ({ data: null, error: { message: 'db error on flags' } }));
+    const supabase = makeSupabase([notifChain, runsChain, conflictsChain]);
+
+    const result = await loadPendingItems(supabase as never, ACCOUNT_ID);
+
+    expect(result.conflicts).toEqual([]);
+    expect(result.total).toBe(0);
+  });
+
+  it('7e. conflicts + proposals both present — total sums both', async () => {
+    const propId = 'prop-xyz';
+    const notifChain = makeChain(async () => ({
+      data: [{ id: 'n1', source_id: propId, payload: {}, stakes: 'normal', created_at: '2026-06-23T10:00:00Z' }],
+      error: null,
+    }));
+    const proposalsChain = makeChain(async () => ({
+      data: [{ id: propId, field_key: 'retainer', rationale: 'Updated retainer' }],
+      error: null,
+    }));
+    const runsChain = makeChain(async () => ({ data: [], error: null }));
+    const conflictsChain = makeChain(async () => ({
+      data: [
+        {
+          id: 'flag-2',
+          field_key: 'policies',
+          detail: 'Policy conflict',
+          status: 'needs_review',
+          detected_at: '2026-06-23T09:00:00Z',
+        },
+      ],
+      error: null,
+    }));
+    const supabase = makeSupabase([notifChain, proposalsChain, runsChain, conflictsChain]);
+
+    const result = await loadPendingItems(supabase as never, ACCOUNT_ID);
+
+    expect(result.proposals).toHaveLength(1);
+    expect(result.conflicts).toHaveLength(1);
+    expect(result.total).toBe(2);
+    // policies is high-stakes
+    expect(result.hasHighStakes).toBe(true);
+  });
+
+  it('7f. empty field_flags — conflicts=[], total unchanged from proposals+runs', async () => {
+    const notifChain = makeChain(async () => ({ data: [], error: null }));
+    const runsChain = makeChain(async () => ({ data: [], error: null }));
+    const conflictsChain = makeChain(async () => ({ data: [], error: null }));
+    const supabase = makeSupabase([notifChain, runsChain, conflictsChain]);
+
+    const result = await loadPendingItems(supabase as never, ACCOUNT_ID);
+
+    expect(result.conflicts).toEqual([]);
+    expect(result.total).toBe(0);
   });
 });
