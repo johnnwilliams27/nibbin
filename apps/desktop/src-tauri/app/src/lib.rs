@@ -262,6 +262,16 @@ pub fn run() {
             let handle = app.handle().clone();
             std::thread::spawn(move || loop {
                 if let Ok(status) = commands::read_status(&handle) {
+                    // Refresh the parent-liveness heartbeat the daemon watchdog
+                    // reads (0.2.5): while this app is alive, the daemon must not
+                    // consider itself orphaned. Skip when the study is DELETED so
+                    // we never re-create a residue file after a C3 deletion has
+                    // verified the store is clean (the verifier allows only
+                    // study.json to survive).
+                    let deleted = status.get("state").and_then(|v| v.as_str()) == Some("DELETED");
+                    if !deleted {
+                        daemon_supervisor::touch_app_heartbeat(&handle);
+                    }
                     let _ = handle.emit("study:status", &status);
                     if let Some(tray) = handle.tray_by_id("observer-tray") {
                         let remaining_ms = status
@@ -309,6 +319,11 @@ pub fn run() {
                 if let Some(tray) = app.tray_by_id("observer-tray") {
                     let _ = tray.set_visible(false);
                 }
+                // 0.2.5 lifecycle fix #3: stop the capture daemon we spawned so
+                // quitting Nibbin deterministically stops capture, rather than
+                // leaving an orphaned observerd running until its own watchdog
+                // (or the next uninstall) notices.
+                daemon_supervisor::stop_spawned_daemon();
             }
         });
 }

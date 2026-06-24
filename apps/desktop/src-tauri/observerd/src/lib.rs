@@ -31,6 +31,7 @@ use std::path::{Path, PathBuf};
 
 mod exclusions;
 mod field_notes;
+pub mod watchdog;
 
 /// Daemon clock. Tests pin it via NIBBIN_FAKE_NOW (ISO-8601); production is
 /// wall clock. The fake is read once per call so long-running tests can move
@@ -203,6 +204,14 @@ impl Daemon {
 
     pub fn study(&self) -> &StudySnapshot {
         &self.study
+    }
+
+    /// Stop the capture source ahead of a watchdog-driven process exit, so the
+    /// platform capturer is torn down deterministically (no in-flight sampling
+    /// races the process teardown). Idempotent: `stop()` on an already-stopped
+    /// source is a no-op.
+    pub fn shutdown_capture(&mut self) {
+        self.source.stop();
     }
 
     pub fn gate(&self) -> CaptureGate {
@@ -633,6 +642,10 @@ impl Daemon {
             "exclusions.json.tmp",
             "field_notes.json",
             "field_notes.json.tmp",
+            // 0.2.5 watchdog bookkeeping (no raw data, but removed so the C3
+            // verifier's "nothing but study.json" bar still holds).
+            crate::watchdog::DAEMON_LEASE_FILE,
+            crate::watchdog::APP_HEARTBEAT_FILE,
         ] {
             let p = self.store_root.join(extra);
             if p.exists() {
