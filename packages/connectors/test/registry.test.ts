@@ -8,9 +8,23 @@ import {
   listConnectors,
   getConnector,
 } from '../src/registry/registry';
-import { validateDescriptor, capabilityCanSend } from '../src/registry/types';
+import { validateDescriptor, capabilityCanSend, type ConnectorDescriptor } from '../src/registry/types';
 import { OAUTH_PROVIDERS } from '../src/oauth/providers';
 import { hostMatchesPattern } from '../src/egress/safe-fetch';
+
+const validNDescriptor: ConnectorDescriptor = {
+  id: 'test-nango',
+  label: 'Test Nango',
+  tier: 1,
+  method: 'N',
+  scopes: { read: ['some.scope'], write: [] },
+  webhooks: { supported: false },
+  rateLimit: { requests: 60, perSeconds: 60 },
+  scanModules: [],
+  capabilities: [],
+  egressAllowlist: ['api.example.com'],
+  availability: 'live',
+};
 
 const TIER1_CATALOG = [
   'gmail',
@@ -35,7 +49,9 @@ const TIER1_CATALOG = [
   'caldav',
 ];
 
-const M3_HAND_BUILT = ['gmail', 'google-calendar', 'stripe', 'honeybook', 'pixieset', 'instagram-dm'];
+// Task 7: gmail + google-calendar moved to method 'N'; stripe/honeybook/pixieset/instagram-dm stay 'H'
+const M3_HAND_BUILT_H = ['stripe', 'honeybook', 'pixieset', 'instagram-dm'];
+const M3_NANGO = ['gmail', 'google-calendar'];
 
 describe('connector registry (SPEC §4.3)', () => {
   it('every descriptor validates', () => {
@@ -55,12 +71,25 @@ describe('connector registry (SPEC §4.3)', () => {
     }
   });
 
-  it('the six §8-M3 hand-built connectors are live [H]', () => {
-    for (const id of M3_HAND_BUILT) {
+  it('the four §8-M3 remaining hand-built connectors are live [H]', () => {
+    for (const id of M3_HAND_BUILT_H) {
       const d = getConnector(id);
       expect(d.method, id).toBe('H');
       expect(d.availability, id).toBe('live');
     }
+  });
+
+  // Task 7: gmail + google-calendar promoted to Nango lane
+  it('gmail and google-calendar use method N (Task 7)', () => {
+    for (const id of M3_NANGO) {
+      const d = getConnector(id);
+      expect(d.method, id).toBe('N');
+      expect(d.availability, id).toBe('live');
+    }
+  });
+
+  it('stripe stays method H (Nango migration deferred — no Stripe OAuth app)', () => {
+    expect(getConnector('stripe').method).toBe('H');
   });
 
   it('12+ connectors are live (M3 DoD)', () => {
@@ -145,10 +174,28 @@ describe('connector registry (SPEC §4.3)', () => {
     expect(() => getConnector('myspace')).toThrow(/unknown connector/);
   });
 
+  // Task 5 — egress allowlist fix: Calendar API host must be in the allowlist
+  it('google-calendar egressAllowlist includes calendar.googleapis.com', () => {
+    const d = getConnector('google-calendar');
+    expect(d.egressAllowlist).toContain('calendar.googleapis.com');
+  });
+
   it('gmail descriptor declares both compose and send in scopes.write', () => {
     const gmail = getConnector('gmail');
     const write = gmail.scopes.write;
     expect(write).toContain('https://www.googleapis.com/auth/gmail.compose');
     expect(write).toContain('https://www.googleapis.com/auth/gmail.send');
+  });
+
+  // Task 1 — ConnectorMethod 'N' support
+  it('accepts method N with a non-empty egress allowlist', () => {
+    expect(validateDescriptor(validNDescriptor)).toEqual([]);
+  });
+
+  it('rejects method N with empty egress allowlist', () => {
+    const d = { ...validNDescriptor, egressAllowlist: [] };
+    expect(validateDescriptor(d)).toEqual(
+      expect.arrayContaining([expect.stringContaining('egress allowlist')]),
+    );
   });
 });

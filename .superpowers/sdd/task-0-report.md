@@ -1,74 +1,106 @@
-# Task 0 Report — stakes column + RPC extension
+# Task 0 Report — Env smoke-test + package installation
 
-**Branch:** `feature/company-brain-attention-queue`
 **Date:** 2026-06-23
-**Status:** COMPLETE — all tests green, committed.
+**Branch:** `feature/company-brain-nango`
+**Worktree:** `C:\nib-p4`
 
 ---
 
-## What was built
+## What was done
 
-### Migration: `supabase/migrations/20260623100000_attention_queue_stakes.sql`
+1. Installed `@nangohq/node@0.70.8` (exact pin, no `^`) to `packages/connectors/package.json` dependencies using `npm install @nangohq/node@0.70.8 -w packages/connectors`.
+2. Created `packages/connectors/test/nango-smoke.test.ts` — skips unless `NANGO_SECRET_KEY` is set; ran as SKIPPED (no key in env).
+3. Created `packages/connectors/src/nango-client.ts` — single SDK re-export point (`Nango` class + `ProxyConfiguration` type).
+4. Ran `npx vitest run packages/connectors` — 186 tests pass, 3 skipped, 0 failed.
 
-Three operations:
+---
 
-**0a — `notifications.stakes` column**
-```sql
-alter table public.notifications
-  add column stakes text not null default 'normal'
-  check (stakes in ('normal', 'high'));
+## Pinned version
+
+`@nangohq/node`: **`0.70.8`** (exact, no range prefix)
+
+Note: The plan referenced `^0.43.7` but that version does not exist on npm (`0.43.0` is the only `0.43.x` release). The current stable release is `0.70.8`, which is what was installed and pinned.
+
+---
+
+## `proxy()` response shape (confirmed from SDK types)
+
 ```
-All existing rows receive `stakes = 'normal'` via DEFAULT. No backfill needed.
+proxy<T = any>(config: ProxyConfiguration): Promise<AxiosResponse<T>>
+```
 
-**0b — `insert_system_notification` (6-arg → 7-arg)**
-- Dropped the old 6-arg overload explicitly (PostgreSQL identifies functions by name + arg list, so the 7-arg is a different overload, not a replacement).
-- Created 7-arg `create or replace function` with `p_stakes text default 'normal'` appended.
-- Body validates stakes in `('normal','high')`, raises on invalid values, passes `stakes` into the INSERT.
-- Grants: `service_role` only (matching Foundation).
+`AxiosResponse<T>` shape (from `axios` transitive dep):
+```ts
+{
+  data: T,           // already-parsed JSON (object) when responseType='json'; raw string when 'text'
+  status: number,    // HTTP status code (200, 401, 429, etc.)
+  statusText: string,
+  headers: RawAxiosResponseHeaders | AxiosResponseHeaders,
+  config: InternalAxiosRequestConfig,
+  request?: any,
+}
+```
 
-**0c — `propose_memory_change` (7-arg → 8-arg)**
-- Dropped the 7-arg Foundation version (which used plain `create function`, not `create or replace`, so explicit drop was required).
-- Created 8-arg `create or replace function` with `p_stakes text default 'normal'` appended after `p_origin`.
-- Forwarded `p_stakes` to `insert_system_notification(...)` call.
-- Preserved ALL existing behavior: quarantine guard, proposal INSERT, notification call, return value.
-- Grants: `service_role` only (matching Foundation). Revoke from `public, anon, authenticated`.
-
----
-
-## TDD result
-
-Test file: `tests/rls/attention-queue-stakes.test.ts`
-
-| Test | Pre-migration | Post-migration |
-|------|--------------|----------------|
-| 1a: `insert_system_notification` no `p_stakes` → stakes='normal' | FAIL (column missing) | PASS |
-| 1b: `insert_system_notification` `p_stakes='high'` → stakes='high' | FAIL (7-arg fn missing) | PASS |
-| 1c: invalid stakes value raises | FAIL (fn missing) | PASS |
-| 1d: `propose_memory_change` `p_stakes='high'` propagates | FAIL (8-arg fn missing) | PASS |
-| 1e: `propose_memory_change` without `p_stakes` (7-arg, backward-compat) → stakes='normal' | FAIL (8-arg fn missing) | PASS |
-| 1f: authenticated client cannot insert `notifications` directly | FAIL (suite setup error) | PASS |
-
-**Total: 6/6 passing**
-
-Regression suites run after migration:
-- `company-brain-foundation.test.ts`: 15/15 passing
-- `system-notification.test.ts`: 3/3 passing
+**Key implication for Task 2 mock:** `res.data` is already parsed JSON (not a raw string) when `responseType: 'json'` (the default and what `NangoConnectorClient.request()` will use). Do NOT call `JSON.parse(res.data)` — call `JSON.stringify(res.data)` to get a string for quarantine. The plan's mock shape `{ status, data, headers }` is correct; no `text()` helper needed on the mock because `NangoConnectorClient.request()` will use `JSON.stringify(res.data)` for `text()`.
 
 ---
 
-## Key decisions
+## `getConnection()` signature (for Task 9 callback)
 
-1. **`drop function` before create**: PostgreSQL function identity includes argument list. The Foundation's 6-arg `insert_system_notification` and 7-arg `propose_memory_change` are distinct overloads from the new 7-arg and 8-arg versions. Explicit `drop function if exists` was required to retire the old signatures cleanly.
+```ts
+getConnection(
+  providerConfigKey: string,
+  connectionId: string,
+  forceRefresh?: boolean,
+  refreshToken?: boolean,
+  refreshGithubAppJwtToken?: boolean,
+): Promise<GetPublicConnection['Success']>
+```
 
-2. **Kept `returns void` on `insert_system_notification`**: The plan notation `returns uuid ...` was illustrative. Changing return type from `void` to `uuid` via `create or replace` would require a DROP first. Since no callers (including the new `propose_memory_change`) inspect the return value, `void` was retained to minimize diff.
-
-3. **`p_stakes` DEFAULT on both functions**: Satisfies the critical constraint — existing callers (doc-ingestion, capture, existing Foundation tests) call `propose_memory_change` with 7 positional args and are unaffected. PostgREST named-arg resolution also works correctly.
-
-4. **Stakes validation in function body**: Added explicit `raise exception` for invalid stakes values (in addition to relying on the column CHECK constraint) to produce a clear error message rather than a generic constraint violation.
+The mock in the plan (`getConnectionResult: { credentials: { raw: { scope: string } } }`) needs to match the `GetPublicConnection['Success']` type. Scopes come from `connection.credentials.raw.scope` (a space-separated string for OAuth2 Google connections).
 
 ---
 
-## Concerns / notes for reviewer
+## `deleteConnection()` argument order — IMPORTANT
 
-- None critical. The P2 sibling chunk that adds non-empty/append-overflow guard to `propose_memory_change` will need to reconcile against the 8-arg signature when it merges — the plan notes this is handled at merge time.
-- The `on conflict (account_id, kind, source_id) do nothing` dedup invariant is preserved: stakes are set on first emission and not re-escalated (per plan).
+The plan (Task 10) says:
+```ts
+nango.deleteConnection(conn.nango_connection_id, conn.nango_provider_config_key)
+```
+
+But the actual SDK signature is:
+```ts
+deleteConnection(providerConfigKey: string, connectionId: string): Promise<AxiosResponse<void>>
+```
+
+**The argument order is REVERSED from the plan.** Task 10 must call:
+```ts
+nango.deleteConnection(conn.nango_provider_config_key, conn.nango_connection_id)
+```
+
+---
+
+## `NangoProps` constructor note
+
+In v0.70.8, the preferred constructor field is `apiKey`. The `secretKey` field still works as a deprecated alias (TypeScript allows it but it is marked `@deprecated`). The smoke test uses `secretKey` per the plan — this is fine, but Task 6's Nango singleton should use `apiKey` once the env var name is finalized (or rename `NANGO_SECRET_KEY` → `NANGO_API_KEY` in the env docs).
+
+---
+
+## Files created/modified
+
+| File | Action |
+|---|---|
+| `packages/connectors/package.json` | Added `"@nangohq/node": "0.70.8"` to dependencies |
+| `packages/connectors/test/nango-smoke.test.ts` | Created — SDK instantiation smoke test (skip-if-no-key) |
+| `packages/connectors/src/nango-client.ts` | Created — SDK re-export point |
+
+---
+
+## Test result
+
+```
+Test Files  12 passed | 2 skipped (14)
+     Tests  186 passed | 3 skipped (189)
+```
+
+All pre-existing tests green. Smoke test skipped (no `NANGO_SECRET_KEY`).

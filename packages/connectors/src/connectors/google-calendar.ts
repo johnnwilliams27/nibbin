@@ -1,15 +1,32 @@
 /**
- * Google Calendar [H] — scheduling Nibbins, availability answers (SPEC §4.3).
+ * Google Calendar [N] — scheduling Nibbins, availability answers (SPEC §4.3).
  * calendar.events write scope is requested at connect (C8); the runtime write-grant
  * gate (gateSideEffect) is the primary authority — the local scope-check below is
  * defense-in-depth, not the gate that governs autonomy.
+ *
+ * Transport: Nango proxy lane ([N]). Token custody is Nango Cloud.
  */
-import { HttpConnectorClient } from './base';
+import { NangoConnectorClient } from './nango-base';
+import type { Nango } from '../nango-client';
 import type { Connection } from '../types';
-import type { TokenVault } from '../vault';
-import type { UnsafeTestOverrides } from '../egress/safe-fetch';
+import { NangoConnectionMissingError } from './gmail';
 
-const BASE = 'https://www.googleapis.com';
+/**
+ * Factory for GoogleCalendarClient — the preferred way to instantiate the
+ * client in apps/web. Validates that method=N connections have a non-null
+ * nangoConnectionId. N connections have no live vault token; an empty string
+ * would silently send invalid Nango requests.
+ */
+export function makeGoogleCalendarClient(connection: Connection, nango: Nango): GoogleCalendarClient {
+  if (connection.provider !== 'google-calendar') {
+    throw new Error(`provider mismatch: expected google-calendar, got ${connection.provider}`);
+  }
+  if (connection.method === 'N' && !connection.nangoConnectionId) {
+    throw new NangoConnectionMissingError(connection.provider, connection.id);
+  }
+  return new GoogleCalendarClient(connection, nango, connection.nangoConnectionId ?? '');
+}
+
 const SCOPE_EVENTS = 'https://www.googleapis.com/auth/calendar.events';
 
 export interface CalendarEvent {
@@ -23,9 +40,13 @@ export interface CalendarEvent {
   updated?: string;
 }
 
-export class GoogleCalendarClient extends HttpConnectorClient {
-  constructor(connection: Connection, vault: TokenVault, unsafeTestOverrides?: UnsafeTestOverrides) {
-    super(connection, BASE, vault, unsafeTestOverrides);
+export class GoogleCalendarClient extends NangoConnectorClient {
+  constructor(
+    connection: Connection,
+    nango: Nango,
+    nangoConnectionId: string,
+  ) {
+    super(connection, nango, 'google-calendar', nangoConnectionId);
   }
 
   async listCalendars(): Promise<{ items?: Array<{ id: string; primary?: boolean }> }> {

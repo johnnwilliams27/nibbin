@@ -43,12 +43,20 @@ export interface TesterAllowlist {
   count(): number;
 }
 
-export interface BeginAuthorizationRequest {
+/**
+ * Narrow request shape for `enforcePlatformGate` — only the fields the gate
+ * actually reads. Extracted so that [N] (Nango) call sites do not need to pass
+ * `clientId`/`redirectUri` (which the gate ignores).
+ */
+export interface PlatformGateRequest {
   provider: string;
-  clientId: string;
-  redirectUri: string;
   /** Required while the provider's platform verification is pending. */
   tester?: { email: string; allowlist: TesterAllowlist };
+}
+
+export interface BeginAuthorizationRequest extends PlatformGateRequest {
+  clientId: string;
+  redirectUri: string;
   loginHint?: string;
 }
 
@@ -100,7 +108,15 @@ function requireOAuthProvider(provider: string): { descriptor: ConnectorDescript
   return { descriptor, config };
 }
 
-function enforcePlatformGate(descriptor: ConnectorDescriptor, req: BeginAuthorizationRequest): void {
+/**
+ * Enforce the platform verification gate (Google CASA / 100-user cap).
+ * Exported so it can be called from non-[H] connect paths (e.g. [N] Nango)
+ * without going through `beginConnectAuthorization`.
+ *
+ * Takes a `PlatformGateRequest` (not the full `BeginAuthorizationRequest`) so
+ * callers do not need to supply `clientId`/`redirectUri` that the gate never reads.
+ */
+export function enforcePlatformGate(descriptor: ConnectorDescriptor, req: PlatformGateRequest): void {
   const platform = descriptor.platform;
   if (platform?.verification !== 'pending') return;
   if (!req.tester) {

@@ -38,7 +38,7 @@ const TIER1: ConnectorDescriptor[] = [
     id: 'gmail',
     label: 'Gmail',
     tier: 1,
-    method: 'H',
+    method: 'N',
     scopes: {
       // gmail.readonly gives full read access including message bodies,
       // required by the diagnosis data dump for rich context. Still a Google
@@ -71,7 +71,7 @@ const TIER1: ConnectorDescriptor[] = [
     id: 'google-calendar',
     label: 'Google Calendar',
     tier: 1,
-    method: 'H',
+    method: 'N',
     scopes: {
       read: ['https://www.googleapis.com/auth/calendar.readonly'],
       write: ['https://www.googleapis.com/auth/calendar.events'],
@@ -80,7 +80,7 @@ const TIER1: ConnectorDescriptor[] = [
     rateLimit: { requests: 600, perSeconds: 60 },
     scanModules: ['calendar.meeting-load', 'calendar.no-show-churn', 'calendar.confirmation-gaps'],
     capabilities: ['calendar.read', 'calendar.event-create'],
-    egressAllowlist: GOOGLE_AUTH_HOSTS,
+    egressAllowlist: ['calendar.googleapis.com', ...GOOGLE_AUTH_HOSTS],
     platform: GOOGLE_PENDING,
     availability: 'live',
   },

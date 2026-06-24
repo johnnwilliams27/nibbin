@@ -28,6 +28,13 @@ vi.mock('../../../../lib/supabase/service', () => ({
 
 vi.mock('@nibbin/connectors', async () => {
   const { CONNECTOR_REGISTRY } = await import('../../../../../../packages/connectors/src/index');
+  const mockGmailClient = {
+    historyList: vi.fn().mockResolvedValue({ history: [], historyId: '100' }),
+    getProfile: vi.fn().mockResolvedValue({ emailAddress: 'test@g.com', historyId: '100' }),
+  };
+  const mockCalendarClient = {
+    listEventsSync: vi.fn().mockResolvedValue({ items: [], nextSyncToken: 'cal-tok-1' }),
+  };
   return {
     CONNECTOR_REGISTRY,
     SupabaseWebhookEventStore: vi.fn(function () {
@@ -39,20 +46,17 @@ vi.mock('@nibbin/connectors', async () => {
     SupabaseTokenVault: vi.fn(function () {
       return {};
     }),
-    GmailClient: vi.fn(function () {
-      return {
-        historyList: vi.fn().mockResolvedValue({ history: [], historyId: '100' }),
-        getProfile: vi.fn().mockResolvedValue({ emailAddress: 'test@g.com', historyId: '100' }),
-      };
-    }),
-    GoogleCalendarClient: vi.fn(function () {
-      return {
-        listEventsSync: vi.fn().mockResolvedValue({ items: [], nextSyncToken: 'cal-tok-1' }),
-      };
-    }),
+    GmailClient: vi.fn(function () { return mockGmailClient; }),
+    makeGmailClient: vi.fn(function () { return mockGmailClient; }),
+    GoogleCalendarClient: vi.fn(function () { return mockCalendarClient; }),
+    makeGoogleCalendarClient: vi.fn(function () { return mockCalendarClient; }),
     fetchCalendarDelta: vi.fn().mockResolvedValue({ events: [], newSyncToken: 'cal-tok-1' }),
   };
 });
+
+vi.mock('../../../../lib/connectors/nango', () => ({
+  getNango: vi.fn(() => ({})),
+}));
 
 vi.mock('../../../../lib/runtime/engine', () => ({
   connectionFromRow: vi.fn((row: Record<string, unknown>) => ({

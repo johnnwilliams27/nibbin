@@ -1,11 +1,12 @@
 import 'server-only';
 import { NextResponse, type NextRequest } from 'next/server';
 import { serviceClient } from '../../../../../lib/supabase/service';
-import { GmailClient, SupabaseTokenVault, SupabaseWebhookEventStore } from '@nibbin/connectors';
+import { makeGmailClient, SupabaseWebhookEventStore } from '@nibbin/connectors';
 import { connectionFromRow, activeNibbinsForAccount, triggerNibbinRun } from '../../../../../lib/runtime/engine';
 import { dispatchForConnection } from '../../../../../lib/connections/dispatch';
 import { fetchGmailDelta, advanceGmailCursor } from '../../../../../lib/connections/gmail-delta';
 import { verifyPubSubRequest } from '../../../../../lib/connections/push-verify';
+import { getNango } from '../../../../../lib/connectors/nango';
 
 export const dynamic = 'force-dynamic';
 const DISPATCH_TIMEOUT_MS = 15_000;
@@ -70,11 +71,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const ctrl = new AbortController();
   const timeout = setTimeout(() => { ctrl.abort(); }, DISPATCH_TIMEOUT_MS);
   try {
-    const vault = new SupabaseTokenVault({
-      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
-      serviceKey: process.env.SUPABASE_SECRET_KEY ?? '',
-    });
-    const client = new GmailClient(connection, vault);
+    const client = makeGmailClient(connection, getNango());
     const { events, newHistoryId } = await fetchGmailDelta(
       connection.id,
       connection.accountId,

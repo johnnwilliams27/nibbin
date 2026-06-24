@@ -9,6 +9,9 @@ import { storePending } from '../../../lib/connections/pending';
 import { beginConnect } from '../../../lib/connections/begin';
 import { beginWriteConnect } from '../../../lib/connections/begin-write';
 import { revokeAndSuspend } from '../../../lib/connections/revoke-connection';
+import { buildNangoConnectUrl, providerToNangoKey } from '../../../lib/connections/nango-connect';
+import { getNango } from '../../../lib/connectors/nango';
+import { getConnector } from '@nibbin/connectors';
 
 export async function beginConnectAction(formData: FormData): Promise<void> {
   const provider = String(formData.get('provider') ?? '');
@@ -18,6 +21,64 @@ export async function beginConnectAction(formData: FormData): Promise<void> {
 
   const { user, accountId } = await appSession();
   const svc = serviceClient();
+
+  const descriptor = getConnector(provider);
+
+  // [N] Nango lane — enforce the tester gate then redirect to Nango hosted OAuth.
+  // The [H] hand-built path (beginConnect/beginWriteConnect) is left unchanged below.
+  if (descriptor.method === 'N') {
+    const testerAllowlist = await loadTesterAllowlist(provider, svc);
+    const { url, nangoConnectionId } = buildNangoConnectUrl({
+      provider,
+      accountId,
+      userEmail: user.email ?? null,
+      testerAllowlist,
+      returnTo,
+    });
+
+    // SECURITY (cross-account binding): pre-issue a pending connections row
+    // bound to THIS authenticated account, keyed by the nango_connection_id we
+    // hand to Nango. The webhook callback activates ONLY a row that was pre-
+    // issued here — it never trusts the account encoded in an inbound
+    // connectionId on its own. Without this binding, an authenticated user
+    // could complete OAuth under connection_id=nibbin-{victimAccount}-{provider}
+    // (the public key is browser-exposed) and hijack another account's
+    // connection row. See docs/gates/2026-06-23-p4-nango-connector-lane.md.
+    const nangoProviderConfigKey = providerToNangoKey(provider);
+    const { data: existing } = await svc
+      .from('connections')
+      .select('id')
+      .eq('account_id', accountId)
+      .eq('provider', provider)
+      .neq('status', 'revoked')
+      .maybeSingle();
+
+    if (existing?.id) {
+      await svc
+        .from('connections')
+        .update({
+          method: 'N',
+          nango_connection_id: nangoConnectionId,
+          nango_provider_config_key: nangoProviderConfigKey,
+        })
+        .eq('id', existing.id);
+    } else {
+      await svc.from('connections').insert({
+        account_id: accountId,
+        provider,
+        method: 'N',
+        nango_connection_id: nangoConnectionId,
+        nango_provider_config_key: nangoProviderConfigKey,
+        status: 'pending',
+        created_by: user.id,
+      });
+    }
+
+    redirect(url);
+    return;
+  }
+
+  // [H] hand-built lane — unchanged.
   const { url } = await beginConnect(
     { provider, accountId, userId: user.id, userEmail: user.email ?? null, returnTo, resumeTemplate, sweepConsent },
     {
@@ -35,21 +96,41 @@ export async function beginConnectAction(formData: FormData): Promise<void> {
  * Account-scoped lookup so a request can only ever revoke the caller's own
  * connection (never an arbitrary connection_id). revokeAndSuspend destroys the
  * vault secret, flips status → revoked, and suspends dependent write-grants.
+ *
+ * For [N] Nango-lane providers (gmail, google-calendar): nango.deleteConnection()
+ * is called before the local row revoke (fail-open — a Nango error does NOT
+ * block the local revoke). See Global Constraint 8 in the plan.
  */
 export async function disconnectAction(formData: FormData): Promise<void> {
   const provider = String(formData.get('provider') ?? '');
   const { user, accountId } = await appSession();
   const svc = serviceClient();
 
+  const descriptor = getConnector(provider);
+
   const { data: conn } = await svc
     .from('connections')
-    .select('id')
+    .select('id, nango_connection_id, nango_provider_config_key')
     .eq('account_id', accountId)
     .eq('provider', provider)
     .neq('status', 'revoked')
     .maybeSingle();
 
-  if (conn?.id) await revokeAndSuspend(conn.id as string, user.id, svc);
+  if (conn?.id) {
+    // [N] lane: pass Nango deps so deleteConnection is called before revoke.
+    const nangoDeps =
+      descriptor.method === 'N' &&
+      conn.nango_connection_id &&
+      conn.nango_provider_config_key
+        ? {
+            nango: getNango(),
+            nangoConnectionId: conn.nango_connection_id as string,
+            nangoProviderConfigKey: conn.nango_provider_config_key as string,
+          }
+        : undefined;
+
+    await revokeAndSuspend(conn.id as string, user.id, svc, nangoDeps);
+  }
 
   redirect(`/app/connections?disconnected=${encodeURIComponent(provider)}`);
 }

@@ -1,67 +1,73 @@
-# Task 1 Report — RLS/RPC Attack Suite for Stakes Change
+# Task 1 Report — ConnectorMethod 'N' + validateDescriptor
 
+**Status:** DONE_WITH_CONCERNS
 **Date:** 2026-06-23
-**Branch:** feature/company-brain-attention-queue
-**File:** `tests/rls/attention-queue-stakes.test.ts`
 
----
+## Files Changed
 
-## Status
+- `packages/connectors/src/registry/types.ts` — two edits
+- `packages/connectors/test/registry.test.ts` — test additions
 
-PASS — 14/14 tests green. 8 attack assertions added; 6 Task-0 tests left intact.
+## Changes Made
 
----
+### `types.ts`
+1. `ConnectorMethod` broadened: `'A' | 'H' | 'G'` → `'A' | 'H' | 'G' | 'N'`
+2. Method validator updated: `['A', 'H', 'G'].includes(d.method)` → `['A', 'H', 'G', 'N'].includes(d.method)`
+3. Egress-allowlist error message updated: `'A/H connectors must declare an egress allowlist'` → `'A/H/N connectors must declare an egress allowlist'`
 
-## Coverage Map
+The existing `else` branch (non-empty egress required) already covers `'N'` — no structural change to the egress block was needed. The `'G'` branch (empty required) is untouched. The `scopes.read` check (`d.method !== 'G'`) already correctly requires read scopes for `'N'`.
 
-### Already covered by Task 0 (preserved, not duplicated)
+### `registry.test.ts`
+Added at top of file (before the describe block):
+- `import type { ConnectorDescriptor }` added to existing import
+- `validNDescriptor` constant: a minimal valid method-N descriptor with `egressAllowlist: ['api.example.com']`
 
-| Test | Assertion |
-|------|-----------|
-| 1a | `insert_system_notification` with no `p_stakes` → `stakes='normal'` |
-| 1b | `insert_system_notification` with `p_stakes='high'` → `stakes='high'` |
-| 1c | `insert_system_notification` with `p_stakes='critical'` raises |
-| 1d | `propose_memory_change` with `p_stakes='high'` propagates to notification row |
-| 1e | `propose_memory_change` without `p_stakes` (7-arg, backward-compat) → `stakes='normal'` |
-| 1f | Authenticated client cannot INSERT into `notifications` directly |
+Added at end of describe block:
+- `'accepts method N with a non-empty egress allowlist'` — expects `validateDescriptor(validNDescriptor)` returns `[]`
+- `'rejects method N with empty egress allowlist'` — expects the error array contains a string with 'egress allowlist'
 
-### Added by Task 1 (attack assertions)
+## Test Run Results
 
-| Test | Attack / Coverage gap |
-|------|-----------------------|
-| 1g | **Anon INSERT blocked** — anon role cannot insert into `notifications` directly (closes the gap in 1f which only covered `authenticated`) |
-| 1h | **Authenticated UPDATE stakes blocked** — authenticated client cannot UPDATE `notifications.stakes` to escalate priority; INSERT block alone is insufficient if UPDATE is open |
-| 1i | **Anon UPDATE stakes blocked** — anon role cannot UPDATE `notifications.stakes` either |
-| 1j | **Cross-account isolation (negative)** — user B cannot see user A's notification rows (including the `stakes` column) |
-| 1k | **Cross-account isolation (positive + negative)** — user B sees their own notification with correct `stakes` value, AND cannot see A's notification by `source_id` lookup |
-| 1l | **Kind allowlist still enforced** — `insert_system_notification` rejects forged kinds `system_alert`, `admin_notice`, `marketing`; the new `p_stakes` param did not relax the guard |
-| 1m | **Kind allowlist regression — nudge/demotion still allowed** — verifies the 7-arg replacement function still accepts all 3 permitted kinds without error |
-| 1n | **Invalid stakes through `propose_memory_change` wrapper** — 1c tested `insert_system_notification` directly; this test exercises the full call chain to confirm the validation error propagates up through `propose_memory_change` |
+```
+Tests  19 passed (19)   [registry.test.ts]
+Tests  188 passed | 3 skipped (191)   [full packages/connectors suite]
+```
 
----
-
-## Holes Found
-
-None. The migration is sound:
-
-- `notifications` RLS prevents all direct client writes (INSERT + UPDATE) regardless of the new `stakes` column.
-- The `insert_system_notification` kind allowlist (`nudge`, `demotion`, `review_item`) is unchanged and still enforced before stakes validation; a forger cannot route a bad kind in.
-- The `check (stakes in ('normal', 'high'))` constraint on the column is redundant with the PL/pgSQL guard in `insert_system_notification`, but both fire correctly — belt-and-suspenders.
-- Cross-account RLS isolation is not weakened by the new column.
-
----
+Typecheck: green across all packages.
 
 ## Concerns
 
-None blocking. One observation: the column-level CHECK constraint (`check (stakes in ('normal', 'high'))`) would fire on a direct INSERT if RLS were ever misconfigured, but the actual guard that fires in tests is the PL/pgSQL `RAISE EXCEPTION` inside the function (the RLS permission-denied fires first for client roles). The dual-guard is a net positive.
+### C1 — Plan's `.toContain(expect.stringContaining(...))` does not work in Vitest for arrays
 
----
-
-## Test Run
-
+The plan at Task 1, step 1 specifies:
+```ts
+expect(validateDescriptor(d)).toContain(expect.stringContaining('egress allowlist'));
 ```
-Tests  14 passed (14)
-Duration  2.52s
+In Vitest, `Array.toContain()` uses `===` equality and does NOT accept asymmetric matchers for array elements. The test was RED for the wrong reason (matcher mismatch, not logic failure). Fixed by changing to:
+```ts
+expect(validateDescriptor(d)).toEqual(
+  expect.arrayContaining([expect.stringContaining('egress allowlist')]),
+);
 ```
+This is a correct TDD adaptation — the intent is identical, only the assertion form differs. Noted here for the plan author.
 
-Command: `npx vitest run tests/rls/attention-queue-stakes.test.ts`
+### C2 — Existing test `'the six §8-M3 hand-built connectors are live [H]'` asserts gmail/google-calendar are still `'H'`
+
+Line 58-64 of registry.test.ts:
+```ts
+it('the six §8-M3 hand-built connectors are live [H]', () => {
+  for (const id of M3_HAND_BUILT) {
+    expect(d.method, id).toBe('H');
+```
+where `M3_HAND_BUILT = ['gmail', 'google-calendar', 'stripe', 'honeybook', 'pixieset', 'instagram-dm']`.
+
+This test currently passes because the registry still has `method: 'H'` for gmail and google-calendar (Task 7 flips these). When Task 7 is implemented, this test will break. Task 7's plan correctly adds a NEW test asserting method = 'N' — but it does not mention removing/updating this existing assertion. The task-7 implementer must either remove gmail/google-calendar from `M3_HAND_BUILT` or update the test description. Flagging so it is not overlooked.
+
+### C3 — `A/H connectors declare egress allowlists` test also covers 'N' automatically
+
+Existing test at line 108:
+```ts
+it('A/H connectors declare egress allowlists', () => {
+  for (const d of listConnectors().filter((d) => d.method !== 'G')) {
+```
+This filter `d.method !== 'G'` already includes `'N'` connectors, so when Task 7 flips gmail/google-calendar to `'N'`, this test will still correctly enforce the non-empty egress allowlist rule on them. No change needed here — just confirming the invariant will hold.

@@ -16,6 +16,7 @@ import { SendVelocityLimiter, MemorySendRecordStore } from '../src/send-velocity
 import { isQuarantined } from '../src/quarantine';
 import type { Connection } from '../src/types';
 import type { UnsafeTestOverrides } from '../src/egress/safe-fetch';
+import { makeMockNango } from './helpers/mock-nango';
 
 const overrides: UnsafeTestOverrides = {
   lookup: async () => [{ address: '127.0.0.1', family: 4 }],
@@ -124,14 +125,14 @@ describe('write paths are adoption-gated (C8) and velocity-capped (RISKS §2)', 
   const matureAccount = Date.now() - 90 * 86_400_000;
 
   it('gmail drafts demand the compose grant', async () => {
-    const conn = connection({ provider: 'gmail', scopes: ['https://www.googleapis.com/auth/gmail.metadata'] });
-    const client = new GmailClient(conn, await vaultWith({}, conn.id), overrides);
+    const conn = connection({ provider: 'gmail', method: 'N', scopes: ['https://www.googleapis.com/auth/gmail.metadata'] });
+    const client = new GmailClient(conn, makeMockNango(), 'nango-conn-id');
     await expect(client.createDraft('cmF3')).rejects.toThrowError(/granted per-Nibbin at adoption/);
   });
 
   it('gmail sends demand the send grant', async () => {
-    const conn = connection({ provider: 'gmail', scopes: ['https://www.googleapis.com/auth/gmail.metadata'] });
-    const client = new GmailClient(conn, await vaultWith({}, conn.id), overrides);
+    const conn = connection({ provider: 'gmail', method: 'N', scopes: ['https://www.googleapis.com/auth/gmail.metadata'] });
+    const client = new GmailClient(conn, makeMockNango(), 'nango-conn-id');
     await expect(client.sendMessage('cmF3', limiter(), matureAccount)).rejects.toThrowError(
       /granted per-Nibbin at adoption/,
     );
@@ -140,9 +141,10 @@ describe('write paths are adoption-gated (C8) and velocity-capped (RISKS §2)', 
   it('gmail sends stop at the velocity cap even with the grant', async () => {
     const conn = connection({
       provider: 'gmail',
+      method: 'N',
       scopes: ['https://www.googleapis.com/auth/gmail.metadata', 'https://www.googleapis.com/auth/gmail.send'],
     });
-    const client = new GmailClient(conn, await vaultWith({}, conn.id), overrides);
+    const client = new GmailClient(conn, makeMockNango(), 'nango-conn-id');
     const l = limiter();
     // exhaust the hourly budget out-of-band
     const gmailDescriptor = client.descriptor;
@@ -302,13 +304,12 @@ describe('aggregator adapter (method A)', () => {
 // raw PII (event titles / attendee emails) — derived-not-raw hardening.
 describe('GoogleCalendarClient — derived-not-raw fields restriction (Fix 2)', () => {
   function makeCalConn() {
-    return connection({ provider: 'google-calendar', scopes: ['https://www.googleapis.com/auth/calendar.readonly'] });
+    return connection({ provider: 'google-calendar', method: 'N', scopes: ['https://www.googleapis.com/auth/calendar.readonly'] });
   }
 
   it('listEvents includes fields= that excludes summary and attendee email', async () => {
     const conn = makeCalConn();
-    const vault = await vaultWith({}, conn.id);
-    const client = new GoogleCalendarClient(conn, vault, overrides);
+    const client = new GoogleCalendarClient(conn, makeMockNango(), 'nango-conn-id');
 
     let capturedPath = '';
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -332,8 +333,7 @@ describe('GoogleCalendarClient — derived-not-raw fields restriction (Fix 2)', 
 
   it('listEventsSync (delta path) includes fields= that excludes summary and attendee email', async () => {
     const conn = makeCalConn();
-    const vault = await vaultWith({}, conn.id);
-    const client = new GoogleCalendarClient(conn, vault, overrides);
+    const client = new GoogleCalendarClient(conn, makeMockNango(), 'nango-conn-id');
 
     let capturedPath = '';
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -358,13 +358,12 @@ describe('GoogleCalendarClient — derived-not-raw fields restriction (Fix 2)', 
 
 describe('GmailClient.historyList + getProfile', () => {
   function makeGmailConn() {
-    return connection({ provider: 'gmail', scopes: ['https://www.googleapis.com/auth/gmail.metadata'] });
+    return connection({ provider: 'gmail', method: 'N', scopes: ['https://www.googleapis.com/auth/gmail.metadata'] });
   }
 
   it('historyList builds the correct query params', async () => {
     const conn = makeGmailConn();
-    const vault = await vaultWith({}, conn.id);
-    const client = new GmailClient(conn, vault, overrides);
+    const client = new GmailClient(conn, makeMockNango(), 'nango-conn-id');
 
     let capturedPath = '';
     // readJson is protected but accessible at runtime; use unknown[] to satisfy
@@ -382,8 +381,7 @@ describe('GmailClient.historyList + getProfile', () => {
 
   it('historyList defaults maxResults to 100', async () => {
     const conn = makeGmailConn();
-    const vault = await vaultWith({}, conn.id);
-    const client = new GmailClient(conn, vault, overrides);
+    const client = new GmailClient(conn, makeMockNango(), 'nango-conn-id');
 
     let capturedPath = '';
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -398,8 +396,7 @@ describe('GmailClient.historyList + getProfile', () => {
 
   it('getProfile returns emailAddress and historyId', async () => {
     const conn = makeGmailConn();
-    const vault = await vaultWith({}, conn.id);
-    const client = new GmailClient(conn, vault, overrides);
+    const client = new GmailClient(conn, makeMockNango(), 'nango-conn-id');
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.spyOn(client as any, 'readJson').mockResolvedValue({

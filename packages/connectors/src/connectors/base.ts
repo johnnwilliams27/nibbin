@@ -19,7 +19,7 @@ export class ConnectorRequestError extends Error {
   constructor(
     readonly provider: string,
     readonly status: number,
-    readonly kind: 'auth' | 'rate-limit' | 'provider' | 'connection-state',
+    readonly kind: 'auth' | 'rate-limit' | 'provider' | 'connection-state' | 'egress',
   ) {
     super(`${provider} request failed: ${kind} (status ${status})`);
     this.name = 'ConnectorRequestError';

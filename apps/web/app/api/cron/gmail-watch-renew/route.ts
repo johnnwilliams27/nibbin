@@ -1,9 +1,10 @@
 import 'server-only';
 import { NextResponse, type NextRequest } from 'next/server';
 import { serviceClient } from '../../../../lib/supabase/service';
-import { GmailClient, SupabaseTokenVault } from '@nibbin/connectors';
+import { makeGmailClient } from '@nibbin/connectors';
 import { connectionFromRow } from '../../../../lib/runtime/engine';
 import { isAuthorizedCronRequest } from '../../../../lib/connections/cron-auth';
+import { getNango } from '../../../../lib/connectors/nango';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -40,11 +41,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     return expiry === null || expiry < renewalHorizon;
   });
 
-  const vault = new SupabaseTokenVault({
-    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
-    serviceKey: process.env.SUPABASE_SECRET_KEY ?? '',
-  });
-
   const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
   let registered = 0;
   const errors: string[] = [];
@@ -54,7 +50,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       const connection = connectionFromRow(row as Record<string, unknown>);
       const ws = (row as { webhook_state?: Record<string, unknown> | null }).webhook_state;
       const existingCursor = ws && typeof ws.historyId === 'string' ? ws.historyId : null;
-      const client = new GmailClient(connection, vault);
+      const client = makeGmailClient(connection, getNango());
       // Seed the mailbox address: a Pub/Sub push notification carries only the
       // emailAddress, and the push webhook maps it back to this connection via
       // webhook_state.email. Without this the push handler never matches a

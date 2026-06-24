@@ -1,5 +1,5 @@
 /**
- * Gmail [H] — where solo business arrives (SPEC §4.3).
+ * Gmail [N] — where solo business arrives (SPEC §4.3).
  *
  * Pending Google verification + CASA, this client runs on gmail.metadata
  * (headers/labels only) behind the 100-user tester allowlist (docs/RISKS.md
@@ -9,14 +9,49 @@
  * Send paths exist for post-adoption write grants and are double-gated:
  * granted-scope check + send-velocity caps. Agent School stage gating happens
  * in the M4 runtime on top of this.
+ *
+ * Transport: Nango proxy lane ([N]). Token custody is Nango Cloud.
  */
-import { HttpConnectorClient } from './base';
+import { NangoConnectorClient } from './nango-base';
+import type { Nango } from '../nango-client';
 import type { Connection } from '../types';
-import type { TokenVault } from '../vault';
-import type { UnsafeTestOverrides } from '../egress/safe-fetch';
 import { SendVelocityLimiter } from '../send-velocity';
 
-const BASE = 'https://gmail.googleapis.com';
+/**
+ * Thrown by makeGmailClient when a method=N connection has no nangoConnectionId.
+ * N-method connections MUST have a nangoConnectionId — vault reads are blocked
+ * for N connections (no live vault token). This typed error lets callers surface
+ * a "reconnect required" message rather than silently calling Nango with ''.
+ */
+export class NangoConnectionMissingError extends Error {
+  constructor(
+    readonly provider: string,
+    readonly connectionId: string,
+  ) {
+    super(
+      `${provider} connection ${connectionId} is method=N but has no nangoConnectionId — reconnect required`,
+    );
+    this.name = 'NangoConnectionMissingError';
+  }
+}
+
+/**
+ * Factory for GmailClient — the preferred way to instantiate the client in
+ * apps/web. Validates that method=N connections have a non-null nangoConnectionId
+ * (N connections have no live vault token; an empty string would silently
+ * send invalid Nango requests). Non-N connections are passed through with
+ * an empty string id for backward compatibility.
+ */
+export function makeGmailClient(connection: Connection, nango: Nango): GmailClient {
+  if (connection.provider !== 'gmail') {
+    throw new Error(`provider mismatch: expected gmail, got ${connection.provider}`);
+  }
+  if (connection.method === 'N' && !connection.nangoConnectionId) {
+    throw new NangoConnectionMissingError(connection.provider, connection.id);
+  }
+  return new GmailClient(connection, nango, connection.nangoConnectionId ?? '');
+}
+
 const SCOPE_COMPOSE = 'https://www.googleapis.com/auth/gmail.compose';
 const SCOPE_SEND = 'https://www.googleapis.com/auth/gmail.send';
 
@@ -68,9 +103,13 @@ interface ListMessagesResponse {
   resultSizeEstimate?: number;
 }
 
-export class GmailClient extends HttpConnectorClient {
-  constructor(connection: Connection, vault: TokenVault, unsafeTestOverrides?: UnsafeTestOverrides) {
-    super(connection, BASE, vault, unsafeTestOverrides);
+export class GmailClient extends NangoConnectorClient {
+  constructor(
+    connection: Connection,
+    nango: Nango,
+    nangoConnectionId: string,
+  ) {
+    super(connection, nango, 'google-mail', nangoConnectionId);
   }
 
   /** List message ids matching a Gmail query (e.g. `after:2026/03/01 in:inbox`). */
