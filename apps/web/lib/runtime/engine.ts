@@ -44,6 +44,7 @@ import {
   SupabaseEventSink,
   SupabaseGrantStore,
   SupabaseIdempotencyStore,
+  SupabaseNudgeFloorStore,
   SupabaseResourceClaimStore,
   SupabaseRoutineStore,
   SupabaseRunStore,
@@ -596,6 +597,11 @@ export async function triggerNibbinRun(nibbinId: string, trigger: RunTrigger): P
     // two Nibbins on one account never both act on the same thread/invoice. Skips
     // on a live conflict; fails open on infra error (the runner catches).
     claims: new SupabaseResourceClaimStore(svc),
+    // Task 5a: the cross-run re-nudge safety floor. Bounds re-nudging the same
+    // invoice (min interval + max count, clamped to the hard floor) regardless
+    // of how often the schedule tick fires — required before any Tally Nibbin
+    // runs at the `act` action level. Reads/records the nudge_ledger.
+    nudgeFloor: new SupabaseNudgeFloorStore(svc),
     // M6.5: the model seam. Absent ANTHROPIC_API_KEY this is undefined and
     // every compose stays deterministic — same honest no-model behavior the
     // keeper chat has (#25).

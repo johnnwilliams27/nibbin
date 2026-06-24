@@ -14,7 +14,8 @@
 import { createHash } from 'node:crypto';
 import { isQuarantined, quarantine, type QuarantinedContent } from '@nibbin/connectors';
 import { capability } from './capabilities';
-import type { GrantStore, ResourceClaimStore, RoutineStore, RunStore, IdempotencyStore } from './stores';
+import { decideNudge, resolveCadencePolicy, NUDGE_LOOKBACK_MS, type NudgeCadencePolicy } from './nudge-floor';
+import type { GrantStore, NudgeFloorStore, ResourceClaimStore, RoutineStore, RunStore, IdempotencyStore } from './stores';
 import type {
   DraftStep,
   KillReason,
@@ -103,6 +104,16 @@ export interface RunnerDeps {
    * instead. Infra errors in `claim` are caught and treated as fail-open.
    */
   claims?: ResourceClaimStore;
+  /**
+   * Task 5a re-nudge safety floor. Absent = no cross-run re-nudge bound (the
+   * velocity cap + resource claim still apply). When present, a nudge step
+   * (effectArgs carries a `nudgeResourceKind`/`invoiceId` identity) is checked
+   * against the per-(nibbin, resource) nudge ledger BEFORE the irreversible
+   * send: a still-within-cadence/over-the-cap nudge is SKIPPED (the run
+   * completes normally, like a resource conflict), and a send that proceeds is
+   * recorded. MUST be wired before any nudge Nibbin runs at the `act` level.
+   */
+  nudgeFloor?: NudgeFloorStore;
   now(): number;
 }
 
@@ -165,7 +176,14 @@ export type StepDisposition =
    * completes normally (the conflict is logged on the step). `holderNibbin` is
    * the nibbin that is already handling the resource.
    */
-  | { kind: 'resource_conflict'; capability: string; resourceType: string; resourceId: string; holderNibbin: string };
+  | { kind: 'resource_conflict'; capability: string; resourceType: string; resourceId: string; holderNibbin: string }
+  /**
+   * Task 5a: the irreversible re-nudge was SKIPPED because it is still within
+   * the cadence/safety floor for this (nibbin, resource). Like resource_conflict,
+   * the run is NOT killed — it completes normally; the skip is logged on the
+   * step. `floor` distinguishes the hard safety floor from the soft cadence.
+   */
+  | { kind: 'nudge_skipped'; capability: string; resourceKind: string; resourceId: string; reason: 'max_count' | 'too_soon'; floor: boolean };
 
 /**
  * Derive the resource claim identity from a DraftStep that is about to auto-
@@ -211,6 +229,41 @@ export function deriveResourceClaim(step: DraftStep): { resourceType: string; re
   }
   // No derivable resource id → skip the claim (don't block the send).
   return null;
+}
+
+/**
+ * Derive the re-nudge floor identity + cadence policy from a draft step that is
+ * about to auto-execute. Returns `null` when the step is not a re-nudge (so the
+ * floor never touches ordinary sends — only a step whose trusted effectArgs
+ * carry a nudge identity participates). The cadence policy is read from
+ * `effectArgs.nudgeCadence` (built by the primitive from the owner's business
+ * rule / learned cadence) and is CLAMPED to the hard floor by resolveCadencePolicy.
+ *
+ * Identity: a re-nudge is a send whose effectArgs carry an `invoiceId` (the
+ * overdue-invoice nudge rides email.send with `{invoiceId, to}`). `nudgeResourceKind`
+ * defaults to 'invoice'. This is intentionally narrow — it gates the nudge
+ * pattern, not every email.
+ */
+export function deriveNudgeFloor(
+  step: DraftStep,
+): { resourceKind: string; resourceId: string; policy: NudgeCadencePolicy } | null {
+  const args = step.effectArgs;
+  const invoiceId = typeof args.invoiceId === 'string' && args.invoiceId ? args.invoiceId : null;
+  if (!invoiceId) return null;
+  const resourceKind =
+    typeof args.nudgeResourceKind === 'string' && args.nudgeResourceKind ? args.nudgeResourceKind : 'invoice';
+  // The cadence policy is owner/learned input; resolveCadencePolicy clamps it to
+  // the floor (interval ≥ floor, count ≤ floor). A missing/garbage value falls
+  // back to the clamped defaults — never weaker than the floor.
+  const raw = args.nudgeCadence;
+  const cadenceInput =
+    raw && typeof raw === 'object'
+      ? {
+          intervalMs: typeof (raw as Record<string, unknown>).intervalMs === 'number' ? (raw as Record<string, number>).intervalMs : undefined,
+          maxNudges: typeof (raw as Record<string, unknown>).maxNudges === 'number' ? (raw as Record<string, number>).maxNudges : undefined,
+        }
+      : undefined;
+  return { resourceKind, resourceId: invoiceId, policy: resolveCadencePolicy(cadenceInput) };
 }
 
 export interface DispatchCtx {
@@ -472,6 +525,66 @@ export async function dispatchStep(
     }
   }
 
+  // Task 5a: the re-nudge cadence / safety floor. Checked AFTER the resource
+  // claim (a live conflict skips before us) and BEFORE the idempotency claim —
+  // for the same reason the claim goes first: a floor-skip must NOT create an
+  // idempotency row, or a later legitimate redelivery past the cadence would be
+  // permanently refused. Only nudge steps (effectArgs carry a nudge identity)
+  // participate; ordinary sends derive null and pass straight through. Fail-open
+  // on infra error: a floor-store throw proceeds with the send (the velocity cap
+  // and resource claim remain), so the bound degrading never drops a legit nudge.
+  if (deps.nudgeFloor) {
+    const nf = deriveNudgeFloor(step);
+    if (nf) {
+      let history: number[] | null = null;
+      try {
+        history = await deps.nudgeFloor.history(
+          nibbin.id,
+          nf.resourceKind,
+          nf.resourceId,
+          deps.now() - NUDGE_LOOKBACK_MS,
+        );
+      } catch (err) {
+        console.warn(
+          '[runner] nudge-floor history infra error (fail-open) — proceeding with send:',
+          err instanceof Error ? err.message : String(err),
+        );
+      }
+      if (history !== null) {
+        const decision = decideNudge(history, deps.now(), nf.policy);
+        if (!decision.allow) {
+          // Within the cadence/floor → skip the send. No idempotency row, so a
+          // later redelivery past the cadence is re-attempted (not dropped).
+          await deps.runs.recordStep(nibbin.accountId, runId, {
+            idx: idx++,
+            kind: 'execute',
+            tool: step.capability,
+            inputHash: hashArgs(step.effectArgs),
+            tokens: 0,
+            payload: {
+              patternKey: step.patternKey,
+              deduped: false,
+              nudgeSkipped: true,
+              nudgeReason: decision.reason,
+              nudgeFloor: decision.floor,
+              resourceKind: nf.resourceKind,
+              resourceId: nf.resourceId,
+              priorNudges: history.length,
+            },
+          });
+          return done({
+            kind: 'nudge_skipped',
+            capability: step.capability,
+            resourceKind: nf.resourceKind,
+            resourceId: nf.resourceId,
+            reason: decision.reason,
+            floor: decision.floor,
+          });
+        }
+      }
+    }
+  }
+
   const idempotencyKey = effectIdempotencyKey(nibbin, step, trigger, runId);
   const claim = await deps.idempotency.claim({
     accountId: nibbin.accountId,
@@ -491,6 +604,30 @@ export async function dispatchStep(
       idempotencyKey,
     });
     await deps.idempotency.markExecuted(nibbin.accountId, idempotencyKey);
+    // Task 5a: record the nudge AFTER the send executes so the next run's floor
+    // check sees it. Only on a real send (claim === 'claimed'), never on a
+    // dedup. Best-effort: a record failure must NOT undo the send (the send
+    // already fired) — log and continue. A missed record can only let ONE extra
+    // nudge through next run; the hard count cap still backstops it.
+    if (deps.nudgeFloor) {
+      const nf = deriveNudgeFloor(step);
+      if (nf) {
+        try {
+          await deps.nudgeFloor.record({
+            accountId: nibbin.accountId,
+            nibbinId: nibbin.id,
+            resourceKind: nf.resourceKind,
+            resourceId: nf.resourceId,
+            atMs: deps.now(),
+          });
+        } catch (err) {
+          console.warn(
+            '[runner] nudge-floor record failed (non-fatal, send already executed):',
+            err instanceof Error ? err.message : String(err),
+          );
+        }
+      }
+    }
   }
   await deps.runs.recordStep(nibbin.accountId, runId, {
     idx: idx++,
@@ -606,6 +743,22 @@ export async function executeRun(
             resourceType: disp.resourceType,
             resourceId: disp.resourceId,
             holderNibbin: disp.holderNibbin,
+          },
+        };
+      }
+      if (disp.kind === 'nudge_skipped') {
+        // Task 5a: the re-nudge was within the cadence/floor; the run completes
+        // without re-sending. Surface the skip so callers can log it.
+        await deps.runs.finish(runId, 'completed');
+        return {
+          kind: 'completed',
+          runId,
+          nudgeSkipped: {
+            capability: disp.capability,
+            resourceKind: disp.resourceKind,
+            resourceId: disp.resourceId,
+            reason: disp.reason,
+            floor: disp.floor,
           },
         };
       }

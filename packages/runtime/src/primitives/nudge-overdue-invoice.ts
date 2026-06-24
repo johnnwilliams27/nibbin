@@ -42,6 +42,15 @@ type ConnectionMap = Record<string, string | undefined>;
 export interface NudgeOverdueInvoiceInputs {
   /** Only nudge invoices at least this many days past due. Default 0 (tally). */
   minDaysLate?: number;
+  /**
+   * Task 5a — the owner's re-nudge cadence (business rule or learned). Both
+   * fields are optional and the runtime CLAMPS them to the hard safety floor
+   * (interval ≥ 3 days, count ≤ 4): the owner can be stricter, never looser.
+   *   - `everyDays`  : min days between nudges for one invoice (default 7).
+   *   - `maxNudges`  : stop after this many nudges for one invoice (default 3).
+   */
+  cadenceEveryDays?: number;
+  cadenceMaxNudges?: number;
 }
 
 interface StripeInvoice {
@@ -52,6 +61,15 @@ interface StripeInvoice {
   customer?: string;
   customer_email?: string | null;
   hosted_invoice_url?: string | null;
+  /**
+   * Stripe-dunning signals (read-only). When Stripe's OWN automatic collection
+   * is driving this invoice, Stripe sends the customer its stock reminder email
+   * on `next_payment_attempt`. Nudging on top of that double-dunns the customer
+   * (a Nibbin email + a Stripe email). We detect active Stripe dunning and defer.
+   */
+  collection_method?: string | null;     // 'charge_automatically' = Stripe auto-collects
+  auto_advance?: boolean | null;          // Stripe is auto-advancing the invoice lifecycle
+  next_payment_attempt?: number | null;   // epoch secs — Stripe's next scheduled retry
 }
 
 /**
@@ -65,6 +83,12 @@ export function nudgeOverdueInvoice(
   nowMs: number,
 ): ProgramFn {
   const minDaysLate = inputs.minDaysLate ?? 0;
+  // The owner cadence travels with the draft's effectArgs; the runtime floor
+  // store reads it and CLAMPS it to the hard safety floor (never looser). Built
+  // here in trusted code — the Composer/LLM never supplies it.
+  const nudgeCadence: { intervalMs?: number; maxNudges?: number } = {};
+  if (typeof inputs.cadenceEveryDays === 'number') nudgeCadence.intervalMs = inputs.cadenceEveryDays * DAY;
+  if (typeof inputs.cadenceMaxNudges === 'number') nudgeCadence.maxNudges = inputs.cadenceMaxNudges;
   return async function* () {
     const stripe = connMap.stripe;
     if (!stripe) throw new Error('no active stripe connection — pausing politely');
@@ -86,6 +110,25 @@ export function nudgeOverdueInvoice(
       return;
     }
     const worst = overdue[0];
+    // Task 5a — Stripe-reminder coordination (avoid double-dunning). If Stripe's
+    // OWN automatic collection is active on this invoice (charge_automatically +
+    // auto_advance with a scheduled next_payment_attempt), Stripe is already
+    // emailing the customer. Defer to Stripe rather than stack a second dunning
+    // email on top. Read-only signal off the already-fetched invoice — no extra
+    // Stripe call, no write. The owner can still see the overdue invoice; we just
+    // don't pile on a personal nudge while Stripe is auto-dunning.
+    const stripeAutoDunning =
+      worst.collection_method === 'charge_automatically' &&
+      worst.auto_advance === true &&
+      typeof worst.next_payment_attempt === 'number' &&
+      worst.next_payment_attempt * 1000 > nowMs;
+    if (stripeAutoDunning) {
+      yield {
+        kind: 'compose',
+        payload: { note: 'deferring to Stripe automatic reminders — avoiding double-dunning' },
+      };
+      return;
+    }
     const to = safeAddress(worst.customer_email ?? undefined);
     if (!to) {
       yield { kind: 'compose', payload: { note: 'overdue invoice has no customer email on file' } };
@@ -113,7 +156,15 @@ export function nudgeOverdueInvoice(
         `it came due ${daysLate} days ago and may have slipped past. ` +
         `You can pay it here whenever it's convenient: ${payLink}. ` +
         `Happy to answer anything in the meantime. Thank you!`,
-      effectArgs: { invoiceId: worst.id, to },
+      effectArgs: {
+        invoiceId: worst.id,
+        to,
+        // Task 5a: the resource kind + owner cadence the runtime floor enforces.
+        nudgeResourceKind: 'invoice',
+        ...(nudgeCadence.intervalMs !== undefined || nudgeCadence.maxNudges !== undefined
+          ? { nudgeCadence }
+          : {}),
+      },
     } satisfies ProgramStep;
   };
 }

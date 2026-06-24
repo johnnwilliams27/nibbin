@@ -244,7 +244,7 @@ export interface StepRecord {
 
 export type RunResult =
   | { kind: 'awaiting_approval'; runId: string; draft: DraftStep }
-  | { kind: 'completed'; runId: string; resourceConflict?: { capability: string; resourceType: string; resourceId: string; holderNibbin: string } }
+  | { kind: 'completed'; runId: string; resourceConflict?: { capability: string; resourceType: string; resourceId: string; holderNibbin: string }; nudgeSkipped?: { capability: string; resourceKind: string; resourceId: string; reason: 'max_count' | 'too_soon'; floor: boolean } }
   | { kind: 'executed'; runId: string; effect: { capability: string; idempotencyKey: string } }
   | { kind: 'killed'; runId: string; reason: KillReason }
   | { kind: 'failed'; runId: string; error: string };

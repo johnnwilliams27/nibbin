@@ -381,6 +381,72 @@ export interface ResourceClaimStore {
   }): Promise<ResourceClaimResult>;
 }
 
+/* ── Task 5a: re-nudge cadence / safety floor ─────────────────────────────── */
+
+/**
+ * The cross-run nudge ledger (Connector batch Task 5a). A re-nudge to the same
+ * (nibbin, resource) must be BOUNDED regardless of how often the trigger fires:
+ * the resource-claim only stops two SIMULTANEOUS runs (it releases at run-end),
+ * and schedule triggers carry no dedupeKey, so the effect idempotency key falls
+ * back to runId per run. Without this, a still-overdue invoice is re-nudged on
+ * every scheduled tick.
+ *
+ * `history` answers "when/how often did THIS nibbin nudge THIS resource",
+ * returning the nudge timestamps (Unix ms, any order) within the lookback
+ * window. The runner derives the floor decision from this list; `record` appends
+ * one nudge after a send executes. Absent (undefined) on RunnerDeps = the floor
+ * is not wired → no re-nudge bound (matches the fail-open posture of the other
+ * optional stores; the velocity cap + resource claim still apply). Wire it
+ * before any nudge Nibbin runs at the `act` action level.
+ */
+export interface NudgeFloorStore {
+  /** Nudge timestamps (Unix ms) for (nibbin, resource) since `sinceMs`. */
+  history(nibbinId: string, resourceKind: string, resourceId: string, sinceMs: number): Promise<number[]>;
+  /** Append one nudge (called after the send executes). */
+  record(req: {
+    accountId: string;
+    nibbinId: string;
+    resourceKind: string;
+    resourceId: string;
+    atMs: number;
+  }): Promise<void>;
+}
+
+export class MemoryNudgeFloorStore implements NudgeFloorStore {
+  /** ledger[`nibbin:kind:id`] = sorted-ish list of nudge timestamps (ms). */
+  private ledger = new Map<string, number[]>();
+
+  private key(nibbinId: string, kind: string, id: string): string {
+    return `${nibbinId}:${kind}:${id}`;
+  }
+
+  async history(nibbinId: string, resourceKind: string, resourceId: string, sinceMs: number): Promise<number[]> {
+    const list = this.ledger.get(this.key(nibbinId, resourceKind, resourceId)) ?? [];
+    return list.filter((t) => t >= sinceMs);
+  }
+
+  async record(req: {
+    accountId: string;
+    nibbinId: string;
+    resourceKind: string;
+    resourceId: string;
+    atMs: number;
+  }): Promise<void> {
+    const k = this.key(req.nibbinId, req.resourceKind, req.resourceId);
+    const list = this.ledger.get(k) ?? [];
+    list.push(req.atMs);
+    this.ledger.set(k, list);
+  }
+
+  /** Test helper: seed a prior nudge at a given time. */
+  seed(nibbinId: string, resourceKind: string, resourceId: string, atMs: number): void {
+    const k = this.key(nibbinId, resourceKind, resourceId);
+    const list = this.ledger.get(k) ?? [];
+    list.push(atMs);
+    this.ledger.set(k, list);
+  }
+}
+
 export class MemoryResourceClaimStore implements ResourceClaimStore {
   /**
    * active[`account:type:id`] = { runId, nibbinId } — mirrors the DB unique
