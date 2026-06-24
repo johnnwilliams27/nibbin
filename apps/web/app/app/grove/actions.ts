@@ -20,8 +20,10 @@ import {
   type KeeperExpression,
   type KeeperMessage,
   type OnboardingStep,
+  type SynthesisCard,
   type UnderstandingProfile,
 } from '@nibbin/keeper';
+import { synthesize } from '../../../lib/synthesis/engine';
 import { understandingModelTurn } from '../../../lib/llm/understanding';
 import { writeHandoff } from '../../../lib/onboarding/handoff';
 import type { TokenUsage } from '@nibbin/router';
@@ -163,7 +165,13 @@ export async function keeperChatAction(rawText: unknown): Promise<GroveChatPaylo
   // read the plan to size the daily chat ceiling (#230) — a runaway backstop
   // scaled by plan so paying users get more headroom. No subscription row =
   // free tier (the tightest ceiling), matching the adopt-RPC convention.
-  const [{ data: row }, { data: sub }] = await Promise.all([
+  //
+  // grove_state doesn't carry a nibbin_id column — we look up the keeper
+  // nibbin in a parallel query so the synthesis engine gets the correct
+  // nibbinId to scope its memory retrieval. Best-effort: null nibbinId
+  // still works (engine uses accountId as the primary scope; nibbinId is
+  // used for memory provenance filtering only).
+  const [{ data: row }, { data: sub }, { data: keeperNibbins }] = await Promise.all([
     supabase
       .from('grove_state')
       .select('keeper_name')
@@ -174,7 +182,14 @@ export async function keeperChatAction(rawText: unknown): Promise<GroveChatPaylo
       .select('tier')
       .eq('account_id', accountId)
       .maybeSingle<{ tier: Tier | null }>(),
+    supabase
+      .from('nibbins')
+      .select('id')
+      .eq('account_id', accountId)
+      .eq('kind', 'keeper'),
   ]);
+  // Pick the first keeper nibbin for this account (each account has exactly one).
+  const nibbinId: string | null = (keeperNibbins as Array<{ id: string }> | null)?.[0]?.id ?? null;
   const dailyChatCeiling = CHAT_DAILY_CEILING[(sub?.tier ?? 'hatchling') as Tier];
 
   // M6.5: the real generate path. Without an API key this is null, keeperChat
@@ -259,6 +274,62 @@ export async function keeperChatAction(rawText: unknown): Promise<GroveChatPaylo
       degraded: reply.dispatchedDegraded,
       latencyMs: null,
     });
+  }
+
+  // ── Synthesis path (P5 / T7) ─────────────────────────────────────────────
+  //
+  // If the router's classifier detected a knowledge_lookup signal AND the turn
+  // was NOT budget-paused (no model spend happened), route to the synthesis
+  // engine. The unified budget has already been debited once inside keeperChat
+  // above — the synthesis engine does NOT draw a second unit (D18).
+  //
+  // C10 holds: synthesize() is READ-only (retrieve + compose, no tool calls).
+  //
+  // We only attempt synthesis when llm is wired — without a generate dep the
+  // keeper is already in scripted-floor mode and synthesis is similarly inert.
+  const isKnowledgeLookup =
+    reply.decision.classification?.signals?.includes('knowledge_lookup') ?? false;
+  const isPaused = reply.decision.paused === true;
+
+  if (isKnowledgeLookup && !isPaused && llm) {
+    try {
+      const result = await synthesize({
+        accountId,
+        nibbinId: nibbinId ?? accountId, // fallback: use accountId as a safe non-null string
+        question: text,
+        userId: user.id,
+      });
+
+      // Only return a SynthesisCard if the engine produced a non-empty answer.
+      // An empty answer (engine degraded) falls through to the normal reply below.
+      if (result.answer.trim().length > 0) {
+        const card: SynthesisCard = {
+          kind: 'synthesis',
+          // The engine's summary field (≤60 words) is the compact bubble text.
+          // Fall back to the first 300 chars of the full answer when absent.
+          summary: result.summary || result.answer.slice(0, 300),
+          fullAnswer: result.answer,
+          citations: result.citations,
+          gapNote: result.gapNote,
+          corpusCounts: result.corpusCounts,
+          // transcript must equal fullAnswer for screen-reader parity (§4.2 a11y rule).
+          transcript: result.answer,
+        };
+        return {
+          message: { id: crypto.randomUUID(), from: 'keeper', card },
+          expression: 'presenting',
+          routing: {
+            tier: reply.decision.tier,
+            degraded: reply.decision.degraded,
+            complexity: reply.decision.classification?.score,
+          },
+        };
+      }
+    } catch (err) {
+      // Graceful fallback: any synthesis failure returns the normal keeperChat
+      // reply below. This never disrupts the user's session.
+      console.error('[keeper] synthesis failed — falling through to normal reply', err instanceof Error ? err.message : err);
+    }
   }
 
   return {

@@ -35,6 +35,10 @@ export const TIER_FOR_TASK: Record<Exclude<RoutedTask, 'chat'>, Tier> = {
   // Vision extraction for scanned PDFs / images (T1 — Haiku handles vision
   // adequately for doc-text extraction; gated only on the scanned-PDF path).
   doc_vision_extract: 't1',
+  // Company-brain synthesis (P5 §6b): answers user questions from the source
+  // corpus + memory. T1 (mid-tier) — a frequent, interactive retrieval call
+  // that should not draw the frontier budget.
+  synthesis: 't1',
 };
 
 /**

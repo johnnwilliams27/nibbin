@@ -73,8 +73,9 @@ describe('tier table (§6.3)', () => {
     // 15 base tasks + sweep_pass1/sweep_pass2 (Spec 4 history sweep)
     // + memory_extract (§12A agent memory) + plan_synthesis (Slice 3a)
     // + style_extraction (§4A style profile) = 20
-    // + doc_extract + doc_vision_extract (P2 document ingestion) = 22.
-    expect(Object.keys(TIER_FOR_TASK)).toHaveLength(22);
+    // + doc_extract + doc_vision_extract (P2 document ingestion) = 22
+    // + synthesis (P5 §6b) = 23.
+    expect(Object.keys(TIER_FOR_TASK)).toHaveLength(23);
   });
 });
 
