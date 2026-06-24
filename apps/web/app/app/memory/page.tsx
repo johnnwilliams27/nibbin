@@ -1,96 +1,24 @@
 import type { Metadata } from 'next';
 import { appSession } from '../../../lib/auth/app-session';
 import { AppShell } from '../../../components/shell/AppShell';
-import { saveGroveMemory } from './actions';
+import { MemoryClient } from './MemoryClient';
+import { seedSectionsFromAnswers } from './seedSections';
+import { forwardMapLegacy, type FieldMetaRow } from './registry';
+import type { FieldMeta } from './provenance';
+import { StudySuggestionsBanner } from './StudySuggestionsBanner';
 import styles from './memory.module.css';
 
 export const metadata: Metadata = { title: 'What your grove knows — Nibbin' };
 export const dynamic = 'force-dynamic';
 
-const PLACEHOLDERS: Record<string, string> = {
-  facts: "What you do, who you serve, where you’re based…",
-  pricing: 'Your rates, packages, deposits…',
-  policies: 'Cancellations, rescheduling, turnaround, payment terms…',
-  faq: 'The questions you answer over and over — and your usual answers…',
-  voice: "How you sound — warm, brief, a little playful? Paste a reply you’re proud of…",
-};
-
-/**
- * Visual groups — determines order on the page and the section header copy.
- * Keys here must exactly match MEMORY_SECTIONS keys + the two extra fields.
- */
-const GROUPS: Array<{
-  heading: string;
-  hint: string;
-  fields: string[];
-}> = [
-  {
-    heading: 'About your business',
-    hint: 'The basics your Nibbins use to keep every draft on-brand and accurate.',
-    fields: ['facts', 'pricing', 'policies'],
-  },
-  {
-    heading: 'Voice & rules',
-    hint: "How you sound and what's never up for debate — Nibbins treat these as gospel.",
-    fields: ['voice', 'faq', 'hard_rules', 'notes'],
-  },
-];
-
 interface MemoryRow {
   sections: Record<string, string> | null;
   hard_rules: string[] | null;
   notes: string | null;
+  reference_text: string | null;
 }
 interface StateRow {
   answers: Record<string, unknown> | null;
-}
-
-/** One "Label: value" line from a string or string[]; null if there's nothing. */
-function answerLine(label: string, v: unknown): string | null {
-  if (typeof v === 'string' && v.trim() !== '') return `${label}: ${v.trim()}`;
-  if (Array.isArray(v)) {
-    const xs = v.filter((x): x is string => typeof x === 'string' && x.trim() !== '');
-    if (xs.length) return `${label}: ${xs.join(', ')}`;
-  }
-  return null;
-}
-
-/**
- * Seed the "facts" section from the onboarding answers blob. Post-#73 that blob
- * also carries the model's `_understanding`/`_profile` OBJECTS, so we must never
- * blindly stringify it (that yields "[object Object]"). Prefer the model's
- * profile; fall back to the legacy interview scalars. Returns {} when empty.
- */
-function seedSectionsFromAnswers(answers: Record<string, unknown>): Record<string, string> {
-  const lines: string[] = [];
-  const profile = answers._profile;
-  if (profile && typeof profile === 'object' && !Array.isArray(profile)) {
-    const p = profile as Record<string, unknown>;
-    for (const [label, key] of [
-      ['What I do', 'jobTitle'],
-      ['Business model', 'businessModel'],
-      ['Main work', 'workShape'],
-      ['Channels', 'channels'],
-      ['Tools', 'tools'],
-      ['Frustrations', 'pains'],
-    ] as const) {
-      if (key === 'businessModel' && p[key] === 'unknown') continue;
-      const line = answerLine(label, p[key]);
-      if (line) lines.push(line);
-    }
-  }
-  if (lines.length === 0) {
-    // legacy interview scalars only — never the `_`-prefixed state objects
-    for (const [label, key] of [
-      ['What I do', 'craft'],
-      ['Time sinks', 'timeSinks'],
-      ['Channels', 'channels'],
-    ] as const) {
-      const line = answerLine(label, answers[key]);
-      if (line) lines.push(line);
-    }
-  }
-  return lines.length ? { facts: lines.join('\n') } : {};
 }
 
 /** Build a lookup of field key → value for rendering. */
@@ -110,73 +38,142 @@ function allEmpty(values: Record<string, string>): boolean {
   return Object.values(values).every((v) => v.trim() === '');
 }
 
-/** Render one textarea field with the right name, value, rows, placeholder, and hint. */
-interface FieldProps {
-  fieldKey: string;
-  label: string;
-  value: string;
-  placeholder: string;
-  rows: number;
-  hint?: string;
+// ---------------------------------------------------------------------------
+// F1 provenance + dynamic registry loader (graceful-empty pre-F1)
+// ---------------------------------------------------------------------------
+
+/**
+ * Result shape for the combined field_meta load.
+ *
+ * Both halves are optional / gracefully-degraded:
+ *  - `fieldMeta`  → per-field provenance (undefined if tables absent or empty)
+ *  - `metaRows`   → FieldMetaRow[] for the dynamic section registry
+ *                   (empty array when table absent or no rows yet)
+ */
+interface FieldMetaResult {
+  fieldMeta: Record<string, FieldMeta> | undefined;
+  metaRows: FieldMetaRow[];
 }
 
-function MemoryField({ fieldKey, label, value, placeholder, rows, hint }: FieldProps) {
-  const filled = value.trim().length > 0;
-  return (
-    <div className={styles.field}>
-      <label className={styles.label} htmlFor={fieldKey}>
-        {label}
-      </label>
-      {hint && <p className={styles.hint}>{hint}</p>}
-      <textarea
-        className={`${styles.textarea} ${filled ? styles.textareaFilled : ''}`}
-        id={fieldKey}
-        name={fieldKey}
-        rows={rows}
-        defaultValue={value}
-        placeholder={placeholder}
-      />
-    </div>
-  );
+/**
+ * Loads per-field provenance AND dynamic registry rows from the `field_meta`,
+ * `field_evidence`, and `sources` tables.
+ *
+ * Strategy:
+ *   1. Query field_meta for ALL columns needed by both the registry (label,
+ *      sort_order, is_custom, is_hidden) and provenance (last_reviewed_at).
+ *   2. For each field, find the most recent linked source via field_evidence → sources.
+ *   3. If the query throws (tables not yet in schema = pre-F1), degrade silently:
+ *      return undefined fieldMeta and empty metaRows.
+ *
+ * The `metaRows` result activates the dynamic section registry in MemoryClient
+ * (Task 6 prop). When empty (no rows, pre-migration), MemoryClient falls back
+ * to the legacy static rendering for back-compat.
+ *
+ * Returns { fieldMeta, metaRows } — both gracefully empty on any error.
+ */
+async function loadFieldMetaAndRows(
+  supabase: Awaited<ReturnType<typeof import('../../../lib/auth/app-session').appSession>>['supabase'],
+  accountId: string,
+): Promise<FieldMetaResult> {
+  try {
+    // 1. Load all field_meta rows for this account — include ALL registry columns
+    //    (label, sort_order, is_custom, is_hidden) PLUS provenance column (last_reviewed_at).
+    //    New columns (Task 1 migration) fall back gracefully if absent: PostgREST returns
+    //    null for columns the query references but the row doesn't have.
+    const { data: rawRows, error: metaErr } = await supabase
+      .from('field_meta')
+      .select('field_key, last_reviewed_at, label, sort_order, is_custom, is_hidden')
+      .eq('account_id', accountId);
+
+    if (metaErr) {
+      // Table absent (pre-F1) or RLS deny → silent degrade
+      return { fieldMeta: undefined, metaRows: [] };
+    }
+    if (!rawRows || rawRows.length === 0) {
+      // No rows yet for this account — return defaults
+      return { fieldMeta: undefined, metaRows: [] };
+    }
+
+    // 2. Build FieldMetaRow[] for the dynamic registry (Task 7 activation).
+    //    Coerce nulls from pre-migration columns to safe defaults.
+    const metaRows: FieldMetaRow[] = rawRows.map((row) => ({
+      field_key: row.field_key as string,
+      label: (row.label as string | null) ?? null,
+      sort_order: typeof row.sort_order === 'number' ? row.sort_order : 1000,
+      is_custom: typeof row.is_custom === 'boolean' ? row.is_custom : false,
+      is_hidden: typeof row.is_hidden === 'boolean' ? row.is_hidden : false,
+    }));
+
+    // 3. Load field_evidence with the linked source's captured_at
+    //    to determine which source "produced" each field (most recent supports link).
+    const { data: evidenceRows, error: evErr } = await supabase
+      .from('field_evidence')
+      .select('field_key, source_id, sources!inner(kind, captured_at)')
+      .eq('account_id', accountId)
+      .eq('relationship', 'supports');
+
+    // evidence errors are non-fatal — we degrade to "user_entered" for all fields
+    const evidenceOk = !evErr && Array.isArray(evidenceRows);
+
+    // Build field_key → most-recently-linked source kind map
+    const fieldSourceMap: Record<string, string> = {};
+    if (evidenceOk) {
+      for (const row of evidenceRows!) {
+        const src = Array.isArray(row.sources) ? row.sources[0] : row.sources;
+        if (!src) continue;
+        if (!fieldSourceMap[row.field_key]) {
+          fieldSourceMap[row.field_key] = (src as { kind?: string }).kind ?? 'user_entered';
+        }
+        // Keep the first hit; the query order is unspecified but this is best-effort
+      }
+    }
+
+    // 4. Compose the FieldMeta provenance map
+    const provenanceResult: Record<string, FieldMeta> = {};
+    for (const row of rawRows) {
+      const key = row.field_key as string;
+      // Derive source: if field_evidence points to a known connector or document,
+      // map it to the sourceLabel vocabulary; otherwise default to 'user_entered'.
+      const rawKind = fieldSourceMap[key];
+      const source = rawKind === 'connector_artifact'
+        ? 'connector:gmail'   // best-effort; connector kind alone can't distinguish provider
+        : rawKind === 'observation'
+          ? 'field_study'
+          : 'user_entered';
+
+      provenanceResult[key] = {
+        source,
+        lastReviewedAt: (row.last_reviewed_at as string | null) ?? null,
+      };
+    }
+
+    const fieldMeta = Object.keys(provenanceResult).length > 0 ? provenanceResult : undefined;
+    return { fieldMeta, metaRows };
+  } catch {
+    // Any unexpected error (schema not found, type mismatch, etc.) → silent degrade
+    return { fieldMeta: undefined, metaRows: [] };
+  }
 }
-
-const FIELD_META: Record<string, { label: string; rows: number; hint?: string }> = {
-  facts: { label: 'Business facts', rows: 4 },
-  pricing: { label: 'Pricing', rows: 3 },
-  policies: { label: 'Policies', rows: 3 },
-  faq: { label: 'Common questions', rows: 3 },
-  voice: { label: 'Voice & tone', rows: 3 },
-  hard_rules: {
-    label: 'Hard rules',
-    rows: 4,
-    hint: 'One per line. Your Nibbins treat these as non-negotiable — never broken in a draft.',
-  },
-  notes: { label: 'Anything else', rows: 3 },
-};
-
-const FIELD_PLACEHOLDERS: Record<string, string> = {
-  ...PLACEHOLDERS,
-  hard_rules:
-    'Never promise a delivery date without checking with me\nAlways address clients by first name',
-  notes: 'Free notes — anything that helps your grove understand the work.',
-};
 
 export default async function MemoryPage({
   searchParams,
 }: {
-  searchParams: Promise<{ saved?: string; error?: string }>;
+  searchParams: Promise<{ from_study?: string }>;
 }) {
-  const { saved, error } = await searchParams;
+  const { from_study } = await searchParams;
   const { supabase, accountId, user } = await appSession();
 
   const { data: mem } = await supabase
     .from('grove_memory')
-    .select('sections, hard_rules, notes')
+    .select('sections, hard_rules, notes, reference_text')
     .eq('account_id', accountId)
     .maybeSingle<MemoryRow>();
 
-  // Min population: an empty brain seeds "facts" from onboarding so the first
-  // visit isn't a blank page (the user then curates from there).
+  // Min population: an empty brain seeds `about` (the neutral primary field) from
+  // onboarding answers so the first visit isn't a blank page. The user then
+  // curates from there. Any stored legacy `facts` values are handled by
+  // forwardMapLegacy below (non-destructive: copies facts→about on read).
   let sections = mem?.sections ?? {};
   if (!mem) {
     const { data: st } = await supabase
@@ -188,9 +185,38 @@ export default async function MemoryPage({
   }
   const rules = (mem?.hard_rules ?? []).join('\n');
   const notes = mem?.notes ?? '';
+  const referenceText = mem?.reference_text ?? '';
 
-  const fieldValues = buildFieldValues(sections, rules, notes);
+  // Apply forward-map: legacy `facts` key → `about` when `about` is empty.
+  // This is a non-destructive migration: stored `facts` data continues to work.
+  const rawFieldValues = buildFieldValues(sections, rules, notes);
+  const fieldValues = forwardMapLegacy(rawFieldValues) as Record<string, string>;
   const isEmpty = allEmpty(fieldValues);
+
+  // F1 provenance + dynamic registry: load field_meta rows including the new
+  // columns (label, sort_order, is_custom, is_hidden) added in Task 1 migration.
+  // Gracefully degrades to empty metaRows pre-migration or on any fetch error.
+  // When metaRows is non-empty, MemoryClient activates the dynamic registry path;
+  // when empty, it falls back to the legacy static rendering.
+  const { fieldMeta, metaRows } = await loadFieldMetaAndRows(supabase, accountId);
+
+  // P3 — capture proposal count for the post-study banner. Only query when
+  // ?from_study=1 to keep the happy path free of the extra round-trip. Returns
+  // 0 on any error so the banner silently stays hidden.
+  let pendingCaptureCount = 0;
+  if (from_study === '1') {
+    try {
+      const { count } = await supabase
+        .from('proposals')
+        .select('id', { count: 'exact', head: true })
+        .eq('account_id', accountId)
+        .eq('origin', 'capture')
+        .eq('status', 'pending');
+      pendingCaptureCount = count ?? 0;
+    } catch {
+      // silently no-op — banner stays hidden
+    }
+  }
 
   return (
     <AppShell active="memory" title="Grove Memory" email={user.email}>
@@ -200,57 +226,15 @@ export default async function MemoryPage({
         assistant. Edit or clear any of it, anytime; it&apos;s yours.
       </p>
 
-      {saved && (
-        <p className={styles.saved}>Saved — your grove will use this from its next draft.</p>
-      )}
-      {error && <p className={styles.error}>That didn&apos;t save. Give it another try.</p>}
+      <StudySuggestionsBanner count={pendingCaptureCount} />
 
-      {isEmpty && (
-        <div className={styles.firstRun}>
-          <p className={styles.firstRunTitle}>Your grove doesn&apos;t know much yet</p>
-          <p className={styles.firstRunBody}>
-            Fill in a few sections and your Nibbins will start sounding unmistakably like you.
-            Even one or two sentences per field makes a real difference.
-          </p>
-        </div>
-      )}
-
-      <form action={saveGroveMemory} className={styles.form}>
-        {GROUPS.map((group, idx) => (
-          <details
-            key={group.heading}
-            className={styles.group}
-            open={isEmpty ? idx === 0 : true}
-          >
-            <summary className={styles.groupSummary}>
-              <span className={styles.groupHeading}>{group.heading}</span>
-              <span className={styles.groupHint}>{group.hint}</span>
-            </summary>
-
-            <div className={styles.groupBody}>
-              {group.fields.map((fk) => {
-                const meta = FIELD_META[fk];
-                if (!meta) return null;
-                return (
-                  <MemoryField
-                    key={fk}
-                    fieldKey={fk}
-                    label={meta.label}
-                    value={fieldValues[fk] ?? ''}
-                    placeholder={FIELD_PLACEHOLDERS[fk] ?? ''}
-                    rows={meta.rows}
-                    hint={meta.hint}
-                  />
-                );
-              })}
-            </div>
-          </details>
-        ))}
-
-        <button className={styles.primary} type="submit">
-          Save
-        </button>
-      </form>
+      <MemoryClient
+        initialValues={fieldValues}
+        initialReference={referenceText}
+        isEmpty={isEmpty}
+        fieldMeta={fieldMeta}
+        metaRows={metaRows}
+      />
     </AppShell>
   );
 }

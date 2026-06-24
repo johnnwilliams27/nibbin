@@ -4,7 +4,9 @@ import Link from 'next/link';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Grovekeeper } from '../grovekeeper/Grovekeeper';
 import { NotificationBell } from './NotificationBell';
+import { DockBadge } from './DockBadge';
 import { HelpButton } from './HelpButton';
+import { listLeaves } from '../../app/app/notifications/actions';
 import styles from './shell.module.css';
 
 /** Inline sprout logomark from packages/shared/brand/nibbin-mark.svg.
@@ -222,6 +224,14 @@ export function AppShell({ active, title, email, children, panel, onboarding }: 
   const [navCollapsed, setNavCollapsed] = useState(false);
   const close = () => setOpen(false);
 
+  // §10.3 single source of truth: fetch unread count once on mount.
+  // Both the NotificationBell badge and the dock badges on panelExpand/panelToggle
+  // read from this shared state — one fetch, one number, two surfaces.
+  const [unread, setUnread] = useState(0);
+  useEffect(() => {
+    void listLeaves(1).then((r) => setUnread(r.unread));
+  }, []);
+
   // Read persisted nav-collapsed state on mount (avoids SSR mismatch).
   useEffect(() => {
     try {
@@ -350,7 +360,7 @@ export function AppShell({ active, title, email, children, panel, onboarding }: 
           <h1 className={styles.title}>{title}</h1>
           <div className={styles.account}>
             {!onboarding && <HelpButton />}
-            {!onboarding && <NotificationBell />}
+            {!onboarding && <NotificationBell initialUnread={unread} />}
             {email ? <span className={styles.email}>{email}</span> : null}
             <form action="/auth/signout" method="post">
               <button className={styles.signout} type="submit">
@@ -389,12 +399,13 @@ export function AppShell({ active, title, email, children, panel, onboarding }: 
         <button
           className={styles.panelExpand}
           type="button"
-          aria-label="Open Keeper panel"
+          aria-label={unread > 0 ? `Open Keeper panel — ${unread} unread` : 'Open Keeper panel'}
           onClick={() => setPanelCollapsed(false)}
         >
           <span className={styles.keeperGlyph} aria-hidden="true">
             <Grovekeeper size={26} />
           </span>
+          <DockBadge unread={unread} />
         </button>
       )}
 
@@ -403,7 +414,7 @@ export function AppShell({ active, title, email, children, panel, onboarding }: 
         <button
           className={styles.panelToggle}
           type="button"
-          aria-label={panelOpen ? 'Close Keeper' : 'Open Keeper'}
+          aria-label={panelOpen ? 'Close Keeper' : (unread > 0 ? `Open Keeper — ${unread} unread` : 'Open Keeper')}
           aria-expanded={panelOpen}
           onClick={() => setPanelOpen((v) => !v)}
         >
@@ -412,6 +423,8 @@ export function AppShell({ active, title, email, children, panel, onboarding }: 
               <Grovekeeper size={32} />
             </span>
           )}
+          {/* Badge only when closed — when open the panel itself shows the context */}
+          {!panelOpen && <DockBadge unread={unread} />}
         </button>
       )}
     </div>

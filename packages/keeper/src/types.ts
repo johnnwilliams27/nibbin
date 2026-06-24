@@ -94,6 +94,48 @@ export interface ChartCard extends CardBase {
   points: Array<{ label: string; value: number }>;
 }
 
+/**
+ * One cited source returned by the synthesis engine (P5 §3.1).
+ * Carries enough to render the citation row in SynthesisModal without
+ * a secondary DB lookup.
+ */
+export interface Citation {
+  /** Human-readable name: source document title or memory provenance tag. */
+  label: string;
+  kind: 'memory' | 'source';
+  /** UUID — present when kind === 'source'. */
+  sourceId?: string;
+  /** Verbatim snippet cited (≤ 200 chars). */
+  excerpt: string;
+  /** Normalised hybrid retrieval score 0..1. */
+  score: number;
+}
+
+/**
+ * Knowledge-lookup synthesis result card (P5 §4.2 + §5.4).
+ *
+ * The Keeper returns this card kind when a `knowledge_lookup`-classified
+ * question has been answered by the synthesis engine. The surface renders
+ * the compact bubble from `summary` and opens `SynthesisModal` on
+ * "View details".
+ *
+ * `transcript` (required by CardBase §4.2 a11y rule) is set equal to
+ * `fullAnswer` by the `keeperChatAction` caller (T7) so screen readers
+ * get the complete cited answer.
+ */
+export interface SynthesisCard extends CardBase {
+  kind: 'synthesis';
+  /** 1–2 sentence condensed answer rendered in the chat bubble (≤ 300 chars). */
+  summary: string;
+  /** Full cited prose answer rendered in the "view details" modal. */
+  fullAnswer: string;
+  citations: Citation[];
+  /** One sentence describing what the corpus could not answer; null when absent. */
+  gapNote: string | null;
+  /** How many passages were retrieved from each corpus tier. */
+  corpusCounts: { memory: number; sources: number };
+}
+
 export type KeeperCard =
   | ProseCard
   | QuestionCard
@@ -102,7 +144,8 @@ export type KeeperCard =
   | RecommendationCard
   | DraftApprovalCard
   | FieldNotesCard
-  | ChartCard;
+  | ChartCard
+  | SynthesisCard;
 
 export interface KeeperMessage {
   id: string;
@@ -180,4 +223,32 @@ export interface OnboardingInput {
   text?: string;
   skip?: boolean;
   channels?: string[];
+}
+
+/* ── Attention-queue types (P6 §3) ─────────────────────────────────────────
+ * Defined here so packages/keeper can reference them without importing from
+ * apps/web (which would invert the dependency hierarchy). The actual query
+ * lives in apps/web/lib/grove/pending-items.ts and re-exports these types.
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+export interface PendingProposal {
+  proposalId: string;
+  fieldKey: string;
+  /** Truncated to 80 chars at read time. */
+  rationale: string;
+  stakes: 'normal' | 'high';
+  createdAt: string;
+}
+
+export interface PendingRun {
+  runId: string;
+  nibbinName: string;
+  title: string | null;
+}
+
+export interface PendingQueue {
+  proposals: PendingProposal[];
+  runs: PendingRun[];
+  total: number;
+  hasHighStakes: boolean;
 }

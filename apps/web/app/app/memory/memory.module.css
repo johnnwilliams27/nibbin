@@ -203,3 +203,1386 @@
 .primary:hover {
   background: var(--moss-deep);
 }
+
+/* ── Task 6: FieldView — formatted read-only display ────────────────────── */
+
+/* Container wrapping the formatted content (used by FieldBlock in Task 8) */
+.fieldView {
+  /* No padding here — FieldBlock owns the field padding */
+}
+
+/* ── list kind ────────────────────────────────────────────────────────────── */
+.list {
+  margin: 0;
+  padding: 0 0 0 18px;
+  list-style: disc;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink);
+}
+.listItem {
+  padding: 1px 0;
+}
+/* Blank-line separator between list groups */
+.listSep {
+  list-style: none;
+  height: 8px;
+  padding: 0;
+  margin: 0;
+}
+
+/* ── dl kind (definition list for facts) ─────────────────────────────────── */
+.dl {
+  margin: 0;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+}
+.dlRow {
+  display: contents;
+}
+.dlSep {
+  height: 8px;
+}
+.dt {
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0;
+  padding: 2px 0 0;
+  font-size: 13px;
+}
+.dd {
+  margin: 0 0 6px;
+  padding: 0;
+  color: var(--ink-soft);
+}
+
+/* ── quote kind (voice & tone) ───────────────────────────────────────────── */
+.quote {
+  margin: 0;
+  padding: 10px 14px;
+  border-left: 3px solid var(--moss);
+  background: var(--understory);
+  border-radius: 0 var(--r-input) var(--r-input) 0;
+  font-size: 14px;
+  font-style: italic;
+  line-height: 1.65;
+  color: var(--ink);
+}
+.quote p {
+  margin: 0;
+}
+
+/* ── paragraphs kind (notes) ─────────────────────────────────────────────── */
+.paragraphs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.para {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--ink);
+}
+
+/* ── price number (tabular-nums emphasis) ────────────────────────────────── */
+.num {
+  font-variant-numeric: tabular-nums lining-nums;
+  font-family: var(--mono);
+  font-size: 0.9em;
+  color: var(--ink);
+}
+
+/* ── empty / placeholder state ───────────────────────────────────────────── */
+.placeholder {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink-faint);
+  font-style: italic;
+}
+
+/* ── Task 7: FieldEditor — deliberate edit-mode interaction ──────────────── */
+
+/* Wrapper for the editor shell */
+.fieldEditor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Hint text above the textarea */
+.fieldEditorHint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
+/* Error message after a failed save */
+.fieldEditorError {
+  margin: 0;
+  font-size: 13px;
+  color: var(--coral-deep);
+  background: var(--coral-tint);
+  border: 1px solid var(--coral-line);
+  border-radius: var(--r-input);
+  padding: 8px 10px;
+  line-height: 1.5;
+}
+
+/* Action row: Save + Cancel + Clear */
+.fieldEditorActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Ghost (secondary) button — Cancel */
+.ghost {
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 9px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-button);
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: background-color var(--dur-1) var(--ease-settle),
+              border-color var(--dur-1) var(--ease-settle);
+}
+.ghost:hover {
+  background: var(--understory);
+  border-color: var(--moss);
+  color: var(--ink);
+}
+.ghost:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Clear field — tertiary link-style button, coral tint (§7 authority treatment) */
+.clearLink {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--coral-deep);
+  cursor: pointer;
+  margin-left: auto;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color var(--dur-1) var(--ease-settle);
+}
+.clearLink:hover {
+  color: var(--coral);
+}
+.clearLink:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Inline confirmation region (aria-live container) */
+.confirmRegion {
+  min-height: 0; /* collapses when empty — no layout shift */
+}
+
+/* Inline confirm prompt row */
+.confirmPrompt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--understory);
+  border: 1px solid var(--line);
+  border-radius: var(--r-input);
+  font-size: 13px;
+  color: var(--ink);
+}
+
+/* Confirm yes (destructive action) */
+.confirmYes {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 5px 12px;
+  border: none;
+  border-radius: var(--r-button);
+  background: var(--coral-deep);
+  color: #fff;
+  cursor: pointer;
+  transition: background-color var(--dur-1) var(--ease-settle);
+}
+.confirmYes:hover {
+  background: var(--coral);
+}
+
+/* Confirm no (dismiss) */
+.confirmNo {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 5px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-button);
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: background-color var(--dur-1) var(--ease-settle);
+}
+.confirmNo:hover {
+  background: var(--canopy);
+  color: var(--ink);
+}
+
+/* ── Task 8: FieldBlock — view/edit toggle + provenance slot ─────────────── */
+
+/* Root container for a single curated field */
+.fieldBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--understory);
+}
+.fieldBlock:last-child {
+  border-bottom: none;
+}
+
+/* Header row: label + Edit button */
+.fieldHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* Field label in the header */
+.fieldLabel {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: 0.01em;
+}
+
+/* Edit button — ghost style, moss tint (§8, "deliberate" affordance) */
+.editBtn {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-button);
+  background: transparent;
+  color: var(--moss-deep);
+  cursor: pointer;
+  transition: background-color var(--dur-1) var(--ease-settle),
+              border-color var(--dur-1) var(--ease-settle);
+  white-space: nowrap;
+}
+.editBtn:hover {
+  background: var(--understory);
+  border-color: var(--moss);
+}
+
+/* Provenance/staleness slot — fixed min-height prevents layout shift pre-F1.
+   Silent and empty until F1 field_meta data is present (§11 / §226). */
+.provenanceSlot {
+  min-height: 18px;  /* reserves space; collapses gracefully to 0 if truly empty */
+  display: flex;
+  align-items: center;
+}
+
+/* Normal provenance line — shown when field has metadata (ink-faint, mono) */
+.provenanceLine {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-faint);
+  line-height: 1;
+  letter-spacing: 0.01em;
+}
+
+/* Stale provenance line — amber warning when last reviewed > 60 days ago */
+.provenanceStale {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--honey-deep);
+  line-height: 1;
+  letter-spacing: 0.01em;
+}
+
+/* ── Task 9: HardRulesBlock — coral authority treatment (§7) ─────────────── */
+/*
+ * Coral here is an AUTHORITY signal, not an error signal.
+ * --coral-soft = left border accent (the "church wall" motif)
+ * --coral-deep = eyebrow text + bullet squares (high-contrast authority ink)
+ * No raw hex values — tokens only.
+ */
+
+/* Root container: coral left border marks these as non-negotiable */
+.hardRules {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 18px;
+  border-left: 3px solid var(--coral-soft);
+  border-bottom: 1px solid var(--understory);
+  background: var(--canopy);
+}
+.hardRules:last-child {
+  border-bottom: none;
+}
+
+/* Header row: eyebrow + sub-label + Edit button */
+.hardRulesHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* Left side of the header: eyebrow + sub-label stacked */
+.hardRulesLabels {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* "HARD RULES" mono eyebrow — coral-deep, authority ink */
+.hardRulesEyebrow {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--coral-deep);
+  margin: 0;
+  line-height: 1.2;
+}
+
+/* "Your Nibbins never break these" — sub-label, ink-soft */
+.hardRulesSubLabel {
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Rule list — no default bullets; uses custom coral-square bullets via .ruleBullet */
+.ruleList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+/* Rule list item — flex row for the custom bullet + text */
+.ruleBullet {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+/* Coral square bullet: a small filled square in coral-deep */
+.ruleBullet::before {
+  content: '';
+  display: block;
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  margin-top: 5px; /* optical vertical alignment with the first text line */
+  background-color: var(--coral-deep);
+  border-radius: 1px; /* very slight radius = "square", not "dot" */
+}
+
+/* Empty state placeholder — faint, italic */
+.hardRulesEmpty {
+  font-size: 14px;
+  color: var(--ink-faint);
+  font-style: italic;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Edit mode wrapper: inherits coral context from .hardRules; adds hint */
+.hardRulesEditor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Hint text in edit mode */
+.hardRulesHint {
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ── Task 10: FramingStrip — "Your Nibbins read this as truth" (§10) ──────── */
+
+/* Strip container: understory background, card radius, 10×14 padding */
+.framingStrip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--understory);
+  border-radius: var(--r-card);
+  padding: 10px 14px;
+  margin: 0 0 16px;
+}
+
+/* Leaf glyph: decorative, moss-deep color */
+.framingGlyph {
+  flex-shrink: 0;
+  color: var(--moss-deep);
+}
+
+/* Copy text: sans 13px, ink-soft */
+.framingCopy {
+  font-size: 13px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
+/* ── Task 10: MemorySection — grouped section wrapper (§3 / §12) ───────────── */
+
+/* Root section container */
+.memorySection {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0 0 24px;
+}
+.memorySection:last-child {
+  margin-bottom: 0;
+}
+
+/* Section header: heading + optional hint */
+.sectionHeader {
+  padding: 8px 0 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Section heading — h2, display font, ink */
+.sectionHeading {
+  font-family: var(--display);
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--ink-soft);
+}
+
+/* Section hint — optional supplemental line below the heading */
+.sectionHint {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Fields container: card border + background wraps the field list */
+.sectionFields {
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--canopy);
+  overflow: hidden;
+}
+
+/* ── Task 10: EmptyState — first-run creature + affordance chips (§9) ──────── */
+
+/* Root container: centered column layout */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 40px 24px 32px;
+  gap: 12px;
+}
+
+/* Creature illustration wrapper: 80×80 SVG display area */
+.emptyCreature {
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 0 8px;
+}
+
+/* Ensures the SVG inside fills the wrapper */
+.emptyCreature svg {
+  width: 80px;
+  height: 80px;
+}
+
+/* Headline: display font, ink, moderate weight */
+.emptyHeadline {
+  font-family: var(--display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+/* Body copy: 14px, ink-soft, comfortable line height */
+.emptyBody {
+  font-size: 14px;
+  color: var(--ink-soft);
+  line-height: 1.65;
+  margin: 0;
+  max-width: 360px;
+}
+
+/* Chip row: horizontal pair of ghost affordance buttons */
+.emptyChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+/* Individual ghost affordance chip */
+.chip {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-button);
+  background: transparent;
+  color: var(--moss-deep);
+  cursor: pointer;
+  transition: background-color var(--dur-1) var(--ease-settle),
+              border-color var(--dur-1) var(--ease-settle);
+  white-space: nowrap;
+}
+.chip:hover {
+  background: var(--understory);
+  border-color: var(--moss);
+  color: var(--ink);
+}
+
+/* ── Task 11: MemoryClient shell + TabBar ──────────────────────────────────── */
+
+/* Top-level shell container for the Memory page client */
+.memoryClient {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Tab bar — two-tab layout (Grove Memory | Sources) */
+.tabBar {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--line);
+  margin: 0 0 20px;
+}
+
+/* Individual tab button — pill / underline affordance */
+.tab {
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 16px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: color var(--dur-1) var(--ease-settle),
+              border-color var(--dur-1) var(--ease-settle);
+  white-space: nowrap;
+  margin-bottom: -1px; /* overlap the bar border */
+}
+.tab:hover {
+  color: var(--ink);
+}
+
+/* Active tab — moss underline + ink text */
+.tabActive {
+  color: var(--ink);
+  border-bottom-color: var(--moss);
+}
+
+/* Tab panel container */
+.tabPanel {
+  display: contents; /* let children own layout */
+}
+
+/* Sources tab stub (Task 13 replaces this content) */
+.sourcesStub {
+  padding: 32px 0 16px;
+}
+.sourcesStubCopy {
+  font-size: 14px;
+  color: var(--ink-faint);
+  margin: 0;
+  font-style: italic;
+}
+
+/* ── Task 13: SourcesTab — tab panel layout ──────────────────────────────── */
+
+/* Root container for the Sources tab panel */
+.sourcesTab {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Section wrapper (Reference material / Evidence) */
+.sourcesSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 0 24px;
+}
+
+/* Section heading — same weight/treatment as MemorySection headings */
+.sourcesSectionHeading {
+  font-family: var(--display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+/* Section hint line */
+.sourcesSectionHint {
+  font-size: 13px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Divider between Reference and Evidence sections */
+.sourcesDivider {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 0 0 24px;
+}
+
+/* ── Task 13: ReferenceCatchAll — freeform reference_text catch-all ──────── */
+
+/* Root container */
+.referenceBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--canopy);
+  padding: 14px 18px;
+}
+
+/* Header: label + Edit button */
+.referenceHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* Field label */
+.referenceLabel {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: 0.01em;
+}
+
+/* Wrapper around <pre> + Show all affordance */
+.referencePreWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* <pre> element — freeform raw text, no structural formatting (§8.1) */
+.referencePre {
+  margin: 0;
+  padding: 10px 12px;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink);
+  background: var(--understory);
+  border-radius: var(--r-input);
+  white-space: pre-wrap;       /* wrap long lines */
+  word-break: break-word;
+  max-height: 320px;           /* truncated in view mode; "Show all" expands */
+  overflow: hidden;
+}
+
+/* "Show all" / "Collapse" affordance — tertiary link-style button */
+.referenceShowAll {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--moss-deep);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  align-self: flex-start;
+  transition: color var(--dur-1) var(--ease-settle);
+}
+.referenceShowAll:hover {
+  color: var(--ink);
+}
+
+/* Empty nudge copy — §14.5 */
+.referenceEmpty {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--ink-faint);
+  font-style: italic;
+}
+
+/* ── Task 14: Motion + a11y polish ──────────────────────────────────────── */
+/*
+ * Motion philosophy (§13 / frontend-design skill):
+ *   - Subtle, fast, purposeful — nothing that delays the deliberate Edit→Save feel.
+ *   - All transitions respect prefers-reduced-motion via the global rule in
+ *     globals.css (collapses all animation/transition-duration to 0.01ms).
+ *   - Token-only: --dur-1 / --dur-2 / --ease-settle are the only timing values.
+ *
+ * Patterns used:
+ *   1. view↔edit crossfade — opacity fade on the content area swap (fieldContent /
+ *      fieldContentEdit). Uses opacity transition rather than grid-template-rows
+ *      because the textarea height is dynamic; opacity is cleaner here.
+ *   2. Tab panel fade — tabFadeIn animation on each panel when it becomes visible.
+ *   3. Inline-confirm fade — confirmFadeIn on the confirmPrompt when it appears.
+ *   4. Reference Show-all — max-height transition lifts the truncation cap.
+ *
+ * Reduced-motion: the globals.css rule
+ *     `* { animation-duration: 0.01ms; transition-duration: 0.01ms }`
+ *   covers all transitions below automatically.  No per-class duplication needed.
+ */
+
+/* ── Content area: view↔edit crossfade ──────────────────────────────────── */
+/*
+ * Wraps the FieldView or FieldEditor in FieldBlock.
+ * In view mode: .fieldContent (fadeIn on appearance)
+ * In edit mode: .fieldContentEdit (same animation — entering the editor)
+ *
+ * Uses an opacity keyframe so the transition feels like a gentle swap,
+ * not a hard cut. Duration is --dur-2 (≈150ms) — fast enough to feel instant,
+ * slow enough to read as intentional.
+ */
+@keyframes fieldFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.fieldContent {
+  animation: fieldFadeIn var(--dur-2, 150ms) var(--ease-settle) both;
+}
+
+.fieldContentEdit {
+  animation: fieldFadeIn var(--dur-2, 150ms) var(--ease-settle) both;
+}
+
+/* ── Tab panel fade ──────────────────────────────────────────────────────── */
+/*
+ * Applied to the tab panel wrapper in MemoryClient when a tab becomes active.
+ * A gentle upward-fade-in (translateY 4px → 0) so the panel feels like it
+ * "arrives" rather than blinking. Duration: --dur-2.
+ */
+@keyframes tabPanelFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.tabPanelActive {
+  animation: tabPanelFadeIn var(--dur-2, 150ms) var(--ease-settle) both;
+}
+
+/* ── Inline-confirm fade ─────────────────────────────────────────────────── */
+/*
+ * Fades in the confirm prompt row when it appears inside the aria-live region.
+ * Quick --dur-1 (≈100ms) — confirmation is urgent, shouldn't feel slow.
+ */
+@keyframes confirmFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.confirmFade {
+  animation: confirmFadeIn var(--dur-1, 100ms) var(--ease-settle) both;
+}
+
+/* ── Reference Show-all expansion ───────────────────────────────────────── */
+/*
+ * The <pre> starts at max-height: 320px (truncated).
+ * When .referencePreExpanded is applied, max-height is lifted to a large value
+ * (9999px) to reveal all content. Transitioning max-height creates the
+ * slide-expand effect.
+ *
+ * max-height transition is the standard safe pattern for dynamic-height expand
+ * because the browser doesn't animate height: auto directly.
+ *
+ * Transition duration: --dur-3 (≈240ms) — slightly slower because the content
+ * can be long; the animation needs time to feel smooth.
+ */
+.referencePreExpanded {
+  max-height: 9999px !important;
+  transition: max-height var(--dur-3, 240ms) var(--ease-settle);
+}
+
+/* The collapsed pre also transitions its max-height so collapse feels smooth */
+.referencePre {
+  transition: max-height var(--dur-3, 240ms) var(--ease-settle);
+}
+
+/* ── Task 6: Section controls — add/rename/reorder/remove ───────────────── */
+
+/* Row holding the "+ Add a section" button (appears below section fields) */
+.addSectionRow {
+  display: flex;
+  padding: 10px 0 2px;
+}
+
+/* The "+ Add a section" affordance button — subdued tertiary style */
+.addSectionBtn {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border: 1px dashed var(--line);
+  border-radius: var(--r-button);
+  background: transparent;
+  color: var(--moss-deep);
+  cursor: pointer;
+  transition: background-color var(--dur-1) var(--ease-settle),
+              border-color var(--dur-1) var(--ease-settle);
+}
+.addSectionBtn:hover {
+  background: var(--understory);
+  border-color: var(--moss);
+  color: var(--ink);
+}
+
+/* The inline "add section" form shown when mode='adding' */
+.addSectionForm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 0 4px;
+}
+
+/* Label input in the add-section form */
+.addSectionInput {
+  font: inherit;
+  font-size: 14px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-input);
+  background: var(--paper);
+  color: var(--ink);
+  transition: border-color var(--dur-1) var(--ease-settle);
+}
+.addSectionInput:focus {
+  outline: none;
+  border-color: var(--moss);
+  background: var(--canopy);
+}
+
+/* Validation error in the add form */
+.addSectionError {
+  margin: 0;
+  font-size: 13px;
+  color: var(--coral-deep);
+  background: var(--coral-tint);
+  border: 1px solid var(--coral-line);
+  border-radius: var(--r-input);
+  padding: 6px 10px;
+  line-height: 1.4;
+}
+
+/* Action row: Add + Cancel buttons in the form */
+.addSectionActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Per-section controls row: move-up / move-down / remove */
+.sectionActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0 2px;
+}
+
+/* Move-up / move-down buttons — small ghost style */
+.sectionMoveBtn {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-button);
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: background-color var(--dur-1) var(--ease-settle),
+              border-color var(--dur-1) var(--ease-settle);
+  white-space: nowrap;
+}
+.sectionMoveBtn:hover:not(:disabled) {
+  background: var(--understory);
+  border-color: var(--moss);
+  color: var(--ink);
+}
+.sectionMoveBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Remove / Hide button — subdued coral, tertiary link style */
+.sectionRemoveBtn {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border: none;
+  background: transparent;
+  color: var(--coral-deep);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color var(--dur-1) var(--ease-settle);
+  margin-left: auto;
+  white-space: nowrap;
+}
+.sectionRemoveBtn:hover {
+  color: var(--coral);
+}
+
+/* ── Task 9: SourcesLibrary — drag-drop + list + search/filter/sort ─────── */
+
+/* Root container */
+.sourcesLibrary {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Drop zone */
+.sourcesDropZone {
+  border: 2px dashed var(--line);
+  border-radius: var(--r-card);
+  background: var(--understory);
+  padding: 24px 20px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  transition: border-color var(--dur-1) var(--ease-settle),
+              background-color var(--dur-1) var(--ease-settle);
+}
+
+.sourcesDropZoneActive {
+  border-color: var(--moss);
+  background: var(--canopy);
+}
+
+.sourcesDropZoneCopy {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
+.sourcesDropZoneHint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-faint);
+  line-height: 1.4;
+}
+
+.sourcesDropZoneBtn {
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--moss-deep);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color var(--dur-1) var(--ease-settle);
+}
+.sourcesDropZoneBtn:hover {
+  color: var(--ink);
+}
+
+/* Hidden file input (accessible fallback) */
+.sourcesFileInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Controls row: search + filters + sort */
+.sourcesControls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Search input */
+.sourcesSearch {
+  font: inherit;
+  font-size: 14px;
+  padding: 8px 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-input);
+  background: var(--paper);
+  color: var(--ink);
+  width: 100%;
+  transition: border-color var(--dur-1) var(--ease-settle);
+  box-sizing: border-box;
+}
+.sourcesSearch:focus {
+  outline: none;
+  border-color: var(--moss);
+  background: var(--canopy);
+}
+
+/* Filter chip row */
+.sourcesFilterRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Filter chip */
+.sourcesFilterChip {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-button);
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: background-color var(--dur-1) var(--ease-settle),
+              border-color var(--dur-1) var(--ease-settle);
+  white-space: nowrap;
+}
+.sourcesFilterChip:hover {
+  background: var(--understory);
+  border-color: var(--moss);
+  color: var(--ink);
+}
+.sourcesFilterChipActive {
+  background: var(--understory);
+  border-color: var(--moss);
+  color: var(--ink);
+}
+
+/* Sort row */
+.sourcesSortRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sourcesSortLabel {
+  font-size: 12px;
+  color: var(--ink-faint);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.sourcesSortBtn {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-button);
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: background-color var(--dur-1) var(--ease-settle),
+              border-color var(--dur-1) var(--ease-settle);
+  white-space: nowrap;
+}
+.sourcesSortBtn:hover {
+  background: var(--understory);
+  border-color: var(--moss);
+  color: var(--ink);
+}
+.sourcesSortBtnActive {
+  background: var(--understory);
+  border-color: var(--moss);
+  color: var(--ink);
+}
+.sourcesSortDir {
+  font-family: var(--mono);
+  font-size: 11px;
+  margin-left: 2px;
+}
+
+/* File list */
+.sourcesFileList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--canopy);
+  overflow: hidden;
+}
+
+/* Empty state */
+.sourcesEmpty {
+  padding: 24px 0;
+  text-align: center;
+}
+.sourcesEmptyText {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-faint);
+  font-style: italic;
+}
+
+/* Load more */
+.sourcesLoadMore {
+  padding: 12px 16px;
+  text-align: center;
+}
+.sourcesLoadMoreBtn {
+  background: none;
+  border: 1px solid var(--understory);
+  border-radius: 6px;
+  padding: 6px 20px;
+  font-size: 13px;
+  color: var(--ink-faint);
+  cursor: pointer;
+}
+.sourcesLoadMoreBtn:hover:not(:disabled) {
+  color: var(--ink);
+  border-color: var(--ink-faint);
+}
+.sourcesLoadMoreBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── SourceRow — individual file entry ────────────────────────────────────── */
+
+.sourceRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--understory);
+}
+.sourceRow:last-child {
+  border-bottom: none;
+}
+
+/* Type icon (emoji) */
+.sourceRowIcon {
+  flex-shrink: 0;
+  font-size: 16px;
+  line-height: 1;
+  width: 20px;
+  text-align: center;
+}
+
+/* Main content: title + meta */
+.sourceRowContent {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Title */
+.sourceRowTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Meta row: size + date */
+.sourceRowMeta {
+  font-size: 12px;
+  color: var(--ink-faint);
+  font-family: var(--mono);
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex-wrap: wrap;
+}
+.sourceRowSize {
+  white-space: nowrap;
+}
+.sourceRowMetaSep {
+  color: var(--line);
+}
+.sourceRowDate {
+  white-space: nowrap;
+}
+
+/* Extraction-state chip */
+.sourceStateChip {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: var(--r-button);
+  white-space: nowrap;
+  font-family: var(--mono);
+  letter-spacing: 0.02em;
+}
+
+/* Chip variants */
+.sourceStateRead {
+  background: var(--moss-tint);
+  color: var(--moss-deep);
+  border: 1px solid var(--moss-soft, var(--moss-tint));
+}
+.sourceStateReading {
+  background: var(--understory);
+  color: var(--ink-soft);
+  border: 1px solid var(--line);
+}
+.sourceStateUnsupported {
+  background: var(--understory);
+  color: var(--ink-soft);
+  border: 1px solid var(--line);
+}
+.sourceStateFailed {
+  background: var(--coral-tint);
+  color: var(--coral-deep);
+  border: 1px solid var(--coral-line);
+}
+.sourceStatePending {
+  background: var(--understory);
+  color: var(--ink-faint);
+  border: 1px solid var(--line);
+}
+
+/* ── Task 13: EvidenceList — gated F1 evidence store ────────────────────── */
+
+/* Graceful empty banner — understory bg, no spinner */
+.evidenceEmpty {
+  background: var(--understory);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Headline inside empty banner */
+.evidenceEmptyHeadline {
+  font-family: var(--display);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0;
+}
+
+/* Body copy inside empty banner */
+.evidenceEmptyBody {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+/* List container for evidence cards */
+.evidenceList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Individual source card */
+.evidenceCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--canopy);
+  padding: 12px 16px;
+}
+
+/* Source kind/type label — mono eyebrow */
+.evidenceCardKind {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--moss-deep);
+}
+
+/* Excerpt text */
+.evidenceCardExcerpt {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+/* "Last seen" metadata line */
+.evidenceCardMeta {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-faint);
+  font-family: var(--mono);
+}
