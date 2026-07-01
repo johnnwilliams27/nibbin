@@ -64,20 +64,22 @@ def add(key,payload,fund):
 
 # ---------- Phase A: Consider ----------
 def years_ok(mn,mx):
-    # expanded: include anything whose stated minimum is under 8 years (or unspecified)
-    if mn is not None and mn>=8:return False
+    # candidate has 8 yrs: include if 8 yrs qualifies, i.e. stated minimum <= 8
+    if mn is not None and mn>8:return False
     return True
 for f in glob.glob('raw/*.json'):
     fund=f.split('/')[-1][:-5]; d=json.load(open(f))
     for j in d.get('jobs',[]):
         t=j.get('title','')
-        if not FIN.search(t) or LEAD.search(t) or JUN.search(t):continue
+        if not FIN.search(t) or JUN.search(t):continue
+        is_lead=bool(LEAD.search(t))  # Director/VP/Head/Chief -> only if a stated min <=8 yrs
         locblob=' '.join(str(x.get('value') if isinstance(x,dict) else x) for x in (j.get('normalizedLocations') or []))+' '+' '.join(j.get('locations') or [])+' '+' '.join(str(r.get('value') if isinstance(r,dict) else r) for r in (j.get('regions') or []))
         remote_us = j.get('remote') and not j.get('hybrid') and is_us(locblob)
         is_dfw = dfw(locblob)
         if not remote_us and not is_dfw: continue
         mn,mx=j.get('minYearsExp'),j.get('maxYearsExp')
         if not years_ok(mn,mx):continue
+        if is_lead and mn is None: continue  # higher-level role needs an explicit min that 8 yrs meets
         ids=set(j.get('jobSeniorityIds') or [])
         if ids and ids<={'intern'}:continue
         ts=(j.get('timeStamp') or '')[:10]
@@ -168,7 +170,7 @@ for f in glob.glob('raw/*.json'):
         consider_cos.add(j.get('companySlug') or j.get('companyName'))
         consider_fin_jobs+=1
 fallback=[]
-for sf in ['hc_all_scan.json','pc_scan.json','pc_new_scan.json','pc_new2_scan.json']:
+for sf in ['hc_all_scan.json','pc_scan.json','pc_new_scan.json','pc_new2_scan.json','recovered_scan.json']:
     if glob.glob(sf): fallback+=json.load(open(sf))
 hc=fallback  # name kept for downstream
 hc_resolved=[c for c in fallback if c.get('ats')]
@@ -179,7 +181,7 @@ scanned=len(consider_cos)+len(hc_resolved)
 errored_direct=len(hc_errored)
 with open('fp_a_remote_roles.md','w') as fh:
     fh.write("# FP&A / Strategic Finance / Financial-Analyst Roles — VC Portfolio Sweep (Remote-US + Dallas–Fort Worth)\n\n")
-    fh.write(f"_Generated {TODAY.isoformat()} • FP&A/Strategic-Finance/Financial-Analyst • min <8 yrs experience • **Remote-US OR Dallas–Fort Worth metro (in-office/hybrid OK)** • posted ≤ 60 days (since {CUTOFF.isoformat()}) • public + private companies_\n\n")
+    fh.write(f"_Generated {TODAY.isoformat()} • FP&A/Strategic-Finance/Financial-Analyst • roles a candidate with **8 yrs experience qualifies for (stated min ≤8 yrs)** • **Remote-US OR Dallas–Fort Worth metro (in-office/hybrid OK)** • posted ≤ 60 days (since {CUTOFF.isoformat()}) • public + private companies • Director/VP/Head titles included when a stated min ≤8 yrs_\n\n")
     fh.write(f"**{len(out)} matching roles** — fit mix: "+', '.join(f"{k}★×{fitc[k]}" for k in sorted(fitc,reverse=True))+"\n\n")
     fh.write("Fit key: **5**=payer/PBM/claims core · **4**=healthcare/health-tech · **3**=fintech/payments/insurtech · **2**=other SaaS · **1**=no overlap\n\n")
     fh.write(md_table(out))
@@ -200,9 +202,10 @@ with open('fp_a_remote_roles.md','w') as fh:
     fh.write(f"- **Companies that errored / no public ATS:** {errored_direct} fallback cos after probing 7 ATS backends (Greenhouse/Lever/Ashby/SmartRecruiters/Workable/Rippling) — remainder on Workday (per-tenant, no public API) or custom/no public board\n\n")
     fh.write("## Coverage & method\n\n")
     fh.write("**Fully swept (Consider-backed boards, JSON API):** a16z, Sequoia, Lightspeed, Greylock, Bessemer, Kleiner Perkins, Battery, GV, Felicis. "
-             "One `POST /api-boards/search-jobs` per board with `jobFunctions:[\"Finance\"]` returns every portfolio finance posting pre-structured. Filtered client-side to FP&A/Strategic-Finance/Corporate-Finance/**Financial-Analyst** titles, **Remote-US OR Dallas–Fort Worth metro** (in-office/hybrid OK for DFW), **min <8 yrs**, ≤60 days. Public and private companies both included; Director/VP/Head/CFO titles excluded.\n\n")
+             "One `POST /api-boards/search-jobs` per board with `jobFunctions:[\"Finance\"]` returns every portfolio finance posting pre-structured. Filtered client-side to FP&A/Strategic-Finance/Corporate-Finance/**Financial-Analyst** titles, **Remote-US OR Dallas–Fort Worth metro** (in-office/hybrid OK for DFW), **stated min ≤8 yrs (8 yrs of experience qualifies)**, ≤60 days. Public and private companies both included; Director/VP/Head titles included only when a stated minimum is ≤8 yrs.\n\n")
     fh.write("**Portfolio → direct-ATS fallback (17 funds on Getro or with no Consider board):** companies enumerated from each fund's public portfolio — via their CMS/APIs where the page was JS-locked (Accel & Redpoint via Sanity GROQ, Insight via WordPress `sfcompany`), then each company probed across **7 ATS backends** (Greenhouse/Lever/Ashby/SmartRecruiters/Workable/Rippling) and JDs parsed for remote policy + years. "
              "Net-new yield is low and expected: these portfolios overlap heavily with the Consider funds (hot cos like Ramp/Anrok/Stripe recur and are deduped), and most 'strategic finance' roles at these hot startups are SF/NYC **in-office or hybrid**; the genuinely-remote ones are largely at **public** companies (Affirm, Upstart, Datadog) excluded by Step 2. The payer-core names (Devoted, Cotiviti, welbehealth, abacusinsights, Reveleer, Aledade) had no qualifying open remote FP&A role in-window.\n\n")
+    fh.write("**Token-mismatch recovery pass:** all ~1,544 companies that didn't resolve by name were re-checked by scraping their careers page for the real embedded ATS token, then re-probed — recovering 38 companies with live boards. Net-new qualifying roles: **0**. The only two FP&A roles found were Nourish (*Strategic Finance Lead* — in-office NYC) and Transcend (*Director of FP&A* — remote but **10+ yrs**, exceeds the 8-yr bar). Confirms the diagnostic: recoverable token-misses don't hide qualifying remote/DFW roles.\n\n")
     fh.write("**Why ~{} companies don't resolve (diagnosed on a random sample):** ~44% have a custom / JS-embedded / bot-blocked careers page (no public JSON API); ~40% are exited/acquired/defunct portfolio companies that aren't hiring (VC portfolios list decades of them — Bay Networks, HomeAway, Castlight) or my domain guess missed a non-.com domain; ~13% are on a supported ATS under a non-guessable token (e.g. Nourish→Greenhouse); the rest run on Workday/iCIMS/ADP/Paylocity (no simple public API). Net: non-resolution is dominated by non-hiring/exited companies, not by fixable token misses.\n\n".format(errored_direct))
     fh.write("**Still not reached:** Thrive, Conviction, Radical, Benchmark, Flare Capital (no machine-readable public portfolio list — fully JS-locked or none published), plus Getro job boards themselves (block non-browser access; egress proxy drops headless-Chrome TLS). Coatue is partial (~40 of its portfolio; lazy-loaded grid).\n\n")
     fh.write("**Borderline (excluded from main list):** Redox — *Principal FP&A (SaaS Healthcare)*, remote fit-4, but >60 days & Principal-level. Heartbeat Health — *Senior Financial Analyst*, remote health, generic-analyst title.\n")

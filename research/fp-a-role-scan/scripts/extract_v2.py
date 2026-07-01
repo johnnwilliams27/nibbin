@@ -21,8 +21,8 @@ def years(txt):
         if m: return (int(m.group(1)), int(m.group(2)) if m.lastindex==2 else None)
     return (None,None)
 def yok(mn,mx):
-    # expanded: include anything whose stated minimum is under 8 years (or unspecified)
-    if mn is not None and mn>=8: return False
+    # candidate has 8 yrs of experience: include if 8 yrs qualifies, i.e. stated minimum <= 8
+    if mn is not None and mn>8: return False
     return True
 def yreq(mn,mx):
     if mn is None and mx is None:return 'n/s'
@@ -68,8 +68,9 @@ def extract(scan_path):
         ats=c['ats']
         for j in c['raw_jobs']:
             t=j.get('title') or j.get('text') or j.get('name') or ''
-            if not FIN.search(t) or LEAD.search(t) or JUN.search(t): continue
+            if not FIN.search(t) or JUN.search(t): continue
             if re.search(r'data scien',t,re.I): continue
+            is_lead=bool(LEAD.search(t))  # Director/VP/Head/Chief -> only if a stated min <=8 yrs
             if ats=='greenhouse':
                 loc=(j.get('location') or {}).get('name',''); rf='remote' in loc.lower(); wt=''
                 jd=strip(j.get('content','')); ts=(j.get('updated_at') or j.get('created_at') or '')[:10]
@@ -112,6 +113,7 @@ def extract(scan_path):
             scope = conf if conf else 'dfw'
             mn,mx=years(jd)
             if not yok(mn,mx): continue
+            if is_lead and mn is None: continue  # higher-level role needs an explicit min that 8 yrs meets
             try:
                 if ts and datetime.date.fromisoformat(ts)<CUTOFF: continue
             except: pass
