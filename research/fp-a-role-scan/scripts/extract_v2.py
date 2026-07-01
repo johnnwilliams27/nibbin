@@ -66,9 +66,8 @@ def extract(scan_path):
     for c in json.load(open(scan_path)):
         if not c.get('ats'): continue
         ats=c['ats']
-        if ats not in ('greenhouse','lever','ashby'): continue  # SR/Workable/Rippling verified separately (0 qualifying)
         for j in c['raw_jobs']:
-            t=j.get('title') or j.get('text') or ''
+            t=j.get('title') or j.get('text') or j.get('name') or ''
             if not FIN.search(t) or LEAD.search(t) or JUN.search(t): continue
             if re.search(r'data scien',t,re.I): continue
             if ats=='greenhouse':
@@ -84,11 +83,29 @@ def extract(scan_path):
                 jd=strip(j.get('descriptionPlain') or j.get('description','')); url=j.get('hostedUrl','')
                 ts=datetime.datetime.utcfromtimestamp(j['createdAt']/1000).date().isoformat() if j.get('createdAt') else ''
                 comp=''
-            else: # ashby
+            elif ats=='ashby':
                 loc=j.get('location','') or ''; rf=bool(j.get('isRemote')); wt=''
                 jd=strip(j.get('descriptionHtml') or j.get('descriptionPlain','')); url=j.get('jobUrl') or j.get('applyUrl','')
                 ts=(j.get('publishedAt') or '')[:10]
                 cc=j.get('compensation') or {}; comp=(cc.get('compensationTierSummary') if isinstance(cc,dict) else '') or ''
+            elif ats=='smartrecruiters':
+                lo=j.get('location') or {}; loc=f"{lo.get('city','')}, {lo.get('region','')}, {lo.get('country','')}".strip(', ')
+                if lo.get('remote'): loc='Remote, '+(lo.get('country') or 'US')
+                rf=bool(lo.get('remote')); wt=''; jd=''; comp=''
+                ts=(j.get('releasedDate') or '')[:10]
+                url=f"https://jobs.smartrecruiters.com/{c['ats_token']}/{j.get('id','')}"
+            elif ats=='workable':
+                lo=j.get('location') or {}; loc=f"{lo.get('city','')}, {lo.get('region','')}, {lo.get('country','')}".strip(', ')
+                if lo.get('telecommuting') or j.get('remote'): loc='Remote, '+(lo.get('country') or 'US')
+                rf=bool(lo.get('telecommuting') or j.get('remote')); wt=''; jd=''; comp=''
+                ts=(j.get('published_on') or j.get('published') or '')[:10]
+                url=j.get('url') or j.get('application_url') or f"https://apply.workable.com/{c['ats_token']}/j/{j.get('shortcode','')}"
+            elif ats=='rippling':
+                loc=(j.get('workLocation') or {}).get('label','') or ''
+                rf='remote' in loc.lower(); wt=''; jd=''; comp=''; ts=''
+                url=j.get('url','')
+            else:
+                continue
             conf=remote_us(loc, rf, wt, jd)
             is_dfw=dfw(loc) or dfw(jd[:400])
             if not conf and not is_dfw: continue

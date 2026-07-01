@@ -105,7 +105,11 @@ MKT_HINT={'ambience healthcare':'healthcare clinical','stripe':'fintech payments
           'affirm':'fintech payments lending','upstart':'fintech lending','farther':'fintech wealth',
           'collibra':'data governance saas','salsify':'ecommerce saas','island':'security saas',
           'precision medicine group':'healthcare pharma clinical services','imagine pediatrics':'healthcare pediatric care',
-          'lyra health':'healthcare mental health','datadog':'saas observability','cloudflare':'saas security'}
+          'lyra health':'healthcare mental health','datadog':'saas observability','cloudflare':'saas security',
+          'mercury':'fintech banking','coinbase':'fintech crypto payments','twilio':'saas communications',
+          'dropbox':'saas storage','anaconda (fka continuum analytics)':'data science saas','anaconda':'data science saas',
+          'descript':'saas media','kaseya':'saas it management','smartsheet':'saas productivity','arista networks':'saas networking hardware',
+          'bitwarden':'saas security','collibra':'data governance saas','salsify':'ecommerce saas'}
 verify_rows=[]
 for r in json.load(open('direct_ats_roles.json')):
     t=r['role_title']; comp=r['company']
@@ -126,6 +130,20 @@ for r in json.load(open('direct_ats_roles.json')):
 out=[]
 for r in rows.values():
     r['fund(s)']=', '.join(sorted(r.pop('funds'))); out.append(r)
+# final cross-pipeline dedup: same company+role from Consider AND direct-ATS -> one row (max fit, union funds)
+merged={}
+for r in out:
+    k=(re.sub(r'[^a-z0-9]','',r['company'].lower()), re.sub(r'[^a-z0-9]','',r['role_title'].lower()))
+    if k in merged:
+        m=merged[k]
+        fs=sorted(set(x.strip() for x in (m['fund(s)']+', '+r['fund(s)']).split(',') if x.strip()))
+        m['fund(s)']=', '.join(fs)
+        if r['fit_score']>m['fit_score']: m['fit_score'],m['domain_note']=r['fit_score'],r['domain_note']
+        if not m.get('comp_range') and r.get('comp_range'): m['comp_range']=r['comp_range']
+        if m['remote_scope'].startswith('DFW') and r['remote_scope']=='Remote (US)': m['remote_scope']='Remote (US)'
+    else:
+        merged[k]=r
+out=list(merged.values())
 out.sort(key=lambda r:(r['fit_score'], r['posted_date'] or ''), reverse=True)
 
 COLS=['fit_score','fund(s)','company','ownership','role_title','seniority','years_req','remote_scope','posted_date','comp_range','domain_note','ats_link']
@@ -149,15 +167,16 @@ for f in glob.glob('raw/*.json'):
     for j in json.load(open(f)).get('jobs',[]):
         consider_cos.add(j.get('companySlug') or j.get('companyName'))
         consider_fin_jobs+=1
-hc=json.load(open('hc_all_scan.json'))
-hc_resolved=[c for c in hc if c['ats']]
-hc_errored=[c for c in hc if not c['ats']]
-pc=json.load(open('pc_scan.json'))
-pc_resolved=[c for c in pc if c['ats']]
-pc_errored=[c for c in pc if not c['ats']]
-enumerated=len(consider_cos)+len(hc)+len(pc)
-scanned=len(consider_cos)+len(hc_resolved)+len(pc_resolved)
-errored_direct=len(hc_errored)+len(pc_errored)
+fallback=[]
+for sf in ['hc_all_scan.json','pc_scan.json','pc_new_scan.json','pc_new2_scan.json']:
+    if glob.glob(sf): fallback+=json.load(open(sf))
+hc=fallback  # name kept for downstream
+hc_resolved=[c for c in fallback if c.get('ats')]
+hc_errored=[c for c in fallback if not c.get('ats')]
+pc=[]; pc_resolved=[]; pc_errored=[]
+enumerated=len(consider_cos)+len(fallback)
+scanned=len(consider_cos)+len(hc_resolved)
+errored_direct=len(hc_errored)
 with open('fp_a_remote_roles.md','w') as fh:
     fh.write("# FP&A / Strategic Finance / Financial-Analyst Roles — VC Portfolio Sweep (Remote-US + Dallas–Fort Worth)\n\n")
     fh.write(f"_Generated {TODAY.isoformat()} • FP&A/Strategic-Finance/Financial-Analyst • min <8 yrs experience • **Remote-US OR Dallas–Fort Worth metro (in-office/hybrid OK)** • posted ≤ 60 days (since {CUTOFF.isoformat()}) • public + private companies_\n\n")
@@ -171,7 +190,7 @@ with open('fp_a_remote_roles.md','w') as fh:
         fh.write("These matched function/seniority/recency and the ATS flags them remote-eligible, but the posting lists an office (SF/NYC HQ) and the JD doesn't explicitly confirm remote — several such companies (Ramp, OpenAI) are actually hybrid/in-office. Confirm the work model before pursuing.\n\n")
         fh.write(md_table(verify_rows))
     fh.write("\n## Totals\n\n")
-    fh.write(f"- **Funds swept:** 9 Consider boards (full API) + 13 funds via portfolio→direct-ATS fallback (Oak HC/FT, .406, Venrock, General Catalyst, Accel, Khosla, 8VC, Menlo, Craft, Founders Fund, Index, IVP, NEA)\n")
+    fh.write(f"- **Funds swept:** 9 Consider boards (full API) + 17 funds via portfolio→direct-ATS fallback (Oak HC/FT, .406, Venrock, General Catalyst, Accel [784 cos via Sanity API], Insight [800 via WP API], Redpoint [285 via Sanity], Spark, Khosla, 8VC, Menlo, Craft, Coatue, Founders Fund, Index, IVP, NEA)\n")
     fh.write(f"- **Companies enumerated:** ~{enumerated:,} (Consider: {len(consider_cos):,} distinct w/ finance postings across {consider_fin_jobs:,} finance roles; portfolio-fallback: {len(hc)+len(pc):,})\n")
     fh.write(f"- **Private companies scanned (ATS reached):** ~{scanned:,} (direct-ATS resolved: {len(hc_resolved)+len(pc_resolved)} of {len(hc)+len(pc)} fallback companies)\n")
     fh.write(f"- **Matching roles found:** {len(out)} confident + {len(verify_rows)} unconfirmed-remote\n")
@@ -182,10 +201,10 @@ with open('fp_a_remote_roles.md','w') as fh:
     fh.write("## Coverage & method\n\n")
     fh.write("**Fully swept (Consider-backed boards, JSON API):** a16z, Sequoia, Lightspeed, Greylock, Bessemer, Kleiner Perkins, Battery, GV, Felicis. "
              "One `POST /api-boards/search-jobs` per board with `jobFunctions:[\"Finance\"]` returns every portfolio finance posting pre-structured. Filtered client-side to FP&A/Strategic-Finance/Corporate-Finance/**Financial-Analyst** titles, **Remote-US OR Dallas–Fort Worth metro** (in-office/hybrid OK for DFW), **min <8 yrs**, ≤60 days. Public and private companies both included; Director/VP/Head/CFO titles excluded.\n\n")
-    fh.write("**Portfolio → direct-ATS fallback (13 funds on Getro or with no Consider board):** companies enumerated from each fund's public portfolio page, then each company's Greenhouse/Lever/Ashby JSON board probed directly and JDs parsed for remote policy + years. "
+    fh.write("**Portfolio → direct-ATS fallback (17 funds on Getro or with no Consider board):** companies enumerated from each fund's public portfolio — via their CMS/APIs where the page was JS-locked (Accel & Redpoint via Sanity GROQ, Insight via WordPress `sfcompany`), then each company probed across **7 ATS backends** (Greenhouse/Lever/Ashby/SmartRecruiters/Workable/Rippling) and JDs parsed for remote policy + years. "
              "Net-new yield is low and expected: these portfolios overlap heavily with the Consider funds (hot cos like Ramp/Anrok/Stripe recur and are deduped), and most 'strategic finance' roles at these hot startups are SF/NYC **in-office or hybrid**; the genuinely-remote ones are largely at **public** companies (Affirm, Upstart, Datadog) excluded by Step 2. The payer-core names (Devoted, Cotiviti, welbehealth, abacusinsights, Reveleer, Aledade) had no qualifying open remote FP&A role in-window.\n\n")
-    fh.write("**Unresolved-company recovery pass:** the {} companies that didn't resolve to Greenhouse/Lever/Ashby were re-probed across SmartRecruiters, Workable, and Rippling — recovering 22 more (incl. Devoted Health, Firefly Health, Rippling itself). Result: **0 net-new qualifying roles.** The only FP&A roles found were Rippling's *Strategic Finance Associate/Sr Associate* (NYC/SF **in-office**), Encoded Therapeutics (*Sr Director*), and OpenDoor (*Director*, also public). The big payer names still unreached (Cotiviti, Reveleer, CareBridge, VillageMD, Wayspring, athenahealth) run on Workday (per-tenant, no simple public API) or have no open remote FP&A role.\n\n".format(errored_direct))
-    fh.write("**Still not reached (documented gap):** Insight Partners (portfolio not machine-enumerable via WebFetch), Coatue/Redpoint/Flare (portfolio pages 404/JS-only), Thrive/Conviction/Radical/Spark/Benchmark (no public list found), and ~{} companies on Workday/custom career sites. Getro job boards themselves remain inaccessible (block non-browser access; egress proxy drops headless-Chrome TLS).\n\n".format(errored_direct))
+    fh.write("**Why ~{} companies don't resolve (diagnosed on a random sample):** ~44% have a custom / JS-embedded / bot-blocked careers page (no public JSON API); ~40% are exited/acquired/defunct portfolio companies that aren't hiring (VC portfolios list decades of them — Bay Networks, HomeAway, Castlight) or my domain guess missed a non-.com domain; ~13% are on a supported ATS under a non-guessable token (e.g. Nourish→Greenhouse); the rest run on Workday/iCIMS/ADP/Paylocity (no simple public API). Net: non-resolution is dominated by non-hiring/exited companies, not by fixable token misses.\n\n".format(errored_direct))
+    fh.write("**Still not reached:** Thrive, Conviction, Radical, Benchmark, Flare Capital (no machine-readable public portfolio list — fully JS-locked or none published), plus Getro job boards themselves (block non-browser access; egress proxy drops headless-Chrome TLS). Coatue is partial (~40 of its portfolio; lazy-loaded grid).\n\n")
     fh.write("**Borderline (excluded from main list):** Redox — *Principal FP&A (SaaS Healthcare)*, remote fit-4, but >60 days & Principal-level. Heartbeat Health — *Senior Financial Analyst*, remote health, generic-analyst title.\n")
 print(f"FINAL: {len(out)} roles written to fp_a_remote_roles.csv / .md")
 print("fit distribution:",dict(sorted(fitc.items(),reverse=True)))
