@@ -7,11 +7,11 @@ FUND_LABEL={'a16z':'a16z','sequoia':'Sequoia','lightspeed':'Lightspeed','greyloc
  'bessemer':'Bessemer','kleiner':'Kleiner Perkins','battery':'Battery','gv':'GV','felicis':'Felicis'}
 
 PROD=re.compile(r'(director of product|head of product|chief product officer|\bcpo\b|(?:vp|svp|evp|vice president)[\s,]+(?:of\s+)?product|chief operating officer|\bcoo\b|founding product manager|founding pm)\b',re.I)
-PROD_EXCL=re.compile(r'chief of staff|product design|product marketing|product support|product operations|product ops|\bdesigner\b|product analyst|data product|product counsel|product security|technical product marketing|product finance|product-led growth|growth marketing|product engineer|executive assistant|office of the|assistant to the|product line management',re.I)
+PROD_EXCL=re.compile(r'chief of staff|product design|product marketing|product support|product operations|product ops|\bdesigner\b|product analyst|data product|product counsel|product security|technical product marketing|product finance|product-led growth|growth marketing|\bengineer\b|executive assistant|office of the|assistant to the|product line management',re.I)
 
-US_STATES=set("alabama alaska arizona arkansas california colorado connecticut delaware florida georgia hawaii idaho illinois indiana iowa kansas kentucky louisiana maine maryland massachusetts michigan minnesota mississippi missouri montana nebraska nevada hampshire jersey mexico york carolina dakota ohio oklahoma oregon pennsylvania rhode tennessee texas utah vermont virginia washington wisconsin wyoming columbia".split())
-US_CITIES=set("san francisco new york nyc sf seattle austin boston chicago denver atlanta dallas los angeles la miami tempe oakland mountain view palo alto redwood san mateo washington dc arlington philadelphia".split())
-FOREIGN=re.compile(r'\b(canada|toronto|vancouver|london|dublin|ireland|paris|france|munich|germany|berlin|tel aviv|israel|singapore|seoul|korea|india|bangalore|uk|united kingdom|emea|apac|latam|amsterdam|netherlands|sydney|australia|remote canada|mexico city|brazil|tokyo|japan)\b',re.I)
+US_STATES=set(['alabama','alaska','arizona','arkansas','california','colorado','connecticut','delaware','florida','hawaii','idaho','illinois','indiana','iowa','kansas','kentucky','louisiana','maine','maryland','massachusetts','michigan','minnesota','mississippi','missouri','montana','nebraska','nevada','new hampshire','new jersey','new mexico','new york','north carolina','south carolina','north dakota','south dakota','ohio','oklahoma','oregon','pennsylvania','rhode island','tennessee','texas','utah','vermont','virginia','west virginia','washington','wisconsin','wyoming'])
+CITY_RE=re.compile(r'\b(san francisco|new york city|new york|nyc|seattle|austin|boston|chicago|denver|atlanta|dallas|los angeles|miami|tempe|oakland|mountain view|palo alto|redwood city|san mateo|sunnyvale|santa clara|bellevue|brooklyn|arlington|philadelphia|san jose|san diego|nashville|charlotte|columbus|remote us|\bsf\b|\bla\b|\bnyc\b|\bd\.?c\.?\b)\b',re.I)
+FOREIGN=re.compile(r'\b(canada|toronto|vancouver|british columbia|ontario|montreal|london|england|dublin|ireland|paris|france|munich|germany|berlin|tel aviv|israel|singapore|seoul|korea|india|bangalore|bengaluru|\buk\b|united kingdom|emea|apac|latam|amsterdam|netherlands|sydney|australia|remote canada|mexico|brazil|tokyo|japan|colombia|bogota|argentina|chile|peru|philippines|indonesia|vietnam|thailand|nigeria|kenya|egypt|pakistan|bangladesh|ukraine|poland|warszawa|warsaw|romania|spain|madrid|barcelona|italy|portugal|lisbon|sweden|stockholm|norway|denmark|finland|switzerland|zurich|austria|belgium|greece|turkey|\buae\b|dubai|abu dhabi|saudi|qatar|hong kong|shanghai|beijing|shenzhen|taiwan|new zealand|south africa|masovian|voivodeship)\b',re.I)
 HYBRID_JD=re.compile(r'hybrid work model|days? (?:a|per) week in|in[- ]office|this role is based in|based in our|based out of our|relocation assistance|onsite|on-site',re.I)
 REMOTE_JD=re.compile(r'\b(fully remote|remote[- ]first|work from anywhere|distributed team|anywhere in the (?:us|united states)|remote \(us|us[- ]remote|remote position|this is a remote)\b',re.I)
 
@@ -23,11 +23,22 @@ def dfw(loc):
 def sf(loc):
     l=(loc or '').lower()
     return bool(re.search(r'\bsan francisco\b|\bsf\b|bay area|south san francisco',l))
+US_ABBR=set("AL AK AZ AR CA CO CT DE FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY DC".split())
+def us_location(loc):
+    l=loc or ''
+    if re.search(r'\b(united states|usa|u\.s\.a?\.?|us[- ]based|remote us|\bus\b)\b',l,re.I): return True
+    if STATES_RE.search(l): return True
+    if re.search(r'\bdistrict of columbia\b|,\s*d\.?c\.?\b',l,re.I): return True
+    if any(m in US_ABBR for m in re.findall(r',\s*([A-Z]{2})\b',l)): return True
+    if CITY_RE.search(l): return True
+    return False
+STATES_RE=re.compile(r'\b('+'|'.join(sorted(US_STATES-{'columbia'},key=len,reverse=True))+r')\b',re.I)
 def is_us(b):
-    b=b.lower()
-    if any(w in b for w in['united states','remote - us','remote, us',' usa','u.s.','us-based','us based']):return True
-    if any(st in b for st in US_STATES):return True
-    if 'north america' in b and not re.search(r'canada|ireland|singapore|kingdom|india|germany|france|australia|europe',b):return True
+    bl=(b or '').lower()
+    if any(w in bl for w in['united states','remote - us','remote, us',' usa','u.s.','us-based','us based']):return True
+    if STATES_RE.search(bl):return True
+    if re.search(r'\bdistrict of columbia\b|washington,?\s*d\.?c\.?',bl):return True
+    if 'north america' in bl and not FOREIGN.search(bl):return True
     return False
 def strip(t): return re.sub(r'\s+',' ',re.sub(r'<[^>]+>',' ',html.unescape(t or '')))
 def years(txt):
@@ -44,7 +55,7 @@ def yreq(mn,mx):
     return f"{mn}-{mx}"
 def remote_us(loc,rf,wt,jd):
     l=(loc or '').lower().strip(); b=l+' | '+jd[:800].lower()
-    us=('united states' in b or ' usa' in b or 'u.s.' in b or 'us-based' in b or 'us based' in b or any(st in b for st in US_STATES) or any(c in l for c in US_CITIES) or 'anywhere in the us' in b)
+    us=('united states' in b or ' usa' in b or 'u.s.' in b or 'us-based' in b or 'us based' in b or any(st in b for st in US_STATES) or bool(CITY_RE.search(l)) or 'anywhere in the us' in b)
     foreign=bool(FOREIGN.search(l))
     if 'remote canada' in l: return None
     if re.search(r'remote[\s,\-|]*(us|u\.s\.|usa|united states|north america)\b',l) and not re.search(r'remote[\s,\-|]*canada',l): return 'confident'
@@ -96,9 +107,9 @@ for f in glob.glob('raw_product/*.json'):
         t=j.get('title','')
         if not PROD.search(t) or PROD_EXCL.search(t): continue
         locblob=' '.join(str(x.get('value') if isinstance(x,dict) else x) for x in (j.get('normalizedLocations') or []))+' '+' '.join(j.get('locations') or [])+' '+' '.join(str(r.get('value') if isinstance(r,dict) else r) for r in (j.get('regions') or []))
-        remote=j.get('remote') and is_us(locblob)  # remote=True means remote-eligible (may also offer hybrid)
-        d,s=dfw(locblob),sf(locblob)
-        if not remote and not d and not s: continue
+        remote=j.get('remote') and is_us(locblob)
+        usloc=us_location(locblob)
+        if not (remote or usloc): continue  # US-confirmed remote OR a US location
         mn,mx=j.get('minYearsExp'),j.get('maxYearsExp')
         if not yok(mn,mx): continue
         ts=(j.get('timeStamp') or '')[:10]
@@ -109,10 +120,12 @@ for f in glob.glob('raw_product/*.json'):
         if sal.get('minValue') and sal.get('maxValue') and sal['maxValue']>1000: comp=f"${int(sal['minValue']):,}–${int(sal['maxValue']):,}"
         mks=' '.join(str(m.get('value') if isinstance(m,dict) else m) for m in (j.get('markets') or []))
         sc,note=score(j.get('companyName',''),mks+' '+MKT_HINT.get((j.get('companyName') or '').lower(),''),t)
-        scope='Remote (US)' if remote else ('DFW' if d else 'San Francisco')
-        if not remote:
-            city=next((str(x.get('value') if isinstance(x,dict) else x) for x in (j.get('normalizedLocations') or []) if (dfw(str(x.get('value') if isinstance(x,dict) else x)) or sf(str(x.get('value') if isinstance(x,dict) else x)))),scope)
-            scope=f"{scope}: {city}"+(" (hybrid)" if j.get('hybrid') else " (in-office)")
+        if remote: scope='Remote (US)'
+        else:
+            cities=[str(x.get('value') if isinstance(x,dict) else x) for x in (j.get('normalizedLocations') or [])]
+            uscity=next((c for c in cities if us_location(c)),(cities[0] if cities else 'US'))
+            tag='DFW' if dfw(uscity) else ('SF' if sf(uscity) else None)
+            scope=(f"{tag}: {uscity}" if tag else uscity)+(" (hybrid)" if j.get('hybrid') else " (in-office)")
         key=(re.sub(r'[^a-z0-9]','',(j.get('companySlug') or j.get('companyName','')).lower()),re.sub(r'[^a-z0-9]','',t.lower()))
         add(key,{'fit_score':sc,'company':j.get('companyName',''),'ownership':ownership(j.get('companyName','')),'role_title':t,
             'seniority':', '.join(sorted(j.get('jobSeniorityIds') or [])) or 'unspecified','years_req':yreq(mn,mx),
@@ -148,8 +161,11 @@ for sfch in ['hc_all_scan.json','pc_scan.json','pc_new_scan.json','pc_new2_scan.
             elif ats=='rippling':
                 loc=(j.get('workLocation') or {}).get('label','') or ''; rf='remote' in loc.lower(); wt=''; jd=''; comp=''; ts=''; url=j.get('url','')
             else: continue
-            conf=remote_us(loc,rf,wt,jd); d,s=dfw(loc),sf(loc)
-            if not conf and not d and not s: continue
+            conf=remote_us(loc,rf,wt,jd)
+            usloc=us_location(loc)
+            foreign=bool(FOREIGN.search(loc)) and not usloc and conf!='confident'
+            if foreign: continue
+            if conf!='confident' and not usloc: continue
             mn,mx=years(jd)
             if not yok(mn,mx): continue
             try:
@@ -157,11 +173,10 @@ for sfch in ['hc_all_scan.json','pc_scan.json','pc_new_scan.json','pc_new2_scan.
             except: pass
             comp_name=c['name']; sc,note=score(comp_name,MKT_HINT.get(comp_name.lower(),''),t)
             if conf=='confident': scope='Remote (US)'
-            elif d: scope=f"DFW: {loc}"
-            elif s: scope=f"San Francisco: {loc}"
-            elif conf=='verify': scope=f"Remote? verify (loc: {loc})"
-            else: continue
-            tier='verify' if scope.startswith('Remote? verify') else 'ok'
+            else:
+                tag='DFW' if dfw(loc) else ('SF' if sf(loc) else None)
+                scope=(f"{tag}: {loc}" if tag else (loc or 'US'))
+            tier='ok'
             fund=', '.join(c['funds']) if isinstance(c['funds'],list) else c['funds']
             key=(re.sub(r'[^a-z0-9]','',comp_name.lower()),re.sub(r'[^a-z0-9]','',t.lower()))
             add(key,{'fit_score':sc,'company':comp_name,'ownership':ownership(comp_name),'role_title':t,'seniority':'—',
