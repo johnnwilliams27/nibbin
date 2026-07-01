@@ -1,9 +1,12 @@
 # FP&A / Strategic Finance role scan — VC portfolios
 
-Sweep of top-VC portfolio companies for **currently-open, remote (US), mid-senior
-(~5–8 yrs) FP&A / Strategic Finance / Corporate Finance** roles at **private** companies,
-scored 1–5 for fit to a candidate with a **health-insurance payer / PE-backed healthcare
-services** FP&A background.
+Sweep of top-VC portfolio companies for **currently-open FP&A / Strategic Finance /
+Corporate Finance / Financial-Analyst** roles with a **minimum requirement under 8 years**,
+that are either **Remote (US-eligible)** OR in the **Dallas–Fort Worth metro** (Dallas/
+Fort Worth/Plano/Irving + suburbs; in-office or hybrid OK). **Public and private**
+companies both in scope. Roles are scored 1–5 for fit to a candidate with a
+**health-insurance payer / PE-backed healthcare services** FP&A background.
+Director/VP/Head/CFO-level titles are excluded.
 
 ## Deliverables
 - **`fp_a_remote_roles.csv`** — machine-readable results.

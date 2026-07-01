@@ -6,12 +6,17 @@ from collections import defaultdict, Counter
 TODAY=datetime.date(2026,7,1); CUTOFF=TODAY-datetime.timedelta(days=60)
 FUND_LABEL={'a16z':'a16z','sequoia':'Sequoia','lightspeed':'Lightspeed','greylock':'Greylock',
  'bessemer':'Bessemer','kleiner':'Kleiner Perkins','battery':'Battery','gv':'GV','felicis':'Felicis'}
-FIN=re.compile(r'\b(fp&a|fp and a|financial planning|strategic finance|corporate finance|finance & strategy|finance and strategy)\b',re.I)
+FIN=re.compile(r'\b(fp&a|fp and a|financial planning|strategic finance|corporate finance|finance & strategy|finance and strategy|financial analyst|finance analyst)\b',re.I)
 LEAD=re.compile(r'\b(director|vp|vice president|head of|head,|chief|cfo|svp|evp)\b',re.I)
-JUN=re.compile(r'\b(intern|internship|apprentice|co-op|analyst i\b)\b',re.I)
+JUN=re.compile(r'\b(intern|internship|apprentice|co-op)\b',re.I)
+def dfw(loc):
+    l=(loc or '').lower()
+    if re.search(r'\b(dallas|fort worth|ft\.? worth|plano|irving|frisco|richardson|las colinas|mckinney|grapevine|addison|carrollton|dfw)\b',l): return True
+    if re.search(r'\barlington\b',l) and ('tx' in l or 'texas' in l): return True
+    return False
 US_STATES=set("alabama alaska arizona arkansas california colorado connecticut delaware florida georgia hawaii idaho illinois indiana iowa kansas kentucky louisiana maine maryland massachusetts michigan minnesota mississippi missouri montana nebraska nevada hampshire jersey mexico york carolina dakota ohio oklahoma oregon pennsylvania rhode tennessee texas utah vermont virginia washington wisconsin wyoming columbia".split())
 
-PAYER_CO={'devoted health','clover health','oscar health','cohere health','alignment health','collective health','capital rx','rightway','turquoise health','sidecar health','sana benefits','angle health','gravie','welbehealth','wayspring','cotiviti','reveleer','abacus insights','abacusinsights','interwell health','oncohealth','ooda health','main street health','curana health','evergreen nephrology','rialtic'}
+PAYER_CO={'devoted health','clover health','oscar','oscar health','cohere health','alignment health','collective health','capital rx','rightway','turquoise health','sidecar health','sana benefits','angle health','gravie','welbehealth','wayspring','cotiviti','reveleer','abacus insights','abacusinsights','interwell health','oncohealth','ooda health','main street health','curana health','evergreen nephrology','rialtic'}
 PAYER_KW=re.compile(r'\b(payer|pbm|pharmacy benefit|prior auth|claims|health plan|health insurance|medicare|medicaid|revenue cycle|\brcm\b|care navigation|utilization management|actuar|value-based care)\b',re.I)
 HEALTH_KW=re.compile(r'\bhealth|clinical|patient|pharma|biotech|medical|care\b',re.I)
 FIN_KW=re.compile(r'\bfintech|payments|insurtech|banking|lending|financial services|insurance\b',re.I)
@@ -38,7 +43,7 @@ def yreq(mn,mx):
     return f"{mn}-{mx}"
 
 # publicly-traded companies (have a ticker) — excluded per Step 2
-PUBLIC={'instacart':'CART (Nasdaq)','figma':'FIG (NYSE)','databricks':'','klaviyo':'KVYO',
+PUBLIC={'instacart':'CART','figma':'FIG','oscar':'OSCR','databricks':'','klaviyo':'KVYO',
         'toast':'TOST','samsara':'IOT','gitlab':'GTLB','confluent':'CFLT','hashicorp':'HCP',
         'reddit':'RDDT','duolingo':'DUOL','coinbase':'COIN','robinhood':'HOOD','sofi':'SOFI',
         'affirm':'AFRM','marqeta':'MQ','doordash':'DASH','airbnb':'ABNB','snowflake':'SNOW',
@@ -46,31 +51,35 @@ PUBLIC={'instacart':'CART (Nasdaq)','figma':'FIG (NYSE)','databricks':'','klaviy
 def is_public(name):
     n=re.sub(r'\s+(inc|corp|co|technologies|labs|health|life)\.?$','',name.lower()).strip()
     return name.lower() in PUBLIC or n in PUBLIC
+def ownership(name):
+    n=re.sub(r'\s+(inc|corp|co|technologies|labs|health|life)\.?$','',name.lower()).strip()
+    tick=PUBLIC.get(name.lower()) or PUBLIC.get(n)
+    if tick is not None: return f"Public ({tick})" if tick else "Public"
+    return "Private"
 
-rows={}; dropped_public=set()
+rows={}
 def add(key,payload,fund):
-    if is_public(payload['company']): dropped_public.add(payload['company']); return
     if key not in rows: rows[key]=payload; rows[key]['funds']=set()
     rows[key]['funds'].add(fund)
 
 # ---------- Phase A: Consider ----------
 def years_ok(mn,mx):
-    if mn is not None and mn>8:return False
-    if mx is not None and mx<5:return False
-    if mn is not None and mn<3:return False
+    # expanded: include anything whose stated minimum is under 8 years (or unspecified)
+    if mn is not None and mn>=8:return False
     return True
 for f in glob.glob('raw/*.json'):
     fund=f.split('/')[-1][:-5]; d=json.load(open(f))
     for j in d.get('jobs',[]):
         t=j.get('title','')
         if not FIN.search(t) or LEAD.search(t) or JUN.search(t):continue
-        if not(j.get('remote') and not j.get('hybrid')):continue
         locblob=' '.join(str(x.get('value') if isinstance(x,dict) else x) for x in (j.get('normalizedLocations') or []))+' '+' '.join(j.get('locations') or [])+' '+' '.join(str(r.get('value') if isinstance(r,dict) else r) for r in (j.get('regions') or []))
-        if not is_us(locblob):continue
+        remote_us = j.get('remote') and not j.get('hybrid') and is_us(locblob)
+        is_dfw = dfw(locblob)
+        if not remote_us and not is_dfw: continue
         mn,mx=j.get('minYearsExp'),j.get('maxYearsExp')
         if not years_ok(mn,mx):continue
         ids=set(j.get('jobSeniorityIds') or [])
-        if ids and ids<={'junior','intern'}:continue
+        if ids and ids<={'intern'}:continue
         ts=(j.get('timeStamp') or '')[:10]
         try:
             if ts and datetime.date.fromisoformat(ts)<CUTOFF:continue
@@ -80,26 +89,36 @@ for f in glob.glob('raw/*.json'):
             comp=f"${int(sal['minValue']):,}–${int(sal['maxValue']):,}"
         mks=' '.join(str(m.get('value') if isinstance(m,dict) else m) for m in (j.get('markets') or []))
         sc,note=score(j.get('companyName',''),mks,t)
+        if remote_us: scope='Remote (US)'
+        else:
+            dfwcity=next((str(x.get('value') if isinstance(x,dict) else x) for x in (j.get('normalizedLocations') or []) if dfw(str(x.get('value') if isinstance(x,dict) else x))),'DFW')
+            scope=f"DFW: {dfwcity}"+(" (hybrid)" if j.get('hybrid') else " (in-office)")
         key=(re.sub(r'[^a-z0-9]','',(j.get('companySlug') or j.get('companyName','')).lower()),re.sub(r'[^a-z0-9]','',t.lower()))
-        add(key,{'fit_score':sc,'company':j.get('companyName',''),'role_title':t,
+        add(key,{'fit_score':sc,'company':j.get('companyName',''),'role_title':t,'ownership':ownership(j.get('companyName','')),
             'seniority':', '.join(sorted(ids)) or 'unspecified','years_req':yreq(mn,mx),
-            'remote_scope':'Remote (US)','posted_date':ts,'comp_range':comp,'domain_note':note,
+            'remote_scope':scope,'posted_date':ts,'comp_range':comp,'domain_note':note,
             'ats_link':j.get('applyUrl') or j.get('url','')}, FUND_LABEL.get(fund,fund))
 
 # ---------- Phase B+C: direct-ATS confident roles ----------
 MKT_HINT={'ambience healthcare':'healthcare clinical','stripe':'fintech payments','plaid':'fintech',
-          'perplexity':'ai saas','assort health':'healthcare','solace health':'healthcare'}
+          'perplexity':'ai saas','assort health':'healthcare','solace health':'healthcare',
+          'affirm':'fintech payments lending','upstart':'fintech lending','farther':'fintech wealth',
+          'collibra':'data governance saas','salsify':'ecommerce saas','island':'security saas',
+          'precision medicine group':'healthcare pharma clinical services','imagine pediatrics':'healthcare pediatric care',
+          'lyra health':'healthcare mental health','datadog':'saas observability','cloudflare':'saas security'}
 verify_rows=[]
 for r in json.load(open('direct_ats_roles.json')):
     t=r['role_title']; comp=r['company']
     sc,note=score(comp, MKT_HINT.get(comp.lower(),''), t)
     fund=', '.join(r['funds']) if isinstance(r['funds'],list) else r['funds']
-    payload={'fit_score':sc,'company':comp,'role_title':t,
+    conf=r['remote_conf']
+    scope={'confident':'Remote (US)','dfw':f"DFW: {r['location']}"}.get(conf, f"Remote? verify (loc: {r['location']})")
+    payload={'fit_score':sc,'company':comp,'role_title':t,'ownership':ownership(comp),
         'seniority':'—','years_req':r['years_req'],
-        'remote_scope':'Remote (US)' if r['remote_conf']=='confident' else f"Remote? verify (loc: {r['location']})",
+        'remote_scope':scope,
         'posted_date':r['posted_date'],'comp_range':r.get('comp_range',''),'domain_note':note,
         'ats_link':r['ats_link'],'funds':fund}
-    if r['remote_conf']=='verify':
+    if conf=='verify':
         verify_rows.append(payload); continue
     key=(re.sub(r'[^a-z0-9]','',comp.lower()),re.sub(r'[^a-z0-9]','',t.lower()))
     add(key,payload,fund)
@@ -109,18 +128,18 @@ for r in rows.values():
     r['fund(s)']=', '.join(sorted(r.pop('funds'))); out.append(r)
 out.sort(key=lambda r:(r['fit_score'], r['posted_date'] or ''), reverse=True)
 
-COLS=['fit_score','fund(s)','company','role_title','seniority','years_req','remote_scope','posted_date','comp_range','domain_note','ats_link']
+COLS=['fit_score','fund(s)','company','ownership','role_title','seniority','years_req','remote_scope','posted_date','comp_range','domain_note','ats_link']
 with open('fp_a_remote_roles.csv','w',newline='') as fh:
     w=csv.DictWriter(fh,fieldnames=COLS);w.writeheader()
     for r in out:w.writerow({c:r.get(c,'') for c in COLS})
 
 # ---------- Markdown ----------
 def md_table(rows):
-    h='| '+' | '.join(['fit','fund(s)','company','role','seniority','yrs','remote','posted','comp','domain','link'])+' |\n'
-    h+='|'+'|'.join(['---']*11)+'|\n'
+    h='| '+' | '.join(['fit','fund(s)','company','ownership','role','seniority','yrs','location','posted','comp','domain','link'])+' |\n'
+    h+='|'+'|'.join(['---']*12)+'|\n'
     for r in rows:
         link=f"[apply]({r['ats_link']})" if r['ats_link'] else ''
-        h+='| '+' | '.join(str(x) for x in [r['fit_score'],r['fund(s)'],r['company'],r['role_title'],r['seniority'],r['years_req'],r['remote_scope'],r['posted_date'],r['comp_range'] or '—',r['domain_note'],link])+' |\n'
+        h+='| '+' | '.join(str(x) for x in [r['fit_score'],r['fund(s)'],r['company'],r.get('ownership','Private'),r['role_title'],r['seniority'],r['years_req'],r['remote_scope'],r['posted_date'],r['comp_range'] or '—',r['domain_note'],link])+' |\n'
     return h
 fitc=Counter(r['fit_score'] for r in out)
 # ---- totals ----
@@ -140,8 +159,8 @@ enumerated=len(consider_cos)+len(hc)+len(pc)
 scanned=len(consider_cos)+len(hc_resolved)+len(pc_resolved)
 errored_direct=len(hc_errored)+len(pc_errored)
 with open('fp_a_remote_roles.md','w') as fh:
-    fh.write("# Remote Mid-Senior FP&A / Strategic Finance Roles — VC Portfolio Sweep\n\n")
-    fh.write(f"_Generated {TODAY.isoformat()} • remote US-eligible • ~5–8 yrs (Analyst→Sr Manager) • posted ≤ 60 days (since {CUTOFF.isoformat()}) • public companies excluded_\n\n")
+    fh.write("# FP&A / Strategic Finance / Financial-Analyst Roles — VC Portfolio Sweep (Remote-US + Dallas–Fort Worth)\n\n")
+    fh.write(f"_Generated {TODAY.isoformat()} • FP&A/Strategic-Finance/Financial-Analyst • min <8 yrs experience • **Remote-US OR Dallas–Fort Worth metro (in-office/hybrid OK)** • posted ≤ 60 days (since {CUTOFF.isoformat()}) • public + private companies_\n\n")
     fh.write(f"**{len(out)} matching roles** — fit mix: "+', '.join(f"{k}★×{fitc[k]}" for k in sorted(fitc,reverse=True))+"\n\n")
     fh.write("Fit key: **5**=payer/PBM/claims core · **4**=healthcare/health-tech · **3**=fintech/payments/insurtech · **2**=other SaaS · **1**=no overlap\n\n")
     fh.write(md_table(out))
@@ -156,11 +175,13 @@ with open('fp_a_remote_roles.md','w') as fh:
     fh.write(f"- **Companies enumerated:** ~{enumerated:,} (Consider: {len(consider_cos):,} distinct w/ finance postings across {consider_fin_jobs:,} finance roles; portfolio-fallback: {len(hc)+len(pc):,})\n")
     fh.write(f"- **Private companies scanned (ATS reached):** ~{scanned:,} (direct-ATS resolved: {len(hc_resolved)+len(pc_resolved)} of {len(hc)+len(pc)} fallback companies)\n")
     fh.write(f"- **Matching roles found:** {len(out)} confident + {len(verify_rows)} unconfirmed-remote\n")
-    fh.write(f"- **Public companies dropped (Step 2):** {', '.join(sorted(dropped_public)) or 'none'}, plus Affirm/Upstart/OpenAI-hybrid etc. filtered during extraction\n")
+    pubn=sum(1 for r in out if str(r.get('ownership','')).startswith('Public'))
+    dfwn=sum(1 for r in out if str(r.get('remote_scope','')).startswith('DFW'))
+    fh.write(f"- **Public companies included:** {pubn} of {len(out)} roles are at public companies (now in-scope). **DFW-metro in-office/hybrid roles:** {dfwn}.\n")
     fh.write(f"- **Companies that errored / no public ATS:** {errored_direct} fallback cos after probing 7 ATS backends (Greenhouse/Lever/Ashby/SmartRecruiters/Workable/Rippling) — remainder on Workday (per-tenant, no public API) or custom/no public board\n\n")
     fh.write("## Coverage & method\n\n")
     fh.write("**Fully swept (Consider-backed boards, JSON API):** a16z, Sequoia, Lightspeed, Greylock, Bessemer, Kleiner Perkins, Battery, GV, Felicis. "
-             "One `POST /api-boards/search-jobs` per board with `jobFunctions:[\"Finance\"]` returns every portfolio finance posting pre-structured. Filtered client-side to FP&A/Strategic/Corporate-Finance titles, remote-US, ~5–8 yrs, ≤60 days.\n\n")
+             "One `POST /api-boards/search-jobs` per board with `jobFunctions:[\"Finance\"]` returns every portfolio finance posting pre-structured. Filtered client-side to FP&A/Strategic-Finance/Corporate-Finance/**Financial-Analyst** titles, **Remote-US OR Dallas–Fort Worth metro** (in-office/hybrid OK for DFW), **min <8 yrs**, ≤60 days. Public and private companies both included; Director/VP/Head/CFO titles excluded.\n\n")
     fh.write("**Portfolio → direct-ATS fallback (13 funds on Getro or with no Consider board):** companies enumerated from each fund's public portfolio page, then each company's Greenhouse/Lever/Ashby JSON board probed directly and JDs parsed for remote policy + years. "
              "Net-new yield is low and expected: these portfolios overlap heavily with the Consider funds (hot cos like Ramp/Anrok/Stripe recur and are deduped), and most 'strategic finance' roles at these hot startups are SF/NYC **in-office or hybrid**; the genuinely-remote ones are largely at **public** companies (Affirm, Upstart, Datadog) excluded by Step 2. The payer-core names (Devoted, Cotiviti, welbehealth, abacusinsights, Reveleer, Aledade) had no qualifying open remote FP&A role in-window.\n\n")
     fh.write("**Unresolved-company recovery pass:** the {} companies that didn't resolve to Greenhouse/Lever/Ashby were re-probed across SmartRecruiters, Workable, and Rippling — recovering 22 more (incl. Devoted Health, Firefly Health, Rippling itself). Result: **0 net-new qualifying roles.** The only FP&A roles found were Rippling's *Strategic Finance Associate/Sr Associate* (NYC/SF **in-office**), Encoded Therapeutics (*Sr Director*), and OpenDoor (*Director*, also public). The big payer names still unreached (Cotiviti, Reveleer, CareBridge, VillageMD, Wayspring, athenahealth) run on Workday (per-tenant, no simple public API) or have no open remote FP&A role.\n\n".format(errored_direct))

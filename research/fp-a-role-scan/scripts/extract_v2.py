@@ -2,9 +2,14 @@
 """Robust FP&A remote-US extractor for direct-ATS scans (greenhouse/lever/ashby)."""
 import json, re, datetime, html, sys
 TODAY=datetime.date(2026,7,1); CUTOFF=TODAY-datetime.timedelta(days=60)
-FIN=re.compile(r'\b(fp&a|financial planning|strategic finance|corporate finance|finance & strategy|finance and strategy)\b',re.I)
+FIN=re.compile(r'\b(fp&a|financial planning|strategic finance|corporate finance|finance & strategy|finance and strategy|financial analyst|finance analyst)\b',re.I)
 LEAD=re.compile(r'\b(director|vp|vice president|head of|head,|chief|cfo|svp|evp|senior director)\b',re.I)
 JUN=re.compile(r'\b(intern|internship|apprentice|co-op)\b',re.I)
+def dfw(loc):
+    l=(loc or '').lower()
+    if re.search(r'\b(dallas|fort worth|ft\.? worth|plano|irving|frisco|richardson|las colinas|mckinney|grapevine|addison|carrollton|dfw)\b',l): return True
+    if re.search(r'\barlington\b',l) and ('tx' in l or 'texas' in l): return True
+    return False
 US_STATES=set("alabama alaska arizona arkansas california colorado connecticut delaware florida georgia hawaii idaho illinois indiana iowa kansas kentucky louisiana maine maryland massachusetts michigan minnesota mississippi missouri montana nebraska nevada hampshire jersey mexico york carolina dakota ohio oklahoma oregon pennsylvania rhode tennessee texas utah vermont virginia washington wisconsin wyoming columbia".split())
 US_CITIES=set("san francisco new york nyc sf seattle austin boston chicago denver atlanta dallas los angeles la miami tempe oakland mountain view palo alto redwood san mateo washington dc arlington philadelphia".split())
 FOREIGN=re.compile(r'\b(canada|toronto|vancouver|london|dublin|ireland|paris|france|munich|germany|berlin|tel aviv|israel|singapore|seoul|korea|india|bangalore|london|uk|united kingdom|emea|apac|latam|amsterdam|netherlands|sydney|australia|remote canada|remote - canada|remote emea|mexico city|brazil|tokyo|japan)\b',re.I)
@@ -16,8 +21,8 @@ def years(txt):
         if m: return (int(m.group(1)), int(m.group(2)) if m.lastindex==2 else None)
     return (None,None)
 def yok(mn,mx):
-    if mn is not None and mn>8: return False
-    if mx is not None and mx<5: return False
+    # expanded: include anything whose stated minimum is under 8 years (or unspecified)
+    if mn is not None and mn>=8: return False
     return True
 def yreq(mn,mx):
     if mn is None and mx is None:return 'n/s'
@@ -60,7 +65,6 @@ def extract(scan_path):
     out=[]
     for c in json.load(open(scan_path)):
         if not c.get('ats'): continue
-        if is_public(c['name']): continue
         ats=c['ats']
         if ats not in ('greenhouse','lever','ashby'): continue  # SR/Workable/Rippling verified separately (0 qualifying)
         for j in c['raw_jobs']:
@@ -86,14 +90,17 @@ def extract(scan_path):
                 ts=(j.get('publishedAt') or '')[:10]
                 cc=j.get('compensation') or {}; comp=(cc.get('compensationTierSummary') if isinstance(cc,dict) else '') or ''
             conf=remote_us(loc, rf, wt, jd)
-            if not conf: continue
+            is_dfw=dfw(loc) or dfw(jd[:400])
+            if not conf and not is_dfw: continue
+            scope = conf if conf else 'dfw'
             mn,mx=years(jd)
             if not yok(mn,mx): continue
             try:
                 if ts and datetime.date.fromisoformat(ts)<CUTOFF: continue
             except: pass
-            out.append({'company':c['name'],'funds':c['funds'],'role_title':t,'location':loc,'remote_conf':conf,
-                        'posted_date':ts,'years_req':yreq(mn,mx),'comp_range':comp,'ats_link':url,'ats':ats})
+            own = 'Public' if is_public(c['name']) else 'Private'
+            out.append({'company':c['name'],'funds':c['funds'],'role_title':t,'location':loc,'remote_conf':scope,
+                        'ownership':own,'posted_date':ts,'years_req':yreq(mn,mx),'comp_range':comp,'ats_link':url,'ats':ats})
     return out
 
 roles=[]
