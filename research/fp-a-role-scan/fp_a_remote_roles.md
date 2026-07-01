@@ -38,10 +38,10 @@ These matched function/seniority/recency and the ATS flags them remote-eligible,
 
 - **Funds swept:** 9 Consider boards (full API) + 13 funds via portfolio→direct-ATS fallback (Oak HC/FT, .406, Venrock, General Catalyst, Accel, Khosla, 8VC, Menlo, Craft, Founders Fund, Index, IVP, NEA)
 - **Companies enumerated:** ~940 (Consider: 312 distinct w/ finance postings across 1,001 finance roles; portfolio-fallback: 628)
-- **Private companies scanned (ATS reached):** ~639 (direct-ATS resolved: 327 of 628 fallback companies)
+- **Private companies scanned (ATS reached):** ~661 (direct-ATS resolved: 349 of 628 fallback companies)
 - **Matching roles found:** 15 confident + 3 unconfirmed-remote
 - **Public companies dropped (Step 2):** Figma, Instacart, plus Affirm/Upstart/OpenAI-hybrid etc. filtered during extraction
-- **Companies that errored / no public ATS:** 301 fallback cos (token unresolved — likely Rippling/Workable/BambooHR/custom, or no open board)
+- **Companies that errored / no public ATS:** 279 fallback cos after probing 7 ATS backends (Greenhouse/Lever/Ashby/SmartRecruiters/Workable/Rippling) — remainder on Workday (per-tenant, no public API) or custom/no public board
 
 ## Coverage & method
 
@@ -49,6 +49,8 @@ These matched function/seniority/recency and the ATS flags them remote-eligible,
 
 **Portfolio → direct-ATS fallback (13 funds on Getro or with no Consider board):** companies enumerated from each fund's public portfolio page, then each company's Greenhouse/Lever/Ashby JSON board probed directly and JDs parsed for remote policy + years. Net-new yield is low and expected: these portfolios overlap heavily with the Consider funds (hot cos like Ramp/Anrok/Stripe recur and are deduped), and most 'strategic finance' roles at these hot startups are SF/NYC **in-office or hybrid**; the genuinely-remote ones are largely at **public** companies (Affirm, Upstart, Datadog) excluded by Step 2. The payer-core names (Devoted, Cotiviti, welbehealth, abacusinsights, Reveleer, Aledade) had no qualifying open remote FP&A role in-window.
 
-**Still not reached (documented gap):** Insight Partners (portfolio not machine-enumerable via WebFetch), Coatue/Redpoint/Flare (portfolio pages 404/JS-only), Thrive/Conviction/Radical/Spark/Benchmark (no public list found). Getro job boards themselves remain inaccessible (block non-browser access; egress proxy drops headless-Chrome TLS). Enumerated-but-unresolved ATS tokens (~301) also weren't reached.
+**Unresolved-company recovery pass:** the 279 companies that didn't resolve to Greenhouse/Lever/Ashby were re-probed across SmartRecruiters, Workable, and Rippling — recovering 22 more (incl. Devoted Health, Firefly Health, Rippling itself). Result: **0 net-new qualifying roles.** The only FP&A roles found were Rippling's *Strategic Finance Associate/Sr Associate* (NYC/SF **in-office**), Encoded Therapeutics (*Sr Director*), and OpenDoor (*Director*, also public). The big payer names still unreached (Cotiviti, Reveleer, CareBridge, VillageMD, Wayspring, athenahealth) run on Workday (per-tenant, no simple public API) or have no open remote FP&A role.
+
+**Still not reached (documented gap):** Insight Partners (portfolio not machine-enumerable via WebFetch), Coatue/Redpoint/Flare (portfolio pages 404/JS-only), Thrive/Conviction/Radical/Spark/Benchmark (no public list found), and ~279 companies on Workday/custom career sites. Getro job boards themselves remain inaccessible (block non-browser access; egress proxy drops headless-Chrome TLS).
 
 **Borderline (excluded from main list):** Redox — *Principal FP&A (SaaS Healthcare)*, remote fit-4, but >60 days & Principal-level. Heartbeat Health — *Senior Financial Analyst*, remote health, generic-analyst title.

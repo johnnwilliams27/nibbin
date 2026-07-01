@@ -62,6 +62,7 @@ def extract(scan_path):
         if not c.get('ats'): continue
         if is_public(c['name']): continue
         ats=c['ats']
+        if ats not in ('greenhouse','lever','ashby'): continue  # SR/Workable/Rippling verified separately (0 qualifying)
         for j in c['raw_jobs']:
             t=j.get('title') or j.get('text') or ''
             if not FIN.search(t) or LEAD.search(t) or JUN.search(t): continue
