@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import csv
+import csv,sys
 from reportlab.lib.pagesizes import A3, landscape
 from reportlab.lib import colors
 from reportlab.lib.units import mm
@@ -54,20 +54,26 @@ def build_table(csv_path):
     t.setStyle(TableStyle(stylecmds))
     return t,len(rows)
 
-doc=SimpleDocTemplate('fp_a_remote_roles.pdf',pagesize=landscape(A3),
+# argv: main_csv verify_csv out_pdf "Title" "Subtitle"
+MAIN=sys.argv[1] if len(sys.argv)>1 else 'fp_a_remote_roles.csv'
+VER=sys.argv[2] if len(sys.argv)>2 else 'fp_a_verify.csv'
+OUT=sys.argv[3] if len(sys.argv)>3 else 'fp_a_remote_roles.pdf'
+TITLE=sys.argv[4] if len(sys.argv)>4 else 'FP&amp;A / Strategic Finance / Financial-Analyst Roles — VC Portfolio Sweep'
+SUBT=sys.argv[5] if len(sys.argv)>5 else 'Remote-US or Dallas–Fort Worth metro (in-office/hybrid OK) • 8 yrs of experience qualifies (stated min ≤8) • posted ≤60 days • public + private • Fit: 5=payer core, 4=health-tech, 3=fintech/insurtech, 2=other SaaS, 1=no overlap'
+doc=SimpleDocTemplate(OUT,pagesize=landscape(A3),
                       leftMargin=8*mm,rightMargin=8*mm,topMargin=8*mm,bottomMargin=8*mm)
 el=[]
-el.append(Paragraph('FP&amp;A / Strategic Finance / Financial-Analyst Roles — VC Portfolio Sweep',title))
-el.append(Paragraph('Remote-US or Dallas–Fort Worth metro (in-office/hybrid OK) • 8 yrs of experience qualifies (stated min ≤8) • posted ≤60 days • public + private • Fit: 5=payer core, 4=health-tech, 3=fintech/insurtech, 2=other SaaS, 1=no overlap',sub))
+el.append(Paragraph(TITLE,title))
+el.append(Paragraph(SUBT,sub))
 el.append(Spacer(1,4*mm))
-t,n=build_table('fp_a_remote_roles.csv')
+t,n=build_table(MAIN)
 el.append(Paragraph(f'Matches ({n})',sec)); el.append(t)
 try:
-    t2,n2=build_table('fp_a_verify.csv')
+    t2,n2=build_table(VER)
     el.append(Spacer(1,5*mm))
     el.append(Paragraph(f'Remote-eligibility unconfirmed — verify before applying ({n2})',sec))
     el.append(Paragraph('ATS flags these remote-eligible but the posting lists an office HQ and the JD does not confirm remote.',sub))
     el.append(t2)
 except FileNotFoundError: pass
 doc.build(el)
-print('wrote fp_a_remote_roles.pdf')
+print('wrote',OUT)

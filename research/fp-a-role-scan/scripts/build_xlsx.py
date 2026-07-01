@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import csv
+import csv,sys
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
@@ -50,9 +50,15 @@ def add_sheet(wb,title,csv_path,note=None):
     return ws
 
 wb=Workbook(); wb.remove(wb.active)
-add_sheet(wb,'Matches','fp_a_remote_roles.csv',
-          'Remote-US or Dallas–Fort Worth FP&A / Strategic Finance / Financial-Analyst roles • 8 yrs of experience qualifies (stated min ≤8) • posted ≤60 days • sorted by fit (5=payer core … 1=no overlap) then recency')
-add_sheet(wb,'Verify (remote unconfirmed)','fp_a_verify.csv',
+# argv: main_csv verify_csv out_xlsx "match_note"
+MAIN=sys.argv[1] if len(sys.argv)>1 else 'fp_a_remote_roles.csv'
+VER=sys.argv[2] if len(sys.argv)>2 else 'fp_a_verify.csv'
+OUT=sys.argv[3] if len(sys.argv)>3 else 'fp_a_remote_roles.xlsx'
+NOTE=sys.argv[4] if len(sys.argv)>4 else 'Remote-US or Dallas–Fort Worth FP&A / Strategic Finance / Financial-Analyst roles • 8 yrs of experience qualifies (stated min ≤8) • posted ≤60 days • sorted by fit (5=payer core … 1=no overlap) then recency'
+add_sheet(wb,'Matches',MAIN,NOTE)
+import os
+if os.path.exists(VER):
+    add_sheet(wb,'Verify (remote unconfirmed)',VER,
           'ATS flags these remote-eligible but the posting lists an office HQ and the JD does not confirm remote — verify the work model before applying.')
-wb.save('fp_a_remote_roles.xlsx')
-print("wrote fp_a_remote_roles.xlsx with sheets:", wb.sheetnames)
+wb.save(OUT)
+print("wrote",OUT,"sheets:", wb.sheetnames)

@@ -58,21 +58,24 @@ def remote_us(loc,rf,wt,jd):
     if remote and us: return 'verify'
     return None
 
-# ---- domain scoring (same 1-5 payer/health scale) ----
-PAYER_CO={'devoted health','clover health','oscar','oscar health','cohere health','alignment health','collective health','capital rx','rightway','turquoise health','sidecar health','sana benefits','angle health','gravie','welbehealth','wayspring','cotiviti','reveleer','abacusinsights','interwell health','oncohealth','ooda health','main street health','curana health','evergreen nephrology','rialtic','aledade','strive health','cedar','stellar health','pearl health','vim'}
-PAYER_KW=re.compile(r'\b(payer|pbm|pharmacy benefit|prior auth|claims|health plan|health insurance|medicare|medicaid|revenue cycle|\brcm\b|care navigation|utilization management|actuar|value-based care)\b',re.I)
-HEALTH_KW=re.compile(r'\bhealth|clinical|patient|pharma|biotech|medical|care\b',re.I)
-FIN_KW=re.compile(r'\bfintech|payments|insurtech|banking|lending|financial services|insurance\b',re.I)
-MKT_HINT={'oscar':'health insurance payer','stripe':'fintech payments','plaid':'fintech','mercury':'fintech banking',
- 'coinbase':'fintech crypto','affirm':'fintech lending','ramp':'fintech spend','modern health':'healthcare mental',
- 'devoted health':'health insurance payer','lyra health':'healthcare mental health','cedar':'healthcare rcm payer'}
+# ---- domain scoring: index on fintech / crypto / AI (health de-emphasized) ----
+MKT_HINT={'coinbase':'crypto exchange web3','affirm':'fintech lending payments','brex':'fintech spend management',
+ 'mercury':'fintech banking','tala':'fintech lending','flex':'fintech payments platform','ramp':'fintech spend',
+ 'plaid':'fintech','stripe':'fintech payments','runlayer':'ai agents infrastructure','owner':'ai restaurant saas',
+ 'genlogs':'logistics data','motive':'logistics fleet ai','tanium':'cybersecurity','ispot.tv':'data analytics adtech',
+ 'instacart':'marketplace ecommerce','maven clinic':'healthcare','aledade':'healthcare value-based care',
+ 'rippling':'hr saas','continuumcloud':'healthcare saas','anaconda':'ai data science','arista networks':'networking'}
+FINTECH=re.compile(r'crypto|web3|blockchain|defi|\bnft\b|stablecoin|digital asset|on-?chain|fintech|\bpayments?\b|banking|lending|neobank|financial services|insurtech|wealth|trading|brokerage|spend management|treasury|payroll|financial planning|\bfinance\b|\bfin-?tech\b',re.I)
+AI=re.compile(r'\ba\.?i\.?\b|artificial intelligence|machine learning|\bml\b|\bllm\b|generative|agentic|\bagents?\b|foundation model|deep learning|neural|inference|copilot',re.I)
+INFRA=re.compile(r'\bdata\b|infrastructure|\binfra\b|developer|dev ?tools|\bapi\b|database|observability|security|cyber|cloud|platform|enterprise software|\bsaas\b|analytics|automation|networking',re.I)
+OTHER=re.compile(r'consumer|marketplace|e-?commerce|logistics|retail|health|clinical|biotech|medical|education|gaming|media|social|mobility|real estate|restaurant|hr\b',re.I)
 def score(company,markets,title):
     blob=f"{company} {markets} {title}".lower()
-    if company.lower() in PAYER_CO or PAYER_KW.search(blob):return 5,"payer / health-insurance economics is the core product"
-    if HEALTH_KW.search(blob):return 4,"healthcare / health-tech (non-payer)"
-    if FIN_KW.search(blob):return 3,"fintech / payments / insurtech (adjacent domain)"
-    if re.search(r'\bsaas|enterprise|\bai\b|consumer|productivity|analytics|security|software',blob):return 2,"vertical/horizontal SaaS — no domain overlap"
-    return 1,"no domain overlap"
+    if FINTECH.search(blob): return 5,"fintech / crypto / payments — priority domain"
+    if AI.search(blob):      return 4,"AI / ML — priority domain"
+    if INFRA.search(blob):   return 3,"data / infra / dev-tools / security SaaS"
+    if OTHER.search(blob):   return 2,"other vertical (consumer / health / logistics / etc.)"
+    return 1,"no clear domain overlap"
 PUBLIC={'instacart':'CART','figma':'FIG','oscar':'OSCR','coinbase':'COIN','affirm':'AFRM','datadog':'DDOG','cloudflare':'NET','confluent':'CFLT','asana':'ASAN','gitlab':'GTLB','samsara':'IOT','toast':'TOST','robinhood':'HOOD','sofi':'SOFI','doordash':'DASH','airbnb':'ABNB','snowflake':'SNOW','klaviyo':'KVYO','reddit':'RDDT','duolingo':'DUOL','dropbox':'DBX','twilio':'TWLO','block':'XYZ','okta':'OKTA','hashicorp':'HCP','mongodb':'MDB','unitedhealth':'UNH','genedx':'WGS','one medical':'ONEM','upstart':'UPST','arista networks':'ANET','wise':'WISE','pagaya':'PGY'}
 def ownership(name):
     n=re.sub(r'\s+(inc|corp|co|technologies|labs|life|health|financial)\.?$','',name.lower()).strip()
@@ -105,7 +108,7 @@ for f in glob.glob('raw_product/*.json'):
         sal=j.get('salary') or {}; comp=''
         if sal.get('minValue') and sal.get('maxValue') and sal['maxValue']>1000: comp=f"${int(sal['minValue']):,}–${int(sal['maxValue']):,}"
         mks=' '.join(str(m.get('value') if isinstance(m,dict) else m) for m in (j.get('markets') or []))
-        sc,note=score(j.get('companyName',''),mks,t)
+        sc,note=score(j.get('companyName',''),mks+' '+MKT_HINT.get((j.get('companyName') or '').lower(),''),t)
         scope='Remote (US)' if remote else ('DFW' if d else 'San Francisco')
         if not remote:
             city=next((str(x.get('value') if isinstance(x,dict) else x) for x in (j.get('normalizedLocations') or []) if (dfw(str(x.get('value') if isinstance(x,dict) else x)) or sf(str(x.get('value') if isinstance(x,dict) else x)))),scope)
