@@ -6,10 +6,11 @@ TODAY=datetime.date(2026,7,1); CUTOFF=TODAY-datetime.timedelta(days=60)
 FUND_LABEL={'a16z':'a16z','sequoia':'Sequoia','lightspeed':'Lightspeed','greylock':'Greylock',
  'bessemer':'Bessemer','kleiner':'Kleiner Perkins','battery':'Battery','gv':'GV','felicis':'Felicis'}
 
-RECRUIT=re.compile(r'\b(recruit(?:er|ing|ment)?|talent acquisition|executive search|\bsourcer\b|(?:talent|technical|candidate|recruiting)\s+sourc\w+|talent partner|head of talent|head of recruiting|talent lead)\b',re.I)
-SENIOR=re.compile(r'\b(senior|sr\.?|staff|lead|principal|manager|director|head of|head,|\bvp\b|svp|evp|vice president|chief|executive|group|\biii\b|\biv\b|\bii\b)\b',re.I)
-JUNIOR=re.compile(r'\b(coordinator|scheduler|intern(?:ship)?|\bassociate\b|assistant|junior|jr\.?|campus|apprentice|entry[- ]level|operations associate|recruiter i\b|recruiter 1\b)\b',re.I)
-CONTRACT=re.compile(r'\b(contract|contractor|fixed[- ]term|temporary|\btemp\b|fractional|part[- ]time|freelance|seasonal)\b',re.I)
+RECRUIT=re.compile(r'\b(recruit(?:er|ing|ment)?|talent acquisition|executive search|\bsourcer\b|(?:talent|technical|candidate|recruiting)\s+sourc\w+|talent partner|talent lead)\b',re.I)
+# people / talent leadership
+PEOPLE=re.compile(r'\b(chief people officer|chief human resources officer|\bchro\b|head of people|head of talent|head of recruiting|head of hr|(?:vp|svp|evp|vice president|director|head)[,\s]+(?:of\s+)?(?:people|talent|human resources|hr\b|recruiting)|people (?:operations )?lead|talent lead|head of people operations)\b',re.I)
+CONTRACT=re.compile(r'\b(contract|contractor|fixed[- ]term|temporary|\btemp\b|fractional|freelance|seasonal)\b',re.I)
+EXCL=re.compile(r'\b(intern(?:ship)?|apprentice|co-op|scheduler|work[- ]study|volunteer|student)\b',re.I)
 def comp_max(s):
     best=None
     for num,suf in re.findall(r'\$\s*([\d,]+(?:\.\d+)?)\s*([kK])?',s or ''):
@@ -18,11 +19,13 @@ def comp_max(s):
         elif v<1000: v*=1000
         best=v if best is None else max(best,v)
     return best
-def recruit_ok(title,ids,maxcomp):
-    if not RECRUIT.search(title): return False
-    if JUNIOR.search(title) or CONTRACT.search(title): return False
-    senior=bool(SENIOR.search(title)) or bool(set(ids or []) & {'senior','manager','director','lead','principal','staff','vp','head','expert'})
-    return senior or (maxcomp is not None and maxcomp>=180000)
+def role_ok(title,ids=None,maxcomp=None):
+    if not (RECRUIT.search(title) or PEOPLE.search(title)): return False
+    if EXCL.search(title) or CONTRACT.search(title): return False
+    return True
+def austin(loc):
+    l=(loc or '').lower()
+    return bool(re.search(r'\baustin\b|round rock|cedar park|\batx\b',l))
 
 US_STATES=set(['alabama','alaska','arizona','arkansas','california','colorado','connecticut','delaware','florida','hawaii','idaho','illinois','indiana','iowa','kansas','kentucky','louisiana','maine','maryland','massachusetts','michigan','minnesota','mississippi','missouri','montana','nebraska','nevada','new hampshire','new jersey','new mexico','new york','north carolina','south carolina','north dakota','south dakota','ohio','oklahoma','oregon','pennsylvania','rhode island','tennessee','texas','utah','vermont','virginia','west virginia','washington','wisconsin','wyoming'])
 CITY_RE=re.compile(r'\b(san francisco|new york city|new york|nyc|seattle|austin|boston|chicago|denver|atlanta|dallas|los angeles|miami|tempe|oakland|mountain view|palo alto|redwood city|san mateo|sunnyvale|santa clara|bellevue|brooklyn|arlington|philadelphia|san jose|san diego|nashville|charlotte|columbus|remote us|\bsf\b|\bla\b|\bnyc\b|\bd\.?c\.?\b)\b',re.I)
@@ -120,23 +123,28 @@ for f in glob.glob('raw_hr/*.json'):
     fund=f.split('/')[-1][:-5]
     for j in json.load(open(f)).get('jobs',[]):
         t=j.get('title','')
+        if not role_ok(t): continue
         locblob=' '.join(str(x.get('value') if isinstance(x,dict) else x) for x in (j.get('normalizedLocations') or []))+' '+' '.join(j.get('locations') or [])+' '+' '.join(str(r.get('value') if isinstance(r,dict) else r) for r in (j.get('regions') or []))
-        if not (j.get('remote') and is_us(locblob)): continue  # REMOTE ONLY
+        remote=j.get('remote') and is_us(locblob)
+        d,a=dfw(locblob),austin(locblob)
+        if not (remote or d or a): continue  # remote-US OR in-person Dallas/Austin
         sal=j.get('salary') or {}; comp=''; cnum=None
         if sal.get('minValue') and sal.get('maxValue') and sal['maxValue']>1000:
             comp=f"${int(sal['minValue']):,}–${int(sal['maxValue']):,}"; cnum=float(sal['maxValue'])
-        if not recruit_ok(t, j.get('jobSeniorityIds'), cnum): continue
-        mn,mx=j.get('minYearsExp'),j.get('maxYearsExp')
         ts=(j.get('timeStamp') or '')[:10]
         try:
             if ts and datetime.date.fromisoformat(ts)<CUTOFF: continue
         except: pass
-        mks=' '.join(str(m.get('value') if isinstance(m,dict) else m) for m in (j.get('markets') or []))
-        sc,note=score(j.get('companyName',''),mks+' '+MKT_HINT.get((j.get('companyName') or '').lower(),''),t)
+        if remote: scope='Remote (US)'
+        else:
+            cities=[str(x.get('value') if isinstance(x,dict) else x) for x in (j.get('normalizedLocations') or [])]+(j.get('locations') or [])
+            city=next((c for c in cities if dfw(c) or austin(c)),(cities[0] if cities else ''))
+            tag='Dallas' if dfw(city) else ('Austin' if austin(city) else ('Dallas' if d else 'Austin'))
+            scope=f"{tag}: {city}"+(" (hybrid)" if j.get('hybrid') else " (in-person)")
         key=(re.sub(r'[^a-z0-9]','',(j.get('companySlug') or j.get('companyName','')).lower()),re.sub(r'[^a-z0-9]','',t.lower()))
-        add(key,{'fit_score':sc,'company':j.get('companyName',''),'ownership':ownership(j.get('companyName','')),'role_title':t,
-            'seniority':', '.join(sorted(j.get('jobSeniorityIds') or [])) or 'unspecified','years_req':yreq(mn,mx),
-            'remote_scope':'Remote (US)','posted_date':ts,'comp_range':comp,'comp_num':cnum,'domain_note':note,
+        add(key,{'company':j.get('companyName',''),'ownership':ownership(j.get('companyName','')),'role_title':t,
+            'seniority':', '.join(sorted(j.get('jobSeniorityIds') or [])) or 'unspecified',
+            'remote_scope':scope,'posted_date':ts,'comp_range':comp,'comp_num':cnum,
             'ats_link':j.get('applyUrl') or j.get('url','')},FUND_LABEL.get(fund,fund))
 
 # ---------- direct-ATS ----------
@@ -148,7 +156,7 @@ for sfch in ['hc_all_scan.json','pc_scan.json','pc_new_scan.json','pc_new2_scan.
         ats=c['ats']
         for j in c['raw_jobs']:
             t=title_of(ats,j)
-            if not RECRUIT.search(t): continue
+            if not role_ok(t): continue
             if ats=='greenhouse':
                 loc=(j.get('location') or {}).get('name',''); rf='remote' in loc.lower(); wt=''; jd=strip(j.get('content','')); ts=(j.get('updated_at') or '')[:10]; url=j.get('absolute_url',''); comp=''
             elif ats=='lever':
@@ -168,18 +176,18 @@ for sfch in ['hc_all_scan.json','pc_scan.json','pc_new_scan.json','pc_new2_scan.
             elif ats=='rippling':
                 loc=(j.get('workLocation') or {}).get('label','') or ''; rf='remote' in loc.lower(); wt=''; jd=''; comp=''; ts=''; url=j.get('url','')
             else: continue
-            if remote_us(loc,rf,wt,jd)!='confident': continue  # REMOTE ONLY
+            conf=remote_us(loc,rf,wt,jd); d,a=dfw(loc),austin(loc)
+            if conf!='confident' and not d and not a: continue  # remote-US OR in-person Dallas/Austin
             cnum=comp_max(comp)
-            if not recruit_ok(t, [], cnum): continue
-            mn,mx=years(jd)
             try:
                 if ts and datetime.date.fromisoformat(ts)<CUTOFF: continue
             except: pass
-            comp_name=c['name']; sc,note=score(comp_name,MKT_HINT.get(comp_name.lower(),''),t)
+            comp_name=c['name']
+            scope='Remote (US)' if conf=='confident' else (f"Dallas: {loc}" if d else f"Austin: {loc}")
             fund=', '.join(c['funds']) if isinstance(c['funds'],list) else c['funds']
             key=(re.sub(r'[^a-z0-9]','',comp_name.lower()),re.sub(r'[^a-z0-9]','',t.lower()))
-            add(key,{'fit_score':sc,'company':comp_name,'ownership':ownership(comp_name),'role_title':t,'seniority':'—',
-                'years_req':yreq(mn,mx),'remote_scope':'Remote (US)','posted_date':ts,'comp_range':comp,'comp_num':cnum,'domain_note':note,'ats_link':url},fund)
+            add(key,{'company':comp_name,'ownership':ownership(comp_name),'role_title':t,'seniority':'—',
+                'remote_scope':scope,'posted_date':ts,'comp_range':comp,'comp_num':cnum,'ats_link':url},fund)
 
 # ---- assemble + dedup ----
 out=[]
@@ -189,18 +197,18 @@ for r in out:
     k=(re.sub(r'[^a-z0-9]','',r['company'].lower()),re.sub(r'[^a-z0-9]','',r['role_title'].lower()))
     if k in merged:
         m=merged[k]; fs=sorted(set(x.strip() for x in (m['fund(s)']+', '+r['fund(s)']).split(',') if x.strip())); m['fund(s)']=', '.join(fs)
-        if r['fit_score']>m['fit_score']: m['fit_score'],m['domain_note']=r['fit_score'],r['domain_note']
         if (r.get('comp_num') or 0)>(m.get('comp_num') or 0): m['comp_num'],m['comp_range']=r.get('comp_num'),r.get('comp_range')
+        if m['remote_scope'].startswith(('Dallas','Austin')) and r['remote_scope']=='Remote (US)': m['remote_scope']='Remote (US)'
     else: merged[k]=r
 out=list(merged.values())
-# sort: highest paying first, then domain fit, then recency
-out.sort(key=lambda r:((r.get('comp_num') or 0), int(r['fit_score']), r['posted_date'] or ''),reverse=True)
-COLS=['comp_range','fit_score','fund(s)','company','ownership','role_title','seniority','years_req','remote_scope','posted_date','domain_note','ats_link']
+# sort: highest paying first, then recency (no domain restriction)
+out.sort(key=lambda r:((r.get('comp_num') or 0), r['posted_date'] or ''),reverse=True)
+COLS=['comp_range','fund(s)','company','ownership','role_title','seniority','remote_scope','posted_date','ats_link']
 with open('recruiter_roles.csv','w',newline='') as fh:
     w=csv.DictWriter(fh,fieldnames=COLS); w.writeheader()
     for r in out: w.writerow({c:r.get(c,'') for c in COLS})
 from collections import Counter
 withcomp=[r for r in out if r.get('comp_num')]
-print(f"RECRUITER roles (senior, remote-only): {len(out)}  | with posted comp: {len(withcomp)}")
-print("fit:",dict(sorted(Counter(r['fit_score'] for r in out).items(),reverse=True)))
-for r in out: print(f"  {(r['comp_range'] or '—'):22} {r['fit_score']} {r['role_title'][:40]:40} @ {r['company'][:20]:20} {r['ownership'][:12]:12} ({r['fund(s)'][:22]})")
+loc=Counter('Remote' if r['remote_scope'].startswith('Remote') else ('Dallas' if 'Dallas' in r['remote_scope'] else 'Austin') for r in out)
+print(f"RECRUITER/TALENT roles: {len(out)}  | with posted comp: {len(withcomp)} | locations: {dict(loc)}")
+for r in out: print(f"  {(r['comp_range'] or '—'):22} {r['role_title'][:42]:42} @ {r['company'][:20]:20} {r['ownership'][:12]:12} {r['remote_scope'][:22]:22} ({r['fund(s)'][:20]})")

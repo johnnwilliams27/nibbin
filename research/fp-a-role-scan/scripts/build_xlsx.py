@@ -25,10 +25,11 @@ def add_sheet(wb,title,csv_path,note=None):
         c=ws.cell(row=r0,column=j,value=h.replace('_',' ')); c.fill=HEADER_FILL; c.font=HEADER_FONT
         c.alignment=Alignment(horizontal='center',vertical='center',wrap_text=True); c.border=border
     # data
+    wrapcols={hdr.index(x)+1 for x in ('role_title','domain_note','remote_scope') if x in hdr}
     for i,row in enumerate(data,1):
         rr=r0+i
         for j,val in enumerate(row,1):
-            c=ws.cell(row=rr,column=j); c.border=border; c.alignment=Alignment(vertical='top',wrap_text=(j in (hdr.index('role_title')+1,hdr.index('domain_note')+1)))
+            c=ws.cell(row=rr,column=j); c.border=border; c.alignment=Alignment(vertical='top',wrap_text=(j in wrapcols))
             if j-1==link_col and val:
                 c.value='apply ↗'; c.hyperlink=val; c.font=Font(color='0563C1',underline='single')
             else:
