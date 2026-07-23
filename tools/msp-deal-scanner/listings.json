@@ -1,8 +1,22 @@
 {
   "_comment": "Seed dataset of MSP / IT-services businesses listed for sale in Texas. UNVERIFIED first-pass capture from public marketplace summaries — every figure must be confirmed against the actual listing / CIM before it informs a decision. To refresh: replace/extend this array (see README.md) and re-run `node tools/msp-deal-scanner/scan.mjs`. Financials in USD. sde = Seller's Discretionary Earnings (BizBuySell 'Cash Flow'). Use null for anything not disclosed.",
   "capturedOn": "2026-07-23",
-  "primarySource": "BizBuySell — IT & Software Service businesses for sale in Texas",
+  "primarySource": "BizBuySell — IT & Software Service businesses for sale in Texas (plus BizQuest supplemental)",
   "listings": [
+    {
+      "id": "bq-williamson-msp",
+      "headline": "IT Managed Services Company (Williamson County)",
+      "city": "Williamson County, TX",
+      "askingPrice": 3030000,
+      "grossRevenue": null,
+      "sde": null,
+      "ebitda": 825000,
+      "realEstate": { "included": false, "value": null, "note": "" },
+      "notes": "Managed services; normalized EBITDA disclosed. Surfaced via BizQuest search (on-page financials gated) — location TX-confirmed.",
+      "source": "https://www.bizquest.com/technology-businesses-for-sale-in-texas/",
+      "capturedOn": "2026-07-23",
+      "verified": false
+    },
     {
       "id": "bbs-tx-mass-msp",
       "headline": "IT - Mass Service Provider",
