@@ -181,55 +181,51 @@ bid to 5–8×.
 
 **Watch — genuinely interesting, but you can't act without numbers:**
 
-- **IT Company – Highly Rated & Profitable with Contracts (Houston)** — "long-term contracts" is
-  the right language (MRR). Houston metro. Get the numbers; if it's $1–1.5M EBITDA it's the
-  cleanest Structure-1 fit on the board — Platform.
-- **Consulting / Cybersecurity / Managed Services / App-Dev** — security capability is a plus, but
-  "application development + consulting" signals a project-revenue mix that dilutes MRR quality.
-  Size the recurring vs. project split before getting excited; verify it's even in Texas.
-- **Network Systems & Telephone (East Texas)** and **Smart Office (Frisco)** — thinner fits
-  (rural / VoIP-install; managed-office). Frisco is good geography. Numbers first; low priority.
+- **Consulting / Cybersecurity / Managed Services / App-Dev** — security capability is a plus (an
+  MSSP line sells straight into a professional-services base), but "application development +
+  consulting" signals a project-revenue mix that dilutes MRR quality. Size the recurring vs.
+  project split before getting excited; verify it's even in Texas.
+- **IT Company – Highly Rated & Profitable with Contracts (Houston)** — kept because it has
+  long-term contracts (MRR), but **borderline**: the listing describes *absentee ownership, a
+  virtual office, a Ford Transit and hand tools, and reseller relationships* — that reads more like
+  a small onsite field-IT + reselling operation than a true managed-services platform. Confirm it's
+  actually managed services before spending time; if it's break/fix + resale, it drops off the list.
 
 **Caution — thesis conflict:**
 
 - **Off-Shore IT Services / Managed Services (Plano)** — see §2. The onshore version of this same
   business is the one you want.
 
-**Below the Deal-1 size floor — not evaluated as an initial purchase (revisit as tuck-ins later):**
+**Below the Deal-1 size floor — real MSPs, but not an initial purchase (revisit as tuck-ins later):**
 
-_These are all under the ~$800K platform floor, so for the initial purchase they're a Pass. Noted
-here only so they're not lost — they become relevant once the platform is closed and you're
-buying fold-ins at 2.5–3.5×._
+_All under the ~$800K platform floor, so for the *initial* purchase they're a Pass — kept because
+they're genuine MSPs and become relevant once the platform is closed and you're buying fold-ins at
+2.5–3.5×._
 
 - **707770 – IT Managed Services (TX)** — ~$708K EBITDA, price on request. Closest to the floor;
   best future tuck-in material. Confirm onshore + price.
 - **$271K EBITDA IT Managed Services** — clean small managed shop; **verify it's actually in
   Texas** (surfaced under TX searches but unconfirmed).
-- **Established IT Company (Corpus Christi)** — $235K / $144K SDE ≈ 1.6×, cheap, but sub-scale and
-  outside the target metros.
-- **IT Hardware Sales & Service** — $900K / $467K SDE ≈ 1.9×. Resale-weighted; only interesting for
-  the client list, re-papered onto managed contracts.
+- **Established IT Company (Corpus Christi)** — owner-operated, 20+ years, recurring revenue, loyal
+  local base; $235K / $144K SDE ≈ 1.6×, cheap. Delivery is partly remote but it keeps a *local*
+  Corpus presence, so it's tied to that market — a fold-in, not a platform.
 
-**Pass:**
-
-- **30-yr IT Reseller w/ Federal GSA (Frisco)** — $3M / $300K SDE = **10×**. Reseller margins at a
-  platform price. The GSA schedule is the only interesting asset; revisit *only* if repriced to
-  low single digits as a federal-channel tuck-in.
-- **Electronics/Tech Repair (Dallas, Richardson)** — consumer break/fix, not the managed model.
-- **Team Logic IT (franchise)** — royalty drag, brand constraints, no clean equity re-rate.
-  Structurally off-thesis.
-- **Established ISP (Buda)**, **Lifestyle/Digital-Marketing (Dallas)** — not MSPs; different
-  business models entirely.
+**Removed from the dataset (not actual MSPs):** IT hardware/VAR resellers, the GSA reseller,
+consumer electronics/tech repair shops, the network/telephone (telecom-install) business, the ISP,
+the Team Logic franchise resale, the digital-marketing "lifestyle" listing, and the Smart Office
+office-tech listing. They were noise against an MSP roll-up mandate.
 
 ---
 
 ## 4. What this board *doesn't* have (the real conclusion)
 
 Run the buy box honestly and the punchline is that **the public Texas marketplaces are not where
-your Deal 1 lives.** The three Platform-tier hits are a possibly-duplicated statewide/offshore
-listing, a Round-Rock shop whose price you can't trust, and Brazos — the best business, now
+your Deal 1 lives.** After stripping the non-MSPs, nine real managed-IT businesses remain, and the
+three Platform-tier hits are: the statewide "Mass" MSP (whose twin is the offshore listing — same
+numbers), a Round-Rock shop whose price you can't trust, and Brazos — the best business, now
 financeable under Structure 1 but only if the seller carries paper and prices below what a
-consolidator would pay. Everything else is a tuck-in or a pass. That's not a failure of the
+consolidator would pay. The rest are two "need-numbers" watch items, the offshore twin (Caution),
+and three sub-scale MSPs that are future tuck-ins, not an initial purchase. That's not a failure of the
 search — it's the structural reality that the clean, GM-run, $1.4–1.5M-EBITDA, professional-services
 MSP with a retiring owner willing to sell at ≤5× rarely hits BizBuySell. Those transact through specialist advisors
 (Cogent, Evergreen, CT Acquisitions) and, more often, through **direct owner outreach** — which is
@@ -243,8 +239,9 @@ Deal 1 actually comes from.
 
 1. **Resolve the twin.** Confirm whether the statewide "Mass" MSP and the Plano "Off-Shore" listing
    are the same business, and whether delivery is on- or offshore. Highest-value single question.
-2. **Pull 3 CIMs:** Round Rock (and nail the real price), Houston-contracts, and Brazos. On every
-   one, ask the questions that decide the deal: **P&L + MRR %** and add-back schedule (quality of
+2. **Pull CIMs on the 3 Platform candidates:** the statewide "Mass" MSP (once the twin is
+   resolved), Round Rock (and nail the real price), and Brazos. On every one, ask the questions
+   that decide the deal: **P&L + MRR %** and add-back schedule (quality of
    earnings), **client concentration / retention**, **customer geography + onsite dependence** (can
    it run from Dallas?), **headcount — how many transfer, is any one person load-bearing**, **is
    there a real GM** (an employee, not a contractor) **who owns the relationships**, and **will the
