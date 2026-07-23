@@ -25,7 +25,10 @@ const data = JSON.parse(readFileSync(join(DIR, 'listings.json'), 'utf8'));
 
 const usd = (n) => (n == null ? '—' : '$' + Number(n).toLocaleString('en-US'));
 const x = (n) => (n == null ? '—' : n.toFixed(2) + '×');
-const hay = (L) => `${L.headline} ${L.notes || ''}`.toLowerCase();
+// Parse ONLY listing-authored text (headline + sector + description) for classification and
+// signals — never the analyst `notes`, so editorial commentary ("high for an MSP", "the GM is a
+// contractor") can't fabricate positive signals.
+const hay = (L) => `${L.headline} ${L.sector || ''} ${L.description || ''}`.toLowerCase();
 
 // ---- capital-stack financeability (Structure 1) ---------------------------
 // Envelope = $5M 7(a) + up to $1M seller note + up to $0.7M cash equity ≈ $6.7M for the
@@ -50,7 +53,7 @@ function stackNote(earnings, ask, L) {
 // Classify off the headline + an explicit `sector` field only — never the free-text
 // `notes`, so editorial prose (e.g. "not an MSP") can't poison the classifier.
 function classify(L) {
-  const h = `${L.headline} ${L.sector || ''}`.toLowerCase();
+  const h = hay(L);
   const any = (arr) => arr.some((p) => h.includes(p));
   if (any(bm.classification.msp)) return 'MSP / IT-services';
   if (any(bm.classification.it_services_adjacent)) return 'IT-services adjacent';
@@ -119,12 +122,25 @@ function evaluate(L) {
 const TIER = { platform: 'Platform (Deal 1)', tuckin: 'Tuck-in', watch: 'Watch — need numbers', caution: 'Caution — thesis conflict', pass: 'Pass' };
 const TIER_ORDER = { platform: 0, tuckin: 1, watch: 2, caution: 3, pass: 4 };
 
-function geoScore(city) {
-  const c = (city || '').toLowerCase();
-  if (EMPIRE.home.some((k) => c.includes(k))) return { pts: EMPIRE.fitWeights.onshoreGeo, tag: 'DFW home turf' };
-  if (EMPIRE.acceptableMetros.some((k) => c.includes(k))) return { pts: EMPIRE.fitWeights.onshoreGeo * 0.8, tag: 'TX metro' };
-  if (c.includes('texas') || c.includes(', tx')) return { pts: EMPIRE.fitWeights.onshoreGeo * 0.55, tag: 'TX (location vague)' };
-  return { pts: EMPIRE.fitWeights.onshoreGeo * 0.4, tag: 'geography unclear' };
+// Geography scores CUSTOMER REACH / remote-operability, not just HQ city: a broad or remote
+// client base is operable from Dallas regardless of where the seller sits; a single-market
+// onsite base ties you to that metro. HQ metro is only a small tiebreaker.
+function geoScore(L) {
+  const G = EMPIRE.geography, W = EMPIRE.fitWeights.onshoreGeo;
+  const c = (L.city || '').toLowerCase();
+  const home = EMPIRE.home.some((k) => c.includes(k));
+  const metro = EMPIRE.acceptableMetros.some((k) => c.includes(k));
+  const reach = (L.customerGeography || 'unknown').toLowerCase();
+  let mult = G.reachMultipliers[reach], tag;
+  if (mult == null) {
+    mult = home ? 0.7 : metro ? 0.55 : (c.includes('texas') || c.includes(', tx')) ? 0.5 : 0.4;
+    tag = `Onshore, HQ ${home ? 'DFW' : metro ? 'TX metro' : 'TX'} — customer reach unknown; confirm it isn't a single-market onsite base`;
+  } else {
+    const portable = ['multi-state', 'national', 'statewide', 'remote', 'regional'].includes(reach);
+    if (home && !portable) mult = Math.min(1, mult + G.homeMetroBonus);
+    tag = `Onshore, ${reach} customer reach${home ? ' + DFW home' : ''} — ${portable ? 'operable from Dallas regardless of HQ' : 'tied to the local market'}`;
+  }
+  return { pts: W * mult, tag };
 }
 
 function computeFit(r) {
@@ -160,9 +176,9 @@ function computeFit(r) {
   else if (earnings >= tw.minEarnings) { s += W.size * 0.6; sizeClass = 'tuckin'; reasons.push(`~${usd(earnings)} earnings is tuck-in scale — fold into the platform, not a standalone Deal 1.`); }
   else { s += W.size * 0.25; sizeClass = 'too-small'; reasons.push(`~${usd(earnings)} earnings is sub-scale even for a tuck-in.`); }
 
-  // ONSHORE / GEO
+  // ONSHORE / GEO (customer reach + remote-operability, not just HQ)
   if (offshore) reasons.push("OFFSHORE delivery — clashes with the legal / professional-services vertical, is undercut by the plan's own AI-L1 thesis, and is discounted at exit. The cheap multiple buys lower-quality, less-transferable earnings.");
-  else { const g = geoScore(L.city); s += g.pts; reasons.push(`Onshore, ${g.tag}.`); }
+  else { const g = geoScore(L); s += g.pts; reasons.push(`${g.tag}.`); }
 
   // PRICE DISCIPLINE
   const m = r.impliedMultiple, pd = EMPIRE.priceDiscipline;
@@ -177,6 +193,20 @@ function computeFit(r) {
   else if (has('established') || /retir/.test(h)) { s += W.management * 0.6; reasons.push('Established / retiring owner — confirm a GM owns the client relationships.'); }
   else if (hype) { s += W.management * 0.2; reasons.push('Absentee/lifestyle framing — scrutinize owner dependence.'); }
   else { s += W.management * 0.4; reasons.push('Management depth unknown — owner-exit test unproven.'); }
+
+  // HEADCOUNT / KEY-PERSON
+  if (L.employees != null) {
+    const e = L.employees;
+    reasons.push(`~${e} staff — ${e >= 15 ? 'platform-scale team' : e >= 6 ? 'lean team; confirm depth beyond the owner and key techs, and how many transfer' : 'very thin headcount — owner / key-person dependence risk'}.`);
+  } else if (['platform', 'too-big', 'tuckin'].includes(sizeClass)) {
+    reasons.push('Headcount not disclosed — confirm team size, how many are onshore/local, and how many transfer at close.');
+  }
+
+  // MARGIN / QUALITY OF EARNINGS
+  if (L.grossRevenue && earnings != null) {
+    const margin = earnings / L.grossRevenue;
+    if (margin > 0.35) reasons.push(`~${Math.round(margin * 100)}% margin is high for an MSP (norm ~10–25%) — expect heavy add-backs; put quality-of-earnings first.`);
+  }
 
   // VERTICAL
   const V = EMPIRE.verticalTiebreaker;

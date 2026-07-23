@@ -3,6 +3,12 @@
   "dealName": "EMPIRE — Deal 1 (platform) + tuck-ins",
   "home": ["dallas", "frisco", "plano", "richardson", "addison", "dfw", "fort worth", "irving", "mckinney", "allen", "carrollton"],
   "acceptableMetros": ["austin", "round rock", "williamson", "buda", "cedar park", "houston", "san antonio"],
+  "geography": {
+    "principle": "For a Dallas-run, AI-native, remote-capable MSP, what matters is CUSTOMER REACH and remote-operability — not the seller's HQ city. A College Station shop serving clients across Texas or multiple states is fully operable from Dallas; a shop whose clients are all one local market and onsite-dependent ties you to that market. HQ metro is a minor plus (density/relationships), never a gate. Employee count and how many are onshore/local and will transfer are separate diligence facts that this profile flags but rarely has data for.",
+    "reachMultipliers": { "multi-state": 1.0, "national": 1.0, "remote": 1.0, "statewide": 0.9, "regional": 0.75, "metro": 0.6, "local": 0.3, "unknown": 0.5 },
+    "homeMetroBonus": 0.25,
+    "note": "geo points = reachMultiplier × the onshoreGeo weight. A broad/remote customer base outranks HQ location because it's operable from Dallas; home-metro (DFW) adds only a small bonus."
+  },
   "platformWindow": { "minEarnings": 800000, "sweetLow": 1000000, "sweetHigh": 1500000, "stretchMax": 1800000, "comment": "Earnings on either basis. Sweet spot $1.0-1.5M EBITDA. 'Structure 1' (max 7(a) + seller note + equity) stretches the ceiling to ~$1.8M EBITDA only if the seller carries a full note and the multiple stays disciplined; above that the business price clears the financeable envelope." },
   "tuckInWindow": { "minEarnings": 120000, "maxEarnings": 800000 },
   "priceDiscipline": { "platformMax": 5.0, "tuckInMax": 3.5, "priceCeiling": 7000000, "marketRealityNote": "$1-3M EBITDA MSPs clear at 5-8x with consolidators; a 4.75-5x SBA-financed offer only wins off-market or with a seller who values certainty/legacy over top dollar." },

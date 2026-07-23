@@ -47,11 +47,23 @@ that looks like the owner's personal book of hours. In rough order of multiple i
    Geographic density supports the relationship + dispatch model. The flywheel = multiple
    arbitrage on entry × EBITDA growth from tuck-ins × margin expansion from AI + shared services,
    realized at an 8–12× exit.
+9. **Customer reach & remote-operability (not HQ city).** For a Dallas-run, remote-capable
+   platform, what matters is *where the customers are and how service is delivered*, not where the
+   seller's office sits. A shop serving clients across Texas / multiple states is delivered
+   remotely and is **operable from Dallas regardless of HQ**; a shop whose clients are one local
+   market with heavy onsite dependence ties you to that metro. The scanner now scores this
+   (`customerGeography`) above HQ location — a College Station business with a 7-state base rates
+   *higher* on geography than a Dallas business that only serves Dallas onsite.
+10. **Team quality & the margin sanity check.** Headcount, how many are onshore/local, and how many
+    transfer at close decide whether you bought a business or a job — and a suspiciously *high*
+    margin is a warning, not a win. A services business showing >35% "adjusted" EBITDA (vs. the
+    ~10–25% MSP norm) is almost always carrying heavy owner add-backs or is under-staffed, so the
+    real transferable EBITDA is lower. The scanner now flags both (`employees`, margin check).
 
-**The 2026 bullseye:** ~$1–1.5M EBITDA, DFW-metro, 90%+ MRR, <15% concentration, GM-run,
-standardized stack, professional-services tilt, priced ≤4.5× with a retiring owner carrying
-20–40%. Nothing currently *confirmed* on the public Texas board is all of that — which is itself
-the finding (see §5).
+**The 2026 bullseye:** ~$1–1.5M EBITDA, 90%+ MRR, <15% concentration, GM-run, standardized stack,
+professional-services tilt, priced ≤5× with a retiring owner carrying 20–40% — **with a customer
+base broad or remote enough to run from Dallas** (a DFW HQ is a plus, not a requirement). Nothing
+currently *confirmed* on the public Texas board is all of that — which is itself the finding (§5).
 
 ---
 
@@ -150,16 +162,21 @@ bid to 5–8×.
   public figures conflicted: $3.03M and $1.76M — do not trust either). Austin metro, right size,
   managed model. If the real ask lands near ~3.5× (~$2.9M) it's a bullseye; higher and discipline
   applies. Austin, not Dallas, means you're relying on the GM more from day one. Get the CIM.
-- **High-Margin Customized IT Services (Brazos County / College Station)** — **the best *business*
-  on the board, and Structure 1 is exactly what makes it financeable.** ~$3.2M revenue, ~$1.7M
-  adj. EBITDA (2024 pace ~$1.86M), 150 clients across 7 states, established 2007, diversified —
-  the quality you want. At $1.7M EBITDA it was "too big" for the old max-$6M / $5M-7(a) box; under
-  Structure 1 ($5M 7(a) + a full $1M seller note + ~$0.7M cash ≈ **$6.7M envelope**) it fits **only
-  if you hold price to ~$6.7M / ~3.9×**. The catch is the market: consolidators bid $1.7M-EBITDA
-  shops at 5–8× ($8.5–13.6M), so this pencils *only* if the seller values certainty/legacy and
-  carries paper. So: a real Platform candidate now — contingent on (a) a disciplined price, (b) a
-  full seller note, and (c) confirming the MRR mix and that a GM is in place. If the seller won't
-  come down from a consolidator-style number, walk. **High business quality still ≠ automatic
+- **High-Margin Customized IT Services (Brazos County / College Station)** — the highest-quality
+  book on the board, and **the poster child for why HQ city doesn't matter here.** ~$3.2M revenue,
+  ~$1.7M adj. EBITDA (2024 pace ~$1.86M), **150 clients across 7 states**, established 2007. That
+  multi-state client base means it's already delivered remotely — **fully operable from Dallas
+  despite the College Station HQ**, which is exactly the case you raised. Structure 1 is what makes
+  it financeable ($5M 7(a) + full $1M seller note + ~$0.7M cash ≈ **$6.7M envelope**), but only if
+  you hold price to ~$6.7M / ~3.9×, and consolidators bid $1.7M-EBITDA shops at 5–8× ($8.5–13.6M),
+  so it pencils *only* on seller conviction. **Two hard flags from the new data:** the team is just
+  **~7 people** (6 FT + 1 PT + a *contractor* acting as ops manager, and a 17-year lead tech), and
+  **$1.7M "adjusted" EBITDA on $3.2M revenue is a ~53% margin** — roughly triple a normal MSP.
+  That combination (tiny team, huge adjusted margin) usually means aggressive add-backs and/or an
+  under-staffed business a buyer must re-invest in — so the *real* transferable EBITDA is likely
+  lower, the "GM" is a contractor who may not transfer, and there's key-person risk on the 17-year
+  tech. Quality-of-earnings and a staffing-adequacy review come *before* anything else here. A real
+  Platform candidate, but the numbers need to survive diligence. **High business quality still ≠ automatic
   Deal-1 fit — here the gap is price and seller flexibility, not size.**
 
 **Watch — genuinely interesting, but you can't act without numbers:**
@@ -227,10 +244,14 @@ Deal 1 actually comes from.
 1. **Resolve the twin.** Confirm whether the statewide "Mass" MSP and the Plano "Off-Shore" listing
    are the same business, and whether delivery is on- or offshore. Highest-value single question.
 2. **Pull 3 CIMs:** Round Rock (and nail the real price), Houston-contracts, and Brazos. On every
-   one, ask the four questions that decide the deal: **P&L + MRR %**, **client concentration /
-   retention**, **is there a GM who owns the relationships**, and **will the seller carry a note
-   (how much, standby?)**. On Brazos specifically, the whole question is whether the seller will
-   price at ~$6.7M / ~3.9× with a full note rather than hold out for a 5–8× consolidator bid.
+   one, ask the questions that decide the deal: **P&L + MRR %** and add-back schedule (quality of
+   earnings), **client concentration / retention**, **customer geography + onsite dependence** (can
+   it run from Dallas?), **headcount — how many transfer, is any one person load-bearing**, **is
+   there a real GM** (an employee, not a contractor) **who owns the relationships**, and **will the
+   seller carry a note (how much, standby?)**. On Brazos specifically: the ~53% margin and 7-person
+   team make quality-of-earnings and staffing adequacy the gate, and the whole price question is
+   whether the seller will take ~$6.7M / ~3.9× with a full note rather than hold out for a 5–8×
+   consolidator bid.
 3. **Size the cybersecurity/app-dev split** before spending diligence time on it.
 4. **Verify the $271K MSP's state** and keep 707770 warm as tuck-in #1 material.
 5. **Point the real effort off-market:** broker letters + a built list of DFW/Austin MSPs in the

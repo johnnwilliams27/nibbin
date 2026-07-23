@@ -49,17 +49,29 @@ automated fetches and gate financials behind an NDA). To refresh the deal set:
    {
      "id": "unique-slug",
      "headline": "Established Managed IT Services Provider",
+     "description": "managed services, 90% MRR, per-seat contracts",
+     "sector": "",
      "city": "Austin, TX",
+     "customerGeography": "statewide",
+     "employees": 18,
      "askingPrice": 2500000,
      "grossRevenue": 3200000,
      "sde": null,
      "ebitda": 520000,
      "realEstate": { "included": true, "value": 800000, "note": "office building, owned" },
-     "notes": "80% MRR, 12-year history, one owner full-time",
+     "sellerFinancing": "yes",
+     "notes": "your analyst commentary here — NEVER parsed for signals",
      "source": "https://…",
      "capturedOn": "2026-07-23",
      "verified": false
    }
+
+   Field notes: `description`/`sector` are the listing's own words and **are** parsed for
+   classification + signals; `notes` is your commentary and is **never** parsed (so it can't
+   fabricate signals). `customerGeography` (local/metro/regional/statewide/multi-state/national/
+   remote) scores reach/remote-operability *above* HQ city. `employees` and a high-margin check
+   feed the quality-of-earnings flags. `sellerFinancing` (yes/no/null) and `realEstate` feed the
+   capital-stack math.
    ```
 
 3. **Re-run** `node tools/msp-deal-scanner/scan.mjs`.
