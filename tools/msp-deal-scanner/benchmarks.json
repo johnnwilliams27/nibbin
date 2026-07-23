@@ -31,6 +31,7 @@
       "break_fix": { "patterns": ["repair", "break/fix", "break fix", "walk-in", "walk in"], "weight": -14, "flag": "Break/fix or repair — labor-heavy, low stickiness" },
       "offshore": { "patterns": ["off-shore", "offshore", "off shore"], "weight": -10, "flag": "Offshore delivery — transferability / concentration / geopolitical risk" },
       "hardware_reseller": { "patterns": ["reseller", "hardware sales", "resale", "var "], "weight": -8, "flag": "Hardware/resale mix — thin margins, non-recurring" },
+      "project_mix": { "patterns": ["low-voltage", "low voltage", "cabling", "staff augmentation", "staff aug", "application development", "app dev", "procurement", "installation", "project-based"], "weight": -8, "flag": "Project / install / staff-aug / procurement mix — dilutes recurring MRR" },
       "not_operating": { "patterns": ["franchise", "licensed partner", "start up", "start-up", "startup", "turnkey opportunity", "licensed opportunity"], "weight": -18, "flag": "Franchise / license / startup — not an operating cash-flowing acquisition" },
       "hype": { "patterns": ["lifestyle", "absentee", "passive", "massive growth", "make 30k"], "weight": -8, "flag": "Lifestyle / absentee / hype framing — scrutinize claims" }
     }

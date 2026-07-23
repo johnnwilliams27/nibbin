@@ -179,17 +179,37 @@ bid to 5–8×.
   Platform candidate, but the numbers need to survive diligence. **High business quality still ≠ automatic
   Deal-1 fit — here the gap is price and seller flexibility, not size.**
 
-**Watch — genuinely interesting, but you can't act without numbers:**
+**Out-of-state, remote-delivered — the ones that can be run from Dallas (new):**
 
-- **Consulting / Cybersecurity / Managed Services / App-Dev** — security capability is a plus (an
-  MSSP line sells straight into a professional-services base), but "application development +
-  consulting" signals a project-revenue mix that dilutes MRR quality. Size the recurring vs.
-  project split before getting excited; verify it's even in Texas.
-- **IT Company – Highly Rated & Profitable with Contracts (Houston)** — kept because it has
-  long-term contracts (MRR), but **borderline**: the listing describes *absentee ownership, a
-  virtual office, a Ford Transit and hand tools, and reseller relationships* — that reads more like
-  a small onsite field-IT + reselling operation than a true managed-services platform. Confirm it's
-  actually managed services before spending time; if it's break/fix + resale, it drops off the list.
+Because the platform is remote/AI-native, an MSP anywhere in the US works *if its clients are
+national/remote, not a single local onsite market.* That filter is strict — most MSPs are
+regional and onsite — but three passed:
+
+- **Remote IT Consulting / Low-Voltage Design / Managed Services** — $2.3M rev, **$911K adj.
+  EBITDA**, **$4.49M ask (~4.9×)**, remote-delivered. Right size, priced right at the ≤5× line, and
+  fits inside the stack — the strongest out-of-state find. One caveat that matters: "low-voltage
+  design" + "IT consulting" means a cabling/AV-install and project component that is onsite and
+  non-recurring, so size the *true* managed-services MRR before treating it as a clean platform.
+- **Cybersecurity-Led, Remote-First MSP** — remote-first team, cybersecurity-first delivery in
+  regulated environments (sticky, professional-services-adjacent). The catch: ~20 clients with
+  **three anchor accounts** = concentration risk against your <15% rule. Financials/location
+  confidential — needs numbers.
+- **Mid-Atlantic Technology Services Platform** — 75–100 customers across commercial, healthcare,
+  **government, legal**, manufacturing, tech; 98% repeat revenue. Legal/government exposure is a
+  real vertical fit. But it's a *regional* (Mid-Atlantic) platform with a broad procurement /
+  licensing / staff-aug mix — verify how remote-operable it actually is and size the recurring core.
+
+**Watch — Texas, but you can't act without numbers:**
+
+- **Consulting / Cybersecurity / Managed Services / App-Dev (TX)** — security capability is a plus
+  (an MSSP line sells into a professional-services base), but "application development + consulting"
+  is a project-revenue mix that dilutes MRR. Size the recurring vs. project split; verify it's in TX.
+
+**Excluded on the remote test** (real MSPs, but tied to a local onsite market or too small):
+the **PA/S.NY/NJ MSP** ($859K SDE but only ~36% recurring, sale *pending*), the **Southern
+California** MSP (LA/South Bay local), and sub-scale nationwide shops (a **broadcast/media vertical
+MSP** at ~$486K SDE, an **Arizona** shop at ~$375K, a **N. Indiana/SW Michigan** shop at ~$175K).
+The broadcast one is genuinely nationwide/remote — worth remembering as a future tuck-in.
 
 **Caution — thesis conflict:**
 
@@ -219,13 +239,18 @@ office-tech listing. They were noise against an MSP roll-up mandate.
 
 ## 4. What this board *doesn't* have (the real conclusion)
 
-Run the buy box honestly and the punchline is that **the public Texas marketplaces are not where
-your Deal 1 lives.** After stripping the non-MSPs, nine real managed-IT businesses remain, and the
-three Platform-tier hits are: the statewide "Mass" MSP (whose twin is the offshore listing — same
-numbers), a Round-Rock shop whose price you can't trust, and Brazos — the best business, now
-financeable under Structure 1 but only if the seller carries paper and prices below what a
-consolidator would pay. The rest are two "need-numbers" watch items, the offshore twin (Caution),
-and three sub-scale MSPs that are future tuck-ins, not an initial purchase. That's not a failure of the
+Run the buy box honestly and the punchline holds: **the clean Deal 1 rarely sits on a public
+marketplace.** After stripping non-MSPs and adding out-of-state remote candidates, eleven real
+managed-IT businesses remain. The four Platform-tier hits: the statewide "Mass" MSP (twin of the
+offshore listing — same numbers), the **out-of-state Remote/Low-Voltage MSP** ($911K EBITDA at
+~4.9× — the best-priced on-market fit, but size the onsite/project mix), a Round-Rock shop whose
+price you can't trust, and Brazos (best business, financeable only on seller conviction). Then two
+strong "need-numbers" remote watch items (the remote-first cybersecurity MSP; the Mid-Atlantic
+platform with legal/government exposure), a Texas MSSP with a project mix, the offshore twin
+(Caution), and three sub-scale Texas MSPs that are future tuck-ins. Widening beyond Texas helped —
+it added the best-priced Platform candidate and two legitimately remote leads — but every one still
+needs the CIM, and the *bullseye* (clean 90%-MRR, GM-run, ≤5×, legal-leaning) still points at
+off-market origination. That's not a failure of the
 search — it's the structural reality that the clean, GM-run, $1.4–1.5M-EBITDA, professional-services
 MSP with a retiring owner willing to sell at ≤5× rarely hits BizBuySell. Those transact through specialist advisors
 (Cogent, Evergreen, CT Acquisitions) and, more often, through **direct owner outreach** — which is
