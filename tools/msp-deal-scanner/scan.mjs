@@ -381,7 +381,7 @@ const section = (t) => {
     const mult = r.impliedMultiple != null ? `${x(r.impliedMultiple)}` : (r.impliedRange ? `<span class="dim">→</span> ${usd(r.impliedRange[0])}–${usd(r.impliedRange[1])}` : '—');
     return `<tr>
       <td><span class="score" style="background:${tierColor[t]}">${r.fit.score}</span></td>
-      <td><strong>${L.headline}</strong>${r.dupOf ? ' <span class="dup">dup</span>' : ''}<div class="dim">${L.city} · <a href="${L.source}" target="_blank" rel="noopener">source</a> · unverified</div><ul class="why">${r.fit.reasons.slice(0, 3).map((x) => `<li>${x}</li>`).join('')}</ul></td>
+      <td><strong>${L.headline}</strong>${r.dupOf ? ' <span class="dup">dup</span>' : ''}<div class="dim">${L.city} · <a href="${L.source}" target="_blank" rel="noopener">source</a>${L.broker ? ` · broker: ${L.broker}` : ''} · unverified</div><ul class="why">${r.fit.reasons.slice(0, 3).map((x) => `<li>${x}</li>`).join('')}</ul></td>
       <td>${usd(L.askingPrice)}</td><td>${earn}</td><td>${mult}</td></tr>`;
   }).join('');
   return `<h2><span class="pill" style="background:${tierColor[t]}">${TIER[t]}</span> <span class="dim">${list.length}</span></h2>
