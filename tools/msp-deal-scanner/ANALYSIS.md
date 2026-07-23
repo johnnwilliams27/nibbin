@@ -100,9 +100,47 @@ diligence item on the board.**
 
 ---
 
+## 2b. The capital stack, and the two levers you asked about
+
+**Structure 1 — the financeable envelope.** $5M SBA 7(a) (Prime + 2.5–3%, 10-yr am) + a $0.7–1M
+seller note (10–15%, on 2-yr full standby) + $0.5–0.7M of your cash ≈ a **~$6.7M business price**
+(the ~$6.5–7M in your note). At 4.75–5× that's the **$1.4–1.5M-EBITDA business with real
+management** you're aiming at, with debt service ~$800–850K/yr against $1.4–1.5M EBITDA — leaving
+$550–650K of cash flow to cover your $250K draw plus $300–400K of annual debt sweep. The scanner
+now scores every candidate against this $6.7M envelope, not a flat multiple.
+
+**Lever 1 — seller financing (use it; it does double duty).** Because half your required 10%
+equity injection can be seller *standby* paper, a seller note both **stretches your cash** (you're
+not writing the whole equity check) and **signals conviction** — a seller carrying 15% on standby
+for two years is betting on the business surviving their exit, which is information. So a deal with
+seller financing available can support a *higher* price at the same cash-in than one without.
+Treat "will the seller carry paper, and how much?" as a top-3 question on every candidate; where
+it's unconfirmed (all of the current board), it's an open variable that changes what you can
+afford. It is a reason to *lean in* on an otherwise-great business, not a nicety.
+
+**Lever 2 — real estate (only if it makes a great business pencil).** If an owned building comes
+attached, finance it on a **separate 504 / conventional CRE loan (~85% LTV) outside the 7(a)** —
+it lifts total deal capacity *without* eating the $6.7M business envelope, and you hold a hard,
+separately-collateralized asset. But you're right to be wary: MSPs are asset-light and you don't
+want to become a landlord for its own sake. Take the real estate only when it's the thing that
+makes an otherwise-great, otherwise-too-big deal financeable, or when owning beats leasing on the
+math. **None of the current Texas board includes real estate** — every listing is service/remote —
+so this lever is dormant today. The scanner already models it (`realEstate` field → separate
+loan), so the moment an RE-inclusive MSP appears, it prices the blended structure automatically.
+
+**So does anything match the $1.4–1.5M "real-management" profile?** Closest is **Brazos** (a bit
+*above* it at $1.7M, financeable only at a disciplined price — see §3). **Houston-contracts** and
+the **cybersecurity** shop are the unknowns that *could* land in the window — get their numbers.
+Everything else confirmed is smaller (financeable, but under-using your capacity) or off-thesis.
+The honest read: the exact $1.4–1.5M-EBITDA, GM-run, professional-services MSP at ≤5× is a deal
+you'll more likely *originate off-market* than find on a marketplace, because on-market ones get
+bid to 5–8×.
+
+---
+
 ## 3. The board today, by tier
 
-**Platform (Deal 1) candidates — the only two that fit on size, model, price, and onshore:**
+**Platform (Deal 1) candidates — fit on size, model, price, and onshore:**
 
 - **IT – "Mass" Service Provider (statewide TX)** — $4.25M / ~$1.04M SDE ≈ **4.1×**. Right size,
   within price discipline, managed model, onshore as framed. *But* it's the twin of the offshore
@@ -112,19 +150,23 @@ diligence item on the board.**
   public figures conflicted: $3.03M and $1.76M — do not trust either). Austin metro, right size,
   managed model. If the real ask lands near ~3.5× (~$2.9M) it's a bullseye; higher and discipline
   applies. Austin, not Dallas, means you're relying on the GM more from day one. Get the CIM.
+- **High-Margin Customized IT Services (Brazos County / College Station)** — **the best *business*
+  on the board, and Structure 1 is exactly what makes it financeable.** ~$3.2M revenue, ~$1.7M
+  adj. EBITDA (2024 pace ~$1.86M), 150 clients across 7 states, established 2007, diversified —
+  the quality you want. At $1.7M EBITDA it was "too big" for the old max-$6M / $5M-7(a) box; under
+  Structure 1 ($5M 7(a) + a full $1M seller note + ~$0.7M cash ≈ **$6.7M envelope**) it fits **only
+  if you hold price to ~$6.7M / ~3.9×**. The catch is the market: consolidators bid $1.7M-EBITDA
+  shops at 5–8× ($8.5–13.6M), so this pencils *only* if the seller values certainty/legacy and
+  carries paper. So: a real Platform candidate now — contingent on (a) a disciplined price, (b) a
+  full seller note, and (c) confirming the MRR mix and that a GM is in place. If the seller won't
+  come down from a consolidator-style number, walk. **High business quality still ≠ automatic
+  Deal-1 fit — here the gap is price and seller flexibility, not size.**
 
 **Watch — genuinely interesting, but you can't act without numbers:**
 
-- **High-Margin Customized IT Services (Brazos County / College Station)** — **the best *business*
-  on the board and probably the wrong *Deal 1*.** ~$3.2M revenue, ~$1.7M adj. EBITDA (2024 pace
-  ~$1.86M), 150 clients across 7 states, established 2007, diversified. That quality is exactly
-  what you want — but at ~$1.7M EBITDA a ~4× price is ~$6.8M, over the $6M ceiling and past the
-  $5M SBA 7(a) cap, forcing outsized equity you don't have staged. It's a "bring-more-equity,"
-  "later-with-a-facility," or "grow-into-it" target — or a genuine Platform if the price is
-  disciplined and you can fund it. **High business quality ≠ high Deal-1 fit; keep them separate.**
 - **IT Company – Highly Rated & Profitable with Contracts (Houston)** — "long-term contracts" is
-  the right language (MRR). Houston metro. Get the numbers; if it's $1–1.5M EBITDA it moves to
-  Platform.
+  the right language (MRR). Houston metro. Get the numbers; if it's $1–1.5M EBITDA it's the
+  cleanest Structure-1 fit on the board — Platform.
 - **Consulting / Cybersecurity / Managed Services / App-Dev** — security capability is a plus, but
   "application development + consulting" signals a project-revenue mix that dilutes MRR quality.
   Size the recurring vs. project split before getting excited; verify it's even in Texas.
@@ -163,11 +205,12 @@ diligence item on the board.**
 ## 4. What this board *doesn't* have (the real conclusion)
 
 Run the buy box honestly and the punchline is that **the public Texas marketplaces are not where
-your Deal 1 lives.** The two Platform-tier hits are a possibly-duplicated statewide/offshore
-listing and a Round-Rock shop whose price you can't trust; the best business (Brazos) is likely
-too big for your financing; everything else is a tuck-in or a pass. That's not a failure of the
-search — it's the structural reality that the clean, GM-run, $1–1.5M-EBITDA, professional-services
-MSP with a retiring owner rarely hits BizBuySell. Those transact through specialist advisors
+your Deal 1 lives.** The three Platform-tier hits are a possibly-duplicated statewide/offshore
+listing, a Round-Rock shop whose price you can't trust, and Brazos — the best business, now
+financeable under Structure 1 but only if the seller carries paper and prices below what a
+consolidator would pay. Everything else is a tuck-in or a pass. That's not a failure of the
+search — it's the structural reality that the clean, GM-run, $1.4–1.5M-EBITDA, professional-services
+MSP with a retiring owner willing to sell at ≤5× rarely hits BizBuySell. Those transact through specialist advisors
 (Cogent, Evergreen, CT Acquisitions) and, more often, through **direct owner outreach** — which is
 exactly why the plan has you building broker lists and sending owner letters from 2028. The
 marketplace scan is for calibration and the occasional gem; the proprietary pipeline is where
@@ -179,9 +222,11 @@ Deal 1 actually comes from.
 
 1. **Resolve the twin.** Confirm whether the statewide "Mass" MSP and the Plano "Off-Shore" listing
    are the same business, and whether delivery is on- or offshore. Highest-value single question.
-2. **Pull 3 CIMs:** Round Rock (and nail the real price), Houston-contracts, and Brazos (to learn
-   the market even if it's a financing stretch). Request P&L, MRR %, client concentration,
-   retention, stack, and org chart (is there a GM?).
+2. **Pull 3 CIMs:** Round Rock (and nail the real price), Houston-contracts, and Brazos. On every
+   one, ask the four questions that decide the deal: **P&L + MRR %**, **client concentration /
+   retention**, **is there a GM who owns the relationships**, and **will the seller carry a note
+   (how much, standby?)**. On Brazos specifically, the whole question is whether the seller will
+   price at ~$6.7M / ~3.9× with a full note rather than hold out for a 5–8× consolidator bid.
 3. **Size the cybersecurity/app-dev split** before spending diligence time on it.
 4. **Verify the $271K MSP's state** and keep 707770 warm as tuck-in #1 material.
 5. **Point the real effort off-market:** broker letters + a built list of DFW/Austin MSPs in the

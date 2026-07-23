@@ -3,9 +3,32 @@
   "dealName": "EMPIRE — Deal 1 (platform) + tuck-ins",
   "home": ["dallas", "frisco", "plano", "richardson", "addison", "dfw", "fort worth", "irving", "mckinney", "allen", "carrollton"],
   "acceptableMetros": ["austin", "round rock", "williamson", "buda", "cedar park", "houston", "san antonio"],
-  "platformWindow": { "minEarnings": 800000, "sweetLow": 1000000, "sweetHigh": 1500000, "maxEarnings": 1600000, "comment": "Earnings on either basis. Above ~$1.8M EBITDA the ~$6M price bumps the $5M SBA 7(a) cap and forces disproportionate equity — the plan's explicit price-discipline line." },
+  "platformWindow": { "minEarnings": 800000, "sweetLow": 1000000, "sweetHigh": 1500000, "stretchMax": 1800000, "comment": "Earnings on either basis. Sweet spot $1.0-1.5M EBITDA. 'Structure 1' (max 7(a) + seller note + equity) stretches the ceiling to ~$1.8M EBITDA only if the seller carries a full note and the multiple stays disciplined; above that the business price clears the financeable envelope." },
   "tuckInWindow": { "minEarnings": 120000, "maxEarnings": 800000 },
-  "priceDiscipline": { "platformMax": 4.5, "tuckInMax": 3.5, "sevenAloanCap": 5000000, "priceCeiling": 6000000 },
+  "priceDiscipline": { "platformMax": 5.0, "tuckInMax": 3.5, "priceCeiling": 7000000, "marketRealityNote": "$1-3M EBITDA MSPs clear at 5-8x with consolidators; a 4.75-5x SBA-financed offer only wins off-market or with a seller who values certainty/legacy over top dollar." },
+  "capitalStack": {
+    "comment": "Structure 1: Max 7(a) + seller note + your equity. Real estate, if any, rides a SEPARATE 504/CRE loan outside the 7(a) and does not consume this envelope.",
+    "sbaCap": 5000000,
+    "sbaRate": "Prime + 2.5-3% (~10.25-10.75%), 10-yr am",
+    "sellerNoteMin": 700000,
+    "sellerNoteMax": 1000000,
+    "sellerNotePctRange": [10, 15],
+    "sellerNoteStandbyMonths": 24,
+    "equityCashMin": 500000,
+    "equityCashMax": 700000,
+    "businessEnvelope": 6700000,
+    "envelopeNote": "sbaCap $5M + sellerNoteMax $1M + equityCashMax $0.7M = ~$6.7M business price (image says ~$6.5-7M). Half the 10% equity injection can be seller standby paper, so cash goes further.",
+    "reLoanLtv": 0.85
+  },
+  "realEstatePolicy": {
+    "preference": "minimize — MSPs are asset-light; you don't want to be a landlord for its own sake",
+    "whenWorthIt": "only if an owned building comes attached to a genuinely great business, and financing it separately (504/CRE, ~85% LTV, outside the 7(a)) is what makes the blended deal pencil or lifts the ceiling",
+    "effect": "a separately-financed RE component raises total deal capacity without eating the $6.7M business envelope"
+  },
+  "sellerFinancingPolicy": {
+    "why": "A seller carrying paper both stretches your cash equity AND signals conviction in the business post-close. Availability and terms are a top-3 diligence item on every candidate.",
+    "unknownIsRisk": "Where seller financing is unconfirmed, treat it as an open question that materially affects whether the deal is financeable at all."
+  },
   "requirements": {
     "recurringMinPct": 90,
     "maxClientConcentrationPct": 15,

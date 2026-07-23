@@ -27,6 +27,25 @@ const usd = (n) => (n == null ? '—' : '$' + Number(n).toLocaleString('en-US'))
 const x = (n) => (n == null ? '—' : n.toFixed(2) + '×');
 const hay = (L) => `${L.headline} ${L.notes || ''}`.toLowerCase();
 
+// ---- capital-stack financeability (Structure 1) ---------------------------
+// Envelope = $5M 7(a) + up to $1M seller note + up to $0.7M cash equity ≈ $6.7M for the
+// business. Real estate, if any, rides a SEPARATE 504/CRE loan and does not eat that envelope.
+function stackNote(earnings, ask, L) {
+  const CS = EMPIRE.capitalStack, env = CS.businessEnvelope;
+  const reLoan = (L.realEstate && L.realEstate.included && L.realEstate.value) ? Math.round(L.realEstate.value * CS.reLoanLtv) : 0;
+  const cap = env + reLoan;
+  if (ask != null) {
+    return ask <= cap
+      ? `Ask ${usd(ask)} fits the ~${usd(cap)} financeable envelope (7(a) + seller note + equity${reLoan ? ` + ${usd(reLoan)} RE loan` : ''}).`
+      : `Ask ${usd(ask)} is over the ~${usd(cap)} financeable envelope — needs more equity, a bigger seller note, a price cut${reLoan ? '' : ', or an RE carve-out'}.`;
+  }
+  if (earnings != null) {
+    const maxMult = cap / earnings;
+    return `To stay inside the ~${usd(cap)} envelope, hold price to ~${maxMult.toFixed(1)}× (~${usd(cap)}). Consolidators bid 5–8× at this size, so it likely only pencils off-market or on seller conviction.`;
+  }
+  return null;
+}
+
 // ---- classification -------------------------------------------------------
 // Classify off the headline + an explicit `sector` field only — never the free-text
 // `notes`, so editorial prose (e.g. "not an MSP") can't poison the classifier.
@@ -132,8 +151,12 @@ function computeFit(r) {
   const pw = EMPIRE.platformWindow, tw = EMPIRE.tuckInWindow;
   let sizeClass = 'unknown';
   if (earnings == null) { s += W.size * 0.5; reasons.push('Earnings not disclosed — size fit unknown.'); }
-  else if (earnings > pw.maxEarnings) { s += W.size * 0.45; sizeClass = 'too-big'; reasons.push(`~${usd(earnings)} earnings is above the SBA-friendly window — a ~4× price clears the $6M ceiling / $5M 7(a) cap and forces outsized equity.`); }
-  else if (earnings >= pw.minEarnings) { s += W.size; sizeClass = 'platform'; reasons.push(`~${usd(earnings)} earnings sits in the Deal-1 platform window.`); }
+  else if (earnings > pw.stretchMax) { s += W.size * 0.45; sizeClass = 'too-big'; reasons.push(`~${usd(earnings)} earnings is above even the seller-note-stretched window (~$1.8M) — the business price clears the financeable envelope.`); }
+  else if (earnings >= pw.minEarnings) {
+    s += W.size; sizeClass = 'platform';
+    const sweet = earnings >= pw.sweetLow && earnings <= pw.sweetHigh;
+    reasons.push(`~${usd(earnings)} earnings sits in the Deal-1 platform window${sweet ? ' (sweet spot)' : earnings > pw.sweetHigh ? ' — top edge; needs a full seller note to finance' : ' — small end; under-uses your borrowing capacity'}.`);
+  }
   else if (earnings >= tw.minEarnings) { s += W.size * 0.6; sizeClass = 'tuckin'; reasons.push(`~${usd(earnings)} earnings is tuck-in scale — fold into the platform, not a standalone Deal 1.`); }
   else { s += W.size * 0.25; sizeClass = 'too-small'; reasons.push(`~${usd(earnings)} earnings is sub-scale even for a tuck-in.`); }
 
@@ -143,7 +166,7 @@ function computeFit(r) {
 
   // PRICE DISCIPLINE
   const m = r.impliedMultiple, pd = EMPIRE.priceDiscipline;
-  if (m == null) { s += W.priceDiscipline * 0.5; reasons.push('Price withheld — cannot test the 3–4.5× discipline; request the number.'); }
+  if (m == null) { s += W.priceDiscipline * 0.5; reasons.push('Price withheld — cannot test the ≤5× discipline; request the number.'); }
   else if (m <= pd.tuckInMax) { s += W.priceDiscipline; reasons.push(`${x(m)} ${r.band.basis} — inside even the tuck-in discipline.`); }
   else if (m <= pd.platformMax) { s += W.priceDiscipline * 0.8; reasons.push(`${x(m)} ${r.band.basis} — within platform price discipline.`); }
   else if (m <= 6) { s += W.priceDiscipline * 0.4; reasons.push(`${x(m)} ${r.band.basis} — above discipline; needs a strategic reason.`); }
@@ -161,6 +184,21 @@ function computeFit(r) {
   else if (V.second.some((k) => h.includes(k))) { s += W.vertical * 0.7; reasons.push('Professional/financial-services vertical — strong secondary fit.'); }
   else if (h.includes('cyber') || h.includes('security')) { s += W.vertical * 0.6; reasons.push('Security capability — margin-accretive, sells the vertical.'); }
   else if (V.acceptable_no_premium.some((k) => h.includes(k))) { s += W.vertical * 0.3; reasons.push('Healthcare exposure — acceptable, no premium (DSO headwind).'); }
+
+  // CAPITAL STACK (financeability under Structure 1)
+  if (['platform', 'too-big', 'tuckin'].includes(sizeClass)) {
+    const sn = stackNote(earnings, L.askingPrice, L);
+    if (sn) reasons.push(sn);
+  }
+
+  // SELLER FINANCING
+  const sf = L.sellerFinancing;
+  if (sf === 'yes') { s += 4; reasons.push('Seller financing offered — stretches your cash equity and signals conviction post-close.'); }
+  else if (sf === 'no') reasons.push('No seller financing indicated — you cover the full equity gap in cash; confirm, it changes what you can afford.');
+  else if (!breakFix && sizeClass !== 'too-small') reasons.push('Seller financing unconfirmed — top-3 diligence item; half the 10% injection can be seller standby paper, so it decides what you can afford.');
+
+  // REAL ESTATE
+  if (L.realEstate && L.realEstate.included) reasons.push(`Real estate included${L.realEstate.value ? ` (~${usd(L.realEstate.value)})` : ''} — finance separately (504/CRE, outside the 7(a)); lifts the ceiling, but you prefer minimal RE for an asset-light MSP.`);
 
   s = Math.max(0, Math.min(100, Math.round(s)));
 
@@ -237,10 +275,11 @@ for (const t of ['platform', 'tuckin', 'watch', 'caution', 'pass']) {
 }
 md.push('## The buy box being scored against (`empire-profile.json`)');
 md.push('');
-md.push('- **Size:** $1.0–1.5M EBITDA/SDE platform window (Deal 1); tuck-ins $120k–$800k. Above ~$1.6M earnings a ~4× price bumps the $6M ceiling / $5M SBA 7(a) cap.');
+md.push('- **Size:** $1.0–1.5M EBITDA sweet spot (Deal 1), stretchable to ~$1.8M with a full seller note; tuck-ins $120k–$800k.');
+md.push('- **Capital stack (Structure 1):** $5M SBA 7(a) + $0.7–1M seller note (10–15%, 2-yr standby) + $0.5–0.7M cash ≈ **$6.7M business envelope** (~$6.5–7M price). Real estate rides a separate 504/CRE loan outside the 7(a) and lifts the ceiling further.');
 md.push('- **Model:** 90%+ contractual MRR, per-seat; ≥20 clients, none >15%, 85%+ retention.');
 md.push('- **People:** a GM/service manager who owns relationships so the seller can exit — non-negotiable.');
-md.push('- **Price discipline:** platform ≤4.5×, tuck-ins ≤3.5×; avoid >$6M.');
+md.push('- **Price discipline:** platform ≤5×, tuck-ins ≤3.5×. Note: $1–3M-EBITDA MSPs clear at 5–8× with consolidators, so a 4.75–5× financed offer usually only wins off-market or on seller conviction.');
 md.push('- **Vertical tiebreaker:** legal best, professional/financial second, healthcare no-premium; generalist chassis with concentration beats vertical-only.');
 md.push('- **Onshore:** relationship + AI-L1 model — offshore labor arbitrage fights the vertical, the AI thesis, and the exit multiple. See `ANALYSIS.md`.');
 md.push('');
