@@ -1,14 +1,14 @@
 #!/usr/bin/env node
-// MSP Deal Scanner — evaluate MSP / IT-services acquisition targets against a valuation model.
+// MSP Deal Scanner — evaluate MSP / IT-services acquisition targets against (1) a market
+// valuation model and (2) the EMPIRE / Williams 20-Year Plan MSP buy box (strategic fit).
 //
-// Reads:  benchmarks.json (the valuation model) + listings.json (captured deals)
-// Emits:  report.md, report.csv, report.html  (all self-contained, in this folder)
+// Reads:  benchmarks.json (market model) + empire-profile.json (buy box) + listings.json (deals)
+// Emits:  report.md, report.csv, report.html  (self-contained, in this folder)
 //
-// It does NOT just list deals — for each one it classifies the business type, picks the
-// right valuation basis (SDE vs EBITDA) and size tier, computes the implied multiple, compares
-// it to the market band (with an MRR premium when warranted), reads quality/risk signals from
-// the listing text, and produces a 0–100 deal score with a plain-English verdict. When a price
-// is withheld but earnings are shown, it back-solves an implied asking-price range instead.
+// For each deal it: classifies the business, prices it against the market band (SDE vs EBITDA,
+// with an MRR premium), computes the implied multiple, THEN scores strategic fit against the
+// buy box — size window, recurring model, onshore vs offshore, price discipline, management
+// depth, and vertical — and assigns a tier: Platform (Deal 1) / Tuck-in / Watch / Caution / Pass.
 //
 // Zero dependencies. Usage: node tools/msp-deal-scanner/scan.mjs [dir]
 
@@ -20,6 +20,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const DIR = process.argv[2] ? process.argv[2] : HERE;
 
 const bm = JSON.parse(readFileSync(join(DIR, 'benchmarks.json'), 'utf8'));
+const EMPIRE = JSON.parse(readFileSync(join(DIR, 'empire-profile.json'), 'utf8'));
 const data = JSON.parse(readFileSync(join(DIR, 'listings.json'), 'utf8'));
 
 const usd = (n) => (n == null ? '—' : '$' + Number(n).toLocaleString('en-US'));
@@ -27,10 +28,11 @@ const x = (n) => (n == null ? '—' : n.toFixed(2) + '×');
 const hay = (L) => `${L.headline} ${L.notes || ''}`.toLowerCase();
 
 // ---- classification -------------------------------------------------------
+// Classify off the headline + an explicit `sector` field only — never the free-text
+// `notes`, so editorial prose (e.g. "not an MSP") can't poison the classifier.
 function classify(L) {
-  const h = hay(L);
+  const h = `${L.headline} ${L.sector || ''}`.toLowerCase();
   const any = (arr) => arr.some((p) => h.includes(p));
-  // "not_msp" keywords win only if no strong MSP keyword is also present.
   if (any(bm.classification.msp)) return 'MSP / IT-services';
   if (any(bm.classification.it_services_adjacent)) return 'IT-services adjacent';
   if (any(bm.classification.not_msp)) return 'Not an MSP';
@@ -38,7 +40,6 @@ function classify(L) {
 }
 
 // ---- valuation band -------------------------------------------------------
-// Returns {basis:'EBITDA'|'SDE', value, tier, low, high} or null if no earnings.
 function band(L) {
   if (L.ebitda != null) {
     const t = bm.ebitdaTiers.find((t) => t.maxEBITDA == null || L.ebitda <= t.maxEBITDA);
@@ -69,57 +70,113 @@ function readSignals(L) {
   return { flags, adj, recurring };
 }
 
-// ---- evaluate one listing -------------------------------------------------
+// ---- market valuation of one listing --------------------------------------
 function evaluate(L) {
   const kind = classify(L);
   const b = band(L);
   const sig = readSignals(L);
-
-  // MRR premium shifts the acceptable band up.
   const prem = sig.recurring ? bm.mrrPremiumTurns : 0;
   const loAdj = b ? b.low + prem : null;
   const hiAdj = b ? b.high + prem : null;
 
-  let impliedMultiple = null;
-  let position = null; // 'below' | 'in' | 'above'
-  let impliedRange = null; // [lo, hi] asking price when earnings known but price withheld
-  let verdict, dataOk = true;
-
+  let impliedMultiple = null, position = null, impliedRange = null, verdict, dataOk = true;
   if (b && L.askingPrice != null) {
     impliedMultiple = L.askingPrice / b.value;
-    if (impliedMultiple < loAdj) position = 'below';
-    else if (impliedMultiple > hiAdj) position = 'above';
-    else position = 'in';
+    position = impliedMultiple < loAdj ? 'below' : impliedMultiple > hiAdj ? 'above' : 'in';
   } else if (b && L.askingPrice == null) {
     impliedRange = [Math.round(b.value * loAdj), Math.round(b.value * hiAdj)];
-  } else {
-    dataOk = false;
-  }
+  } else dataOk = false;
 
-  // ---- deal score 0–100 -----------------------------------------------------
-  // 50 baseline. Valuation position ±25. Signals ±(capped). Data completeness gate.
-  let score = 50;
-  if (position === 'below') score += 22;
-  else if (position === 'in') score += 8;
-  else if (position === 'above') score -= 20;
-  score += Math.max(-25, Math.min(20, sig.adj));
-  if (!dataOk) score = null; // can't score without earnings + price
-  if (score != null) score = Math.max(0, Math.min(100, Math.round(score)));
+  if (!b) verdict = 'No earnings disclosed — request P&L / add-back schedule.';
+  else if (impliedRange) verdict = `Price withheld — at ${x(loAdj)}–${x(hiAdj)} ${b.basis} implies ${usd(impliedRange[0])}–${usd(impliedRange[1])}.`;
+  else if (position === 'below') verdict = `Below the ${x(loAdj)}–${x(hiAdj)} ${b.basis} band — cheap on paper; screen for why.`;
+  else if (position === 'in') verdict = `In the ${x(loAdj)}–${x(hiAdj)} ${b.basis} band — fair market ask.`;
+  else verdict = `Above the ${x(loAdj)}–${x(hiAdj)} ${b.basis} band — rich.`;
 
-  // ---- verdict --------------------------------------------------------------
-  if (!b) {
-    verdict = 'Insufficient data — no earnings disclosed; request P&L / add-back schedule.';
-  } else if (impliedRange) {
-    verdict = `Price withheld — at ${x(loAdj)}–${x(hiAdj)} ${b.basis} the range implies ${usd(impliedRange[0])}–${usd(impliedRange[1])}. Ask for the number.`;
-  } else if (position === 'below') {
-    verdict = `Priced below the ${x(loAdj)}–${x(hiAdj)} ${b.basis} band — attractive on paper; screen hard for why (owner dependence, churn, one-off earnings).`;
-  } else if (position === 'in') {
-    verdict = `In the ${x(loAdj)}–${x(hiAdj)} ${b.basis} band — fair market ask; value hinges on diligence quality.`;
-  } else {
-    verdict = `Above the ${x(loAdj)}–${x(hiAdj)} ${b.basis} band — rich; needs a strategic reason (contracts, MRR mix, real estate) to justify.`;
-  }
+  return { L, kind, band: b, prem, loAdj, hiAdj, impliedMultiple, impliedRange, position, sig, dataOk, verdict };
+}
 
-  return { L, kind, band: b, prem, loAdj, hiAdj, impliedMultiple, impliedRange, position, sig, score, dataOk, verdict };
+// ---- EMPIRE strategic fit -------------------------------------------------
+const TIER = { platform: 'Platform (Deal 1)', tuckin: 'Tuck-in', watch: 'Watch — need numbers', caution: 'Caution — thesis conflict', pass: 'Pass' };
+const TIER_ORDER = { platform: 0, tuckin: 1, watch: 2, caution: 3, pass: 4 };
+
+function geoScore(city) {
+  const c = (city || '').toLowerCase();
+  if (EMPIRE.home.some((k) => c.includes(k))) return { pts: EMPIRE.fitWeights.onshoreGeo, tag: 'DFW home turf' };
+  if (EMPIRE.acceptableMetros.some((k) => c.includes(k))) return { pts: EMPIRE.fitWeights.onshoreGeo * 0.8, tag: 'TX metro' };
+  if (c.includes('texas') || c.includes(', tx')) return { pts: EMPIRE.fitWeights.onshoreGeo * 0.55, tag: 'TX (location vague)' };
+  return { pts: EMPIRE.fitWeights.onshoreGeo * 0.4, tag: 'geography unclear' };
+}
+
+function computeFit(r) {
+  const L = r.L, sig = r.sig, W = EMPIRE.fitWeights, reasons = [];
+  const h = hay(L);
+  const earnings = L.ebitda ?? L.sde ?? null;
+  const has = (k) => sig.flags.some((f) => f.key === k);
+  const offshore = has('offshore'), notOperating = has('not_operating');
+  const breakFix = has('break_fix'), reseller = has('hardware_reseller'), hype = has('hype');
+  const recurring = sig.recurring;
+  const isMsp = r.kind.startsWith('MSP');
+
+  if (r.kind === 'Not an MSP') { reasons.push('Not an MSP / IT-services business — outside the mandate.'); return { tier: 'pass', score: 8, reasons }; }
+  if (notOperating) { reasons.push('Franchise / startup / license — not a retiring-owner operating platform; royalty drag, no clean equity re-rate.'); return { tier: 'pass', score: 12, reasons }; }
+
+  let s = 0;
+  // MODEL
+  if (recurring && !breakFix && !reseller) { s += W.model; reasons.push('Managed / recurring model — the contractual base the plan protects while AI removes L1.'); }
+  else if (reseller) { s += W.model * 0.2; reasons.push('Resale/hardware-weighted — thin margins, little MRR to re-rate.'); }
+  else if (breakFix) { s += W.model * 0.15; reasons.push('Break/fix or repair — labor-heavy, no contractual base to compound.'); }
+  else { s += W.model * 0.6; reasons.push('IT services, recurring mix unconfirmed — verify MRR %.'); }
+
+  // SIZE
+  const pw = EMPIRE.platformWindow, tw = EMPIRE.tuckInWindow;
+  let sizeClass = 'unknown';
+  if (earnings == null) { s += W.size * 0.5; reasons.push('Earnings not disclosed — size fit unknown.'); }
+  else if (earnings > pw.maxEarnings) { s += W.size * 0.45; sizeClass = 'too-big'; reasons.push(`~${usd(earnings)} earnings is above the SBA-friendly window — a ~4× price clears the $6M ceiling / $5M 7(a) cap and forces outsized equity.`); }
+  else if (earnings >= pw.minEarnings) { s += W.size; sizeClass = 'platform'; reasons.push(`~${usd(earnings)} earnings sits in the Deal-1 platform window.`); }
+  else if (earnings >= tw.minEarnings) { s += W.size * 0.6; sizeClass = 'tuckin'; reasons.push(`~${usd(earnings)} earnings is tuck-in scale — fold into the platform, not a standalone Deal 1.`); }
+  else { s += W.size * 0.25; sizeClass = 'too-small'; reasons.push(`~${usd(earnings)} earnings is sub-scale even for a tuck-in.`); }
+
+  // ONSHORE / GEO
+  if (offshore) reasons.push("OFFSHORE delivery — clashes with the legal / professional-services vertical, is undercut by the plan's own AI-L1 thesis, and is discounted at exit. The cheap multiple buys lower-quality, less-transferable earnings.");
+  else { const g = geoScore(L.city); s += g.pts; reasons.push(`Onshore, ${g.tag}.`); }
+
+  // PRICE DISCIPLINE
+  const m = r.impliedMultiple, pd = EMPIRE.priceDiscipline;
+  if (m == null) { s += W.priceDiscipline * 0.5; reasons.push('Price withheld — cannot test the 3–4.5× discipline; request the number.'); }
+  else if (m <= pd.tuckInMax) { s += W.priceDiscipline; reasons.push(`${x(m)} ${r.band.basis} — inside even the tuck-in discipline.`); }
+  else if (m <= pd.platformMax) { s += W.priceDiscipline * 0.8; reasons.push(`${x(m)} ${r.band.basis} — within platform price discipline.`); }
+  else if (m <= 6) { s += W.priceDiscipline * 0.4; reasons.push(`${x(m)} ${r.band.basis} — above discipline; needs a strategic reason.`); }
+  else reasons.push(`${x(m)} ${r.band.basis} — well over discipline; pass on price unless repriced.`);
+
+  // MANAGEMENT / TRANSFERABILITY
+  if (/\bgm\b|service manager|management team|manager in place/.test(h)) { s += W.management; reasons.push('Management/GM signal — supports the owner exit (non-negotiable).'); }
+  else if (has('established') || /retir/.test(h)) { s += W.management * 0.6; reasons.push('Established / retiring owner — confirm a GM owns the client relationships.'); }
+  else if (hype) { s += W.management * 0.2; reasons.push('Absentee/lifestyle framing — scrutinize owner dependence.'); }
+  else { s += W.management * 0.4; reasons.push('Management depth unknown — owner-exit test unproven.'); }
+
+  // VERTICAL
+  const V = EMPIRE.verticalTiebreaker;
+  if (V.best.some((k) => h.includes(k))) { s += W.vertical; reasons.push('Legal-vertical concentration — best-case tiebreaker.'); }
+  else if (V.second.some((k) => h.includes(k))) { s += W.vertical * 0.7; reasons.push('Professional/financial-services vertical — strong secondary fit.'); }
+  else if (h.includes('cyber') || h.includes('security')) { s += W.vertical * 0.6; reasons.push('Security capability — margin-accretive, sells the vertical.'); }
+  else if (V.acceptable_no_premium.some((k) => h.includes(k))) { s += W.vertical * 0.3; reasons.push('Healthcare exposure — acceptable, no premium (DSO headwind).'); }
+
+  s = Math.max(0, Math.min(100, Math.round(s)));
+
+  // TIER
+  let tier;
+  if (offshore) tier = 'caution';
+  else if (m != null && m > 6) tier = 'pass';
+  else if (sizeClass === 'too-small' || breakFix) tier = 'pass';
+  else if (earnings == null && m == null) tier = 'watch';
+  else if (sizeClass === 'too-big') { tier = 'watch'; reasons.push('Platform-quality but above the SBA window — workable only with more equity or a larger facility; verify price.'); }
+  else if (sizeClass === 'platform' && isMsp && (m == null || m <= pd.platformMax)) tier = 'platform';
+  else if ((sizeClass === 'tuckin' || sizeClass === 'platform') && !reseller && (m == null || m <= pd.platformMax + 1)) tier = 'tuckin';
+  else if (reseller && m != null && m <= pd.tuckInMax) { tier = 'tuckin'; reasons.push('Resale model — only as a cheap client-list tuck-in.'); }
+  else tier = 'pass';
+
+  return { tier, score: s, reasons };
 }
 
 // ---- duplicate detection --------------------------------------------------
@@ -128,156 +185,119 @@ function markDuplicates(rows) {
   for (const r of rows) {
     if (r.L.askingPrice == null || r.L.sde == null) continue;
     const k = `${r.L.askingPrice}|${r.L.sde}`;
-    if (seen.has(k)) {
-      r.dupOf = seen.get(k);
-      rows.find((x) => x.L.id === seen.get(k)).hasDup = true;
-    } else seen.set(k, r.L.id);
+    if (seen.has(k)) { r.dupOf = seen.get(k); rows.find((x) => x.L.id === seen.get(k)).hasDup = true; }
+    else seen.set(k, r.L.id);
   }
 }
 
 // ---- run ------------------------------------------------------------------
 const rows = data.listings.map(evaluate);
 markDuplicates(rows);
+for (const r of rows) r.fit = computeFit(r);
+rows.sort((a, b) => (TIER_ORDER[a.fit.tier] - TIER_ORDER[b.fit.tier]) || (b.fit.score - a.fit.score));
 
-// Rank: MSP/adjacent first, then by score desc, undisclosed last.
-const rank = (r) => {
-  const kindRank = r.kind.startsWith('MSP') ? 0 : r.kind === 'IT-services adjacent' ? 1 : 2;
-  return [kindRank, r.score == null ? 999 : 100 - r.score];
-};
-rows.sort((a, b) => {
-  const [ak, as] = rank(a), [bk, bs] = rank(b);
-  return ak - bk || as - bs;
-});
-
-const primaryDeals = rows.filter((r) => r.kind.startsWith('MSP') || r.kind === 'IT-services adjacent');
-const scored = rows.filter((r) => r.score != null);
-const avgScore = scored.length ? Math.round(scored.reduce((s, r) => s + r.score, 0) / scored.length) : null;
+const byTier = (t) => rows.filter((r) => r.fit.tier === t);
+const counts = Object.fromEntries(Object.keys(TIER).map((t) => [t, byTier(t).length]));
 
 // ---- markdown -------------------------------------------------------------
-function mdRow(r) {
-  const L = r.L;
-  const flags = r.sig.flags.map((f) => f.flag).join('; ') || '—';
-  const mult = r.impliedMultiple != null ? x(r.impliedMultiple) + ` ${r.band.basis}` : (r.impliedRange ? `→ ${usd(r.impliedRange[0])}–${usd(r.impliedRange[1])}` : '—');
-  const dup = r.dupOf ? ' ⚠︎dup' : '';
-  return `| ${r.score ?? '—'} | ${L.headline}${dup} | ${L.city} | ${usd(L.askingPrice)} | ${usd(L.sde)} | ${usd(L.ebitda)} | ${mult} | ${r.kind} | ${r.verdict} |`;
-}
-
 const md = [];
-md.push('# Texas MSP / IT-Services Acquisition Scan');
+md.push('# Texas MSP / IT-Services Acquisition Scan — ranked against the EMPIRE buy box');
 md.push('');
-md.push(`_Generated by \`tools/msp-deal-scanner/scan.mjs\` from data captured ${data.capturedOn}. Financials are **unverified** first-pass captures from public marketplace summaries — confirm every number against the actual listing / CIM before acting._`);
+md.push(`_Generated by \`tools/msp-deal-scanner/scan.mjs\`, data captured ${data.capturedOn}. Deals are ranked by **strategic fit to the EMPIRE Deal-1 buy box** (size window, 90%+ MRR, onshore, GM-in-place, ≤4.5× discipline, legal-vertical tiebreaker), not by raw cheapness. Financials are **unverified** first-pass captures — confirm against the CIM. See \`ANALYSIS.md\` for the macro reasoning behind the ranking._`);
 md.push('');
-md.push('## At a glance');
+md.push('## Tiers');
 md.push('');
-md.push(`- **${data.listings.length}** listings scanned · **${primaryDeals.length}** are MSP / IT-services (rest filtered as adjacent/not-MSP).`);
-md.push(`- **${scored.length}** have enough disclosed to score; average deal score **${avgScore ?? '—'}/100**.`);
-const best = scored[0];
-if (best) md.push(`- Highest score: **${best.L.headline}** (${best.score}/100) — ${best.verdict}`);
-md.push(`- No listing in this set includes **real estate** — all are service/remote businesses (so no hard-asset / SBA-collateral upside to price in here).`);
+md.push(`- **Platform (Deal 1):** ${counts.platform} · **Tuck-in:** ${counts.tuckin} · **Watch (need numbers):** ${counts.watch} · **Caution (thesis conflict):** ${counts.caution} · **Pass:** ${counts.pass}`);
 md.push('');
-md.push('## Ranked deals');
+for (const t of ['platform', 'tuckin', 'watch', 'caution', 'pass']) {
+  const list = byTier(t);
+  if (!list.length) continue;
+  md.push(`### ${TIER[t]}`);
+  md.push('');
+  md.push('| Fit | Business | Location | Ask | Earnings | Impl. × | Market read | Why this tier |');
+  md.push('|---|---|---|---|---|---|---|---|');
+  for (const r of list) {
+    const L = r.L;
+    const earn = L.ebitda != null ? `${usd(L.ebitda)} EBITDA` : L.sde != null ? `${usd(L.sde)} SDE` : '—';
+    const mult = r.impliedMultiple != null ? `${x(r.impliedMultiple)} ${r.band.basis}` : (r.impliedRange ? `→ ${usd(r.impliedRange[0])}–${usd(r.impliedRange[1])}` : '—');
+    const dup = r.dupOf ? ' ⚠︎dup' : '';
+    const why = r.fit.reasons[0];
+    md.push(`| ${r.fit.score} | ${L.headline}${dup} | ${L.city} | ${usd(L.askingPrice)} | ${earn} | ${mult} | ${r.verdict} | ${why} |`);
+  }
+  md.push('');
+}
+md.push('## Full rationale, deal by deal');
 md.push('');
-md.push('| Score | Business | Location | Ask | SDE | EBITDA | Implied multiple | Type | Verdict |');
-md.push('|---|---|---|---|---|---|---|---|---|');
-for (const r of rows) md.push(mdRow(r));
+for (const t of ['platform', 'tuckin', 'watch', 'caution', 'pass']) {
+  for (const r of byTier(t)) {
+    md.push(`**${r.L.headline}** — _${TIER[t]} · fit ${r.fit.score}/100_  `);
+    md.push(r.fit.reasons.map((x) => `- ${x}`).join('\n'));
+    md.push('');
+  }
+}
+md.push('## The buy box being scored against (`empire-profile.json`)');
 md.push('');
-md.push('## How to read this');
+md.push('- **Size:** $1.0–1.5M EBITDA/SDE platform window (Deal 1); tuck-ins $120k–$800k. Above ~$1.6M earnings a ~4× price bumps the $6M ceiling / $5M SBA 7(a) cap.');
+md.push('- **Model:** 90%+ contractual MRR, per-seat; ≥20 clients, none >15%, 85%+ retention.');
+md.push('- **People:** a GM/service manager who owns relationships so the seller can exit — non-negotiable.');
+md.push('- **Price discipline:** platform ≤4.5×, tuck-ins ≤3.5×; avoid >$6M.');
+md.push('- **Vertical tiebreaker:** legal best, professional/financial second, healthcare no-premium; generalist chassis with concentration beats vertical-only.');
+md.push('- **Onshore:** relationship + AI-L1 model — offshore labor arbitrage fights the vertical, the AI thesis, and the exit multiple. See `ANALYSIS.md`.');
 md.push('');
-md.push('- **Implied multiple** = asking price ÷ earnings (EBITDA if disclosed, else SDE). Compared to the market band for that size/basis, plus an MRR premium of +' + bm.mrrPremiumTurns + ' turns when recurring-revenue language is present.');
-md.push('- **Below the band** is not automatically "good" — for a healthy MSP it usually signals owner dependence, customer concentration, churn, or one-off earnings. Treat it as a reason to dig, not a green light.');
-md.push('- **Price withheld** rows show the implied ask the disclosed earnings would support at market multiples.');
-md.push('- ⚠︎dup marks listings with identical price + cash flow (likely the same deal listed twice).');
-md.push('');
-md.push('## Valuation model (editable in `benchmarks.json`)');
-md.push('');
-md.push('**SDE basis** (owner-operator shops):');
-md.push('');
-md.push('| Tier | Band |');
-md.push('|---|---|');
-for (const t of bm.sdeTiers) md.push(`| ${t.label} | ${t.low}×–${t.high}× |`);
-md.push('');
-md.push('**EBITDA basis** (managed / larger):');
-md.push('');
-md.push('| Tier | Band |');
-md.push('|---|---|');
-for (const t of bm.ebitdaTiers) md.push(`| ${t.label} | ${t.low}×–${t.high}× |`);
-md.push('');
-md.push(`_MRR premium: +${bm.mrrPremiumTurns} turns when 80%+ recurring. Sources: ${bm.sources.join(' · ')}._`);
-md.push('');
-md.push('## Caveats');
-md.push('');
-md.push('- **Coverage**: primary source is the BizBuySell Texas IT & Software category. Off-market deals, other marketplaces (DealStream, broker sites), and pocket listings are not captured — see README to add sources.');
-md.push('- **Data quality**: figures are extracted from listing summaries and are unverified. "Cash Flow" is treated as SDE. Do not wire money against this file.');
-md.push('- **Not investment advice** — a screening aid to decide which deals deserve a signed NDA and a real diligence pass.');
-md.push('');
-
+md.push('_Not investment advice; a sourcing/screening aid. Every figure is unverified — confirm before acting._');
 writeFileSync(join(DIR, 'report.md'), md.join('\n'));
 
 // ---- csv ------------------------------------------------------------------
-const csvHead = ['id', 'headline', 'city', 'kind', 'asking_price', 'sde', 'ebitda', 'basis', 'implied_multiple', 'band_low', 'band_high', 'position', 'implied_price_low', 'implied_price_high', 'score', 'flags', 'duplicate_of', 'verified', 'source', 'verdict'];
+const csvHead = ['fit_tier', 'fit_score', 'id', 'headline', 'city', 'kind', 'asking_price', 'sde', 'ebitda', 'basis', 'implied_multiple', 'market_position', 'duplicate_of', 'verified', 'source', 'top_reason', 'verdict'];
 const csvRows = rows.map((r) => [
-  r.L.id, r.L.headline, r.L.city, r.kind, r.L.askingPrice ?? '', r.L.sde ?? '', r.L.ebitda ?? '',
-  r.band?.basis ?? '', r.impliedMultiple?.toFixed(2) ?? '', r.loAdj?.toFixed(2) ?? '', r.hiAdj?.toFixed(2) ?? '',
-  r.position ?? '', r.impliedRange?.[0] ?? '', r.impliedRange?.[1] ?? '', r.score ?? '',
-  r.sig.flags.map((f) => f.flag).join(' | '), r.dupOf ?? '', r.L.verified, r.L.source, r.verdict,
-].map((c) => {
-  const s = String(c);
-  return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
-}).join(','));
+  TIER[r.fit.tier], r.fit.score, r.L.id, r.L.headline, r.L.city, r.kind, r.L.askingPrice ?? '', r.L.sde ?? '', r.L.ebitda ?? '',
+  r.band?.basis ?? '', r.impliedMultiple?.toFixed(2) ?? '', r.position ?? '', r.dupOf ?? '', r.L.verified, r.L.source, r.fit.reasons[0], r.verdict,
+].map((c) => { const s = String(c); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }).join(','));
 writeFileSync(join(DIR, 'report.csv'), [csvHead.join(','), ...csvRows].join('\n'));
 
-// ---- html (self-contained) ------------------------------------------------
-const scoreColor = (s) => s == null ? '#9ca3af' : s >= 70 ? '#16a34a' : s >= 55 ? '#65a30d' : s >= 40 ? '#d97706' : '#dc2626';
-const htmlRows = rows.map((r) => {
-  const L = r.L;
-  const mult = r.impliedMultiple != null ? `${x(r.impliedMultiple)} <span class="dim">${r.band.basis}</span>` : (r.impliedRange ? `<span class="dim">→</span> ${usd(r.impliedRange[0])}–${usd(r.impliedRange[1])}` : '—');
-  return `<tr>
-    <td><span class="score" style="background:${scoreColor(r.score)}">${r.score ?? '—'}</span></td>
-    <td><strong>${L.headline}</strong>${r.dupOf ? ' <span class="dup">dup</span>' : ''}<div class="dim">${L.city} · <a href="${L.source}" target="_blank" rel="noopener">source</a> · unverified</div></td>
-    <td>${usd(L.askingPrice)}</td><td>${usd(L.sde)}</td><td>${usd(L.ebitda)}</td>
-    <td>${mult}</td><td><span class="kind k${r.kind.startsWith('MSP') ? '0' : r.kind === 'IT-services adjacent' ? '1' : '2'}">${r.kind}</span></td>
-    <td class="verdict">${r.verdict}</td></tr>`;
-}).join('\n');
-
+// ---- html -----------------------------------------------------------------
+const tierColor = { platform: '#16a34a', tuckin: '#65a30d', watch: '#d97706', caution: '#ea580c', pass: '#9ca3af' };
+const section = (t) => {
+  const list = byTier(t); if (!list.length) return '';
+  const rowsH = list.map((r) => {
+    const L = r.L;
+    const earn = L.ebitda != null ? `${usd(L.ebitda)} <span class="dim">EBITDA</span>` : L.sde != null ? `${usd(L.sde)} <span class="dim">SDE</span>` : '—';
+    const mult = r.impliedMultiple != null ? `${x(r.impliedMultiple)}` : (r.impliedRange ? `<span class="dim">→</span> ${usd(r.impliedRange[0])}–${usd(r.impliedRange[1])}` : '—');
+    return `<tr>
+      <td><span class="score" style="background:${tierColor[t]}">${r.fit.score}</span></td>
+      <td><strong>${L.headline}</strong>${r.dupOf ? ' <span class="dup">dup</span>' : ''}<div class="dim">${L.city} · <a href="${L.source}" target="_blank" rel="noopener">source</a> · unverified</div><ul class="why">${r.fit.reasons.slice(0, 3).map((x) => `<li>${x}</li>`).join('')}</ul></td>
+      <td>${usd(L.askingPrice)}</td><td>${earn}</td><td>${mult}</td></tr>`;
+  }).join('');
+  return `<h2><span class="pill" style="background:${tierColor[t]}">${TIER[t]}</span> <span class="dim">${list.length}</span></h2>
+    <div class="scroll"><table><thead><tr><th>Fit</th><th>Business & rationale</th><th>Ask</th><th>Earnings</th><th>Impl.×</th></tr></thead><tbody>${rowsH}</tbody></table></div>`;
+};
 const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Texas MSP Acquisition Scan</title><style>
+<title>Texas MSP Scan — EMPIRE buy box</title><style>
 :root{color-scheme:light dark;--bg:#fbfaf7;--fg:#1c1917;--dim:#78716c;--line:#e7e5e4;--card:#fff}
 @media(prefers-color-scheme:dark){:root{--bg:#1c1917;--fg:#f5f5f4;--dim:#a8a29e;--line:#292524;--card:#262322}}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:2rem 1.25rem}
-.wrap{max-width:1120px;margin:0 auto}h1{font-size:1.6rem;margin:0 0 .25rem}.sub{color:var(--dim);margin:0 0 1.5rem;font-size:.9rem}
-.stats{display:flex;flex-wrap:wrap;gap:.75rem;margin-bottom:1.5rem}
-.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:.75rem 1rem;min-width:140px}
-.stat b{display:block;font-size:1.5rem}.stat span{color:var(--dim);font-size:.8rem}
+.wrap{max-width:1120px;margin:0 auto}h1{font-size:1.55rem;margin:0 0 .25rem}.sub{color:var(--dim);margin:0 0 1.25rem;font-size:.88rem}
+h2{font-size:1.05rem;margin:1.75rem 0 .6rem;display:flex;align-items:center;gap:.5rem}
+.pill{color:#fff;font-size:.8rem;padding:.15rem .6rem;border-radius:999px}
 .scroll{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--card)}
-table{border-collapse:collapse;width:100%;min-width:900px;font-size:.86rem}
+table{border-collapse:collapse;width:100%;min-width:720px;font-size:.86rem}
 th,td{text-align:left;padding:.6rem .7rem;border-bottom:1px solid var(--line);vertical-align:top}
-th{font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--dim);position:sticky;top:0;background:var(--card)}
-.dim{color:var(--dim);font-size:.8rem}.verdict{max-width:340px}
+th{font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;color:var(--dim)}
+.dim{color:var(--dim);font-size:.8rem}
 .score{display:inline-block;min-width:2rem;text-align:center;color:#fff;font-weight:700;border-radius:7px;padding:.15rem .4rem}
-.kind{font-size:.72rem;padding:.1rem .45rem;border-radius:6px;white-space:nowrap}
-.k0{background:#dcfce7;color:#166534}.k1{background:#fef3c7;color:#92400e}.k2{background:#f3f4f6;color:#6b7280}
-@media(prefers-color-scheme:dark){.k0{background:#14532d;color:#bbf7d0}.k1{background:#78350f;color:#fde68a}.k2{background:#374151;color:#d1d5db}}
+.why{margin:.4rem 0 0;padding-left:1rem;color:var(--dim);font-size:.8rem}.why li{margin:.1rem 0}
 .dup{background:#dc2626;color:#fff;font-size:.62rem;padding:.05rem .3rem;border-radius:4px;vertical-align:middle}
 a{color:inherit}.note{margin-top:1.5rem;color:var(--dim);font-size:.82rem;border-top:1px solid var(--line);padding-top:1rem}
 </style></head><body><div class="wrap">
-<h1>Texas MSP / IT-Services Acquisition Scan</h1>
-<p class="sub">Data captured ${data.capturedOn} · ${data.listings.length} listings · <strong>unverified</strong> first-pass — confirm every figure against the CIM before acting.</p>
-<div class="stats">
-<div class="stat"><b>${primaryDeals.length}</b><span>MSP / IT-services</span></div>
-<div class="stat"><b>${scored.length}</b><span>scoreable deals</span></div>
-<div class="stat"><b>${avgScore ?? '—'}</b><span>avg score /100</span></div>
-<div class="stat"><b>${best ? best.score : '—'}</b><span>top: ${best ? best.L.city : '—'}</span></div>
-</div>
-<div class="scroll"><table>
-<thead><tr><th>Score</th><th>Business</th><th>Ask</th><th>SDE</th><th>EBITDA</th><th>Implied ×</th><th>Type</th><th>Verdict</th></tr></thead>
-<tbody>${htmlRows}</tbody></table></div>
-<p class="note"><strong>Method:</strong> implied multiple = ask ÷ earnings (EBITDA else SDE), vs. market band by size/basis, +${bm.mrrPremiumTurns} turns when recurring. Below-band ≠ automatically good — usually flags owner dependence, churn, or one-off earnings. Screening aid, not investment advice. Model editable in <code>benchmarks.json</code>; re-run with <code>node tools/msp-deal-scanner/scan.mjs</code>.</p>
+<h1>Texas MSP / IT-Services Scan — ranked by EMPIRE buy-box fit</h1>
+<p class="sub">Data captured ${data.capturedOn} · ${rows.length} listings · <strong>unverified</strong> — confirm every figure against the CIM. Ranked by strategic fit to Deal 1, not raw cheapness. Reasoning: <code>ANALYSIS.md</code>.</p>
+${['platform', 'tuckin', 'watch', 'caution', 'pass'].map(section).join('\n')}
+<p class="note"><strong>Buy box:</strong> $1–1.5M EBITDA/SDE platform ($120–800k tuck-ins), 90%+ MRR, GM-in-place, ≤4.5× (tuck-ins ≤3.5×), avoid &gt;$6M (SBA cap), legal-vertical tiebreaker, onshore. <strong>Offshore</strong> is flagged Caution: cheap earnings that fight the vertical, the AI-L1 margin thesis, and the exit multiple. Model editable in <code>empire-profile.json</code>; re-run <code>node tools/msp-deal-scanner/scan.mjs</code>.</p>
 </div></body></html>`;
 writeFileSync(join(DIR, 'report.html'), html);
 
-// ---- console summary ------------------------------------------------------
-console.log(`Scanned ${data.listings.length} listings · ${primaryDeals.length} MSP/IT-services · ${scored.length} scored (avg ${avgScore ?? '—'}/100).`);
-console.log('Wrote report.md, report.csv, report.html to', DIR);
-for (const r of rows.slice(0, 8)) {
-  console.log(`  [${String(r.score ?? '—').padStart(3)}] ${r.L.headline.slice(0, 46).padEnd(46)} ${r.impliedMultiple != null ? x(r.impliedMultiple) + ' ' + r.band.basis : (r.impliedRange ? 'price?' : 'no earnings')}`);
+// ---- console --------------------------------------------------------------
+console.log(`${rows.length} listings · Platform ${counts.platform} · Tuck-in ${counts.tuckin} · Watch ${counts.watch} · Caution ${counts.caution} · Pass ${counts.pass}`);
+for (const t of ['platform', 'tuckin', 'watch', 'caution', 'pass']) {
+  for (const r of byTier(t)) console.log(`  ${TIER[t].padEnd(24)} [${String(r.fit.score).padStart(3)}] ${r.L.headline.slice(0, 44)}`);
 }

@@ -1,0 +1,35 @@
+{
+  "_comment": "The EMPIRE / Williams 20-Year Plan MSP buy box, encoded so the scanner can score strategic fit — not just market valuation. Deal 1 is a Dallas-based platform acquisition (H2 2031) financed SBA 7(a) + seller note (~$700K equity in), operated on an AI-native model with a legal-vertical edge, bought at ~3-4.5x and re-rated to 8-12x at exit. Tuck-ins follow at 2.5-3.5x SDE. Edit these to change how deals are ranked.",
+  "dealName": "EMPIRE — Deal 1 (platform) + tuck-ins",
+  "home": ["dallas", "frisco", "plano", "richardson", "addison", "dfw", "fort worth", "irving", "mckinney", "allen", "carrollton"],
+  "acceptableMetros": ["austin", "round rock", "williamson", "buda", "cedar park", "houston", "san antonio"],
+  "platformWindow": { "minEarnings": 800000, "sweetLow": 1000000, "sweetHigh": 1500000, "maxEarnings": 1600000, "comment": "Earnings on either basis. Above ~$1.8M EBITDA the ~$6M price bumps the $5M SBA 7(a) cap and forces disproportionate equity — the plan's explicit price-discipline line." },
+  "tuckInWindow": { "minEarnings": 120000, "maxEarnings": 800000 },
+  "priceDiscipline": { "platformMax": 4.5, "tuckInMax": 3.5, "sevenAloanCap": 5000000, "priceCeiling": 6000000 },
+  "requirements": {
+    "recurringMinPct": 90,
+    "maxClientConcentrationPct": 15,
+    "minClients": 20,
+    "minGrossRetentionPct": 85,
+    "gmInPlace": "non-negotiable — a GM/service manager who owns client relationships so the owner can exit"
+  },
+  "verticalTiebreaker": {
+    "best": ["legal", "law firm", "law-firm", "attorney"],
+    "second": ["professional services", "financial services", "accounting", "wealth"],
+    "acceptable_no_premium": ["healthcare", "medical", "dental"],
+    "note": "Generalist chassis with vertical concentration beats a vertical-only identity. Chassis quality outweighs vertical fit for Deal 1."
+  },
+  "operatingThesis": {
+    "aiMarginUplift": "Agentic ticket triage, auto-documentation, and L1 auto-resolution move gross margin from the industry's 10-15% toward ~35%. Re-rate upside lives in contractual MRR you can protect while AI takes out L1 labor — NOT in book-of-hours or resale revenue.",
+    "reRate": "Buy at ~3x, re-rate to 8-12x EBITDA at a 2039-41 exit/recap.",
+    "onshoreThesis": "The plan's edge is a legal / professional-services vertical (confidentiality- and compliance-sensitive buyers) plus AI-driven L1 automation. Offshore labor arbitrage is the OLD margin lever that this plan's own AI thesis makes obsolete, it clashes with the trust/compliance expectations of the target vertical, and it depresses the exit multiple consolidators will pay. Onshore, relationship-run delivery is the fit; offshore earnings are lower quality and less transferable even when the multiple looks cheap."
+  },
+  "fitWeights": {
+    "model": 25,
+    "size": 20,
+    "onshoreGeo": 15,
+    "priceDiscipline": 20,
+    "management": 10,
+    "vertical": 10
+  }
+}

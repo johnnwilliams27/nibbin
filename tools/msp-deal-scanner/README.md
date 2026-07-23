@@ -20,13 +20,19 @@ Writes three self-contained files next to the script:
 - `report.csv` — same data, for a spreadsheet / your CRM
 - `report.html` — open in a browser; scored, color-coded, mobile-friendly
 
-## The three files you edit
+## Files
 
 | File | What it is |
 |---|---|
-| `listings.json` | The deals. Refresh this to run a new search (see below). |
-| `benchmarks.json` | The valuation model — multiple bands by size/basis, the MRR premium, and the keyword signals. Edit as the market moves. |
-| `scan.mjs` | The engine. Reads the two files above, writes the three reports. |
+| `listings.json` | The deals. Refresh this to run a new search (see below). Classification keys off `headline` + an optional `sector` field — **not** `notes` — so editorial prose can't poison it. |
+| `benchmarks.json` | The market valuation model — multiple bands by size/basis, the MRR premium, keyword signals, and classification keywords. |
+| `empire-profile.json` | The **EMPIRE Deal-1 buy box** — size window, price discipline, onshore/vertical/management rules, and the fit weights. This is what turns a market screen into a *strategic* ranking. Edit it to change how deals are tiered. |
+| `scan.mjs` | The engine. Reads the three files above, writes the reports. |
+| `ANALYSIS.md` | Hand-written macro memo: MSP roll-up value drivers, the onshore-vs-offshore reasoning, and the deal-by-deal read. Read this alongside `report.md`. |
+
+Each deal is scored two ways: a **market read** (implied multiple vs. band) and a **strategic
+fit tier** — Platform (Deal 1) / Tuck-in / Watch / Caution / Pass — against the buy box. Ranking
+is by fit, not by cheapness.
 
 ## Running a fresh search ad hoc
 

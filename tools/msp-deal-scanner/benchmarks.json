@@ -38,6 +38,6 @@
   "classification": {
     "msp": ["managed service", "managed it", "msp", "it managed", "it services", "it support", "it company", "it - "],
     "it_services_adjacent": ["reseller", "hardware", "smart office", "electronics repair", "tech repair", "it repair"],
-    "not_msp": ["saas", "software platform", "no-code", "no code", "fintech", "seo", "roofing", "home automation", "av ", "audio", "fiber", "hosting", "vps", "iaas", "digital marketing", "app "]
+    "not_msp": ["saas", "software platform", "no-code", "no code", "fintech", "seo", "roofing", "home automation", "av ", "audio", "fiber", "hosting", "vps", "iaas", "digital marketing", "digital-marketing", "internet service provider", "isp", "app "]
   }
 }
