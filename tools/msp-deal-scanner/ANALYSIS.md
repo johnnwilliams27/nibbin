@@ -198,12 +198,13 @@ are in hand, you can't know whether a deal underwrites.
   public figures conflicted: $3.03M and $1.76M — do not trust either). Austin metro, right size,
   managed model. If the real ask lands near ~3.5× (~$2.9M) it's a bullseye; higher and discipline
   applies. Austin, not Dallas, means you're relying on the GM more from day one. Get the CIM.
-- **High-Margin Customized IT Services ("Brazos" — location unverified)** — the highest-quality
-  book on the board, and **the poster child for why HQ city doesn't matter here.** _Location note:
-  BizQuest tagged it "Brazos County," but that county's listing page is empty and the broker
-  (Transworld) files it under DFW Central — so the HQ is genuinely unconfirmed. Because its client
-  base is multi-state/remote, that ambiguity barely matters for operability; reach it through the
-  broker (id 2304615), not the marketplace deep-links, which are stale._ ~$3.2M revenue,
+- **High-Margin Customized IT Services ("Brazos") — ⚠ LIKELY INACTIVE, verify first.** On paper the
+  highest-quality book on the board, but **I could not confirm it's still for sale**: every search
+  hit repeats the same 2023 revenue / 2024-pace figures (a ~2024 snapshot), the tagged county page
+  is empty, all deep-links are dead, and it's not findable in live search — consistent with sold or
+  withdrawn plus stale search caching. _Also: location is unverified (BizQuest said Brazos County;
+  the broker files it under DFW Central)._ **Before spending any time, confirm live status with the
+  broker** (Transworld, id 2304615). If it is still available, the profile below applies. ~$3.2M revenue,
   ~$1.7M adj. EBITDA (2024 pace ~$1.86M), **150 clients across 7 states**, established 2007. That
   multi-state client base means it's already delivered remotely — **fully operable from Dallas
   despite the College Station HQ**, which is exactly the case you raised. Structure 1 is what makes

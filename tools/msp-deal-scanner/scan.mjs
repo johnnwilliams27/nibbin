@@ -121,6 +121,8 @@ function evaluate(L) {
 // ---- EMPIRE strategic fit -------------------------------------------------
 const TIER = { platform: 'Platform (Deal 1)', tuckin: 'Tuck-in', watch: 'Watch — need numbers', caution: 'Caution — thesis conflict', pass: 'Pass' };
 const TIER_ORDER = { platform: 0, tuckin: 1, watch: 2, caution: 3, pass: 4 };
+const STALE = new Set(['likely-inactive', 'inactive', 'sold', 'withdrawn', 'under-contract']);
+const isStale = (L) => STALE.has((L.status || '').toLowerCase());
 
 // Geography scores CUSTOMER REACH / remote-operability, not just HQ city: a broad or remote
 // client base is operable from Dallas regardless of where the seller sits; a single-market
@@ -272,6 +274,8 @@ function computeFit(r) {
     else if (sizeClass === 'platform') reasons.push('SBA underwriting: at Structure-1 leverage the DSCR on this earnings level clears the ~1.15× floor with cushion; document concentration, recurring %, and add-backs and it should underwrite.');
   }
 
+  if (isStale(L)) reasons.unshift(`STATUS — ${L.statusNote || 'listing may no longer be active; verify with the broker before pursuing.'}`);
+
   s = Math.max(0, Math.min(100, Math.round(s)));
 
   // TIER — evaluated ONLY as a candidate for the initial platform purchase (Deal 1).
@@ -309,7 +313,7 @@ function markDuplicates(rows) {
 const rows = data.listings.map(evaluate);
 markDuplicates(rows);
 for (const r of rows) r.fit = computeFit(r);
-rows.sort((a, b) => (TIER_ORDER[a.fit.tier] - TIER_ORDER[b.fit.tier]) || (b.fit.score - a.fit.score));
+rows.sort((a, b) => (TIER_ORDER[a.fit.tier] - TIER_ORDER[b.fit.tier]) || ((isStale(a.L) ? 1 : 0) - (isStale(b.L) ? 1 : 0)) || (b.fit.score - a.fit.score));
 
 const byTier = (t) => rows.filter((r) => r.fit.tier === t);
 const counts = Object.fromEntries(Object.keys(TIER).map((t) => [t, byTier(t).length]));
@@ -336,8 +340,9 @@ for (const t of ['platform', 'watch', 'caution', 'pass']) {
     const earn = L.ebitda != null ? `${usd(L.ebitda)} EBITDA` : L.sde != null ? `${usd(L.sde)} SDE` : '—';
     const mult = r.impliedMultiple != null ? `${x(r.impliedMultiple)} ${r.band.basis}` : (r.impliedRange ? `→ ${usd(r.impliedRange[0])}–${usd(r.impliedRange[1])}` : '—');
     const dup = r.dupOf ? ' ⚠︎dup' : '';
+    const stale = isStale(L) ? ' ⚠︎likely-inactive' : '';
     const why = r.fit.reasons[0];
-    md.push(`| ${r.fit.score} | ${L.headline}${dup} | ${L.city} | ${usd(L.askingPrice)} | ${earn} | ${mult} | ${r.verdict} | ${why} |`);
+    md.push(`| ${r.fit.score} | ${L.headline}${dup}${stale} | ${L.city} | ${usd(L.askingPrice)} | ${earn} | ${mult} | ${r.verdict} | ${why} |`);
   }
   md.push('');
 }
@@ -345,7 +350,7 @@ md.push('## Full rationale, deal by deal');
 md.push('');
 for (const t of ['platform', 'watch', 'caution', 'pass']) {
   for (const r of byTier(t)) {
-    md.push(`**${r.L.headline}** — _${TIER[t]} · fit ${r.fit.score}/100_  `);
+    md.push(`**${r.L.headline}**${isStale(r.L) ? ' ⚠︎likely-inactive' : ''} — _${TIER[t]} · fit ${r.fit.score}/100_  `);
     md.push(r.fit.reasons.map((x) => `- ${x}`).join('\n'));
     md.push('');
   }
@@ -381,7 +386,7 @@ const section = (t) => {
     const mult = r.impliedMultiple != null ? `${x(r.impliedMultiple)}` : (r.impliedRange ? `<span class="dim">→</span> ${usd(r.impliedRange[0])}–${usd(r.impliedRange[1])}` : '—');
     return `<tr>
       <td><span class="score" style="background:${tierColor[t]}">${r.fit.score}</span></td>
-      <td><strong>${L.headline}</strong>${r.dupOf ? ' <span class="dup">dup</span>' : ''}<div class="dim">${L.city} · <a href="${L.source}" target="_blank" rel="noopener">source</a>${L.broker ? ` · broker: ${L.broker}` : ''} · unverified</div><ul class="why">${r.fit.reasons.slice(0, 3).map((x) => `<li>${x}</li>`).join('')}</ul></td>
+      <td><strong>${L.headline}</strong>${r.dupOf ? ' <span class="dup">dup</span>' : ''}${isStale(L) ? ' <span class="stale">likely inactive</span>' : ''}<div class="dim">${L.city} · <a href="${L.source}" target="_blank" rel="noopener">source</a>${L.broker ? ` · broker: ${L.broker}` : ''} · unverified</div><ul class="why">${r.fit.reasons.slice(0, 3).map((x) => `<li>${x}</li>`).join('')}</ul></td>
       <td>${usd(L.askingPrice)}</td><td>${earn}</td><td>${mult}</td></tr>`;
   }).join('');
   return `<h2><span class="pill" style="background:${tierColor[t]}">${TIER[t]}</span> <span class="dim">${list.length}</span></h2>
@@ -403,6 +408,7 @@ th{font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;color:var(--dim
 .score{display:inline-block;min-width:2rem;text-align:center;color:#fff;font-weight:700;border-radius:7px;padding:.15rem .4rem}
 .why{margin:.4rem 0 0;padding-left:1rem;color:var(--dim);font-size:.8rem}.why li{margin:.1rem 0}
 .dup{background:#dc2626;color:#fff;font-size:.62rem;padding:.05rem .3rem;border-radius:4px;vertical-align:middle}
+.stale{background:#b45309;color:#fff;font-size:.62rem;padding:.05rem .35rem;border-radius:4px;vertical-align:middle;text-transform:uppercase;letter-spacing:.03em}
 a{color:inherit}.note{margin-top:1.5rem;color:var(--dim);font-size:.82rem;border-top:1px solid var(--line);padding-top:1rem}
 </style></head><body><div class="wrap">
 <h1>Texas MSP / IT-Services Scan — ranked by EMPIRE buy-box fit</h1>
