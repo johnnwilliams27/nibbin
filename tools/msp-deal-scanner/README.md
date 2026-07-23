@@ -31,8 +31,11 @@ Writes three self-contained files next to the script:
 | `ANALYSIS.md` | Hand-written macro memo: MSP roll-up value drivers, the onshore-vs-offshore reasoning, and the deal-by-deal read. Read this alongside `report.md`. |
 
 Each deal is scored two ways: a **market read** (implied multiple vs. band) and a **strategic
-fit tier** — Platform (Deal 1) / Tuck-in / Watch / Caution / Pass — against the buy box. Ranking
-is by fit, not by cheapness.
+fit tier** — Platform (Deal 1) / Watch / Caution / Pass — against the buy box. Every business is
+judged **only as a candidate for the initial platform purchase**; shops below the ~$800K platform
+size floor are marked Pass (with a note to revisit as a tuck-in later), not scored as tuck-ins.
+Ranking is by fit, not by cheapness. A blank multiple means the asking price is withheld — the
+tool shows an implied valuation range from earnings instead.
 
 ## Running a fresh search ad hoc
 

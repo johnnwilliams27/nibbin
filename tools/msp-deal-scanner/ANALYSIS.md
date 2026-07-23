@@ -178,16 +178,20 @@ bid to 5–8×.
 - **Off-Shore IT Services / Managed Services (Plano)** — see §2. The onshore version of this same
   business is the one you want.
 
-**Tuck-ins (post-platform fold-ins, 2.5–3.5×) — not a Deal 1:**
+**Below the Deal-1 size floor — not evaluated as an initial purchase (revisit as tuck-ins later):**
 
-- **707770 – IT Managed Services (TX)** — ~$708K EBITDA, price on request. Right *tuck-in* size,
-  managed model. Confirm onshore + price.
+_These are all under the ~$800K platform floor, so for the initial purchase they're a Pass. Noted
+here only so they're not lost — they become relevant once the platform is closed and you're
+buying fold-ins at 2.5–3.5×._
+
+- **707770 – IT Managed Services (TX)** — ~$708K EBITDA, price on request. Closest to the floor;
+  best future tuck-in material. Confirm onshore + price.
 - **$271K EBITDA IT Managed Services** — clean small managed shop; **verify it's actually in
   Texas** (surfaced under TX searches but unconfirmed).
 - **Established IT Company (Corpus Christi)** — $235K / $144K SDE ≈ 1.6×, cheap, but sub-scale and
-  outside the target metros. Only as a cheap client-list fold-in.
-- **IT Hardware Sales & Service** — $900K / $467K SDE ≈ 1.9×. Resale-weighted; acquire only for
-  the client list, and re-paper them onto managed contracts.
+  outside the target metros.
+- **IT Hardware Sales & Service** — $900K / $467K SDE ≈ 1.9×. Resale-weighted; only interesting for
+  the client list, re-papered onto managed contracts.
 
 **Pass:**
 
