@@ -150,6 +150,42 @@ bid to 5–8×.
 
 ---
 
+## 2c. What SBA underwriting will actually test (and why concentration + recurring now dominate the score)
+
+Deal 1 has to clear a 7(a) lender's underwriting, not just your buy box — so the scanner now
+weights **recurring-revenue quality (20)** and **customer concentration + count (16)** as the two
+largest dimensions, ahead of size and price. Those aren't just quality signals; they're the two
+things most likely to *sink the loan*. What an underwriter tests:
+
+- **DSCR ≥ ~1.15×** (lenders usually want 1.25×+). At Structure-1 leverage, a $1–1.5M-EBITDA deal
+  services ~$800–850K/yr of debt and clears this with cushion — DSCR isn't the binding constraint;
+  the revenue *quality* behind it is.
+- **Customer concentration is a documented decline reason.** A single client above ~20–25% of
+  revenue often needs mitigation or kills the deal. This is why the tool now **indexes hard on a
+  broad, diversified client base** — Brazos's *150 clients across 7 states* is a genuine
+  underwriting asset, while the remote-first cyber MSP's *3 anchor accounts among ~20 clients* is a
+  genuine underwriting problem, regardless of how good the technology is.
+- **Recurring vs. project revenue.** Lenders credit contractual MRR and discount project / install
+  / staff-aug / one-time revenue. The PA MSP that looked fine on size was **only ~36% recurring** —
+  the kind of thing that turns a clean-looking deal into a hard underwrite.
+- **Quality of earnings / add-backs.** Aggressive add-backs get normalized down; the loan is sized
+  on *defensible* cash flow, not the headline adjusted EBITDA. Brazos's ~53% "adjusted" margin is
+  exactly what an underwriter (and you) should haircut before believing the number.
+- **Independent valuation caps the price.** SBA won't finance above appraised value, so a
+  consolidator-priced ask (5–8×) simply can't be SBA-funded at that number — which is *why* price
+  discipline and seller flexibility matter so much.
+- **Transferability.** The business must run without the seller (involvement capped ~12 months), so
+  a real GM who owns the relationships is what makes it bankable — not a contractor or a
+  load-bearing owner.
+
+Net effect on the ranking: deals with confirmed broad, low-concentration, high-recurring revenue
+rise; deals that are concentrated, project-heavy, or margin-suspicious fall — and because most
+listings *don't disclose* concentration or MRR %, scores compress toward the middle with a loud
+"confirm the top-client % and MRR %" on each. That compression is honest: until those two numbers
+are in hand, you can't know whether a deal underwrites.
+
+---
+
 ## 3. The board today, by tier
 
 **Platform (Deal 1) candidates — fit on size, model, price, and onshore:**

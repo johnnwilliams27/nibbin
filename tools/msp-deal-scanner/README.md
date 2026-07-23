@@ -69,9 +69,14 @@ automated fetches and gate financials behind an NDA). To refresh the deal set:
    Field notes: `description`/`sector` are the listing's own words and **are** parsed for
    classification + signals; `notes` is your commentary and is **never** parsed (so it can't
    fabricate signals). `customerGeography` (local/metro/regional/statewide/multi-state/national/
-   remote) scores reach/remote-operability *above* HQ city. `employees` and a high-margin check
-   feed the quality-of-earnings flags. `sellerFinancing` (yes/no/null) and `realEstate` feed the
-   capital-stack math.
+   remote) scores reach/remote-operability *above* HQ city. `recurringPct` (0–100) and
+   `topClientPct` + `clientCount` drive the two most heavily-weighted dimensions — recurring
+   quality and customer concentration — because those are what SBA underwriting hinges on (a top
+   client >~20–25% is a documented decline reason; project/one-time revenue is discounted). Leave
+   them null when undisclosed and the tool scores a neutral proxy and flags "confirm." `employees`
+   and a high-margin check feed quality-of-earnings flags; `sellerFinancing` (yes/no/null) and
+   `realEstate` feed the capital-stack math. Every deal also gets an **SBA underwriting read**
+   (concentration, recurring, add-backs, valuation cap, transferability, DSCR).
    ```
 
 3. **Re-run** `node tools/msp-deal-scanner/scan.mjs`.

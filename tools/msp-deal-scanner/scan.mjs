@@ -158,12 +158,38 @@ function computeFit(r) {
   if (notOperating) { reasons.push('Franchise / startup / license — not a retiring-owner operating platform; royalty drag, no clean equity re-rate.'); return { tier: 'pass', score: 12, reasons }; }
 
   let s = 0;
-  // MODEL
-  if (recurring && !breakFix && !reseller && projectMix) { s += W.model * 0.7; reasons.push('Managed/recurring, but with a project / install / staff-aug mix — size the true MRR; it dilutes the multiple a consolidator will pay.'); }
-  else if (recurring && !breakFix && !reseller) { s += W.model; reasons.push('Managed / recurring model — the contractual base the plan protects while AI removes L1.'); }
-  else if (reseller) { s += W.model * 0.2; reasons.push('Resale/hardware-weighted — thin margins, little MRR to re-rate.'); }
-  else if (breakFix) { s += W.model * 0.15; reasons.push('Break/fix or repair — labor-heavy, no contractual base to compound.'); }
-  else { s += W.model * 0.6; reasons.push('IT services, recurring mix unconfirmed — verify MRR %.'); }
+  const anchor = h.includes('anchor');
+
+  // RECURRING REVENUE QUALITY (heavily weighted — the core of MSP value and of SBA financeability)
+  {
+    const p = L.recurringPct;
+    if (p != null) {
+      const mult = p >= 90 ? 1 : p >= 80 ? 0.9 : p >= 70 ? 0.75 : p >= 50 ? 0.5 : 0.2;
+      s += W.recurring * mult;
+      reasons.push(`~${p}% recurring — ${p >= 80 ? 'strong contractual base (target 90%+)' : p >= 50 ? 'moderate; the project share dilutes MRR and SBA discounts it' : 'project-heavy, low MRR — weak base and an SBA underwriting concern'}.`);
+    } else if (breakFix) { s += W.recurring * 0.1; reasons.push('Break/fix model — little recurring revenue to compound or finance against.'); }
+    else if (reseller) { s += W.recurring * 0.2; reasons.push('Resale-weighted — non-recurring, thin margins.'); }
+    else if (recurring && projectMix) { s += W.recurring * 0.45; reasons.push('Managed + project/install mix — confirm the recurring %; SBA credits contractual MRR and discounts project/one-time revenue.'); }
+    else if (recurring) { s += W.recurring * 0.6; reasons.push('Managed/recurring language, MRR % unconfirmed — confirm it (target 90%+; it drives both value and the loan).'); }
+    else { s += W.recurring * 0.45; reasons.push('Recurring mix unconfirmed — confirm MRR %.'); }
+  }
+
+  // CUSTOMER CONCENTRATION & COUNT (low concentration + broad base — a top SBA underwriting test)
+  {
+    const top = L.topClientPct, n = L.clientCount, W2 = W.concentration;
+    if (top != null) {
+      const mult = top <= 10 ? 1 : top <= 15 ? 0.85 : top <= 25 ? 0.5 : 0.15;
+      s += W2 * mult;
+      reasons.push(`Top client ~${top}% of revenue — ${top <= 15 ? 'diversified, meets the <15% rule' : top <= 25 ? 'moderate concentration; SBA will probe' : 'HIGH concentration — a documented SBA decline reason without mitigation'}${n != null ? ` (${n} clients)` : ''}.`);
+    } else if (n != null) {
+      let mult = n >= 100 ? 0.9 : n >= 50 ? 0.75 : n >= 20 ? 0.55 : 0.3;
+      let note = `${n} clients — ${n >= 50 ? 'broad base, concentration likely low' : n >= 20 ? 'moderate count' : 'thin base, concentration risk'}`;
+      if (anchor && n < 40) { mult = Math.min(mult, 0.35); note += '; anchor/key accounts flagged — concentration risk despite the count'; }
+      s += W2 * mult;
+      reasons.push(`${note} (confirm the top-client %).`);
+    } else if (anchor) { s += W2 * 0.35; reasons.push('Anchor/key accounts cited but client mix undisclosed — concentration risk; get the top-client % (an SBA decline trigger).'); }
+    else { s += W2 * 0.5; reasons.push('Client count & top-client % not disclosed — a top SBA diligence item (concentration is a documented decline reason).'); }
+  }
 
   // SIZE
   const pw = EMPIRE.platformWindow, tw = EMPIRE.tuckInWindow;
@@ -231,6 +257,20 @@ function computeFit(r) {
 
   // REAL ESTATE
   if (L.realEstate && L.realEstate.included) reasons.push(`Real estate included${L.realEstate.value ? ` (~${usd(L.realEstate.value)})` : ''} — finance separately (504/CRE, outside the 7(a)); lifts the ceiling, but you prefer minimal RE for an asset-light MSP.`);
+
+  // SBA UNDERWRITING READ — Deal 1 must clear 7(a) underwriting, not just the buy box
+  {
+    const flags = [];
+    if (L.topClientPct != null && L.topClientPct > 20) flags.push(`a ~${L.topClientPct}% top client is a documented decline reason — needs mitigation`);
+    else if (anchor || (L.clientCount != null && L.clientCount < 20)) flags.push('concentration / anchor exposure — underwriters will probe the top-client %');
+    if (L.recurringPct != null && L.recurringPct < 60) flags.push('sub-60% recurring — lenders discount project/one-time revenue');
+    else if (projectMix && L.recurringPct == null) flags.push('project/install mix — lenders weight stable recurring cash flow');
+    if (L.grossRevenue && earnings != null && earnings / L.grossRevenue > 0.35) flags.push('above-norm adjusted margin — add-backs get normalized down, lowering the supportable loan');
+    if (m != null && m > pd.platformMax) flags.push(`priced above ${pd.platformMax}× — SBA won't lend above an independent valuation, so a consolidator-priced ask can't be SBA-funded at that number`);
+    if (!/\bgm\b|service manager|management team|manager in place/.test(h) && !has('established')) flags.push('transferability — seller involvement caps at ~12 mo; confirm the business runs without the owner');
+    if (flags.length) reasons.push('SBA underwriting: ' + flags.join('; ') + '.');
+    else if (sizeClass === 'platform') reasons.push('SBA underwriting: at Structure-1 leverage the DSCR on this earnings level clears the ~1.15× floor with cushion; document concentration, recurring %, and add-backs and it should underwrite.');
+  }
 
   s = Math.max(0, Math.min(100, Math.round(s)));
 

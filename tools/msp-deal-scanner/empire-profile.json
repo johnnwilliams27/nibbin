@@ -54,11 +54,26 @@
     "onshoreThesis": "The plan's edge is a legal / professional-services vertical (confidentiality- and compliance-sensitive buyers) plus AI-driven L1 automation. Offshore labor arbitrage is the OLD margin lever that this plan's own AI thesis makes obsolete, it clashes with the trust/compliance expectations of the target vertical, and it depresses the exit multiple consolidators will pay. Onshore, relationship-run delivery is the fit; offshore earnings are lower quality and less transferable even when the multiple looks cheap."
   },
   "fitWeights": {
-    "model": 25,
-    "size": 20,
-    "onshoreGeo": 15,
-    "priceDiscipline": 20,
-    "management": 10,
+    "recurring": 20,
+    "concentration": 16,
+    "size": 15,
+    "priceDiscipline": 15,
+    "onshoreGeo": 12,
+    "management": 12,
     "vertical": 10
+  },
+  "concentrationRule": { "maxTopClientPct": 15, "minClients": 20, "note": "No client over ~15% of revenue; 20+ active clients with a broad, diversified mix. SBA lenders treat customer concentration as a documented decline reason — a single client above ~20-25% often needs mitigation or sinks the loan. Index HIGH on many clients + low top-client %." },
+  "recurringRule": { "targetPct": 90, "note": "90%+ contractual monthly recurring, per-seat. Index HIGH on recurring; project / install / staff-aug / one-time revenue is discounted — by consolidators at exit AND by SBA underwriting on the way in." },
+  "sbaUnderwriting": {
+    "note": "Deal 1 must clear SBA 7(a) underwriting, not just the buy box. What underwriters test — the scanner flags each:",
+    "criteria": [
+      "DSCR >= ~1.15x (lenders often want 1.25x+) on the acquisition debt — cash flow must cover debt service with cushion",
+      "Customer concentration — a top client over ~20-25% of revenue is a documented decline reason; diversified many-client revenue is strongly preferred",
+      "Recurring vs. project revenue — contractual MRR is credited; one-time / project / install revenue is discounted",
+      "Quality of earnings — aggressive add-backs are normalized down; the supportable loan is set on defensible cash flow, not headline adjusted EBITDA",
+      "Independent business valuation — SBA will not finance above appraised value, so a consolidator-priced ask cannot be SBA-funded at that number",
+      "Transferability — the business must run without the seller (involvement capped ~12 months); a GM who owns relationships is what makes it bankable",
+      "Buyer qualification / industry experience; min 10% equity injection (up to half can be a seller note on full 2-yr standby); personal guarantee from 20%+ owners"
+    ]
   }
 }
