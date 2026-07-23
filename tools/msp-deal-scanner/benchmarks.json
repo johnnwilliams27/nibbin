@@ -1,0 +1,43 @@
+{
+  "_comment": "Valuation model for evaluating MSP / IT-services acquisition targets. Edit these bands as the market moves — the engine reads them at runtime. Multiples are on the stated basis (SDE for owner-operator shops, EBITDA for larger/managed businesses). Sources captured 2026-07-23; re-confirm before relying on them.",
+  "capturedOn": "2026-07-23",
+  "sources": [
+    "https://ctacquisitions.com/sell-your-business/msp-it/texas/",
+    "Solganick 2025 MSP/MSSP M&A report (466 deals, $4.3B disclosed, +27% YoY, 69% PE-involved)"
+  ],
+  "notes": [
+    "BizBuySell 'Cash Flow' = SDE (Seller's Discretionary Earnings), i.e. EBITDA + one owner's compensation + add-backs. Small owner-operator shops trade on SDE; sub-$1M-EBITDA managed shops and up trade on EBITDA.",
+    "MRR premium: MSPs with 80%+ monthly recurring revenue trade ~1-2 full turns of EBITDA higher than project/break-fix peers. The engine adds `mrrPremiumTurns` to the band when a recurring-revenue signal is present."
+  ],
+  "mrrPremiumTurns": 1.5,
+  "sdeTiers": [
+    { "label": "Micro owner-operator (SDE < $250k)", "maxSDE": 250000, "low": 2.0, "high": 3.0 },
+    { "label": "Small MSP/IT-services (SDE $250k–$1M)", "maxSDE": 1000000, "low": 2.5, "high": 3.75 },
+    { "label": "Lower-mid on SDE basis (SDE > $1M)", "maxSDE": null, "low": 3.5, "high": 5.0 }
+  ],
+  "ebitdaTiers": [
+    { "label": "Managed contracts, sub-$1M EBITDA", "maxEBITDA": 1000000, "low": 3.5, "high": 5.0 },
+    { "label": "Lower-mid market $1–3M EBITDA (Goldilocks / consolidator tuck-ins)", "maxEBITDA": 3000000, "low": 5.0, "high": 8.0 },
+    { "label": "Platform-eligible $3–5M EBITDA", "maxEBITDA": 5000000, "low": 7.0, "high": 10.0 },
+    { "label": "Platform-quality $5M+ EBITDA", "maxEBITDA": null, "low": 10.0, "high": 14.0 }
+  ],
+  "signals": {
+    "positive": {
+      "recurring": { "patterns": ["mrr", "recurring", "managed service", "managed it", "msp", "monthly recurring", "contract", "subscription"], "weight": 12, "flag": "Recurring revenue (sticky, defensible)" },
+      "established": { "patterns": ["established", "year", "yrs", "y/o", "decade", "since 19", "since 20"], "weight": 6, "flag": "Operating history / tenure" },
+      "sticky_contracts": { "patterns": ["gsa", "federal", "government", "msa", "long-term contract"], "weight": 8, "flag": "Government / long-term contracts" }
+    },
+    "negative": {
+      "break_fix": { "patterns": ["repair", "break/fix", "break fix", "walk-in", "walk in"], "weight": -14, "flag": "Break/fix or repair — labor-heavy, low stickiness" },
+      "offshore": { "patterns": ["off-shore", "offshore", "off shore"], "weight": -10, "flag": "Offshore delivery — transferability / concentration / geopolitical risk" },
+      "hardware_reseller": { "patterns": ["reseller", "hardware sales", "resale", "var "], "weight": -8, "flag": "Hardware/resale mix — thin margins, non-recurring" },
+      "not_operating": { "patterns": ["franchise", "licensed partner", "start up", "start-up", "startup", "turnkey opportunity", "licensed opportunity"], "weight": -18, "flag": "Franchise / license / startup — not an operating cash-flowing acquisition" },
+      "hype": { "patterns": ["lifestyle", "absentee", "passive", "massive growth", "make 30k"], "weight": -8, "flag": "Lifestyle / absentee / hype framing — scrutinize claims" }
+    }
+  },
+  "classification": {
+    "msp": ["managed service", "managed it", "msp", "it managed", "it services", "it support", "it company", "it - "],
+    "it_services_adjacent": ["reseller", "hardware", "smart office", "electronics repair", "tech repair", "it repair"],
+    "not_msp": ["saas", "software platform", "no-code", "no code", "fintech", "seo", "roofing", "home automation", "av ", "audio", "fiber", "hosting", "vps", "iaas", "digital marketing", "app "]
+  }
+}
