@@ -7,19 +7,22 @@ schema as the companion Triangle (NC) research for direct comparison.
 
 **Deliverable:** `Colorado-MSP-Market-Research.xlsx`
 
-- **Target List** — 52 companies: tiered (A = prime succession-window targets, B =
+- **Target List** — 56 companies: tiered (A = prime succession-window targets, B =
   established/watch, C = verify, F = franchise, X = already acquired), with website links,
   employee bands + sources, formula-driven revenue AND sale-price estimates (assumptions
   adjustable on the Method sheet), ownership structure, owner/principal names, and
   clearly-labeled sale-signal inferences.
-- **Small Shops (Roll-up)** — 34 micro-operators (1–20 people) rated High/Medium/Low as tuck-in
+- **Small Shops (Roll-up)** — 38 micro-operators (1–20 people) rated High/Medium/Low as tuck-in
   targets by recurring-book quality and owner tenure.
 - **Acquirers** — 27 buyers active in or near this market (PE platforms, strategics, local
   consolidators), with sponsors, confirmed Colorado deals, appetite, and 2025-26 valuation
   benchmarks. New Charter Technologies (Denver-HQ'd, Oval Partners-backed) is the home-market
   platform.
-- **Precedent Deals** — 15 confirmed Colorado MSP transactions since 2015.
-- **Excluded & Out of Market** — documented exclusions so the research isn't re-done.
+- **Precedent Deals** — 16 confirmed Colorado MSP transactions since 2015, including the
+  Mission Critical Systems → Technology Architects merger (Apr 2024, Westminster).
+- **Excluded & Out of Market** — documented exclusions so the research isn't re-done, including
+  9 national SEO-chain "false positives" (BlueKey IT, truit, WETYR, NeighborTechs, etc.) that
+  present as local Colorado MSPs but are out-of-state operations with templated city pages.
 - **Method** — assumptions, market snapshot by sub-region, data-quality caveats, and next steps.
 
 ## Key findings
@@ -47,5 +50,8 @@ this dataset (flagged inline).
 
 Some regional passes (Colorado Springs/South/West, and the statewide directory sweep) hit their
 search budget mid-pass; datasets are still substantial (24-32 companies each) but a fresh pass
-could close remaining gaps. A dedicated Boulder/NW-metro enrichment pass ran separately — check
-for updates folded in after this file's date.
+could close remaining gaps. The Boulder/NW-metro enrichment pass completed and is fully folded
+in, including a useful finding: several "local" MSP listings for Arvada, Erie, Golden, Thornton,
+and Northglenn turned out to be programmatic SEO pages run by out-of-state chains (BlueKey IT,
+truit, WETYR, NeighborTechs) — documented in the Excluded tab so they aren't mistaken for real
+targets in a future pass.
