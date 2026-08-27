@@ -1,12 +1,15 @@
 /**
  * Gate: fixtures/manifest.json invariants, one describe block per fixture
- * case (SPEC 18.0, task protocol). Two assertions are skipped with a
- * docs/NOTES-track-b.md reference each: the manifest's "thin" and "strong"
- * tier expectations for thin-same-day-cohort and strong-diverse do not hold
- * under the literal SPEC 11.2/11.4 formulas applied to these fixtures with
- * the v0.1.0 provisional constants. See NOTES-track-b.md, "Fixture invariant
- * mismatches", for the worked numbers and reasoning. Fixtures are never
- * edited to make an assertion pass (protocol).
+ * case (SPEC 18.0, task protocol). Track B originally found that the
+ * manifest's "thin" and "strong" tier expectations for thin-same-day-cohort
+ * and strong-diverse did not hold under the literal SPEC 11.2/11.4 formulas
+ * with the v0.1.0 provisional constants; the lead then retuned those two
+ * fixtures at integration (older wallets and a lower portfolio share for
+ * the cohort case, recent feedback and more aged reviewers for the strong
+ * case) so both tiers are genuinely exercised. The original shortfall
+ * arithmetic is preserved in NOTES-track-b.md, "Fixture invariant
+ * mismatches". Track agents never edit fixtures (protocol); the lead owns
+ * them.
  */
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -52,31 +55,25 @@ describe("thin-same-day-cohort (UC-1, SPEC 11.0/11.2)", () => {
   it("signals.reviewer_cohort_same_day = 1.0000", () =>
     expect(result.signals.reviewer_cohort_same_day).toBe(1));
 
-  // Skipped: manifest expects coverage_tier "thin" (n_eff in [0.5, 5)). The
-  // combined age (~0.24, wallets ~20 days old), cohort (~0.55, both created
-  // within the 24h window), and portfolio (0.30, both reviewers'
-  // portfolio_top_funder_share is 1.0) multipliers, then the anti-flooding
-  // cap on 3 repeat reviews each, produce a per-reviewer weight of ~0.053 and
-  // a total n_eff of 0.11: below the 0.5 suppression floor, so the engine
-  // reports coverage_tier "none" (suppressed) rather than "thin". Every
-  // multiplier traces to a real SPEC 11.2 signal computed from this
-  // fixture's own data; see NOTES-track-b.md for the full arithmetic. Not a
-  // fixture edit: recording the mismatch per protocol instead.
-  it.skip("coverage_tier = thin (see NOTES-track-b.md: n_eff 0.11 falls below the suppression floor)", () => {
+  // The lead retuned this fixture at integration (wallet ages past the ramp,
+  // portfolio share 0.6) so the case exercises the thin tier as UC-1
+  // intends, instead of falling under the suppression floor as the original
+  // 20-day-old-wallet variant did (that arithmetic is preserved in
+  // NOTES-track-b.md).
+  it("coverage_tier = thin", () => {
     expect(result.coverage_tier).toBe("thin");
   });
 
-  // Skipped: consequence of the above. score is null when suppressed
-  // (SPEC 11.0), so "strictly between prior*100 and the raw mean" has no
-  // value to evaluate against.
-  it.skip("score strictly between prior*100 and the raw mean (see NOTES-track-b.md)", () => {
+  it("score strictly between prior*100 and the raw mean", () => {
+    // prior 0.55 -> 55; raw mean of five 5s and one 4 on the 1-5 scale is
+    // 0.9583 -> 95.83.
     expect(result.score).not.toBeNull();
+    expect(result.score!).toBeGreaterThan(55);
+    expect(result.score!).toBeLessThan(95.83);
   });
 
-  // Skipped: same reason; score_low/score_high are null when suppressed, so
-  // there is no numeric interval width to compare against 20 points.
-  it.skip("interval width > 20 points (see NOTES-track-b.md)", () => {
-    expect(result.score_high).not.toBeNull();
+  it("interval width > 20 points", () => {
+    expect(result.score_high! - result.score_low!).toBeGreaterThan(20);
   });
 });
 
@@ -107,37 +104,26 @@ describe("strong-diverse (SPEC 11.5)", () => {
   const { result } = score(load("strong-diverse"));
   const { result: thinResult } = score(load("thin-same-day-cohort"));
 
-  it("n_eff >= 25 target is close but the engine reports its own n_eff either way", () => {
-    // Sanity: n_eff is a real positive number reflecting substantial evidence,
-    // even though it falls short of the strong threshold (see skip below).
-    expect(result.n_eff).toBeGreaterThan(15);
+  // The lead retuned this fixture at integration (recent feedback within a
+  // 107-day span, 38 reviewers past the age ramp) so the case clears the
+  // strong n_eff floor under decay; the original variant's shortfall
+  // arithmetic is preserved in NOTES-track-b.md.
+  it("n_eff >= 25", () => {
+    expect(result.n_eff).toBeGreaterThanOrEqual(25);
   });
 
-  it("interval is narrower (confidence higher) than thin-same-day-cohort's", () => {
-    // thin-same-day-cohort's score is suppressed (null), so there is no
-    // score_high/score_low to diff; confidence is the always-present proxy
-    // for interval width (SPEC 11.1: confidence is derived from the same
-    // posterior). strong-diverse must still be markedly more confident.
+  it("coverage_tier = strong", () => {
+    expect(result.coverage_tier).toBe("strong");
+  });
+
+  it("interval is narrower than thin-same-day-cohort's", () => {
+    const width = result.score_high! - result.score_low!;
+    const thinWidth = thinResult.score_high! - thinResult.score_low!;
+    expect(width).toBeLessThan(thinWidth);
     expect(result.confidence).toBeGreaterThan(thinResult.confidence);
   });
 
   it("lifecycle_state = live", () => expect(result.lifecycle_state).toBe("live"));
-
-  // Skipped: manifest expects coverage_tier "strong" (n_eff >= 25, span >= 90
-  // days, >= 10 distinct counterparties). Span (268 days) and counterparties
-  // (34) both clear their thresholds; n_eff does not. decay_half_life_days
-  // is 120 and this fixture's feedback spans up to ~700 days of agent
-  // history, so a large share of otherwise well-corroborated evidence
-  // (commerce-backed, fully aged reviewers at the 1.0 weight ceiling) is
-  // heavily time-decayed by the time it reaches as_of_ts, landing n_eff at
-  // 19.05: short of 25. See NOTES-track-b.md for the per-context numbers.
-  it.skip("coverage_tier = strong (see NOTES-track-b.md: n_eff 19.05 falls short of the strong floor of 25 under half_life=120)", () => {
-    expect(result.coverage_tier).toBe("strong");
-  });
-
-  it.skip("n_eff >= 25 (see NOTES-track-b.md)", () => {
-    expect(result.n_eff).toBeGreaterThanOrEqual(25);
-  });
 });
 
 describe("common-funder-ring (SPEC 11.2)", () => {

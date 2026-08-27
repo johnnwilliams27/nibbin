@@ -109,24 +109,24 @@
   "reviewers": {
     "0x0000000000000000000000000000000000001001": {
       "address": "0x0000000000000000000000000000000000001001",
-      "first_seen_block": 32736000,
-      "first_seen_ts": "2026-07-12T00:00:00Z",
+      "first_seen_block": 16320000,
+      "first_seen_ts": "2025-06-27T00:00:00Z",
       "total_reviews": 3,
       "distinct_agents_reviewed": 1,
       "max_reviews_single_day": 2,
       "funder_address": "0x0000000000000000000000000000000000002001",
-      "portfolio_top_funder_share": "1.0000",
+      "portfolio_top_funder_share": "0.6000",
       "has_commerce_with_agent": false
     },
     "0x0000000000000000000000000000000000001002": {
       "address": "0x0000000000000000000000000000000000001002",
-      "first_seen_block": 32703600,
-      "first_seen_ts": "2026-07-11T06:00:00Z",
+      "first_seen_block": 16287600,
+      "first_seen_ts": "2025-06-26T06:00:00Z",
       "total_reviews": 3,
       "distinct_agents_reviewed": 1,
       "max_reviews_single_day": 2,
       "funder_address": "0x0000000000000000000000000000000000002002",
-      "portfolio_top_funder_share": "1.0000",
+      "portfolio_top_funder_share": "0.6000",
       "has_commerce_with_agent": false
     }
   },

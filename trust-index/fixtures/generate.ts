@@ -139,7 +139,9 @@ fixtures["registered-no-history"] = base("9002", {
 });
 
 // 3. thin-same-day-cohort (UC-1): six five-star reviews from two wallets
-// created 18 hours apart, both ~20 days old, zero commerce.
+// created 18 hours apart, zero commerce. Wallet ages are set so the case
+// lands in the thin tier rather than under the suppression floor: the point
+// of UC-1 is a present score with a wide interval and low confidence.
 {
   const r1 = 0x1001;
   const r2 = 0x1002;
@@ -148,12 +150,12 @@ fixtures["registered-no-history"] = base("9002", {
     registered_at: daysAgoTs(60),
     reviewers: {
       [addr(r1)]: reviewer({
-        n: r1, ageDays: 20.0, totalReviews: 3, distinctAgents: 1, maxPerDay: 2,
-        funder: 0x2001, portfolioShare: "1.0000", commerce: false,
+        n: r1, ageDays: 400.0, totalReviews: 3, distinctAgents: 1, maxPerDay: 2,
+        funder: 0x2001, portfolioShare: "0.6000", commerce: false,
       }),
       [addr(r2)]: reviewer({
-        n: r2, ageDays: 20.75, totalReviews: 3, distinctAgents: 1, maxPerDay: 2,
-        funder: 0x2002, portfolioShare: "1.0000", commerce: false,
+        n: r2, ageDays: 400.75, totalReviews: 3, distinctAgents: 1, maxPerDay: 2,
+        funder: 0x2002, portfolioShare: "0.6000", commerce: false,
       }),
     },
     feedback: [
@@ -232,29 +234,31 @@ fixtures["registered-no-history"] = base("9002", {
   };
 }
 
-// 6. strong-diverse: 34 aged, independently funded reviewers spanning 300
-// days; 12 commerce-corroborated; repeat business present.
+// 6. strong-diverse: 38 aged, independently funded reviewers with recent
+// feedback spanning over 100 days; 12 commerce-corroborated; repeat
+// business present. Ages sit past the ramp and feedback stays recent so
+// the case clears the strong tier's n_eff threshold under decay.
 {
   const revs: Record<string, ReviewerSnapshot> = {};
   const fb: FeedbackEntry[] = [];
-  for (let i = 0; i < 34; i++) {
+  for (let i = 0; i < 38; i++) {
     const n = 0x7000 + i;
     revs[addr(n)] = reviewer({
-      n, ageDays: 200 + i * 20, totalReviews: 10 + i, distinctAgents: 8 + i, maxPerDay: 2,
-      funder: 0x8000 + i, portfolioShare: "0.1500", commerce: i < 12,
+      n, ageDays: 400 + i * 15, totalReviews: 10 + i, distinctAgents: 8 + i, maxPerDay: 2,
+      funder: 0x8000 + i, portfolioShare: "0.0500", commerce: i < 12,
     });
     fb.push(
       feedback({
         reviewerN: n, index: 0, raw: i % 7 === 0 ? "3" : i % 3 === 0 ? "4" : "5",
         scale: FIVE_STAR, tag1: i % 2 === 0 ? "code-review" : "data-feed",
-        daysAgo: 300 - i * 8, seq: 300 + i,
+        daysAgo: 118 - i * 2.3, seq: 300 + i,
       }),
     );
     if (i < 8) {
       fb.push(
         feedback({
           reviewerN: n, index: 1, raw: "5", scale: FIVE_STAR,
-          tag1: i % 2 === 0 ? "code-review" : "data-feed", daysAgo: 60 - i * 4, seq: 400 + i,
+          tag1: i % 2 === 0 ? "code-review" : "data-feed", daysAgo: 25 - i * 2, seq: 400 + i,
         }),
       );
     }
@@ -449,6 +453,12 @@ const manifest: FixtureManifest = {
     },
   },
 };
+
+// Golden outputs live at fixtures/golden/<case>.json once the scoring
+// engine emits them; the filenames are fixed by convention.
+for (const c of Object.values(manifest.cases)) {
+  c.golden = c.snapshot;
+}
 
 for (const [name, snap] of Object.entries(fixtures)) {
   writeFileSync(join(OUT, `${name}.json`), JSON.stringify(snap, null, 2) + "\n");

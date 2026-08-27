@@ -31,6 +31,28 @@ packages/types, fixtures/, and this file. Types change only by lead commit.
 - **Fixture reviewers keyed by address** in `reviewers` record; engine must
   sort keys before any reduction (SPEC 22).
 
+## Integration pass (2026-08-27)
+
+- All five tracks landed and their gates ran green: A1 (migrations +
+  fixture round-trip on Postgres 16), B1/B2 (branch coverage, golden and
+  two-process determinism), C1/C2 (anvil inclusion proof, fail-closed truth
+  table, 100-agent batch at 7,365,438 gas), D1 (recompute byte-for-byte
+  against the engine on all fixtures), D2 (suppressed pages render zero
+  digits; intervals render elsewhere), E1 (CI, lint, copylint).
+- Scoring port adapted to Track B's real export surface (score returning
+  result plus canonical bytes); the D1 gate executes instead of skipping.
+- Fixture retune: thin-same-day-cohort (wallet ages past the ramp,
+  portfolio share 0.6) now lands thin at score 60.88 [24.32, 97.45],
+  n_eff 0.84; strong-diverse (38 aged reviewers, feedback within a 107-day
+  span) lands strong at 82.81 [70.12, 95.50], n_eff 27.96. Track B's
+  original shortfall arithmetic preserved in NOTES-track-b.md. Goldens
+  regenerated; manifest golden fields now point at the golden files.
+- Eslint I/O ban scoped to the engine (src minus cli.ts); wall-clock and
+  nondeterminism bans still cover the whole package, tests included.
+- Workspace totals: 301 tests green (types 7, scoring 158, db 21,
+  indexer 60, web 55) plus 31 forge tests; copylint and eslint clean;
+  next build clean offline.
+
 ## Open requests to the author
 
 - Project name (SPEC 1) still unresolved; npm scope `@trust-index` is a

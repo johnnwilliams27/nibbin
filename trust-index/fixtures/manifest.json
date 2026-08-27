@@ -3,7 +3,7 @@
   "cases": {
     "placeholder": {
       "snapshot": "placeholder.json",
-      "golden": null,
+      "golden": "placeholder.json",
       "covers": "UC-4, SPEC 11.7: reserved identity, nothing behind it",
       "invariants": [
         "lifecycle_state = placeholder",
@@ -14,7 +14,7 @@
     },
     "registered-no-history": {
       "snapshot": "registered-no-history.json",
-      "golden": null,
+      "golden": "registered-no-history.json",
       "covers": "SPEC 11.7/11.8: cold start with resolvable endpoints",
       "invariants": [
         "lifecycle_state = registered",
@@ -24,7 +24,7 @@
     },
     "thin-same-day-cohort": {
       "snapshot": "thin-same-day-cohort.json",
-      "golden": null,
+      "golden": "thin-same-day-cohort.json",
       "covers": "UC-1, SPEC 11.0/11.2: two-wallet same-cohort five-star burst",
       "invariants": [
         "coverage_tier = thin",
@@ -36,7 +36,7 @@
     },
     "transferred-identity": {
       "snapshot": "transferred-identity.json",
-      "golden": null,
+      "golden": "transferred-identity.json",
       "covers": "UC-2, SPEC 11.6: purchased identity, epoch reset",
       "invariants": [
         "ownership_epoch = 1",
@@ -47,7 +47,7 @@
     },
     "custody-migration": {
       "snapshot": "custody-migration.json",
-      "golden": null,
+      "golden": "custody-migration.json",
       "covers": "SPEC 11.6 known limitation: benign migration preserved",
       "invariants": [
         "ownership_epoch = 0",
@@ -57,7 +57,7 @@
     },
     "strong-diverse": {
       "snapshot": "strong-diverse.json",
-      "golden": null,
+      "golden": "strong-diverse.json",
       "covers": "SPEC 11.5: strong tier with aged, diverse, corroborated evidence",
       "invariants": [
         "coverage_tier = strong",
@@ -68,7 +68,7 @@
     },
     "common-funder-ring": {
       "snapshot": "common-funder-ring.json",
-      "golden": null,
+      "golden": "common-funder-ring.json",
       "covers": "SPEC 11.2: shared first funder dilutes continuously",
       "invariants": [
         "signals.common_funder_share = 1.0000",
@@ -78,7 +78,7 @@
     },
     "bulk-reviewer": {
       "snapshot": "bulk-reviewer.json",
-      "golden": null,
+      "golden": "bulk-reviewer.json",
       "covers": "UC-3, SPEC 11.2: velocity down-weight without disqualification",
       "invariants": [
         "bulk wallet weight < every ordinary reviewer weight",
@@ -87,7 +87,7 @@
     },
     "unparseable-scale": {
       "snapshot": "unparseable-scale.json",
-      "golden": null,
+      "golden": "unparseable-scale.json",
       "covers": "SPEC 11.10: uninferable scale excluded, counted as unusable",
       "invariants": [
         "score null",
@@ -97,7 +97,7 @@
     },
     "dormant": {
       "snapshot": "dormant.json",
-      "golden": null,
+      "golden": "dormant.json",
       "covers": "SPEC 11.7: previously live, inactive 180+ days",
       "invariants": [
         "lifecycle_state = dormant",

@@ -28,6 +28,7 @@ export default tseslint.config(
       // Committed golden data, not source.
       'fixtures/snapshots/**',
       '**/.next/**',
+      'apps/web/next-env.d.ts',
     ],
   },
   ...tseslint.configs.recommended,
@@ -67,13 +68,23 @@ export default tseslint.config(
             'SPEC 22: new Date() with no arguments reads the wall clock. Use as_of_ts from the snapshot.',
         },
       ],
+    },
+  },
+  {
+    // SPEC 22 I/O ban, scoped to the engine itself. The recompute CLI
+    // (src/cli.ts) reads a snapshot file by design (UC-6), and the test
+    // suite spawns child node processes for the two-process determinism
+    // gate; both keep the wall-clock and nondeterminism bans above.
+    files: ['packages/scoring/src/**/*.ts'],
+    ignores: ['packages/scoring/src/cli.ts'],
+    rules: {
       'no-restricted-imports': [
         'error',
         {
           patterns: [
             {
               group: ioPatterns,
-              message: 'SPEC 22: the scoring package performs no I/O.',
+              message: 'SPEC 22: the scoring engine performs no I/O.',
             },
           ],
         },
