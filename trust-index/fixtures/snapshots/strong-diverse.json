@@ -1,0 +1,1288 @@
+{
+  "snapshot_version": "1",
+  "chain_id": 8453,
+  "chain_slug": "base",
+  "agent_id": "9006",
+  "as_of_block": 33600000,
+  "as_of_ts": "2026-08-01T00:00:00Z",
+  "registered_block": 3360000,
+  "registered_at": "2024-08-31T00:00:00Z",
+  "owner_address": "0x00000000000000000000000000000000000a232e",
+  "agent_wallet": "0x00000000000000000000000000000000000b232e",
+  "metadata_status": "resolved",
+  "declared_endpoints": 2,
+  "agent_wallet_active": true,
+  "transfers": [],
+  "transfer_linkages": [],
+  "feedback": [
+    {
+      "client_address": "0x0000000000000000000000000000000000007000",
+      "feedback_index": 0,
+      "value_raw": "3",
+      "value_decimals": 0,
+      "tag1": "code-review",
+      "tag2": "",
+      "block": 20640000,
+      "ts": "2025-10-05T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x0000000000000000000000000000000000007000",
+      "feedback_index": 1,
+      "value_raw": "5",
+      "value_decimals": 0,
+      "tag1": "code-review",
+      "tag2": "",
+      "block": 31008000,
+      "ts": "2026-06-02T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x0000000000000000000000000000000000007001",
+      "feedback_index": 0,
+      "value_raw": "5",
+      "value_decimals": 0,
+      "tag1": "data-feed",
+      "tag2": "",
+      "block": 20985600,
+      "ts": "2025-10-13T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x0000000000000000000000000000000000007001",
+      "feedback_index": 1,
+      "value_raw": "5",
+      "value_decimals": 0,
+      "tag1": "data-feed",
+      "tag2": "",
+      "block": 31180800,
+      "ts": "2026-06-06T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x0000000000000000000000000000000000007002",
+      "feedback_index": 0,
+      "value_raw": "5",
+      "value_decimals": 0,
+      "tag1": "code-review",
+      "tag2": "",
+      "block": 21331200,
+      "ts": "2025-10-21T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x0000000000000000000000000000000000007002",
+      "feedback_index": 1,
+      "value_raw": "5",
+      "value_decimals": 0,
+      "tag1": "code-review",
+      "tag2": "",
+      "block": 31353600,
+      "ts": "2026-06-10T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x0000000000000000000000000000000000007003",
+      "feedback_index": 0,
+      "value_raw": "4",
+      "value_decimals": 0,
+      "tag1": "data-feed",
+      "tag2": "",
+      "block": 21676800,
+      "ts": "2025-10-29T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x0000000000000000000000000000000000007003",
+      "feedback_index": 1,
+      "value_raw": "5",
+      "value_decimals": 0,
+      "tag1": "data-feed",
+      "tag2": "",
+      "block": 31526400,
+      "ts": "2026-06-14T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x0000000000000000000000000000000000007004",
+      "feedback_index": 0,
+      "value_raw": "5",
+      "value_decimals": 0,
+      "tag1": "code-review",
+      "tag2": "",
+      "block": 22022400,
+      "ts": "2025-11-06T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x0000000000000000000000000000000000007004",
+      "feedback_index": 1,
+      "value_raw": "5",
+      "value_decimals": 0,
+      "tag1": "code-review",
+      "tag2": "",
+      "block": 31699200,
+      "ts": "2026-06-18T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x0000000000000000000000000000000000007005",
+      "feedback_index": 0,
+      "value_raw": "5",
+      "value_decimals": 0,
+      "tag1": "data-feed",
+      "tag2": "",
+      "block": 22368000,
+      "ts": "2025-11-14T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x0000000000000000000000000000000000007005",
+      "feedback_index": 1,
+      "value_raw": "5",
+      "value_decimals": 0,
+      "tag1": "data-feed",
+      "tag2": "",
+      "block": 31872000,
+      "ts": "2026-06-22T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x0000000000000000000000000000000000007006",
+      "feedback_index": 0,
+      "value_raw": "4",
+      "value_decimals": 0,
+      "tag1": "code-review",
+      "tag2": "",
+      "block": 22713600,
+      "ts": "2025-11-22T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x0000000000000000000000000000000000007006",
+      "feedback_index": 1,
+      "value_raw": "5",
+      "value_decimals": 0,
+      "tag1": "code-review",
+      "tag2": "",
+      "block": 32044800,
+      "ts": "2026-06-26T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x0000000000000000000000000000000000007007",
+      "feedback_index": 0,
+      "value_raw": "3",
+      "value_decimals": 0,
+      "tag1": "data-feed",
+      "tag2": "",
+      "block": 23059200,
+      "ts": "2025-11-30T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x0000000000000000000000000000000000007007",
+      "feedback_index": 1,
+      "value_raw": "5",
+      "value_decimals": 0,
+      "tag1": "data-feed",
+      "tag2": "",
+      "block": 32217600,
+      "ts": "2026-06-30T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x0000000000000000000000000000000000007008",
+      "feedback_index": 0,
+      "value_raw": "5",
+      "value_decimals": 0,
+      "tag1": "code-review",
+      "tag2": "",
+      "block": 23404800,
+      "ts": "2025-12-08T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x0000000000000000000000000000000000007009",
+      "feedback_index": 0,
+      "value_raw": "4",
+      "value_decimals": 0,
+      "tag1": "data-feed",
+      "tag2": "",
+      "block": 23750400,
+      "ts": "2025-12-16T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x000000000000000000000000000000000000700a",
+      "feedback_index": 0,
+      "value_raw": "5",
+      "value_decimals": 0,
+      "tag1": "code-review",
+      "tag2": "",
+      "block": 24096000,
+      "ts": "2025-12-24T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x000000000000000000000000000000000000700b",
+      "feedback_index": 0,
+      "value_raw": "5",
+      "value_decimals": 0,
+      "tag1": "data-feed",
+      "tag2": "",
+      "block": 24441600,
+      "ts": "2026-01-01T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x000000000000000000000000000000000000700c",
+      "feedback_index": 0,
+      "value_raw": "4",
+      "value_decimals": 0,
+      "tag1": "code-review",
+      "tag2": "",
+      "block": 24787200,
+      "ts": "2026-01-09T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x000000000000000000000000000000000000700d",
+      "feedback_index": 0,
+      "value_raw": "5",
+      "value_decimals": 0,
+      "tag1": "data-feed",
+      "tag2": "",
+      "block": 25132800,
+      "ts": "2026-01-17T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x000000000000000000000000000000000000700e",
+      "feedback_index": 0,
+      "value_raw": "3",
+      "value_decimals": 0,
+      "tag1": "code-review",
+      "tag2": "",
+      "block": 25478400,
+      "ts": "2026-01-25T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x000000000000000000000000000000000000700f",
+      "feedback_index": 0,
+      "value_raw": "4",
+      "value_decimals": 0,
+      "tag1": "data-feed",
+      "tag2": "",
+      "block": 25824000,
+      "ts": "2026-02-02T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x0000000000000000000000000000000000007010",
+      "feedback_index": 0,
+      "value_raw": "5",
+      "value_decimals": 0,
+      "tag1": "code-review",
+      "tag2": "",
+      "block": 26169600,
+      "ts": "2026-02-10T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x0000000000000000000000000000000000007011",
+      "feedback_index": 0,
+      "value_raw": "5",
+      "value_decimals": 0,
+      "tag1": "data-feed",
+      "tag2": "",
+      "block": 26515200,
+      "ts": "2026-02-18T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x0000000000000000000000000000000000007012",
+      "feedback_index": 0,
+      "value_raw": "4",
+      "value_decimals": 0,
+      "tag1": "code-review",
+      "tag2": "",
+      "block": 26860800,
+      "ts": "2026-02-26T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x0000000000000000000000000000000000007013",
+      "feedback_index": 0,
+      "value_raw": "5",
+      "value_decimals": 0,
+      "tag1": "data-feed",
+      "tag2": "",
+      "block": 27206400,
+      "ts": "2026-03-06T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x0000000000000000000000000000000000007014",
+      "feedback_index": 0,
+      "value_raw": "5",
+      "value_decimals": 0,
+      "tag1": "code-review",
+      "tag2": "",
+      "block": 27552000,
+      "ts": "2026-03-14T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x0000000000000000000000000000000000007015",
+      "feedback_index": 0,
+      "value_raw": "3",
+      "value_decimals": 0,
+      "tag1": "data-feed",
+      "tag2": "",
+      "block": 27897600,
+      "ts": "2026-03-22T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x0000000000000000000000000000000000007016",
+      "feedback_index": 0,
+      "value_raw": "5",
+      "value_decimals": 0,
+      "tag1": "code-review",
+      "tag2": "",
+      "block": 28243200,
+      "ts": "2026-03-30T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x0000000000000000000000000000000000007017",
+      "feedback_index": 0,
+      "value_raw": "5",
+      "value_decimals": 0,
+      "tag1": "data-feed",
+      "tag2": "",
+      "block": 28588800,
+      "ts": "2026-04-07T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x0000000000000000000000000000000000007018",
+      "feedback_index": 0,
+      "value_raw": "4",
+      "value_decimals": 0,
+      "tag1": "code-review",
+      "tag2": "",
+      "block": 28934400,
+      "ts": "2026-04-15T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x0000000000000000000000000000000000007019",
+      "feedback_index": 0,
+      "value_raw": "5",
+      "value_decimals": 0,
+      "tag1": "data-feed",
+      "tag2": "",
+      "block": 29280000,
+      "ts": "2026-04-23T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x000000000000000000000000000000000000701a",
+      "feedback_index": 0,
+      "value_raw": "5",
+      "value_decimals": 0,
+      "tag1": "code-review",
+      "tag2": "",
+      "block": 29625600,
+      "ts": "2026-05-01T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x000000000000000000000000000000000000701b",
+      "feedback_index": 0,
+      "value_raw": "4",
+      "value_decimals": 0,
+      "tag1": "data-feed",
+      "tag2": "",
+      "block": 29971200,
+      "ts": "2026-05-09T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x000000000000000000000000000000000000701c",
+      "feedback_index": 0,
+      "value_raw": "3",
+      "value_decimals": 0,
+      "tag1": "code-review",
+      "tag2": "",
+      "block": 30316800,
+      "ts": "2026-05-17T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x000000000000000000000000000000000000701d",
+      "feedback_index": 0,
+      "value_raw": "5",
+      "value_decimals": 0,
+      "tag1": "data-feed",
+      "tag2": "",
+      "block": 30662400,
+      "ts": "2026-05-25T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x000000000000000000000000000000000000701e",
+      "feedback_index": 0,
+      "value_raw": "4",
+      "value_decimals": 0,
+      "tag1": "code-review",
+      "tag2": "",
+      "block": 31008000,
+      "ts": "2026-06-02T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x000000000000000000000000000000000000701f",
+      "feedback_index": 0,
+      "value_raw": "5",
+      "value_decimals": 0,
+      "tag1": "data-feed",
+      "tag2": "",
+      "block": 31353600,
+      "ts": "2026-06-10T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x0000000000000000000000000000000000007020",
+      "feedback_index": 0,
+      "value_raw": "5",
+      "value_decimals": 0,
+      "tag1": "code-review",
+      "tag2": "",
+      "block": 31699200,
+      "ts": "2026-06-18T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x0000000000000000000000000000000000007021",
+      "feedback_index": 0,
+      "value_raw": "4",
+      "value_decimals": 0,
+      "tag1": "data-feed",
+      "tag2": "",
+      "block": 32044800,
+      "ts": "2026-06-26T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    }
+  ],
+  "reviewers": {
+    "0x0000000000000000000000000000000000007000": {
+      "address": "0x0000000000000000000000000000000000007000",
+      "first_seen_block": 24960000,
+      "first_seen_ts": "2026-01-13T00:00:00Z",
+      "total_reviews": 10,
+      "distinct_agents_reviewed": 8,
+      "max_reviews_single_day": 2,
+      "funder_address": "0x0000000000000000000000000000000000008000",
+      "portfolio_top_funder_share": "0.1500",
+      "has_commerce_with_agent": true
+    },
+    "0x0000000000000000000000000000000000007001": {
+      "address": "0x0000000000000000000000000000000000007001",
+      "first_seen_block": 24096000,
+      "first_seen_ts": "2025-12-24T00:00:00Z",
+      "total_reviews": 11,
+      "distinct_agents_reviewed": 9,
+      "max_reviews_single_day": 2,
+      "funder_address": "0x0000000000000000000000000000000000008001",
+      "portfolio_top_funder_share": "0.1500",
+      "has_commerce_with_agent": true
+    },
+    "0x0000000000000000000000000000000000007002": {
+      "address": "0x0000000000000000000000000000000000007002",
+      "first_seen_block": 23232000,
+      "first_seen_ts": "2025-12-04T00:00:00Z",
+      "total_reviews": 12,
+      "distinct_agents_reviewed": 10,
+      "max_reviews_single_day": 2,
+      "funder_address": "0x0000000000000000000000000000000000008002",
+      "portfolio_top_funder_share": "0.1500",
+      "has_commerce_with_agent": true
+    },
+    "0x0000000000000000000000000000000000007003": {
+      "address": "0x0000000000000000000000000000000000007003",
+      "first_seen_block": 22368000,
+      "first_seen_ts": "2025-11-14T00:00:00Z",
+      "total_reviews": 13,
+      "distinct_agents_reviewed": 11,
+      "max_reviews_single_day": 2,
+      "funder_address": "0x0000000000000000000000000000000000008003",
+      "portfolio_top_funder_share": "0.1500",
+      "has_commerce_with_agent": true
+    },
+    "0x0000000000000000000000000000000000007004": {
+      "address": "0x0000000000000000000000000000000000007004",
+      "first_seen_block": 21504000,
+      "first_seen_ts": "2025-10-25T00:00:00Z",
+      "total_reviews": 14,
+      "distinct_agents_reviewed": 12,
+      "max_reviews_single_day": 2,
+      "funder_address": "0x0000000000000000000000000000000000008004",
+      "portfolio_top_funder_share": "0.1500",
+      "has_commerce_with_agent": true
+    },
+    "0x0000000000000000000000000000000000007005": {
+      "address": "0x0000000000000000000000000000000000007005",
+      "first_seen_block": 20640000,
+      "first_seen_ts": "2025-10-05T00:00:00Z",
+      "total_reviews": 15,
+      "distinct_agents_reviewed": 13,
+      "max_reviews_single_day": 2,
+      "funder_address": "0x0000000000000000000000000000000000008005",
+      "portfolio_top_funder_share": "0.1500",
+      "has_commerce_with_agent": true
+    },
+    "0x0000000000000000000000000000000000007006": {
+      "address": "0x0000000000000000000000000000000000007006",
+      "first_seen_block": 19776000,
+      "first_seen_ts": "2025-09-15T00:00:00Z",
+      "total_reviews": 16,
+      "distinct_agents_reviewed": 14,
+      "max_reviews_single_day": 2,
+      "funder_address": "0x0000000000000000000000000000000000008006",
+      "portfolio_top_funder_share": "0.1500",
+      "has_commerce_with_agent": true
+    },
+    "0x0000000000000000000000000000000000007007": {
+      "address": "0x0000000000000000000000000000000000007007",
+      "first_seen_block": 18912000,
+      "first_seen_ts": "2025-08-26T00:00:00Z",
+      "total_reviews": 17,
+      "distinct_agents_reviewed": 15,
+      "max_reviews_single_day": 2,
+      "funder_address": "0x0000000000000000000000000000000000008007",
+      "portfolio_top_funder_share": "0.1500",
+      "has_commerce_with_agent": true
+    },
+    "0x0000000000000000000000000000000000007008": {
+      "address": "0x0000000000000000000000000000000000007008",
+      "first_seen_block": 18048000,
+      "first_seen_ts": "2025-08-06T00:00:00Z",
+      "total_reviews": 18,
+      "distinct_agents_reviewed": 16,
+      "max_reviews_single_day": 2,
+      "funder_address": "0x0000000000000000000000000000000000008008",
+      "portfolio_top_funder_share": "0.1500",
+      "has_commerce_with_agent": true
+    },
+    "0x0000000000000000000000000000000000007009": {
+      "address": "0x0000000000000000000000000000000000007009",
+      "first_seen_block": 17184000,
+      "first_seen_ts": "2025-07-17T00:00:00Z",
+      "total_reviews": 19,
+      "distinct_agents_reviewed": 17,
+      "max_reviews_single_day": 2,
+      "funder_address": "0x0000000000000000000000000000000000008009",
+      "portfolio_top_funder_share": "0.1500",
+      "has_commerce_with_agent": true
+    },
+    "0x000000000000000000000000000000000000700a": {
+      "address": "0x000000000000000000000000000000000000700a",
+      "first_seen_block": 16320000,
+      "first_seen_ts": "2025-06-27T00:00:00Z",
+      "total_reviews": 20,
+      "distinct_agents_reviewed": 18,
+      "max_reviews_single_day": 2,
+      "funder_address": "0x000000000000000000000000000000000000800a",
+      "portfolio_top_funder_share": "0.1500",
+      "has_commerce_with_agent": true
+    },
+    "0x000000000000000000000000000000000000700b": {
+      "address": "0x000000000000000000000000000000000000700b",
+      "first_seen_block": 15456000,
+      "first_seen_ts": "2025-06-07T00:00:00Z",
+      "total_reviews": 21,
+      "distinct_agents_reviewed": 19,
+      "max_reviews_single_day": 2,
+      "funder_address": "0x000000000000000000000000000000000000800b",
+      "portfolio_top_funder_share": "0.1500",
+      "has_commerce_with_agent": true
+    },
+    "0x000000000000000000000000000000000000700c": {
+      "address": "0x000000000000000000000000000000000000700c",
+      "first_seen_block": 14592000,
+      "first_seen_ts": "2025-05-18T00:00:00Z",
+      "total_reviews": 22,
+      "distinct_agents_reviewed": 20,
+      "max_reviews_single_day": 2,
+      "funder_address": "0x000000000000000000000000000000000000800c",
+      "portfolio_top_funder_share": "0.1500",
+      "has_commerce_with_agent": false
+    },
+    "0x000000000000000000000000000000000000700d": {
+      "address": "0x000000000000000000000000000000000000700d",
+      "first_seen_block": 13728000,
+      "first_seen_ts": "2025-04-28T00:00:00Z",
+      "total_reviews": 23,
+      "distinct_agents_reviewed": 21,
+      "max_reviews_single_day": 2,
+      "funder_address": "0x000000000000000000000000000000000000800d",
+      "portfolio_top_funder_share": "0.1500",
+      "has_commerce_with_agent": false
+    },
+    "0x000000000000000000000000000000000000700e": {
+      "address": "0x000000000000000000000000000000000000700e",
+      "first_seen_block": 12864000,
+      "first_seen_ts": "2025-04-08T00:00:00Z",
+      "total_reviews": 24,
+      "distinct_agents_reviewed": 22,
+      "max_reviews_single_day": 2,
+      "funder_address": "0x000000000000000000000000000000000000800e",
+      "portfolio_top_funder_share": "0.1500",
+      "has_commerce_with_agent": false
+    },
+    "0x000000000000000000000000000000000000700f": {
+      "address": "0x000000000000000000000000000000000000700f",
+      "first_seen_block": 12000000,
+      "first_seen_ts": "2025-03-19T00:00:00Z",
+      "total_reviews": 25,
+      "distinct_agents_reviewed": 23,
+      "max_reviews_single_day": 2,
+      "funder_address": "0x000000000000000000000000000000000000800f",
+      "portfolio_top_funder_share": "0.1500",
+      "has_commerce_with_agent": false
+    },
+    "0x0000000000000000000000000000000000007010": {
+      "address": "0x0000000000000000000000000000000000007010",
+      "first_seen_block": 11136000,
+      "first_seen_ts": "2025-02-27T00:00:00Z",
+      "total_reviews": 26,
+      "distinct_agents_reviewed": 24,
+      "max_reviews_single_day": 2,
+      "funder_address": "0x0000000000000000000000000000000000008010",
+      "portfolio_top_funder_share": "0.1500",
+      "has_commerce_with_agent": false
+    },
+    "0x0000000000000000000000000000000000007011": {
+      "address": "0x0000000000000000000000000000000000007011",
+      "first_seen_block": 10272000,
+      "first_seen_ts": "2025-02-07T00:00:00Z",
+      "total_reviews": 27,
+      "distinct_agents_reviewed": 25,
+      "max_reviews_single_day": 2,
+      "funder_address": "0x0000000000000000000000000000000000008011",
+      "portfolio_top_funder_share": "0.1500",
+      "has_commerce_with_agent": false
+    },
+    "0x0000000000000000000000000000000000007012": {
+      "address": "0x0000000000000000000000000000000000007012",
+      "first_seen_block": 9408000,
+      "first_seen_ts": "2025-01-18T00:00:00Z",
+      "total_reviews": 28,
+      "distinct_agents_reviewed": 26,
+      "max_reviews_single_day": 2,
+      "funder_address": "0x0000000000000000000000000000000000008012",
+      "portfolio_top_funder_share": "0.1500",
+      "has_commerce_with_agent": false
+    },
+    "0x0000000000000000000000000000000000007013": {
+      "address": "0x0000000000000000000000000000000000007013",
+      "first_seen_block": 8544000,
+      "first_seen_ts": "2024-12-29T00:00:00Z",
+      "total_reviews": 29,
+      "distinct_agents_reviewed": 27,
+      "max_reviews_single_day": 2,
+      "funder_address": "0x0000000000000000000000000000000000008013",
+      "portfolio_top_funder_share": "0.1500",
+      "has_commerce_with_agent": false
+    },
+    "0x0000000000000000000000000000000000007014": {
+      "address": "0x0000000000000000000000000000000000007014",
+      "first_seen_block": 7680000,
+      "first_seen_ts": "2024-12-09T00:00:00Z",
+      "total_reviews": 30,
+      "distinct_agents_reviewed": 28,
+      "max_reviews_single_day": 2,
+      "funder_address": "0x0000000000000000000000000000000000008014",
+      "portfolio_top_funder_share": "0.1500",
+      "has_commerce_with_agent": false
+    },
+    "0x0000000000000000000000000000000000007015": {
+      "address": "0x0000000000000000000000000000000000007015",
+      "first_seen_block": 6816000,
+      "first_seen_ts": "2024-11-19T00:00:00Z",
+      "total_reviews": 31,
+      "distinct_agents_reviewed": 29,
+      "max_reviews_single_day": 2,
+      "funder_address": "0x0000000000000000000000000000000000008015",
+      "portfolio_top_funder_share": "0.1500",
+      "has_commerce_with_agent": false
+    },
+    "0x0000000000000000000000000000000000007016": {
+      "address": "0x0000000000000000000000000000000000007016",
+      "first_seen_block": 5952000,
+      "first_seen_ts": "2024-10-30T00:00:00Z",
+      "total_reviews": 32,
+      "distinct_agents_reviewed": 30,
+      "max_reviews_single_day": 2,
+      "funder_address": "0x0000000000000000000000000000000000008016",
+      "portfolio_top_funder_share": "0.1500",
+      "has_commerce_with_agent": false
+    },
+    "0x0000000000000000000000000000000000007017": {
+      "address": "0x0000000000000000000000000000000000007017",
+      "first_seen_block": 5088000,
+      "first_seen_ts": "2024-10-10T00:00:00Z",
+      "total_reviews": 33,
+      "distinct_agents_reviewed": 31,
+      "max_reviews_single_day": 2,
+      "funder_address": "0x0000000000000000000000000000000000008017",
+      "portfolio_top_funder_share": "0.1500",
+      "has_commerce_with_agent": false
+    },
+    "0x0000000000000000000000000000000000007018": {
+      "address": "0x0000000000000000000000000000000000007018",
+      "first_seen_block": 4224000,
+      "first_seen_ts": "2024-09-20T00:00:00Z",
+      "total_reviews": 34,
+      "distinct_agents_reviewed": 32,
+      "max_reviews_single_day": 2,
+      "funder_address": "0x0000000000000000000000000000000000008018",
+      "portfolio_top_funder_share": "0.1500",
+      "has_commerce_with_agent": false
+    },
+    "0x0000000000000000000000000000000000007019": {
+      "address": "0x0000000000000000000000000000000000007019",
+      "first_seen_block": 3360000,
+      "first_seen_ts": "2024-08-31T00:00:00Z",
+      "total_reviews": 35,
+      "distinct_agents_reviewed": 33,
+      "max_reviews_single_day": 2,
+      "funder_address": "0x0000000000000000000000000000000000008019",
+      "portfolio_top_funder_share": "0.1500",
+      "has_commerce_with_agent": false
+    },
+    "0x000000000000000000000000000000000000701a": {
+      "address": "0x000000000000000000000000000000000000701a",
+      "first_seen_block": 2496000,
+      "first_seen_ts": "2024-08-11T00:00:00Z",
+      "total_reviews": 36,
+      "distinct_agents_reviewed": 34,
+      "max_reviews_single_day": 2,
+      "funder_address": "0x000000000000000000000000000000000000801a",
+      "portfolio_top_funder_share": "0.1500",
+      "has_commerce_with_agent": false
+    },
+    "0x000000000000000000000000000000000000701b": {
+      "address": "0x000000000000000000000000000000000000701b",
+      "first_seen_block": 1632000,
+      "first_seen_ts": "2024-07-22T00:00:00Z",
+      "total_reviews": 37,
+      "distinct_agents_reviewed": 35,
+      "max_reviews_single_day": 2,
+      "funder_address": "0x000000000000000000000000000000000000801b",
+      "portfolio_top_funder_share": "0.1500",
+      "has_commerce_with_agent": false
+    },
+    "0x000000000000000000000000000000000000701c": {
+      "address": "0x000000000000000000000000000000000000701c",
+      "first_seen_block": 768000,
+      "first_seen_ts": "2024-07-02T00:00:00Z",
+      "total_reviews": 38,
+      "distinct_agents_reviewed": 36,
+      "max_reviews_single_day": 2,
+      "funder_address": "0x000000000000000000000000000000000000801c",
+      "portfolio_top_funder_share": "0.1500",
+      "has_commerce_with_agent": false
+    },
+    "0x000000000000000000000000000000000000701d": {
+      "address": "0x000000000000000000000000000000000000701d",
+      "first_seen_block": -96000,
+      "first_seen_ts": "2024-06-12T00:00:00Z",
+      "total_reviews": 39,
+      "distinct_agents_reviewed": 37,
+      "max_reviews_single_day": 2,
+      "funder_address": "0x000000000000000000000000000000000000801d",
+      "portfolio_top_funder_share": "0.1500",
+      "has_commerce_with_agent": false
+    },
+    "0x000000000000000000000000000000000000701e": {
+      "address": "0x000000000000000000000000000000000000701e",
+      "first_seen_block": -960000,
+      "first_seen_ts": "2024-05-23T00:00:00Z",
+      "total_reviews": 40,
+      "distinct_agents_reviewed": 38,
+      "max_reviews_single_day": 2,
+      "funder_address": "0x000000000000000000000000000000000000801e",
+      "portfolio_top_funder_share": "0.1500",
+      "has_commerce_with_agent": false
+    },
+    "0x000000000000000000000000000000000000701f": {
+      "address": "0x000000000000000000000000000000000000701f",
+      "first_seen_block": -1824000,
+      "first_seen_ts": "2024-05-03T00:00:00Z",
+      "total_reviews": 41,
+      "distinct_agents_reviewed": 39,
+      "max_reviews_single_day": 2,
+      "funder_address": "0x000000000000000000000000000000000000801f",
+      "portfolio_top_funder_share": "0.1500",
+      "has_commerce_with_agent": false
+    },
+    "0x0000000000000000000000000000000000007020": {
+      "address": "0x0000000000000000000000000000000000007020",
+      "first_seen_block": -2688000,
+      "first_seen_ts": "2024-04-13T00:00:00Z",
+      "total_reviews": 42,
+      "distinct_agents_reviewed": 40,
+      "max_reviews_single_day": 2,
+      "funder_address": "0x0000000000000000000000000000000000008020",
+      "portfolio_top_funder_share": "0.1500",
+      "has_commerce_with_agent": false
+    },
+    "0x0000000000000000000000000000000000007021": {
+      "address": "0x0000000000000000000000000000000000007021",
+      "first_seen_block": -3552000,
+      "first_seen_ts": "2024-03-24T00:00:00Z",
+      "total_reviews": 43,
+      "distinct_agents_reviewed": 41,
+      "max_reviews_single_day": 2,
+      "funder_address": "0x0000000000000000000000000000000000008021",
+      "portfolio_top_funder_share": "0.1500",
+      "has_commerce_with_agent": false
+    }
+  },
+  "validations": [],
+  "commerce": [
+    {
+      "counterparty": "0x0000000000000000000000000000000000007000",
+      "outcome": "completed",
+      "ts": "2025-11-24T00:00:00Z",
+      "block": 22800000
+    },
+    {
+      "counterparty": "0x0000000000000000000000000000000000007001",
+      "outcome": "completed",
+      "ts": "2025-12-09T00:00:00Z",
+      "block": 23448000
+    },
+    {
+      "counterparty": "0x0000000000000000000000000000000000007002",
+      "outcome": "completed",
+      "ts": "2025-12-24T00:00:00Z",
+      "block": 24096000
+    },
+    {
+      "counterparty": "0x0000000000000000000000000000000000007003",
+      "outcome": "completed",
+      "ts": "2026-01-08T00:00:00Z",
+      "block": 24744000
+    },
+    {
+      "counterparty": "0x0000000000000000000000000000000000007004",
+      "outcome": "completed",
+      "ts": "2026-01-23T00:00:00Z",
+      "block": 25392000
+    },
+    {
+      "counterparty": "0x0000000000000000000000000000000000007005",
+      "outcome": "completed",
+      "ts": "2026-02-07T00:00:00Z",
+      "block": 26040000
+    },
+    {
+      "counterparty": "0x0000000000000000000000000000000000007006",
+      "outcome": "completed",
+      "ts": "2026-02-22T00:00:00Z",
+      "block": 26688000
+    },
+    {
+      "counterparty": "0x0000000000000000000000000000000000007007",
+      "outcome": "completed",
+      "ts": "2026-03-09T00:00:00Z",
+      "block": 27336000
+    },
+    {
+      "counterparty": "0x0000000000000000000000000000000000007008",
+      "outcome": "completed",
+      "ts": "2026-03-24T00:00:00Z",
+      "block": 27984000
+    },
+    {
+      "counterparty": "0x0000000000000000000000000000000000007009",
+      "outcome": "completed",
+      "ts": "2026-04-08T00:00:00Z",
+      "block": 28632000
+    },
+    {
+      "counterparty": "0x000000000000000000000000000000000000700a",
+      "outcome": "completed",
+      "ts": "2026-04-23T00:00:00Z",
+      "block": 29280000
+    },
+    {
+      "counterparty": "0x000000000000000000000000000000000000700b",
+      "outcome": "completed",
+      "ts": "2026-05-08T00:00:00Z",
+      "block": 29928000
+    }
+  ],
+  "priors": {
+    "global": "0.550000",
+    "by_context": {
+      "code-review": "0.580000",
+      "data-feed": "0.520000"
+    },
+    "basis": "high_weight_weighted_mean",
+    "n_basis": "184.20"
+  },
+  "constants": {
+    "methodology_version": "0.1.0",
+    "shrinkage_k": {
+      "value": "5.00",
+      "provenance": {
+        "provisional": true,
+        "tuning_run": null,
+        "basis": "sensitivity sweep 1-20 pending; midpoint of stable region assumed"
+      }
+    },
+    "decay_half_life_days": {
+      "value": "120",
+      "provenance": {
+        "provisional": true,
+        "tuning_run": null,
+        "basis": "sensitivity sweep 30-365 pending"
+      }
+    },
+    "weight": {
+      "age_ramp_days": {
+        "value": "365",
+        "provenance": {
+          "provisional": true,
+          "tuning_run": null,
+          "basis": "SPEC 11.2 stated ramp"
+        }
+      },
+      "age_floor": {
+        "value": "0.20",
+        "provenance": {
+          "provisional": true,
+          "tuning_run": null,
+          "basis": "SPEC 11.2 stated floor"
+        }
+      },
+      "cohort_window_hours": {
+        "value": "24",
+        "provenance": {
+          "provisional": true,
+          "tuning_run": null,
+          "basis": "arXiv 2606.26028 same-day clustering finding"
+        }
+      },
+      "cohort_penalty": {
+        "value": "0.90",
+        "provenance": {
+          "provisional": true,
+          "tuning_run": null,
+          "basis": "near-full dilution at full cohort share; sweep pending"
+        }
+      },
+      "common_funder_multiplier": {
+        "value": "0.25",
+        "provenance": {
+          "provisional": true,
+          "tuning_run": null,
+          "basis": "strong down-weight per SPEC 11.2; sweep pending"
+        }
+      },
+      "velocity_threshold_per_day": {
+        "value": "50",
+        "provenance": {
+          "provisional": true,
+          "tuning_run": null,
+          "basis": "matches published third-party threshold for comparability"
+        }
+      },
+      "velocity_multiplier": {
+        "value": "0.30",
+        "provenance": {
+          "provisional": true,
+          "tuning_run": null,
+          "basis": "sweep pending"
+        }
+      },
+      "repeat_bonus_multiplier": {
+        "value": "1.15",
+        "provenance": {
+          "provisional": true,
+          "tuning_run": null,
+          "basis": "sweep pending"
+        }
+      },
+      "repeat_bonus_cap": {
+        "value": "1.50",
+        "provenance": {
+          "provisional": true,
+          "tuning_run": null,
+          "basis": "cap keeps repeat signal bounded"
+        }
+      },
+      "commerce_multiplier": {
+        "value": "1.60",
+        "provenance": {
+          "provisional": true,
+          "tuning_run": null,
+          "basis": "strongest up-weight per SPEC 11.2; capped at 1.0 total"
+        }
+      },
+      "portfolio_penalty": {
+        "value": "0.70",
+        "provenance": {
+          "provisional": true,
+          "tuning_run": null,
+          "basis": "sweep pending"
+        }
+      },
+      "weight_floor": {
+        "value": "0.01",
+        "provenance": {
+          "provisional": true,
+          "tuning_run": null,
+          "basis": "SPEC 11.2 stated floor"
+        }
+      }
+    },
+    "suppression_neff_floor": {
+      "value": "0.50",
+      "provenance": {
+        "provisional": true,
+        "tuning_run": null,
+        "basis": "SPEC 11.0 stated floor"
+      }
+    },
+    "tiers": {
+      "thin_neff_max": {
+        "value": "5",
+        "provenance": {
+          "provisional": true,
+          "tuning_run": null,
+          "basis": "SPEC 11.5"
+        }
+      },
+      "moderate_neff_max": {
+        "value": "25",
+        "provenance": {
+          "provisional": true,
+          "tuning_run": null,
+          "basis": "SPEC 11.5"
+        }
+      },
+      "strong_min_span_days": {
+        "value": "90",
+        "provenance": {
+          "provisional": true,
+          "tuning_run": null,
+          "basis": "SPEC 11.5"
+        }
+      },
+      "strong_min_counterparties": {
+        "value": "10",
+        "provenance": {
+          "provisional": true,
+          "tuning_run": null,
+          "basis": "SPEC 11.5"
+        }
+      }
+    },
+    "lifecycle": {
+      "live_window_days": {
+        "value": "90",
+        "provenance": {
+          "provisional": true,
+          "tuning_run": null,
+          "basis": "SPEC 11.7"
+        }
+      },
+      "dormant_window_days": {
+        "value": "180",
+        "provenance": {
+          "provisional": true,
+          "tuning_run": null,
+          "basis": "SPEC 11.7"
+        }
+      }
+    },
+    "interval_method": "normal_approx",
+    "confidence_transform": "one_minus_relative_width"
+  }
+}

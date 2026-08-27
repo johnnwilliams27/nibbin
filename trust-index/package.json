@@ -1,0 +1,26 @@
+{
+  "name": "trust-index",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Agent Trust Index: ERC-8004 agent scores with uncertainty in-band. See SPEC.md.",
+  "license": "Apache-2.0",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "typecheck": "pnpm -r --if-present run typecheck",
+    "test": "pnpm -r --if-present run test",
+    "lint": "pnpm -r --if-present run lint",
+    "build": "pnpm -r --if-present run build",
+    "migrate": "pnpm --filter @trust-index/db run migrate",
+    "copylint": "node scripts/copylint.mjs",
+    "fixtures:generate": "tsx fixtures/generate.ts"
+  },
+  "devDependencies": {
+    "@trust-index/types": "workspace:*",
+    "tsx": "4.20.6",
+    "typescript": "5.7.3",
+    "vitest": "3.2.4"
+  }
+}
