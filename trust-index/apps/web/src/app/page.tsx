@@ -6,7 +6,7 @@ import { formatConfidence, formatNEff } from "@/lib/format";
 export default async function HomePage() {
   const dataSource = getDataSource();
   const worked = await dataSource.getAgent("base", "9006"); // strong-diverse
-  const thin = await dataSource.getAgent("base", "9003"); // thin-same-day-cohort
+  const thin = await dataSource.getAgent("base", "9008"); // bulk-reviewer: thin tier, low confidence
 
   return (
     <main className="shell">
@@ -53,10 +53,11 @@ export default async function HomePage() {
         <div className="section">
           <span className="field-label">Same register, thinner evidence</span>
           <p>
-            Agent <code>base/{thin.agent_id}</code> carries a similar point estimate on a much
-            smaller effective sample. Two same-day reviewer wallets narrow the raw average, but the
-            estimator shrinks the score toward the prior and widens the interval instead of reporting
-            the raw figure as fact.
+            Agent <code>base/{thin.agent_id}</code> carries a similar-looking point estimate on a
+            much smaller effective sample: one of its five reviewers pushes ten thousand reviews
+            across nine thousand-plus agents, a velocity the estimator down-weights on sight. The
+            remaining evidence is real but thin, so the interval stays wide instead of reporting the
+            raw average as fact.
           </p>
           <IntervalFigure
             low={thin.score.score_low ?? 0}

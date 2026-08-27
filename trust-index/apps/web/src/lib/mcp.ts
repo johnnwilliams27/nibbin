@@ -86,7 +86,8 @@ export async function handleMcpCall(
         const limit = clampLimit(typeof limitRaw === "number" ? limitRaw : null);
         const page = await dataSource.getAgentFeedback(chain, agentId, { cursor, limit });
         if (!page) return notFound(id, `no agent ${chain}/${agentId}`);
-        const meta = buildMeta({ indexedThroughBlock: 0, indexedThroughTs: new Date(0).toISOString() });
+        const indexed = await dataSource.getIndexedThrough();
+        const meta = buildMeta({ indexedThroughBlock: indexed.block, indexedThroughTs: indexed.ts });
         return { jsonrpc: "2.0", id, result: buildEnvelope(page, meta) };
       }
 
@@ -110,7 +111,8 @@ export async function handleMcpCall(
         if (!chain || !address) return invalidParams(id, "chain and address are required");
         const reviewer = await dataSource.getReviewer(chain, address);
         if (!reviewer) return notFound(id, `no reviewer ${chain}/${address}`);
-        const meta = buildMeta({ indexedThroughBlock: 0, indexedThroughTs: new Date(0).toISOString() });
+        const indexed = await dataSource.getIndexedThrough();
+        const meta = buildMeta({ indexedThroughBlock: indexed.block, indexedThroughTs: indexed.ts });
         return { jsonrpc: "2.0", id, result: buildEnvelope(reviewer, meta) };
       }
 
@@ -124,7 +126,8 @@ export async function handleMcpCall(
         const agents = (await Promise.all(ids.map((agentId) => dataSource.getAgent(chain, agentId)))).filter(
           (a): a is NonNullable<typeof a> => a !== null,
         );
-        const meta = buildMeta({ indexedThroughBlock: 0, indexedThroughTs: new Date(0).toISOString() });
+        const indexed = await dataSource.getIndexedThrough();
+        const meta = buildMeta({ indexedThroughBlock: indexed.block, indexedThroughTs: indexed.ts });
         return { jsonrpc: "2.0", id, result: buildEnvelope({ agents }, meta) };
       }
 
@@ -133,7 +136,8 @@ export async function handleMcpCall(
         if (!chain) return invalidParams(id, "chain is required");
         const stats = await dataSource.getStats(chain);
         if (!stats) return notFound(id, `chain not indexed: ${chain}`);
-        const meta = buildMeta({ indexedThroughBlock: stats.indexed_through_block, indexedThroughTs: new Date(0).toISOString() });
+        const indexed = await dataSource.getIndexedThrough();
+        const meta = buildMeta({ indexedThroughBlock: stats.indexed_through_block, indexedThroughTs: indexed.ts });
         return { jsonrpc: "2.0", id, result: buildEnvelope(stats, meta) };
       }
 

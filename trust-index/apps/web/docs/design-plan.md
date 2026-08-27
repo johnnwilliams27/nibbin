@@ -71,8 +71,11 @@ is set in the mono face and links to its derivation. No hero, no feature
 grid, no CTA banner: the homepage states the thesis in prose, shows one worked
 interval figure from a committed fixture, and links to the methodology.
 
-Navigation is a single top bar: plain wordmark on the left, five text links on
-the right. The favicon is the wordmark initial.
+Navigation is a single top bar: plain wordmark on the left, text links on the
+right for every static top-level page (Methodology, Stats, Dumps; three, not
+five, once Agent and Reviewer turned out to be per-record detail pages with
+no sensible static nav entry - see docs/NOTES-track-d.md). The favicon is the
+wordmark initial.
 
 ## Signature element: the interval
 

@@ -21,6 +21,8 @@ export type ScoredResult = {
 };
 
 type EngineModule = {
+  /** The published Track B surface: score(snapshot) returning the result plus its canonical bytes. */
+  score?: (snapshot: AgentSnapshot) => { result: ScoreResult; canonicalBytes: string };
   computeScore?: (snapshot: AgentSnapshot) => ScoreResult;
   default?: (snapshot: AgentSnapshot) => ScoreResult;
 };
@@ -50,7 +52,13 @@ async function loadEngine(): Promise<((snapshot: AgentSnapshot) => ScoreResult) 
   if (cachedEngineFn !== undefined) return cachedEngineFn;
   try {
     const mod = (await import(SCORING_SPECIFIER)) as EngineModule;
-    const fn = mod.computeScore ?? mod.default;
+    let fn: ((snapshot: AgentSnapshot) => ScoreResult) | undefined;
+    if (typeof mod.score === "function") {
+      const engineScore = mod.score;
+      fn = (snapshot) => engineScore(snapshot).result;
+    } else {
+      fn = mod.computeScore ?? mod.default;
+    }
     if (typeof fn !== "function") {
       cachedEngineFn = null;
       return null;
