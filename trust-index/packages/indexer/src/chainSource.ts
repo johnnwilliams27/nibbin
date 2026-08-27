@@ -34,7 +34,7 @@ export type GetLogsParams = {
    * Standard eth_getLogs topic filter: each position is either a single
    * topic, a list of alternatives at that position (OR), or null (any).
    */
-  topics?: ReadonlyArray<string | readonly string[] | null>;
+  topics?: ReadonlyArray<string | readonly string[] | null> | undefined;
 };
 
 export interface ChainSource {

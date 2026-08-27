@@ -7,7 +7,7 @@
  * thin pass-throughs to viem, verified only by ChainSource conformance
  * against SimulatedChainSource elsewhere.
  */
-import { createPublicClient, http, type Chain, type Log, type PublicClient } from "viem";
+import { createPublicClient, http, numberToHex, type Chain, type PublicClient } from "viem";
 import type { BlockRef, ChainSource, GetLogsParams, RawLog } from "./chainSource.js";
 
 export class ViemChainSourceConfigError extends Error {}
@@ -23,18 +23,26 @@ export function resolveRpcUrl(rpcUrlEnvKey: string, env: NodeJS.ProcessEnv = pro
   return url;
 }
 
-function toRawLog(log: Log): RawLog {
-  if (log.blockNumber === null || log.blockHash === null || log.logIndex === null) {
-    throw new Error("viem log missing block context (pending log)");
-  }
+/** Raw eth_getLogs JSON-RPC response shape (hex-encoded numeric fields). */
+type RpcLog = {
+  address: string;
+  topics: string[];
+  data: string;
+  blockNumber: string;
+  blockHash: string;
+  transactionHash: string | null;
+  logIndex: string;
+};
+
+function toRawLog(log: RpcLog): RawLog {
   return {
     address: log.address,
     topics: log.topics,
     data: log.data,
-    blockNumber: Number(log.blockNumber),
+    blockNumber: Number(BigInt(log.blockNumber)),
     blockHash: log.blockHash,
     transactionHash: log.transactionHash ?? "",
-    logIndex: log.logIndex,
+    logIndex: Number(BigInt(log.logIndex)),
   };
 }
 
@@ -73,14 +81,25 @@ export class ViemChainSource implements ChainSource {
     };
   }
 
+  /**
+   * Raw eth_getLogs via the RPC transport directly rather than viem's typed
+   * `getLogs` action: that action derives topics from an `event`/`args`
+   * pair, but ChainSource's contract is the standard RPC topic-array filter
+   * (SPEC 10.1's "chunk getLogs by block range"), which decode.ts already
+   * knows how to build from the ABI.
+   */
   async getLogs(params: GetLogsParams): Promise<RawLog[]> {
-    const logs = await this.client.getLogs({
-      address: params.address as `0x${string}`,
-      fromBlock: BigInt(params.fromBlock),
-      toBlock: BigInt(params.toBlock),
-      // viem's raw getLogs (no `event`) accepts the standard eth_getLogs topic array shape.
-      topics: params.topics as never,
-    });
-    return logs.map(toRawLog);
+    const logs = await this.client.request({
+      method: "eth_getLogs",
+      params: [
+        {
+          address: params.address,
+          fromBlock: numberToHex(params.fromBlock),
+          toBlock: numberToHex(params.toBlock),
+          topics: params.topics,
+        },
+      ],
+    } as never);
+    return (logs as RpcLog[]).map(toRawLog);
   }
 }

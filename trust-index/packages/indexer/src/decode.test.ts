@@ -15,14 +15,14 @@ describe("decodeIdentityLog", () => {
   it("decodes Registered", () => {
     const log = encodeLog(
       REGISTERED_EVENT,
-      { agentId: 42n, owner: "0x00000000000000000000000000000000000abc", tokenURI: "ipfs://cid" },
+      { agentId: 42n, owner: "0x000000000000000000000000000000000000abc1", tokenURI: "ipfs://cid" },
       ctx,
     );
     const decoded = decodeIdentityLog(log);
     expect(decoded).toEqual({
       kind: "registered",
       agentId: "42",
-      owner: "0x00000000000000000000000000000000000abc",
+      owner: "0x000000000000000000000000000000000000abc1",
       tokenUri: "ipfs://cid",
       log,
     });
@@ -39,7 +39,7 @@ describe("decodeIdentityLog", () => {
       ERC721_TRANSFER_EVENT,
       {
         from: "0x0000000000000000000000000000000000000000",
-        to: "0x00000000000000000000000000000000000abc",
+        to: "0x000000000000000000000000000000000000abc1",
         tokenId: 9003n,
       },
       ctx,
@@ -48,20 +48,20 @@ describe("decodeIdentityLog", () => {
     expect(decoded).toEqual({
       kind: "transfer",
       from: "0x0000000000000000000000000000000000000000",
-      to: "0x00000000000000000000000000000000000abc",
+      to: "0x000000000000000000000000000000000000abc1",
       agentId: "9003",
       log,
     });
   });
 
   it("returns null for an unrecognized topic0", () => {
-    const log = { ...encodeLog(REGISTERED_EVENT, { agentId: 1n, owner: "0x0", tokenURI: "" }, ctx) };
+    const log = { ...encodeLog(REGISTERED_EVENT, { agentId: 1n, owner: "0x0000000000000000000000000000000000000000", tokenURI: "" }, ctx) };
     const mutated = { ...log, topics: ["0xdeadbeef", ...log.topics.slice(1)] };
     expect(decodeIdentityLog(mutated)).toBeNull();
   });
 
   it("returns null for a log with no topics", () => {
-    expect(decodeIdentityLog({ ...encodeLog(REGISTERED_EVENT, { agentId: 1n, owner: "0x0", tokenURI: "" }, ctx), topics: [] })).toBeNull();
+    expect(decodeIdentityLog({ ...encodeLog(REGISTERED_EVENT, { agentId: 1n, owner: "0x0000000000000000000000000000000000000000", tokenURI: "" }, ctx), topics: [] })).toBeNull();
   });
 });
 

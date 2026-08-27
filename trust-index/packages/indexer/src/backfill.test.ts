@@ -52,8 +52,8 @@ describe("runBackfill", () => {
 
   it("halves the chunk size on a provider error and still completes", async () => {
     const chain = buildChain(50);
-    // Any getLogs request spanning more than 5 blocks fails once each time it's tried.
-    chain.injectGetLogsError({ maxRangeBlocks: 5, timesRemaining: 100 });
+    // Any getLogs request spanning more than 5 blocks fails, indefinitely (models a hard provider cap).
+    chain.injectGetLogsError({ maxRangeBlocks: 5 });
     const cursorStore = createInMemoryCursorStore();
     const logCache = createInMemoryLogCache();
     const processed: RawLog[] = [];

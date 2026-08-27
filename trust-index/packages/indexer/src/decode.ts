@@ -22,7 +22,7 @@ import {
 function topic0(event: Parameters<typeof encodeEventTopics>[0]["abi"][number]): string {
   const topics = encodeEventTopics({ abi: [event], eventName: (event as { name: string }).name });
   const t = topics[0];
-  if (t === undefined) throw new Error("encodeEventTopics returned no topic0");
+  if (typeof t !== "string") throw new Error("encodeEventTopics returned no concrete topic0");
   return t;
 }
 
@@ -67,7 +67,7 @@ export function decodeIdentityLog(log: RawLog): IdentityEvent | null {
   if (t0.toLowerCase() === TOPIC0.registered.toLowerCase()) {
     const d = decodeEventLog({ ...args, eventName: "Registered" });
     const a = d.args as unknown as { agentId: bigint; owner: string; tokenURI: string };
-    return { kind: "registered", agentId: a.agentId.toString(), owner: a.owner, tokenUri: a.tokenURI, log };
+    return { kind: "registered", agentId: a.agentId.toString(), owner: a.owner.toLowerCase(), tokenUri: a.tokenURI, log };
   }
   if (t0.toLowerCase() === TOPIC0.agentUriUpdated.toLowerCase()) {
     const d = decodeEventLog({ ...args, eventName: "AgentURIUpdated" });
@@ -77,7 +77,7 @@ export function decodeIdentityLog(log: RawLog): IdentityEvent | null {
   if (t0.toLowerCase() === TOPIC0.transfer.toLowerCase()) {
     const d = decodeEventLog({ ...args, eventName: "Transfer" });
     const a = d.args as unknown as { from: string; to: string; tokenId: bigint };
-    return { kind: "transfer", from: a.from, to: a.to, agentId: a.tokenId.toString(), log };
+    return { kind: "transfer", from: a.from.toLowerCase(), to: a.to.toLowerCase(), agentId: a.tokenId.toString(), log };
   }
   return null;
 }
@@ -130,7 +130,7 @@ export function decodeReputationLog(log: RawLog): ReputationEvent | null {
     return {
       kind: "newFeedback",
       agentId: a.agentId.toString(),
-      clientAddress: a.clientAddress,
+      clientAddress: a.clientAddress.toLowerCase(),
       feedbackIndex: Number(a.feedbackIndex),
       valueRaw: a.value.toString(),
       valueDecimals: a.valueDecimals,
@@ -148,7 +148,7 @@ export function decodeReputationLog(log: RawLog): ReputationEvent | null {
     return {
       kind: "feedbackRevoked",
       agentId: a.agentId.toString(),
-      clientAddress: a.clientAddress,
+      clientAddress: a.clientAddress.toLowerCase(),
       feedbackIndex: Number(a.feedbackIndex),
       log,
     };
