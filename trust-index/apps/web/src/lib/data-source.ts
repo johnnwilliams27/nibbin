@@ -75,4 +75,6 @@ export type DataSource = {
   getDumps(): Promise<DumpsIndexResponse>;
   getHealth(): Promise<HealthResponse>;
   listAgents(chainSlug: string): Promise<AgentSummary[]>;
+  /** Overall indexed-through position, for ApiMeta on endpoints with no single natural as_of. */
+  getIndexedThrough(): Promise<{ block: number; ts: string }>;
 };

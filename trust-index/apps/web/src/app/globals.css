@@ -1,0 +1,308 @@
+/* Log-sheet register (docs/design-plan.md). Tokens are rendered as CSS
+   custom properties by lib/tokens.ts::tokenCss() in the root layout; this
+   file is the only other place layout/type rules live. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans), system-ui, "Segoe UI", Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  overflow-wrap: break-word;
+}
+
+a {
+  color: var(--color-marker);
+}
+
+a:not(.plain) {
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+::selection {
+  background: var(--color-band);
+  color: var(--color-paper);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-marker);
+  outline-offset: 2px;
+}
+
+/* Every numeral on the site (SPEC 14.1: tabular figures mandatory). */
+.num,
+.num * {
+  font-family: var(--font-mono), ui-monospace, "Cascadia Mono", "Roboto Mono", monospace;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 600;
+  line-height: 1.25;
+  margin: 0 0 0.5em;
+}
+
+h1 {
+  font-size: 1.6rem;
+}
+h2 {
+  font-size: 1.25rem;
+}
+h3 {
+  font-size: 1.05rem;
+}
+
+p {
+  margin: 0 0 1em;
+  max-width: 68ch;
+}
+
+.wide {
+  max-width: none;
+}
+
+hr,
+.rule {
+  border: none;
+  border-top: 1px solid var(--color-hairline);
+  margin: 2rem 0;
+}
+
+.field-label {
+  display: block;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-slate);
+  margin-bottom: 0.4rem;
+}
+
+/* Layout shell */
+.shell {
+  max-width: 68ch;
+  margin: 0 auto;
+  padding: 0 1.25rem 4rem;
+}
+.shell.wide {
+  max-width: 92ch;
+}
+
+.topbar {
+  border-bottom: 1px solid var(--color-hairline);
+  margin-bottom: 2.5rem;
+}
+.topbar-inner {
+  max-width: 92ch;
+  margin: 0 auto;
+  padding: 1rem 1.25rem;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.wordmark {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 1.05rem;
+  color: var(--color-ink);
+  text-decoration: none;
+}
+.nav-links {
+  display: flex;
+  gap: 1.25rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 0.9rem;
+}
+.nav-links a {
+  color: var(--color-ink);
+  text-decoration: none;
+}
+.nav-links a:hover,
+.nav-links a:focus-visible {
+  color: var(--color-marker);
+  text-decoration: underline;
+}
+
+footer.site-footer {
+  border-top: 1px solid var(--color-hairline);
+  margin-top: 4rem;
+  padding-top: 1.5rem;
+  color: var(--color-slate);
+  font-size: 0.85rem;
+}
+
+/* Semantic tables */
+.data-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--color-hairline);
+}
+table.data-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.92rem;
+}
+table.data-table caption {
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-slate);
+  border-bottom: 1px solid var(--color-hairline);
+}
+table.data-table th,
+table.data-table td {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--color-hairline);
+  white-space: nowrap;
+}
+table.data-table thead th {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-slate);
+}
+table.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Interval / forest-plot element */
+.interval-figure {
+  margin: 1.25rem 0;
+}
+.interval-track {
+  position: relative;
+  height: 2.75rem;
+}
+.interval-axis {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: var(--color-hairline);
+}
+.interval-tick {
+  position: absolute;
+  top: calc(50% - 4px);
+  width: 1px;
+  height: 8px;
+  background: var(--color-hairline);
+}
+.interval-band {
+  position: absolute;
+  top: calc(50% - 5px);
+  height: 10px;
+  background: var(--color-band);
+  border-radius: 1px;
+  transform-origin: var(--origin-x, 50%) center;
+  transform: scaleX(1);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .interval-band {
+    animation: interval-draw-in 420ms ease-out;
+  }
+}
+@keyframes interval-draw-in {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+.interval-marker {
+  position: absolute;
+  top: calc(50% - 9px);
+  width: 2px;
+  height: 18px;
+  background: var(--color-marker);
+}
+.interval-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  color: var(--color-slate);
+  margin-top: 0.35rem;
+}
+.interval-neff {
+  color: var(--color-slate);
+  font-size: 0.85rem;
+  margin-top: 0.35rem;
+}
+
+.badge-quiet {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border: 1px solid var(--color-hairline);
+  border-radius: 2px;
+  color: var(--color-slate);
+  font-size: 0.78rem;
+}
+
+.suppressed-block {
+  border: 1px solid var(--color-hairline);
+  padding: 1.25rem;
+  margin: 1.25rem 0;
+}
+
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+@media (max-width: 640px) {
+  .two-col {
+    grid-template-columns: 1fr;
+  }
+  table.data-table th,
+  table.data-table td {
+    white-space: normal;
+  }
+}
+
+.section {
+  margin: 2.5rem 0;
+}
+
+.kv-list {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.35rem 1rem;
+  font-size: 0.92rem;
+}
+.kv-list dt {
+  color: var(--color-slate);
+}
+.kv-list dd {
+  margin: 0;
+}
