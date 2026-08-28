@@ -3,10 +3,20 @@
  * same ApiEnvelope shape and in-band confidence rules as the REST endpoints
  * (a score object always carries confidence; nothing is a side channel).
  */
-import { MCP_TOOLS, type McpToolName } from "@trust-index/types";
+import { MCP_TOOLS, type CoverageTier, type McpToolName } from "@trust-index/types";
 import type { DataSource } from "./data-source.js";
 import { buildEnvelope, buildMeta } from "./envelope.js";
 import { clampLimit } from "./pagination.js";
+
+/** The weakest coverage tier in a set, so a batch response discloses on its least-evidenced member. */
+function lowestCoverageTier(tiers: CoverageTier[]): CoverageTier | null {
+  const order: CoverageTier[] = ["none", "thin", "moderate", "strong"];
+  let worst: CoverageTier | null = null;
+  for (const t of tiers) {
+    if (worst === null || order.indexOf(t) < order.indexOf(worst)) worst = t;
+  }
+  return worst;
+}
 
 export type JsonRpcRequest = {
   jsonrpc: "2.0";
@@ -34,9 +44,17 @@ function str(params: Record<string, unknown> | undefined, key: string): string |
   return typeof v === "string" && v.length > 0 ? v : null;
 }
 
-/** recompute is the one expensive MCP tool (mirrors GET .../recompute, SPEC 13). */
+/** Maximum agents one compare_agents call may fan out to (SPEC 16: hard pagination caps). */
+export const MAX_COMPARE_AGENTS = 50;
+
+/**
+ * recompute and compare_agents are the expensive MCP tools: recompute mirrors
+ * GET .../recompute, and compare_agents fans out one lookup and score per id,
+ * so both are charged against the 10/min bucket, not the 60/min anonymous one
+ * (SPEC 13).
+ */
 export function isExpensiveTool(method: string): boolean {
-  return method === "recompute";
+  return method === "recompute" || method === "compare_agents";
 }
 
 /** Which rate-limit bucket a tool call is charged against (SPEC 13). */
@@ -122,12 +140,23 @@ export async function handleMcpCall(
         if (!chain || !Array.isArray(idsRaw) || idsRaw.length === 0) {
           return invalidParams(id, "chain and a non-empty ids array are required");
         }
+        if (idsRaw.length > MAX_COMPARE_AGENTS) {
+          return invalidParams(id, `ids exceeds the maximum of ${MAX_COMPARE_AGENTS} per call`);
+        }
         const ids = idsRaw.filter((x): x is string => typeof x === "string");
         const agents = (await Promise.all(ids.map((agentId) => dataSource.getAgent(chain, agentId)))).filter(
           (a): a is NonNullable<typeof a> => a !== null,
         );
         const indexed = await dataSource.getIndexedThrough();
-        const meta = buildMeta({ indexedThroughBlock: indexed.block, indexedThroughTs: indexed.ts });
+        // A multi-agent response must still carry the coverage disclaimer if ANY
+        // returned agent is none or thin (SPEC 13/3.5), so a caller reading a
+        // batch cannot miss it. Pass the weakest tier present to buildMeta.
+        const weakestTier = lowestCoverageTier(agents.map((a) => a.score.coverage_tier));
+        const meta = buildMeta({
+          indexedThroughBlock: indexed.block,
+          indexedThroughTs: indexed.ts,
+          ...(weakestTier ? { coverageTier: weakestTier } : {}),
+        });
         return { jsonrpc: "2.0", id, result: buildEnvelope({ agents }, meta) };
       }
 

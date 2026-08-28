@@ -6,10 +6,23 @@ import { rateLimiter } from "./rate-limiter-instance.js";
 
 const CORS_HEADERS = { "Access-Control-Allow-Origin": "*" } as const;
 
+/**
+ * Rate-limit bucket key: the caller's IP, taken ONLY from a header the
+ * platform edge sets to the true connecting address and that a client cannot
+ * append to (x-real-ip, x-vercel-forwarded-for). x-forwarded-for is never used
+ * for the key: its leftmost hop is client-controlled, so rotating it per
+ * request was a trivial bypass of the SPEC 13 limits that SPEC 16 relies on to
+ * protect the expensive endpoints. When no trusted header is present (a
+ * misconfigured deployment) every such caller shares one bucket, which fails
+ * safe by over-limiting rather than handing each request a fresh allowance.
+ */
 export function clientKey(request: Request): string {
-  const fwd = request.headers.get("x-forwarded-for");
-  if (fwd) return fwd.split(",")[0]!.trim();
-  return "anonymous";
+  const trusted = request.headers.get("x-real-ip") ?? request.headers.get("x-vercel-forwarded-for");
+  if (trusted) {
+    const first = trusted.split(",")[0]!.trim();
+    if (first) return first;
+  }
+  return "untrusted-shared";
 }
 
 function rateLimitHeaders(r: ReturnType<typeof rateLimiter.consume>): Record<string, string> {
