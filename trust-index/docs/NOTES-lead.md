@@ -53,6 +53,44 @@ packages/types, fixtures/, and this file. Types change only by lead commit.
   indexer 60, web 55) plus 31 forge tests; copylint and eslint clean;
   next build clean offline.
 
+## Adversarial review pass (2026-08-28)
+
+Ran red-team and logic-skeptic style reviews over the network, math, and
+contract surfaces. Every finding below was independently reproduced against
+the code before any fix. Reports archived under review/.
+
+Fixed and committed:
+- Scoring integrity (3af566a): inputs_hash made invariant to array order and
+  to decimal spelling (was a real anchoring-reproducibility gap); prototype
+  pollution via a crafted tag1; prior-provenance validation fails closed;
+  anti-flooding cap no longer negates time decay; degenerate-prior confidence
+  collapse; k=0 divide-by-zero; graceful handling of future timestamps,
+  missing reviewer rows, duplicate feedback, revoked-only lifecycle, and a
+  malformed CLI input. New heavy-decay-flood fixture plus 7 scoring and other
+  regression tests.
+- API (fcab2ab): rate-limit key no longer trusts client-controlled
+  x-forwarded-for; compare_agents capped, charged to the expensive bucket,
+  and disclosure-carrying.
+- Indexer (16212fd): metadata resolver blocks SSRF to private/loopback/
+  link-local/cloud-metadata hosts and rejects on Content-Length before
+  buffering.
+- Contracts (24676e6): Merkle leaf/node domain separation closes the
+  second-preimage weakness; empty proof restricted to single-leaf trees.
+
+Considered and deliberately deferred (documented, not silently dropped):
+- Cohort-share denominator counts self while numerator excludes it, so the
+  max cohort penalty is never quite reached. A spec-alignment change, but it
+  is entangled with the thin-cohort fixture tuning and belongs with the
+  §12 calibration sweep, not an ad-hoc edit.
+- Confidence uses the unclamped interval width while the published interval
+  is clamped: defensible and documented (SPEC 11.1), left as-is.
+- The /mcp route parses the request body before the rate-limit check
+  (volumetric DoS), which SECURITY.md places out of scope.
+
+Post-fix workspace state: 325 vitest tests + 33 forge tests green;
+typecheck, eslint, and copylint clean; db round-trip and the web D1
+byte-for-byte gate reconcile against the new hashes.
+
 ## Open requests to the author
 
 - Project name (SPEC 1) still unresolved; npm scope `@trust-index` is a
