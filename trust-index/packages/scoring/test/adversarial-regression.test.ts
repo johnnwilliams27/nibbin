@@ -41,6 +41,30 @@ describe("prototype-polluting tag1 (P1)", () => {
       expect(() => score(s)).not.toThrow();
     }
   });
+
+  it("keeps a __proto__-named context as an own key in the output (second-pass F-NEW-2)", () => {
+    const s = load("strong-diverse");
+    for (const f of s.feedback) f.tag1 = "__proto__";
+    const { result } = score(s);
+    expect(Object.keys(result.scores_by_context)).toContain("__proto__");
+  });
+
+  it("synthesizes rather than returns the prototype for a __proto__ reviewer address (second-pass F-NEW-3)", () => {
+    const s = load("thin-same-day-cohort");
+    for (const f of s.feedback) f.client_address = "__proto__" as typeof f.client_address;
+    expect(() => score(s)).not.toThrow();
+    expect(score(s).result.signals.synthesized_reviewer_count).toBeGreaterThan(0);
+  });
+});
+
+describe("value_raw grammar is consistent between scoring and hashing (second-pass F-NEW-4)", () => {
+  it("rejects a non-decimal value_raw the same way on both paths", () => {
+    const s = load("strong-diverse");
+    s.feedback[0]!.value_raw = "0x1f";
+    // Both score() (via normalize) and the hash reject it; neither silently
+    // accepts a hex magnitude that the other would refuse.
+    expect(() => score(s)).toThrow();
+  });
 });
 
 describe("duplicate feedback (F7)", () => {

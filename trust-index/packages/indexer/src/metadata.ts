@@ -28,28 +28,49 @@ export type FetchResult = {
  */
 export type Fetcher = (url: string, init: { signal: AbortSignal }) => Promise<FetchResult>;
 
+/** True for an IPv4 dotted-quad that is private, loopback, link-local, or reserved. */
+function isBlockedIPv4(a: number, b: number, c: number, d: number): boolean {
+  if ([a, b, c, d].some((n) => n > 255)) return true;
+  if (a === 0 || a === 127) return true; // this-host, loopback
+  if (a === 10) return true; // private
+  if (a === 172 && b >= 16 && b <= 31) return true; // private
+  if (a === 192 && b === 168) return true; // private
+  if (a === 169 && b === 254) return true; // link-local, includes 169.254.169.254 cloud metadata
+  if (a === 100 && b >= 64 && b <= 127) return true; // carrier-grade NAT
+  if (a >= 224) return true; // multicast / reserved / broadcast
+  return false;
+}
+
+/**
+ * True for an IPv6 literal (WHATWG-normalized, brackets already stripped) that
+ * must not be fetched. Any embedded-IPv4 form is blocked outright rather than
+ * pattern-matched, because new URL() renders IPv4-mapped addresses in hex
+ * (::ffff:a9fe:a9fe for 169.254.169.254), which a dotted-quad check would miss.
+ */
+function isBlockedIPv6(addr: string): boolean {
+  if (addr === "::" || addr === "::1") return true; // unspecified, loopback
+  if (/^fe[89ab]/.test(addr)) return true; // link-local fe80::/10
+  if (/^f[cd]/.test(addr)) return true; // unique-local fc00::/7
+  if (addr.startsWith("64:ff9b:")) return true; // NAT64
+  // IPv4-mapped (::ffff:...) or IPv4-compatible (::a.b.c.d), in either the hex
+  // or dotted rendering: block every embedded-IPv4 form.
+  if (addr.startsWith("::ffff:") || (addr.startsWith("::") && addr.includes("."))) return true;
+  return false;
+}
+
 /** Host literals that must never be fetched server-side (SSRF, SPEC 16). */
 function isBlockedHost(hostname: string): boolean {
-  const h = hostname.toLowerCase().replace(/^\[|\]$/g, "");
-  if (h === "localhost" || h.endsWith(".localhost") || h === "" ) return true;
-  // IPv6 loopback and unique-local / link-local.
-  if (h === "::1" || h === "::" ) return true;
-  if (h.startsWith("fc") || h.startsWith("fd") || h.startsWith("fe80:")) return true;
-  // IPv4-mapped IPv6 (::ffff:a.b.c.d): fall through to the IPv4 check on the tail.
-  const v4 = h.startsWith("::ffff:") ? h.slice("::ffff:".length) : h;
-  const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(v4);
-  if (m) {
-    const o = m.slice(1).map(Number);
-    if (o.some((n) => n > 255)) return true;
-    const [a, b] = o as [number, number, number, number];
-    if (a === 0 || a === 127) return true; // this-host, loopback
-    if (a === 10) return true; // private
-    if (a === 172 && b >= 16 && b <= 31) return true; // private
-    if (a === 192 && b === 168) return true; // private
-    if (a === 169 && b === 254) return true; // link-local, includes 169.254.169.254 cloud metadata
-    if (a === 100 && b >= 64 && b <= 127) return true; // carrier-grade NAT
-    if (a >= 224) return true; // multicast / reserved
+  const h = hostname.toLowerCase();
+  if (h === "" || h === "localhost" || h.endsWith(".localhost")) return true;
+  // IPv6 literals keep their brackets in a WHATWG hostname; only then apply the
+  // IPv6 rules, so a DNS name like "fc2.com" is not mistaken for an fc00::/7 host.
+  if (h.startsWith("[") && h.endsWith("]")) {
+    return isBlockedIPv6(h.slice(1, -1));
   }
+  const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(h);
+  if (m) return isBlockedIPv4(Number(m[1]), Number(m[2]), Number(m[3]), Number(m[4]));
+  // A DNS hostname: the production fetcher must resolve, pin, and re-validate
+  // per the Fetcher doc comment, since this module cannot resolve DNS.
   return false;
 }
 

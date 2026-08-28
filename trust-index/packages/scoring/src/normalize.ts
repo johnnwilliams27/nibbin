@@ -26,12 +26,24 @@ const VALUE_TO_INNER = 10n ** BigInt(INNER - PRECISION.value);
  * Normalize a feedback entry's value to [0,1] at INNER precision, or null
  * when the entry is unusable (uninferable or degenerate scale).
  */
+/**
+ * Parse a decimal integer string to bigint. Rejects the 0x/0o/0b and
+ * whitespace forms BigInt() would otherwise accept, so this module and the
+ * inputs_hash grammar (canonicalDecimal) agree on what a raw value is: a
+ * malformed value_raw fails the same way on both the scoring and hashing
+ * paths instead of scoring cleanly and then throwing at the hash.
+ */
+function toDecimalBigInt(s: string): bigint {
+  if (!/^-?\d+$/.test(s)) throw new SyntaxError(`not a decimal integer: ${JSON.stringify(s)}`);
+  return BigInt(s);
+}
+
 export function normalizeValue(entry: FeedbackEntry): bigint | null {
   if (entry.detected_scale === null) return null;
-  const min = BigInt(entry.detected_scale.min_raw);
-  const max = BigInt(entry.detected_scale.max_raw);
+  const min = toDecimalBigInt(entry.detected_scale.min_raw);
+  const max = toDecimalBigInt(entry.detected_scale.max_raw);
   if (max <= min) return null;
-  const raw = BigInt(entry.value_raw);
+  const raw = toDecimalBigInt(entry.value_raw);
   const clamped = raw < min ? min : raw > max ? max : raw;
   const atValuePrecision = divRoundHalfUp((clamped - min) * VALUE_SCALE, max - min);
   return atValuePrecision * VALUE_TO_INNER;

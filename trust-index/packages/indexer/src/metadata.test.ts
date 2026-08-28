@@ -132,10 +132,32 @@ describe("resolveMetadata", () => {
         "http://192.168.1.1/x",
         "http://[::1]/x",
         "http://172.16.0.1/x",
+        // Alternate IPv4 encodings that new URL() canonicalizes to a dotted quad.
+        "http://2130706433/x",
+        "http://0x7f.0.0.1/x",
+        "http://127.1/x",
+        // IPv4-mapped IPv6 literals, which new URL() renders in hex and a
+        // dotted-quad check misses (second-pass F-NEW-1).
+        "http://[::ffff:169.254.169.254]/latest/meta-data/",
+        "http://[::ffff:127.0.0.1]/x",
+        "http://[::ffff:10.0.0.5]/x",
+        "http://[fe80::1]/x",
+        "http://[fc00::1]/x",
       ]) {
         const result = await resolveMetadata(uri, opts);
         expect(result.status === "unreachable" || result.status === "malformed").toBe(true);
       }
+    });
+
+    it("does not over-block a public hostname that begins with fc/fd", async () => {
+      // fc2.com is a DNS name, not an fc00::/7 IPv6 literal.
+      const result = await resolveMetadata("https://fc2.com/meta.json", {
+        gatewayUrl: GATEWAY,
+        timeoutMs: 1000,
+        maxBytes: 256_000,
+        fetcher: okJson(VALID_METADATA),
+      });
+      expect(result.status).toBe("resolved");
     });
 
     it("blocks a non-http(s) resolved scheme", async () => {

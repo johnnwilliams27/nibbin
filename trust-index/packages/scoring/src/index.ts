@@ -256,8 +256,10 @@ export function score(snapshot: AgentSnapshot): { result: ScoreResult; canonical
   // corroboration) and surface the count as a signal.
   let synthesizedReviewerCount = 0;
   const reviewerSnapshots: ReviewerSnapshot[] = reviewerAddresses.map((address) => {
-    const r = snapshot.reviewers[address];
-    if (r !== undefined) return r;
+    // Own-key check, not a bracket read: an address equal to an inherited
+    // member ("__proto__") must take the synthesize path, not return the
+    // prototype object. Consistent with the by_context lookup above.
+    if (Object.hasOwn(snapshot.reviewers, address)) return snapshot.reviewers[address]!;
     synthesizedReviewerCount += 1;
     return {
       address: address as ReviewerSnapshot["address"],
@@ -279,7 +281,10 @@ export function score(snapshot: AgentSnapshot): { result: ScoreResult; canonical
   const globalGroup = scoreGroup(currentEpochFeedback, priorGlobalFx, c, asOfSec, undecayedWeightByAddress, forceSuppressed);
 
   const tags = [...new Set(currentEpochFeedback.map((f) => f.tag1))].sort();
-  const scoresByContext: Record<string, CanonicalValue> = {};
+  // Null-prototype so a tag1 equal to an inherited member ("__proto__") is
+  // stored as an own key and cannot invoke a prototype setter that would drop
+  // the context from the canonical output.
+  const scoresByContext: Record<string, CanonicalValue> = Object.create(null);
   for (const tag of tags) {
     const entries = currentEpochFeedback.filter((f) => f.tag1 === tag);
     // Object.hasOwn, not `by_context[tag] ?? global`: tag1 is decoded verbatim
