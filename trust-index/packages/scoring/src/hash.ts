@@ -14,43 +14,70 @@
  *   methodology_version, interval_method, confidence_transform
  *
  * Excluded: snapshot_version (shape, not scoring input) and all constant
- * provenance prose (provisional flags, tuning_run, basis). Two snapshots
- * that differ only in provenance prose score identically and hash
- * identically; a changed constant value changes the hash.
+ * provenance prose (the provisional flags, tuning_run, and the per-constant
+ * `basis` rationale strings; distinct from the prior's `priors.basis`
+ * provenance enum, which IS included). Two snapshots that differ only in
+ * constant provenance prose score identically and hash identically; a changed
+ * constant value changes the hash.
  */
 import { createHash } from "node:crypto";
 import type { AgentSnapshot, CanonicalValue, MethodologyConstants } from "@trust-index/types";
 import { canonicalJson } from "@trust-index/types";
 
+/**
+ * Normalize a decimal string so equal values hash equally regardless of
+ * trailing zeros or an integer-versus-fixed-point spelling ("5", "5.00" and
+ * "5.000000000000" all hash the same). Without this the anchored inputs_hash
+ * (SPEC 20.1) would depend on how a constant happened to be typed, breaking
+ * the reproduction guarantee for a value the score itself is invariant to.
+ */
+function canonicalDecimal(s: string): string {
+  if (!/^-?\d+(\.\d+)?$/.test(s)) {
+    throw new SyntaxError(`not a decimal string: ${JSON.stringify(s)}`);
+  }
+  const neg = s.startsWith("-");
+  const body = neg ? s.slice(1) : s;
+  const dot = body.indexOf(".");
+  const intPart = (dot === -1 ? body : body.slice(0, dot)).replace(/^0+(?=\d)/, "");
+  const fracPart = (dot === -1 ? "" : body.slice(dot + 1)).replace(/0+$/, "");
+  const out = fracPart.length > 0 ? `${intPart}.${fracPart}` : intPart;
+  return out === "0" || out === "" ? "0" : neg ? `-${out}` : out;
+}
+
+function cmp(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
 function constantValues(c: MethodologyConstants): CanonicalValue {
+  const d = canonicalDecimal;
   return {
     methodology_version: c.methodology_version,
-    shrinkage_k: c.shrinkage_k.value,
-    decay_half_life_days: c.decay_half_life_days.value,
+    shrinkage_k: d(c.shrinkage_k.value),
+    decay_half_life_days: d(c.decay_half_life_days.value),
     weight: {
-      age_ramp_days: c.weight.age_ramp_days.value,
-      age_floor: c.weight.age_floor.value,
-      cohort_window_hours: c.weight.cohort_window_hours.value,
-      cohort_penalty: c.weight.cohort_penalty.value,
-      common_funder_multiplier: c.weight.common_funder_multiplier.value,
-      velocity_threshold_per_day: c.weight.velocity_threshold_per_day.value,
-      velocity_multiplier: c.weight.velocity_multiplier.value,
-      repeat_bonus_multiplier: c.weight.repeat_bonus_multiplier.value,
-      repeat_bonus_cap: c.weight.repeat_bonus_cap.value,
-      commerce_multiplier: c.weight.commerce_multiplier.value,
-      portfolio_penalty: c.weight.portfolio_penalty.value,
-      weight_floor: c.weight.weight_floor.value,
+      age_ramp_days: d(c.weight.age_ramp_days.value),
+      age_floor: d(c.weight.age_floor.value),
+      cohort_window_hours: d(c.weight.cohort_window_hours.value),
+      cohort_penalty: d(c.weight.cohort_penalty.value),
+      common_funder_multiplier: d(c.weight.common_funder_multiplier.value),
+      velocity_threshold_per_day: d(c.weight.velocity_threshold_per_day.value),
+      velocity_multiplier: d(c.weight.velocity_multiplier.value),
+      repeat_bonus_multiplier: d(c.weight.repeat_bonus_multiplier.value),
+      repeat_bonus_cap: d(c.weight.repeat_bonus_cap.value),
+      commerce_multiplier: d(c.weight.commerce_multiplier.value),
+      portfolio_penalty: d(c.weight.portfolio_penalty.value),
+      weight_floor: d(c.weight.weight_floor.value),
     },
-    suppression_neff_floor: c.suppression_neff_floor.value,
+    suppression_neff_floor: d(c.suppression_neff_floor.value),
     tiers: {
-      thin_neff_max: c.tiers.thin_neff_max.value,
-      moderate_neff_max: c.tiers.moderate_neff_max.value,
-      strong_min_span_days: c.tiers.strong_min_span_days.value,
-      strong_min_counterparties: c.tiers.strong_min_counterparties.value,
+      thin_neff_max: d(c.tiers.thin_neff_max.value),
+      moderate_neff_max: d(c.tiers.moderate_neff_max.value),
+      strong_min_span_days: d(c.tiers.strong_min_span_days.value),
+      strong_min_counterparties: d(c.tiers.strong_min_counterparties.value),
     },
     lifecycle: {
-      live_window_days: c.lifecycle.live_window_days.value,
-      dormant_window_days: c.lifecycle.dormant_window_days.value,
+      live_window_days: d(c.lifecycle.live_window_days.value),
+      dormant_window_days: d(c.lifecycle.dormant_window_days.value),
     },
     interval_method: c.interval_method,
     confidence_transform: c.confidence_transform,
@@ -71,33 +98,46 @@ export function scoringInputsCanonical(s: AgentSnapshot): string {
     metadata_status: s.metadata_status,
     declared_endpoints: s.declared_endpoints,
     agent_wallet_active: s.agent_wallet_active,
-    transfers: s.transfers.map((t) => ({
-      from_address: t.from_address,
-      to_address: t.to_address,
-      block: t.block,
-      ts: t.ts,
-      tx_hash: t.tx_hash,
-    })),
-    transfer_linkages: s.transfer_linkages.map((l) => ({
-      transfer_index: l.transfer_index,
-      same_funder: l.same_funder,
-      bidirectional_history: l.bidirectional_history,
-    })),
-    feedback: s.feedback.map((f) => ({
-      client_address: f.client_address,
-      feedback_index: f.feedback_index,
-      value_raw: f.value_raw,
-      value_decimals: f.value_decimals,
-      tag1: f.tag1,
-      tag2: f.tag2,
-      block: f.block,
-      ts: f.ts,
-      is_revoked: f.is_revoked,
-      detected_scale:
-        f.detected_scale === null
-          ? null
-          : { min_raw: f.detected_scale.min_raw, max_raw: f.detected_scale.max_raw },
-    })),
+    // Every array is sorted into a canonical order before hashing. The score
+    // is fully order-independent (SPEC 22), so its anchored inputs_hash must be
+    // too, or two honest reproducers of the same evidence would compute
+    // different roots.
+    transfers: [...s.transfers]
+      .sort((a, b) => a.block - b.block || cmp(a.tx_hash, b.tx_hash))
+      .map((t) => ({
+        from_address: t.from_address,
+        to_address: t.to_address,
+        block: t.block,
+        ts: t.ts,
+        tx_hash: t.tx_hash,
+      })),
+    transfer_linkages: [...s.transfer_linkages]
+      .sort((a, b) => a.transfer_index - b.transfer_index)
+      .map((l) => ({
+        transfer_index: l.transfer_index,
+        same_funder: l.same_funder,
+        bidirectional_history: l.bidirectional_history,
+      })),
+    feedback: [...s.feedback]
+      .sort((a, b) => cmp(a.client_address, b.client_address) || a.feedback_index - b.feedback_index)
+      .map((f) => ({
+        client_address: f.client_address,
+        feedback_index: f.feedback_index,
+        value_raw: canonicalDecimal(f.value_raw),
+        value_decimals: f.value_decimals,
+        tag1: f.tag1,
+        tag2: f.tag2,
+        block: f.block,
+        ts: f.ts,
+        is_revoked: f.is_revoked,
+        detected_scale:
+          f.detected_scale === null
+            ? null
+            : {
+                min_raw: canonicalDecimal(f.detected_scale.min_raw),
+                max_raw: canonicalDecimal(f.detected_scale.max_raw),
+              },
+      })),
     reviewers: Object.fromEntries(
       Object.keys(s.reviewers)
         .sort()
@@ -113,35 +153,39 @@ export function scoringInputsCanonical(s: AgentSnapshot): string {
               distinct_agents_reviewed: r.distinct_agents_reviewed,
               max_reviews_single_day: r.max_reviews_single_day,
               funder_address: r.funder_address,
-              portfolio_top_funder_share: r.portfolio_top_funder_share,
+              portfolio_top_funder_share: canonicalDecimal(r.portfolio_top_funder_share),
               has_commerce_with_agent: r.has_commerce_with_agent,
             } satisfies CanonicalValue,
           ];
         }),
     ),
-    validations: s.validations.map((v) => ({
-      request_hash: v.request_hash,
-      validator_address: v.validator_address,
-      response: v.response,
-      tag: v.tag,
-      last_update_block: v.last_update_block,
-      ts: v.ts,
-    })),
-    commerce: s.commerce.map((cr) => ({
-      counterparty: cr.counterparty,
-      outcome: cr.outcome,
-      ts: cr.ts,
-      block: cr.block,
-    })),
+    validations: [...s.validations]
+      .sort((a, b) => cmp(a.request_hash, b.request_hash) || cmp(a.validator_address, b.validator_address))
+      .map((v) => ({
+        request_hash: v.request_hash,
+        validator_address: v.validator_address,
+        response: v.response,
+        tag: v.tag,
+        last_update_block: v.last_update_block,
+        ts: v.ts,
+      })),
+    commerce: [...s.commerce]
+      .sort((a, b) => a.block - b.block || cmp(a.counterparty, b.counterparty) || cmp(a.ts, b.ts) || cmp(a.outcome, b.outcome))
+      .map((cr) => ({
+        counterparty: cr.counterparty,
+        outcome: cr.outcome,
+        ts: cr.ts,
+        block: cr.block,
+      })),
     priors: {
-      global: s.priors.global,
+      global: canonicalDecimal(s.priors.global),
       by_context: Object.fromEntries(
         Object.keys(s.priors.by_context)
           .sort()
-          .map((k) => [k, s.priors.by_context[k]!]),
+          .map((k) => [k, canonicalDecimal(s.priors.by_context[k]!)]),
       ),
       basis: s.priors.basis,
-      n_basis: s.priors.n_basis,
+      n_basis: canonicalDecimal(s.priors.n_basis),
     },
     constants: constantValues(s.constants),
   };

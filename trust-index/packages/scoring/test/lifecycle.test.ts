@@ -63,8 +63,8 @@ describe("classifyLifecycle", () => {
     ).toBe("placeholder");
   });
 
-  it("throws when activity is reported after as_of (inconsistent snapshot)", () => {
-    expect(() => classifyLifecycle(base({ lastActivitySec: AS_OF + 1 }), constants)).toThrow(RangeError);
+  it("clamps activity reported after as_of to a zero gap (live), matching the decay path", () => {
+    expect(classifyLifecycle(base({ lastActivitySec: AS_OF + 1 }), constants)).toBe("live");
   });
 
   it("activity at as_of exactly (zero gap) -> live", () => {

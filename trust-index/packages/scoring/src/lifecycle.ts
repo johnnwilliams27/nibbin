@@ -35,11 +35,12 @@ export function classifyLifecycle(i: LifecycleInputs, c: LifecycleConstants): Li
     }
     return "registered";
   }
-  if (i.lastActivitySec > i.asOfSec) {
-    throw new RangeError("activity after as_of_ts: snapshot is inconsistent");
-  }
-  // Gap in days at INNER precision, exact to the second.
-  const gapDaysFx = divRoundHalfUp(BigInt(i.asOfSec - i.lastActivitySec) * ONE, 86400n);
+  // Clamp activity dated after as_of_ts to a zero gap (treat as live) rather
+  // than throwing. The decay path clamps the identical condition (index.ts),
+  // so lifecycle matches it: a single skewed timestamp degrades gracefully
+  // instead of 500-ing the whole agent on the serving path.
+  const gapSeconds = i.asOfSec > i.lastActivitySec ? i.asOfSec - i.lastActivitySec : 0;
+  const gapDaysFx = divRoundHalfUp(BigInt(gapSeconds) * ONE, 86400n);
   if (gapDaysFx <= c.liveWindowDays) return "live";
   if (gapDaysFx >= c.dormantWindowDays) return "dormant";
   return "registered";

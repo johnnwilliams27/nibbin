@@ -164,3 +164,24 @@ describe("dormant (SPEC 11.7)", () => {
   it("lifecycle_state = dormant", () => expect(result.lifecycle_state).toBe("dormant"));
   it("score present (evidence decayed, not erased)", () => expect(result.score).not.toBeNull());
 });
+
+describe("heavy-decay-flood (SPEC 11.4/11.1: anti-flooding cap must not negate decay)", () => {
+  const { result } = score(load("heavy-decay-flood"));
+  const flood = result.reviewer_weights.find((w) => w.address === "0x000000000000000000000000000000000000f100")!;
+  const recent = result.reviewer_weights.find((w) => w.address === "0x000000000000000000000000000000000000f300")!;
+
+  it("the 40-review stale reviewer's capped contribution stays well below 1.0", () => {
+    // n_eff totals ~0.93 across both reviewers; the stale reviewer's share is
+    // its single most-recent decayed review (~0.03), not the ~1.0 the pre-fix
+    // undecayed cap produced. Its raw weight is high, but decay dominates.
+    expect(flood.weight).toBeGreaterThan(0.5);
+    expect(result.n_eff).toBeLessThan(1);
+  });
+
+  it("the single recent reviewer contributes more n_eff than the 40 stale reviews combined", () => {
+    // Recent review (~5 days old) is barely decayed; 40 stale reviews (~600
+    // days) are capped at one decayed review's worth. Recent must dominate.
+    expect(recent.weight).toBeGreaterThan(0.5);
+    expect(result.coverage_tier).toBe("thin");
+  });
+});

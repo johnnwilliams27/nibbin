@@ -32,9 +32,26 @@ import { parseIsoUtcSeconds } from "./time.js";
 import { computeReviewerWeights } from "./weights.js";
 
 function readSnapshot(path: string): AgentSnapshot {
-  const raw = readFileSync(path, "utf8");
-  return JSON.parse(raw) as AgentSnapshot;
+  let raw: string;
+  try {
+    raw = readFileSync(path, "utf8");
+  } catch {
+    throw new CliError(`cannot read snapshot file: ${path}`);
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (err) {
+    throw new CliError(`snapshot is not valid JSON: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    throw new CliError("snapshot must be a JSON object");
+  }
+  return parsed as AgentSnapshot;
 }
+
+/** A user-facing CLI error: reported as a clean message, not a Node stack trace. */
+class CliError extends Error {}
 
 function printDerivation(snapshot: AgentSnapshot): void {
   const c = parseConstants(snapshot.constants);
@@ -153,4 +170,11 @@ function main(argv: string[]): void {
   console.log(`  ${canonicalBytes}`);
 }
 
-main(process.argv.slice(2));
+try {
+  main(process.argv.slice(2));
+} catch (err) {
+  // A malformed snapshot or a scoring rejection is a clean CLI failure with a
+  // nonzero exit code, not an uncaught Node stack trace with exit 0.
+  console.error(`agent-trust: ${err instanceof Error ? err.message : String(err)}`);
+  process.exitCode = 1;
+}

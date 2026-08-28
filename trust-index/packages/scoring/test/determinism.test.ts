@@ -34,6 +34,6 @@ describe("determinism harness (SPEC 22, gate B2)", () => {
     expect(first).toBe(second);
 
     const parsed = JSON.parse(first) as Record<string, string>;
-    expect(Object.keys(parsed).length).toBe(10);
+    expect(Object.keys(parsed).length).toBe(11);
   }, 30_000);
 });

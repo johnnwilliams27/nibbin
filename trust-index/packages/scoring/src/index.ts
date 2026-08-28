@@ -18,6 +18,7 @@ import type {
   AgentSnapshot,
   CanonicalValue,
   FeedbackEntry,
+  PriorSet,
   ReviewerSnapshot,
   ScoreResult,
 } from "@trust-index/types";
@@ -158,6 +159,30 @@ function reviewerWeightsCanonical(weights: ReviewerWeightFx[]): CanonicalValue {
   }));
 }
 
+const ALLOWED_PRIOR_BASES: ReadonlySet<PriorSet["basis"]> = new Set([
+  "high_weight_weighted_mean",
+  "commerce_corroborated",
+]);
+
+/**
+ * The engine trusts the prior by architecture: SPEC 11.0 requires it be
+ * computed from high-weight evidence only (a raw population mean would launder
+ * the sybil inflation the estimator exists to resist), and the engine cannot
+ * recompute it from a single snapshot. It can, and does, refuse a prior that
+ * fails the provenance the PriorSet type promises: an unknown basis or a
+ * non-positive n_basis fails closed rather than silently shrinking every thin
+ * agent toward an unvouched number. The prior's basis and n_basis are folded
+ * into inputs_hash, so a reproducer sees exactly which prior was used.
+ */
+function assertValidPrior(priors: PriorSet): void {
+  if (!ALLOWED_PRIOR_BASES.has(priors.basis)) {
+    throw new Error(`prior basis is not an allowed provenance: ${JSON.stringify(priors.basis)}`);
+  }
+  if (parseFx(priors.n_basis) <= 0n) {
+    throw new Error(`prior n_basis must be positive, got ${JSON.stringify(priors.n_basis)}`);
+  }
+}
+
 export function score(snapshot: AgentSnapshot): { result: ScoreResult; canonicalBytes: string } {
   const c = parseConstants(snapshot.constants);
   const asOfSec = parseIsoUtcSeconds(snapshot.as_of_ts);
@@ -168,6 +193,9 @@ export function score(snapshot: AgentSnapshot): { result: ScoreResult; canonical
   // hostile ownership change either way). Recorded in docs/NOTES-track-b.md.
   let lastActivitySec: number | null = null;
   for (const f of snapshot.feedback) {
+    // Revoked feedback is not activity: an agent whose entire history was
+    // revoked is not "live" on the strength of the revoked rows (SPEC 11.7).
+    if (f.is_revoked) continue;
     const t = parseIsoUtcSeconds(f.ts);
     if (lastActivitySec === null || t > lastActivitySec) lastActivitySec = t;
   }
@@ -194,25 +222,51 @@ export function score(snapshot: AgentSnapshot): { result: ScoreResult; canonical
 
   // Current-epoch, non-revoked feedback: the only feedback the estimator or
   // reviewer weighting ever sees (SPEC 11.6: score current-epoch only).
-  const currentEpochFeedback = snapshot.feedback.filter(
-    (f) => inCurrentEpoch(f.block, epochInfo) && !f.is_revoked,
-  );
+  // Dedupe by the feedback primary key (client_address, feedback_index) before
+  // anything counts it: a duplicated row must not earn a second repeat-interaction
+  // bonus or a second decayed contribution. The db enforces this key, so a
+  // duplicate here is a malformed snapshot; keep the first occurrence.
+  const seenFeedbackKeys = new Set<string>();
+  const currentEpochFeedback = snapshot.feedback.filter((f) => {
+    if (!inCurrentEpoch(f.block, epochInfo) || f.is_revoked) return false;
+    const key = `${f.client_address}#${f.feedback_index}`;
+    if (seenFeedbackKeys.has(key)) return false;
+    seenFeedbackKeys.add(key);
+    return true;
+  });
 
   const reviewerAddresses = [...new Set(currentEpochFeedback.map((f) => f.client_address))].sort();
   const reviewCountByAddress = new Map<string, number>();
   for (const f of currentEpochFeedback) {
     reviewCountByAddress.set(f.client_address, (reviewCountByAddress.get(f.client_address) ?? 0) + 1);
   }
+  // A reviewer with feedback but no stats row can occur under the spec's own
+  // cadence mismatch (feedback polled every 30s, reviewer aggregates refreshed
+  // daily). Rather than throw and drop the whole agent onto the non-authoritative
+  // fallback, synthesize the most conservative reviewer possible (age 0 so the
+  // age multiplier sits at its floor, maximum portfolio concentration, no
+  // corroboration) and surface the count as a signal.
+  let synthesizedReviewerCount = 0;
   const reviewerSnapshots: ReviewerSnapshot[] = reviewerAddresses.map((address) => {
     const r = snapshot.reviewers[address];
-    if (r === undefined) {
-      throw new Error(`snapshot.reviewers is missing an entry for current-epoch reviewer ${address}`);
-    }
-    return r;
+    if (r !== undefined) return r;
+    synthesizedReviewerCount += 1;
+    return {
+      address: address as ReviewerSnapshot["address"],
+      first_seen_block: snapshot.as_of_block,
+      first_seen_ts: snapshot.as_of_ts,
+      total_reviews: 1,
+      distinct_agents_reviewed: 1,
+      max_reviews_single_day: 1,
+      funder_address: null,
+      portfolio_top_funder_share: "1.000000",
+      has_commerce_with_agent: false,
+    };
   });
   const reviewerWeights = computeReviewerWeights(reviewerSnapshots, reviewCountByAddress, asOfSec, c);
   const undecayedWeightByAddress = new Map(reviewerWeights.map((w) => [w.address, w.weightFx]));
 
+  assertValidPrior(snapshot.priors);
   const priorGlobalFx = parseFx(snapshot.priors.global);
   const globalGroup = scoreGroup(currentEpochFeedback, priorGlobalFx, c, asOfSec, undecayedWeightByAddress, forceSuppressed);
 
@@ -220,7 +274,13 @@ export function score(snapshot: AgentSnapshot): { result: ScoreResult; canonical
   const scoresByContext: Record<string, CanonicalValue> = {};
   for (const tag of tags) {
     const entries = currentEpochFeedback.filter((f) => f.tag1 === tag);
-    const priorStr = snapshot.priors.by_context[tag] ?? snapshot.priors.global;
+    // Object.hasOwn, not `by_context[tag] ?? global`: tag1 is decoded verbatim
+    // from the on-chain feedback event, so a tag equal to an inherited object
+    // member ("__proto__", "toString") would otherwise resolve to a prototype
+    // value and drive parseFx to throw. Own-key lookup only.
+    const priorStr = Object.hasOwn(snapshot.priors.by_context, tag)
+      ? snapshot.priors.by_context[tag]!
+      : snapshot.priors.global;
     const group = scoreGroup(entries, parseFx(priorStr), c, asOfSec, undecayedWeightByAddress, forceSuppressed);
     scoresByContext[tag] = contextCanonical(group, c);
   }
@@ -252,6 +312,7 @@ export function score(snapshot: AgentSnapshot): { result: ScoreResult; canonical
     unusable_feedback_count: globalGroup.unusableCount,
     validation_record_count: snapshot.validations.length,
     commerce_corroborated_reviews: commerceCorroboratedReviews,
+    synthesized_reviewer_count: synthesizedReviewerCount,
   };
 
   const tree: CanonicalValue = {

@@ -49,7 +49,18 @@ export type CappedSums = {
 /**
  * Apply the per-reviewer cap and reduce to (n_eff, sum w*v). `observations`
  * are processed grouped by address in lexicographic order; `undecayedWeight`
- * maps address to the reviewer's undecayed weight.
+ * maps address to the reviewer's undecayed weight, used as a safety ceiling.
+ *
+ * Anti-flooding rule (SPEC 11.1/24A: n_eff is the sum of REVIEWER weights,
+ * one per reviewer): a reviewer's total contribution is capped so many
+ * reviews cannot inflate their influence past a single review's worth. The
+ * ceiling is the reviewer's strongest single decayed observation, not their
+ * undecayed weight. Capping at the undecayed weight would let a pile of old
+ * reviews climb back to the full 1.0 weight and erase the SPEC 11.4 time
+ * decay entirely (a reviewer who left 40 reviews two years ago would count
+ * like one who reviewed today). Capping at the most-recent decayed weight
+ * keeps the one-reviewer-one-vote property while letting the ceiling itself
+ * decay with the reviewer's last interaction.
  */
 export function capAndSum(
   observations: WeightedObservation[],
@@ -69,13 +80,19 @@ export function capAndSum(
     if (w === undefined) throw new Error(`no weight computed for reviewer ${address}`);
     let s = 0n;
     let v = 0n;
+    let maxEffectiveFx = 0n;
     for (const o of byAddress.get(address)!) {
       s += o.effectiveWeightFx;
       v += mulFx(o.effectiveWeightFx, o.valueFx);
+      if (o.effectiveWeightFx > maxEffectiveFx) maxEffectiveFx = o.effectiveWeightFx;
     }
-    if (s > w) {
-      v = divRoundHalfUp(v * w, s);
-      s = w;
+    // Ceiling: the reviewer's strongest single decayed review, never above
+    // their undecayed weight. Each decayed weight is already <= w, so the min
+    // is a defensive guard rather than an active clamp.
+    const cap = maxEffectiveFx < w ? maxEffectiveFx : w;
+    if (s > cap) {
+      v = divRoundHalfUp(v * cap, s);
+      s = cap;
     }
     neffFx += s;
     sumWVFx += v;
@@ -100,10 +117,34 @@ export type PosteriorFx = {
 
 function intervalWidthFx(alphaFx: bigint, betaFx: bigint): { meanFx: bigint; halfFx: bigint } {
   const ab = alphaFx + betaFx;
+  // No prior mass and no evidence (k = 0 with an empty epoch): the Beta
+  // posterior is undefined. Report maximum ignorance, mean 0.5 and the widest
+  // half interval, rather than dividing by zero. This only reaches a score
+  // that is already suppressed for n_eff below the floor.
+  if (ab === 0n) {
+    const halfMax = mulFx(Z95, sqrtFx(divRoundHalfUp(ONE, 4n)));
+    return { meanFx: ONE / 2n, halfFx: halfMax };
+  }
   const meanFx = divFx(alphaFx, ab);
   const varianceFx = divRoundHalfUp(meanFx * (ONE - meanFx), ab + ONE);
   const halfFx = mulFx(Z95, sqrtFx(varianceFx));
   return { meanFx, halfFx };
+}
+
+/**
+ * Reference width for the confidence transform: the prior-only interval width
+ * at n_eff = 0. When the prior is degenerate (0 or 1) its variance and hence
+ * its width are 0, which would make every posterior read as infinitely wide
+ * relative to it and force confidence to 0 even for a well-evidenced agent.
+ * Fall back to the maximum-uncertainty prior (0.5) as the reference in that
+ * case, so confidence still measures how far the evidence narrowed the
+ * interval. Non-degenerate priors are unaffected.
+ */
+function referenceWidthFx(priorFx: bigint, kFx: bigint): bigint {
+  const w = 2n * intervalWidthFx(mulFx(kFx, priorFx), mulFx(kFx, ONE - priorFx)).halfFx;
+  if (w !== 0n) return w;
+  const half = ONE / 2n;
+  return 2n * intervalWidthFx(mulFx(kFx, half), mulFx(kFx, ONE - half)).halfFx;
 }
 
 export function posterior(sums: CappedSums, priorFx: bigint, kFx: bigint): PosteriorFx {
@@ -112,9 +153,7 @@ export function posterior(sums: CappedSums, priorFx: bigint, kFx: bigint): Poste
   const { meanFx, halfFx } = intervalWidthFx(alphaFx, betaFx);
   const widthFx = 2n * halfFx;
 
-  const alpha0 = mulFx(kFx, priorFx);
-  const beta0 = mulFx(kFx, ONE - priorFx);
-  const width0Fx = 2n * intervalWidthFx(alpha0, beta0).halfFx;
+  const width0Fx = referenceWidthFx(priorFx, kFx);
   const confidenceFx = width0Fx === 0n ? 0n : ONE - minFx(ONE, divFx(widthFx, width0Fx));
 
   return {

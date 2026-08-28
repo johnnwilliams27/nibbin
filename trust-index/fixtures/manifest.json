@@ -103,6 +103,15 @@
         "lifecycle_state = dormant",
         "score present (evidence decayed, not erased)"
       ]
+    },
+    "heavy-decay-flood": {
+      "snapshot": "heavy-decay-flood.json",
+      "golden": "heavy-decay-flood.json",
+      "covers": "SPEC 11.4/11.1: anti-flooding cap must not negate time decay",
+      "invariants": [
+        "the 40-review stale reviewer's capped contribution stays well below 1.0",
+        "the single recent reviewer contributes more n_eff than the 40 stale reviews combined"
+      ]
     }
   }
 }

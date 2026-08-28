@@ -17,16 +17,31 @@ describe("capAndSum", () => {
     expect(sums.sumWVFx).toBe(parseFx("0.10") * 1n + parseFx("0.10")); // 0.2*0.5 + 0.10*1.0 = 0.20
   });
 
-  it("caps a single reviewer's total contribution at their undecayed weight", () => {
+  it("caps a single reviewer's total contribution at their strongest decayed review", () => {
     const obs: WeightedObservation[] = [
       { address: "0x0000000000000000000000000000000000000a", effectiveWeightFx: parseFx("0.40"), valueFx: ONE },
       { address: "0x0000000000000000000000000000000000000a", effectiveWeightFx: parseFx("0.40"), valueFx: ONE },
     ];
     const weights = new Map([["0x0000000000000000000000000000000000000a", parseFx("0.50")]]);
     const sums = capAndSum(obs, weights);
-    // Undecayed sum is 0.80, capped down to the undecayed weight 0.50.
-    expect(sums.neffFx).toBe(parseFx("0.50"));
-    expect(sums.sumWVFx).toBe(parseFx("0.50")); // value is 1.0 throughout, so w*v scales the same way
+    // Decayed sum is 0.80; the ceiling is the reviewer's strongest single
+    // decayed review (0.40), not the undecayed weight (0.50). Two stale
+    // reviews cannot climb past one review's decayed worth (SPEC 11.4).
+    expect(sums.neffFx).toBe(parseFx("0.40"));
+    expect(sums.sumWVFx).toBe(parseFx("0.40")); // value is 1.0 throughout, so w*v scales the same way
+  });
+
+  it("does not cap when the decayed sum is already within the strongest review", () => {
+    // One strong recent review (0.45) plus one heavily decayed old review
+    // (0.02): the sum 0.47 exceeds the strongest single review 0.45, so it
+    // caps to 0.45 rather than letting the stale review add on top.
+    const obs: WeightedObservation[] = [
+      { address: "0x0000000000000000000000000000000000000a", effectiveWeightFx: parseFx("0.45"), valueFx: ONE },
+      { address: "0x0000000000000000000000000000000000000a", effectiveWeightFx: parseFx("0.02"), valueFx: ONE },
+    ];
+    const weights = new Map([["0x0000000000000000000000000000000000000a", parseFx("0.90")]]);
+    const sums = capAndSum(obs, weights);
+    expect(sums.neffFx).toBe(parseFx("0.45"));
   });
 
   it("scales the value sum proportionally, not just the weight, when capping a mixed-value reviewer", () => {
@@ -87,8 +102,18 @@ describe("posterior", () => {
     expect(post.meanFx).toBe(parseFx("0.975"));
   });
 
-  it("a degenerate prior of exactly 0 makes width_prior_only 0; confidence is defined as 0, not divided by zero", () => {
+  it("a degenerate prior of exactly 0 falls back to the max-uncertainty reference width, not confidence 0", () => {
+    // The prior-only interval at prior 0 has zero width. A well-evidenced agent
+    // (n_eff 10) must not be forced to confidence 0 by that degeneracy; the
+    // transform falls back to the prior=0.5 reference width so confidence still
+    // reflects how far the evidence narrowed the interval.
     const post = posterior({ neffFx: parseFx("10"), sumWVFx: parseFx("5") }, 0n, parseFx("5"));
+    expect(post.confidenceFx).toBeGreaterThan(0n);
+  });
+
+  it("k = 0 with an empty epoch does not divide by zero", () => {
+    const post = posterior({ neffFx: 0n, sumWVFx: 0n }, parseFx("0.5"), 0n);
+    expect(post.meanFx).toBe(parseFx("0.5"));
     expect(post.confidenceFx).toBe(0n);
   });
 

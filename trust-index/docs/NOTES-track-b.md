@@ -50,8 +50,13 @@ reading every module.
   `repeat_bonus_cap`.
 - `estimator.ts`: anti-flooding cap, a single reviewer's total contribution
   within one grouping (a context, or the global pool) is capped at their
-  undecayed weight, applied independently per grouping. Confidence uses the
-  UNCLAMPED interval width (2 * half width); the [0,1] display clamp on
+  STRONGEST single decayed review, applied independently per grouping.
+  (Adversarial-pass change: the cap was originally the reviewer's undecayed
+  weight, which let a pile of stale reviews climb back to the full 1.0 weight
+  and erase SPEC 11.4 decay. Capping at the most-recent decayed review keeps
+  the one-reviewer-one-vote property while letting the ceiling decay. The
+  `heavy-decay-flood` fixture locks this in.) Confidence uses the UNCLAMPED
+  interval width (2 * half width); the [0,1] display clamp on
   score_low/score_high never feeds back into confidence.
 - `epochs.ts`: a feedback entry in the same block as the resetting transfer
   is treated as pre-transfer (conservative: reputation laundering is the
@@ -157,17 +162,20 @@ suppression. `src/cli.ts`'s derivation printer calls the exact same
 `recompute` output cannot drift from the canonical result it prints
 alongside.
 
-## Fixture invariant mismatches (protocol: do not edit fixtures, record why, skip the specific assertion)
+## Fixture invariant mismatches (RESOLVED at integration by the lead)
 
-Two of the ten manifest cases have invariants that do not hold under the
-literal SPEC 11.2/11.4 formulas applied with the v0.1.0 provisional
-constants (`DEFAULT_CONSTANTS` in `packages/types/src/methodology.ts`).
-Every multiplier below traces to a real signal computed from the fixture's
-own committed data; this is not an implementation gap, it is these two
-fixtures wanting a coverage tier the math these constants produce does not
-reach. Both are `synthetic fixtures committed at kickoff` (SPEC 18.0),
-written before the estimator existed to validate against, which is exactly
-the scenario the protocol's skip-and-record path anticipates.
+Historical record. As delivered, two of the ten manifest cases had
+invariants that did not hold under the literal SPEC 11.2/11.4 formulas with
+the v0.1.0 provisional constants, and Track B skipped those specific
+assertions per protocol. At integration the lead retuned the two fixture
+INPUTS (never the estimator) so both tiers are genuinely exercised, and a
+later adversarial pass changed the anti-flooding cap (see the cap section
+above), which shifted the numbers again. The current committed goldens read:
+`thin-same-day-cohort` n_eff 0.79, thin, score 60.57; `strong-diverse`
+n_eff 27.17, strong, score 82.55. The previously skipped assertions now run
+and pass. The original as-delivered arithmetic is preserved below because it
+documents why the untuned constants behave as they do; the numbers in it are
+the pre-retune, pre-cap-fix values, not what the engine now emits.
 
 **`thin-same-day-cohort`** (manifest wants `coverage_tier: thin`, i.e.
 `n_eff` in `[0.5, 5)`; the engine reports `n_eff: 0.11`, suppressed,

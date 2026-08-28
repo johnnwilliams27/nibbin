@@ -355,6 +355,32 @@ fixtures["registered-no-history"] = base("9002", {
   fixtures["dormant"] = base("9010", { reviewers: revs, feedback: fb });
 }
 
+// 11. heavy-decay-flood: one reviewer, 40 reviews all ~600 days old. Exercises
+// the anti-flooding cap under heavy time decay: the reviewer's many stale
+// reviews must not climb back to a fresh reviewer's weight (SPEC 11.4). Pairs
+// with a second reviewer holding a single recent review as a reference point.
+{
+  const revs: Record<string, ReviewerSnapshot> = {};
+  const fb: FeedbackEntry[] = [];
+  const flood = 0xf100;
+  revs[addr(flood)] = reviewer({
+    n: flood, ageDays: 700, totalReviews: 40, distinctAgents: 1, maxPerDay: 3,
+    funder: 0xf200, portfolioShare: "0.1000", commerce: false,
+  });
+  for (let i = 0; i < 40; i++) {
+    fb.push(
+      feedback({ reviewerN: flood, index: i, raw: "5", scale: FIVE_STAR, tag1: "data-feed", daysAgo: 620 - i * 0.5, seq: 900 + i }),
+    );
+  }
+  const recent = 0xf300;
+  revs[addr(recent)] = reviewer({
+    n: recent, ageDays: 500, totalReviews: 1, distinctAgents: 1, maxPerDay: 1,
+    funder: 0xf400, portfolioShare: "0.1000", commerce: false,
+  });
+  fb.push(feedback({ reviewerN: recent, index: 0, raw: "5", scale: FIVE_STAR, tag1: "data-feed", daysAgo: 5, seq: 999 }));
+  fixtures["heavy-decay-flood"] = base("9011", { reviewers: revs, feedback: fb });
+}
+
 const manifest: FixtureManifest = {
   manifest_version: "1",
   cases: {
@@ -449,6 +475,14 @@ const manifest: FixtureManifest = {
       invariants: [
         "lifecycle_state = dormant",
         "score present (evidence decayed, not erased)",
+      ],
+    },
+    "heavy-decay-flood": {
+      snapshot: "heavy-decay-flood.json", golden: null,
+      covers: "SPEC 11.4/11.1: anti-flooding cap must not negate time decay",
+      invariants: [
+        "the 40-review stale reviewer's capped contribution stays well below 1.0",
+        "the single recent reviewer contributes more n_eff than the 40 stale reviews combined",
       ],
     },
   },
