@@ -48,6 +48,19 @@ function cmp(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0;
 }
 
+/** Keep the first item for each key, preserving order. Input should already be sorted. */
+function dedupeByKey<T>(items: T[], key: (item: T) => string): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const item of items) {
+    const k = key(item);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(item);
+  }
+  return out;
+}
+
 function constantValues(c: MethodologyConstants): CanonicalValue {
   const d = canonicalDecimal;
   return {
@@ -103,7 +116,13 @@ export function scoringInputsCanonical(s: AgentSnapshot): string {
     // too, or two honest reproducers of the same evidence would compute
     // different roots.
     transfers: [...s.transfers]
-      .sort((a, b) => a.block - b.block || cmp(a.tx_hash, b.tx_hash))
+      .sort(
+        (a, b) =>
+          a.block - b.block ||
+          cmp(a.tx_hash, b.tx_hash) ||
+          cmp(a.from_address, b.from_address) ||
+          cmp(a.to_address, b.to_address),
+      )
       .map((t) => ({
         from_address: t.from_address,
         to_address: t.to_address,
@@ -118,8 +137,17 @@ export function scoringInputsCanonical(s: AgentSnapshot): string {
         same_funder: l.same_funder,
         bidirectional_history: l.bidirectional_history,
       })),
-    feedback: [...s.feedback]
-      .sort((a, b) => cmp(a.client_address, b.client_address) || a.feedback_index - b.feedback_index)
+    // Dedupe by the (client_address, feedback_index) primary key, exactly as
+    // the estimator does (index.ts), so a transient duplicate from a reorg or
+    // backfill replay (SPEC 10.1) produces the same inputs_hash as a clean
+    // index. Without this the hash would diverge for two honest reproducers
+    // whose scores are identical.
+    feedback: dedupeByKey(
+      [...s.feedback].sort(
+        (a, b) => cmp(a.client_address, b.client_address) || a.feedback_index - b.feedback_index,
+      ),
+      (f) => `${f.client_address}#${f.feedback_index}`,
+    )
       .map((f) => ({
         client_address: f.client_address,
         feedback_index: f.feedback_index,

@@ -78,4 +78,41 @@ describe("invalid prior provenance fails closed (logic-skeptic 2)", () => {
     (s.priors as { basis: string }).basis = "raw_population_mean";
     expect(() => score(s)).toThrow();
   });
+
+  it("rejects a prior value outside [0,1]", () => {
+    const s = load("strong-diverse");
+    s.priors.global = "1.500000";
+    expect(() => score(s)).toThrow();
+  });
+});
+
+describe("confidence is monotone across prior position (second-pass P0)", () => {
+  function confAt(name: string, prior: string): number {
+    const s = load(name);
+    s.priors.global = prior;
+    for (const k of Object.keys(s.priors.by_context)) s.priors.by_context[k] = prior;
+    return score(s).result.confidence;
+  }
+
+  it("does not collapse a well-evidenced agent's confidence for a near-degenerate prior", () => {
+    const mid = confAt("strong-diverse", "0.500000");
+    for (const p of ["0.050000", "0.020000", "0.001000", "0.000000", "1.000000"]) {
+      // Confidence tracks the posterior interval width, so it stays comparable
+      // to the mid-prior value rather than crashing toward 0 near the edges.
+      expect(confAt("strong-diverse", p)).toBeGreaterThan(mid - 0.2);
+    }
+  });
+
+  it("never lets a thin agent outrank a strong agent on confidence", () => {
+    expect(confAt("strong-diverse", "0.020000")).toBeGreaterThan(confAt("thin-same-day-cohort", "0.000000"));
+  });
+});
+
+describe("future timestamps clamp rather than throw (second-pass P0, F4 completion)", () => {
+  it("does not throw when registered_at is after as_of_ts", () => {
+    const s = load("strong-diverse");
+    s.registered_at = "2027-06-01T00:00:00Z";
+    expect(() => score(s)).not.toThrow();
+    expect(score(s).result.effective_history_days).toBe(0);
+  });
 });

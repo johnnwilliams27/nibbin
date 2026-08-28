@@ -179,9 +179,17 @@ describe("heavy-decay-flood (SPEC 11.4/11.1: anti-flooding cap must not negate d
   });
 
   it("the single recent reviewer contributes more n_eff than the 40 stale reviews combined", () => {
-    // Recent review (~5 days old) is barely decayed; 40 stale reviews (~600
-    // days) are capped at one decayed review's worth. Recent must dominate.
-    expect(recent.weight).toBeGreaterThan(0.5);
+    // Isolate each reviewer's n_eff contribution by scoring one-reviewer
+    // variants: this asserts the property directly rather than via a proxy.
+    const base = load("heavy-decay-flood");
+    const recentOnly = { ...base, feedback: base.feedback.filter((f) => f.client_address === recent.address) };
+    const floodOnly = { ...base, feedback: base.feedback.filter((f) => f.client_address === flood.address) };
+    const recentNeff = score(recentOnly).result.n_eff;
+    const floodNeff = score(floodOnly).result.n_eff;
+    expect(recentNeff).toBeGreaterThan(floodNeff);
+    // The flood of 40 stale reviews is worth less than a fifth of the single
+    // recent review, not more, which is the whole point of the decayed cap.
+    expect(floodNeff).toBeLessThan(recentNeff / 5);
     expect(result.coverage_tier).toBe("thin");
   });
 });

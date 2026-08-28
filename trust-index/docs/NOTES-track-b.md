@@ -294,23 +294,23 @@ itself hit `tsx must be loaded with --import instead of --loader` on Node
 None. `@trust-index/types` covered every shape this track needed; nothing
 was worked around locally or forked.
 
-## Golden score/interval/n_eff for the two named fixtures (SPEC 22, gate B2)
+## Golden score/interval/n_eff for the named fixtures (SPEC 22, gate B2)
 
-**thin-same-day-cohort**: `score: null`, `score_low: null`,
-`score_high: null` (suppressed), `confidence: 0.0106`, `n_eff: 0.11`,
-`coverage_tier: none`, `suppression_reason: "n_eff below suppression
-floor"`. Context `code-review`: `n_eff 0.11`, also suppressed. Reviewer
-weights: `0.0532` and `0.0536`.
+The committed goldens are the source of truth; do not quote numbers here that
+can drift. As of the lead's integration retune and the adversarial-pass cap
+and confidence fixes, the two headline fixtures land at:
 
-**strong-diverse**: `score: 82.91`, `score_low: 68.17`, `score_high: 97.65`,
-`confidence: 0.6297`, `n_eff: 19.05`, `coverage_tier: moderate`,
-`lifecycle_state: live`. Contexts: `code-review` (`n_eff 9.36`, `score
-78.26`, `[57.64, 98.89]`), `data-feed` (`n_eff 9.69`, `score 77.95`,
-`[57.43, 98.47]`).
+- **thin-same-day-cohort**: score ~60.6 with a ~73-point interval, n_eff ~0.79,
+  coverage_tier thin (UC-1: a plausible estimate that is visibly near-worthless).
+- **strong-diverse**: score ~82.6, n_eff ~27, coverage_tier strong.
 
-Full canonical bytes for all ten fixtures: `fixtures/golden/*.json`.
-Regenerate with `pnpm run golden:generate` from
-`packages/scoring` after any deliberate methodology change (never by hand).
+The values above are approximate and for orientation. The exact canonical
+bytes for all eleven fixtures are in `fixtures/golden/*.json`; regenerate with
+`pnpm run golden:generate` from `packages/scoring` after any deliberate
+methodology change (never by hand). The pre-retune, pre-fix numbers that
+appeared here and in the "Fixture invariant mismatches" section above are
+historical and no longer match the engine; they are kept only to explain how
+the untuned constants behaved.
 
 ## Gate results
 

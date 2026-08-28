@@ -71,11 +71,15 @@ describe("capAndSum", () => {
 });
 
 describe("posterior", () => {
-  it("at n_eff=0, the mean equals the prior exactly", () => {
+  it("at n_eff=0, the mean equals the prior exactly and confidence is near zero", () => {
     const prior = parseFx("0.55");
     const post = posterior({ neffFx: 0n, sumWVFx: 0n }, prior, parseFx("5"));
     expect(post.meanFx).toBe(prior);
-    expect(post.confidenceFx).toBe(0n);
+    // Confidence is normalized by the fixed max-uncertainty reference (prior
+    // 0.5), so a prior-only agent whose prior is near 0.5 has a tiny positive
+    // confidence rather than exactly 0. It stays well below any threshold, and
+    // such agents are suppressed anyway.
+    expect(post.confidenceFx).toBeLessThan(parseFx("0.05"));
   });
 
   it("confidence increases as evidence accumulates around the prior", () => {

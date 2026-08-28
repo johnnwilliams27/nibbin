@@ -181,6 +181,14 @@ function assertValidPrior(priors: PriorSet): void {
   if (parseFx(priors.n_basis) <= 0n) {
     throw new Error(`prior n_basis must be positive, got ${JSON.stringify(priors.n_basis)}`);
   }
+  // A prior is a probability on the normalized scale: it must lie in [0,1].
+  // Out-of-range values would push the Beta posterior alpha or beta negative.
+  const inUnit = (label: string, s: string): void => {
+    const v = parseFx(s);
+    if (v < 0n || v > ONE) throw new Error(`prior ${label} must be in [0,1], got ${JSON.stringify(s)}`);
+  };
+  inUnit("global", priors.global);
+  for (const [k, v] of Object.entries(priors.by_context)) inUnit(`by_context[${k}]`, v);
 }
 
 export function score(snapshot: AgentSnapshot): { result: ScoreResult; canonicalBytes: string } {
@@ -294,8 +302,12 @@ export function score(snapshot: AgentSnapshot): { result: ScoreResult; canonical
     suppressionReason = SUPPRESSION_REASONS.neff_below_floor;
   }
 
+  // Clamp a future epoch start (a registered_at or transfer ts dated after
+  // as_of_ts, from clock skew or a malformed snapshot) to a zero history rather
+  // than throwing, matching the decay and lifecycle clamps. floorDaysBetween
+  // requires a >= b.
   const epochStartSec = epochInfo.epochStartSec;
-  const effectiveHistoryDays = floorDaysBetween(asOfSec, epochStartSec);
+  const effectiveHistoryDays = asOfSec >= epochStartSec ? floorDaysBetween(asOfSec, epochStartSec) : 0;
 
   const cohortShareFx = reviewerCohortSameDayShare(reviewerSnapshots, c.cohortWindowSeconds);
   const funderShareFx = commonFunderShare(reviewerSnapshots);

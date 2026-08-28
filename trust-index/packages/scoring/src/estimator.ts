@@ -132,17 +132,17 @@ function intervalWidthFx(alphaFx: bigint, betaFx: bigint): { meanFx: bigint; hal
 }
 
 /**
- * Reference width for the confidence transform: the prior-only interval width
- * at n_eff = 0. When the prior is degenerate (0 or 1) its variance and hence
- * its width are 0, which would make every posterior read as infinitely wide
- * relative to it and force confidence to 0 even for a well-evidenced agent.
- * Fall back to the maximum-uncertainty prior (0.5) as the reference in that
- * case, so confidence still measures how far the evidence narrowed the
- * interval. Non-degenerate priors are unaffected.
+ * Reference width for the confidence transform: the widest a prior-only
+ * interval can be, which is the interval at the maximum-uncertainty prior of
+ * 0.5 for this k. The reference is deliberately independent of the agent's
+ * actual prior. Normalizing by the actual prior's width degenerates as the
+ * prior approaches 0 or 1 (its width shrinks to 0), which forced confidence to
+ * 0 for a well-evidenced agent and put a discontinuity at exactly 0 or 1. A
+ * fixed reference makes confidence a monotone function of the posterior
+ * interval width alone (SPEC 11.1), so meetsThreshold(minConfidence) means the
+ * same thing regardless of where the prior sits.
  */
-function referenceWidthFx(priorFx: bigint, kFx: bigint): bigint {
-  const w = 2n * intervalWidthFx(mulFx(kFx, priorFx), mulFx(kFx, ONE - priorFx)).halfFx;
-  if (w !== 0n) return w;
+function referenceWidthFx(kFx: bigint): bigint {
   const half = ONE / 2n;
   return 2n * intervalWidthFx(mulFx(kFx, half), mulFx(kFx, ONE - half)).halfFx;
 }
@@ -153,7 +153,7 @@ export function posterior(sums: CappedSums, priorFx: bigint, kFx: bigint): Poste
   const { meanFx, halfFx } = intervalWidthFx(alphaFx, betaFx);
   const widthFx = 2n * halfFx;
 
-  const width0Fx = referenceWidthFx(priorFx, kFx);
+  const width0Fx = referenceWidthFx(kFx);
   const confidenceFx = width0Fx === 0n ? 0n : ONE - minFx(ONE, divFx(widthFx, width0Fx));
 
   return {
