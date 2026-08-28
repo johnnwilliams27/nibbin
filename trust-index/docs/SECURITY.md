@@ -48,6 +48,32 @@ but not zero.
 - Secret scanning (gitleaks) runs in CI on every pull request. The lockfile
   is committed; Dependabot reviews land weekly.
 
+## Deployment assumptions (adversarial review, 2026-08-28)
+
+Two mitigations are correct in code but rest on how the service is deployed.
+State them in the production runbook.
+
+- The rate-limit bucket key comes from a platform-trusted client-IP header
+  (x-real-ip / x-vercel-forwarded-for) and ignores x-forwarded-for. This holds
+  only while the app is always reached through an edge that overwrites those
+  headers. If the origin is ever exposed directly, or fronted by a proxy that
+  passes client-supplied x-real-ip through, a client can rotate it per request
+  and defeat the limit. Keep the origin private behind the edge.
+- The metadata fetcher must resolve the host, pin the resolved address, and
+  re-run the host block-list on any redirect Location. The resolver blocks
+  literal private, loopback, link-local, and embedded-IPv4 hosts before the
+  request, but it cannot resolve DNS, so a public hostname that resolves to or
+  302-redirects into an internal address is only stopped by the fetcher. The
+  Fetcher doc comment in packages/indexer/src/metadata.ts states this contract.
+
+Known latent limitation: the inputs_hash sorts validations by
+(request_hash, validator_address) and transfers by (block, tx_hash, from, to).
+These are total orders for well-formed chain data (a token transfers once per
+tx; a validator answers a request once). If the Validation Registry later
+admits two responses to one request in a single snapshot, extend the
+comparator to every serialized field so two honest reproducers cannot compute
+different roots.
+
 ## Repository hygiene checklist
 
 Per SPEC 24, to be completed by the author at repo-public time:
