@@ -116,4 +116,59 @@ describe("resolveMetadata", () => {
     const result = await resolveMetadata("ipfs://cid", { gatewayUrl: GATEWAY, timeoutMs: 1000, maxBytes: 1000, fetcher });
     expect(result).toMatchObject({ status: "malformed" });
   });
+
+  describe("SSRF and size guards (adversarial regression)", () => {
+    const boom: Fetcher = async () => {
+      throw new Error("fetcher must not be called for a blocked host");
+    };
+
+    it("blocks private, loopback, link-local, and cloud-metadata hosts without fetching", async () => {
+      const opts = { gatewayUrl: GATEWAY, timeoutMs: 1000, maxBytes: 1000, fetcher: boom };
+      for (const uri of [
+        "http://169.254.169.254/latest/meta-data/",
+        "http://localhost:8545/",
+        "http://127.0.0.1/x",
+        "http://10.0.0.5/x",
+        "http://192.168.1.1/x",
+        "http://[::1]/x",
+        "http://172.16.0.1/x",
+      ]) {
+        const result = await resolveMetadata(uri, opts);
+        expect(result.status === "unreachable" || result.status === "malformed").toBe(true);
+      }
+    });
+
+    it("blocks a non-http(s) resolved scheme", async () => {
+      const result = await resolveMetadata("file:///etc/passwd", {
+        gatewayUrl: GATEWAY,
+        timeoutMs: 1000,
+        maxBytes: 1000,
+        fetcher: boom,
+      });
+      expect(result).toMatchObject({ status: "malformed" });
+    });
+
+    it("still resolves a public gateway host", async () => {
+      const result = await resolveMetadata("ipfs://cid", {
+        gatewayUrl: GATEWAY,
+        timeoutMs: 1000,
+        maxBytes: 256_000,
+        fetcher: okJson(VALID_METADATA),
+      });
+      expect(result.status).toBe("resolved");
+    });
+
+    it("rejects on a Content-Length over the cap before buffering", async () => {
+      const fetcher: Fetcher = async () => ({
+        ok: true,
+        status: 200,
+        headers: { get: (n) => (n.toLowerCase() === "content-length" ? "999999" : null) },
+        arrayBuffer: async () => {
+          throw new Error("body must not be buffered when Content-Length already exceeds the cap");
+        },
+      });
+      const result = await resolveMetadata("ipfs://cid", { gatewayUrl: GATEWAY, timeoutMs: 1000, maxBytes: 1000, fetcher });
+      expect(result).toMatchObject({ status: "malformed" });
+    });
+  });
 });
