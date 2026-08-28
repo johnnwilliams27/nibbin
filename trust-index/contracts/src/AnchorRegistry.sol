@@ -68,7 +68,9 @@ contract AnchorRegistry {
     }
 
     /// @notice Verifies that `leaf` is included in the root anchored at `anchorIndex`.
-    /// @dev See MerkleLib for the exact pair-ordering convention `proof` must follow.
+    /// @dev `leaf` is the raw leaf value (for the score dump, the sha256 of the record fields per
+    /// SPEC 20.1); verifyInclusion applies the leaf domain byte itself. See MerkleLib for the
+    /// domain-separation and pair-ordering conventions the off-chain tree builder must reproduce.
     function verifyInclusion(uint256 anchorIndex, bytes32 leaf, bytes32[] calldata proof) external view returns (bool) {
         return MerkleLib.verify(_anchors[anchorIndex].root, leaf, proof);
     }

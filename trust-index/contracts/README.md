@@ -93,11 +93,18 @@ roughly 300,000 as `maxAgeBlocks`; a caller that wants same-day freshness should
 
 ### Merkle inclusion proofs
 
-`AnchorRegistry.verifyInclusion(anchorIndex, leaf, proof)` uses sorted-pair keccak256 hashing:
-at every level, the two nodes being combined are compared as `uint256` and hashed in ascending
-order, `keccak256(abi.encodePacked(min, max))`. A proof is the sibling hash at each level in
-leaf-to-root order; no left/right flag is needed. Off-chain dump tooling building the tree that
-gets anchored must use this exact rule at every level, including the first level above the
-leaves, or its roots will not match what verifies on chain. See `src/MerkleLib.sol` for the
-full NatSpec and `test/AnchorRegistry.t.sol` for a worked example built independently of the
-library under test.
+`AnchorRegistry.verifyInclusion(anchorIndex, leaf, proof)` takes the raw leaf value (for the
+score dump, the sha256 of the record fields per SPEC 20.1) and applies two conventions the
+off-chain tree builder must reproduce exactly:
+
+- Domain separation. A leaf enters the tree as `keccak256(0x00 || leaf)`; an internal node is
+  `keccak256(0x01 || min || max)`. The two domain bytes keep the leaf and internal-node hash sets
+  disjoint, so an internal node value cannot be presented as a leaf (the second-preimage attack).
+- Sorted pairs. At every internal level the two child hashes are compared as `uint256` and
+  combined in ascending order. A proof is the sibling hash at each level in leaf-to-root order,
+  with no left/right flag.
+
+An empty proof verifies only a single-leaf tree, whose root is `keccak256(0x00 || leaf)`. See
+`src/MerkleLib.sol` for the full NatSpec and `test/AnchorRegistry.t.sol` for a worked example
+(including the second-preimage and empty-proof defenses) built independently of the library under
+test.

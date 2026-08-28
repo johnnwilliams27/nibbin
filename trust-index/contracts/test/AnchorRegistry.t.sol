@@ -110,6 +110,49 @@ contract AnchorRegistryTest is TestBase {
         assertFalse(registry.verifyInclusion(idx, keccak256("not-a-member"), proof2), "non-member leaf must not verify");
     }
 
+    /// @notice Second-preimage defense: an internal node value, presented as if it were a leaf with
+    /// the remaining path, must not verify. Domain separation (leaf 0x00 vs node 0x01) makes the
+    /// leaf and internal-node hash sets disjoint, so this classic attack fails.
+    function test_VerifyInclusion_InternalNodeAsLeaf_ReturnsFalse() public {
+        bytes32[] memory leaves = _fourLeaves();
+        bytes32 root = MerkleTestTree.root(leaves);
+
+        // Reconstruct the left internal node N01 = hashNode(bottom0, bottom1) and its sibling
+        // N23 = hashNode(bottom2, bottom3). Under a single-hash tree, presenting N01 as a leaf with
+        // [N23] as the proof would climb straight to the root. Here it must not.
+        bytes32 b0 = keccak256(abi.encodePacked(bytes1(0x00), leaves[0]));
+        bytes32 b1 = keccak256(abi.encodePacked(bytes1(0x00), leaves[1]));
+        bytes32 b2 = keccak256(abi.encodePacked(bytes1(0x00), leaves[2]));
+        bytes32 b3 = keccak256(abi.encodePacked(bytes1(0x00), leaves[3]));
+        bytes32 n01 = MerkleTestTree.hashNode(b0, b1);
+        bytes32 n23 = MerkleTestTree.hashNode(b2, b3);
+
+        bytes32[] memory forged = new bytes32[](1);
+        forged[0] = n23;
+
+        vm.prank(owner);
+        uint256 idx = registry.anchor(root, "ipfs://dump", bytes32(uint256(1)), "0.1.0");
+
+        assertFalse(registry.verifyInclusion(idx, n01, forged), "an internal node must not verify as a leaf");
+    }
+
+    /// @notice An empty proof verifies only the degenerate single-leaf tree, where the root is
+    /// defined as keccak256(0x00 || leaf); it must never verify a member of a larger tree.
+    function test_VerifyInclusion_EmptyProof_OnlySingleLeafTree() public {
+        bytes32 leaf = keccak256("solo");
+        bytes32 singleRoot = keccak256(abi.encodePacked(bytes1(0x00), leaf));
+
+        vm.startPrank(owner);
+        uint256 soloIdx = registry.anchor(singleRoot, "ipfs://solo", bytes32(uint256(1)), "0.1.0");
+        bytes32[] memory fourRoot = _fourLeaves();
+        uint256 fourIdx = registry.anchor(MerkleTestTree.root(fourRoot), "ipfs://four", bytes32(uint256(2)), "0.1.0");
+        vm.stopPrank();
+
+        bytes32[] memory empty = new bytes32[](0);
+        assertTrue(registry.verifyInclusion(soloIdx, leaf, empty), "single-leaf tree verifies with an empty proof");
+        assertFalse(registry.verifyInclusion(fourIdx, fourRoot[0], empty), "a member of a larger tree must not verify with an empty proof");
+    }
+
     // -- two-step ownership transfer -----------------------------------------
 
     function test_TransferOwnership_NonOwnerReverts() public {

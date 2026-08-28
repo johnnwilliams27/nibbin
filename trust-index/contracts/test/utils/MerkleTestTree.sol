@@ -1,14 +1,22 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.24;
 
-/// @notice Independent, test-only reimplementation of the sorted-pair Merkle tree builder that
-/// off-chain dump tooling is expected to use. Deliberately does not call MerkleLib: this is here
-/// to prove an independently written builder produces roots and proofs MerkleLib accepts, which
-/// is the actual claim SPEC 20.1 makes ("off-chain dump tooling must reproduce it"). Power-of-two
-/// leaf counts only; no odd-leaf duplication rule is defined or needed by these tests.
+/// @notice Independent, test-only reimplementation of the domain-separated sorted-pair Merkle tree
+/// builder that off-chain dump tooling is expected to use. Deliberately does not call MerkleLib:
+/// this is here to prove an independently written builder produces roots and proofs MerkleLib
+/// accepts, which is the actual claim SPEC 20.1 makes ("off-chain dump tooling must reproduce it").
+/// Power-of-two leaf counts only; no odd-leaf duplication rule is defined or needed by these tests.
+///
+/// The `leaves` passed in are RAW leaf values. This builder applies the leaf domain byte (0x00) to
+/// each one to form the bottom level, then combines internal nodes with the node domain byte (0x01),
+/// matching MerkleLib exactly. Proof siblings are therefore bottom/internal node hashes, not raw
+/// leaves.
 library MerkleTestTree {
+    bytes1 internal constant LEAF_DOMAIN = 0x00;
+    bytes1 internal constant NODE_DOMAIN = 0x01;
+
     function root(bytes32[] memory leaves) internal pure returns (bytes32) {
-        bytes32[] memory level = leaves;
+        bytes32[] memory level = _bottom(leaves);
         while (level.length > 1) {
             level = _levelUp(level);
         }
@@ -22,7 +30,7 @@ library MerkleTestTree {
             depth++;
         }
         bytes32[] memory path = new bytes32[](depth);
-        bytes32[] memory level = leaves;
+        bytes32[] memory level = _bottom(leaves);
         uint256 idx = index;
         for (uint256 d = 0; d < depth; d++) {
             path[d] = level[idx ^ 1];
@@ -32,15 +40,26 @@ library MerkleTestTree {
         return path;
     }
 
+    /// @notice The internal (node-domain) hash of two bottom/internal nodes, exposed so a test can
+    /// construct a real internal node value and prove it cannot be passed off as a leaf.
+    function hashNode(bytes32 a, bytes32 b) internal pure returns (bytes32) {
+        return a < b
+            ? keccak256(abi.encodePacked(NODE_DOMAIN, a, b))
+            : keccak256(abi.encodePacked(NODE_DOMAIN, b, a));
+    }
+
+    function _bottom(bytes32[] memory leaves) private pure returns (bytes32[] memory bottom) {
+        bottom = new bytes32[](leaves.length);
+        for (uint256 i = 0; i < leaves.length; i++) {
+            bottom[i] = keccak256(abi.encodePacked(LEAF_DOMAIN, leaves[i]));
+        }
+    }
+
     function _levelUp(bytes32[] memory level) private pure returns (bytes32[] memory) {
         bytes32[] memory next = new bytes32[](level.length / 2);
         for (uint256 i = 0; i < next.length; i++) {
-            next[i] = _hashPair(level[2 * i], level[2 * i + 1]);
+            next[i] = hashNode(level[2 * i], level[2 * i + 1]);
         }
         return next;
-    }
-
-    function _hashPair(bytes32 a, bytes32 b) private pure returns (bytes32) {
-        return a < b ? keccak256(abi.encodePacked(a, b)) : keccak256(abi.encodePacked(b, a));
     }
 }
