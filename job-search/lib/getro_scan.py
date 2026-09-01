@@ -35,6 +35,7 @@ GETRO_NETWORKS = {
     "founders-fund":    ("Founders Fund", 13095),
     "radical":          ("Radical Ventures", 816),
     "flare":            ("Flare Capital Partners", 9366),
+    "index":            ("Index Ventures", 1629),
 }
 
 UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
@@ -72,6 +73,8 @@ EXCL_RE = re.compile(
     r"product\s+operations|product\s+ops|"
     r"product\s+engineering|product\s+(?:and|&)\s+(?:software\s+)?security|product\s+security|"
     r"\bproduction\b|communications|\bassurance\b|"      # Production / Comms / QA(Assurance)
+    r"reporting\s+to|\bto\s+the\s+c[a-z]o\b|business\s+planning|"  # "... reporting to COO/CPO"
+    r"deputy|\bpmo\b|program\s+management|project\s+management|"
     r"\bassistant\b|chief\s+of\s+staff|business\s+partner|"  # EA / CoS / ABP roles
     r"expert\s+opportunity|\$\d|/hr|/hour|per\s+hour|/week|hourly|"
     r"contract(?:or)?\b|part[- ]time|intern(?:ship)?|"

@@ -1,25 +1,26 @@
 {
- "generated_at": 1788242193,
+ "generated_at": 1788243975,
  "funds_scanned": [
-  "Thrive Capital",
   "Menlo Ventures",
-  "General Catalyst",
-  "Insight Partners",
-  "Accel",
-  "Oak HC/FT",
-  "Venrock",
-  ".406 Ventures",
+  "Thrive Capital",
   "8VC",
   "Craft Ventures",
-  "Flare Capital Partners",
+  "Insight Partners",
+  "Accel",
+  "General Catalyst",
+  "Venrock",
+  "Oak HC/FT",
   "Radical Ventures",
+  "Flare Capital Partners",
+  ".406 Ventures",
   "Redpoint Ventures",
   "Founders Fund",
-  "Khosla Ventures"
+  "Khosla Ventures",
+  "Index Ventures"
  ],
  "errors": [],
- "n_companies": 39,
- "n_roles": 43,
+ "n_companies": 40,
+ "n_roles": 44,
  "rows": [
   {
    "title": "Senior Director or Vice President, Product",
@@ -112,98 +113,58 @@
     "Ecommerce"
    ],
    "funds": [
+    "Index Ventures",
     "Thrive Capital"
    ]
   },
   {
-   "title": "VP Product, Last Mile",
-   "url": "https://jobs.ashbyhq.com/veho-tech-inc/f1aa0aed-e1f4-4ed1-8272-2203b4cced89",
-   "work_mode": null,
-   "seniority": "vice_president",
-   "locations": [],
-   "location_details": [],
-   "created_at": 1788155267,
-   "comp_min_cents": 27000000,
-   "comp_max_cents": 30000000,
-   "comp_currency": "USD",
-   "comp_period": "year",
-   "offers_equity": true,
-   "company": "Veho",
-   "org_slug": "veho",
-   "stage": "series_b",
-   "head_count": 4,
-   "industry_tags": [
-    "Administrative Services",
-    "Delivery",
-    "E-Commerce",
-    "Last Mile Transportation",
-    "Packaging Services",
-    "Same Day Delivery",
-    "Shipping",
-    "Supply Chain Management",
-    "Transportation"
-   ],
-   "topics": [
-    "Consumer"
-   ],
-   "funds": [
-    "General Catalyst"
-   ]
-  },
-  {
-   "title": "Vice President of Product",
-   "url": "https://www.linkedin.com/jobs/view/vice-president-of-product-at-avant-garde-health-4455867464",
+   "title": "VP of Product Experience",
+   "url": "https://ffive.wd5.myworkdayjobs.com/f5jobs/job/San-Jose/VP-of-Product-Experience_RP1038662",
    "work_mode": "on_site",
    "seniority": "vice_president",
    "locations": [
-    "Boston, MA, USA",
-    "Massachusetts, USA",
+    "San Jose, CA, USA",
+    "Santa Clara County, CA, USA",
+    "California, USA",
     "United States",
-    "North America"
+    "North America",
+    "Seattle, WA, USA",
+    "King County, WA, USA",
+    "Washington, USA"
    ],
    "location_details": [
     {
-     "name": "Boston, MA, USA",
+     "name": "San Jose, CA, USA",
      "area_type": "locality",
-     "point": "POINT (-71.0588801 42.3600825)"
+     "point": "POINT (-121.8863286 37.3382082)"
+    },
+    {
+     "name": "Seattle, WA, USA",
+     "area_type": "locality",
+     "point": "POINT (-122.3320708 47.6062095)"
     }
    ],
-   "created_at": 1787669094,
-   "comp_min_cents": null,
-   "comp_max_cents": null,
-   "comp_currency": null,
-   "comp_period": "period_not_defined",
-   "offers_equity": null,
-   "company": "Avant-garde Health",
-   "org_slug": "avant-garde-health",
-   "stage": "series_a",
+   "created_at": 1787929314,
+   "comp_min_cents": 31100000,
+   "comp_max_cents": 46660000,
+   "comp_currency": "USD",
+   "comp_period": "year",
+   "offers_equity": true,
+   "company": "Lilac Cloud",
+   "org_slug": "lilac-cloud",
+   "stage": "acquisition",
    "head_count": 2,
    "industry_tags": [
-    "Analytics",
-    "Business Intelligence",
-    "Data",
-    "Data & Analytics",
-    "Enterprise Software",
-    "Enterprise Systems (Healthcare)",
-    "Finance",
-    "Health Care",
-    "Health IT",
-    "Healthcare",
-    "Healthcare Providers",
-    "HealthTech",
-    "Home Health Care",
-    "Hospital",
-    "Hospitals and Health Care",
-    "Human Resources Hr",
-    "MedTech",
-    "Pharmaceuticals",
-    "SaaS"
+    "Business/Productivity Software",
+    "Computer",
+    "Consumer Electronics",
+    "Hardware",
+    "IT Consulting and Outsourcing",
+    "Other Commercial Services"
    ],
-   "topics": [
-    "Healthcare"
-   ],
+   "topics": [],
    "funds": [
-    "General Catalyst"
+    "8VC"
    ]
   },
   {
@@ -265,67 +226,91 @@
    ]
   },
   {
-   "title": "Chief Commercial Officer",
-   "url": "https://boards.greenhouse.io/medeloop/jobs/4323432009",
-   "work_mode": "remote",
-   "seniority": "cxo",
+   "title": "VP of Product",
+   "url": "https://jobs.ashbyhq.com/Unlearn/5c101044-b926-4038-98b2-28c6bb5611d3",
+   "work_mode": "on_site",
+   "seniority": "vice_president",
    "locations": [
+    "San Francisco, CA, USA",
+    "San Francisco County, CA, USA",
+    "California, USA",
     "United States",
-    "North America",
-    "Canada",
-    "Remote"
+    "North America"
    ],
    "location_details": [
     {
-     "name": "United States",
-     "area_type": "country",
-     "point": "POINT (-95.712891 37.09024)"
-    },
-    {
-     "name": "Canada",
-     "area_type": "country",
-     "point": "POINT (-106.346771 56.130366)"
-    },
-    {
-     "name": "Remote",
-     "area_type": "global",
-     "point": null
+     "name": "San Francisco, CA, USA",
+     "area_type": "locality",
+     "point": "POINT (-122.4194155 37.7749295)"
     }
    ],
-   "created_at": 1784373233,
+   "created_at": 1747995246,
    "comp_min_cents": null,
    "comp_max_cents": null,
    "comp_currency": null,
    "comp_period": "period_not_defined",
    "offers_equity": null,
-   "company": "Medeloop",
-   "org_slug": "medeloop",
-   "stage": "series_a",
-   "head_count": 2,
+   "company": "Unlearn.AI",
+   "org_slug": "unlearn-ai-2",
+   "stage": "series_c",
+   "head_count": 3,
    "industry_tags": [
-    "Artificial Intelligence",
     "Artificial Intelligence (AI)",
-    "Clinical Research",
-    "Data & Analytics",
-    "Data Integration",
-    "Data Visualization",
-    "Database",
-    "Design",
-    "Electronic Health Record (EHR)",
-    "Enterprise Systems (Healthcare)",
-    "Health Care",
+    "Bioinformatics",
+    "Biotechnology",
+    "Clinical Trials",
     "Information Technology",
-    "IT Services and IT Consulting",
+    "Life Science",
     "Machine Learning",
-    "Other Healthcare Services",
-    "Outcome Management (Healthcare)",
-    "Platform",
-    "Software",
-    "Technology"
+    "Pharmaceutical"
    ],
    "topics": [],
    "funds": [
-    "General Catalyst"
+    "8VC",
+    "Insight Partners",
+    "Radical Ventures"
+   ]
+  },
+  {
+   "title": "Chief Product Officer (CPO) of Antibody-Powered Division (APD)",
+   "url": "https://alloytherapeutics.applytojob.com/apply/gGrIzILmi1/Chief-Product-Officer-CPO-Of-AntibodyPowered-Division-APD",
+   "work_mode": "on_site",
+   "seniority": "cxo",
+   "locations": [
+    "Waltham, MA, USA",
+    "Middlesex County, MA, USA",
+    "Massachusetts, USA",
+    "United States",
+    "North America"
+   ],
+   "location_details": [
+    {
+     "name": "Waltham, MA, USA",
+     "area_type": "locality",
+     "point": "POINT (-71.2356113 42.3764852)"
+    }
+   ],
+   "created_at": 1787401003,
+   "comp_min_cents": 25000000,
+   "comp_max_cents": 33000000,
+   "comp_currency": "USD",
+   "comp_period": "year",
+   "offers_equity": true,
+   "company": "Alloy Therapeutics",
+   "org_slug": "alloy-therapeutics",
+   "stage": "series_e",
+   "head_count": 3,
+   "industry_tags": [
+    "Biopharma",
+    "Biotechnology",
+    "Health Care",
+    "Life Science",
+    "Pharmaceutical",
+    "Therapeutics"
+   ],
+   "topics": [],
+   "funds": [
+    "8VC"
    ]
   },
   {
@@ -918,55 +903,6 @@
    ],
    "funds": [
     "Insight Partners"
-   ]
-  },
-  {
-   "title": "VP of Product",
-   "url": "https://jobs.ashbyhq.com/Unlearn/5c101044-b926-4038-98b2-28c6bb5611d3",
-   "work_mode": "on_site",
-   "seniority": "vice_president",
-   "locations": [
-    "San Francisco, CA, USA",
-    "San Francisco County, CA, USA",
-    "California, USA",
-    "United States",
-    "North America"
-   ],
-   "location_details": [
-    {
-     "name": "San Francisco, CA, USA",
-     "area_type": "locality",
-     "point": "POINT (-122.4194155 37.7749295)"
-    }
-   ],
-   "created_at": 1747995246,
-   "comp_min_cents": null,
-   "comp_max_cents": null,
-   "comp_currency": null,
-   "comp_period": "period_not_defined",
-   "offers_equity": null,
-   "company": "Unlearn.AI",
-   "org_slug": "unlearn-ai-2",
-   "stage": "series_c",
-   "head_count": 3,
-   "industry_tags": [
-    "Artificial Intelligence (AI)",
-    "Bioinformatics",
-    "Biotechnology",
-    "Clinical Trials",
-    "Information Technology",
-    "Life Science",
-    "Machine Learning",
-    "Pharmaceutical"
-   ],
-   "topics": [
-    "AI / ML Data",
-    "Life Sciences"
-   ],
-   "funds": [
-    "8VC",
-    "Insight Partners",
-    "Radical Ventures"
    ]
   },
   {
@@ -1724,95 +1660,158 @@
    ]
   },
   {
-   "title": "VP of Product Experience",
-   "url": "https://ffive.wd5.myworkdayjobs.com/f5jobs/job/San-Jose/VP-of-Product-Experience_RP1038662",
-   "work_mode": "on_site",
+   "title": "VP Product, Last Mile",
+   "url": "https://jobs.ashbyhq.com/veho-tech-inc/f1aa0aed-e1f4-4ed1-8272-2203b4cced89",
+   "work_mode": null,
    "seniority": "vice_president",
-   "locations": [
-    "San Jose, CA, USA",
-    "Santa Clara County, CA, USA",
-    "California, USA",
-    "United States",
-    "North America",
-    "Seattle, WA, USA",
-    "King County, WA, USA",
-    "Washington, USA"
-   ],
-   "location_details": [
-    {
-     "name": "San Jose, CA, USA",
-     "area_type": "locality",
-     "point": "POINT (-121.8863286 37.3382082)"
-    },
-    {
-     "name": "Seattle, WA, USA",
-     "area_type": "locality",
-     "point": "POINT (-122.3320708 47.6062095)"
-    }
-   ],
-   "created_at": 1787929314,
-   "comp_min_cents": 31100000,
-   "comp_max_cents": 46660000,
+   "locations": [],
+   "location_details": [],
+   "created_at": 1788155267,
+   "comp_min_cents": 27000000,
+   "comp_max_cents": 30000000,
    "comp_currency": "USD",
    "comp_period": "year",
    "offers_equity": true,
-   "company": "Lilac Cloud",
-   "org_slug": "lilac-cloud",
-   "stage": "acquisition",
-   "head_count": 2,
+   "company": "Veho",
+   "org_slug": "veho",
+   "stage": "series_b",
+   "head_count": 4,
    "industry_tags": [
-    "Business/Productivity Software",
-    "Computer",
-    "Consumer Electronics",
-    "Hardware",
-    "IT Consulting and Outsourcing",
-    "Other Commercial Services"
+    "Administrative Services",
+    "Delivery",
+    "E-Commerce",
+    "Last Mile Transportation",
+    "Packaging Services",
+    "Same Day Delivery",
+    "Shipping",
+    "Supply Chain Management",
+    "Transportation"
    ],
-   "topics": [],
+   "topics": [
+    "Consumer"
+   ],
    "funds": [
-    "8VC"
+    "General Catalyst"
    ]
   },
   {
-   "title": "Chief Product Officer (CPO) of Antibody-Powered Division (APD)",
-   "url": "https://alloytherapeutics.applytojob.com/apply/gGrIzILmi1/Chief-Product-Officer-CPO-Of-AntibodyPowered-Division-APD",
+   "title": "Vice President of Product",
+   "url": "https://www.linkedin.com/jobs/view/vice-president-of-product-at-avant-garde-health-4455867464",
    "work_mode": "on_site",
-   "seniority": "cxo",
+   "seniority": "vice_president",
    "locations": [
-    "Waltham, MA, USA",
-    "Middlesex County, MA, USA",
+    "Boston, MA, USA",
     "Massachusetts, USA",
     "United States",
     "North America"
    ],
    "location_details": [
     {
-     "name": "Waltham, MA, USA",
+     "name": "Boston, MA, USA",
      "area_type": "locality",
-     "point": "POINT (-71.2356113 42.3764852)"
+     "point": "POINT (-71.0588801 42.3600825)"
     }
    ],
-   "created_at": 1787401003,
-   "comp_min_cents": 25000000,
-   "comp_max_cents": 33000000,
-   "comp_currency": "USD",
-   "comp_period": "year",
-   "offers_equity": true,
-   "company": "Alloy Therapeutics",
-   "org_slug": "alloy-therapeutics",
-   "stage": "series_e",
-   "head_count": 3,
+   "created_at": 1787669094,
+   "comp_min_cents": null,
+   "comp_max_cents": null,
+   "comp_currency": null,
+   "comp_period": "period_not_defined",
+   "offers_equity": null,
+   "company": "Avant-garde Health",
+   "org_slug": "avant-garde-health",
+   "stage": "series_a",
+   "head_count": 2,
    "industry_tags": [
-    "Biopharma",
-    "Biotechnology",
+    "Analytics",
+    "Business Intelligence",
+    "Data",
+    "Data & Analytics",
+    "Enterprise Software",
+    "Enterprise Systems (Healthcare)",
+    "Finance",
     "Health Care",
-    "Life Science",
-    "Pharmaceutical",
-    "Therapeutics"
+    "Health IT",
+    "Healthcare",
+    "Healthcare Providers",
+    "HealthTech",
+    "Home Health Care",
+    "Hospital",
+    "Hospitals and Health Care",
+    "Human Resources Hr",
+    "MedTech",
+    "Pharmaceuticals",
+    "SaaS"
+   ],
+   "topics": [
+    "Healthcare"
+   ],
+   "funds": [
+    "General Catalyst"
+   ]
+  },
+  {
+   "title": "Chief Commercial Officer",
+   "url": "https://boards.greenhouse.io/medeloop/jobs/4323432009",
+   "work_mode": "remote",
+   "seniority": "cxo",
+   "locations": [
+    "United States",
+    "North America",
+    "Canada",
+    "Remote"
+   ],
+   "location_details": [
+    {
+     "name": "United States",
+     "area_type": "country",
+     "point": "POINT (-95.712891 37.09024)"
+    },
+    {
+     "name": "Canada",
+     "area_type": "country",
+     "point": "POINT (-106.346771 56.130366)"
+    },
+    {
+     "name": "Remote",
+     "area_type": "global",
+     "point": null
+    }
+   ],
+   "created_at": 1784373233,
+   "comp_min_cents": null,
+   "comp_max_cents": null,
+   "comp_currency": null,
+   "comp_period": "period_not_defined",
+   "offers_equity": null,
+   "company": "Medeloop",
+   "org_slug": "medeloop",
+   "stage": "series_a",
+   "head_count": 2,
+   "industry_tags": [
+    "Artificial Intelligence",
+    "Artificial Intelligence (AI)",
+    "Clinical Research",
+    "Data & Analytics",
+    "Data Integration",
+    "Data Visualization",
+    "Database",
+    "Design",
+    "Electronic Health Record (EHR)",
+    "Enterprise Systems (Healthcare)",
+    "Health Care",
+    "Information Technology",
+    "IT Services and IT Consulting",
+    "Machine Learning",
+    "Other Healthcare Services",
+    "Outcome Management (Healthcare)",
+    "Platform",
+    "Software",
+    "Technology"
    ],
    "topics": [],
    "funds": [
-    "8VC"
+    "General Catalyst"
    ]
   },
   {
@@ -2517,6 +2516,48 @@
    "topics": [],
    "funds": [
     "Khosla Ventures"
+   ]
+  },
+  {
+   "title": "Head of Product Growth",
+   "url": "https://jobs.ashbyhq.com/DeepL/236d8651-c4c9-4bb8-a9ea-57d535cb76fb",
+   "work_mode": "on_site",
+   "seniority": "director",
+   "locations": [
+    "London, UK",
+    "Greater London, UK",
+    "England, UK",
+    "United Kingdom",
+    "Europe"
+   ],
+   "location_details": [
+    {
+     "name": "London, UK",
+     "area_type": "locality",
+     "point": "POINT (-0.1277583 51.5073509)"
+    }
+   ],
+   "created_at": 1786705978,
+   "comp_min_cents": null,
+   "comp_max_cents": null,
+   "comp_currency": null,
+   "comp_period": "period_not_defined",
+   "offers_equity": null,
+   "company": "DeepL",
+   "org_slug": "deepl",
+   "stage": "series_unknown",
+   "head_count": 5,
+   "industry_tags": [
+    "Artificial Intelligence (AI)",
+    "Foundational AI",
+    "Generative AI",
+    "Machine Learning",
+    "Software",
+    "Translation Service"
+   ],
+   "topics": [],
+   "funds": [
+    "Index Ventures"
    ]
   }
  ]

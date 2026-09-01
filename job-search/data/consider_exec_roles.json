@@ -1,20 +1,134 @@
 {
- "generated_at": 1788243396,
+ "generated_at": 1788243988,
  "funds_scanned": [
-  "Sequoia Capital",
-  "Bessemer Venture Partners",
   "Kleiner Perkins",
+  "Sequoia Capital",
+  "Lightspeed Venture Partners",
   "a16z (Andreessen Horowitz)",
   "Battery Ventures",
-  "Felicis",
+  "Bessemer Venture Partners",
   "GV (Google Ventures)",
-  "IVP",
-  "Lightspeed Venture Partners",
-  "NEA"
+  "Felicis",
+  "NEA",
+  "IVP"
  ],
  "errors": [],
  "n_roles": 44,
  "rows": [
+  {
+   "title": "VP Product",
+   "url": "https://jobs.ashbyhq.com/Flock%20Safety/3bfc459b-7cc3-443f-a68e-3114f64459d8?utm_source=jobs.kleinerperkins.com",
+   "work_mode": "hybrid",
+   "seniority": "vp",
+   "locations": [
+    "Atlanta, Georgia"
+   ],
+   "location_details": null,
+   "created_at": 1785456000,
+   "comp_min_cents": 28000000,
+   "comp_max_cents": 30000000,
+   "comp_currency": "USD",
+   "comp_period": "year",
+   "offers_equity": null,
+   "company": "Flock Safety",
+   "org_slug": "flock-safety",
+   "stage": "1000+ employees",
+   "head_count": 1437,
+   "industry_tags": [
+    "Public Safety"
+   ],
+   "topics": [],
+   "min_years_exp": null,
+   "funds": [
+    "Kleiner Perkins"
+   ]
+  },
+  {
+   "title": "Head of Product, Rippling Finance",
+   "url": "https://ats.rippling.com/rippling/jobs/ffb325ca-a11d-4adb-819f-259fc9dab788",
+   "work_mode": "on_site",
+   "seniority": "director",
+   "locations": [
+    "New York"
+   ],
+   "location_details": null,
+   "created_at": 1785857782,
+   "comp_min_cents": 15000000,
+   "comp_max_cents": 30000000,
+   "comp_currency": "USD",
+   "comp_period": "year",
+   "offers_equity": null,
+   "company": "Rippling",
+   "org_slug": "rippling",
+   "stage": "1000+ employees",
+   "head_count": 7796,
+   "industry_tags": [
+    "HR and Recruiting"
+   ],
+   "topics": [],
+   "min_years_exp": 10,
+   "funds": [
+    "Kleiner Perkins"
+   ]
+  },
+  {
+   "title": "VP of Product, Commerce",
+   "url": "https://stord.wd503.myworkdayjobs.com/Stord_External_Career/job/Remote---GA/VP-of-Product--Commerce_JR102748",
+   "work_mode": "remote",
+   "seniority": "vp",
+   "locations": [
+    "United States"
+   ],
+   "location_details": null,
+   "created_at": 1785715200,
+   "comp_min_cents": 20000000,
+   "comp_max_cents": 30000000,
+   "comp_currency": "USD",
+   "comp_period": "year",
+   "offers_equity": null,
+   "company": "Stord",
+   "org_slug": "stord",
+   "stage": "100-1000 employees",
+   "head_count": 895,
+   "industry_tags": [
+    "Logistics and Supply Chain",
+    "Transportation"
+   ],
+   "topics": [],
+   "min_years_exp": null,
+   "funds": [
+    "Kleiner Perkins"
+   ]
+  },
+  {
+   "title": "Chief Product Officer",
+   "url": "https://jobs.ashbyhq.com/Viz.ai/5411d705-1eb6-46f8-b3c2-347b94749ca7?utm_source=jobs.kleinerperkins.com",
+   "work_mode": "remote",
+   "seniority": "c level",
+   "locations": [
+    "United States"
+   ],
+   "location_details": null,
+   "created_at": 1784246400,
+   "comp_min_cents": 11500000,
+   "comp_max_cents": 35000000,
+   "comp_currency": "USD",
+   "comp_period": "year",
+   "offers_equity": null,
+   "company": "Viz.ai",
+   "org_slug": "viz-ai",
+   "stage": "100-1000 employees",
+   "head_count": 326,
+   "industry_tags": [
+    "Life Sciences",
+    "Medical Devices"
+   ],
+   "topics": [],
+   "min_years_exp": 15,
+   "funds": [
+    "Kleiner Perkins"
+   ]
+  },
   {
    "title": "Head of Product - Business Lending",
    "url": "https://job-boards.greenhouse.io/mercury/jobs/6106974004",
@@ -133,147 +247,91 @@
    ]
   },
   {
-   "title": "VP, Product",
-   "url": "https://job-boards.greenhouse.io/sixfold/jobs/5387559008",
+   "title": "Vice President of Product Management, Agentic (Satori)",
+   "url": "https://proofpoint.wd5.myworkdayjobs.com/ProofpointCareers/job/Sunnyvale-CA/Vice-President-of-Product-Management--Agentic--Satori-_R14569",
    "work_mode": "on_site",
    "seniority": "vp",
    "locations": [
-    "New York, New York"
+    "Sunnyvale, California",
+    "United States"
    ],
    "location_details": null,
-   "created_at": 1786982915,
-   "comp_min_cents": 24500000,
-   "comp_max_cents": 28500000,
-   "comp_currency": "USD",
-   "comp_period": "year",
-   "offers_equity": null,
-   "company": "Sixfold",
-   "org_slug": "sixfold",
-   "stage": "10-100 employees",
-   "head_count": 69,
-   "industry_tags": [
-    "AI",
-    "Enterprise Software",
-    "SaaS"
-   ],
-   "topics": [],
-   "min_years_exp": null,
-   "funds": [
-    "Bessemer Venture Partners"
-   ]
-  },
-  {
-   "title": "Head of Product Growth",
-   "url": "https://jobs.ashbyhq.com/DeepL/236d8651-c4c9-4bb8-a9ea-57d535cb76fb?utm_source=jobs.bvp.com",
-   "work_mode": "on_site",
-   "seniority": "director",
-   "locations": [
-    "London"
-   ],
-   "location_details": null,
-   "created_at": 1786665600,
-   "comp_min_cents": null,
-   "comp_max_cents": null,
-   "comp_currency": null,
-   "comp_period": null,
-   "offers_equity": null,
-   "company": "DeepL",
-   "org_slug": "deepl",
-   "stage": "1000+ employees",
-   "head_count": 1564,
-   "industry_tags": [
-    "AI/ML"
-   ],
-   "topics": [],
-   "min_years_exp": null,
-   "funds": [
-    "Bessemer Venture Partners"
-   ]
-  },
-  {
-   "title": "Head of Product - Core & Growth",
-   "url": "https://www.thunes.com/jobs/7697868003?gh_jid=7697868003",
-   "work_mode": "on_site",
-   "seniority": "director",
-   "locations": [
-    "Singapore"
-   ],
-   "location_details": null,
-   "created_at": 1776362015,
-   "comp_min_cents": null,
-   "comp_max_cents": null,
-   "comp_currency": null,
-   "comp_period": null,
-   "offers_equity": null,
-   "company": "Thunes",
-   "org_slug": "thunes",
-   "stage": "100-1000 employees",
-   "head_count": 486,
-   "industry_tags": [
-    "Financial Services",
-    "FinTech"
-   ],
-   "topics": [],
-   "min_years_exp": 7,
-   "funds": [
-    "Bessemer Venture Partners"
-   ]
-  },
-  {
-   "title": "Head of Product - Clients (f/m/d)",
-   "url": "https://jobs.ashbyhq.com/upvest/4234d4fc-01ed-4f4c-8f1a-73dc0e7f555f?utm_source=jobs.bvp.com",
-   "work_mode": "hybrid",
-   "seniority": "director",
-   "locations": [
-    "Berlin, Germany"
-   ],
-   "location_details": null,
-   "created_at": 1784073600,
-   "comp_min_cents": null,
-   "comp_max_cents": null,
-   "comp_currency": null,
-   "comp_period": null,
-   "offers_equity": null,
-   "company": "Upvest",
-   "org_slug": "upvest",
-   "stage": "100-1000 employees",
-   "head_count": 287,
-   "industry_tags": [
-    "Financial Services",
-    "FinTech"
-   ],
-   "topics": [],
-   "min_years_exp": 5,
-   "funds": [
-    "Bessemer Venture Partners"
-   ]
-  },
-  {
-   "title": "VP Product",
-   "url": "https://jobs.ashbyhq.com/Flock%20Safety/3bfc459b-7cc3-443f-a68e-3114f64459d8?utm_source=jobs.kleinerperkins.com",
-   "work_mode": "hybrid",
-   "seniority": "vp",
-   "locations": [
-    "Atlanta, Georgia"
-   ],
-   "location_details": null,
-   "created_at": 1785456000,
-   "comp_min_cents": 28000000,
+   "created_at": 1786492800,
+   "comp_min_cents": 20000000,
    "comp_max_cents": 30000000,
    "comp_currency": "USD",
    "comp_period": "year",
    "offers_equity": null,
-   "company": "Flock Safety",
-   "org_slug": "flock-safety",
-   "stage": "1000+ employees",
-   "head_count": 1437,
+   "company": "Normalyze",
+   "org_slug": "normalyze",
+   "stage": "10-100 employees",
+   "head_count": 40,
    "industry_tags": [
-    "Public Safety"
+    "Security"
    ],
    "topics": [],
    "min_years_exp": null,
    "funds": [
-    "Kleiner Perkins"
+    "Lightspeed Venture Partners"
+   ]
+  },
+  {
+   "title": "Head of Product",
+   "url": "https://jobs.ashbyhq.com/archive/cb7678cf-44db-4aec-9c6e-5891a1e7be12?utm_source=jobs.lsvp.com",
+   "work_mode": "remote",
+   "seniority": "director",
+   "locations": [
+    "United States"
+   ],
+   "location_details": null,
+   "created_at": 1750723200,
+   "comp_min_cents": 25000000,
+   "comp_max_cents": 30000000,
+   "comp_currency": "USD",
+   "comp_period": "year",
+   "offers_equity": null,
+   "company": "Archive Resale",
+   "org_slug": "archive-resale",
+   "stage": "100-1000 employees",
+   "head_count": 184,
+   "industry_tags": [
+    "Apparel & Fashion",
+    "Consumer",
+    "eCommerce"
+   ],
+   "topics": [],
+   "min_years_exp": null,
+   "funds": [
+    "Lightspeed Venture Partners"
+   ]
+  },
+  {
+   "title": "Head of Product",
+   "url": "https://jobs.ashbyhq.com/brigit/33bf5fb0-1b0b-46e8-ab31-fc1beb706713?utm_source=jobs.lsvp.com",
+   "work_mode": "remote",
+   "seniority": "director",
+   "locations": [
+    "New York"
+   ],
+   "location_details": null,
+   "created_at": 1782950400,
+   "comp_min_cents": 23000000,
+   "comp_max_cents": 29000000,
+   "comp_currency": "USD",
+   "comp_period": "year",
+   "offers_equity": null,
+   "company": "Brigit",
+   "org_slug": "brigit",
+   "stage": "100-1000 employees",
+   "head_count": 146,
+   "industry_tags": [
+    "Financial Services",
+    "FinTech"
+   ],
+   "topics": [],
+   "min_years_exp": 10,
+   "funds": [
+    "Lightspeed Venture Partners"
    ]
   },
   {
@@ -301,65 +359,7 @@
    "topics": [],
    "min_years_exp": 10,
    "funds": [
-    "Kleiner Perkins"
-   ]
-  },
-  {
-   "title": "VP of Product, Commerce",
-   "url": "https://stord.wd503.myworkdayjobs.com/Stord_External_Career/job/Remote---GA/VP-of-Product--Commerce_JR102748",
-   "work_mode": "remote",
-   "seniority": "vp",
-   "locations": [
-    "United States"
-   ],
-   "location_details": null,
-   "created_at": 1785715200,
-   "comp_min_cents": 20000000,
-   "comp_max_cents": 30000000,
-   "comp_currency": "USD",
-   "comp_period": "year",
-   "offers_equity": null,
-   "company": "Stord",
-   "org_slug": "stord",
-   "stage": "100-1000 employees",
-   "head_count": 895,
-   "industry_tags": [
-    "Logistics and Supply Chain",
-    "Transportation"
-   ],
-   "topics": [],
-   "min_years_exp": null,
-   "funds": [
-    "Kleiner Perkins"
-   ]
-  },
-  {
-   "title": "Chief Product Officer",
-   "url": "https://jobs.ashbyhq.com/Viz.ai/5411d705-1eb6-46f8-b3c2-347b94749ca7?utm_source=jobs.kleinerperkins.com",
-   "work_mode": "remote",
-   "seniority": "c level",
-   "locations": [
-    "United States"
-   ],
-   "location_details": null,
-   "created_at": 1784246400,
-   "comp_min_cents": 11500000,
-   "comp_max_cents": 35000000,
-   "comp_currency": "USD",
-   "comp_period": "year",
-   "offers_equity": null,
-   "company": "Viz.ai",
-   "org_slug": "viz-ai",
-   "stage": "100-1000 employees",
-   "head_count": 326,
-   "industry_tags": [
-    "Life Sciences",
-    "Medical Devices"
-   ],
-   "topics": [],
-   "min_years_exp": 15,
-   "funds": [
-    "Kleiner Perkins"
+    "Lightspeed Venture Partners"
    ]
   },
   {
@@ -770,64 +770,119 @@
    ]
   },
   {
-   "title": "VP of Product",
-   "url": "https://job-boards.greenhouse.io/greenplaces/jobs/5405727008",
-   "work_mode": "remote",
+   "title": "VP, Product",
+   "url": "https://job-boards.greenhouse.io/sixfold/jobs/5387559008",
+   "work_mode": "on_site",
    "seniority": "vp",
    "locations": [
-    "Raleigh, North Carolina"
+    "New York, New York"
    ],
    "location_details": null,
-   "created_at": 1787671005,
-   "comp_min_cents": 20000000,
-   "comp_max_cents": 30000000,
+   "created_at": 1786982915,
+   "comp_min_cents": 24500000,
+   "comp_max_cents": 28500000,
    "comp_currency": "USD",
    "comp_period": "year",
    "offers_equity": null,
-   "company": "Greenplaces",
-   "org_slug": "greenplaces",
-   "stage": null,
-   "head_count": null,
+   "company": "Sixfold",
+   "org_slug": "sixfold",
+   "stage": "10-100 employees",
+   "head_count": 69,
    "industry_tags": [
-    "Climate",
-    "Data & Analytics",
+    "AI",
     "Enterprise Software",
-    "Environmental Services",
     "SaaS"
    ],
    "topics": [],
-   "min_years_exp": 10,
+   "min_years_exp": null,
    "funds": [
-    "Felicis"
+    "Bessemer Venture Partners"
    ]
   },
   {
-   "title": "Senior Director or Vice President, Product",
-   "url": "https://job-boards.greenhouse.io/formationbio/jobs/7815374",
+   "title": "Head of Product Growth",
+   "url": "https://jobs.ashbyhq.com/DeepL/236d8651-c4c9-4bb8-a9ea-57d535cb76fb?utm_source=jobs.bvp.com",
    "work_mode": "on_site",
-   "seniority": "vp,director",
+   "seniority": "director",
    "locations": [
-    "New York",
-    "Boston"
+    "London"
    ],
    "location_details": null,
-   "created_at": 1777334069,
-   "comp_min_cents": 27000000,
-   "comp_max_cents": 35300000,
-   "comp_currency": "USD",
-   "comp_period": "year",
+   "created_at": 1786665600,
+   "comp_min_cents": null,
+   "comp_max_cents": null,
+   "comp_currency": null,
+   "comp_period": null,
    "offers_equity": null,
-   "company": "Formation Bio",
-   "org_slug": "formation-bio",
-   "stage": "100-1000 employees",
-   "head_count": 191,
+   "company": "DeepL",
+   "org_slug": "deepl",
+   "stage": "1000+ employees",
+   "head_count": 1564,
    "industry_tags": [
-    "Biotech/Pharma"
+    "AI/ML"
    ],
    "topics": [],
-   "min_years_exp": 10,
+   "min_years_exp": null,
    "funds": [
-    "Felicis"
+    "Bessemer Venture Partners"
+   ]
+  },
+  {
+   "title": "Head of Product - Core & Growth",
+   "url": "https://www.thunes.com/jobs/7697868003?gh_jid=7697868003",
+   "work_mode": "on_site",
+   "seniority": "director",
+   "locations": [
+    "Singapore"
+   ],
+   "location_details": null,
+   "created_at": 1776362015,
+   "comp_min_cents": null,
+   "comp_max_cents": null,
+   "comp_currency": null,
+   "comp_period": null,
+   "offers_equity": null,
+   "company": "Thunes",
+   "org_slug": "thunes",
+   "stage": "100-1000 employees",
+   "head_count": 486,
+   "industry_tags": [
+    "Financial Services",
+    "FinTech"
+   ],
+   "topics": [],
+   "min_years_exp": 7,
+   "funds": [
+    "Bessemer Venture Partners"
+   ]
+  },
+  {
+   "title": "Head of Product - Clients (f/m/d)",
+   "url": "https://jobs.ashbyhq.com/upvest/4234d4fc-01ed-4f4c-8f1a-73dc0e7f555f?utm_source=jobs.bvp.com",
+   "work_mode": "hybrid",
+   "seniority": "director",
+   "locations": [
+    "Berlin, Germany"
+   ],
+   "location_details": null,
+   "created_at": 1784073600,
+   "comp_min_cents": null,
+   "comp_max_cents": null,
+   "comp_currency": null,
+   "comp_period": null,
+   "offers_equity": null,
+   "company": "Upvest",
+   "org_slug": "upvest",
+   "stage": "100-1000 employees",
+   "head_count": 287,
+   "industry_tags": [
+    "Financial Services",
+    "FinTech"
+   ],
+   "topics": [],
+   "min_years_exp": 5,
+   "funds": [
+    "Bessemer Venture Partners"
    ]
   },
   {
@@ -947,176 +1002,64 @@
    ]
   },
   {
-   "title": "Head of Product Growth",
-   "url": "https://jobs.ashbyhq.com/DeepL/236d8651-c4c9-4bb8-a9ea-57d535cb76fb?utm_source=careers.ivp.com",
-   "work_mode": "on_site",
-   "seniority": "director",
-   "locations": [
-    "London"
-   ],
-   "location_details": null,
-   "created_at": 1786665600,
-   "comp_min_cents": null,
-   "comp_max_cents": null,
-   "comp_currency": null,
-   "comp_period": null,
-   "offers_equity": null,
-   "company": "DeepL",
-   "org_slug": "deepl",
-   "stage": "1000+ employees",
-   "head_count": 1564,
-   "industry_tags": [
-    "AI/ML"
-   ],
-   "topics": [],
-   "min_years_exp": null,
-   "funds": [
-    "IVP"
-   ]
-  },
-  {
-   "title": "Vice President, Product",
-   "url": "https://boards.greenhouse.io/glossier/jobs/7814765?gh_jid=7814765",
-   "work_mode": "hybrid",
+   "title": "VP of Product",
+   "url": "https://job-boards.greenhouse.io/greenplaces/jobs/5405727008",
+   "work_mode": "remote",
    "seniority": "vp",
    "locations": [
-    "New York"
+    "Raleigh, North Carolina"
    ],
    "location_details": null,
-   "created_at": 1776191925,
-   "comp_min_cents": 23500000,
-   "comp_max_cents": 30500000,
-   "comp_currency": "USD",
-   "comp_period": "year",
-   "offers_equity": null,
-   "company": "Glossier",
-   "org_slug": "glossier",
-   "stage": "100-1000 employees",
-   "head_count": 475,
-   "industry_tags": [
-    "Apparel & Fashion",
-    "Cosmetics"
-   ],
-   "topics": [],
-   "min_years_exp": 10,
-   "funds": [
-    "IVP"
-   ]
-  },
-  {
-   "title": "Vice President of Product Management, Agentic (Satori)",
-   "url": "https://proofpoint.wd5.myworkdayjobs.com/ProofpointCareers/job/Sunnyvale-CA/Vice-President-of-Product-Management--Agentic--Satori-_R14569",
-   "work_mode": "on_site",
-   "seniority": "vp",
-   "locations": [
-    "Sunnyvale, California",
-    "United States"
-   ],
-   "location_details": null,
-   "created_at": 1786492800,
+   "created_at": 1787671005,
    "comp_min_cents": 20000000,
    "comp_max_cents": 30000000,
    "comp_currency": "USD",
    "comp_period": "year",
    "offers_equity": null,
-   "company": "Normalyze",
-   "org_slug": "normalyze",
-   "stage": "10-100 employees",
-   "head_count": 40,
+   "company": "Greenplaces",
+   "org_slug": "greenplaces",
+   "stage": null,
+   "head_count": null,
    "industry_tags": [
-    "Security"
-   ],
-   "topics": [],
-   "min_years_exp": null,
-   "funds": [
-    "Lightspeed Venture Partners"
-   ]
-  },
-  {
-   "title": "Head of Product",
-   "url": "https://jobs.ashbyhq.com/archive/cb7678cf-44db-4aec-9c6e-5891a1e7be12?utm_source=jobs.lsvp.com",
-   "work_mode": "remote",
-   "seniority": "director",
-   "locations": [
-    "United States"
-   ],
-   "location_details": null,
-   "created_at": 1750723200,
-   "comp_min_cents": 25000000,
-   "comp_max_cents": 30000000,
-   "comp_currency": "USD",
-   "comp_period": "year",
-   "offers_equity": null,
-   "company": "Archive Resale",
-   "org_slug": "archive-resale",
-   "stage": "100-1000 employees",
-   "head_count": 184,
-   "industry_tags": [
-    "Apparel & Fashion",
-    "Consumer",
-    "eCommerce"
-   ],
-   "topics": [],
-   "min_years_exp": null,
-   "funds": [
-    "Lightspeed Venture Partners"
-   ]
-  },
-  {
-   "title": "Head of Product",
-   "url": "https://jobs.ashbyhq.com/brigit/33bf5fb0-1b0b-46e8-ab31-fc1beb706713?utm_source=jobs.lsvp.com",
-   "work_mode": "remote",
-   "seniority": "director",
-   "locations": [
-    "New York"
-   ],
-   "location_details": null,
-   "created_at": 1782950400,
-   "comp_min_cents": 23000000,
-   "comp_max_cents": 29000000,
-   "comp_currency": "USD",
-   "comp_period": "year",
-   "offers_equity": null,
-   "company": "Brigit",
-   "org_slug": "brigit",
-   "stage": "100-1000 employees",
-   "head_count": 146,
-   "industry_tags": [
-    "Financial Services",
-    "FinTech"
+    "Climate",
+    "Data & Analytics",
+    "Enterprise Software",
+    "Environmental Services",
+    "SaaS"
    ],
    "topics": [],
    "min_years_exp": 10,
    "funds": [
-    "Lightspeed Venture Partners"
+    "Felicis"
    ]
   },
   {
-   "title": "Head of Product, Rippling Finance",
-   "url": "https://ats.rippling.com/rippling/jobs/ffb325ca-a11d-4adb-819f-259fc9dab788",
+   "title": "Senior Director or Vice President, Product",
+   "url": "https://job-boards.greenhouse.io/formationbio/jobs/7815374",
    "work_mode": "on_site",
-   "seniority": "director",
+   "seniority": "vp,director",
    "locations": [
-    "New York"
+    "New York",
+    "Boston"
    ],
    "location_details": null,
-   "created_at": 1785857782,
-   "comp_min_cents": 15000000,
-   "comp_max_cents": 30000000,
+   "created_at": 1777334069,
+   "comp_min_cents": 27000000,
+   "comp_max_cents": 35300000,
    "comp_currency": "USD",
    "comp_period": "year",
    "offers_equity": null,
-   "company": "Rippling",
-   "org_slug": "rippling",
-   "stage": "1000+ employees",
-   "head_count": 7796,
+   "company": "Formation Bio",
+   "org_slug": "formation-bio",
+   "stage": "100-1000 employees",
+   "head_count": 191,
    "industry_tags": [
-    "HR and Recruiting"
+    "Biotech/Pharma"
    ],
    "topics": [],
    "min_years_exp": 10,
    "funds": [
-    "Lightspeed Venture Partners"
+    "Felicis"
    ]
   },
   {
@@ -1291,6 +1234,63 @@
    "min_years_exp": 10,
    "funds": [
     "NEA"
+   ]
+  },
+  {
+   "title": "Head of Product Growth",
+   "url": "https://jobs.ashbyhq.com/DeepL/236d8651-c4c9-4bb8-a9ea-57d535cb76fb?utm_source=careers.ivp.com",
+   "work_mode": "on_site",
+   "seniority": "director",
+   "locations": [
+    "London"
+   ],
+   "location_details": null,
+   "created_at": 1786665600,
+   "comp_min_cents": null,
+   "comp_max_cents": null,
+   "comp_currency": null,
+   "comp_period": null,
+   "offers_equity": null,
+   "company": "DeepL",
+   "org_slug": "deepl",
+   "stage": "1000+ employees",
+   "head_count": 1564,
+   "industry_tags": [
+    "AI/ML"
+   ],
+   "topics": [],
+   "min_years_exp": null,
+   "funds": [
+    "IVP"
+   ]
+  },
+  {
+   "title": "Vice President, Product",
+   "url": "https://boards.greenhouse.io/glossier/jobs/7814765?gh_jid=7814765",
+   "work_mode": "hybrid",
+   "seniority": "vp",
+   "locations": [
+    "New York"
+   ],
+   "location_details": null,
+   "created_at": 1776191925,
+   "comp_min_cents": 23500000,
+   "comp_max_cents": 30500000,
+   "comp_currency": "USD",
+   "comp_period": "year",
+   "offers_equity": null,
+   "company": "Glossier",
+   "org_slug": "glossier",
+   "stage": "100-1000 employees",
+   "head_count": 475,
+   "industry_tags": [
+    "Apparel & Fashion",
+    "Cosmetics"
+   ],
+   "topics": [],
+   "min_years_exp": 10,
+   "funds": [
+    "IVP"
    ]
   }
  ]

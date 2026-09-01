@@ -66,6 +66,7 @@ DROP_PUBLIC = {
     "lilac cloud": "acq. by F5 (NASDAQ:FFIV)",
     "ionq": "NYSE:IONQ",
     "sprinklr": "NYSE:CXM",
+    "rakuten": "TSE:4755",
 }
 
 # ownership notes for kept companies that were acquired/PE (still private)
@@ -259,10 +260,17 @@ with open("product_exec_roles.md","w") as f:
             "security, communications/assurance, and EA/chief-of-staff roles. Public companies "
             "(and those owned by a public parent) are dropped; a role surfaced by multiple funds/"
             "platforms is merged into one row (deduped by apply URL) with all backing funds listed.\n\n")
-    f.write("**Still unresolved** (newer Getro builds whose numeric collection id isn't embedded, "
-            "or a non-standard/absent public board): Coatue, Greylock, Benchmark, Index Ventures, "
-            "Spark Capital, Conviction, a16z crypto. Portfolio overlap is heavy, so many of their "
-            "companies still surface via the funds above.\n\n")
+    f.write("**Still unresolved, with reason:**\n")
+    f.write("- *Coatue* & *Greylock* — run Getro's newer Next.js build that resolves the numeric "
+            "collection id server-side (not embedded in HTML, `_next/data`, JS chunks, or any "
+            "hostname/slug lookup); the headless browser that could capture it is reset by this "
+            "environment's proxy.\n")
+    f.write("- *a16z crypto* — a Consider board whose interactive API is session-walled; only an "
+            "~8-job server-rendered teaser is reachable, not the full portfolio.\n")
+    f.write("- *Benchmark*, *Spark Capital*, *Conviction* — no public aggregator board found "
+            "(listed only on third-party sites like LinkedIn/Built In/Wellfound).\n")
+    f.write("Portfolio overlap is heavy, so many of these firms' companies still surface via the "
+            f"{len(d['funds_scanned'])} funds above.\n\n")
     f.write("_Comp shown where the ATS exposed it; `n/a` otherwise. `posted_date` is the "
             "ATS-reported creation date._\n")
 

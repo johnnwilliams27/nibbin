@@ -1,8 +1,8 @@
 # Product & Executive Leadership Roles — VC-Portfolio Sweep
 
-_Generated 2026-09-01 for John Williams. Scanned 25 top VC portfolios (Getro + Consider boards)._
+_Generated 2026-09-01 for John Williams. Scanned 26 top VC portfolios (Getro + Consider boards)._
 
-**Totals:** 50 open exec roles at 46 private companies · 13 roles dropped as public-company · 25 funds scanned.
+**Totals:** 50 open exec roles at 46 private companies · 13 roles dropped as public-company · 26 funds scanned.
 
 Fit: **5** payments/fintech/crypto/billing core · **4** AI-native/agentic or healthcare-payer · **3** horizontal SaaS/commerce/healthtech · **2** other vertical/consumer/security · **1** no overlap.
 
@@ -35,7 +35,7 @@ Fit: **5** payments/fintech/crypto/billing core · **4** AI-native/agentic or he
 | 3 | General Catalyst | Avant-garde Health | Vice President of Product | on_site | 2026-08-25 | n/a | series_a | Value-based-care cost analytics for providers — healthcare economics, transferable. | [apply](https://www.linkedin.com/jobs/view/vice-president-of-product-at-avant-garde-health-4455867464) |
 | 3 | Accel; Insight Partners | Alteryx | VP, Product Management, Analytics Experience | remote | 2026-08-22 | $275,000–$325,000 | private_equity | Analytics/automation platform — horizontal B2B SaaS, transferable PM leadership; remote. | [apply](https://alteryx.wd108.myworkdayjobs.com/AlteryxCareers/job/US---Remote/VP--Product-Management--Analytics-Experience_R12404) |
 | 3 | GV (Google Ventures) | Roger | Head of Product - Remote - Healthtech (m/w/d) | remote | 2026-08-18 | n/a | 10-100 employees | Digital-health navigation SaaS — healthtech; remote. | [apply](https://join.com/jobs/16594072-head-of-product-remote-healthtech-m-w-d) |
-| 3 | Bessemer Venture Partners | DeepL | Head of Product Growth | on_site | 2026-08-14 | n/a | 1000+ employees | AI/ML translation platform — AI-native, but the role is growth-focused. | [apply](https://jobs.ashbyhq.com/DeepL/236d8651-c4c9-4bb8-a9ea-57d535cb76fb?utm_source=jobs.bvp.com) |
+| 3 | Index Ventures | DeepL | Head of Product Growth | on_site | 2026-08-14 | n/a | series_unknown | AI/ML translation platform — AI-native, but the role is growth-focused. | [apply](https://jobs.ashbyhq.com/DeepL/236d8651-c4c9-4bb8-a9ea-57d535cb76fb) |
 | 3 | Accel | Nuitée | Head of Product, Connect | on_site | 2026-08-10 | n/a | series_a | Travel-booking API with embedded payments — commerce/payments adjacency (Europe/Africa). | [apply](https://boards.greenhouse.io/nuitee/jobs/4949641101) |
 | 3 | Founders Fund; Kleiner Perkins | Stord | VP of Product, Commerce | remote | 2026-08-04 | n/a | series_e | Commerce/fulfillment & logistics SaaS — echoes his eCommerce-platform background; remote. | [apply](https://stord.wd503.myworkdayjobs.com/Stord_External_Career/job/Remote---GA/VP-of-Product--Commerce_JR102748) |
 | 3 | Insight Partners | Viz.ai | Chief Product Officer | remote | 2026-07-17 | n/a | series_unknown | Clinical AI care-coordination (some payer/reimbursement angle); CPO title + remote, but not payments. | [apply](https://jobs.ashbyhq.com/Viz.ai/5411d705-1eb6-46f8-b3c2-347b94749ca7) |
@@ -54,7 +54,7 @@ Fit: **5** payments/fintech/crypto/billing core · **4** AI-native/agentic or he
 | 2 | General Catalyst | Medeloop | Chief Commercial Officer | remote | 2026-07-18 | n/a | series_a | Clinical-research AI — healthtech (non-payer); CCO is commercial not product. | [apply](https://boards.greenhouse.io/medeloop/jobs/4323432009) |
 | 2 | Insight Partners | Pentera | VP Product | on_site | 2026-06-28 | n/a | series_d | Automated security-validation — cybersecurity vertical (Israel). | [apply](https://www.comeet.com/jobs/pentera/C5.00D/vp-product/65.D6A) |
 | 2 | Thrive Capital | Formation Bio | Senior Director or Vice President, Product | on_site | 2026-04-28 | $270,000–$467,000 | series_d | AI-enabled pharma/biotech — vertical, limited overlap. | [apply](https://boards.greenhouse.io/formationbio/jobs/7815374) |
-| 2 | Thrive Capital | Glossier | Vice President, Product | on_site | 2026-04-17 | $235,000–$305,000 | series_e | Beauty DTC/eCommerce — consumer goods; some commerce overlap. | [apply](https://boards.greenhouse.io/glossier/jobs/7814765?gh_src=gloss) |
+| 2 | Index Ventures; Thrive Capital | Glossier | Vice President, Product | on_site | 2026-04-17 | $235,000–$305,000 | series_e | Beauty DTC/eCommerce — consumer goods; some commerce overlap. | [apply](https://boards.greenhouse.io/glossier/jobs/7814765?gh_src=gloss) |
 | 2 | NEA | Bluefish AI | VP of Product | hybrid | 2026-03-16 | $200,000–$300,000 |  | AI for marketing/advertising — adtech vertical. | [apply](https://job-boards.greenhouse.io/bluefishai/jobs/4943024008) |
 | 1 | 8VC | Alloy Therapeutics | Chief Product Officer (CPO) of Antibody-Powered Division (APD) | on_site | 2026-08-22 | $250,000–$330,000 | series_e | Antibody/biotech CPO — deep life-science, no overlap with his domain. | [apply](https://alloytherapeutics.applytojob.com/apply/gGrIzILmi1/Chief-Product-Officer-CPO-Of-AntibodyPowered-Division-APD) |
 | 1 | Khosla Ventures | Ripple Foods | Head of Product, Innovation | on_site | 2026-08-08 | n/a | other | Food & beverage product innovation — no domain overlap. | [apply](https://www.linkedin.com/jobs/view/head-of-product-innovation-at-everyday-dose-4449690398) |
@@ -93,13 +93,17 @@ Fit: **5** payments/fintech/crypto/billing core · **4** AI-native/agentic or he
 
 ## Coverage & method
 
-**Scanned 25 VC portfolios** across two board platforms:
+**Scanned 26 VC portfolios** across two board platforms:
 
 - **Getro** (15) via `POST api.getro.com/api/v2/collections/{id}/search/jobs`: General Catalyst, 8VC, Accel, Thrive, Insight, Menlo, Craft, Oak HC/FT, Venrock, .406, Khosla, Redpoint, Founders Fund, Radical, Flare. We pull the full `vice_president` seniority tier (Getro caps deep pagination at ~420, so the small VP bucket is exhaustively pageable) plus narrow phrase queries to catch `director`-tagged exec titles.
 - **Consider** (10) via `POST {board_host}/api-boards/search-jobs` with a per-page `X-CSRF-Token` scraped from the board HTML: a16z, Sequoia, Lightspeed, Kleiner Perkins, Bessemer, Battery, GV, Felicis, IVP, NEA. We filter server-side to the `Product Management` job function and paginate the cursor, plus text queries for operating titles.
 
 Titles are filtered to Head of Product / VP-SVP-EVP Product / CPO / CPTO / COO / CxO, excluding Director-and-below, product-marketing/design/ops, product-engineering/security, communications/assurance, and EA/chief-of-staff roles. Public companies (and those owned by a public parent) are dropped; a role surfaced by multiple funds/platforms is merged into one row (deduped by apply URL) with all backing funds listed.
 
-**Still unresolved** (newer Getro builds whose numeric collection id isn't embedded, or a non-standard/absent public board): Coatue, Greylock, Benchmark, Index Ventures, Spark Capital, Conviction, a16z crypto. Portfolio overlap is heavy, so many of their companies still surface via the funds above.
+**Still unresolved, with reason:**
+- *Coatue* & *Greylock* — run Getro's newer Next.js build that resolves the numeric collection id server-side (not embedded in HTML, `_next/data`, JS chunks, or any hostname/slug lookup); the headless browser that could capture it is reset by this environment's proxy.
+- *a16z crypto* — a Consider board whose interactive API is session-walled; only an ~8-job server-rendered teaser is reachable, not the full portfolio.
+- *Benchmark*, *Spark Capital*, *Conviction* — no public aggregator board found (listed only on third-party sites like LinkedIn/Built In/Wellfound).
+Portfolio overlap is heavy, so many of these firms' companies still surface via the 26 funds above.
 
 _Comp shown where the ATS exposed it; `n/a` otherwise. `posted_date` is the ATS-reported creation date._
