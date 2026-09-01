@@ -10,7 +10,46 @@ Assemble the final ranked list from the Getro scan:
 """
 import json, csv, datetime, re
 
-d = json.load(open("data/getro_exec_roles.json"))
+import os
+# --- load & merge all scan sources ----------------------------------------
+SOURCES = ["data/getro_exec_roles.json", "data/consider_exec_roles.json"]
+raw_rows = []
+funds_scanned = []
+scan_errors = []
+for src in SOURCES:
+    if not os.path.exists(src):
+        continue
+    s = json.load(open(src))
+    raw_rows.extend(s.get("rows", []))
+    funds_scanned.extend(s.get("funds_scanned", []))
+    scan_errors.extend(s.get("errors", []))
+
+# A job is uniquely its apply URL. Group by URL (falling back to
+# company+title) so the same role surfaced by multiple funds/sources becomes
+# ONE row with all backing funds unioned (dedupes e.g. Trifacta==Alteryx,
+# Green Places==Greenplaces).
+def _ckey(name):  # alphanumeric-only company key
+    return re.sub(r"[^a-z0-9]", "", (name or "").lower().split("|")[0])
+
+_groups = {}
+for r in raw_rows:
+    if not r.get("company"):
+        continue
+    url = (r.get("url") or "").strip().lower()
+    key = url if url else (_ckey(r.get("company")), r.get("title", "").strip().lower())
+    g = _groups.setdefault(key, {"funds": set(), "row": r})
+    g["funds"].update(r.get("funds", []))
+    # keep the row with the richer company name / more fields
+    if len(str(r.get("company", ""))) and not g["row"].get("company"):
+        g["row"] = r
+
+merged_rows = []
+for key, g in _groups.items():
+    rr = dict(g["row"])
+    rr["funds"] = sorted(g["funds"])
+    merged_rows.append(rr)
+
+d = {"rows": merged_rows, "funds_scanned": sorted(set(funds_scanned)), "errors": scan_errors}
 
 # --- publicly traded OR majority-owned by a public parent -> DROP -----------
 DROP_PUBLIC = {
@@ -25,6 +64,8 @@ DROP_PUBLIC = {
     "volterra": "acq. by F5 (NASDAQ:FFIV)",
     "monolith ai": "acq. by CoreWeave (NASDAQ:CRWV)",
     "lilac cloud": "acq. by F5 (NASDAQ:FFIV)",
+    "ionq": "NYSE:IONQ",
+    "sprinklr": "NYSE:CXM",
 }
 
 # ownership notes for kept companies that were acquired/PE (still private)
@@ -72,6 +113,29 @@ SCORES = {
     "ripple foods":      (1, "Food & beverage product innovation — no domain overlap."),
     "medeloop":          (2, "Clinical-research AI — healthtech (non-payer); CCO is commercial not product."),
     "mimica":            (4, "AI process automation / agentic — his AI-native frontier."),
+    # --- Consider-sourced additions ---
+    "mercury":           (5, "Digital banking for startups; Head of Product, Business Lending = money-movement/credit — dead-center his PayPal/Google-credit work; remote."),
+    "revolut":           (5, "Neobank; Head of Product, Wealth & Trading — core fintech/money-movement; remote."),
+    "brigit":            (5, "Consumer fintech (cash advance / financial health) — payments/credit core; remote."),
+    "narmi":             (5, "Digital-banking platform for banks & credit unions — fintech infrastructure."),
+    "nitra":             (5, "Fintech spend/credit card for healthcare providers — payments + his healthcare edge."),
+    "upvest":            (5, "Investment/trading API (fintech infra) — money-movement platform (EU)."),
+    "spoton":            (5, "SMB payments & POS (a Square/Block peer) — direct payments-product match."),
+    "worldcoin":         (5, "Crypto/Web3 identity + wallet — his crypto/stablecoin domain (note: Device role is hardware-leaning)."),
+    "fetcherr":          (4, "AI-native dynamic-pricing (Large Market Model) — his applied-AI frontier."),
+    "sixfold":           (4, "Generative-AI underwriting for insurance — AI-native + insurtech (fintech-adjacent)."),
+    "leona health":      (3, "AI clinical documentation — healthtech (his AI + healthcare adjacency)."),
+    "roger":             (3, "Digital-health navigation SaaS — healthtech; remote."),
+    "roebling":          (3, "AI application company — his AI frontier, vertical unclear."),
+    "odyssey":           (3, "AI product company — his AI frontier, vertical unclear."),
+    "deepl":             (3, "AI/ML translation platform — AI-native, but the role is growth-focused."),
+    "archive resale":    (3, "Resale/recommerce platform — echoes his eCommerce-platform background; remote."),
+    "sprinklr":          (2, "Social/CXM SaaS — horizontal, limited overlap (also public)."),
+    "bluefish ai":       (2, "AI for marketing/advertising — adtech vertical."),
+    "freenome":          (2, "Cancer-diagnostics / biotech — vertical, limited overlap."),
+    "normalyze":         (2, "Data-security posture management — cybersecurity vertical."),
+    "ionq":              (1, "Quantum-computing hardware — no domain overlap (also public)."),
+    "endurosat":         (1, "Satellite hardware — no domain overlap."),
 }
 
 def norm(name):
@@ -151,7 +215,7 @@ with open("product_exec_roles.csv","w",newline="") as f:
 with open("product_exec_roles.md","w") as f:
     f.write("# Product & Executive Leadership Roles — VC-Portfolio Sweep\n\n")
     f.write(f"_Generated {datetime.date.today().isoformat()} for John Williams. "
-            f"Scanned {len(d['funds_scanned'])} Getro-backed VC portfolios._\n\n")
+            f"Scanned {len(d['funds_scanned'])} top VC portfolios (Getro + Consider boards)._\n\n")
     f.write(f"**Totals:** {len(rows_out)} open exec roles at "
             f"{len({r['company'] for r in rows_out})} private companies · "
             f"{len(dropped_public)} roles dropped as public-company · "
@@ -178,27 +242,29 @@ with open("product_exec_roles.md","w") as f:
         f.write(f"- **{c}** — {t} ({tk})\n")
 
     f.write("\n## Coverage & method\n\n")
-    f.write("**Scanned (15 Getro-backed portfolios), via the Getro public search API "
-            "`POST api.getro.com/api/v2/collections/{id}/search/jobs`:** "
-            + ", ".join(d["funds_scanned"]) + ".\n\n")
-    f.write("For each fund we pulled the full `vice_president` seniority tier (Getro caps deep "
-            "pagination at ~420 results, so the smaller VP bucket is exhaustively pageable) plus "
-            "narrow phrase queries (`head of product`, `chief product officer`, `chief operating "
-            "officer`, …) to catch exec titles Getro tags as `director`. Titles were filtered to "
-            "Head of Product / VP-SVP-EVP Product / CPO / CPTO / COO / CxO, excluding Director-and-"
-            "below, product-marketing/design/ops, product-engineering/security, and "
-            "EA/chief-of-staff roles. Public companies (and those owned by a public parent) were "
-            "dropped; companies backed by multiple scanned funds are merged into one row.\n\n")
-    f.write("**Not scanned — Consider-backed boards** (a16z, Sequoia, Lightspeed, Kleiner Perkins, "
-            "Bessemer, Battery, GV, Felicis, IVP, NEA). Consider gates its API behind a browser "
-            "session + CSRF token, and this environment's egress proxy resets headless-Chromium "
-            "TLS, so those boards could not be read here. Portfolio overlap is heavy, so many of "
-            "their hot companies still surface via the Getro funds above.\n\n")
-    f.write("**Not resolved** (no public board found, or a non-Getro/non-Consider backend whose "
-            "network id wasn't captured): Benchmark, Index Ventures, Spark Capital, Conviction, "
-            "Coatue, Greylock, a16z crypto.\n\n")
-    f.write("_Comp shown where the ATS exposed it (mostly US Greenhouse/Ashby postings); `n/a` "
-            "otherwise. `posted_date` is the ATS-reported creation date._\n")
+    f.write(f"**Scanned {len(d['funds_scanned'])} VC portfolios** across two board platforms:\n\n")
+    f.write("- **Getro** (15) via `POST api.getro.com/api/v2/collections/{id}/search/jobs`: "
+            "General Catalyst, 8VC, Accel, Thrive, Insight, Menlo, Craft, Oak HC/FT, Venrock, "
+            ".406, Khosla, Redpoint, Founders Fund, Radical, Flare. We pull the full "
+            "`vice_president` seniority tier (Getro caps deep pagination at ~420, so the small VP "
+            "bucket is exhaustively pageable) plus narrow phrase queries to catch `director`-tagged "
+            "exec titles.\n")
+    f.write("- **Consider** (10) via `POST {board_host}/api-boards/search-jobs` with a per-page "
+            "`X-CSRF-Token` scraped from the board HTML: a16z, Sequoia, Lightspeed, Kleiner "
+            "Perkins, Bessemer, Battery, GV, Felicis, IVP, NEA. We filter server-side to the "
+            "`Product Management` job function and paginate the cursor, plus text queries for "
+            "operating titles.\n\n")
+    f.write("Titles are filtered to Head of Product / VP-SVP-EVP Product / CPO / CPTO / COO / CxO, "
+            "excluding Director-and-below, product-marketing/design/ops, product-engineering/"
+            "security, communications/assurance, and EA/chief-of-staff roles. Public companies "
+            "(and those owned by a public parent) are dropped; a role surfaced by multiple funds/"
+            "platforms is merged into one row (deduped by apply URL) with all backing funds listed.\n\n")
+    f.write("**Still unresolved** (newer Getro builds whose numeric collection id isn't embedded, "
+            "or a non-standard/absent public board): Coatue, Greylock, Benchmark, Index Ventures, "
+            "Spark Capital, Conviction, a16z crypto. Portfolio overlap is heavy, so many of their "
+            "companies still surface via the funds above.\n\n")
+    f.write("_Comp shown where the ATS exposed it; `n/a` otherwise. `posted_date` is the "
+            "ATS-reported creation date._\n")
 
 print(f"private roles: {len(rows_out)} | companies: {len({r['company'] for r in rows_out})} | "
       f"dropped public: {len(dropped_public)}")

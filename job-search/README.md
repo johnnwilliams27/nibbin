@@ -14,8 +14,9 @@ payments / fintech / crypto / AI-agentic background (secondary healthcare edge).
 
 ## Run
 ```bash
-python3 lib/getro_scan.py     # scan the 15 Getro-backed portfolios -> data/getro_exec_roles.json
-python3 lib/finalize.py       # filter public cos, dedupe, score, write CSV + MD
+python3 lib/getro_scan.py     # 15 Getro portfolios   -> data/getro_exec_roles.json
+python3 lib/consider_scan.py  # 10 Consider portfolios -> data/consider_exec_roles.json
+python3 lib/finalize.py       # merge both, filter public cos, dedupe, score, write CSV + MD
 ```
 
 ## How it works
@@ -28,15 +29,22 @@ python3 lib/finalize.py       # filter public cos, dedupe, score, write CSV + MD
   `{"hitsPerPage":100,"page":P,"query":"","filters":{"seniority":["vice_president"]}}`.
   Deep pagination caps at ~420 rows, so we exhaust the small `vice_president`
   bucket and use narrow phrase queries for `director`-tagged exec titles.
-- **Fund → network id map** lives in `lib/getro_scan.py`.
+  Fund → network id map lives in `lib/getro_scan.py`.
+- **Consider API:** `POST https://{board_host}/api-boards/search-jobs`. The board
+  gates this behind a per-page CSRF token, so we first `GET /jobs`, scrape
+  `"csrfToken"` + the board slug from the HTML, then POST with header
+  `X-CSRF-Token` and body
+  `{"meta":{"size":100,"sequence":<cursor>},"board":{"id":"<slug>","isParent":true},"query":{"jobFunctions":["Product Management"]}}`,
+  paginating the `meta.sequence` cursor. Fund → board host map lives in
+  `lib/consider_scan.py`.
 - **Discovery** of board backends/ids: `lib/discover.sh`.
 
 ## Coverage
-15 Getro portfolios are scanned. Consider-backed boards (a16z, Sequoia,
-Lightspeed, Kleiner Perkins, Bessemer, Battery, GV, Felicis, IVP, NEA) are
-**not** covered — Consider gates its API behind a browser session + CSRF and the
-headless browser is blocked in this environment. See the report's "Coverage &
-method" section for the full breakdown.
+25 portfolios scanned: 15 Getro + 10 Consider (a16z, Sequoia, Lightspeed,
+Kleiner Perkins, Bessemer, Battery, GV, Felicis, IVP, NEA). Still unresolved:
+Coatue, Greylock, Benchmark, Index, Spark, Conviction, a16z crypto (newer Getro
+builds without an embedded numeric collection id, or non-standard boards). See
+the report's "Coverage & method" section for the full breakdown.
 
 To re-target for a different role family, edit the title regex + phrase queries
 in `lib/getro_scan.py` and the scoring rubric in `lib/finalize.py`.

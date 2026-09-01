@@ -71,7 +71,7 @@ EXCL_RE = re.compile(
     r"\bdesign(?:er)?\b|\bux\b|\bui\b|"
     r"product\s+operations|product\s+ops|"
     r"product\s+engineering|product\s+(?:and|&)\s+(?:software\s+)?security|product\s+security|"
-    r"\bproduction\b|"                                   # "Head of Production" etc.
+    r"\bproduction\b|communications|\bassurance\b|"      # Production / Comms / QA(Assurance)
     r"\bassistant\b|chief\s+of\s+staff|business\s+partner|"  # EA / CoS / ABP roles
     r"expert\s+opportunity|\$\d|/hr|/hour|per\s+hour|/week|hourly|"
     r"contract(?:or)?\b|part[- ]time|intern(?:ship)?|"
