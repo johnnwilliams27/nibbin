@@ -373,3 +373,10 @@ export function score(snapshot: AgentSnapshot): { result: ScoreResult; canonical
   const result = JSON.parse(canonicalBytes) as ScoreResult;
   return { result, canonicalBytes };
 }
+
+/**
+ * Re-exported for the calibration harness so the raw-mean baseline uses the
+ * engine's own normalization rather than a second copy of the SPEC 11.10 rule
+ * that could drift from it. Not part of the serving path.
+ */
+export { normalizeValue } from "./normalize.js";

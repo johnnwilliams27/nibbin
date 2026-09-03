@@ -1,0 +1,128 @@
+/**
+ * agent-trust-calibrate: run the calibration harness (SPEC 12).
+ *
+ * Commands:
+ *   sensitivity --cohort <dir> [--out <file>]
+ *       Sweep every provisional constant and report score stability. Needs no
+ *       labels, so this is the analysis that governs provisional labeling
+ *       until a commerce label set exists.
+ *   run --cohort <dir> --split <iso-ts> --split-block <n> [--view success|discrimination] [--out <file>]
+ *       Temporal-split calibration against commerce outcomes in the cohort.
+ *   tune --cohort <dir> --split <iso-ts> --split-block <n> [--out <file>]
+ *       Grid-search constants by minimizing Brier (SPEC 12.4).
+ *   demo [--agents n] [--seed n] [--signal 0..1]
+ *       Run the pipeline on a deterministic synthetic cohort. Validates the
+ *       harness; establishes nothing about real agents.
+ */
+import { readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import type { AgentSnapshot } from "@trust-index/types";
+import { renderCalibrationReport, renderSensitivityReport, renderTuningReport } from "./report.js";
+import { runCalibration } from "./run.js";
+import { runDefaultSensitivity } from "./sensitivity.js";
+import { syntheticCohort } from "./synthetic.js";
+import { DEFAULT_TUNING_AXES, summarize, tuneConstants } from "./tune.js";
+import type { LabelView } from "./labels.js";
+
+class CliError extends Error {}
+
+function loadCohort(dir: string): { snapshots: AgentSnapshot[]; label: string } {
+  let names: string[];
+  try {
+    names = readdirSync(dir).filter((n) => n.endsWith(".json")).sort();
+  } catch {
+    throw new CliError(`cannot read cohort directory: ${dir}`);
+  }
+  if (names.length === 0) throw new CliError(`no .json snapshots in ${dir}`);
+  const snapshots = names.map((n) => {
+    try {
+      return JSON.parse(readFileSync(join(dir, n), "utf8")) as AgentSnapshot;
+    } catch (err) {
+      throw new CliError(`${n}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  });
+  return { snapshots, label: `${dir} (${snapshots.length} snapshots)` };
+}
+
+function arg(argv: string[], name: string): string | null {
+  const i = argv.indexOf(name);
+  return i === -1 ? null : (argv[i + 1] ?? null);
+}
+
+function emit(text: string, out: string | null): void {
+  if (out === null) {
+    console.log(text);
+    return;
+  }
+  writeFileSync(out, text.endsWith("\n") ? text : `${text}\n`);
+  console.log(`wrote ${out}`);
+}
+
+function main(argv: string[]): void {
+  const [command, ...rest] = argv;
+  const out = arg(rest, "--out");
+
+  if (command === "sensitivity") {
+    const dir = arg(rest, "--cohort");
+    if (dir === null) throw new CliError("sensitivity requires --cohort <dir>");
+    const { snapshots, label } = loadCohort(dir);
+    emit(renderSensitivityReport(runDefaultSensitivity(snapshots), label), out);
+    return;
+  }
+
+  if (command === "run") {
+    const dir = arg(rest, "--cohort");
+    const split = arg(rest, "--split");
+    const splitBlock = arg(rest, "--split-block");
+    if (dir === null || split === null || splitBlock === null) {
+      throw new CliError("run requires --cohort <dir> --split <iso-ts> --split-block <n>");
+    }
+    const view = (arg(rest, "--view") ?? "success") as LabelView;
+    if (view !== "success" && view !== "discrimination") {
+      throw new CliError(`unknown --view: ${view}`);
+    }
+    const { snapshots, label } = loadCohort(dir);
+    const result = runCalibration(snapshots, split, Number(splitBlock), { view });
+    emit(renderCalibrationReport(result, label), out);
+    return;
+  }
+
+  if (command === "tune") {
+    const dir = arg(rest, "--cohort");
+    const split = arg(rest, "--split");
+    const splitBlock = arg(rest, "--split-block");
+    if (dir === null || split === null || splitBlock === null) {
+      throw new CliError("tune requires --cohort <dir> --split <iso-ts> --split-block <n>");
+    }
+    const { snapshots } = loadCohort(dir);
+    const result = tuneConstants(snapshots, DEFAULT_TUNING_AXES, split, Number(splitBlock));
+    console.error(summarize(result));
+    emit(renderTuningReport(result), out);
+    return;
+  }
+
+  if (command === "demo") {
+    const agents = Number(arg(rest, "--agents") ?? "200");
+    const seed = Number(arg(rest, "--seed") ?? "42");
+    const signal = Number(arg(rest, "--signal") ?? "1");
+    const cohort = syntheticCohort({ agents, seed, signalStrength: signal, splitDaysAgo: 30 });
+    const result = runCalibration(cohort.snapshots, cohort.splitTs, cohort.splitBlock);
+    emit(
+      renderCalibrationReport(
+        result,
+        `SYNTHETIC cohort (agents=${agents} seed=${seed} signal=${signal}). Validates the harness only; establishes nothing about real agents.`,
+      ),
+      out,
+    );
+    return;
+  }
+
+  throw new CliError("usage: agent-trust-calibrate <sensitivity|run|tune|demo> [options]");
+}
+
+try {
+  main(process.argv.slice(2));
+} catch (err) {
+  console.error(`agent-trust-calibrate: ${err instanceof Error ? err.message : String(err)}`);
+  process.exitCode = 1;
+}

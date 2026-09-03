@@ -1,0 +1,28 @@
+{
+  "name": "@trust-index/calibration",
+  "version": "0.1.0",
+  "description": "Calibration harness for the Agent Trust Index: temporal splits, Brier score, reliability curves, AUC, trivial baselines, and constant sweeps. Research artifacts, never the serving path.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "bin": {
+    "agent-trust-calibrate": "./bin/agent-trust-calibrate.mjs"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@trust-index/scoring": "workspace:*",
+    "@trust-index/types": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "4.20.6",
+    "typescript": "5.7.3",
+    "vitest": "3.2.4"
+  }
+}
