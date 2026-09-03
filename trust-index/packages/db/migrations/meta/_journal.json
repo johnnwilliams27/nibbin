@@ -8,6 +8,13 @@
       "when": 1787833104929,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788476788439,
+      "tag": "0001_blue_sentinel",
+      "breakpoints": true
     }
   ]
 }

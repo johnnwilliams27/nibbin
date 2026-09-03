@@ -19,6 +19,7 @@ import {
   smallint,
   text,
   timestamp,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 /** Timestamps are stored at second precision in UTC; the wire form is ISO-8601 with a trailing Z. */
@@ -335,6 +336,22 @@ export const commerce_events = pgTable(
     /** olas | virtuals_acp. */
     source: text("source").notNull(),
     tx_hash: text("tx_hash"),
+    /**
+     * The platform's own job identifier. Unique per source, so re-running an
+     * ingest over a block range upserts rather than duplicating: a duplicated
+     * outcome row would silently reweight the calibration label set.
+     */
+    job_id: text("job_id").notNull(),
+    /** agent_wallet | owner_address | historical_owner (A6 linkage). */
+    linkage_method: text("linkage_method").notNull(),
+    /**
+     * strong | moderate. Retained so a calibration cohort can be filtered or
+     * weighted by how confidently each outcome was attributed to its agent.
+     */
+    linkage_strength: text("linkage_strength").notNull(),
   },
-  (t) => [index("commerce_events_chain_agent_idx").on(t.chain_id, t.agent_id)],
+  (t) => [
+    index("commerce_events_chain_agent_idx").on(t.chain_id, t.agent_id),
+    uniqueIndex("commerce_events_source_job_idx").on(t.source, t.job_id),
+  ],
 );

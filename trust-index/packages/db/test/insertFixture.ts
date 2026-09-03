@@ -178,6 +178,9 @@ export async function insertFixture(db: Db, fix: AgentSnapshot): Promise<void> {
       ts: new Date(c.ts),
       source: "olas",
       tx_hash: fakeTxHash("ce", i),
+      job_id: `fixture-${fix.agent_id}-${i}`,
+      linkage_method: "agent_wallet",
+      linkage_strength: "strong",
     });
   }
 

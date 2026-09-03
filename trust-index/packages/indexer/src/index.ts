@@ -10,3 +10,8 @@ export * from "./backfill.js";
 export * from "./metadata.js";
 export * from "./firstSeen.js";
 export * from "./poller.js";
+export * from "./commerce/commerceSource.js";
+export * from "./commerce/outcomeMapping.js";
+export * from "./commerce/linkage.js";
+export * from "./commerce/ingest.js";
+export * from "./commerce/adapters.js";

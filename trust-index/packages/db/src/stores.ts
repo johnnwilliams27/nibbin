@@ -6,7 +6,7 @@
  */
 import { and, eq, sql } from "drizzle-orm";
 import type { Db } from "./client.js";
-import { index_cursors, reviewer_wallets } from "./schema.js";
+import { commerce_events, index_cursors, reviewer_wallets } from "./schema.js";
 
 export type PgCursor = {
   lastProcessedBlock: number;
@@ -107,4 +107,76 @@ export async function pingDb(db: Db): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/** One commerce outcome row as the A6 ingest produces it. */
+export type PgCommerceRecord = {
+  chain_id: number;
+  agent_id: string;
+  counterparty: string;
+  outcome: string;
+  block: number;
+  /** ISO-8601 UTC, second precision. */
+  ts: string;
+  source: string;
+  tx_hash: string | null;
+  job_id: string;
+  linkage_method: string;
+  linkage_strength: string;
+};
+
+/**
+ * commerce_events-backed store for the A6 ingest.
+ *
+ * Writes upsert on (source, job_id) so re-running an ingest over a block range
+ * is idempotent. A duplicated outcome row would silently reweight the
+ * calibration label set, which is the failure this key exists to prevent.
+ */
+export function createPgCommerceStore(db: Db) {
+  return {
+    async upsertMany(records: readonly PgCommerceRecord[]): Promise<number> {
+      if (records.length === 0) return 0;
+      for (const r of records) {
+        await db
+          .insert(commerce_events)
+          .values({
+            chain_id: r.chain_id,
+            agent_id: r.agent_id,
+            counterparty: r.counterparty,
+            outcome: r.outcome,
+            block: r.block,
+            ts: new Date(r.ts),
+            source: r.source,
+            tx_hash: r.tx_hash,
+            job_id: r.job_id,
+            linkage_method: r.linkage_method,
+            linkage_strength: r.linkage_strength,
+          })
+          .onConflictDoUpdate({
+            target: [commerce_events.source, commerce_events.job_id],
+            set: {
+              chain_id: r.chain_id,
+              agent_id: r.agent_id,
+              counterparty: r.counterparty,
+              outcome: r.outcome,
+              block: r.block,
+              ts: new Date(r.ts),
+              tx_hash: r.tx_hash,
+              linkage_method: r.linkage_method,
+              linkage_strength: r.linkage_strength,
+            },
+          });
+      }
+      return records.length;
+    },
+
+    /** Count of ingested outcomes for one chain, for the coverage report. */
+    async countForChain(chainId: number): Promise<number> {
+      const rows = await db
+        .select({ n: sql<number>`count(*)::int` })
+        .from(commerce_events)
+        .where(eq(commerce_events.chain_id, chainId));
+      return rows[0]?.n ?? 0;
+    },
+  };
 }
