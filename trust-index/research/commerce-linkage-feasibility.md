@@ -122,8 +122,9 @@ project or anyone, and that the obstacle is the composition of the data rather
 than the ingest code. The A6 adapters, linkage rules and arm comparison are
 correct; they have nothing to run against.
 
-It does not establish that no commerce source works. ACP v2 is unchecked. Olas
-has not been examined the same way. And the multi-chain census
+It does not establish that no commerce source works. ACP v2 is checked above and
+is the near miss: two registered agents are transacting there, on the client
+side. Olas has not been examined the same way. And the multi-chain census
 (`scripts/chain-census.mts`) shows Base is the only chain of twelve with an
 observed reputation layer, so the search for outcomes should stay on Base rather
 than widen.
