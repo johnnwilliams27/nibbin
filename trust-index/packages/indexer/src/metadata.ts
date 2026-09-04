@@ -59,7 +59,13 @@ function isBlockedIPv6(addr: string): boolean {
 }
 
 /** Host literals that must never be fetched server-side (SSRF, SPEC 16). */
-function isBlockedHost(hostname: string): boolean {
+/**
+ * Exported so a caller implementing the redirect-following fetcher this
+ * module's Fetcher contract requires can re-run the same check on a Location
+ * header. Without that, a public hostname can 302-rebind into the internal
+ * network and the pre-request check here is bypassed.
+ */
+export function isBlockedHost(hostname: string): boolean {
   const h = hostname.toLowerCase();
   if (h === "" || h === "localhost" || h.endsWith(".localhost")) return true;
   // IPv6 literals keep their brackets in a WHATWG hostname; only then apply the
