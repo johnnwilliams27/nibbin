@@ -31,21 +31,55 @@ const OWNER_OF = toFunctionSelector("ownerOf(uint256)");
 const IDENTITY = MAINNET_IDENTITY_REGISTRY;
 const REPUTATION = MAINNET_REPUTATION_REGISTRY.toLowerCase();
 
-/** Public endpoints, one per chain. Replace with your own for a serious run. */
-const CHAINS: Array<{ name: string; id: number; rpc: string }> = [
-  { name: "ethereum", id: 1, rpc: "https://ethereum-rpc.publicnode.com" },
-  { name: "base", id: 8453, rpc: "https://mainnet.base.org" },
-  { name: "optimism", id: 10, rpc: "https://mainnet.optimism.io" },
-  { name: "arbitrum", id: 42161, rpc: "https://arb1.arbitrum.io/rpc" },
-  { name: "polygon", id: 137, rpc: "https://polygon-rpc.com" },
-  { name: "gnosis", id: 100, rpc: "https://rpc.gnosischain.com" },
-  { name: "celo", id: 42220, rpc: "https://forno.celo.org" },
-  { name: "linea", id: 59144, rpc: "https://rpc.linea.build" },
-  { name: "scroll", id: 534352, rpc: "https://rpc.scroll.io" },
-  { name: "avalanche", id: 43114, rpc: "https://api.avax.network/ext/bc/C/rpc" },
-  { name: "bsc", id: 56, rpc: "https://bsc-dataseed.binance.org" },
-  { name: "mantle", id: 5000, rpc: "https://rpc.mantle.xyz" },
+/**
+ * Public endpoints per chain, tried in order. More than one because the
+ * feedback sample failed outright on the two largest registries in the first
+ * run, and "the request failed" is not evidence that a chain has no feedback.
+ * A chain where every endpoint fails is reported as unknown, never as zero.
+ */
+const CHAINS: Array<{ name: string; id: number; rpcs: string[] }> = [
+  { name: "ethereum", id: 1, rpcs: ["https://ethereum-rpc.publicnode.com", "https://eth.llamarpc.com", "https://rpc.ankr.com/eth"] },
+  { name: "base", id: 8453, rpcs: ["https://mainnet.base.org", "https://gateway.tenderly.co/public/base"] },
+  { name: "optimism", id: 10, rpcs: ["https://mainnet.optimism.io", "https://optimism-rpc.publicnode.com"] },
+  { name: "arbitrum", id: 42161, rpcs: ["https://arb1.arbitrum.io/rpc", "https://arbitrum-one-rpc.publicnode.com"] },
+  { name: "polygon", id: 137, rpcs: ["https://polygon-bor-rpc.publicnode.com", "https://polygon-rpc.com"] },
+  { name: "gnosis", id: 100, rpcs: ["https://rpc.gnosischain.com", "https://gnosis-rpc.publicnode.com"] },
+  { name: "celo", id: 42220, rpcs: ["https://forno.celo.org"] },
+  { name: "linea", id: 59144, rpcs: ["https://rpc.linea.build"] },
+  { name: "scroll", id: 534352, rpcs: ["https://rpc.scroll.io"] },
+  { name: "avalanche", id: 43114, rpcs: ["https://api.avax.network/ext/bc/C/rpc", "https://avalanche-c-chain-rpc.publicnode.com"] },
+  { name: "bsc", id: 56, rpcs: ["https://bsc-rpc.publicnode.com", "https://bsc-dataseed.binance.org"] },
+  { name: "mantle", id: 5000, rpcs: ["https://rpc.mantle.xyz"] },
 ];
+
+/**
+ * Count NewFeedback logs over a recent window, narrowing the window and
+ * falling back across endpoints before giving up. Returns null for "could not
+ * measure", which the report renders as unknown rather than as zero.
+ */
+async function sampleFeedback(rpcs: string[], head: number): Promise<number | null> {
+  for (const url of rpcs) {
+    for (const span of [5000, 2000, 500, 100]) {
+      try {
+        const logs = (await rpc(url, "eth_getLogs", [
+          {
+            address: REPUTATION,
+            topics: [TOPIC0.newFeedback],
+            fromBlock: `0x${(head - span).toString(16)}`,
+            toBlock: `0x${head.toString(16)}`,
+          },
+        ])) as unknown[];
+        // Scale to a 5,000-block equivalent so the column stays comparable
+        // within a chain, though still not across chains with different block
+        // times.
+        return span === 5000 ? logs.length : Math.round((logs.length * 5000) / span);
+      } catch {
+        /* try a narrower window, then the next endpoint */
+      }
+    }
+  }
+  return null;
+}
 
 async function rpc(url: string, method: string, params: unknown[]): Promise<unknown> {
   const res = await fetch(url, {
@@ -57,6 +91,19 @@ async function rpc(url: string, method: string, params: unknown[]): Promise<unkn
   const j = (await res.json()) as { result?: unknown; error?: { message: string } };
   if (j.error) throw new Error(j.error.message);
   return j.result;
+}
+
+/** Try each endpoint in turn; throw only when all of them fail. */
+async function rpcAny(urls: string[], method: string, params: unknown[]): Promise<unknown> {
+  let last: unknown = null;
+  for (const url of urls) {
+    try {
+      return await rpc(url, method, params);
+    } catch (err) {
+      last = err;
+    }
+  }
+  throw last instanceof Error ? last : new Error("all endpoints failed");
 }
 
 /**
@@ -121,7 +168,7 @@ async function main(): Promise<void> {
     if (filter !== null && !filter.has(c.name)) continue;
     let head: number;
     try {
-      head = Number(await rpc(c.rpc, "eth_blockNumber", []));
+      head = Number(await rpcAny(c.rpcs, "eth_blockNumber", []));
     } catch (err) {
       rows.push({ name: c.name, agents: "rpc unreachable", feedback: "-", head: "-" });
       console.log(`${c.name.padEnd(11)} rpc unreachable: ${err instanceof Error ? err.message.slice(0, 50) : ""}`);
@@ -130,7 +177,7 @@ async function main(): Promise<void> {
 
     let code = "0x";
     try {
-      code = (await rpc(c.rpc, "eth_getCode", [IDENTITY, "latest"])) as string;
+      code = (await rpcAny(c.rpcs, "eth_getCode", [IDENTITY, "latest"])) as string;
     } catch {
       /* fall through to the not-deployed row */
     }
@@ -142,7 +189,7 @@ async function main(): Promise<void> {
 
     let agents: number | string;
     try {
-      agents = await highestAgentId(c.rpc);
+      agents = await highestAgentId(c.rpcs[0]!);
     } catch (err) {
       // Report the failure rather than a number derived from a throttled
       // endpoint. An undercount here would look like a real finding.
@@ -152,20 +199,8 @@ async function main(): Promise<void> {
 
     // Feedback volume, sampled over a recent window. Chains have very different
     // block times, so this is a rough indicator and is labelled as one.
-    let feedback: number | string = "-";
-    try {
-      const logs = (await rpc(c.rpc, "eth_getLogs", [
-        {
-          address: REPUTATION,
-          topics: [TOPIC0.newFeedback],
-          fromBlock: `0x${(head - 5000).toString(16)}`,
-          toBlock: `0x${head.toString(16)}`,
-        },
-      ])) as unknown[];
-      feedback = logs.length;
-    } catch {
-      feedback = "sample failed";
-    }
+    const sampled = await sampleFeedback(c.rpcs, head);
+    const feedback: number | string = sampled === null ? "unknown" : sampled;
 
     rows.push({ name: c.name, agents, feedback, head });
     console.log(`${c.name.padEnd(11)} agents=${String(agents).padStart(8)}  feedback/5k blocks=${feedback}`);
@@ -175,7 +210,7 @@ async function main(): Promise<void> {
   console.log("|---|---|---|");
   for (const r of rows) console.log(`| ${r.name} | ${r.agents} | ${r.feedback} |`);
   console.log(
-    "\nAgent counts are exact for a sequential-id registry. Feedback is a recent-window sample and is not comparable across chains with different block times.",
+    "\nAgent counts are exact for a sequential-id registry. Feedback is a recent-window sample scaled to 5,000 blocks, comparable within a chain but not across chains with different block times. Unknown means every endpoint failed, which is not the same as zero.",
   );
 }
 
