@@ -187,9 +187,26 @@ export function classifyTool(t: ToolDeclaration): ToolClassification {
     contradictions.push(`declares destructiveHint but is named and described like a read (${t.name})`);
   }
   const desc = (t.description ?? "").toLowerCase();
-  if (hints.readOnly === true && /\b(delete|remove|write|modif|updat|creat|send|charge)/.test(desc)) {
-    contradictions.push("declares readOnlyHint but its description describes a change");
-  }
+  // DELETED: a rule matching change-verb stems anywhere in the description.
+  //
+  // It was the most-cited contradiction we produced, 125 of 190 in a
+  // 600-server sample, and an audit of the persisted transcripts showed it is
+  // overwhelmingly false positives. It flagged `search_concepts` for "written
+  // for practitioners", `get_concept` for "Written by a named human", and
+  // `list_freelance_platforms` for "where a consultant can create a profile",
+  // which lists platforms where somebody else does the creating.
+  //
+  // The rule was trying to answer a question about grammar: is this change
+  // verb the TOOL'S action, in the active voice, describing what the tool
+  // itself does. A word list cannot answer that, and no amount of tightening
+  // makes it able to. This needs a model judge over the persisted transcript,
+  // with its verdict recorded as an ordinary observation subject to the same
+  // caps as any other.
+  //
+  // It is deleted rather than tightened because a false positive here is not a
+  // missed opportunity, it is a published accusation that a named operator's
+  // tool lies about being read-only. The structural checks below use the name,
+  // the annotations and the schema, and they hold up.
 
   // A destructive tool that can be called with no arguments at all is a
   // blast-radius finding on its own: the empty call is a valid call.
@@ -215,6 +232,12 @@ export function classifyTool(t: ToolDeclaration): ToolClassification {
   // classifier applies everywhere else, so it is the second path.
   const noAnnotations = hints.readOnly === null && hints.destructive === null && hints.idempotent === null;
   const readShaped = shape === "retrieval" || shape === "public_data" || shape === "transform";
+  // The same broad pattern is KEPT here, and only here, because the two uses
+  // fail in opposite directions. As a published contradiction a false positive
+  // accuses an operator of lying. As a guard on whether we will call a tool, a
+  // false positive only costs us coverage: we decline to exercise something
+  // that was safe. Over-caution about what we send is the right bias, so the
+  // guard keeps the wide net the finding could not justify.
   const descriptionMentionsChange = /\b(delet|remov|writ|modif|updat|insert|send|charg|deploy|purge|revok|creat)/.test(desc);
   const inferredReadOnly =
     noAnnotations && readShaped && !mutatingName && !descriptionMentionsChange && contradictions.length === 0;

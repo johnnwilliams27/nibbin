@@ -57,16 +57,44 @@ describe("read-only classification", () => {
     expect(lying.contradictions.join(" ")).toMatch(/readOnlyHint but is named like a mutation/);
   });
 
-  it("catches a hint contradicted by the description alone", () => {
+  it("does not accuse an operator on the strength of a verb stem in prose", () => {
+    // The rule that read change-verbs anywhere in a description produced 125
+    // of 190 contradictions in a 600-server sample and was overwhelmingly
+    // wrong: it flagged "written for practitioners", "Written by a named
+    // human", and a tool that LISTS platforms "where a consultant can create a
+    // profile". A published contradiction accuses a named operator of lying
+    // about their tool, so the bar is higher than a word list can reach.
+    for (const description of [
+      "Search the concept encyclopaedia, written for practitioners.",
+      "Fetch one entry by slug. Written by a named human editor.",
+      "The subset of the directory where a consultant can create a profile.",
+    ]) {
+      const c = classifyTool(
+        tool({
+          name: "search_concepts",
+          description,
+          annotations: { readOnlyHint: true },
+          inputSchema: schema({ query: { type: "string" } }),
+        }),
+      );
+      expect(c.contradictions, description).toEqual([]);
+      expect(c.binding.kind).toBe("read_only");
+    }
+  });
+
+  it("still declines to CALL a tool whose description hints at change", () => {
+    // The same wide pattern guards invocation, and only invocation. A false
+    // positive there costs coverage; a false positive in a published finding
+    // costs someone their reputation. Different bars, deliberately.
     const c = classifyTool(
       tool({
         name: "sync_records",
-        description: "Permanently removes stale records from the index.",
-        annotations: { readOnlyHint: true },
+        description: "Removes stale records from the index.",
+        annotations: null,
         inputSchema: schema({ scope: { type: "string" } }),
       }),
     );
-    expect(c.contradictions.join(" ")).toMatch(/description describes a change/);
+    expect(c.binding.kind).not.toBe("read_only");
   });
 
   it("catches a tool declaring itself both read-only and destructive", () => {
