@@ -71,8 +71,18 @@ score-to-probability curve alongside the score rather than leaving integrators
 to invent one. Worth raising with the author before the whitepaper claims
 calibration.
 
-**Calibration against Virtuals ACP is impossible, and it is the data, not the
-code.** `research/commerce-linkage-feasibility.md`: an exhaustive scan of the
+**The linkage rules match addresses, and the link is published as text.** 637
+agents on Base publish a `marketplace.olas.network` metadata URL and 336 publish
+a Virtuals ACP one, so roughly 970 agents declare themselves as belonging to a
+commerce platform. The Olas URL carries the platform's own agent id in its path
+and resolves to a registration document. `packages/indexer/src/commerce/linkage.ts`
+matches only on wallet addresses and cannot see any of this. Whether per-agent
+job outcomes can be retrieved for those ids is the next measurement and it
+decides whether calibration is possible at all; 970 candidates is well above the
+thirty-agent floor. See `research/commerce-linkage-feasibility.md`.
+
+**Calibration against Virtuals ACP by wallet matching is impossible, and it is
+the data, not the code.** `research/commerce-linkage-feasibility.md`: an exhaustive scan of the
 post-registry window finds 3,017 ACP jobs with a usable outcome mix (1,014
 completed, 1,280 expired, 170 rejected), from 122 providers and 167 clients. Not
 one of those 289 addresses belongs to a registered agent, on either the owner

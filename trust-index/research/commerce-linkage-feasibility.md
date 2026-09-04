@@ -1,8 +1,10 @@
 # Can ERC-8004 agent scores be calibrated against commerce outcomes?
 
-Not against Virtuals ACP. The two populations do not intersect, and this now
-rests on the strongest test available rather than on the sampling that produced
-an earlier version of this note.
+Not by matching wallet addresses, which is what everything below tests and what
+every attempt in it concludes. But address matching turns out to be the wrong
+instrument, and the section "The link is published, not inferable" at the end
+records what replaces it. Read that first: it materially qualifies the negative
+results above it.
 
 Reproduce with `scripts/check-commerce-linkage.mts` and
 `scripts/match-acp-wallets.mts`, against a cached registry log history built by
@@ -139,3 +141,41 @@ than widen.
 
 Until one of those, every constant in the methodology stays provisional, and
 `docs/NOTES-calibration.md` records what the untuned constants cost.
+
+## The link is published, not inferable
+
+Everything above matches wallet addresses. That was the wrong instrument, and
+the negative results it produced are real but narrower than they read.
+
+Agents publish a metadata URL, and for agents that work on a commerce platform
+that URL names the platform and their identity on it. Counting hosts across the
+42,750 agents with an http(s) agentURI:
+
+| Host | Agents |
+|---|---|
+| marketplace.olas.network | 637 |
+| api.acp.virtuals.io | 181 |
+| acpx.virtuals.io | 155 |
+
+Roughly 970 agents on Base declare themselves as belonging to one of the two
+commerce platforms this project cares about. The registry and those platforms
+were never disjoint populations; their *wallets* are disjoint, because the
+address an agent registers is not the address it trades from.
+
+The Olas URLs carry the platform's own agent id in the path. Agent 3 publishes
+`https://marketplace.olas.network/erc8004/base/ai-agents/1`, which resolves to a
+registration document naming it `nekto-ramar05 by Olas` and describing a mech
+that executes on-chain AI tasks. That is a direct, published mapping from an
+ERC-8004 agent id to an Olas agent id, needing no inference at all.
+
+What this does not yet establish: whether per-agent job outcomes can be
+retrieved from Olas for those ids. That is the next measurement, and it decides
+whether calibration is possible. Roughly 970 candidate agents is well above the
+thirty-agent floor, so the question is now about the outcome data rather than
+about the population.
+
+What it does establish: "the populations do not intersect" is too strong. The
+correct statement is that they do not intersect *on wallet addresses*, and the
+linkage machinery in `packages/indexer/src/commerce/linkage.ts`, which matches
+on addresses only, cannot see a link that is sitting in plain text in the
+registry's own metadata.
