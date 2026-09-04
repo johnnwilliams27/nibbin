@@ -130,7 +130,22 @@ const run = await runPanel(items, {
 const metrics = scorePanel(run, items, PRICES);
 const ranking = rankStructures(metrics);
 
-// The meta pass. Its pick is explanatory; ranking.winner is authoritative.
+// WRITE FIRST, THINK SECOND.
+//
+// The votes and adjudications are the expensive, unrepeatable part of this
+// script; the meta pass is one more model call that can fail. An earlier
+// version wrote the artifact after the meta pass, so when the meta model
+// declined the request, a completed 85-item run — every call paid for and
+// succeeded — was thrown away with it. The data goes to disk the moment it
+// exists, and anything that follows only ever adds to the file.
+mkdirSync(OUT_DIR, { recursive: true });
+const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+const outPath = join(OUT_DIR, `panel-${stamp}.json`);
+writeFileSync(outPath, `${JSON.stringify({ run, metrics, ranking, prices: PRICES }, null, 2)}\n`);
+console.log(`\nrun data saved: ${outPath}`);
+
+// The meta pass. Its pick is explanatory; ranking.winner is authoritative, and
+// recommendStructure returns a recorded error rather than throwing.
 const metaModel = chooseModel("meta");
 const recommendation = await recommendStructure(
   metrics,
@@ -142,16 +157,18 @@ const recommendation = await recommendStructure(
   }),
   metaModel.id,
 );
-
-mkdirSync(OUT_DIR, { recursive: true });
-const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-const artifact = { run, metrics, ranking, recommendation, prices: PRICES };
-const outPath = join(OUT_DIR, `panel-${stamp}.json`);
-writeFileSync(outPath, `${JSON.stringify(artifact, null, 2)}\n`);
+writeFileSync(outPath, `${JSON.stringify({ run, metrics, ranking, recommendation, prices: PRICES }, null, 2)}\n`);
 
 console.log(`\n${renderMetrics(metrics, ranking)}\n`);
 console.log(`arithmetic winner: ${ranking.winner ?? "(none — every structure is flagged)"}`);
 console.log(`model pick:        ${recommendation.model_pick}`);
 console.log(`model reason:      ${recommendation.model_reason}`);
-console.log(recommendation.agrees ? "the model agrees with the table." : "THE MODEL DISAGREES WITH THE TABLE — this is a finding, investigate before shipping either.");
+if (recommendation.error !== undefined) {
+  console.log(`meta pass did not answer: ${recommendation.error}`);
+  console.log("That is a harness gap. The arithmetic winner above stands on its own.");
+} else if (recommendation.agrees) {
+  console.log("the model agrees with the table.");
+} else {
+  console.log("THE MODEL DISAGREES WITH THE TABLE — this is a finding, investigate before shipping either.");
+}
 console.log(`\nartifact: ${outPath}`);

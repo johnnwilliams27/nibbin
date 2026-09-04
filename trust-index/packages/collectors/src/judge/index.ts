@@ -77,6 +77,16 @@ export type JudgeRequest = {
   untrusted: Record<string, string>;
   /** Permitted verdict values, so the caller can validate what comes back. */
   allowed: readonly string[];
+  /**
+   * Framing prepended by the adapter. Defaults to the judge preamble.
+   *
+   * Overridable because not every call is a judgement about a subject. The
+   * meta pass reads our own results table, and telling a model it is "auditing
+   * a third-party software tool" while handing it a comparison of AI models
+   * describes the wrong task — which is how a request to summarise our own
+   * experiment came to be declined as reasoning extraction.
+   */
+  preamble?: string;
 };
 
 export type JudgeResponse = {
@@ -163,9 +173,10 @@ export function fenceRequest(request: JudgeRequest): JudgeRequest {
  * by a caller that did not know it needed it.
  */
 export function composeRequest(request: JudgeRequest): JudgeRequest {
+  const preamble = request.preamble ?? PREAMBLE;
   return fenceRequest({
     ...request,
-    instruction: `${PREAMBLE}\n\n${request.instruction}\n\nPermitted verdicts: ${request.allowed.join(", ")}`,
+    instruction: `${preamble}\n\n${request.instruction}\n\nPermitted verdicts: ${request.allowed.join(", ")}`,
   });
 }
 
