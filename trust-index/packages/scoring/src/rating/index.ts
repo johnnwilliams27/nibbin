@@ -28,13 +28,30 @@
  *      the provenance multiplier.
  *   4. Apply the per-dimension self-reported cap, which scales self-reported
  *      contributions down until they hold no more than their allowed share.
- *   5. Apply the per-observer cap (capAndSum) so one observer cannot outvote
- *      the rest by volume.
+ *   5. Apply the volume cap (capAndSum) so one observer cannot outvote the
+ *      rest by volume. See VOLUME CAP below for what "one" means.
  *   6. Shrink toward the prior and take the interval.
  *
  * Steps 4 and 5 are separate on purpose. The first bounds one PROVENANCE, the
  * second bounds one OBSERVER, and an attacker who controls both the subject
  * and a pile of review accounts has to get past both.
+ *
+ * VOLUME CAP. The chain path caps a reviewer's total contribution at one
+ * review's worth, because a reviewer who repeats an opinion has not produced
+ * more evidence. That rule is right for opinions and wrong for measurements.
+ * Ten probes of an endpoint on ten different days are ten independent samples
+ * of whether it answers; ten probes in the same minute are one. So:
+ *
+ *   third_party_review, self_reported   capped per observer
+ *   measured, attested                  capped per observer PER UTC DAY
+ *
+ * The day bucket is the smallest unit that is both defensible and unforgeable
+ * from outside. A probe cannot manufacture confidence by looping, because
+ * every extra call inside a day collapses into the same bucket, and it cannot
+ * manufacture days. Without this rule a measured dimension could never reach
+ * an n_eff above one observer's weight, every MCP server in existence would
+ * shrink to within a few points of the prior, and the ratings would be a
+ * restatement of the prior wearing a subject's name.
  */
 import type {
   CanonicalValue,
@@ -157,6 +174,9 @@ function scoreDimension(
 
   type Staged = { obs: WeightedObservation; isSelf: boolean };
   const staged: Staged[] = [];
+  // Cap keys, one per bucket, each mapped back to the owning observer's
+  // undecayed weight so capAndSum bounds a bucket at that observer's worth.
+  const capWeights = new Map<string, bigint>();
   let rejected = 0;
   let selfSumFx = 0n;
   let otherSumFx = 0n;
@@ -184,7 +204,16 @@ function scoreDimension(
     const isSelf = e.provenance === "self_reported";
     if (isSelf) selfSumFx += effectiveWeightFx;
     else otherSumFx += effectiveWeightFx;
-    staged.push({ obs: { address: e.observer_id, effectiveWeightFx, valueFx }, isSelf });
+    // A measurement is bucketed by the UTC day it was taken; an opinion is
+    // not bucketed at all. The key is length-prefixed so it is injective:
+    // an observer id containing the separator cannot be made to collide
+    // with another observer's bucket.
+    const measured = e.provenance === "measured" || e.provenance === "attested";
+    const capKey = measured
+      ? `${e.observer_id.length}:${e.observer_id}|${Math.floor(entrySec / 86400)}`
+      : `${e.observer_id.length}:${e.observer_id}|*`;
+    capWeights.set(capKey, observerWeightFx);
+    staged.push({ obs: { address: capKey, effectiveWeightFx, valueFx }, isSelf });
     observerIds.add(e.observer_id);
     if (!haveAny || entrySec < minSec) minSec = entrySec;
     if (!haveAny || entrySec > maxSec) maxSec = entrySec;
@@ -201,13 +230,13 @@ function scoreDimension(
   const preCapTotalFx = cappedSelfFx + otherSumFx;
   const selfShareFx = preCapTotalFx === 0n ? 0n : divFx(cappedSelfFx, preCapTotalFx);
 
-  // The per-observer ceiling is the observer's own undecayed weight. An
-  // observer's provenance multiplier is already inside each contribution, so
-  // the ceiling is the same for every dimension and an observer never gains
-  // headroom by producing more observations.
+  // Each bucket's ceiling is the owning observer's undecayed weight, so one
+  // day of measurement is worth at most one observer's voice however many
+  // calls it took. The provenance multiplier is already inside each
+  // contribution, so no bucket gains headroom by producing more observations.
   const sums = capAndSum(
     staged.map((s) => s.obs),
-    weightByObserver,
+    capWeights,
   );
   const post = posterior(sums, priorFx, c.shrinkageK);
   const spanDays = haveAny ? floorDaysBetween(maxSec, minSec) : 0;

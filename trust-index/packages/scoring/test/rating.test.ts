@@ -257,6 +257,86 @@ describe("gameability defences", () => {
     expect(forty.n_eff).toBeCloseTo(one.n_eff, 2);
   });
 
+  it("counts repeated measurements on separate days but not within one day", () => {
+    // The rule the MCP collector forced into existence. Ten probes on ten
+    // days are ten samples of whether an endpoint answers; ten probes in one
+    // minute are one. Without the day bucket every measured dimension would
+    // sit at one observer's weight and shrink to the prior.
+    const probeDays = (days: number, perDay: number): Subject =>
+      makeSubject({
+        observations: Array.from({ length: days * perDay }, (_, i) =>
+          makeObservation({
+            observer_id: "probe:harness",
+            dimension: "availability",
+            value: "1.000000",
+            observation_key: `a-${i}`,
+            ts: `2026-06-${String(1 + Math.floor(i / perDay)).padStart(2, "0")}T00:00:00Z`,
+          }),
+        ),
+        observers: {
+          "probe:harness": makeObserver({
+            observer_id: "probe:harness",
+            observer_kind: "probe",
+            first_seen_ts: "2024-01-01T00:00:00Z",
+          }),
+        },
+      });
+    const oneDay = dim(scoreSubject(probeDays(1, 10)).result, "availability");
+    const tenDays = dim(scoreSubject(probeDays(10, 1)).result, "availability");
+    const tenDaysBusy = dim(scoreSubject(probeDays(10, 10)).result, "availability");
+
+    expect(oneDay.observation_count).toBe(10);
+    expect(oneDay.n_eff).toBeLessThanOrEqual(1);
+    expect(tenDays.n_eff).toBeGreaterThan(5);
+    // Looping inside a day buys nothing: ten days is ten days either way.
+    expect(tenDaysBusy.n_eff).toBeCloseTo(tenDays.n_eff, 1);
+    // And more evidence means a narrower interval and a higher confidence.
+    expect(tenDays.confidence).toBeGreaterThan(oneDay.confidence);
+  });
+
+  it("keeps opinions capped per observer, with no day bucket", () => {
+    // The same volume that buys a probe ten samples must buy a reviewer one
+    // voice, or the anti-flooding rule is gone.
+    const spread = (days: number): Subject =>
+      makeSubject({
+        kind: "hosted_agent",
+        profile_id: "hosted_agent.v1",
+        observations: Array.from({ length: days }, (_, i) =>
+          makeObservation({
+            observer_id: "loud",
+            dimension: "counterparty_satisfaction",
+            provenance: "third_party_review",
+            value: "1.000000",
+            observation_key: `k-${i}`,
+            ts: `2026-06-${String(1 + i).padStart(2, "0")}T00:00:00Z`,
+          }),
+        ),
+        observers: { loud: makeObserver({ observer_id: "loud", first_seen_ts: "2024-01-01T00:00:00Z" }) },
+      });
+    // Compared against a single review dated on the same last day, since the
+    // per-observer ceiling is the reviewer's strongest DECAYED contribution
+    // and a later review has decayed less.
+    const onlyLast = makeSubject({
+      kind: "hosted_agent",
+      profile_id: "hosted_agent.v1",
+      observations: [
+        makeObservation({
+          observer_id: "loud",
+          dimension: "counterparty_satisfaction",
+          provenance: "third_party_review",
+          value: "1.000000",
+          observation_key: "k-19",
+          ts: "2026-06-20T00:00:00Z",
+        }),
+      ],
+      observers: { loud: makeObserver({ observer_id: "loud", first_seen_ts: "2024-01-01T00:00:00Z" }) },
+    });
+    const one = dim(scoreSubject(onlyLast).result, "counterparty_satisfaction");
+    const twenty = dim(scoreSubject(spread(20)).result, "counterparty_satisfaction");
+    expect(twenty.observation_count).toBe(20);
+    expect(twenty.n_eff).toBeCloseTo(one.n_eff, 2);
+  });
+
   it("counts observations on dimensions the profile does not define", () => {
     const s = probedServer({
       observations: [
