@@ -7,7 +7,7 @@ import type { AgentSnapshot } from "@trust-index/types";
 import { collapseLabel, type LabelView } from "./labels.js";
 import { evaluate, type MetricSet, type Prediction } from "./metrics.js";
 import { ALL_PREDICTORS, type Predictor } from "./predictors.js";
-import { splitCohort } from "./split.js";
+import { splitCohort, type LinkageArm } from "./split.js";
 
 export type PredictorResult = {
   name: string;
@@ -19,6 +19,8 @@ export type CalibrationRun = {
   split_ts: string;
   split_block: number;
   view: LabelView;
+  /** Which linkage-confidence arm produced these labels. */
+  arm: LinkageArm;
   /** Agents in the input cohort. */
   cohort_size: number;
   /** Agents dropped for having no outcome after the split. */
@@ -47,13 +49,14 @@ export function runCalibration(
   cohort: readonly AgentSnapshot[],
   splitTs: string,
   splitBlock: number,
-  options: { view?: LabelView; predictors?: readonly Predictor[]; bins?: number } = {},
+  options: { view?: LabelView; predictors?: readonly Predictor[]; bins?: number; arm?: LinkageArm } = {},
 ): CalibrationRun {
   const view = options.view ?? "success";
   const predictors = options.predictors ?? ALL_PREDICTORS;
   const bins = options.bins ?? 10;
+  const arm = options.arm ?? "all";
 
-  const { evaluable, excludedNoLabel } = splitCohort(cohort, splitTs, splitBlock);
+  const { evaluable, excludedNoLabel } = splitCohort(cohort, splitTs, splitBlock, arm);
 
   const snapshots: AgentSnapshot[] = [];
   const observed: Array<0 | 1> = [];
@@ -90,6 +93,7 @@ export function runCalibration(
     split_ts: splitTs,
     split_block: splitBlock,
     view,
+    arm,
     cohort_size: cohort.length,
     excluded_no_label: excludedNoLabel,
     excluded_no_view_label: excludedNoViewLabel,

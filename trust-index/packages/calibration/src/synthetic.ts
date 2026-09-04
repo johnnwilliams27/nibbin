@@ -42,6 +42,18 @@ export type SyntheticOptions = {
   signalStrength: number;
   /** Split instant, in days before as-of. Feedback lands before it, outcomes after. */
   splitDaysAgo: number;
+  /**
+   * Fraction of post-split jobs attributed by a moderate (owner) link rather
+   * than a strong (agent wallet) one. 0 means every label is strong.
+   */
+  moderateShare?: number;
+  /**
+   * When set, moderate-linked outcomes are drawn independently of the agent's
+   * true quality, simulating over-attribution: the owner's other business
+   * bleeding into the agent's record. Used to prove the arm comparison detects
+   * untrustworthy moderate links rather than merely reporting them.
+   */
+  corruptModerate?: boolean;
 };
 
 export type SyntheticCohort = {
@@ -111,9 +123,14 @@ export function syntheticCohort(opts: SyntheticOptions): SyntheticCohort {
     // Post-split outcomes: driven by quality at signalStrength, else by noise.
     const jobs = 1 + Math.floor(rand() * 3);
     const commerce = [];
+    const moderateShare = opts.moderateShare ?? 0;
     for (let j = 0; j < jobs; j++) {
+      const isModerate = rand() < moderateShare;
       const draw = rand();
-      const pSuccess = opts.signalStrength * quality + (1 - opts.signalStrength) * 0.5;
+      // A corrupted moderate link carries an outcome unrelated to this agent's
+      // quality, which is exactly what over-attribution looks like in the data.
+      const effectiveQuality = isModerate && opts.corruptModerate === true ? rand() : quality;
+      const pSuccess = opts.signalStrength * effectiveQuality + (1 - opts.signalStrength) * 0.5;
       const completed = draw < pSuccess;
       const daysAgo = Math.max(0, opts.splitDaysAgo - 1 - Math.floor(rand() * (opts.splitDaysAgo || 1)));
       commerce.push({
@@ -121,6 +138,7 @@ export function syntheticCohort(opts: SyntheticOptions): SyntheticCohort {
         outcome: (completed ? "completed" : "disputed") as "completed" | "disputed",
         ts: daysAgoTs(daysAgo),
         block: daysAgoBlock(daysAgo),
+        linkage_strength: (isModerate ? "moderate" : "strong") as "moderate" | "strong",
       });
     }
 

@@ -15,6 +15,7 @@ import { format } from "./fixed.js";
 import type { MetricSet, ReliabilityBin } from "./metrics.js";
 import type { CalibrationRun } from "./run.js";
 import { beatsAllBaselines, MIN_EVALUABLE_AGENTS } from "./run.js";
+import { recommendArm, type ArmComparison } from "./compare.js";
 import type { SensitivityResult } from "./sensitivity.js";
 import type { TuningResult } from "./tune.js";
 
@@ -258,6 +259,114 @@ export function renderTuningReport(result: TuningResult): string {
     result.underpowered
       ? "Constants remain labeled provisional until a run with adequate power reproduces this result."
       : `A constant adopted from this run cites ${result.run_id} as its provenance.`,
+  );
+  out.push("");
+  return out.join("\n");
+}
+
+/**
+ * Linkage-arm comparison report. Written to answer one question for the
+ * author: can moderate-linkage outcomes be trusted as calibration labels, and
+ * therefore which arm is the headline number?
+ */
+export function renderArmComparisonReport(c: ArmComparison, generatedFrom: string): string {
+  const rec = recommendArm(c);
+  const num = (v: bigint | null, dp = 4): string => (v === null ? "n/a" : format(v, dp));
+  const signed = (v: bigint | null, dp = 4): string => {
+    if (v === null) return "n/a";
+    const s = format(v < 0n ? -v : v, dp);
+    return v < 0n ? `-${s}` : `+${s}`;
+  };
+
+  const out: string[] = [];
+  out.push("# Linkage arm comparison");
+  out.push("");
+  out.push(`Source cohort: ${generatedFrom}`);
+  out.push(`Split at: ${c.split_ts} (block ${c.split_block})`);
+  out.push(`Label view: ${c.view}`);
+  out.push("");
+
+  out.push("## The question");
+  out.push("");
+  out.push(
+    "A commerce outcome is attached to an agent by evidence, not by declaration. A strong link matches the agent's own declared wallet; a moderate link matches its owner, which can over-attribute when that owner does other business from the same address. This report asks whether moderate-linkage outcomes behave like strong ones, and therefore whether they can be pooled into a headline result.",
+  );
+  out.push("");
+  out.push(
+    "The decisive comparison is strong against moderate, which are disjoint sets of evidence. Strong against pooled is reported for completeness but is diluted, because the pooled arm contains the strong rows.",
+  );
+  out.push("");
+
+  out.push("## How much data each arm has");
+  out.push("");
+  out.push("| Arm | Agents | Jobs | Powered |");
+  out.push("|---|---|---|---|");
+  for (const a of [c.strong, c.moderate, c.pooled]) {
+    out.push(`| ${a.arm} | ${a.agents} | ${a.jobs} | ${a.underpowered ? `no (under ${MIN_EVALUABLE_AGENTS})` : "yes"} |`);
+  }
+  out.push("");
+  out.push(`Cohort: ${c.cohort_size} agents. Carrying both link types: ${c.agentsWithBothLinkTypes}.`);
+  out.push("");
+
+  out.push("## How the arms compare");
+  out.push("");
+  out.push("| Metric | strong | moderate | pooled | strong minus moderate |");
+  out.push("|---|---|---|---|---|");
+  out.push(
+    `| Success base rate | ${num(c.strong.baseRateFx)} | ${num(c.moderate.baseRateFx)} | ${num(c.pooled.baseRateFx)} | ${signed(c.strongVsModerate.baseRateFx)} |`,
+  );
+  out.push(
+    `| Brier (lower better) | ${num(c.strong.brierFx, 6)} | ${num(c.moderate.brierFx, 6)} | ${num(c.pooled.brierFx, 6)} | ${signed(c.strongVsModerate.brierFx, 6)} |`,
+  );
+  out.push(
+    `| AUC (ranking) | ${num(c.strong.aucFx)} | ${num(c.moderate.aucFx)} | ${num(c.pooled.aucFx)} | ${signed(c.strongVsModerate.aucFx)} |`,
+  );
+  out.push(
+    `| Calibration error | ${num(c.strong.eceFx)} | ${num(c.moderate.eceFx)} | ${num(c.pooled.eceFx)} | ${signed(c.strongVsModerate.eceFx)} |`,
+  );
+  out.push("");
+  for (const a of [c.strong, c.moderate, c.pooled]) {
+    if (a.gate !== null) out.push(`- ${a.arm}: ${a.gate.passed ? "beats" : "does not beat"} the trivial baselines (${a.gate.detail}).`);
+  }
+  if (c.strongVsModerate.gateVerdictDiffers) {
+    out.push("");
+    out.push(
+      "The strata disagree about whether the index beats the baselines. That disagreement is the finding: the headline verdict depends on which outcomes you trust.",
+    );
+  }
+  out.push("");
+
+  out.push("## Where the arms disagree about individual agents");
+  out.push("");
+  if (c.divergences.length === 0) {
+    out.push(
+      "No agent's outcome label changes between arms. Any difference in the numbers above therefore comes from which agents are covered, not from the same agent being judged differently.",
+    );
+  } else {
+    out.push(
+      `${c.divergences.length} agents carry a label that changes between arms. These are the concrete cases where trusting moderate links changes what the data says about a specific agent.`,
+    );
+    out.push("");
+    out.push("| Agent | strong | moderate | pooled | strong jobs | moderate jobs |");
+    out.push("|---|---|---|---|---|---|");
+    const lab = (v: 0 | 1 | null): string => (v === null ? "no label" : v === 1 ? "success" : "failure");
+    for (const d of c.divergences.slice(0, 50)) {
+      out.push(
+        `| ${d.agent} | ${lab(d.strongLabel)} | ${lab(d.moderateLabel)} | ${lab(d.pooledLabel)} | ${d.strongJobs} | ${d.moderateJobs} |`,
+      );
+    }
+    if (c.divergences.length > 50) out.push(`| ... and ${c.divergences.length - 50} more | | | | | |`);
+  }
+  out.push("");
+
+  out.push("## What follows");
+  out.push("");
+  out.push(`Headline arm: **${rec.headline}**. Pooling ${rec.poolingDefensible ? "is" : "is not"} defensible from this comparison.`);
+  out.push("");
+  for (const r of rec.reasons) out.push(`- ${r}`);
+  out.push("");
+  out.push(
+    "Agreement between strata is evidence that linkage confidence is not driving the result, which makes pooling defensible and buys back statistical power. It is not proof that individual moderate links are correct. Divergence is the more informative outcome, because it means the pooled number cannot carry a headline.",
   );
   out.push("");
   return out.join("\n");

@@ -87,6 +87,20 @@ export type CommerceRecord = {
   outcome: "completed" | "rejected" | "disputed" | "abandoned";
   ts: string;
   block: number;
+  /**
+   * How confidently this job was attributed to this agent by the A6 ingest
+   * (see packages/indexer/src/commerce/linkage.ts). "strong" is an
+   * agent_wallet match, which is close to a direct assertion by the identity
+   * itself; "moderate" is an owner or historical-owner match, which can
+   * over-attribute when an owner does other business from the same address.
+   *
+   * Calibration stratifies on this so a result can be reported on
+   * high-confidence labels alone and cross-checked against the fuller set.
+   * It is NOT a scoring input and is deliberately excluded from inputs_hash:
+   * the score must not change because a label was attributed differently.
+   * Optional so snapshots built before A6 remain valid.
+   */
+  linkage_strength?: "strong" | "moderate";
 };
 
 /**

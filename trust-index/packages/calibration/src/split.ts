@@ -54,13 +54,42 @@ function parseTs(ts: string): number {
  * snapshot's as_of_ts and as_of_block are moved back to the split so every
  * time-dependent signal in the engine measures against the split instant.
  */
-export function splitAt(snapshot: AgentSnapshot, splitTs: string, splitBlock: number): SplitResult {
+/**
+ * Which linkage confidences count as labels (SPEC 12, A6 linkage).
+ *
+ * "strong" restricts labels to agent_wallet matches, the cleanest claim.
+ * "moderate" restricts to owner and historical-owner matches, which is what
+ * makes a like-for-like comparison against strong possible: comparing strong
+ * against the pooled set would be contaminated, because pooled contains
+ * strong. "all" pools everything.
+ *
+ * A record with no linkage_strength predates A6 and is treated as
+ * unclassified: included only in "all", never in a confidence-restricted arm,
+ * so an old snapshot cannot quietly inflate a stratified result.
+ */
+export type LinkageArm = "strong" | "moderate" | "all";
+
+function inArm(record: { linkage_strength?: "strong" | "moderate" }, arm: LinkageArm): boolean {
+  if (arm === "all") return true;
+  return record.linkage_strength === arm;
+}
+
+export function splitAt(
+  snapshot: AgentSnapshot,
+  splitTs: string,
+  splitBlock: number,
+  arm: LinkageArm = "all",
+): SplitResult {
   const t = parseTs(splitTs);
 
   const feedback = snapshot.feedback.filter((f) => parseTs(f.ts) <= t);
   const validations = snapshot.validations.filter((v) => parseTs(v.ts) <= t);
+  // The feature side keeps ALL pre-split commerce regardless of arm: linkage
+  // confidence governs which outcomes are trusted as labels, not what the
+  // agent is scored on. Restricting features by arm would change the score
+  // between arms and make the comparison measure two things at once.
   const priorCommerce = snapshot.commerce.filter((c) => parseTs(c.ts) <= t);
-  const futureCommerce = snapshot.commerce.filter((c) => parseTs(c.ts) > t);
+  const futureCommerce = snapshot.commerce.filter((c) => parseTs(c.ts) > t && inArm(c, arm));
 
   // Transfers must keep their linkage pairing: linkages reference transfers by
   // index, so both are filtered together and the indices rebuilt.
@@ -119,11 +148,12 @@ export function splitCohort(
   snapshots: readonly AgentSnapshot[],
   splitTs: string,
   splitBlock: number,
+  arm: LinkageArm = "all",
 ): { evaluable: SplitResult[]; excludedNoLabel: number } {
   let excludedNoLabel = 0;
   const evaluable: SplitResult[] = [];
   for (const s of snapshots) {
-    const r = splitAt(s, splitTs, splitBlock);
+    const r = splitAt(s, splitTs, splitBlock, arm);
     if (r.labels.outcomes.length === 0) {
       excludedNoLabel += 1;
       continue;

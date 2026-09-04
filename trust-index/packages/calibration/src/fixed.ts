@@ -72,3 +72,21 @@ export function toNumber(v: bigint): number {
 export function clamp(v: bigint, lo: bigint, hi: bigint): bigint {
   return v < lo ? lo : v > hi ? hi : v;
 }
+
+/**
+ * Integer square root of a SCALE-scaled value, round-half-up, via Newton's
+ * method on bigints. Exact and deterministic; no floating point.
+ */
+export function sqrt(v: bigint): bigint {
+  if (v < 0n) throw new RangeError("sqrt of a negative value");
+  if (v === 0n) return 0n;
+  // sqrt(v/ONE) * ONE = sqrt(v * ONE)
+  const target = v * ONE;
+  let x = target;
+  let y = (x + 1n) / 2n;
+  while (y < x) {
+    x = y;
+    y = (x + target / x) / 2n;
+  }
+  return x;
+}

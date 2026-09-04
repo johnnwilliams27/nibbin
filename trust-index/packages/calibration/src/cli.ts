@@ -10,6 +10,9 @@
  *       Temporal-split calibration against commerce outcomes in the cohort.
  *   tune --cohort <dir> --split <iso-ts> --split-block <n> [--out <file>]
  *       Grid-search constants by minimizing Brier (SPEC 12.4).
+ *   compare-linkage --cohort <dir> --split <iso-ts> --split-block <n> [--out <file>]
+ *       Run the strong, moderate, and pooled linkage arms side by side and
+ *       report whether moderate-linked outcomes can be trusted as labels.
  *   demo [--agents n] [--seed n] [--signal 0..1]
  *       Run the pipeline on a deterministic synthetic cohort. Validates the
  *       harness; establishes nothing about real agents.
@@ -17,7 +20,8 @@
 import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { AgentSnapshot } from "@trust-index/types";
-import { renderCalibrationReport, renderSensitivityReport, renderTuningReport } from "./report.js";
+import { renderArmComparisonReport, renderCalibrationReport, renderSensitivityReport, renderTuningReport } from "./report.js";
+import { compareLinkageArms } from "./compare.js";
 import { runCalibration } from "./run.js";
 import { runDefaultSensitivity } from "./sensitivity.js";
 import { syntheticCohort } from "./synthetic.js";
@@ -87,6 +91,19 @@ function main(argv: string[]): void {
     return;
   }
 
+  if (command === "compare-linkage") {
+    const dir = arg(rest, "--cohort");
+    const split = arg(rest, "--split");
+    const splitBlock = arg(rest, "--split-block");
+    if (dir === null || split === null || splitBlock === null) {
+      throw new CliError("compare-linkage requires --cohort <dir> --split <iso-ts> --split-block <n>");
+    }
+    const { snapshots, label } = loadCohort(dir);
+    const comparison = compareLinkageArms(snapshots, split, Number(splitBlock));
+    emit(renderArmComparisonReport(comparison, label), out);
+    return;
+  }
+
   if (command === "tune") {
     const dir = arg(rest, "--cohort");
     const split = arg(rest, "--split");
@@ -117,7 +134,9 @@ function main(argv: string[]): void {
     return;
   }
 
-  throw new CliError("usage: agent-trust-calibrate <sensitivity|run|tune|demo> [options]");
+  throw new CliError(
+    "usage: agent-trust-calibrate <sensitivity|run|compare-linkage|tune|demo> [options]",
+  );
 }
 
 try {

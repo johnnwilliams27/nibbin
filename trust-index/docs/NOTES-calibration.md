@@ -80,6 +80,46 @@ mind when it says an unstable untuned constant must be flagged. Caveat: an
 11-agent fixture cohort gives an indicative reading, so trust the ranking of
 constants by risk ahead of the absolute magnitudes.
 
+## Linkage arm comparison (the A6 label-trust decision)
+
+`compare.ts` runs three arms and reports them side by side: strong (agent
+wallet links only), moderate (owner and historical-owner links only), and
+pooled. `agent-trust-calibrate compare-linkage` renders the report.
+
+Two design points matter.
+
+**The decisive comparison is strong against MODERATE, not strong against
+pooled.** Pooled contains the strong rows, so a strong-versus-pooled gap is
+diluted by the overlap and understates how far the two kinds of evidence
+actually differ. Strong and moderate are disjoint, so a difference between them
+is a real difference in evidence. Strong-versus-pooled is still reported, for
+completeness, and labeled as the diluted one.
+
+**Divergence is judged against sampling noise, not a fixed cutoff.** The first
+version used a flat 0.05 AUC threshold and flagged a clean, uncorrupted cohort
+as divergent, purely because the two strata were random halves of the same
+data (gap 0.0512 on roughly 200 agents per arm). A fixed threshold cannot work,
+because the same gap means different things at different sample sizes. Gaps are
+now tested against their own standard error (Hanley and McNeil for AUC, the
+usual proportion formula for base rate), with the conventional two-standard-error
+reading. On the same cohorts that misfired before: the clean cohort now reads as
+statistically indistinguishable, and a deliberately corrupted one reads at over
+six standard errors and correctly refuses pooling. The two-sigma multiplier is
+conventional rather than tuned, and both the gap and its standard error are
+published so a reader can apply a different strictness.
+
+The report answers the volume question directly (agents and jobs per arm),
+the quantitative question (every metric per arm, plus deltas with their
+significance), and the qualitative question (the named agents whose label
+actually flips between arms, with the job counts that explain why).
+
+`recommendArm` states the rule rather than leaving a judgement call: the strong
+arm is the headline whenever it clears the power floor; the pooled arm becomes
+the headline only when strong is underpowered AND the strata are statistically
+indistinguishable; otherwise no arm supports a headline and the sparse-coverage
+finding is the result. Fixing the rule before the data arrives is deliberate, so
+the choice cannot drift toward whichever arm looks better afterward.
+
 ## Requests to the author
 
 - Commerce ingest (Track A stage A6) is the blocker for everything that matters

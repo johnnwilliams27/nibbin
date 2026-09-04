@@ -6,4 +6,5 @@ export * from "./predictors.js";
 export * from "./run.js";
 export * from "./sensitivity.js";
 export * from "./tune.js";
+export * from "./compare.js";
 export * from "./report.js";
