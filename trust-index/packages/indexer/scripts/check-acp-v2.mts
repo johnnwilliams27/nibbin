@@ -67,7 +67,8 @@ const PHASE_NAMES = ["REQUEST", "NEGOTIATION", "TRANSACTION", "EVALUATION", "COM
 type Log = { topics: string[]; data: string; blockNumber: string };
 
 async function rpc(body: unknown): Promise<unknown> {
-  for (let a = 0; a < 5; a += 1) {
+  let last = "";
+  for (let a = 0; a < 4; a += 1) {
     await new Promise((r) => setTimeout(r, 120));
     try {
       const res = await fetch(RPC, {
@@ -80,11 +81,16 @@ async function rpc(body: unknown): Promise<unknown> {
       const j = await res.json();
       if (!Array.isArray(j) && j?.error?.message?.includes("rate limit")) throw new Error("rate limit");
       return j;
-    } catch {
+    } catch (err) {
+      last = err instanceof Error ? err.message : String(err);
+      // Logged as it happens. A silent retry ladder is indistinguishable from
+      // a hang from the outside, which is exactly how the first run of this
+      // script spent seven minutes looking stuck.
+      console.error(`  rpc retry ${a + 1}: ${last}`);
       await new Promise((r) => setTimeout(r, 500 * 2 ** a));
     }
   }
-  throw new Error("rpc failed after retries");
+  throw new Error(`rpc failed after retries: ${last}`);
 }
 
 async function main(): Promise<void> {
@@ -150,7 +156,7 @@ async function main(): Promise<void> {
       }
     }
     cursor = to + 1;
-    if (cursor - reported > 2_000_000) {
+    if (cursor - reported > 500_000) {
       reported = cursor;
       console.log(`  ...block ${cursor}, ${created} jobs so far`);
     }
