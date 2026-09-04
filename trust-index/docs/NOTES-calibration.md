@@ -71,6 +71,24 @@ score-to-probability curve alongside the score rather than leaving integrators
 to invent one. Worth raising with the author before the whitepaper claims
 calibration.
 
+**Calibration against Virtuals ACP is impossible, and it is the data, not the
+code.** `research/commerce-linkage-feasibility.md`: an exhaustive scan of the
+post-registry window finds 3,017 ACP jobs with a usable outcome mix (1,014
+completed, 1,280 expired, 170 rejected), from 122 providers and 167 clients. Not
+one of those 289 addresses belongs to a registered agent, on either the owner
+path or against all 84,589 declared agent wallets. The A6 adapters, linkage rules
+and arm comparison are correct and have nothing to run against. ACP v2, where the
+jobs actually are now, is unchecked and is the next place to look.
+
+**The registry offers a sybil signal stronger than the one the methodology uses.**
+`research/wallet-concentration.md`: 77 percent of Base agents share a declared
+wallet with another agent, and one wallet controls 10,241 of them, 12 percent of
+the registry. SPEC 11.2's three sybil constants all key off funder clustering,
+which needs account history the index does not have and which is inert in every
+measurement made so far. A shared agentWallet is free, already in the registry,
+and is evidence of identity rather than of relationship. Worth raising with the
+author before the whitepaper describes the sybil defences.
+
 **On the real Base registry the index scores 0.75 percent of agents, and the
 suppression floor is why.** `research/real-cohort-coverage.md`, over a uniform
 2,000-agent sample of the 84,589 agents registered on Base: 743 carry feedback,

@@ -1,113 +1,114 @@
 # Can ERC-8004 agent scores be calibrated against commerce outcomes?
 
-**UNDER REVISION 2026-09-04. The conclusion below is not supported by the
-evidence that produced it, and is being rechecked.**
+Not against Virtuals ACP. The two populations do not intersect, and this now
+rests on the strongest test available rather than on the sampling that produced
+an earlier version of this note.
 
-The claim that ACP stopped settling jobs came from sampling 9,000-block windows
-spread across ACP's history. That method cannot answer the question it was asked.
-ACP's job rate fell from roughly 650 a day at peak to roughly 13 a day, and at
-13 a day a 9,000-block window covers about five hours and expects about three
-jobs, so a run of zeros says nothing. The contract's own `jobCounter` is
-monotonic and settles it directly: 162,056 jobs at block 41,000,000 and 165,217
-today, meaning roughly 3,100 jobs were created after the Identity Registry was
-deployed. Those are exactly the jobs a calibration would use, and the sample
-that produced the finding below was drawn overwhelmingly from the years before
-them.
-
-An exhaustive scan of the post-registry window is running. This file will be
-rewritten with its result. Until then, treat the zero-overlap finding below as
-withdrawn rather than established.
-
-The lesson is worth keeping regardless of how the recheck lands: to answer
-"did this stop", read a monotonic counter or scan exhaustively. Sparse sampling
-of a sparse process finds nothing whether or not anything is there.
-
----
-
-This records the measurement so the conclusion can be checked rather than taken
-on trust.
-
-Reproduce with `pnpm --filter @trust-index/indexer exec tsx
-scripts/check-commerce-linkage.mts`, against a cached registry log history built
-by `scripts/fetch-registry-logs.mts`.
+Reproduce with `scripts/check-commerce-linkage.mts` and
+`scripts/match-acp-wallets.mts`, against a cached registry log history built by
+`scripts/fetch-registry-logs.mts`.
 
 ## The question
 
 SPEC 12 calibrates the index against real commerce outcomes: score an agent from
 evidence available before a job, then check the job's outcome. Stage A6 built the
-machinery to attach those outcomes and to stratify them by how confidently each
-one attaches. All of that assumes outcomes exist for agents the index scores.
-That assumption had never been checked.
+machinery to attach those outcomes and to stratify them by attribution
+confidence. All of it assumes outcomes exist for agents the index scores. That
+assumption had never been checked.
 
-## What was measured
+## The commerce source is real and its outcomes are usable
 
-Virtuals ACP is the commerce source with the most on-chain history. Its v1
-contract on Base, `0x6a1FE26D54ab0d3E1e3168f2e0c0cDa5cC0A0A4A`, is verified on
-Sourcify and reports a `jobCounter` of 165,217. Its implementation emits
-`JobCreated(uint256 jobId, address indexed client, address indexed provider,
-address indexed evaluator)` and `JobPhaseUpdated(uint256 indexed jobId, uint8
-oldPhase, uint8 phase)`, so both the parties and the terminal outcome of every
-job are on chain and auditable. This is exactly the label source calibration
-wants.
+Virtuals ACP is an escrow and settlement contract for agents hiring agents. Its
+v1 contract on Base, `0x6a1FE26D54ab0d3E1e3168f2e0c0cDa5cC0A0A4A`, is verified on
+Sourcify and reports 165,217 jobs. It emits both the parties to a job
+(`JobCreated`) and every phase transition (`JobPhaseUpdated`), so outcomes are
+auditable rather than reported.
 
-Sampling `JobCreated` across the period when ACP was settling jobs gives 145
-distinct provider addresses and 869 distinct client addresses.
+Scanning the post-registry window exhaustively, blocks 41,663,783 to chain head:
 
-The registry side comes from the full cached Identity Registry history: 84,589
-agents, 47,659 distinct owner and transfer-counterparty addresses.
+| Terminal outcome | Jobs |
+|---|---|
+| Completed | 1,014 |
+| Expired | 1,280 |
+| Rejected | 170 |
+
+3,017 jobs from 122 distinct providers and 167 distinct clients. As a label set
+this is better balanced than expected: failures outnumber successes, so the
+negative class is not the usual problem. The missing piece is disputes, which the
+contract has no state for, so the SPEC 12.3 discrimination view cannot be
+populated from this source however the linkage question resolves.
+
+## The populations do not intersect
 
 | Link type | What it matches | Result |
 |---|---|---|
-| Moderate | ACP provider against an agent's owner or a transfer counterparty | 0 of 111 |
-| Moderate | ACP client against the same set | 0 of 869 |
-| Strong | ACP provider against an agent's declared wallet | 0 of 145 |
+| Moderate | ACP provider against an agent's owner or transfer counterparty | 0 of 122 |
+| Moderate | ACP client against the same set | 0 of 167 |
+| Strong | ACP provider against a declared agent wallet | 0 of 122 |
+| Strong | ACP client against a declared agent wallet | 0 of 167 |
 
-Not a small overlap. An empty one, on every link type the A6 design supports.
+The strong link runs against all 84,589 agents' declared wallets, 30,040 distinct
+addresses. Not a thin overlap: an empty one, on every path the A6 design
+supports, in both directions, over the window where both populations exist.
 
-## Why, and why better matching would not help
+## Two wrong turns, recorded because the method matters more than the answer
 
-The two populations barely coexisted.
+**Sampling cannot answer "did this stop".** An earlier version concluded ACP had
+stopped settling jobs, from 9,000-block windows spread across its history. ACP's
+rate fell from roughly 650 jobs a day to roughly 13, and at that rate such a
+window expects about three jobs, so a run of zeros is consistent with activity
+continuing. The contract's monotonic `jobCounter`, read at two historical blocks,
+showed thousands of jobs in exactly the period the sampling called empty. Read a
+counter or scan exhaustively; do not sample.
 
-ACP settled jobs from roughly block 32,000,000 to 43,507,333 on Base. The
-ERC-8004 registries were not deployed until block 41,663,783. The overlap is the
-tail of ACP's activity, and by then it was nearly finished: a 9,000-block window
-at block 43,000,000 carries 16 logs, against 6,269 at block 35,000,000.
+**An empty result from one access path is not evidence of absent data.** An
+earlier version reported that 327 of 33,347 agents declare a wallet, under one
+percent, and treated the strong linkage path as largely unavailable.
+`getAgentWallet(uint256)` returns zero for nearly every agent, but the registry's
+`MetadataSet` events carry an `agentWallet` key for all 84,589 of them. The
+declaration was always there; the getter is not where it lives.
 
-33,347 agents were registered at or before the last observed ACP job, so the
-eligible set is not the problem. The problem is that ACP's agents and ERC-8004's
-agents are different populations that happen to share a chain.
+Both mistakes share a shape that recurred throughout this work: a failure to
+obtain data read as a fact about the data. A rate limit read as a nonexistent
+token, an HTTP 500 read as a server fault, an oversized batch read as a malformed
+response, a getter returning zero read as an undeclared wallet.
 
-## A second finding, independent of the timing
+## Why, and why better matching will not help
 
-Of those 33,347 eligible agents, 327 have a declared agent wallet. That is under
-one percent.
+ACP settled its jobs from roughly block 32,000,000 onward and the ERC-8004
+registries were not deployed until 41,663,783, so the overlap is the tail of
+ACP's activity. But the timing is not really the obstacle. Even within that tail,
+across 3,017 jobs and 289 distinct parties, not one address belongs to a
+registered agent. ACP's agents and ERC-8004's agents are different populations
+that share a chain.
 
-The declared wallet is what the strong link matches on, so even against a
-commerce source with perfect temporal overlap, the high-confidence linkage path
-would be available for roughly one agent in a hundred. Attribution would fall
-back to owner matching for everyone else, which is the weaker evidence the
-linkage-arm comparison exists to be suspicious of.
+Separately, ACP v1 is no longer where the activity is. The v2 deployment at
+`0xa6C9BA866992cfD7fd6460ba912bfa405adA9df0` is a modular system whose
+`jobManager` module (`0x9c690c267f20c385f8a053f62bc8c7e2d4b83744`) was emitting
+98 logs per 9,000 blocks at the time of writing. Its job volume and its parties
+have not been checked, and it is the obvious next place to look.
 
 ## What this does and does not establish
 
-It establishes that no calibration of these scores against Virtuals ACP outcomes
-is possible, for us or for anyone, and that the obstacle is the composition of
-the data rather than the ingest code. The A6 adapters, the linkage rules and the
-arm comparison are all still correct; they have nothing to run against.
+It establishes that no calibration against Virtuals ACP v1 is possible, for this
+project or anyone, and that the obstacle is the composition of the data rather
+than the ingest code. The A6 adapters, linkage rules and arm comparison are
+correct; they have nothing to run against.
 
-It does not establish that no commerce source works. Olas has not been checked
-the same way and should be, using this script as the template. Nor does it say
-the situation is permanent: the registries are three months old and adding
-agents, and overlap can accumulate. It says the overlap does not exist yet.
+It does not establish that no commerce source works. ACP v2 is unchecked. Olas
+has not been examined the same way. And the multi-chain census
+(`scripts/chain-census.mts`) shows Base is the only chain of twelve with an
+observed reputation layer, so the search for outcomes should stay on Base rather
+than widen.
 
 ## What would change the answer
 
+- Check ACP v2, where the jobs actually are now.
+- Check Olas, which the outcome mapping still covers only from documentation.
 - A commerce platform whose agents register on ERC-8004, so the two populations
-  are the same population. This is the only real fix.
-- Enough elapsed time for jobs to be settled by agents that are already
-  registered.
-- Agents declaring wallets, which would make the strong linkage path usable when
-  outcomes do arrive.
+  are one population. This is the only durable fix.
+- Elapsed time: the registries are seven months old and the overlap can only
+  accumulate.
 
 Until one of those, every constant in the methodology stays provisional, and
 `docs/NOTES-calibration.md` records what the untuned constants cost.
