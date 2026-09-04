@@ -172,3 +172,67 @@ complete, plausible, worthless result set that nothing downstream would reveal.
 At the roster's prices that is **under $10**, dominated by the premium legs in
 `votes_and_evidence`. Adding the 120 declaration items roughly triples it and
 keeps it under $30 — the figure from `judge-model-economics.md`, unchanged.
+
+## Run 1 (2026-09-04): two findings, neither about model quality
+
+The run completed all 85 items and printed a ranked winner. It should not be
+read as the experiment, for two independent reasons found afterwards.
+
+### The panel was half dead and said nothing about it
+
+Every OpenAI call failed — 255 of them, all `HTTP 429: You have no credits
+remaining`. The grid degraded from two vendors to one and still produced a
+ranking, a bloc analysis reporting zero cases, and a correlation matrix
+containing only Claude models.
+
+Preflight had passed because it read each provider's model catalogue, which is
+free. All seven models were listed and reachable. **A catalogue check answers
+"does this model exist"; only a call answers "can we use it."** `smokeTest` now
+makes one real minimal call per vendor before anything else runs — a fraction
+of a cent, and it turns a wasted run into a five-second failure.
+
+### The corpus was measuring our own truncation
+
+Accuracy of 0.6–0.7 against the labels looked low enough to be suspicious, so
+the disagreements were split by whether the stored response had hit the
+300-character capture cap:
+
+| Stored response | Items | Best model's error rate |
+|---|---|---|
+| Cut at the cap | 40 | **45%** |
+| Stored in full | 45 | **13%** |
+
+A 3.5× difference, and it explains the dominant confusion in the matrix
+(`answer -> error`, 11 of 24 disagreements). Truncating a JSON response
+mid-structure leaves a malformed fragment, and a model reading malformed output
+calls it a failure — which is the correct reading of what it was shown. The
+corpus was asking "can you classify a broken excerpt", not "can you classify a
+tool response".
+
+On full-text items the same model scores **0.87**, not 0.718.
+
+Two smaller components of the disagreement are real and worth fixing separately:
+
+- **Rubric ambiguity** (`refusal -> error`, 5 cases). "No design provided.
+  Bind the user's attached image..." is a deliberate decline for missing input;
+  the rubric does not cleanly separate that from an error, and both readings are
+  defensible. The definitions need tightening before they can grade anyone.
+- **Genuine model error** (`answer -> invention`, 5 cases), including a domain
+  checker correctly reporting that a nonsense domain is available.
+
+### What this changes
+
+Full-text capture moves from a nice-to-have to a precondition. No model
+comparison on this corpus means anything until responses are stored whole,
+because the largest single driver of measured error is a decision we made about
+storage.
+
+The verdict distribution added mid-run earned itself immediately: Opus as
+decider scored 0.600 seeing votes without evidence, *below* its 0.682 solo
+score, and the distribution shows why — `unclear` 19 times without evidence
+against 1 with it. Deprived of the underlying response it abstained rather than
+guessed, which is the behaviour we asked for and the scoring rule punishes.
+
+And the decorrelation argument held up under measurement: pairwise error
+correlation among the Anthropic models ran phi 0.56–0.78. Two Claude models
+agreeing really is an echo.
