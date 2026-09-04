@@ -1,7 +1,31 @@
 # Can ERC-8004 agent scores be calibrated against commerce outcomes?
 
-Not today, and not for a reason that more engineering fixes. This records the
-measurement so the conclusion can be checked rather than taken on trust.
+**UNDER REVISION 2026-09-04. The conclusion below is not supported by the
+evidence that produced it, and is being rechecked.**
+
+The claim that ACP stopped settling jobs came from sampling 9,000-block windows
+spread across ACP's history. That method cannot answer the question it was asked.
+ACP's job rate fell from roughly 650 a day at peak to roughly 13 a day, and at
+13 a day a 9,000-block window covers about five hours and expects about three
+jobs, so a run of zeros says nothing. The contract's own `jobCounter` is
+monotonic and settles it directly: 162,056 jobs at block 41,000,000 and 165,217
+today, meaning roughly 3,100 jobs were created after the Identity Registry was
+deployed. Those are exactly the jobs a calibration would use, and the sample
+that produced the finding below was drawn overwhelmingly from the years before
+them.
+
+An exhaustive scan of the post-registry window is running. This file will be
+rewritten with its result. Until then, treat the zero-overlap finding below as
+withdrawn rather than established.
+
+The lesson is worth keeping regardless of how the recheck lands: to answer
+"did this stop", read a monotonic counter or scan exhaustively. Sparse sampling
+of a sparse process finds nothing whether or not anything is there.
+
+---
+
+This records the measurement so the conclusion can be checked rather than taken
+on trust.
 
 Reproduce with `pnpm --filter @trust-index/indexer exec tsx
 scripts/check-commerce-linkage.mts`, against a cached registry log history built

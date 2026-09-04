@@ -3,29 +3,28 @@
  *
  * Calibration (SPEC 12) needs outcomes for agents the index scores. Stage A6
  * assumes such outcomes exist and only asks how confidently each one attaches.
- * This script checks the prior question, because on Base the answer turned out
- * to be no, and a linkage-confidence comparison over an empty set is a
- * meaningless exercise.
+ * This checks the prior question.
  *
- * What it does: samples Virtuals ACP JobCreated events over the period when ACP
- * was settling jobs, collects provider and client addresses, and checks them
- * against every address the ERC-8004 Identity Registry ties to an agent:
- * registration owners, transfer counterparties, and, for agents that existed
- * while ACP was still active, their declared agent wallets. Owner and transfer
- * matches are the moderate link in packages/indexer/src/commerce/linkage.ts; a
- * declared-wallet match is the strong one.
+ * It scans the window that matters rather than sampling the whole history. Only
+ * jobs settled after the Identity Registry was deployed can be calibration
+ * labels: an agent that did not exist when a job ran cannot have been scored
+ * from pre-job evidence. So the scan runs from the registry's deployment block
+ * to the chain head, exhaustively, and every ACP job in that window is
+ * considered.
  *
- * The timing is the crux and is reported alongside the counts. ACP settled its
- * jobs from roughly block 32,000,000 to 43,500,000 on Base. The ERC-8004
- * registries were not deployed until block 41,663,783. Two populations that
- * barely coexisted cannot be joined however good the matching logic is, and no
- * amount of ingest work changes that.
- *
- * A near-empty intersection is the finding, not a failure to fix.
+ * An earlier version of this script sampled 9,000-block windows spread across
+ * ACP's whole life and concluded activity had stopped. That was wrong, and the
+ * mistake is worth recording: ACP's job rate fell by two orders of magnitude
+ * after early 2026 but never reached zero, and sparse windows over a sparse
+ * period find nothing whether or not anything is there. The contract's own
+ * jobCounter, read at two historical blocks, showed thousands of jobs created
+ * in exactly the period the sampling had called empty. Prefer a monotonic
+ * counter or an exhaustive scan over sampling when the question is "did this
+ * stop".
  *
  * Usage:
  *   pnpm --filter @trust-index/indexer exec tsx scripts/check-commerce-linkage.mts \
- *     [--rpc <url>] [--cache <dir>] [--step <blocks>] [--window <blocks>]
+ *     [--rpc <url>] [--cache <dir>] [--from <block>] [--span <blocks>]
  */
 import { createReadStream } from "node:fs";
 import { createInterface } from "node:readline";
@@ -44,69 +43,112 @@ const CACHE = arg("--cache", "cohort-cache");
 const ACP = "0x6a1fe26d54ab0d3e1e3168f2e0c0cda5cc0a0a4a";
 const IDENTITY = MAINNET_IDENTITY_REGISTRY.toLowerCase();
 const JOB_CREATED = toEventSelector("JobCreated(uint256,address,address,address)");
+const JOB_PHASE_UPDATED = toEventSelector("JobPhaseUpdated(uint256,uint8,uint8)");
 const GET_AGENT_WALLET = "0x00339509";
 const ZERO = "0x0000000000000000000000000000000000000000";
-const SAMPLE_FROM = Number(arg("--from", "32000000"));
-const SAMPLE_TO = Number(arg("--to", "44000000"));
-const STEP = Number(arg("--step", "250000"));
-const WINDOW = Number(arg("--window", "9000"));
-/** Base's public endpoint refuses more than ten calls per batch. */
+/** Identity Registry deployment on Base. Nothing before this can be a label. */
+const REGISTRY_DEPLOY_BLOCK = 41_663_783;
 const MAX_BATCH = 10;
+const SPACING_MS = 120;
 
-type Log = { topics: string[]; blockNumber: string };
+type Log = { topics: string[]; data: string; blockNumber: string };
 
 async function rpc(body: unknown, timeout = 40_000): Promise<unknown> {
-  const res = await fetch(RPC, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(timeout),
-  });
-  return res.json();
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    await new Promise((r) => setTimeout(r, SPACING_MS));
+    try {
+      const res = await fetch(RPC, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(timeout),
+      });
+      if (res.status === 429 || res.status >= 500) throw new Error(`http ${res.status}`);
+      const j = await res.json();
+      // A rate limit can arrive as a 200 with an error body; retry those too
+      // rather than reading them as an answer.
+      if (!Array.isArray(j) && j?.error?.message?.includes("rate limit")) throw new Error("rate limit");
+      return j;
+    } catch {
+      await new Promise((r) => setTimeout(r, 500 * 2 ** attempt));
+    }
+  }
+  throw new Error("rpc failed after retries");
 }
 
 async function main(): Promise<void> {
+  const headRes = (await rpc({ jsonrpc: "2.0", id: 1, method: "eth_blockNumber", params: [] })) as { result: string };
+  const head = Number(headRes.result);
+  const from = Number(arg("--from", String(REGISTRY_DEPLOY_BLOCK)));
+  let span = Number(arg("--span", "9000"));
   console.log(`rpc=${RPC}`);
-  console.log(`JobCreated topic0 = ${JOB_CREATED}`);
+  console.log(`scanning ACP jobs exhaustively over blocks ${from} to ${head} (the post-registry window)\n`);
 
   const providers = new Set<string>();
   const clients = new Set<string>();
-  let jobs = 0;
-  let firstJobBlock = Number.POSITIVE_INFINITY;
-  let lastJobBlock = 0;
+  const jobProvider = new Map<string, string>();
+  const phaseCounts = new Map<number, number>();
+  let created = 0;
+  let cursor = from;
+  let reported = from;
 
-  for (let base = SAMPLE_FROM; base <= SAMPLE_TO; base += STEP) {
-    const j = (await rpc({
-      jsonrpc: "2.0",
-      id: 1,
-      method: "eth_getLogs",
-      params: [
-        {
-          address: ACP,
-          topics: [JOB_CREATED],
-          fromBlock: `0x${base.toString(16)}`,
-          toBlock: `0x${(base + WINDOW).toString(16)}`,
-        },
-      ],
-    })) as { result?: Log[] };
-    for (const l of j.result ?? []) {
-      jobs += 1;
-      const b = Number(l.blockNumber);
-      if (b < firstJobBlock) firstJobBlock = b;
-      if (b > lastJobBlock) lastJobBlock = b;
-      if (l.topics[1]) clients.add(`0x${l.topics[1].slice(-40)}`.toLowerCase());
-      if (l.topics[2]) providers.add(`0x${l.topics[2].slice(-40)}`.toLowerCase());
+  while (cursor <= head) {
+    const to = Math.min(cursor + span - 1, head);
+    let j: { result?: Log[] };
+    try {
+      j = (await rpc({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "eth_getLogs",
+        params: [
+          {
+            address: ACP,
+            topics: [[JOB_CREATED, JOB_PHASE_UPDATED]],
+            fromBlock: `0x${cursor.toString(16)}`,
+            toBlock: `0x${to.toString(16)}`,
+          },
+        ],
+      })) as { result?: Log[] };
+    } catch {
+      if (span <= 500) throw new Error(`cannot fetch a 500-block span at ${cursor}`);
+      span = Math.floor(span / 2);
+      continue;
     }
-    await new Promise((r) => setTimeout(r, 120));
+    for (const l of j.result ?? []) {
+      const t0 = (l.topics[0] ?? "").toLowerCase();
+      if (t0 === JOB_CREATED.toLowerCase()) {
+        created += 1;
+        const client = `0x${(l.topics[1] ?? "").slice(-40)}`.toLowerCase();
+        const provider = `0x${(l.topics[2] ?? "").slice(-40)}`.toLowerCase();
+        clients.add(client);
+        providers.add(provider);
+        // jobId is the first non-indexed word of the data.
+        const jobId = BigInt(`0x${l.data.slice(2, 66)}`).toString();
+        jobProvider.set(jobId, provider);
+      } else {
+        // JobPhaseUpdated: jobId indexed, oldPhase and phase in data.
+        const phase = Number(BigInt(`0x${l.data.slice(66, 130)}`));
+        phaseCounts.set(phase, (phaseCounts.get(phase) ?? 0) + 1);
+      }
+    }
+    cursor = to + 1;
+    if (cursor - reported > 1_000_000) {
+      reported = cursor;
+      console.log(`  ...block ${cursor}, ${created} jobs so far`);
+    }
   }
 
-  console.log(
-    `\nsampled ${jobs} ACP jobs across blocks ${firstJobBlock} to ${lastJobBlock} (${providers.size} providers, ${clients.size} clients)`,
-  );
+  console.log(`\nACP jobs created in the post-registry window: ${created}`);
+  console.log(`distinct providers: ${providers.size}, distinct clients: ${clients.size}`);
+  const PHASE_NAMES = ["REQUEST", "NEGOTIATION", "TRANSACTION", "EVALUATION", "COMPLETED", "REJECTED", "EXPIRED"];
+  console.log("terminal phase transitions observed:");
+  for (const [p, n] of [...phaseCounts].sort((a, b) => a[0] - b[0])) {
+    console.log(`  ${String(p)} ${(PHASE_NAMES[p] ?? "unknown").padEnd(12)} ${n}`);
+  }
 
   // Registry side, from the cached logs so this costs no extra network.
   const owners = new Set<string>();
-  const eligibleAgents: string[] = [];
+  const agentIds: string[] = [];
   let agents = 0;
   const reader = createInterface({
     input: createReadStream(`${CACHE}/logs.ndjson`, { encoding: "utf8" }),
@@ -137,64 +179,52 @@ async function main(): Promise<void> {
     if (d.kind === "registered") {
       agents += 1;
       owners.add(d.owner);
-      // An agent registered after the last job could never be scored from
-      // pre-job evidence, so it is not a calibration candidate regardless of
-      // what its wallet did.
-      if (Number(c.blockNumber) <= lastJobBlock) eligibleAgents.push(d.agentId);
+      agentIds.push(d.agentId);
     } else if (d.kind === "transfer") {
       owners.add(d.from);
       owners.add(d.to);
     }
   }
-  console.log(`registry: ${agents} agents, ${owners.size} distinct owner and transfer addresses`);
-  console.log(`agents registered at or before the last ACP job: ${eligibleAgents.length}`);
+  console.log(`\nregistry: ${agents} agents, ${owners.size} distinct owner and transfer addresses`);
 
   const providerOwnerHits = [...providers].filter((p) => owners.has(p));
   const clientOwnerHits = [...clients].filter((p) => owners.has(p));
   console.log(`\nmoderate link (owner or transfer counterparty):`);
   console.log(`  ACP providers matching: ${providerOwnerHits.length} of ${providers.size}`);
   console.log(`  ACP clients matching:   ${clientOwnerHits.length} of ${clients.size}`);
+  for (const a of providerOwnerHits.slice(0, 10)) console.log(`    provider ${a}`);
 
-  if (eligibleAgents.length === 0) {
-    console.log(`\nstrong link (declared agent wallet): not checkable, no agent existed while ACP was settling jobs`);
-  } else {
-    const wallets = new Set<string>();
-    for (let i = 0; i < eligibleAgents.length; i += MAX_BATCH) {
-      const slice = eligibleAgents.slice(i, i + MAX_BATCH);
-      const j = (await rpc(
-        slice.map((id, k) => ({
-          jsonrpc: "2.0",
-          id: k,
-          method: "eth_call",
-          params: [
-            {
-              to: MAINNET_IDENTITY_REGISTRY,
-              data: `${GET_AGENT_WALLET}${BigInt(id).toString(16).padStart(64, "0")}`,
-            },
-            "latest",
-          ],
-        })),
-      )) as Array<{ result?: string }>;
-      if (Array.isArray(j)) {
-        for (const r of j) {
-          if (typeof r.result === "string" && r.result.length >= 66) {
-            const a = `0x${r.result.slice(-40)}`.toLowerCase();
-            if (a !== ZERO) wallets.add(a);
-          }
+  // Declared agent wallets, for the strong link.
+  console.log(`\nfetching declared wallets for ${agentIds.length} agents`);
+  const wallets = new Set<string>();
+  for (let i = 0; i < agentIds.length; i += MAX_BATCH) {
+    const slice = agentIds.slice(i, i + MAX_BATCH);
+    const j = (await rpc(
+      slice.map((id, k) => ({
+        jsonrpc: "2.0",
+        id: k,
+        method: "eth_call",
+        params: [
+          { to: MAINNET_IDENTITY_REGISTRY, data: `${GET_AGENT_WALLET}${BigInt(id).toString(16).padStart(64, "0")}` },
+          "latest",
+        ],
+      })),
+    )) as Array<{ result?: string }>;
+    if (Array.isArray(j)) {
+      for (const r of j) {
+        if (typeof r.result === "string" && r.result.length >= 66) {
+          const a = `0x${r.result.slice(-40)}`.toLowerCase();
+          if (a !== ZERO) wallets.add(a);
         }
       }
-      await new Promise((r) => setTimeout(r, 120));
     }
-    const walletHits = [...providers].filter((p) => wallets.has(p));
-    console.log(`\nstrong link (declared agent wallet):`);
-    console.log(`  distinct declared wallets among eligible agents: ${wallets.size}`);
-    console.log(`  ACP providers matching: ${walletHits.length} of ${providers.size}`);
-    for (const a of walletHits.slice(0, 10)) console.log(`    ${a}`);
+    if (i > 0 && i % 10_000 === 0) console.log(`  ...${i}/${agentIds.length}`);
   }
-
-  console.log(
-    `\nTiming: ACP settled jobs from block ${firstJobBlock}; the ERC-8004 registries were deployed at 41663783. Two populations that barely coexisted cannot be joined by better matching logic.`,
-  );
+  const walletHits = [...providers].filter((p) => wallets.has(p));
+  console.log(`\nstrong link (declared agent wallet):`);
+  console.log(`  distinct declared wallets: ${wallets.size} across ${agentIds.length} agents`);
+  console.log(`  ACP providers matching: ${walletHits.length} of ${providers.size}`);
+  for (const a of walletHits.slice(0, 10)) console.log(`    ${a}`);
 }
 
 main().catch((err) => {
