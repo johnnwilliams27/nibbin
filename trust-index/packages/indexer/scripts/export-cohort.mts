@@ -72,7 +72,16 @@ function arg(name: string, fallback: string): string {
 
 const CACHE = arg("--cache", "cohort-cache");
 const OUT = arg("--out", "cohort");
-const RPC = arg("--rpc", process.env.TRUST_INDEX_RPC_URL ?? "https://mainnet.base.org");
+/**
+ * Rotated per request, for the same reason fetch-registry-logs.mts rotates: a
+ * single public endpoint under sustained load returns HTTP 500, and an
+ * unthrottled run of batches trips that within a few hundred calls.
+ */
+const RPCS = arg("--rpc", process.env.TRUST_INDEX_RPC_URL ?? "https://mainnet.base.org,https://gateway.tenderly.co/public/base")
+  .split(",")
+  .map((x) => x.trim())
+  .filter((x) => x.length > 0);
+const REQUEST_SPACING_MS = Number(arg("--spacing", "120"));
 const LIMIT = Number(arg("--limit", "0"));
 const SEED = Number(arg("--seed", "1"));
 const CHAIN_ID = 8453;
@@ -118,9 +127,18 @@ function toRawLog(c: CachedLog): RawLog & { ts: number } {
   };
 }
 
+let rpcTurn = 0;
+function nextEndpoint(): string {
+  const e = RPCS[rpcTurn % RPCS.length]!;
+  rpcTurn += 1;
+  return e;
+}
+
 async function rpcCall(method: string, params: unknown[], attempt = 0): Promise<unknown> {
+  const endpoint = nextEndpoint();
+  if (REQUEST_SPACING_MS > 0) await new Promise((r) => setTimeout(r, REQUEST_SPACING_MS));
   try {
-    const res = await fetch(RPC, {
+    const res = await fetch(endpoint, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
@@ -140,23 +158,32 @@ async function rpcCall(method: string, params: unknown[], attempt = 0): Promise<
 /** Batched eth_call / eth_getTransactionCount, since one call per agent is thousands of round trips. */
 async function batchCall(
   requests: Array<{ method: string; params: unknown[] }>,
-  size = 100,
+  size = 25,
 ): Promise<Array<string | null>> {
   const out: Array<string | null> = [];
+  const startedAt = Date.now();
   for (let i = 0; i < requests.length; i += size) {
     const slice = requests.slice(i, i + size);
     const body = slice.map((r, j) => ({ jsonrpc: "2.0", id: j, method: r.method, params: r.params }));
     let parsed: Array<{ id: number; result?: string; error?: unknown }>;
+    const endpoint = nextEndpoint();
+    if (REQUEST_SPACING_MS > 0) await new Promise((r) => setTimeout(r, REQUEST_SPACING_MS));
     try {
-      const res = await fetch(RPC, {
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(40_000),
       });
+      if (res.status === 429 || res.status >= 500) throw new Error(`http ${res.status}`);
       parsed = (await res.json()) as Array<{ id: number; result?: string; error?: unknown }>;
       if (!Array.isArray(parsed)) throw new Error("batch response was not an array");
-    } catch {
+    } catch (err) {
+      // The per-item fallback is the slow path: a rate-limited endpoint sends
+      // every batch down it, and 25 sequential calls with backoff each is how
+      // a two-thousand-agent run turns into a stall. Say so when it happens
+      // rather than degrading quietly.
+      console.log(`  batch at ${i} fell back to single calls: ${err instanceof Error ? err.message : String(err)}`);
       // Fall back to one at a time rather than dropping the whole batch: a
       // missing agent_wallet is a scoring input, not a cosmetic field.
       parsed = [];
@@ -174,7 +201,10 @@ async function batchCall(
       const p = byId.get(j);
       out.push(p && typeof p.result === "string" ? p.result : null);
     }
-    if (i % 1000 === 0 && i > 0) console.log(`  ...${i}/${requests.length}`);
+    if (i > 0 && i % 250 === 0) {
+      const rate = i / ((Date.now() - startedAt) / 1000);
+      console.log(`  ...${i}/${requests.length} (${rate.toFixed(0)}/s)`);
+    }
   }
   return out;
 }
