@@ -57,6 +57,19 @@ export type ModelMetrics = {
   correct: number;
   accuracy: number | null;
   per_class: ClassMetrics[];
+  /**
+   * How many times the model emitted each verdict.
+   *
+   * Exists because `unclear` is a permitted verdict that no item is labelled
+   * with — the prompt tells a judge to prefer it over a guess, and our ground
+   * truth asserts every item is decidable, so saying it always scores as a
+   * miss. That is the right scoring rule and the wrong thing to report alone:
+   * without this, a model that abstains carefully looks identical to one that
+   * is confidently wrong, and those need opposite responses from us. A high
+   * `unclear` count against our own 300-character truncation is a finding about
+   * the corpus, not about the model.
+   */
+  verdicts: Record<string, number>;
   /** Mean latency of successful calls, milliseconds. */
   mean_ms: number | null;
   input_tokens: number;
@@ -263,6 +276,7 @@ export function scorePanel(
     let inTok = 0;
     let outTok = 0;
     const perClass = new Map<string, { support: number; correct: number }>();
+    const verdicts: Record<string, number> = {};
 
     for (const record of run.records) {
       // Keyed on model id, not vendor. With two voters from one lab, a
@@ -275,6 +289,7 @@ export function scorePanel(
         continue;
       }
       answered.push(vote);
+      verdicts[vote.verdict] = (verdicts[vote.verdict] ?? 0) + 1;
       inTok += vote.usage?.input_tokens ?? 0;
       outTok += vote.usage?.output_tokens ?? 0;
       const label = labelOf(items, record.item_id);
@@ -309,6 +324,7 @@ export function scorePanel(
           recall: c === undefined || c.support === 0 ? null : c.correct / c.support,
         };
       }),
+      verdicts,
       mean_ms: mean(answered.map((a) => a.ms)),
       input_tokens: inTok,
       output_tokens: outTok,
@@ -347,7 +363,9 @@ export function scorePanel(
       let outTok = 0;
       const errs: boolean[] = [];
       const perClass = new Map<string, { support: number; correct: number }>();
+      const verdicts: Record<string, number> = {};
       for (const d of okOnes) {
+        verdicts[d.verdict] = (verdicts[d.verdict] ?? 0) + 1;
         inTok += d.usage?.input_tokens ?? 0;
         outTok += d.usage?.output_tokens ?? 0;
         const label = labelOf(items, d.item_id);
@@ -381,6 +399,7 @@ export function scorePanel(
             recall: c === undefined || c.support === 0 ? null : c.correct / c.support,
           };
         }),
+        verdicts,
         mean_ms: mean(okOnes.map((a) => a.ms)),
         input_tokens: inTok,
         output_tokens: outTok,

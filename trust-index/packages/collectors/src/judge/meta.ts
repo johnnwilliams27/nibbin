@@ -133,6 +133,15 @@ export function renderMetrics(metrics: PanelMetrics, ranking: Ranking): string {
     );
   }
   lines.push("");
+  lines.push("VERDICT DISTRIBUTION (what each model actually said; 'unclear' is never a label)");
+  for (const m of metrics.models) {
+    const dist = Object.entries(m.verdicts)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([v, n]) => `${v}=${n}`)
+      .join(" ");
+    lines.push(`${m.modelId} [${m.role}]: acc=${m.accuracy?.toFixed(3) ?? "n/a"} failed=${m.failed} | ${dist}`);
+  }
+  lines.push("");
   lines.push("BLOC SPLITS (each lab internally unanimous, the labs disagreeing)");
   lines.push(
     `cases=${metrics.blocs.cases} unresolved_by_majority=${metrics.blocs.unresolved_by_majority} ` +
