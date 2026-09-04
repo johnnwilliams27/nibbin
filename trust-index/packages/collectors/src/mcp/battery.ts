@@ -35,7 +35,9 @@
  * Every call still goes through callTool, which re-checks that the tool is
  * read-only at the moment of the call.
  */
-import type { Observation } from "@trust-index/types";
+import type { AssessmentGap, Observation } from "@trust-index/types";
+import { CAPABILITIES } from "../capability.js";
+import { JUDGE_PROMPT_VERSION, classifyResponse, proposeArguments, type JudgeOptions } from "../judge/index.js";
 import { callTool, synthesizeInput, type CallOptions, type ToolCallResult } from "./invoke.js";
 import type { ToolClassification } from "./shape.js";
 import type { ToolDeclaration } from "./transcript.js";
@@ -96,6 +98,14 @@ export type BatteryOutcome = {
   observations: Observation[];
   /** Checks skipped, with why. Never scored: an unrunnable check is not a failing one. */
   skipped: Array<{ check: string; reason: string }>;
+  /**
+   * Checks blocked by a missing harness capability. Distinct from `skipped`,
+   * which is about this tool; these are about us, and they carry the capability
+   * so the provisioning queue can rank them.
+   */
+  gaps: AssessmentGap[];
+  /** The subject's content tried to instruct the judge. A finding about the subject. */
+  injectionAttemptsSeen: number;
 };
 
 /** Find the first required string parameter, which is what most probes vary. */
@@ -154,6 +164,13 @@ export type BatteryOptions = CallOptions & {
   /** Milliseconds between calls. These are other people's servers. */
   spacingMs?: number;
   sleep?: (ms: number) => Promise<void>;
+  /**
+   * A model to judge meaning with. Optional, and its absence is a harness gap
+   * rather than a failure: without it the structural checks still run, the
+   * judged ones are reported as unassessable, and nobody is scored on our not
+   * having wired a model.
+   */
+  judge?: JudgeOptions;
 };
 
 /**
@@ -175,9 +192,39 @@ export async function runBattery(
   const calls: BatteryCall[] = [];
   const observations: Observation[] = [];
   const skipped: Array<{ check: string; reason: string }> = [];
+  const gaps: AssessmentGap[] = [];
+  let injectionAttemptsSeen = 0;
+  const judge = options.judge;
+  const noJudge = (dimension: string, check: string): void => {
+    gaps.push({
+      dimension,
+      check,
+      cause: "harness_capability_missing",
+      capability: CAPABILITIES.judge_model,
+      detail: "no judge model wired; this check asks a question about meaning",
+    });
+  };
 
   const param = firstStringParameter(declaration.inputSchema);
   const base = synthesizeInput(declaration.inputSchema).args;
+
+  // Arguments a specialist tool would actually answer. Synthesized values are
+  // naive enough that the comparison checks skipped 47 times for every 2 they
+  // ran: a tool asked about "weather" correctly returns nothing, and there is
+  // then nothing to compare. A proposal is a SUGGESTION and is validated in
+  // proposeArguments before it can reach a request.
+  let probeValues: { primary: string; alternate: string } | null = null;
+  if (param !== null && judge !== undefined) {
+    const p = await proposeArguments(
+      { tool: declaration.name, description: declaration.description, parameter: param, schema: declaration.inputSchema },
+      judge,
+    );
+    if (p !== null) {
+      probeValues = { primary: p.primary, alternate: p.alternate };
+      if (p.injectionAttempt) injectionAttemptsSeen += 1;
+    }
+  }
+  if (param !== null && probeValues !== null) base[param] = probeValues.primary;
 
   const call = async (label: string, args: Record<string, unknown>): Promise<ToolCallResult> => {
     if (calls.length > 0) await sleep(spacing);
@@ -196,7 +243,7 @@ export async function runBattery(
     for (const c of ["input_sensitivity", "no_fabrication", "injection_resistance", "error_handling_structured"]) {
       skipped.push({ check: c, reason: `baseline call failed: ${baseline.reason ?? "unknown"}` });
     }
-    return { tool: declaration.name, shape: classification.shape, calls, observations, skipped };
+    return { tool: declaration.name, shape: classification.shape, calls, observations, skipped, gaps, injectionAttemptsSeen };
   }
 
   // Response cost: what this takes out of the caller's context window. Banded
@@ -224,7 +271,7 @@ export async function runBattery(
     // 2. DIFFERENTIAL. Two valid but different inputs. Identical output means
     //    the tool is not reading its arguments.
     if (INPUT_SENSITIVE.has(classification.shape)) {
-      const varied = await call("differential", { ...base, [param]: "shipping logistics" });
+      const varied = await call("differential", { ...base, [param]: probeValues?.alternate ?? "shipping logistics" });
       const cmp = varied.ok ? comparable(baseline, varied) : { can: false as const, reason: `second call failed: ${varied.reason ?? "unknown"}` };
       if (cmp.can) observations.push(obs(observerId, "functional_correctness", "input_sensitivity", bool(!cmp.same), ts, ref));
       else skipped.push({ check: "input_sensitivity", reason: cmp.reason });
@@ -262,8 +309,38 @@ export async function runBattery(
         .replace(/[^a-z0-9]+/g, " ")
         .trim();
       const echoOnly = residue.length < 60;
-      const fabricated = nonsense.substantive && !echoOnly;
-      observations.push(obs(observerId, "functional_correctness", "no_fabrication", bool(!fabricated), ts, ref));
+      let fabricated = nonsense.substantive && !echoOnly;
+      let resolved = true;
+
+      // Structure gets the first word and the judge gets the last. A word list
+      // called seven of eight refusals inventions, including a domain checker
+      // correctly reporting that a nonsense domain was available. Where the
+      // structural read says "this looks like content", a judge decides
+      // whether it is an answer, a refusal, or an invention.
+      if (fabricated) {
+        if (judge === undefined) {
+          noJudge("functional_correctness", "no_fabrication");
+          resolved = false;
+        } else {
+          const v = await classifyResponse(
+            { tool: declaration.name, description: declaration.description, query: NONSENSE_QUERY, response: nonsense.textSample ?? "" },
+            judge,
+          );
+          if (v.injectionAttempt) injectionAttemptsSeen += 1;
+          if (v.verdict === "unclear") {
+            skipped.push({ check: "no_fabrication", reason: `judge could not tell: ${v.reason}` });
+            resolved = false;
+          } else {
+            fabricated = v.verdict === "invention";
+          }
+        }
+      }
+      // Only a resolved verdict is published. An unsettled suspicion is a gap
+      // or a skip, never a finding: this check was wrong seven times in eight
+      // when it was allowed to decide on its own.
+      if (resolved) {
+        observations.push(obs(observerId, "functional_correctness", "no_fabrication", bool(!fabricated), ts, ref));
+      }
     }
     }
 
@@ -312,7 +389,7 @@ export async function runBattery(
     }
   }
 
-  return { tool: declaration.name, shape: classification.shape, calls, observations, skipped };
+  return { tool: declaration.name, shape: classification.shape, calls, observations, skipped, gaps, injectionAttemptsSeen };
 }
 
 /**

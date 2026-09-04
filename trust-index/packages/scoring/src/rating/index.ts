@@ -227,7 +227,11 @@ function scoreDimension(
     // not bucketed at all. The key is length-prefixed so it is injective:
     // an observer id containing the separator cannot be made to collide
     // with another observer's bucket.
-    const measured = e.provenance === "measured" || e.provenance === "attested";
+    // A judgement is bucketed with measurements for the volume cap: judging
+    // the same stored transcript again on a later day is a second independent
+    // reading, and two readings that disagree should widen the interval rather
+    // than one silently replacing the other.
+    const measured = e.provenance === "measured" || e.provenance === "attested" || e.provenance === "judged";
     const capKey = measured
       ? `${e.observer_id.length}:${e.observer_id}|${Math.floor(entrySec / 86400)}`
       : `${e.observer_id.length}:${e.observer_id}|*`;
@@ -611,6 +615,7 @@ export function scoreSubject(subject: Subject): { result: SubjectScoreResult; ca
     synthesized_observer_count: synthesizedObserverCount,
     unknown_dimension_observations: unknownDimensionCount,
     measured_observations: byProvenance.get("measured") ?? 0,
+    judged_observations: byProvenance.get("judged") ?? 0,
     attested_observations: byProvenance.get("attested") ?? 0,
     third_party_review_observations: byProvenance.get("third_party_review") ?? 0,
     self_reported_observations: byProvenance.get("self_reported") ?? 0,

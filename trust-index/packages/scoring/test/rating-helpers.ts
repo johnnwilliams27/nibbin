@@ -67,6 +67,7 @@ export function neutralProvenance(base: RatingConstants = DEFAULT_RATING_CONSTAN
     provenance_multiplier: {
       measured: "1.00",
       attested: "1.00",
+      judged: "1.00",
       third_party_review: "1.00",
       self_reported: "1.00",
     },

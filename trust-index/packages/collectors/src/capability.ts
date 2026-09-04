@@ -69,6 +69,13 @@ export const CAPABILITIES = {
   exec_sandbox: "exec_sandbox",
   /** Reference data sources for public-ground-truth checks. */
   reference_data: "reference_data",
+  /**
+   * A model to judge meaning with. Wiring one is a capability like any other,
+   * so lacking it makes every judged check a harness gap rather than a
+   * failure, and a run without it is honestly reported as incomplete instead
+   * of quietly scoring subjects on structure alone.
+   */
+  judge_model: "judge_model",
 } as const;
 
 export type CapabilityHealth =

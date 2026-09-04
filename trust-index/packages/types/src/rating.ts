@@ -54,17 +54,24 @@ export type SubjectKind = string;
  *   opinion about it. A probe we ran, or a settlement contract's own log.
  *   Reproducible from the evidence_ref by anyone with the same access.
  * - `attested`: a third party signed a claim it is accountable for.
+ * - `judged`: a model's reading of evidence we recorded. Not a measurement,
+ *   because nothing was counted; not a review, because it is ours and it is
+ *   reproducible from the stored transcript. It exists as its own kind because
+ *   three checks have now hit the wall where structure ends and meaning
+ *   begins, and a compendium that presented a judgement as a measurement would
+ *   be lying about the strongest thing it has to sell.
  * - `third_party_review`: someone who is not the subject said something about
  *   it. The chain feedback registry is entirely this.
  * - `self_reported`: the subject's own claim about itself. Kept because it is
  *   often the only description of what a subject is for, capped because a
  *   rating that self-reported evidence can move is a rating you can write.
  */
-export type Provenance = "measured" | "attested" | "third_party_review" | "self_reported";
+export type Provenance = "measured" | "attested" | "judged" | "third_party_review" | "self_reported";
 
 export const PROVENANCE_VALUES: readonly Provenance[] = [
   "measured",
   "attested",
+  "judged",
   "third_party_review",
   "self_reported",
 ];
@@ -460,6 +467,11 @@ export const DEFAULT_RATING_CONSTANTS: RatingConstants = {
   provenance_multiplier: {
     measured: d("1.00"),
     attested: d("0.85"),
+    // Below a signed attestation and above an anonymous opinion. A judgement is
+    // reproducible from a stored transcript and attributable to a named model
+    // and prompt version, which an opinion is not; it is still a reading rather
+    // than a count, which a measurement is.
+    judged: d("0.70"),
     third_party_review: d("0.60"),
     self_reported: d("0.15"),
   },

@@ -102,6 +102,7 @@ function constantsCanonical(c: RatingConstants): CanonicalValue {
     provenance_multiplier: {
       measured: d(c.provenance_multiplier.measured),
       attested: d(c.provenance_multiplier.attested),
+      judged: d(c.provenance_multiplier.judged),
       third_party_review: d(c.provenance_multiplier.third_party_review),
       self_reported: d(c.provenance_multiplier.self_reported),
     },

@@ -12,4 +12,5 @@
 export * from "./net.js";
 export * from "./capability.js";
 export * from "./prior.js";
+export * as judge from "./judge/index.js";
 export * as mcp from "./mcp/index.js";

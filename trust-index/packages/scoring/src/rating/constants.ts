@@ -42,7 +42,7 @@ function positive(label: string, s: string): bigint {
 
 export function parseRatingConstants(c: RatingConstants): RatingConstantsFx {
   const provenance = new Map<Provenance, bigint>();
-  for (const k of ["measured", "attested", "third_party_review", "self_reported"] as const) {
+  for (const k of ["measured", "attested", "judged", "third_party_review", "self_reported"] as const) {
     const raw = c.provenance_multiplier[k];
     if (raw === undefined) throw new Error(`missing provenance multiplier for ${k}`);
     provenance.set(k, unit(`provenance_multiplier.${k}`, raw));
