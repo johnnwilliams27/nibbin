@@ -21,7 +21,11 @@
  * exists to avoid.
  *
  * Usage:
- *   pnpm --filter @trust-index/indexer exec tsx scripts/chain-census.mts [--chains a,b,c]
+ *   pnpm --filter @trust-index/indexer exec tsx scripts/chain-census.mts \
+ *     [--chains a,b,c] [--history <windows>]
+ *
+ * --history probes N historical windows per chain, which is what separates a
+ * chain that never had feedback from one that is merely quiet this week.
  */
 import { toFunctionSelector } from "viem";
 import { MAINNET_IDENTITY_REGISTRY, MAINNET_REPUTATION_REGISTRY } from "@trust-index/types";
@@ -79,6 +83,11 @@ async function sampleFeedback(rpcs: string[], head: number): Promise<number | nu
     }
   }
   return null;
+}
+
+function arg2(name: string, fallback: string): string {
+  const i = process.argv.indexOf(name);
+  return i === -1 ? fallback : (process.argv[i + 1] ?? fallback);
 }
 
 async function rpc(url: string, method: string, params: unknown[]): Promise<unknown> {
@@ -159,6 +168,47 @@ async function highestAgentId(url: string): Promise<number> {
   return Number(lo);
 }
 
+/**
+ * Feedback across historical windows, for chains where the recent sample is
+ * zero. A recent-window zero cannot distinguish "never had feedback" from
+ * "quiet this week", and the difference decides whether a chain has a
+ * reputation layer at all. Windows that fail are reported as unmeasured: a
+ * public endpoint that refuses archive queries is not evidence of absence.
+ */
+async function feedbackHistory(rpcs: string[], head: number, windows: number): Promise<string> {
+  const marks: string[] = [];
+  let measured = 0;
+  let total = 0;
+  for (let i = 1; i <= windows; i += 1) {
+    const to = head - i * 400_000;
+    if (to <= 0) break;
+    let n: number | null = null;
+    for (const url of rpcs) {
+      try {
+        const logs = (await rpc(url, "eth_getLogs", [
+          {
+            address: REPUTATION,
+            topics: [TOPIC0.newFeedback],
+            fromBlock: `0x${(to - 2000).toString(16)}`,
+            toBlock: `0x${to.toString(16)}`,
+          },
+        ])) as unknown[];
+        n = logs.length;
+        break;
+      } catch {
+        /* next endpoint */
+      }
+    }
+    if (n === null) marks.push("?");
+    else {
+      marks.push(String(n));
+      measured += 1;
+      total += n;
+    }
+  }
+  return `${marks.join(" ")} (total ${total}, ${measured}/${marks.length} windows measured)`;
+}
+
 async function main(): Promise<void> {
   const only = process.argv.indexOf("--chains");
   const filter = only === -1 ? null : new Set((process.argv[only + 1] ?? "").split(","));
@@ -204,6 +254,11 @@ async function main(): Promise<void> {
 
     rows.push({ name: c.name, agents, feedback, head });
     console.log(`${c.name.padEnd(11)} agents=${String(agents).padStart(8)}  feedback/5k blocks=${feedback}`);
+
+    const historyWindows = Number(arg2("--history", "0"));
+    if (historyWindows > 0) {
+      console.log(`${" ".repeat(11)} history: ${await feedbackHistory(c.rpcs, head, historyWindows)}`);
+    }
   }
 
   console.log("\n| Chain | Agents (highest minted id) | Feedback in last 5,000 blocks |");
