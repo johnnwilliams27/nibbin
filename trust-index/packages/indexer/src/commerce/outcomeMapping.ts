@@ -17,13 +17,20 @@
  *    on completed versus disputed precisely because conflating the two turns a
  *    signal about quality into a signal about follow-through.
  *
- * UNVERIFIED: the native state strings below are written from the platforms'
- * documented job lifecycles as described in SPEC 12, and could not be checked
- * against a live API or contract from this build environment (no network
- * access to Olas or Virtuals). Every mapping must be confirmed against real
- * data before any calibration result derived from it is published. The ingest
- * reports its unmappable rate so a wrong or stale table shows up as coverage
- * loss rather than as silently mislabeled outcomes.
+ * Verification status differs by platform.
+ *
+ * Virtuals ACP is VERIFIED (2026-09-04) against the ACP SDK's phase enum and
+ * the Sourcify-verified implementation behind the Base mainnet contract. Its
+ * states are integers carried on JobPhaseUpdated, not strings, and the table
+ * below reflects that.
+ *
+ * Olas is still UNVERIFIED: its states are written from the lifecycle described
+ * in SPEC 12 and have not been checked against a live source. Confirm them
+ * before publishing any calibration result derived from them, using
+ * scripts/check-commerce-linkage.mts as the template.
+ *
+ * The ingest reports its unmappable rate either way, so a wrong or stale table
+ * shows up as coverage loss rather than as silently mislabeled outcomes.
  */
 import type { CommercePlatform } from "./commerceSource.js";
 
@@ -96,47 +103,60 @@ export const OLAS_MAPPING: readonly OutcomeMappingEntry[] = [
 ];
 
 /**
- * Virtuals ACP job lifecycle. The Agent Commerce Protocol runs a request,
- * negotiation, delivery, and evaluation sequence on Base.
+ * Virtuals ACP phase numbers, verified 2026-09-04 against the ACP SDK's
+ * `AcpJobPhases` enum and the Sourcify-verified implementation behind the Base
+ * mainnet contract 0x6a1FE26D54ab0d3E1e3168f2e0c0cDa5cC0A0A4A. The contract
+ * emits `JobPhaseUpdated(uint256 indexed jobId, uint8 oldPhase, uint8 phase)`,
+ * so the native state is an integer, not a string.
  *
- * UNVERIFIED against a live Virtuals ACP deployment.
+ * 0 REQUEST, 1 NEGOTIATION, 2 TRANSACTION, 3 EVALUATION are non-terminal and
+ * carry no outcome: a job sitting in one of them has not resolved, and treating
+ * an unresolved job as an abandonment would invent a failure.
  */
+export const ACP_PHASES = {
+  REQUEST: 0,
+  NEGOTIATION: 1,
+  TRANSACTION: 2,
+  EVALUATION: 3,
+  COMPLETED: 4,
+  REJECTED: 5,
+  EXPIRED: 6,
+} as const;
+
+/**
+ * ACP has no dispute phase.
+ *
+ * That matters for SPEC 12.3, which evaluates discrimination on completed
+ * versus disputed precisely because rejected and abandoned conflate a bad
+ * counterparty with an ordinary no-deal. A label set drawn from ACP alone can
+ * therefore never populate the discrimination view: it has successes, refusals
+ * and lapses, and no record of anyone asserting that delivered work was bad.
+ * Evaluation failure exists as a transition out of EVALUATION, but the phase it
+ * lands in is REJECTED, which the contract does not distinguish from a refusal
+ * at negotiation.
+ *
+ * Any discrimination claim needs a second source, or an argument that a
+ * post-delivery rejection can be separated from a pre-delivery one by looking
+ * at the phase a job left rather than the one it arrived in.
+ */
+export const ACP_HAS_NO_DISPUTE_STATE = true;
+
 export const VIRTUALS_ACP_MAPPING: readonly OutcomeMappingEntry[] = [
   {
-    nativeState: "evaluation_passed",
+    nativeState: String(ACP_PHASES.COMPLETED),
     outcome: "completed",
-    rationale: "Delivered work passed the evaluation phase.",
+    rationale: "Phase 4 COMPLETED: the deliverable was approved and escrow released to the provider.",
   },
   {
-    nativeState: "completed",
-    outcome: "completed",
-    rationale: "Terminal success state.",
-  },
-  {
-    nativeState: "accepted",
-    outcome: "completed",
-    rationale: "The requester accepted the delivery, closing the job successfully.",
-  },
-  {
-    nativeState: "evaluation_failed",
-    outcome: "disputed",
+    nativeState: String(ACP_PHASES.REJECTED),
+    outcome: "rejected",
     rationale:
-      "Work was delivered and then judged inadequate. This is a quality assertion against the provider, which is what the disputed class means.",
+      "Phase 5 REJECTED: escrow returned to the client. The contract does not distinguish a refusal at negotiation from a rejection after delivery, so this cannot be read as a quality assertion and is not mapped to disputed.",
   },
   {
-    nativeState: "rejected",
-    outcome: "rejected",
-    rationale: "The job was refused at negotiation, before any work was delivered.",
-  },
-  {
-    nativeState: "declined",
-    outcome: "rejected",
-    rationale: "The provider or requester declined to proceed; no work was performed.",
-  },
-  {
-    nativeState: "expired",
+    nativeState: String(ACP_PHASES.EXPIRED),
     outcome: "abandoned",
-    rationale: "The job lapsed without reaching evaluation.",
+    rationale: "Phase 6 EXPIRED: the job passed its expiry without resolving either way.",
   },
 ];
 

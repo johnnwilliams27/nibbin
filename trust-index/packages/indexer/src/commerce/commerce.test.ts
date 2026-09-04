@@ -3,7 +3,13 @@
  */
 import { describe, expect, it } from "vitest";
 import { SimulatedCommerceSource, type RawCommerceJob } from "./commerceSource.js";
-import { knownStates, mapOutcome } from "./outcomeMapping.js";
+import {
+  ACP_HAS_NO_DISPUTE_STATE,
+  ACP_PHASES,
+  VIRTUALS_ACP_MAPPING,
+  knownStates,
+  mapOutcome,
+} from "./outcomeMapping.js";
 import { LinkageIndex, linkProvider, type AgentIdentityRef } from "./linkage.js";
 import {
   coveragePercent,
@@ -56,19 +62,37 @@ describe("outcome mapping", () => {
     expect(mapOutcome("olas", "expired")).toMatchObject({ mapped: true, outcome: "abandoned" });
   });
 
-  it("maps the documented Virtuals ACP states, keeping evaluation_failed a dispute", () => {
-    // Delivered-then-judged-bad is a quality assertion, which is what the
-    // disputed class means and what AUC is evaluated on (SPEC 12.3).
-    expect(mapOutcome("virtuals_acp", "evaluation_failed")).toMatchObject({
-      mapped: true,
-      outcome: "disputed",
-    });
-    expect(mapOutcome("virtuals_acp", "evaluation_passed")).toMatchObject({
+  it("maps the verified Virtuals ACP terminal phases", () => {
+    // Phases are integers on JobPhaseUpdated, verified against the ACP SDK enum
+    // and the Sourcify-verified implementation on Base.
+    expect(mapOutcome("virtuals_acp", String(ACP_PHASES.COMPLETED))).toMatchObject({
       mapped: true,
       outcome: "completed",
     });
-    // Refused before work is a no-deal, not a quality failure.
-    expect(mapOutcome("virtuals_acp", "declined")).toMatchObject({ mapped: true, outcome: "rejected" });
+    expect(mapOutcome("virtuals_acp", String(ACP_PHASES.REJECTED))).toMatchObject({
+      mapped: true,
+      outcome: "rejected",
+    });
+    expect(mapOutcome("virtuals_acp", String(ACP_PHASES.EXPIRED))).toMatchObject({
+      mapped: true,
+      outcome: "abandoned",
+    });
+  });
+
+  it("leaves non-terminal ACP phases unmapped rather than inventing an outcome", () => {
+    // A job still in negotiation has not resolved. Calling that an abandonment
+    // would manufacture a failure the contract never recorded.
+    for (const phase of [ACP_PHASES.REQUEST, ACP_PHASES.NEGOTIATION, ACP_PHASES.TRANSACTION, ACP_PHASES.EVALUATION]) {
+      expect(mapOutcome("virtuals_acp", String(phase)).mapped).toBe(false);
+    }
+  });
+
+  it("produces no disputed outcome from ACP, because the contract has no dispute phase", () => {
+    // This is a limitation of the source, not of the mapping: SPEC 12.3
+    // evaluates discrimination on completed versus disputed, and ACP alone can
+    // never populate the negative class.
+    expect(ACP_HAS_NO_DISPUTE_STATE).toBe(true);
+    for (const e of VIRTUALS_ACP_MAPPING) expect(e.outcome).not.toBe("disputed");
   });
 
   it("is case and whitespace insensitive", () => {
@@ -84,7 +108,7 @@ describe("outcome mapping", () => {
 
   it("exposes its known states for the methodology page", () => {
     expect(knownStates("olas")).toContain("slashed");
-    expect(knownStates("virtuals_acp")).toContain("evaluation_failed");
+    expect(knownStates("virtuals_acp")).toContain(String(ACP_PHASES.COMPLETED));
   });
 });
 
