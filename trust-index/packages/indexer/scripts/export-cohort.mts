@@ -156,9 +156,18 @@ async function rpcCall(method: string, params: unknown[], attempt = 0): Promise<
 }
 
 /** Batched eth_call / eth_getTransactionCount, since one call per agent is thousands of round trips. */
+/**
+ * Batch size is set by the strictest endpoint in the rotation, not by what is
+ * comfortable: Base's public endpoint refuses more than ten calls per batch
+ * outright, and tenderly rate-limits at twenty-five. Both refusals arrive as a
+ * single JSON error object rather than an array of results, which is why the
+ * fallback path reports "batch response was not an array" rather than a limit.
+ */
+const MAX_BATCH = 10;
+
 async function batchCall(
   requests: Array<{ method: string; params: unknown[] }>,
-  size = 25,
+  size = MAX_BATCH,
 ): Promise<Array<string | null>> {
   const out: Array<string | null> = [];
   const startedAt = Date.now();
