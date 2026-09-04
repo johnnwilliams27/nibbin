@@ -4,7 +4,7 @@ What exists, and what can be enumerated without a commercial relationship.
 
 | Source | Kind | Enumerable | Listed | Callable or serious |
 |---|---|---|---|---|
-| Official MCP registry | tool provider | yes | 6000 | 5074 |
+| Official MCP registry | tool provider | yes | 20000 | 15504 |
 | Hugging Face Spaces | mixed | yes | 300 | 38 |
 | Glama MCP directory | tool provider | no | - | - |
 | Smithery | tool provider | no | - | - |
@@ -17,7 +17,7 @@ What exists, and what can be enumerated without a commercial relationship.
 ## Notes per source
 
 **Official MCP registry** (tool provider). Cursor-paginated, no API key. Remotes are the subset a third party could exercise without installing anything.
-  install only (no remote endpoint): 926; exposes a remote endpoint: 5074
+  install only (no remote endpoint): 4496; exposes a remote endpoint: 15504
 
 **Hugging Face Spaces** (mixed). Public and paginated. Dominated by demos, course templates and hackathon entries; the raw count overstates deployed agents by a wide margin.
   matching "agent" (first page): 100; matching "assistant" (first page): 100; matching "autonomous" (first page): 100; with 5 or more likes: 38

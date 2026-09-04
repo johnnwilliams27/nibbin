@@ -64,8 +64,14 @@ async function mcpRegistry(): Promise<SourceResult> {
   let total = 0;
   let withRemotes = 0;
   let cursor: string | null = null;
+  let truncated = false;
   try {
-    for (let page = 0; page < 200; page += 1) {
+    // Page cap derived from --max rather than hardcoded. A fixed 200-page limit
+    // silently produced "exactly 20,000 servers", which is 200 pages of 100 and
+    // a property of this loop rather than of the registry. Round numbers from a
+    // paginated source deserve suspicion.
+    const maxPages = Math.ceil(MAX / 100) + 1;
+    for (let page = 0; page < maxPages; page += 1) {
       const url = `https://registry.modelcontextprotocol.io/v0/servers?limit=100${cursor === null ? "" : `&cursor=${encodeURIComponent(cursor)}`}`;
       const body = (await getJson(url)) as {
         servers?: Array<{ server?: { remotes?: unknown[]; packages?: unknown[] } }>;
@@ -80,15 +86,25 @@ async function mcpRegistry(): Promise<SourceResult> {
         else detail["install only (no remote endpoint)"] = (detail["install only (no remote endpoint)"] ?? 0) + 1;
       }
       cursor = body.metadata?.nextCursor ?? null;
-      if (cursor === null || total >= MAX) break;
+      if (cursor === null) {
+        detail["enumeration"] = 1; // reached the true end of the registry
+        break;
+      }
+      if (total >= MAX) {
+        truncated = true;
+        break;
+      }
       await new Promise((r) => setTimeout(r, 120));
     }
+    delete detail["enumeration"];
     detail["exposes a remote endpoint"] = withRemotes;
     return {
       source: "Official MCP registry",
       kind: "tool provider",
       enumerable: true,
-      note: "Cursor-paginated, no API key. Remotes are the subset a third party could exercise without installing anything.",
+      note: truncated
+        ? `TRUNCATED at the --max limit of ${MAX}; the registry has more. This is a floor, not a total.`
+        : "Cursor-paginated, no API key, enumerated to the end. Remotes are the subset a third party could exercise without installing anything.",
       total,
       callable: withRemotes,
       detail,
