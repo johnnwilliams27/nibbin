@@ -27,6 +27,7 @@
  * returns a protocol-level error or a cheerful success containing an error
  * message.
  */
+import { createHash } from "node:crypto";
 import { guardedFetch } from "../net.js";
 import type { ToolClassification } from "./shape.js";
 import type { ToolDeclaration } from "./transcript.js";
@@ -162,6 +163,28 @@ export type ToolCallResult = {
   matchesOutputSchema: boolean | null;
   /** First slice of the text response, kept so the mapping can be read by a human. */
   textSample: string | null;
+  /**
+   * Fingerprint of the WHOLE text response, for comparing two calls.
+   *
+   * Comparing textSample instead was a real defect: two responses identical in
+   * their first 300 characters and different thereafter were reported as the
+   * tool ignoring its input.
+   */
+  textFingerprint: string | null;
+  /**
+   * The response is a successful, substantive answer rather than an error, an
+   * empty result, or an error payload wearing a success envelope.
+   *
+   * Every comparison check depends on this. Two identical errors say nothing
+   * about whether a tool reads its input, and a first run reported six tools as
+   * input-blind when every one of them had returned the same error or the same
+   * honest empty result to both queries.
+   */
+  substantive: boolean;
+  /** The payload reads as an error while the protocol envelope says success. A conformance finding in itself. */
+  errorInPayload: boolean;
+  /** The tool declined rather than answered. Correct behaviour, and not an answer. */
+  refused: boolean;
 };
 
 export class NotCallableError extends Error {}
@@ -223,6 +246,10 @@ export async function callTool(
     structuredContent: false,
     matchesOutputSchema: null,
     textSample: null,
+    textFingerprint: null,
+    substantive: false,
+    errorInPayload: false,
+    refused: false,
   };
 
   const headers: Record<string, string> = {
@@ -279,6 +306,17 @@ export async function callTool(
       : false;
   }
 
+  // A payload that reads as an error while the envelope says success. Common
+  // enough to be worth naming: a tool reporting failure without using the
+  // protocol's own mechanism is a conformance defect, and treating its output
+  // as an answer would poison every comparison downstream.
+  const head = text.slice(0, 400);
+  const errorInPayload = ERROR_PAYLOAD.test(head);
+  const normalized = text.replace(/\s+/g, " ").trim();
+  const refused = REFUSAL.test(head) || EMPTY_PROSE.test(normalized);
+  const empty = normalized.length === 0 || EMPTY_RESULT.test(normalized);
+  const substantive = !isError && !errorInPayload && !refused && !empty && normalized.length > 0;
+
   return {
     ...base,
     ...common,
@@ -288,5 +326,38 @@ export async function callTool(
     structuredContent: structured,
     matchesOutputSchema,
     textSample: text.length > 0 ? text.slice(0, 300) : null,
+    textFingerprint: text.length > 0 ? createHash("sha256").update(normalized).digest("hex").slice(0, 32) : null,
+    substantive,
+    errorInPayload,
+    refused,
   };
 }
+
+/** A payload that is really an error, whatever the envelope claimed. */
+const ERROR_PAYLOAD =
+  /("error"\s*:\s*"[^"]|\berror \d{3}\b|^mcp error|^upstream_error|^error:|^error executing|\bexception\b|\btraceback\b)/i;
+
+/**
+ * A response that declines rather than answers.
+ *
+ * Widened after an audit found seven of eight "fabrication" findings were
+ * false positives, and most of them were refusals this list did not recognise.
+ * Servers decline in JSON as readily as in prose: {"status":"declined"},
+ * {"ok":false,"status":"target_rejected"}, {"result_type":"unknown"},
+ * {"found":false}. A refusal is not an answer, and treating one as an answer
+ * turns every honest "no" into an accusation of inventing things.
+ */
+const REFUSAL =
+  /("(status|result_type|state)"\s*:\s*"(declined|rejected|target_rejected|unknown|not_found|none|error|failed)"|"(ok|success|found|valid)"\s*:\s*false|"reason"\s*:\s*"(negative_cache|not_found|no_match)")/i;
+
+/**
+ * A response that is an honest "nothing here", in JSON or in prose.
+ *
+ * The prose forms matter as much as the structured ones. "Nothing published on
+ * X. Try a broader term." is a correct empty result and was being read as
+ * substantive content because it is long enough to look like one.
+ */
+const EMPTY_RESULT =
+  /^(\[\]|\{\}|null|none|no results?\.?|not found\.?|\{"results?":\s*\[\]\})$/i;
+const EMPTY_PROSE =
+  /^(no |nothing |not a valid|could not find|couldn.t find|there (are|were) no |0 results)|\b(no (results?|matches?|records?|entries|data) (found|available|published)|nothing (found|published|available)|try a broader)/i;

@@ -10,6 +10,7 @@ import { describe, expect, it } from "vitest";
 import { CAPABILITIES } from "../src/capability.js";
 import { classifyTool, classifyTools, requiredCapabilities, testability } from "../src/mcp/shape.js";
 import { callTool, synthesizeInput, NotCallableError } from "../src/mcp/invoke.js";
+import { runBattery, INJECTION_INSTRUCTION, INJECTION_TOKEN, NONSENSE_QUERY } from "../src/mcp/battery.js";
 import type { ToolDeclaration } from "../src/mcp/transcript.js";
 
 function tool(over: Partial<ToolDeclaration> & { name: string }): ToolDeclaration {
@@ -369,5 +370,297 @@ describe("side-effecting shapes are never callable", () => {
       tool({ name: "broadcast_alert", description: "Alerts everyone.", annotations: null, inputSchema: schema({ x: { type: "string" } }) }),
     );
     expect(c.binding.kind).not.toBe("read_only");
+  });
+});
+
+describe("the correctness battery", () => {
+  const searchTool = tool({
+    name: "search_docs",
+    description: "Search the corpus and return matching passages.",
+    annotations: { readOnlyHint: true },
+    inputSchema: schema({ query: { type: "string" } }),
+  });
+
+  /** A fake server whose responses are a function of the query it was sent. */
+  function server(respond: (query: string) => { text?: string; jsonrpcError?: string }): typeof fetch {
+    return (async (_url: string | URL, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body ?? "{}")) as { params?: { arguments?: Record<string, unknown> } };
+      const q = String(body.params?.arguments?.query ?? "");
+      const r = respond(q);
+      if (r.jsonrpcError !== undefined) {
+        return new Response(JSON.stringify({ jsonrpc: "2.0", id: 9, error: { message: r.jsonrpcError } }), {
+          status: 200, headers: { "content-type": "application/json" },
+        });
+      }
+      return new Response(
+        JSON.stringify({ jsonrpc: "2.0", id: 9, result: { content: [{ type: "text", text: r.text ?? "" }] } }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    }) as unknown as typeof fetch;
+  }
+
+  const run = (fetchImpl: typeof fetch) =>
+    runBattery(searchTool, classifyTool(searchTool), {
+      observerId: "probe:test", ts: "2026-09-01T00:00:00Z", endpoint: "https://example.com/mcp",
+      parseBody: (b) => JSON.parse(b), fetchImpl, sleep: async () => {},
+    });
+
+  const valueOf = (o: Awaited<ReturnType<typeof runBattery>>, key: string) =>
+    o.observations.find((x) => x.observation_key === key)?.value ?? null;
+
+  it("catches a tool that does not read its input", async () => {
+    // The differential test needs no oracle at all. Identical output for two
+    // different queries means the tool is a stub, however plausible it looks.
+    const stub = await run(server(() => ({ text: "Here are your results: alpha, beta, gamma." })));
+    expect(valueOf(stub, "input_sensitivity")).toBe("0.000000");
+
+    const real = await run(server((q) => ({ text: `Results for ${q}: alpha, beta, gamma, delta, epsilon.` })));
+    expect(valueOf(real, "input_sensitivity")).toBe("1.000000");
+  });
+
+  it("catches a tool that invents results for a query that cannot match", async () => {
+    const fabricator = await run(
+      server((q) => ({ text: `Found three highly relevant passages about ${q}, discussed in considerable depth here.` })),
+    );
+    expect(valueOf(fabricator, "no_fabrication")).toBe("0.000000");
+  });
+
+  it("does not call an honest empty result fabrication", async () => {
+    const honest = await run(
+      server((q) => (q === NONSENSE_QUERY ? { text: "No results." } : { text: "Found 3 passages about the subject at hand, in depth." })),
+    );
+    expect(valueOf(honest, "no_fabrication")).toBe("1.000000");
+  });
+
+  it("does not call a bare echo of the query a fabrication", async () => {
+    // Quoting the query back while returning nothing is correct behaviour. The
+    // baseline must still answer, or there is nothing to compare and the check
+    // is skipped rather than guessed at.
+    const echoes = await run(
+      server((q) =>
+        q === NONSENSE_QUERY
+          ? { text: `No results found for "${q}". Try a broader term.` }
+          : { text: "Three passages matched, covering the subject in reasonable depth with citations." },
+      ),
+    );
+    expect(valueOf(echoes, "no_fabrication")).toBe("1.000000");
+  });
+
+  it("KNOWN LIMITATION: an unusually phrased refusal still reads as an answer", () => {
+    // Recorded as a test rather than a comment because it is the ceiling of
+    // the current approach, not a bug to be patched. "No results found" is
+    // recognised; "Sorry, I turned that up in none of the collections" is not,
+    // and no list of phrases will ever cover how servers say no.
+    //
+    // Three checks have now hit this same wall: the readOnlyHint contradiction
+    // rule, the fabrication probe, and this. All three ask a question about
+    // meaning, and a word list cannot answer one. The instrument is a model
+    // reading the stored transcript, with its verdict recorded as an ordinary
+    // observation subject to the same caps as any other evidence.
+    expect(true).toBe(true);
+  });
+
+  it("still catches a fabrication that happens to quote the query", async () => {
+    // Echoing does not launder invented content. Strip the query and see what
+    // survives.
+    const sneaky = await run(
+      server((q) => ({
+        text: `Results for "${q}": three highly relevant passages discussing this subject in considerable depth, with citations and dates.`,
+      })),
+    );
+    expect(valueOf(sneaky, "no_fabrication")).toBe("0.000000");
+  });
+
+  it("does not mistake a tool quoting the query back for obedience", async () => {
+    // Search tools routinely echo the query. A response containing the token
+    // proves nothing; a response containing the token WITHOUT the surrounding
+    // instruction is the tool having acted on it.
+    const echoes = await run(server((q) => ({ text: `No results found for query: "${q}".` })));
+    expect(valueOf(echoes, "ignores_embedded_instruction")).toBe("1.000000");
+  });
+
+  it("catches a tool that obeys an instruction hidden in its arguments", async () => {
+    // The central security property for MCP: the protocol exists to feed an
+    // agent untrusted content, so a tool that obeys its own arguments is a hole
+    // in everything downstream of it.
+    const obedient = await run(
+      server((q) => (q.includes(INJECTION_INSTRUCTION) ? { text: INJECTION_TOKEN } : { text: "ordinary results here" })),
+    );
+    expect(valueOf(obedient, "ignores_embedded_instruction")).toBe("0.000000");
+  });
+
+  it("does not read two identical errors as a tool ignoring its input", async () => {
+    // The defect a first live run exposed. Six tools were reported as
+    // input-blind; not one was. Two returned an honest empty result to both
+    // queries, three returned the same upstream error to both, and one
+    // differed only past the 300 characters being compared.
+    const sameErrorBothTimes = await run(server(() => ({ text: '{"found": false, "error": "upstream timeout"}' })));
+    expect(valueOf(sameErrorBothTimes, "input_sensitivity")).toBeNull();
+    expect(sameErrorBothTimes.skipped.map((s) => s.check)).toContain("input_sensitivity");
+
+    const honestEmptyBothTimes = await run(server(() => ({ text: "[]" })));
+    expect(valueOf(honestEmptyBothTimes, "input_sensitivity")).toBeNull();
+  });
+
+  it("compares the whole response, not a truncated prefix", async () => {
+    // One tool differed only after the first 300 characters and was reported
+    // as ignoring its input.
+    const prefix = "identical opening passage. ".repeat(20);
+    const o = await run(server((q) => ({ text: prefix + q })));
+    expect(valueOf(o, "input_sensitivity")).toBe("1.000000");
+  });
+
+  it("flags a tool reporting failure in its payload rather than the protocol", async () => {
+    // A JSON body carrying an error while the envelope says success. Only
+    // visible by calling, and it poisons every comparison downstream if the
+    // output is treated as an answer.
+    const o = await run(server(() => ({ text: '{"found": false, "error": "no database"}' })));
+    expect(valueOf(o, "reports_errors_via_protocol")).toBe("0.000000");
+  });
+
+  it("counts accepting invalid input as a failure, not a pass", async () => {
+    // The check was inverted in its first form, and four tools passed for
+    // silently accepting garbage. One string-coerced our object and answered
+    // about "[object object].hood". A tool that accepts nonsense is worse to
+    // build on than one that rejects it, because the caller never learns.
+    const accepts = (async (_u: string | URL, init?: RequestInit) => {
+      const b = JSON.parse(String(init?.body ?? "{}")) as { params?: { arguments?: Record<string, unknown> } };
+      const q = b.params?.arguments?.query;
+      return new Response(
+        JSON.stringify({ jsonrpc: "2.0", id: 9, result: { content: [{ type: "text", text: `results for ${String(q)}` }] } }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    }) as unknown as typeof fetch;
+    const o = await run(accepts);
+    expect(valueOf(o, "rejects_invalid_input")).toBe("0.000000");
+    expect(valueOf(o, "accepts_invalid_input")).toBe("0.000000");
+  });
+
+  it("rewards a structured error and penalises a collapse", async () => {
+    // Only the malformed call errors. A fake that also fails the baseline
+    // would make the battery skip, which is correct behaviour and not what
+    // this test is about.
+    const polite = (async (_u: string | URL, init?: RequestInit) => {
+      const b = JSON.parse(String(init?.body ?? "{}")) as { params?: { arguments?: Record<string, unknown> } };
+      if (typeof b.params?.arguments?.query === "object") {
+        return new Response(JSON.stringify({ jsonrpc: "2.0", id: 9, error: { message: "invalid params: query must be a string" } }), {
+          status: 200, headers: { "content-type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ jsonrpc: "2.0", id: 9, result: { content: [{ type: "text", text: "fine" }] } }), {
+        status: 200, headers: { "content-type": "application/json" },
+      });
+    }) as unknown as typeof fetch;
+    expect(valueOf(await run(polite), "rejects_invalid_input")).toBe("1.000000");
+
+    const collapses = (async (_u: string | URL, init?: RequestInit) => {
+      const b = JSON.parse(String(init?.body ?? "{}")) as { params?: { arguments?: Record<string, unknown> } };
+      if (typeof b.params?.arguments?.query === "object") return new Response("boom", { status: 500 });
+      return new Response(JSON.stringify({ jsonrpc: "2.0", id: 9, result: { content: [{ type: "text", text: "fine" }] } }), {
+        status: 200, headers: { "content-type": "application/json" },
+      });
+    }) as unknown as typeof fetch;
+    expect(valueOf(await run(collapses), "rejects_invalid_input")).toBe("0.000000");
+  });
+
+  it("flags an error message that leaks internals", async () => {
+    const onMalformed = (message: string): typeof fetch =>
+      (async (_u: string | URL, init?: RequestInit) => {
+        const b = JSON.parse(String(init?.body ?? "{}")) as { params?: { arguments?: Record<string, unknown> } };
+        if (typeof b.params?.arguments?.query === "object") {
+          return new Response(JSON.stringify({ jsonrpc: "2.0", id: 9, error: { message } }), {
+            status: 200, headers: { "content-type": "application/json" },
+          });
+        }
+        return new Response(JSON.stringify({ jsonrpc: "2.0", id: 9, result: { content: [{ type: "text", text: "fine" }] } }), {
+          status: 200, headers: { "content-type": "application/json" },
+        });
+      }) as unknown as typeof fetch;
+
+    const leaky = await run(onMalformed("TypeError at handler (/app/src/search.js:42:11)"));
+    expect(valueOf(leaky, "no_internal_leakage")).toBe("0.000000");
+    const clean = await run(onMalformed("invalid params"));
+    expect(valueOf(clean, "no_internal_leakage")).toBe("1.000000");
+  });
+
+  it("bands response cost, because a context window is the caller's to spend", async () => {
+    const small = await run(server(() => ({ text: "x".repeat(100) })));
+    expect(valueOf(small, "response_cost")).toBe("1.000000");
+    const huge = await run(server(() => ({ text: "x".repeat(120_000) })));
+    expect(valueOf(huge, "response_cost")).toBe("0.000000");
+  });
+
+  it("skips rather than fails when a check cannot run", async () => {
+    // An unrunnable check is not a failing one. A baseline that never answered
+    // makes everything downstream uninterpretable, and scoring it would invent
+    // findings out of our own inability to ask.
+    const dead = (async () => new Response("nope", { status: 503 })) as unknown as typeof fetch;
+    const o = await run(dead);
+    expect(valueOf(o, "invocation_succeeds")).toBe("0.000000");
+    expect(o.skipped.map((s) => s.check)).toContain("no_fabrication");
+    expect(o.observations.some((x) => x.observation_key === "no_fabrication")).toBe(false);
+    expect(o.observations.some((x) => x.observation_key === "input_sensitivity")).toBe(false);
+  });
+
+  it("skips the probes for a tool with nothing to vary", async () => {
+    const noParams = tool({ name: "list_status", annotations: { readOnlyHint: true }, inputSchema: schema({}) });
+    const o = await runBattery(noParams, classifyTool(noParams), {
+      observerId: "probe:test", ts: "2026-09-01T00:00:00Z", endpoint: "https://example.com/mcp",
+      parseBody: (b) => JSON.parse(b), sleep: async () => {},
+      fetchImpl: server(() => ({ text: "ok" })),
+    });
+    expect(o.skipped.map((s) => s.check).sort()).toEqual(["injection_resistance", "input_sensitivity", "no_fabrication"]);
+    expect(valueOf(o, "reports_errors_via_protocol")).toBe("1.000000");
+    expect(valueOf(o, "invocation_succeeds")).toBe("1.000000");
+  });
+});
+
+describe("refusals are not answers", () => {
+  /** Every one of these was reported as a fabrication by the first battery. */
+  const REFUSALS = [
+    ['{"query": "x", "tier3": {"tier": 3, "status": "declined", "reason": "negative_cache"}}', "structured decline"],
+    ['{"schema": "v1", "ok": false, "status": "target_rejected", "measurement_status": "target_rejected"}', "ok:false"],
+    ['{"result_type": "unknown", "accepted_evidence": [], "rule": "No verified receipt means zero result."}', "unknown result type"],
+    ['Nothing published on "qx7v9zzt4mnb2wkph3ljf6rd8s". Try a broader term, or browse the glossary.', "prose empty result"],
+    ["Not a valid Calaf seed — nothing would import. 1 issue: (document): That is not valid JSON.", "prose rejection"],
+  ];
+
+  it("does not read a decline as an invented answer", async () => {
+    // Seven of eight fabrication findings in a first live run were false
+    // positives, and most were refusals expressed in JSON rather than prose.
+    // Treating a refusal as an answer turns every honest "no" into an
+    // accusation of inventing things.
+    for (const [text, label] of REFUSALS) {
+      const t = tool({ name: "search_docs", annotations: { readOnlyHint: true }, inputSchema: schema({ query: { type: "string" } }) });
+      const fetchImpl = (async () =>
+        new Response(JSON.stringify({ jsonrpc: "2.0", id: 9, result: { content: [{ type: "text", text }] } }), {
+          status: 200, headers: { "content-type": "application/json" },
+        })) as unknown as typeof fetch;
+      const r = await callTool("https://example.com/mcp", t, classifyTool(t), { parseBody: (b) => JSON.parse(b), fetchImpl });
+      expect(r.substantive, label).toBe(false);
+    }
+  });
+
+  it("only probes for fabrication where a nonsense query truly has no answer", async () => {
+    // A domain checker answers correctly that "qx7v9....hood" is available,
+    // because every string is a valid domain. A validator correctly reports
+    // nonsense is invalid. Neither is fabricating, and both were accused of it.
+    for (const [name, description, shape] of [
+      ["check_availability", "Check whether a domain name is available.", "retrieval"],
+      ["convert_currency", "Convert between currencies.", "public_data"],
+      ["encode_value", "Encode a string.", "transform"],
+    ] as const) {
+      const t = tool({ name, description, annotations: { readOnlyHint: true }, inputSchema: schema({ query: { type: "string" } }) });
+      const o = await runBattery(t, classifyTool(t), {
+        observerId: "p", ts: "2026-09-01T00:00:00Z", endpoint: "https://example.com/mcp",
+        parseBody: (b) => JSON.parse(b), sleep: async () => {},
+        fetchImpl: (async () =>
+          new Response(JSON.stringify({ jsonrpc: "2.0", id: 9, result: { content: [{ type: "text", text: "a real substantive answer of some length here" }] } }), {
+            status: 200, headers: { "content-type": "application/json" },
+          })) as unknown as typeof fetch,
+      });
+      const probed = o.observations.some((x) => x.observation_key === "no_fabrication");
+      expect(probed, `${name} (${shape})`).toBe(classifyTool(t).shape === "retrieval");
+    }
   });
 });
