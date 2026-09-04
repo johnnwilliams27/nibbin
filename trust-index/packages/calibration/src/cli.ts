@@ -2,6 +2,9 @@
  * agent-trust-calibrate: run the calibration harness (SPEC 12).
  *
  * Commands:
+ *   All cohort commands accept --sample <n> --sample-seed <n> to run against a
+ *   deterministic subset, for cohorts too large to sweep whole.
+ *
  *   sensitivity --cohort <dir> [--out <file>]
  *       Sweep every provisional constant one at a time and report score and
  *       rank stability. Needs no labels, so this is the analysis that governs
@@ -42,14 +45,49 @@ import type { LabelView } from "./labels.js";
 
 class CliError extends Error {}
 
-function loadCohort(dir: string): { snapshots: AgentSnapshot[]; label: string } {
+/** Numerical Recipes LCG, so a sampled cohort is reproducible from its seed. */
+function lcg(seed: number): () => number {
+  let s = seed >>> 0;
+  return () => {
+    s = (Math.imul(1664525, s) + 1013904223) >>> 0;
+    return s / 0x1_0000_0000;
+  };
+}
+
+/**
+ * Load a cohort directory, optionally down to a deterministic sample.
+ *
+ * A real registry cohort can hold tens of thousands of agents, and the joint
+ * sweep rescores the whole cohort once per draw, so the full population is not
+ * always affordable. Sampling is seeded and the sample size is carried into the
+ * report label, so a published number always says what it was computed over.
+ * `manifest.json` is skipped: an exporter writes it alongside the snapshots and
+ * it is not one.
+ */
+function loadCohort(dir: string, sample = 0, seed = 1): { snapshots: AgentSnapshot[]; label: string } {
   let names: string[];
   try {
-    names = readdirSync(dir).filter((n) => n.endsWith(".json")).sort();
+    names = readdirSync(dir)
+      .filter((n) => n.endsWith(".json") && n !== "manifest.json")
+      .sort();
   } catch {
     throw new CliError(`cannot read cohort directory: ${dir}`);
   }
   if (names.length === 0) throw new CliError(`no .json snapshots in ${dir}`);
+
+  const total = names.length;
+  let sampled = false;
+  if (sample > 0 && names.length > sample) {
+    const rand = lcg(seed);
+    names = names
+      .map((n) => ({ n, r: rand() }))
+      .sort((a, b) => a.r - b.r)
+      .slice(0, sample)
+      .map((x) => x.n)
+      .sort();
+    sampled = true;
+  }
+
   const snapshots = names.map((n) => {
     try {
       return JSON.parse(readFileSync(join(dir, n), "utf8")) as AgentSnapshot;
@@ -57,7 +95,18 @@ function loadCohort(dir: string): { snapshots: AgentSnapshot[]; label: string } 
       throw new CliError(`${n}: ${err instanceof Error ? err.message : String(err)}`);
     }
   });
-  return { snapshots, label: `${dir} (${snapshots.length} snapshots)` };
+  const label = sampled
+    ? `${dir} (${snapshots.length} of ${total} snapshots, sampled with seed ${seed})`
+    : `${dir} (${snapshots.length} snapshots)`;
+  return { snapshots, label };
+}
+
+function sampleArgs(rest: string[]): { sample: number; seed: number } {
+  const sample = Number(arg(rest, "--sample") ?? "0");
+  const seed = Number(arg(rest, "--sample-seed") ?? "1");
+  if (!Number.isInteger(sample) || sample < 0) throw new CliError(`--sample must be a non-negative integer: ${sample}`);
+  if (!Number.isInteger(seed)) throw new CliError(`--sample-seed must be an integer: ${seed}`);
+  return { sample, seed };
 }
 
 function arg(argv: string[], name: string): string | null {
@@ -81,7 +130,8 @@ function main(argv: string[]): void {
   if (command === "sensitivity") {
     const dir = arg(rest, "--cohort");
     if (dir === null) throw new CliError("sensitivity requires --cohort <dir>");
-    const { snapshots, label } = loadCohort(dir);
+    const { sample, seed } = sampleArgs(rest);
+    const { snapshots, label } = loadCohort(dir, sample, seed);
     emit(renderSensitivityReport(runDefaultSensitivity(snapshots), label), out);
     return;
   }
@@ -103,7 +153,8 @@ function main(argv: string[]): void {
     let snapshots: AgentSnapshot[];
     let label: string;
     if (dir !== null) {
-      ({ snapshots, label } = loadCohort(dir));
+      const s2 = sampleArgs(rest);
+      ({ snapshots, label } = loadCohort(dir, s2.sample, s2.seed));
     } else {
       const agents = Number(synthetic);
       if (!Number.isInteger(agents) || agents < 2) {
@@ -129,7 +180,8 @@ function main(argv: string[]): void {
     if (view !== "success" && view !== "discrimination") {
       throw new CliError(`unknown --view: ${view}`);
     }
-    const { snapshots, label } = loadCohort(dir);
+    const s2 = sampleArgs(rest);
+    const { snapshots, label } = loadCohort(dir, s2.sample, s2.seed);
     const result = runCalibration(snapshots, split, Number(splitBlock), { view });
     emit(renderCalibrationReport(result, label), out);
     return;
@@ -142,7 +194,8 @@ function main(argv: string[]): void {
     if (dir === null || split === null || splitBlock === null) {
       throw new CliError("compare-linkage requires --cohort <dir> --split <iso-ts> --split-block <n>");
     }
-    const { snapshots, label } = loadCohort(dir);
+    const s2 = sampleArgs(rest);
+    const { snapshots, label } = loadCohort(dir, s2.sample, s2.seed);
     const comparison = compareLinkageArms(snapshots, split, Number(splitBlock));
     emit(renderArmComparisonReport(comparison, label), out);
     return;
@@ -155,7 +208,8 @@ function main(argv: string[]): void {
     if (dir === null || split === null || splitBlock === null) {
       throw new CliError("tune requires --cohort <dir> --split <iso-ts> --split-block <n>");
     }
-    const { snapshots } = loadCohort(dir);
+    const s2 = sampleArgs(rest);
+    const { snapshots } = loadCohort(dir, s2.sample, s2.seed);
     const result = tuneConstants(snapshots, DEFAULT_TUNING_AXES, split, Number(splitBlock));
     console.error(summarize(result));
     emit(renderTuningReport(result), out);

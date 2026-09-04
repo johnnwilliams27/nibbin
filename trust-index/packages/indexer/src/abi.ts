@@ -88,11 +88,67 @@ export const METADATA_SET_EVENT = {
   ],
 } as const;
 
+/**
+ * Events both registries emit that carry no scoring signal: ERC-721 approval
+ * bookkeeping, the ERC-4906 metadata-refresh hints, and proxy and ownership
+ * administration. They are declared so the decoder can mark them recognised
+ * and unused rather than unknown, which keeps "unrecognised log" meaningful as
+ * a signal that the ABI has drifted from the contracts.
+ *
+ * MetadataUpdate is the highest-volume event either registry emits, so leaving
+ * it out made unrecognised-log counts useless in practice.
+ */
+export const ADMIN_EVENTS = [
+  {
+    type: "event",
+    name: "MetadataUpdate",
+    inputs: [{ name: "_tokenId", type: "uint256", indexed: false }],
+  },
+  {
+    type: "event",
+    name: "BatchMetadataUpdate",
+    inputs: [
+      { name: "_fromTokenId", type: "uint256", indexed: false },
+      { name: "_toTokenId", type: "uint256", indexed: false },
+    ],
+  },
+  {
+    type: "event",
+    name: "Approval",
+    inputs: [
+      { name: "owner", type: "address", indexed: true },
+      { name: "approved", type: "address", indexed: true },
+      { name: "tokenId", type: "uint256", indexed: true },
+    ],
+  },
+  {
+    type: "event",
+    name: "ApprovalForAll",
+    inputs: [
+      { name: "owner", type: "address", indexed: true },
+      { name: "operator", type: "address", indexed: true },
+      { name: "approved", type: "bool", indexed: false },
+    ],
+  },
+  {
+    type: "event",
+    name: "OwnershipTransferred",
+    inputs: [
+      { name: "previousOwner", type: "address", indexed: true },
+      { name: "newOwner", type: "address", indexed: true },
+    ],
+  },
+  { type: "event", name: "Upgraded", inputs: [{ name: "implementation", type: "address", indexed: true }] },
+  { type: "event", name: "Initialized", inputs: [{ name: "version", type: "uint64", indexed: false }] },
+  { type: "event", name: "EIP712DomainChanged", inputs: [] },
+] as const;
+
 export const IDENTITY_REGISTRY_ABI: Abi = [
   REGISTERED_EVENT,
   URI_UPDATED_EVENT,
   METADATA_SET_EVENT,
   ERC721_TRANSFER_EVENT,
+  ...ADMIN_EVENTS,
 ];
 
 /**
@@ -155,4 +211,5 @@ export const REPUTATION_REGISTRY_ABI: Abi = [
   NEW_FEEDBACK_EVENT,
   FEEDBACK_REVOKED_EVENT,
   RESPONSE_APPENDED_EVENT,
+  ...ADMIN_EVENTS,
 ];

@@ -13,6 +13,7 @@
 import { decodeEventLog, encodeEventTopics } from "viem";
 import type { RawLog } from "./chainSource.js";
 import {
+  ADMIN_EVENTS,
   ERC721_TRANSFER_EVENT,
   FEEDBACK_REVOKED_EVENT,
   IDENTITY_REGISTRY_ABI,
@@ -40,6 +41,15 @@ export const TOPIC0 = {
   feedbackRevoked: topic0(FEEDBACK_REVOKED_EVENT),
   responseAppended: topic0(RESPONSE_APPENDED_EVENT),
 } as const;
+
+/**
+ * topic0 -> event name for the events both registries emit that scoring does
+ * not consume. Kept as a lookup so a recognised-but-unused log names itself in
+ * the ignored record rather than arriving as an anonymous topic.
+ */
+const ADMIN_TOPICS: ReadonlyMap<string, string> = new Map(
+  ADMIN_EVENTS.map((e) => [topic0(e).toLowerCase(), e.name] as const),
+);
 
 export type DecodedRegistered = {
   kind: "registered";
@@ -104,6 +114,8 @@ export function decodeIdentityLog(log: RawLog): IdentityEvent | null {
   if (t0.toLowerCase() === TOPIC0.metadataSet.toLowerCase()) {
     return { kind: "ignored", event: "MetadataSet", log };
   }
+  const admin = ADMIN_TOPICS.get(t0.toLowerCase());
+  if (admin !== undefined) return { kind: "ignored", event: admin, log };
   return null;
 }
 
@@ -183,5 +195,7 @@ export function decodeReputationLog(log: RawLog): ReputationEvent | null {
   if (t0.toLowerCase() === TOPIC0.responseAppended.toLowerCase()) {
     return { kind: "ignored", event: "ResponseAppended", log };
   }
+  const admin = ADMIN_TOPICS.get(t0.toLowerCase());
+  if (admin !== undefined) return { kind: "ignored", event: admin, log };
   return null;
 }
