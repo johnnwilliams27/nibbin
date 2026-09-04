@@ -17,9 +17,18 @@
  *      id in the URL path, and their metadata document carries an explicit
  *      registrations[] entry naming the ERC-8004 agentId and registry.
  *
- * If service id and agent id are the same namespace, the chain closes and
- * calibration has a label set. If they are not, the gap is named rather than
- * assumed away.
+ * RESULT: they are NOT the same namespace, and the naive comparison this script
+ * first made was numerology. Olas ai-agent ids run 1 to 637 and mech service
+ * ids run 107 to 635, so the ranges overlap and 42 ids "matched" by coincidence.
+ * Fetching the metadata for three of them settles it: ai-agent 107 declares
+ * ERC-8004 agent 109, ai-agent 161 declares 163, and ai-agent 353 declares
+ * 1377. The documents reference the registry agent id and never a service id
+ * at all, and the offset is not even constant.
+ *
+ * So the numeric overlap is reported below as what it is, a coincidence, and
+ * the missing link is named: Olas ai-agent id to the mech address that
+ * delivers its work. Until that is found, per-agent outcomes are not
+ * retrievable, however good the per-mech outcomes are.
  *
  * Usage:
  *   pnpm --filter @trust-index/indexer exec tsx scripts/check-olas-outcomes.mts \
@@ -221,14 +230,17 @@ async function main(): Promise<void> {
       `The two id spaces do not coincide. Mech outcomes are keyed by service id and the registry link is keyed by ai-agent id, so joining them needs a mapping this script has not found. Named rather than assumed.`,
     );
   } else {
-    console.log(`Sample joinable ids: ${overlap.slice(0, 15).join(", ")}`);
+    console.log(
+      `NOT A JOIN: ${overlap.length} ids appear in both spaces, but the id spaces are unrelated and their ranges merely overlap. Verified by fetching agent metadata, which names an ERC-8004 agent id and never a service id. Reported only to show the coincidence.`,
+    );
+    console.log(`Coincidentally equal ids: ${overlap.slice(0, 15).join(", ")}`);
     const labelled: string[] = [];
     for (const [agentId, olasId] of olasAgents) {
       if (!serviceSet.has(olasId)) continue;
       const mech = [...mechToService].find(([, sid]) => sid === olasId)?.[0];
       if (mech !== undefined && perMech.has(mech)) labelled.push(agentId);
     }
-    console.log(`ERC-8004 agents with retrievable delivery outcomes: ${labelled.length}`);
+    console.log(`Agents this coincidence would wrongly label: ${labelled.length} (do not use)`);
     if (labelled.length > 0) console.log(`  sample agent ids: ${labelled.slice(0, 15).join(", ")}`);
   }
 }
