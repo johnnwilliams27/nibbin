@@ -380,3 +380,11 @@ export function score(snapshot: AgentSnapshot): { result: ScoreResult; canonical
  * that could drift from it. Not part of the serving path.
  */
 export { normalizeValue } from "./normalize.js";
+
+/**
+ * The subject-agnostic path (packages/scoring/src/rating). Same estimator,
+ * evidence that is not required to come from a chain. Re-exported here so a
+ * consumer holding @trust-index/scoring gets both without knowing the layout.
+ */
+export { scoreSubject, subjectInputsCanonical, subjectInputsHash } from "./rating/index.js";
+export { agentSnapshotToSubject, ratingConstantsFromMethodology } from "./rating/adapter.js";

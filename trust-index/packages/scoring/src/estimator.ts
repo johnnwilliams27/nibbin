@@ -142,7 +142,7 @@ function intervalWidthFx(alphaFx: bigint, betaFx: bigint): { meanFx: bigint; hal
  * interval width alone (SPEC 11.1), so meetsThreshold(minConfidence) means the
  * same thing regardless of where the prior sits.
  */
-function referenceWidthFx(kFx: bigint): bigint {
+export function referenceWidthFx(kFx: bigint): bigint {
   const half = ONE / 2n;
   return 2n * intervalWidthFx(mulFx(kFx, half), mulFx(kFx, ONE - half)).halfFx;
 }

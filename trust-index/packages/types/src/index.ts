@@ -7,3 +7,5 @@ export * from "./score.js";
 export * from "./api.js";
 export * from "./oracle.js";
 export * from "./fixtures.js";
+export * from "./rating.js";
+export * from "./profiles.js";
