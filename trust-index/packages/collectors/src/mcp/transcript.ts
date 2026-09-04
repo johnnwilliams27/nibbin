@@ -15,6 +15,29 @@ export type ToolDeclaration = {
   description: string | null;
   /** The declared JSON Schema, unvalidated and unmodified. */
   inputSchema: unknown;
+  /**
+   * The declared output schema, when the server publishes one. A tool that
+   * violates its own declared output shape is broken in a way a caller hits
+   * immediately, and that is only checkable if we record the declaration.
+   */
+  outputSchema: unknown;
+  /**
+   * MCP tool annotations, verbatim: readOnlyHint, destructiveHint,
+   * idempotentHint, openWorldHint.
+   *
+   * The spec is right that a client must not TRUST these for security, and we
+   * do not. They earn their place two other ways. As a gate: we only exercise
+   * a tool the operator has affirmatively declared read-only, with nothing
+   * else contradicting it. And as evidence in their own right: a tool named
+   * delete_document carrying readOnlyHint true is a contradiction, and that is
+   * a stronger finding than any name heuristic, obtained without sending
+   * anything.
+   *
+   * Not reading these at all was a real gap in the first version of this
+   * collector, which parsed tool names while ignoring the field the protocol
+   * provides for exactly this question.
+   */
+  annotations: unknown;
 };
 
 /** One attempt to reach the endpoint. */

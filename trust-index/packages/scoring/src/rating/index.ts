@@ -501,6 +501,29 @@ export function scoreSubject(subject: Subject): { result: SubjectScoreResult; ca
   // trimmed afterwards.
   const { fired: gatesFired, compositeCapFx } = applyGates(profile, outcomes);
 
+  // Assessment completeness. A dimension is unassessable when a harness gap
+  // blocked it and no observation reached it anyway: we could not attempt it,
+  // so its absence says nothing about the subject.
+  //
+  // The rule this enforces has no exception. A gap is never evidence. If our
+  // testnet wallet runs dry, the subject does not lose points for it; the
+  // dimension drops out of the completeness denominator and the gap is
+  // reported as ours to fix. Reading a failure to obtain data as a fact about
+  // the data is the error that has cost this project the most, and this is the
+  // one place it could be published under someone else's name.
+  const blockedDimensions = new Set<string>();
+  for (const g of subject.gaps) {
+    if (g.cause !== "harness_capability_missing" && g.cause !== "harness_capability_unhealthy") continue;
+    blockedDimensions.add(g.dimension);
+  }
+  let assessableWeightFx = 0n;
+  for (const o of outcomes) {
+    // Blocked only counts when nothing got through: a dimension with a
+    // published score was clearly assessable, whatever else was missing.
+    if (blockedDimensions.has(o.spec.id) && !o.published) continue;
+    assessableWeightFx += o.weightFx;
+  }
+
   // Composite. The interval assumes the published dimensions are perfectly
   // correlated, so its width is the weighted mean of the dimension widths.
   // Assuming independence instead would give a narrower band by combining
@@ -520,7 +543,12 @@ export function scoreSubject(subject: Subject): { result: SubjectScoreResult; ca
     weightedHalfFx += mulFx(o.weightFx, o.halfFx);
   }
   if (totalWeightFx <= 0n) throw new Error(`profile ${profile.profile_id} has no dimension weight`);
-  const coverageFx = divFx(publishedWeightFx, totalWeightFx);
+  const completenessFx = divFx(assessableWeightFx, totalWeightFx);
+  // Coverage is measured against what was ASSESSABLE, not against the whole
+  // profile. Otherwise one missing credential would silently push thousands of
+  // subjects under the coverage floor and withhold their ratings as though
+  // they had failed to provide evidence, when in fact we failed to ask.
+  const coverageFx = assessableWeightFx === 0n ? 0n : divFx(publishedWeightFx, assessableWeightFx);
   const minCoverageFx = clampFx(parseFx(profile.min_dimension_coverage), 0n, ONE);
 
   let compositeReason: string | null = null;
@@ -579,6 +607,11 @@ export function scoreSubject(subject: Subject): { result: SubjectScoreResult; ca
     self_reported_observations: byProvenance.get("self_reported") ?? 0,
     published_dimensions: outcomes.filter((o) => o.published).length,
     profile_dimensions: outcomes.length,
+    harness_blocked_checks: subject.gaps.filter(
+      (g) => g.cause === "harness_capability_missing" || g.cause === "harness_capability_unhealthy",
+    ).length,
+    subject_blocked_checks: subject.gaps.filter((g) => g.cause === "subject_blocked").length,
+    not_applicable_checks: subject.gaps.filter((g) => g.cause === "not_applicable").length,
   };
 
   const tree: CanonicalValue = {
@@ -593,11 +626,20 @@ export function scoreSubject(subject: Subject): { result: SubjectScoreResult; ca
     composite_high: publish ? displayScore(compositeHighFx) : null,
     composite_confidence: displayAt(compositeConfidenceFx, PRECISION.confidence),
     dimension_coverage: displayAt(coverageFx, PRECISION.signal),
+    assessment_completeness: displayAt(completenessFx, PRECISION.signal),
     composite_suppression_reason: compositeReason,
 
     lifecycle: classify(subject, asOfSec, c),
     dimensions: outcomes.map(dimensionCanonical),
     gates_fired: gatesFired,
+    harness_gaps: [...subject.gaps]
+      .filter((g) => g.cause === "harness_capability_missing" || g.cause === "harness_capability_unhealthy")
+      .sort((a, b) => {
+        const ka = `${a.dimension}#${a.check}`;
+        const kb = `${b.dimension}#${b.check}`;
+        return ka < kb ? -1 : ka > kb ? 1 : 0;
+      })
+      .map((g) => ({ dimension: g.dimension, check: g.check, capability: g.capability, detail: g.detail })),
     observer_weights: observerWeights.map((w) => ({
       observer_id: w.observerId,
       weight: displayAt(w.weightFx, PRECISION.weight),

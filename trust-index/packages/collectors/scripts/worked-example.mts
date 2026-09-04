@@ -10,7 +10,7 @@ const AS_OF = "2026-08-01T00:00:00Z";
 const PROBE = { first_seen_ts: "2025-01-01T00:00:00Z", total_observations: 50000, distinct_subjects: 15000, max_observations_single_day: 400 };
 
 function tool(name: string, description: string | null, props: Record<string, unknown>) {
-  return { name, description, inputSchema: { type: "object", properties: props, required: Object.keys(props) } };
+  return { name, description, inputSchema: { type: "object", properties: props, required: Object.keys(props) }, outputSchema: null, annotations: null };
 }
 const q = { query: { type: "string", description: "The search query." } };
 

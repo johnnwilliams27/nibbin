@@ -30,6 +30,7 @@
  * them in one place.
  */
 import type { Observation } from "@trust-index/types";
+import { classifyTools } from "./shape.js";
 import type { ProbeTranscript, ToolDeclaration } from "./transcript.js";
 
 /** Rubric version. Changing a threshold or a rule changes this. */
@@ -323,6 +324,43 @@ export function assessTranscript(t: ProbeTranscript, asOfTs: string): Observatio
           ref,
         ),
       );
+      // Declaration checked against itself: name against description against
+      // MCP's own annotations against the schema. Every contradiction is a
+      // finding obtained without sending anything, and it is a stronger one
+      // than any name heuristic. A tool named delete_document carrying
+      // readOnlyHint true is not ambiguous, it is wrong.
+      const classified = classifyTools(declared);
+      const contradicting = classified.filter((c) => c.contradictions.length > 0);
+      out.push(
+        obs(
+          p,
+          "tool_safety",
+          "declarations_consistent",
+          ratio(declared.length - contradicting.length, declared.length),
+          t.probed_at,
+          "measured",
+          ref,
+        ),
+      );
+      out.push(
+        obs(
+          p,
+          "tool_safety",
+          "declaration_contradiction_present",
+          bool(contradicting.length === 0),
+          t.probed_at,
+          "measured",
+          ref,
+        ),
+      );
+      // Output schemas are what make a response checkable against its own
+      // contract. Declaring one is a documentation property; honouring it is a
+      // correctness property that only invocation can establish.
+      const withOutputSchema = declared.filter((d) => d.outputSchema !== null && d.outputSchema !== undefined).length;
+      out.push(
+        obs(p, "documentation", "output_schemas_declared", ratio(withOutputSchema, declared.length), t.probed_at, "measured", ref),
+      );
+
       // Occurrence form, for the mcp.credential_parameter gate. A single tool
       // asking the caller to paste an API key is asking for a secret to be
       // transmitted to a third party, and no ratio across the rest of the tool

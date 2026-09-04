@@ -132,6 +132,59 @@ export type Observation = {
   evidence_ref: string | null;
 };
 
+/**
+ * A check that produced no observation, and whose fault that was.
+ *
+ * This type exists because of the single most persistent error in this
+ * project's history: reading "I could not obtain the data" as "the data is not
+ * there". It has produced a confident wrong number nine separate times, in
+ * nine different disguises. A rate limit read as a nonexistent token. An HTTP
+ * 500 read as a server fault. A getter returning zero read as an undeclared
+ * wallet. Sparse sampling read as a platform shutting down.
+ *
+ * Testing other people's software introduces a new disguise for it, and this
+ * one would be the worst yet, because it points outward. If our testnet wallet
+ * runs dry, or a token expires, or we have no account on the platform a tool
+ * needs, the tests do not run. Recording that as an absence of evidence would
+ * quietly publish OUR operational failures as THEIR scores, at scale, in a
+ * product whose entire claim is that it measures carefully.
+ *
+ * So a gap is a first-class object with a `cause`, and the engine is forbidden
+ * to turn one into an observation. `harness_*` causes are our defects, they are
+ * reported as such with the capability that is missing, and the subject is
+ * marked not-fully-assessed rather than assessed-and-found-lacking. When the
+ * capability is repaired, every subject blocked on it is re-tested.
+ */
+export type AssessmentGap = {
+  /** Dimension the missing check would have fed. */
+  dimension: string;
+  /** The check that did not run, matching the observation_key it would have produced. */
+  check: string;
+  /**
+   * Whose problem this is. The whole reason the type exists.
+   *
+   * - `harness_capability_missing`: we have no credential or account for what
+   *   this test needs. Our defect. Fix by provisioning, then re-test.
+   * - `harness_capability_unhealthy`: we have it and it is not working. Out of
+   *   testnet funds, expired token, rate limited, revoked. Our defect, and
+   *   usually urgent because it blocks every subject needing that capability.
+   * - `subject_blocked`: the subject prevented the check. Its handshake
+   *   failed, so its tool schemas could not be read. This IS information, but
+   *   only about the step that failed; the downstream checks stay unjudged.
+   * - `not_applicable`: the check does not apply. A tool with no parameters
+   *   cannot have undocumented ones. Nobody's defect.
+   */
+  cause:
+    | "harness_capability_missing"
+    | "harness_capability_unhealthy"
+    | "subject_blocked"
+    | "not_applicable";
+  /** Capability the check needed, for harness causes. null otherwise. */
+  capability: string | null;
+  /** What happened, in one line, for the defect report. */
+  detail: string;
+};
+
 /** Cohort priors, per dimension. The generic twin of PriorSet. */
 export type RatingPriorSet = {
   /** Prior used when a dimension has no entry, [0,1]. */
@@ -248,6 +301,14 @@ export type Subject = {
   /** One entry per distinct observer_id appearing in observations. */
   observers: Record<string, Observer>;
 
+  /**
+   * Checks that produced no observation, and why. Never scored, never
+   * converted into evidence. Excluded from inputs_hash: a gap is a statement
+   * about our run, not about the subject, and two reproducers who both lack a
+   * credential must still agree on the score computed from what they did get.
+   */
+  gaps: AssessmentGap[];
+
   priors: RatingPriorSet;
   constants: RatingConstants;
 };
@@ -305,12 +366,31 @@ export type SubjectScoreResult = {
   composite_confidence: number;
   /** Share of the profile's dimension weight that produced a published score. */
   dimension_coverage: number;
+  /**
+   * Share of the profile's dimension weight we were ABLE to attempt, given the
+   * capabilities the harness actually had. 1.0 means nothing was blocked on
+   * our side.
+   *
+   * Read together with dimension_coverage this separates the two questions a
+   * reader needs kept apart. A subject at 0.60 coverage and 1.00 completeness
+   * was fully assessable and came up short. A subject at 0.60 coverage and
+   * 0.60 completeness was never given the chance, and the shortfall is ours.
+   * Publishing one number for both would launder our operational failures into
+   * their ratings.
+   */
+  assessment_completeness: number;
   composite_suppression_reason: string | null;
 
   lifecycle: RatingLifecycle;
   dimensions: DimensionScore[];
   /** Gates that fired, ordered by gate id. Empty when none did. */
   gates_fired: FiredGate[];
+  /**
+   * Checks blocked by OUR harness, with the capability each needed. Empty when
+   * the run was clean. Non-empty means this rating is incomplete through no
+   * fault of the subject, and the entries are the work queue for fixing it.
+   */
+  harness_gaps: Array<{ dimension: string; check: string; capability: string | null; detail: string }>;
   observer_weights: Array<{ observer_id: string; weight: number }>;
   signals: Record<string, number | string | boolean | null>;
   /**

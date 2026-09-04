@@ -10,4 +10,5 @@
  * packages/scoring/src/rating/adapter.ts, which predates this package.
  */
 export * from "./net.js";
+export * from "./capability.js";
 export * as mcp from "./mcp/index.js";

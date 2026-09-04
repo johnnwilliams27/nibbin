@@ -6,7 +6,7 @@
  * into the shape scoreSubject reads. Keeping it separate from the rubric means
  * a rubric change touches one file and this one keeps working.
  */
-import type { Observation, Observer, RatingPriorSet, Subject } from "@trust-index/types";
+import type { AssessmentGap, Observation, Observer, RatingPriorSet, Subject } from "@trust-index/types";
 import { DEFAULT_RATING_CONSTANTS } from "@trust-index/types";
 import { assessTranscript } from "./assess.js";
 import type { ProbeTranscript } from "./transcript.js";
@@ -29,6 +29,12 @@ export type BuildSubjectOptions = {
    * wrong tag misfiles a server rather than mis-rating it.
    */
   tags?: string[];
+  /**
+   * Checks that did not run, and whose fault that was. Passed through to the
+   * engine, which refuses to score them. A harness gap must never reach a
+   * subject's rating as an absence of evidence.
+   */
+  gaps?: AssessmentGap[];
 };
 
 const DEFAULT_PRIORS: RatingPriorSet = {
@@ -163,6 +169,7 @@ function assemble(t: ProbeTranscript, observations: Observation[], options: Buil
     last_active_ts: lastReachable?.ts ?? null,
     reachable,
     tags: [...new Set(options.tags ?? [])].sort(),
+    gaps: options.gaps ?? [],
     observations,
     observers,
     priors: options.priors ?? DEFAULT_PRIORS,

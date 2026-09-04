@@ -250,6 +250,11 @@ export function agentSnapshotToSubject(s: AgentSnapshot, options: AdapterOptions
     // is exactly what a tag is. They are carried across for listing and for
     // cohort selection upstream, and they never touch the score.
     tags: [...new Set(s.feedback.filter((f) => f.tag1.length > 0).map((f) => f.tag1))].sort(),
+    // The chain path has no harness capabilities to be missing: the evidence
+    // is already in the snapshot. Availability is absent here for a different
+    // reason, recorded in the doc comment above, and that is a fact about what
+    // a snapshot holds rather than a defect in our tooling.
+    gaps: [],
     priors: {
       global: s.priors.global,
       // Chain contexts are tag1 values, which are not dimensions, so they do

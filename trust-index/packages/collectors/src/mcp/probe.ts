@@ -105,6 +105,8 @@ export function readTools(result: unknown): ToolDeclaration[] {
       name: typeof t.name === "string" ? t.name : "",
       description: str(t.description),
       inputSchema: t.inputSchema ?? null,
+      outputSchema: t.outputSchema ?? null,
+      annotations: t.annotations ?? null,
     });
   }
   return out;

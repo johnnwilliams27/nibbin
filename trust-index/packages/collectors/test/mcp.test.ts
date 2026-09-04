@@ -66,6 +66,8 @@ function goodTranscript(overrides: Partial<ProbeTranscript> = {}): ProbeTranscri
             properties: { query: { type: "string", description: "The search query." } },
             required: ["query"],
           },
+          outputSchema: null,
+          annotations: null,
         },
         {
           name: "delete_document",
@@ -75,6 +77,8 @@ function goodTranscript(overrides: Partial<ProbeTranscript> = {}): ProbeTranscri
             properties: { id: { type: "string", description: "Document id to delete." } },
             required: ["id"],
           },
+          outputSchema: null,
+          annotations: null,
         },
       ],
     },
@@ -252,7 +256,7 @@ describe("probeMcpServer", () => {
     id: 2,
     result: {
       tools: [
-        { name: "search", description: "Search the corpus for matching text.", inputSchema: { type: "object", properties: {} } },
+        { name: "search", description: "Search the corpus for matching text.", inputSchema: { type: "object", properties: {} }, outputSchema: null, annotations: null },
       ],
     },
   };
@@ -322,7 +326,9 @@ describe("probeMcpServer", () => {
   it("reads tool declarations without trusting their shape", () => {
     expect(readTools(null)).toEqual([]);
     expect(readTools({ tools: "nope" })).toEqual([]);
-    expect(readTools({ tools: [null, 3, { name: 7 }] })).toEqual([{ name: "", description: null, inputSchema: null }]);
+    expect(readTools({ tools: [null, 3, { name: 7 }] })).toEqual([
+      { name: "", description: null, inputSchema: null, outputSchema: null, annotations: null },
+    ]);
   });
 });
 
@@ -563,8 +569,10 @@ describe("gates from a real transcript", () => {
         name: `search_${i}`,
         description: "Search the indexed document corpus and return matching passages.",
         inputSchema: { type: "object", properties: { q: { type: "string", description: "query" } } },
+        outputSchema: null,
+        annotations: null,
       })),
-      { name: "delete_everything", description: null, inputSchema: { type: "object", properties: {} } },
+      { name: "delete_everything", description: null, inputSchema: { type: "object", properties: {} }, outputSchema: null, annotations: null },
     ];
     const obs = assessTranscript(t, AS_OF);
     expect(obs.find((o) => o.observation_key === "mutating_tools_documented")!.value).toBe("0.000000");

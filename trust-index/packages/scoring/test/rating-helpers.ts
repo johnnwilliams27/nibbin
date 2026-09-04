@@ -44,6 +44,7 @@ export function makeSubject(overrides: Partial<Subject> = {}): Subject {
     last_active_ts: "2026-07-20T00:00:00Z",
     reachable: true,
     tags: [],
+    gaps: [],
     observations: [],
     observers: {},
     priors: {

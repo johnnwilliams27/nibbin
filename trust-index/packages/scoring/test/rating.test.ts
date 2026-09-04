@@ -721,3 +721,138 @@ describe("tags", () => {
     expect(subjectInputsHash(narrow)).not.toBe(subjectInputsHash(wide));
   });
 });
+
+describe("harness gaps are never findings", () => {
+  /**
+   * The rule with no exceptions. Testing other people's software means most
+   * checks need something on our side: an account, a funded testnet wallet, a
+   * scoped token. All of those can be missing, expired or drained. Recording
+   * that as an absence of evidence would publish our operational failures as
+   * their scores, at scale, in a product whose whole claim is careful
+   * measurement.
+   */
+  const withGap = (cause: "harness_capability_missing" | "harness_capability_unhealthy" | "subject_blocked") =>
+    probedServer({
+      observations: probedServer().observations.filter((o) => o.dimension !== "tool_safety"),
+      gaps: [
+        {
+          dimension: "tool_safety",
+          check: "sandbox_diff",
+          cause,
+          capability: cause === "subject_blocked" ? null : "repo_sandbox",
+          detail: "testnet wallet out of funds",
+        },
+      ],
+    });
+
+  it("never converts a gap into an observation", () => {
+    const { result } = scoreSubject(withGap("harness_capability_missing"));
+    const safety = dim(result, "tool_safety");
+    expect(safety.observation_count).toBe(0);
+    expect(safety.score).toBeNull();
+    // Crucially not a zero, and not a low score.
+    expect(safety.suppression_reason).toMatch(/no observations/);
+  });
+
+  it("does not let our missing credential cost the subject its rating", () => {
+    // tool_safety is 0.25 of mcp_server.v1. Counting it against the full
+    // profile would drop coverage to 0.75 of the whole, and a second blocked
+    // dimension would push it under the 0.60 floor and withhold the rating
+    // entirely, as though the subject had failed to provide evidence.
+    const blocked = scoreSubject(withGap("harness_capability_missing")).result;
+    // tool_safety drops out of the denominator: we could not attempt it.
+    expect(blocked.assessment_completeness).toBe(0.75);
+    // Two of the four assessable dimensions produced a score, so coverage is
+    // 0.50/0.75 rather than 0.50/1.00. The difference is exactly the credential
+    // we were missing, and it is the difference between publishing and not.
+    expect(blocked.dimension_coverage).toBe(0.6667);
+    expect(blocked.composite).not.toBeNull();
+  });
+
+  it("keeps a subject-caused absence separate from a harness-caused one", () => {
+    // A subject that broke before we could check something HAS told us
+    // nothing, and completeness stays whole: we were able to ask.
+    const subjectFault = scoreSubject(withGap("subject_blocked")).result;
+    expect(subjectFault.assessment_completeness).toBe(1);
+    expect(subjectFault.harness_gaps).toHaveLength(0);
+    expect(subjectFault.signals.subject_blocked_checks).toBe(1);
+
+    const ourFault = scoreSubject(withGap("harness_capability_unhealthy")).result;
+    expect(ourFault.assessment_completeness).toBeLessThan(1);
+    expect(ourFault.harness_gaps).toHaveLength(1);
+    expect(ourFault.signals.harness_blocked_checks).toBe(1);
+  });
+
+  it("publishes the capability that blocked it, so the defect is actionable", () => {
+    const { result } = scoreSubject(withGap("harness_capability_unhealthy"));
+    expect(result.harness_gaps[0]).toEqual({
+      dimension: "tool_safety",
+      check: "sandbox_diff",
+      capability: "repo_sandbox",
+      detail: "testnet wallet out of funds",
+    });
+  });
+
+  it("does not change any score it computes, nor the inputs hash", () => {
+    // A gap is a statement about our run, not about the subject. It must not
+    // move a single number computed from the evidence, and two reproducers who
+    // differ only in what they were able to attempt must still agree on what
+    // they did measure.
+    const noGap = probedServer({
+      observations: probedServer().observations.filter((o) => o.dimension !== "tool_safety"),
+    });
+    const gap = withGap("harness_capability_missing");
+    const a = scoreSubject(noGap).result;
+    const b = scoreSubject(gap).result;
+    for (const id of ["availability", "protocol_conformance"]) {
+      expect(dim(b, id).score, id).toBe(dim(a, id).score);
+      expect(dim(b, id).n_eff, id).toBe(dim(a, id).n_eff);
+      expect(dim(b, id).confidence, id).toBe(dim(a, id).confidence);
+    }
+    expect(subjectInputsHash(gap)).toBe(subjectInputsHash(noGap));
+  });
+
+  it("withholds when the subject yielded nothing, publishes when we never asked", () => {
+    // The asymmetry this design deliberately creates, stated plainly because
+    // it is not obvious. Identical evidence, two runs:
+    //
+    //   no gap recorded  -> tool_safety was assessable and yielded nothing.
+    //                       That is information about the subject. Coverage is
+    //                       0.50 of the profile, under the 0.60 floor, withheld.
+    //   gap recorded     -> tool_safety was never assessable by us. Holding it
+    //                       against the subject would be publishing our own
+    //                       missing credential as their shortfall. Coverage is
+    //                       measured over the rest, clears the floor, published.
+    //
+    // The whole point of the gap field is to make these two cases distinguishable
+    // instead of identical-looking.
+    const noGap = probedServer({
+      observations: probedServer().observations.filter((o) => o.dimension !== "tool_safety"),
+    });
+    expect(scoreSubject(noGap).result.composite).toBeNull();
+    expect(scoreSubject(noGap).result.composite_suppression_reason).toMatch(/too little of the profile/);
+    expect(scoreSubject(withGap("harness_capability_missing")).result.composite).not.toBeNull();
+  });
+
+  it("still counts a dimension as assessed when evidence got through anyway", () => {
+    // One check blocked out of several does not make the dimension
+    // unassessable. Only a dimension with a gap AND no published score drops
+    // out of the denominator.
+    const partial = probedServer({
+      gaps: [
+        {
+          dimension: "tool_safety",
+          check: "sandbox_diff",
+          cause: "harness_capability_missing",
+          capability: "repo_sandbox",
+          detail: "no sandbox repo provisioned",
+        },
+      ],
+    });
+    const { result } = scoreSubject(partial);
+    expect(dim(result, "tool_safety").score).not.toBeNull();
+    expect(result.assessment_completeness).toBe(1);
+    // The gap is still reported, because it is still work for us.
+    expect(result.harness_gaps).toHaveLength(1);
+  });
+});

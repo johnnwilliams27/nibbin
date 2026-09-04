@@ -27,6 +27,8 @@ export {
   THRESHOLDS,
 } from "./assess.js";
 export { transcriptToSubject, transcriptsToSubject, repositoryOwner } from "./subject.js";
+export { classifyTool, classifyTools, requiredCapabilities, testability } from "./shape.js";
+export type { ToolShape, TargetBinding, ToolClassification } from "./shape.js";
 export type { BuildSubjectOptions, ProbeIdentity } from "./subject.js";
 export type {
   ProbeTranscript,
