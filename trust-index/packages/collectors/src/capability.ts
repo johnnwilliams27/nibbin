@@ -76,6 +76,19 @@ export const CAPABILITIES = {
    * of quietly scoring subjects on structure alone.
    */
   judge_model: "judge_model",
+  /**
+   * Per-vendor judge credentials.
+   *
+   * Split by vendor rather than kept as one `judge_model` because the panel's
+   * entire value is that its members come from different labs. A run missing
+   * the xAI key is not a slightly smaller panel; it is a two-vendor panel whose
+   * agreement means less than the three-vendor number it would be compared
+   * against. Naming each key separately makes that visible in the defect
+   * report instead of hiding it behind one satisfied capability.
+   */
+  judge_model_openai: "judge_model_openai",
+  judge_model_anthropic: "judge_model_anthropic",
+  judge_model_xai: "judge_model_xai",
 } as const;
 
 export type CapabilityHealth =

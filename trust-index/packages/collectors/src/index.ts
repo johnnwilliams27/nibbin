@@ -13,4 +13,12 @@ export * from "./net.js";
 export * from "./capability.js";
 export * from "./prior.js";
 export * as judge from "./judge/index.js";
+// Namespaced separately rather than re-exported from judge/index.js: provider
+// and panel both import JudgeError from it, and folding them back in would make
+// that a cycle.
+export * as judgeProvider from "./judge/provider.js";
+export * as judgePanel from "./judge/panel.js";
+export * as judgeMetrics from "./judge/metrics.js";
+export * as judgeCorpus from "./judge/corpus.js";
+export * as judgeMeta from "./judge/meta.js";
 export * as mcp from "./mcp/index.js";

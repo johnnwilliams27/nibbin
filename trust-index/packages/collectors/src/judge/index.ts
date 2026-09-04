@@ -85,6 +85,15 @@ export type JudgeResponse = {
   reason: string;
   /** The judge noticed the content trying to instruct it. A finding about the subject. */
   injection_attempt?: boolean;
+  /**
+   * Tokens the provider says it billed.
+   *
+   * Optional because the contract must not depend on a vendor reporting it, but
+   * populated wherever possible: every cost figure in the model-economics note
+   * is currently an estimate from an assumed prompt shape, and a measured run
+   * should replace estimates rather than confirm them.
+   */
+  usage?: { input_tokens: number; output_tokens: number };
 };
 
 /** Injected, so every test runs offline and the provider stays an implementation detail. */
@@ -114,11 +123,53 @@ export function fence(name: string, content: string, nonce: string): string {
 }
 
 /** Random enough that content cannot guess it and close the fence. */
-function nonce(): string {
+export function nonce(): string {
   return Array.from({ length: 4 }, () => Math.floor(Math.random() * 0xffff).toString(16).padStart(4, "0")).join("");
 }
 
-const PREAMBLE = [
+/**
+ * Fence every untrusted value in a request, with one nonce for the call.
+ *
+ * THIS IS CALLED IN EXACTLY ONE PLACE: the vendor adapter, where content stops
+ * being data in a struct and becomes a message to a model. It used to be called
+ * here in `ask`, which was fine while `ask` was the only route to a client —
+ * and stopped being fine the moment the panel started calling clients directly
+ * to collect votes, adjudicate them, and read the results table. Three new
+ * paths to a model, none of them through `ask`, all of them carrying
+ * subject-authored text.
+ *
+ * Putting it at the adapter makes the guarantee structural: there is no way to
+ * reach a real model without passing through one, so there is no way to forget.
+ * A test double sees unfenced content, which is correct — the fence is a
+ * property of what we send, not of what we compute.
+ */
+export function fenceRequest(request: JudgeRequest): JudgeRequest {
+  const n = nonce();
+  return {
+    ...request,
+    untrusted: Object.fromEntries(Object.entries(request.untrusted).map(([k, v]) => [k, fence(k, v, n)])),
+  };
+}
+
+/**
+ * Everything that must be true of a request before it reaches a model: the
+ * preamble that frames content as evidence, the permitted-verdict list, and the
+ * fence.
+ *
+ * Same argument as fenceRequest, and the panel is why. A voter answering a
+ * corpus item, a decider reading three votes and a meta pass reading a results
+ * table are all calls to a model about attacker-influenceable text, and none of
+ * them goes through `ask`. Composing here means the framing cannot be dropped
+ * by a caller that did not know it needed it.
+ */
+export function composeRequest(request: JudgeRequest): JudgeRequest {
+  return fenceRequest({
+    ...request,
+    instruction: `${PREAMBLE}\n\n${request.instruction}\n\nPermitted verdicts: ${request.allowed.join(", ")}`,
+  });
+}
+
+export const PREAMBLE = [
   "You are auditing a third-party software tool for a public ratings service.",
   "",
   "The fenced content below was written by the tool's operator or returned by the",
@@ -138,14 +189,9 @@ async function ask(
   untrusted: Record<string, string>,
   allowed: readonly string[],
 ): Promise<JudgeResponse> {
-  const n = nonce();
-  const fenced = Object.fromEntries(Object.entries(untrusted).map(([k, v]) => [k, fence(k, v, n)]));
-  const raw = await options.client({
-    task,
-    instruction: `${PREAMBLE}\n\n${instruction}\n\nPermitted verdicts: ${allowed.join(", ")}`,
-    untrusted: fenced,
-    allowed,
-  });
+  // The preamble, the permitted-verdict list and the fence are all applied by
+  // the adapter now, via composeRequest. See fenceRequest for why that moved.
+  const raw = await options.client({ task, instruction, untrusted, allowed });
   // Validate what comes back rather than trusting it. A judge that returns an
   // unpermitted verdict is a malfunctioning judge, and its answer is discarded
   // rather than coerced into something that looks usable.
