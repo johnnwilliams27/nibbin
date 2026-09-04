@@ -1,20 +1,25 @@
 /**
  * Run the grid.
  *
- * Three cheap models from three labs vote on every labelled item. Three premium
- * models each adjudicate the same votes, in both the cheap presentation (votes
- * only) and the expensive one (votes plus the original evidence). Each premium
- * model also answers alone, because if a solo model matches the panel then the
- * panel is theatre and we should say so. Finally a Claude model reads the
- * results table and recommends a structure, and we record whether it agreed
- * with the arithmetic.
+ * Two cheap models — one OpenAI, one Anthropic — vote on every labelled item.
+ * Two premium models each adjudicate the same votes, in both the cheap
+ * presentation (votes only) and the expensive one (votes plus the original
+ * evidence). Each premium model also answers alone, because if a solo model
+ * matches the panel then the panel is theatre and we should say so. Finally
+ * Claude Fable 5.1 reads the results table and recommends a structure, and we
+ * record whether it agreed with the arithmetic.
  *
  * Run: npx tsx scripts/run-panel.mts
- * Needs: OPENAI_API_KEY, ANTHROPIC_API_KEY, XAI_API_KEY
+ * Needs: OPENAI_API_KEY, ANTHROPIC_API_KEY
  *
- * It refuses to start on a partial roster. A two-vendor panel is not a smaller
- * version of this experiment; it is a different one whose agreement numbers
- * would be compared against three-vendor expectations and quietly mislead.
+ * WHAT TWO VOTERS CHANGES. With three, a dissenter loses and the panel still
+ * publishes. With two, every disagreement is a tie, so the no-decider baseline
+ * abstains on exactly the items the voters found hard — and rescue/breakage,
+ * which only count items where the voters agreed, cannot see the adjudicator's
+ * main job. That is why split_resolved / split_missed exist: on this shape they
+ * are the decider's real scorecard.
+ *
+ * It refuses to start on a partial roster.
  */
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
@@ -33,16 +38,18 @@ const OUT_DIR = join(ROOT, "runs");
  * stale constant compiled into the scorer would silently misreport every run.
  */
 const PRICES = priceSheet([
+  { modelId: "claude-fable-5-1", input: 10, output: 50 },
   { modelId: "claude-opus-5", input: 5, output: 25 },
   { modelId: "claude-haiku-4-5-20251001", input: 1, output: 5 },
   { modelId: "gpt-5", input: 1.25, output: 10 },
   { modelId: "gpt-5-mini", input: 0.25, output: 2 },
-  { modelId: "grok-4", input: 3, output: 15 },
-  { modelId: "grok-4-fast", input: 0.2, output: 0.5 },
 ]);
 
 const keys = keysFromEnv();
-const { ok, missing } = await validateModels(ROSTER, keys);
+// An org-scoped Anthropic key is rejected on every request until it names a
+// workspace; a workspace-scoped key ignores this entirely.
+const workspaceId = process.env.ANTHROPIC_WORKSPACE_ID;
+const { ok, missing } = await validateModels(ROSTER, keys, undefined, workspaceId);
 
 if (missing.length > 0) {
   console.error("PREFLIGHT FAILED. The run did not start.\n");
@@ -60,6 +67,9 @@ if (missing.length > 0) {
     for (const d of details) console.error(`    - ${d}`);
   }
   console.error(`\n${ok.length} of ${ROSTER.length} models reachable. A partial roster is a different experiment, not a smaller one.`);
+  if (missing.some((m) => m.detail.includes("workspace"))) {
+    console.error("\nThe Anthropic key is org-scoped. Set ANTHROPIC_WORKSPACE_ID, or use a workspace-scoped key.");
+  }
   process.exit(1);
 }
 
@@ -71,7 +81,7 @@ const corpus = JSON.parse(readFileSync(join(ROOT, "corpus", "response-classifica
 const items = loadCorpus(corpus, true);
 console.log(`corpus ${corpus.corpus_version}: ${items.length} labelled items\n`);
 
-const make = (vendor: Vendor, tier: "cheap" | "premium"): Member => {
+const make = (vendor: Vendor, tier: "cheap" | "premium" | "meta"): Member => {
   const choice = chooseModel(vendor, tier);
   const key = keys[vendor];
   if (key === undefined) throw new Error(`unreachable: ${vendor} passed preflight without a key`);
@@ -79,12 +89,17 @@ const make = (vendor: Vendor, tier: "cheap" | "premium"): Member => {
     vendor,
     tier,
     modelId: choice.id,
-    client: judgeFor(vendor, { apiKey: key, model: choice.id, baseUrl: VENDOR_CONFIG[vendor].baseUrl }),
+    client: judgeFor(vendor, {
+      apiKey: key,
+      model: choice.id,
+      baseUrl: VENDOR_CONFIG[vendor].baseUrl,
+      ...(workspaceId === undefined ? {} : { workspaceId }),
+    }),
   };
 };
 
-const voters = (["openai", "anthropic", "xai"] as const).map((v) => make(v, "cheap"));
-const deciders = (["openai", "anthropic", "xai"] as const).map((v) => make(v, "premium"));
+const voters = (["openai", "anthropic"] as const).map((v) => make(v, "cheap"));
+const deciders = (["openai", "anthropic"] as const).map((v) => make(v, "premium"));
 
 const run = await runPanel(items, {
   voters,
@@ -100,11 +115,15 @@ const metrics = scorePanel(run, items, PRICES);
 const ranking = rankStructures(metrics);
 
 // The meta pass. Its pick is explanatory; ranking.winner is authoritative.
-const metaModel = chooseModel("anthropic", "premium");
+const metaModel = chooseModel("anthropic", "meta");
 const recommendation = await recommendStructure(
   metrics,
   ranking,
-  judgeFor("anthropic", { apiKey: keys.anthropic!, model: metaModel.id }),
+  judgeFor("anthropic", {
+    apiKey: keys.anthropic!,
+    model: metaModel.id,
+    ...(workspaceId === undefined ? {} : { workspaceId }),
+  }),
   metaModel.id,
 );
 

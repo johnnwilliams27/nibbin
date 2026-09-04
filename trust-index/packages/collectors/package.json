@@ -15,8 +15,10 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.123.0",
     "@trust-index/scoring": "workspace:*",
-    "@trust-index/types": "workspace:*"
+    "@trust-index/types": "workspace:*",
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "tsx": "4.20.6",

@@ -32,11 +32,15 @@
  *    experiment while producing perfectly plausible numbers. `validateModels`
  *    lists what the account can actually reach and refuses to start otherwise.
  */
+import Anthropic from "@anthropic-ai/sdk";
+import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { z } from "zod";
 import type { JudgeClient, JudgeRequest, JudgeResponse } from "./index.js";
 import { JudgeError, composeRequest } from "./index.js";
 
-export type Vendor = "openai" | "anthropic" | "xai";
-export type Tier = "cheap" | "premium";
+export type Vendor = "openai" | "anthropic";
+/** `meta` is the single model that reads the deciders' results and recommends. */
+export type Tier = "cheap" | "premium" | "meta";
 
 /**
  * A model we intend to use, and whether anyone has confirmed it exists.
@@ -79,6 +83,13 @@ export const ROSTER: readonly ModelChoice[] = [
     note: "id from the claude-api skill",
   },
   {
+    vendor: "anthropic",
+    tier: "meta",
+    id: "claude-fable-5-1",
+    verified: true,
+    note: "reads the deciders' results; rejects forced tool use, hence structured outputs",
+  },
+  {
     vendor: "openai",
     tier: "cheap",
     id: "gpt-5-mini",
@@ -89,20 +100,6 @@ export const ROSTER: readonly ModelChoice[] = [
     vendor: "openai",
     tier: "premium",
     id: "gpt-5",
-    verified: false,
-    note: "CONFIRM against /v1/models before the run counts",
-  },
-  {
-    vendor: "xai",
-    tier: "cheap",
-    id: "grok-4-fast",
-    verified: false,
-    note: "CONFIRM against /v1/models before the run counts",
-  },
-  {
-    vendor: "xai",
-    tier: "premium",
-    id: "grok-4",
     verified: false,
     note: "CONFIRM against /v1/models before the run counts",
   },
@@ -127,12 +124,6 @@ export const VENDOR_CONFIG: Record<Vendor, { envVar: string; baseUrl: string; ca
     baseUrl: "https://api.anthropic.com/v1",
     capability: "judge_model_anthropic",
     provisioning: "Anthropic Console account with an API key in ANTHROPIC_API_KEY (a host-managed CLI session is not a usable key)",
-  },
-  xai: {
-    envVar: "XAI_API_KEY",
-    baseUrl: "https://api.x.ai/v1",
-    capability: "judge_model_xai",
-    provisioning: "xAI console account with an API key in XAI_API_KEY, billing enabled",
   },
 };
 
@@ -180,6 +171,16 @@ export type AdapterOptions = {
   /** Cheap models are the ones most likely to ramble; the cap is a backstop, not the control. */
   maxTokens?: number;
   timeoutMs?: number;
+  /**
+   * Anthropic only, and only for an ORG-SCOPED key.
+   *
+   * A key created at the organization level rather than inside a workspace is
+   * rejected on every request — models listing included — until the request
+   * names a workspace. The error is a 400 that reads like a malformed request,
+   * so it is worth saying plainly: this is an account-shape problem, not a bug
+   * in the call. A workspace-scoped key needs none of this.
+   */
+  workspaceId?: string;
 };
 
 async function postJson(
@@ -290,45 +291,68 @@ export function openAiJudge(options: AdapterOptions): JudgeClient {
   return openAiCompatible("openai", options);
 }
 
-export function xaiJudge(options: AdapterOptions): JudgeClient {
-  return openAiCompatible("xai", options);
-}
-
 /**
- * Anthropic has no json_schema response format, so structure is forced the
- * other available way: a single tool the model is required to call. Equivalent
- * guarantee, different mechanism.
+ * Anthropic, through the official SDK, using STRUCTURED OUTPUTS.
+ *
+ * The first version of this forced a tool call — `tool_choice: {type: "tool"}`
+ * — which is the usual way to guarantee a shape. It would have returned a 400
+ * on every single meta-pass call, because Claude Fable 5.1 rejects forced tool
+ * use (`any` and `tool` both), and Fable is the model reading the deciders'
+ * results. The failure would have arrived only at the last step of a paid run.
+ *
+ * `output_config.format` is the right mechanism anyway: the forced tool call
+ * only ever existed to get JSON back, which is exactly the case the docs point
+ * at structured outputs for. It works uniformly across Haiku, Opus and Fable,
+ * so all three Anthropic legs share one code path.
+ *
+ * The schema is built per call, because the permitted verdicts differ per task
+ * and the enum is what makes an out-of-vocabulary answer impossible rather than
+ * merely unlikely.
  */
 export function anthropicJudge(options: AdapterOptions): JudgeClient {
-  const base = options.baseUrl ?? VENDOR_CONFIG.anthropic.baseUrl;
+  const client = new Anthropic({
+    apiKey: options.apiKey,
+    ...(options.baseUrl === undefined ? {} : { baseURL: options.baseUrl.replace(/\/v1$/, "") }),
+    ...(options.timeoutMs === undefined ? {} : { timeout: options.timeoutMs }),
+    ...(options.workspaceId === undefined
+      ? {}
+      : { defaultHeaders: { "anthropic-workspace-id": options.workspaceId } }),
+  });
   return async (req: JudgeRequest): Promise<JudgeResponse> => {
     const { system, user } = messages(req);
-    const body = {
+    const allowed = req.allowed;
+    if (allowed.length === 0) throw new JudgeError("no permitted verdicts");
+    const schema = z.object({
+      verdict: z.enum(allowed as [string, ...string[]]),
+      reason: z.string(),
+      injection_attempt: z.boolean(),
+    });
+
+    // No `thinking` parameter: Fable has it always on and rejects any explicit
+    // configuration, and the other two default sensibly. No sampling params
+    // either — removed on this whole generation.
+    //
+    // Deliberately NO refusal `fallbacks`, against the SDK guide's default. A
+    // fallback silently re-runs the request on a different model, and this
+    // harness exists to attribute a verdict to the model that produced it.
+    // Rescuing a refusal by substituting another model would put one model's
+    // answer under another's name in the results table. A refusal is recorded
+    // as a harness failure instead, which is the honest outcome.
+    const res = await client.messages.parse({
       model: options.model,
-      max_tokens: options.maxTokens ?? 512,
+      max_tokens: options.maxTokens ?? 2048,
       system,
       messages: [{ role: "user", content: user }],
-      tools: [
-        {
-          name: "verdict",
-          description: "Record your verdict. This is the only way to answer.",
-          input_schema: verdictSchema(req.allowed),
-        },
-      ],
-      tool_choice: { type: "tool", name: "verdict" },
-    };
-    const res = (await postJson(
-      `${base}/messages`,
-      { "x-api-key": options.apiKey, "anthropic-version": "2023-06-01" },
-      body,
-      options,
-    )) as {
-      content?: { type?: string; name?: string; input?: unknown }[];
-      usage?: { input_tokens?: number; output_tokens?: number };
-    };
-    const block = res.content?.find((c) => c.type === "tool_use" && c.name === "verdict");
-    if (block === undefined) throw new JudgeError("anthropic returned no verdict tool call");
-    return parseVerdict(block.input, req.allowed, {
+      output_config: { format: zodOutputFormat(schema) },
+    });
+
+    if (res.stop_reason === "refusal") {
+      throw new JudgeError(`anthropic declined: ${res.stop_details?.category ?? "unspecified"}`);
+    }
+    if (res.parsed_output === null || res.parsed_output === undefined) {
+      throw new JudgeError("anthropic returned no parseable structured output");
+    }
+    return parseVerdict(res.parsed_output, req.allowed, {
       input_tokens: num(res.usage?.input_tokens),
       output_tokens: num(res.usage?.output_tokens),
     });
@@ -336,9 +360,7 @@ export function anthropicJudge(options: AdapterOptions): JudgeClient {
 }
 
 export function judgeFor(vendor: Vendor, options: AdapterOptions): JudgeClient {
-  if (vendor === "openai") return openAiJudge(options);
-  if (vendor === "xai") return xaiJudge(options);
-  return anthropicJudge(options);
+  return vendor === "openai" ? openAiJudge(options) : anthropicJudge(options);
 }
 
 /**
@@ -352,6 +374,7 @@ export async function validateModels(
   wanted: readonly ModelChoice[],
   keys: Partial<Record<Vendor, string>>,
   fetchImpl?: FetchLike,
+  workspaceId?: string,
 ): Promise<{ ok: ModelChoice[]; missing: { choice: ModelChoice; detail: string }[] }> {
   const byVendor = new Map<Vendor, Set<string>>();
   const failures = new Map<Vendor, string>();
@@ -363,7 +386,11 @@ export async function validateModels(
     }
     const headers: Record<string, string> =
       vendor === "anthropic"
-        ? { "x-api-key": key, "anthropic-version": "2023-06-01" }
+        ? {
+            "x-api-key": key,
+            "anthropic-version": "2023-06-01",
+            ...(workspaceId === undefined ? {} : { "anthropic-workspace-id": workspaceId }),
+          }
         : { authorization: `Bearer ${key}` };
     try {
       const f = fetchImpl ?? fetch;

@@ -126,7 +126,9 @@ export function renderMetrics(metrics: PanelMetrics, ranking: Ranking): string {
   for (const b of metrics.decider_behaviour) {
     lines.push(
       `${b.vendor}/${b.mode}: rescued=${b.rescued} missed=${b.missed} broke=${b.broke} held=${b.held} ` +
+        `split_resolved=${b.split_resolved} split_missed=${b.split_missed} ` +
         `rescue_rate=${b.rescue_rate?.toFixed(3) ?? "n/a"} breakage_rate=${b.breakage_rate?.toFixed(3) ?? "n/a"} ` +
+        `split_resolution_rate=${b.split_resolution_rate?.toFixed(3) ?? "n/a"} ` +
         `self_preference=${b.self_preference?.toFixed(3) ?? "n/a"} (n=${b.sibling_wrong_others_right})`,
     );
   }

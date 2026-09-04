@@ -183,7 +183,12 @@ export async function runVoters(item: PanelItem, voters: readonly Member[]): Pro
     item_id: item.id,
     votes: results,
     assignment,
-    majority: majorityOf(good.map((g) => g.verdict)),
+    // A lone surviving vote is not a majority. With three voters one failure
+    // still leaves a real two-to-nothing agreement; with two, it leaves one
+    // model talking to itself — and reporting that as the panel's verdict would
+    // silently downgrade the item to "solo cheap model" while still counting it
+    // as a panel result. Below two usable votes the panel abstains.
+    majority: good.length < 2 ? null : majorityOf(good.map((g) => g.verdict)),
     unanimous: good.length === results.length && new Set(good.map((g) => g.verdict)).size === 1,
     usable: good.length,
   };
@@ -218,13 +223,17 @@ export type DeciderVerdict = {
  * two apart in the results.
  */
 function renderVotes(record: VoteRecord): string {
-  return SLOTS.map((slot) => {
-    const idx = record.assignment[slot];
-    const vote = idx === undefined ? undefined : record.votes[idx];
-    if (vote === undefined) return `Judge ${slot}: (no vote)`;
-    if (!vote.ok) return `Judge ${slot}: (failed to answer)`;
-    return `Judge ${slot}: ${vote.verdict} — ${vote.reason}`;
-  }).join("\n");
+  // Only slots that were actually assigned. Printing "Judge C: (no vote)" on a
+  // two-voter panel would tell the decider the panel is smaller than it looks,
+  // which is a signal about our setup rather than about the evidence.
+  return SLOTS.filter((slot) => record.assignment[slot] !== undefined)
+    .map((slot) => {
+      const vote = record.votes[record.assignment[slot]!];
+      if (vote === undefined) return `Judge ${slot}: (no vote)`;
+      if (!vote.ok) return `Judge ${slot}: (failed to answer)`;
+      return `Judge ${slot}: ${vote.verdict} — ${vote.reason}`;
+    })
+    .join("\n");
 }
 
 /**
@@ -335,8 +344,8 @@ export type RunOptions = {
  * "declining to answer" if anyone read the results carelessly.
  */
 export async function runPanel(items: readonly PanelItem[], options: RunOptions): Promise<PanelRun> {
-  if (options.voters.length !== 3) {
-    throw new JudgeError(`the panel is specified as three voters; got ${options.voters.length}`);
+  if (options.voters.length < 2 || options.voters.length > SLOTS.length) {
+    throw new JudgeError(`the panel takes 2 or ${SLOTS.length} voters; got ${options.voters.length}`);
   }
   const modes = options.modes ?? (["votes_and_evidence"] as const);
   const started = new Date().toISOString();

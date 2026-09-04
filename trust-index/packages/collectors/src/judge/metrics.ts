@@ -93,6 +93,18 @@ export type DeciderBehaviour = {
   held: number;
   rescue_rate: number | null;
   breakage_rate: number | null;
+  /**
+   * Voters split (no majority), decider got it right.
+   *
+   * On a two-voter panel this is where the decider does most of its work, and
+   * rescue/breakage cannot see it: those only count items where the voters
+   * agreed. Without this pair, a two-model panel's adjudicator would be judged
+   * entirely on the minority of items it was least needed for.
+   */
+  split_resolved: number;
+  /** Voters split, decider got it wrong. */
+  split_missed: number;
+  split_resolution_rate: number | null;
   /** Items where its own lab's voter was wrong and at least one other was right. */
   sibling_wrong_others_right: number;
   /** ...and it followed the sibling anyway. */
@@ -376,6 +388,8 @@ export function scorePanel(
     let missed = 0;
     let broke = 0;
     let held = 0;
+    let splitResolved = 0;
+    let splitMissed = 0;
     let siblingCases = 0;
     let followedSibling = 0;
     const recordById = new Map(run.records.map((r) => [r.item_id, r]));
@@ -391,15 +405,15 @@ export function scorePanel(
 
       const record = recordById.get(d.item_id);
       if (record === undefined) continue;
-      const majorityRight = record.majority !== null && record.majority === label;
-      if (record.majority !== null) {
-        if (majorityRight) {
-          if (hit) held += 1;
-          else broke += 1;
-        } else {
-          if (hit) rescued += 1;
-          else missed += 1;
-        }
+      if (record.majority === null) {
+        if (hit) splitResolved += 1;
+        else splitMissed += 1;
+      } else if (record.majority === label) {
+        if (hit) held += 1;
+        else broke += 1;
+      } else {
+        if (hit) rescued += 1;
+        else missed += 1;
       }
 
       const sibling = voteOf(record, d.vendor);
@@ -438,6 +452,10 @@ export function scorePanel(
       held,
       rescue_rate: rescued + missed === 0 ? null : rescued / (rescued + missed),
       breakage_rate: broke + held === 0 ? null : broke / (broke + held),
+      split_resolved: splitResolved,
+      split_missed: splitMissed,
+      split_resolution_rate:
+        splitResolved + splitMissed === 0 ? null : splitResolved / (splitResolved + splitMissed),
       sibling_wrong_others_right: siblingCases,
       followed_wrong_sibling: followedSibling,
       self_preference: siblingCases === 0 ? null : followedSibling / siblingCases,
