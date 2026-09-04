@@ -109,8 +109,28 @@ async function phaseClassify(entries: RegistryEntry[]): Promise<void> {
     return;
   }
   const limit = Number(arg("--limit", "200"));
-  const sample = entries.slice(0, limit);
-  console.log(`\nPhase 2: reading declarations from ${sample.length} servers. No tool is called.\n`);
+  const perHostCap = Number(arg("--per-host", "5"));
+  const concurrency = Number(arg("--concurrency", "6"));
+
+  // Sample capped per host. A uniform draw would spend 16 percent of the
+  // sample on two gateways whose servers share a template, which tests the
+  // classifier against one thing repeatedly instead of against the variety it
+  // will actually meet. Deterministic order so the run is reproducible.
+  const perHost = new Map<string, number>();
+  const sample: RegistryEntry[] = [];
+  for (const e of entries) {
+    if (sample.length >= limit) break;
+    if (e.status === "deprecated") continue;
+    const h = hostOf(e.remotes[0]!.url);
+    const n = perHost.get(h) ?? 0;
+    if (n >= perHostCap) continue;
+    perHost.set(h, n + 1);
+    sample.push(e);
+  }
+  console.log(
+    `\nPhase 2: reading declarations from ${sample.length} servers across ${perHost.size} hosts.\n` +
+      `No tool is called. Handshake and tools/list only.\n`,
+  );
 
   const perCapability = new Map<CapabilityId, Set<string>>();
   let reachable = 0;
@@ -121,29 +141,78 @@ async function phaseClassify(entries: RegistryEntry[]): Promise<void> {
   let contradictions = 0;
   let serversFullyTestable = 0;
 
-  for (const e of sample) {
-    const endpoint = e.remotes[0]!.url;
-    const t = await probeMcpServer(endpoint, e.facts, { attempts: 1, timeoutMs: 10_000 });
-    if (t.attempts.some((a) => a.reachable)) reachable += 1;
-    if (t.tools?.ok !== true) continue;
-    listedTools += 1;
-    totalTools += t.tools.declared.length;
+  const failureReasons = new Map<string, number>();
+  const contradictionKinds = new Map<string, number>();
+  const annotationsSeen = { any: 0, readOnly: 0, destructive: 0 };
+  const withOutputSchema = { tools: 0 };
+  const transcripts: Array<{ name: string; endpoint: string; tools: number }> = [];
+  let done = 0;
 
-    const classified = classifyTools(t.tools.declared);
-    for (const c of classified) {
-      shapeCounts.set(c.shape, (shapeCounts.get(c.shape) ?? 0) + 1);
-      bindingCounts.set(c.binding.kind, (bindingCounts.get(c.binding.kind) ?? 0) + 1);
-      contradictions += c.contradictions.length;
+  let cursor = 0;
+  const workers = Array.from({ length: concurrency }, async () => {
+    for (;;) {
+      const i = cursor++;
+      if (i >= sample.length) return;
+      const e = sample[i]!;
+      const endpoint = e.remotes[0]!.url;
+      // Spaced, so 200 servers is a trickle rather than a burst.
+      await new Promise((r) => setTimeout(r, 250));
+      const t = await probeMcpServer(endpoint, e.facts, { attempts: 1, timeoutMs: 8000 });
+      done += 1;
+      if (done % 25 === 0) console.error(`  ...${done}/${sample.length}`);
+
+      const ok = t.attempts.some((a) => a.reachable);
+      if (ok) reachable += 1;
+      else {
+        const why = (t.attempts[0]?.reason ?? "unknown").slice(0, 48);
+        failureReasons.set(why, (failureReasons.get(why) ?? 0) + 1);
+        continue;
+      }
+      if (t.handshake?.ok !== true) {
+        const why = `handshake: ${(t.handshake?.reason ?? "unknown").slice(0, 40)}`;
+        failureReasons.set(why, (failureReasons.get(why) ?? 0) + 1);
+        continue;
+      }
+      if (t.tools?.ok !== true) {
+        const why = `tools/list: ${(t.tools?.reason ?? "unknown").slice(0, 40)}`;
+        failureReasons.set(why, (failureReasons.get(why) ?? 0) + 1);
+        continue;
+      }
+      listedTools += 1;
+      totalTools += t.tools.declared.length;
+      transcripts.push({ name: e.facts.name, endpoint, tools: t.tools.declared.length });
+
+      for (const d of t.tools.declared) {
+        if (d.outputSchema !== null && d.outputSchema !== undefined) withOutputSchema.tools += 1;
+        const a = d.annotations as Record<string, unknown> | null;
+        if (a !== null && typeof a === "object") {
+          annotationsSeen.any += 1;
+          if (a.readOnlyHint === true) annotationsSeen.readOnly += 1;
+          if (a.destructiveHint === true) annotationsSeen.destructive += 1;
+        }
+      }
+
+      const classified = classifyTools(t.tools.declared);
+      for (const c of classified) {
+        shapeCounts.set(c.shape, (shapeCounts.get(c.shape) ?? 0) + 1);
+        bindingCounts.set(c.binding.kind, (bindingCounts.get(c.binding.kind) ?? 0) + 1);
+        contradictions += c.contradictions.length;
+        for (const k of c.contradictions) {
+          const kind = k.split("(")[0]!.trim().slice(0, 60);
+          contradictionKinds.set(kind, (contradictionKinds.get(kind) ?? 0) + 1);
+        }
+      }
+      const need = requiredCapabilities(classified);
+      for (const cap of need) {
+        const set = perCapability.get(cap) ?? new Set<string>();
+        set.add(e.facts.name);
+        perCapability.set(cap, set);
+      }
+      const score = testability(classified, HELD);
+      if (score.blocked === 0) serversFullyTestable += 1;
     }
-    const need = requiredCapabilities(classified);
-    for (const cap of need) {
-      const set = perCapability.get(cap) ?? new Set<string>();
-      set.add(e.facts.name);
-      perCapability.set(cap, set);
-    }
-    const score = testability(classified, HELD);
-    if (score.blocked === 0) serversFullyTestable += 1;
-  }
+  });
+  await Promise.all(workers);
 
   console.log(`reachable:            ${reachable} of ${sample.length}`);
   console.log(`listed their tools:   ${listedTools}`);
@@ -158,6 +227,30 @@ async function phaseClassify(entries: RegistryEntry[]): Promise<void> {
   console.log(`\n| Target binding | Tools |`);
   console.log("|---|---|");
   for (const [b, n] of [...bindingCounts].sort((a, b) => b[1] - a[1])) console.log(`| ${b} | ${n} |`);
+
+  console.log(`\n| Annotations and schemas | Tools |`);
+  console.log("|---|---|");
+  console.log(`| carry any annotations | ${annotationsSeen.any} of ${totalTools} |`);
+  console.log(`| declare readOnlyHint true | ${annotationsSeen.readOnly} |`);
+  console.log(`| declare destructiveHint true | ${annotationsSeen.destructive} |`);
+  console.log(`| declare an outputSchema | ${withOutputSchema.tools} |`);
+
+  if (contradictionKinds.size > 0) {
+    console.log(`\n| Declaration contradiction | Tools |`);
+    console.log("|---|---|");
+    for (const [k, n] of [...contradictionKinds].sort((a, b) => b[1] - a[1])) console.log(`| ${k} | ${n} |`);
+  }
+
+  console.log(`\nTop failure reasons:`);
+  for (const [r, n] of [...failureReasons].sort((a, b) => b[1] - a[1]).slice(0, 12)) {
+    console.log(`  ${String(n).padStart(4)}  ${r}`);
+  }
+
+  const toolCounts = transcripts.map((t) => t.tools).sort((a, b) => a - b);
+  if (toolCounts.length > 0) {
+    const at = (p: number) => toolCounts[Math.min(toolCounts.length - 1, Math.floor(toolCounts.length * p))];
+    console.log(`\nTools per server: p25 ${at(0.25)}  p50 ${at(0.5)}  p75 ${at(0.75)}  p90 ${at(0.9)}  max ${toolCounts[toolCounts.length - 1]}`);
+  }
 
   console.log(`\nProvisioning queue, ranked by servers unlocked:`);
   console.log(`\n| Capability | Servers it would unlock |`);
