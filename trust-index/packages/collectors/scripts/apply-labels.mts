@@ -1,27 +1,48 @@
 /**
- * Apply a hand-assigned labelling to a corpus file.
+ * Apply a hand-assigned labelling to the response corpus.
  *
- * The labels below were assigned by reading each stored response in full and
- * deciding what it is. Two things about them must be stated plainly rather than
- * buried, because both bound what the experiment can conclude.
+ * Assigned by reading each stored response — WHOLE, this time — and deciding
+ * what the tool did, under the tightened rubric in corpus.ts. The single
+ * question is: did the tool run and reach a considered position, or did it
+ * break?
  *
- * FIRST: THESE LABELS WERE DRAFTED BY A CLAUDE MODEL, AND CLAUDE MODELS ARE
- * UNDER TEST. That is a conflict. If the ground truth reflects one family's
- * reading of a borderline case, that family scores well on its own opinion.
- * Most items here are not borderline — "is this payload a stack trace" is not a
- * matter of taste — but "most" is not "all", and the mitigation is a human
- * review pass over a random sample before any result is trusted. Until that
- * review happens the Claude leg of the grid is provisional and should be read
- * as such.
+ * THE CONFLICT, RESTATED BECAUSE IT HAS NOT GONE AWAY. These labels were
+ * drafted by a Claude model and Claude models are under test. Most items are
+ * not close calls — an asyncpg stack trace in a payload is not a matter of
+ * taste — but "most" is not "all". The mitigation is a human review pass over a
+ * random sample, and until it happens the Claude leg is provisional.
  *
- * SECOND: THE CORPUS CONTAINS NO CONFIRMED INVENTIONS. Every stored response is
- * an answer, a refusal or an error. Invention is the class this whole judge
- * exists to catch — a tool returning confident content for a query that cannot
- * have one — and a corpus with zero of them cannot measure whether any model
- * detects it. The 300-character storage limit is part of why: an invention is
- * usually recognisable only from the body of a response, not its first lines.
- * Both are fixed by the same thing, full-text capture on a targeted re-probe,
- * and until then the accuracy numbers cover three classes out of four.
+ * WHAT CHANGED FROM THE FIRST LABELLING, and why every label was reassigned
+ * rather than carried forward:
+ *
+ * 1. The responses are whole now. The first corpus stored 300-character
+ *    excerpts, and 45% of the clipped items were scored wrong against 13% of
+ *    the whole ones. Labels assigned on fragments were labels about fragments.
+ * 2. The rubric moved. "I need more input" is now a refusal and "your input was
+ *    invalid" an error, a boundary the old wording left undecidable and five
+ *    disagreements landed on. Carrying old labels forward would re-import the
+ *    ambiguity the rewrite removed.
+ *
+ * THE HARD CASES, recorded so a reviewer can disagree with the reasoning rather
+ * than just the answer:
+ *
+ * - #37 ephemeris returns {"error": "provide a location..."}. Keyed as an
+ *   error, but it is a request for missing input, so: refusal. The rubric turns
+ *   on what the tool did, not on which key it used.
+ * - #84 parse_dmarc_report returns "IntoDNS.ai API error: 400 Bad Request -
+ *   Provide an XML report". Also asks for input, but an upstream HTTP 400 means
+ *   the call did not complete: error.
+ * - #105, #109 need a credential or configuration they were not given. The tool
+ *   could not do the work: error, not refusal.
+ * - #113 describe_metric returns {"error": "unknown_metric"}. That is a
+ *   not-found, which is a refusal, whatever the key is called.
+ * - #86 advisors_store_readiness_check returns ok:false, "target_rejected". It
+ *   ran and declined the target: refusal.
+ * - #67, #93, #99 return negative findings as results — invalid document,
+ *   insufficient evidence. A validator reporting a failure has answered.
+ * - #45 check_availability reports a nonsense domain is available, which is
+ *   TRUE and therefore an answer. An earlier fabrication probe called this
+ *   class an invention seven times out of eight.
  *
  * Run: npx tsx scripts/apply-labels.mts
  */
@@ -32,60 +53,21 @@ import type { CorpusFile } from "../src/judge/corpus.js";
 const path = join(import.meta.dirname, "..", "corpus", "response-classification.json");
 const corpus = JSON.parse(readFileSync(path, "utf8")) as CorpusFile;
 
-/**
- * Labels by position in the built corpus, with the reading behind each class.
- *
- * error    - the tool failed, whether the failure is an MCP protocol error, an
- *            HTTP status, a validation rejection, or a stack trace in the
- *            payload. Input-validation rejections count here: they are reported
- *            as errors and a caller has to handle them as errors.
- * refusal  - the tool worked and declined: an empty result set, "no match",
- *            "nothing published", or a request for input it needs.
- * answer   - substantive content responding to the call, including a negative
- *            finding delivered as a result (a validator reporting an invalid
- *            document has answered the question it was asked).
- *
- * The domain-availability tool is the case worth stating explicitly. Asked
- * about a nonsense string it reports the domain is available, and that is
- * CORRECT — a nonsense domain genuinely is unregistered. An earlier fabrication
- * probe read exactly this as an invention. It is an answer.
- */
-const LABELS: Record<number, string> = {
-  0: "answer",
-  1: "error", 2: "error", 3: "error", 4: "error", 5: "error", 6: "error",
-  7: "error", 8: "error", 9: "error", 10: "error",
-  11: "refusal", 12: "refusal",
-  13: "answer", 14: "answer", 15: "answer",
-  16: "error",
-  17: "answer", 18: "answer",
-  19: "error", 20: "error", 21: "error", 22: "error",
-  23: "answer", 24: "answer", 25: "answer",
-  26: "refusal", 27: "refusal", 28: "refusal",
-  29: "answer", 30: "answer", 31: "answer", 32: "answer", 33: "answer",
-  34: "answer", 35: "answer", 36: "answer",
-  37: "refusal", 38: "refusal", 39: "refusal",
-  40: "error", 41: "error",
-  42: "answer",
-  43: "refusal", 44: "refusal", 45: "refusal", 46: "refusal", 47: "refusal", 48: "refusal",
-  49: "error",
-  50: "answer", 51: "answer",
-  52: "refusal",
-  53: "answer", 54: "answer",
-  55: "error", 56: "error", 57: "error",
-  58: "answer",
-  59: "error",
-  60: "answer",
-  61: "refusal",
-  62: "error",
-  63: "answer", 64: "answer", 65: "answer", 66: "answer", 67: "answer",
-  68: "answer", 69: "answer", 70: "answer", 71: "answer", 72: "answer",
-  73: "refusal", 74: "refusal",
-  75: "answer", 76: "answer", 77: "answer",
-  78: "error", 79: "error",
-  80: "answer", 81: "answer", 82: "answer",
-  83: "refusal",
-  84: "answer",
-};
+const ERROR = [
+  0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 18, 19, 20, 21, 25, 26, 27, 28, 32, 52, 53, 61, 73, 78, 80, 81,
+  82, 84, 87, 104, 105, 108, 109, 112, 115,
+];
+const REFUSAL = [
+  10, 11, 29, 30, 31, 34, 35, 36, 37, 38, 39, 40, 49, 50, 51, 55, 56, 57, 58, 59, 60, 68, 70, 71, 72,
+  74, 75, 76, 77, 86, 97, 98, 102, 103, 113, 114, 117,
+];
+
+const LABELS: Record<number, string> = {};
+for (const i of ERROR) LABELS[i] = "error";
+for (const i of REFUSAL) LABELS[i] = "refusal";
+// Everything else ran and produced substantive content, including negative
+// findings delivered as results.
+for (let i = 0; i < corpus.items.length; i += 1) LABELS[i] ??= "answer";
 
 let applied = 0;
 corpus.items.forEach((item, i) => {
@@ -93,22 +75,19 @@ corpus.items.forEach((item, i) => {
   if (label === undefined) return;
   if (!item.request.allowed.includes(label)) throw new Error(`item ${i}: ${label} is not a permitted verdict`);
   item.label = label;
-  item.label_note = "drafted from the stored response; pending human review (see apply-labels.mts header)";
+  item.label_note = "drafted from the whole stored response under the tightened rubric; pending human review";
   applied += 1;
 });
 
 const counts: Record<string, number> = {};
 for (const item of corpus.items) counts[item.label ?? "(unlabelled)"] = (counts[item.label ?? "(unlabelled)"] ?? 0) + 1;
-corpus.summary = Object.fromEntries(
-  Object.entries(counts).map(([k, v]) => [`response_classification/${k}`, v]),
-);
+corpus.summary = Object.fromEntries(Object.entries(counts).map(([k, v]) => [`response_classification/${k}`, v]));
 corpus.summary.response_classification = corpus.items.length;
 
 writeFileSync(path, `${JSON.stringify(corpus, null, 2)}\n`);
 console.log(`labelled ${applied} of ${corpus.items.length} items`);
 for (const [k, v] of Object.entries(counts).sort()) console.log(`  ${k}: ${v}`);
 console.log("");
-console.log("LIMITS OF THIS CORPUS:");
-console.log("  - no confirmed 'invention' items; that class is unmeasured");
-console.log("  - responses stored as 300-character samples");
+console.log("REMAINING LIMITS:");
+console.log("  - still no confirmed 'invention' items; that class stays unmeasured");
 console.log("  - labels drafted by a Claude model while Claude models are under test");
