@@ -62,8 +62,20 @@ const DELIVERY_ABI = [
   },
 ] as const;
 
+type LogRow = { topics: string[]; data: string; blockNumber: string };
+type JsonRpcReply = { result?: unknown; error?: { message?: string } };
+type CachedLog = {
+  address: string;
+  topics: string[];
+  data: string;
+  blockNumber: string;
+  blockHash: string;
+  transactionHash: string;
+  logIndex: string;
+};
+
 let turn = 0;
-async function rpc(body: unknown): Promise<any> {
+async function rpc(body: unknown): Promise<JsonRpcReply> {
   let last = "";
   for (let a = 0; a < 4; a += 1) {
     const endpoint = RPCS[turn % RPCS.length]!;
@@ -77,8 +89,8 @@ async function rpc(body: unknown): Promise<any> {
         signal: AbortSignal.timeout(15_000),
       });
       if (res.status === 429 || res.status >= 500) throw new Error(`http ${res.status}`);
-      const j = await res.json();
-      if (!Array.isArray(j) && j?.error?.message?.includes("rate limit")) throw new Error("rate limit");
+      const j = (await res.json()) as JsonRpcReply;
+      if (j.error?.message?.includes("rate limit") === true) throw new Error("rate limit");
       return j;
     } catch (err) {
       last = err instanceof Error ? err.message : String(err);
@@ -89,13 +101,13 @@ async function rpc(body: unknown): Promise<any> {
   throw new Error(`rpc failed: ${last}`);
 }
 
-async function scan(topic: string, from: number, to: number): Promise<any[]> {
-  const out: any[] = [];
+async function scan(topic: string, from: number, to: number): Promise<LogRow[]> {
+  const out: LogRow[] = [];
   let cursor = from;
   let span = 9000;
   while (cursor <= to) {
     const end = Math.min(cursor + span - 1, to);
-    let j: any;
+    let j: JsonRpcReply;
     try {
       j = await rpc({
         jsonrpc: "2.0",
@@ -110,14 +122,14 @@ async function scan(topic: string, from: number, to: number): Promise<any[]> {
       span = Math.floor(span / 2);
       continue;
     }
-    out.push(...(j.result ?? []));
+    out.push(...((j.result ?? []) as LogRow[]));
     cursor = end + 1;
   }
   return out;
 }
 
 async function main(): Promise<void> {
-  const head = Number((await rpc({ jsonrpc: "2.0", id: 1, method: "eth_blockNumber", params: [] })).result);
+  const head = Number((await rpc({ jsonrpc: "2.0", id: 1, method: "eth_blockNumber", params: [] })).result as string);
   // The marketplace predates the registry, but mechs created before it are
   // still the ones delivering now, so the mech roster is scanned from well
   // before the registry deployment.
@@ -142,7 +154,12 @@ async function main(): Promise<void> {
   const perMech = new Map<string, { delivered: number; failed: number }>();
   for (const l of deliveries) {
     try {
-      const d = decodeEventLog({ abi: DELIVERY_ABI, data: l.data, topics: l.topics, eventName: "MarketplaceDelivery" });
+      const d = decodeEventLog({
+        abi: DELIVERY_ABI,
+        data: l.data as `0x${string}`,
+        topics: l.topics as [`0x${string}`, ...`0x${string}`[]],
+        eventName: "MarketplaceDelivery",
+      });
       const a = d.args as unknown as { deliveryMech: string; deliveredRequests: readonly boolean[] };
       const mech = a.deliveryMech.toLowerCase();
       const rec = perMech.get(mech) ?? { delivered: 0, failed: 0 };
@@ -174,7 +191,7 @@ async function main(): Promise<void> {
   });
   for await (const line of reader) {
     if (line.length === 0) continue;
-    const c = JSON.parse(line) as any;
+    const c = JSON.parse(line) as CachedLog;
     if (c.address.toLowerCase() !== IDENTITY) continue;
     const d = decodeIdentityLog({
       address: c.address,
@@ -205,13 +222,14 @@ async function main(): Promise<void> {
     );
   } else {
     console.log(`Sample joinable ids: ${overlap.slice(0, 15).join(", ")}`);
-    let labelled = 0;
+    const labelled: string[] = [];
     for (const [agentId, olasId] of olasAgents) {
       if (!serviceSet.has(olasId)) continue;
       const mech = [...mechToService].find(([, sid]) => sid === olasId)?.[0];
-      if (mech !== undefined && perMech.has(mech)) labelled += 1;
+      if (mech !== undefined && perMech.has(mech)) labelled.push(agentId);
     }
-    console.log(`ERC-8004 agents with retrievable delivery outcomes: ${labelled}`);
+    console.log(`ERC-8004 agents with retrievable delivery outcomes: ${labelled.length}`);
+    if (labelled.length > 0) console.log(`  sample agent ids: ${labelled.slice(0, 15).join(", ")}`);
   }
 }
 
