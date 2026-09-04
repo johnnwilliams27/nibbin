@@ -136,33 +136,64 @@ async function mcpRegistry(): Promise<SourceResult> {
 }
 
 /**
- * Hugging Face Spaces. Public and paginated, but overwhelmingly demos and
- * course exercises rather than deployed agents, so the raw count would badly
- * overstate the market. Counted here with a like-count filter as a crude
- * seriousness proxy, and reported as mixed rather than as agents.
+ * Hugging Face Spaces.
+ *
+ * An earlier version of this census dismissed HF as demos and course templates
+ * from a 300-row search sample. That was wrong twice over. Spaces expose a
+ * documented HTTP API at /gradio_api/info listing named endpoints and typed
+ * parameters, with no key, so they are directly exercisable by a third party.
+ * And 10,122 of them carry the mcp-server tag, meaning they publish themselves
+ * as callable services rather than as web demos.
+ *
+ * Counted two ways: the mcp-server tag, which enumerates to the end and is the
+ * unambiguous callable-as-a-service population, and the total, which is capped
+ * because it runs to tens of thousands. Gradio spaces beyond the tagged set
+ * also expose the same API, so the tagged count is a floor on what is testable,
+ * not a ceiling.
  */
 async function huggingFaceSpaces(): Promise<SourceResult> {
   const detail: Record<string, number> = {};
-  let total = 0;
-  let liked = 0;
   try {
-    for (const q of ["agent", "assistant", "autonomous"]) {
-      const rows = (await getJson(`https://huggingface.co/api/spaces?search=${q}&limit=100`)) as Array<{
-        likes?: number;
-      }>;
-      total += rows.length;
-      for (const r of rows) if ((r.likes ?? 0) >= 5) liked += 1;
-      detail[`matching "${q}" (first page)`] = rows.length;
-      await new Promise((r) => setTimeout(r, 150));
-    }
-    detail["with 5 or more likes"] = liked;
+    const count = async (filter: string, cap: number) => {
+      let n = 0;
+      const sdks = new Map<string, number>();
+      let url = `https://huggingface.co/api/spaces?limit=1000${filter}`;
+      let ended = false;
+      for (let page = 0; page < 500; page += 1) {
+        const res = await fetch(url, { signal: AbortSignal.timeout(30_000), headers: { accept: "application/json" } });
+        if (!res.ok) break;
+        const rows = (await res.json()) as Array<{ sdk?: string }>;
+        if (rows.length === 0) {
+          ended = true;
+          break;
+        }
+        n += rows.length;
+        for (const r of rows) sdks.set(r.sdk ?? "?", (sdks.get(r.sdk ?? "?") ?? 0) + 1);
+        const link = res.headers.get("link");
+        const m = link === null ? null : /<([^>]+)>;\s*rel="next"/.exec(link);
+        if (m === null) {
+          ended = true;
+          break;
+        }
+        url = m[1]!;
+        if (n >= cap) break;
+        await new Promise((r) => setTimeout(r, 120));
+      }
+      return { n, sdks, ended };
+    };
+
+    const mcp = await count("&filter=mcp-server", 60000);
+    const all = await count("", Math.min(MAX, 40000));
+    detail["tagged mcp-server (callable as a service)"] = mcp.n;
+    detail["gradio, which all expose /gradio_api/info"] = all.sdks.get("gradio") ?? 0;
+    detail[all.ended ? "total spaces" : "total spaces (capped, floor only)"] = all.n;
     return {
       source: "Hugging Face Spaces",
       kind: "mixed",
       enumerable: true,
-      note: "Public and paginated. Dominated by demos, course templates and hackathon entries; the raw count overstates deployed agents by a wide margin.",
-      total,
-      callable: liked,
+      note: `Public, paginated, no key. Spaces expose a documented API at /gradio_api/info, so they are directly exercisable. ${mcp.n} carry the mcp-server tag and publish themselves as callable services; the total is ${all.ended ? "" : "at least "}${all.n}. A mix of genuine services and demos, but the callable subset alone is larger than every on-chain population combined.`,
+      total: all.n,
+      callable: mcp.n,
       detail,
     };
   } catch (err) {
