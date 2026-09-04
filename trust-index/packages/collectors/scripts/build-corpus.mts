@@ -39,14 +39,20 @@ type Transcript = {
 
 type BatteryFile = {
   tool: string;
-  calls?: { label: string; args: Record<string, unknown>; result?: { textSample?: string; server?: string } }[];
+  calls?: {
+    label: string;
+    args: Record<string, unknown>;
+    result?: { text?: string; textSample?: string; textTruncated?: boolean; server?: string };
+  }[];
 }[];
 
 type CallFile = {
   tool: string;
   server: string;
   args: Record<string, unknown>;
+  text?: string;
   textSample?: string;
+  textTruncated?: boolean;
 }[];
 
 function readJson<T>(path: string): T | null {
@@ -87,17 +93,37 @@ if (transcriptsWithTools > 0 && declarations.length === 0) {
 // ---- responses, from stored calls -------------------------------------------
 const calls: StoredCall[] = [];
 const battery = readJson<BatteryFile>(join(ROOT, "assessment.json")) ?? [];
+// Prefer the full text. `textSample` is a 300-character excerpt and using it
+// here is what made the first corpus grade our own truncation rather than the
+// models: 45% error on clipped items against 13% on whole ones.
+let sampleFallbacks = 0;
 for (const entry of battery) {
   for (const c of entry.calls ?? []) {
-    const text = c.result?.textSample;
+    const full = c.result?.text;
+    const text = typeof full === "string" && full.length > 0 ? full : c.result?.textSample;
     if (typeof text !== "string" || text.length === 0) continue;
-    calls.push({ server: c.result?.server ?? "(unknown)", tool: entry.tool, args: c.args, text });
+    if (full === undefined) sampleFallbacks += 1;
+    calls.push({
+      server: c.result?.server ?? "(unknown)",
+      tool: entry.tool,
+      args: c.args,
+      text,
+      truncated: c.result?.textTruncated === true || full === undefined,
+    });
   }
 }
 const direct = readJson<CallFile>(join(ROOT, "tool-calls.json")) ?? [];
 for (const c of direct) {
-  if (typeof c.textSample !== "string" || c.textSample.length === 0) continue;
-  calls.push({ server: c.server, tool: c.tool, args: c.args, text: c.textSample });
+  const text = typeof c.text === "string" && c.text.length > 0 ? c.text : c.textSample;
+  if (typeof text !== "string" || text.length === 0) continue;
+  if (c.text === undefined) sampleFallbacks += 1;
+  calls.push({
+    server: c.server,
+    tool: c.tool,
+    args: c.args,
+    text,
+    truncated: c.textTruncated === true || c.text === undefined,
+  });
 }
 
 // The two call files record the same run from different angles, so most calls
@@ -145,7 +171,7 @@ const entries = [
     item,
     server: uniqueCalls[i]!.server,
     tool: uniqueCalls[i]!.tool,
-    capture_note: "response stored as a 300-character sample; the model sees only that",
+    capture_note: uniqueCalls[i]!.truncated === true ? "excerpt of a longer response; marked as such in the item" : "full response as returned",
   })),
   ...declarationItems(pickedDeclarations).map((item) => {
     const src = pickedDeclarations.find((d) => item.id.includes(d.tool.replace(/[^a-zA-Z0-9._-]/g, "-").slice(0, 48)));
@@ -200,6 +226,8 @@ console.log(`  transcripts read:      ${readdirSync(transcriptDir).length}`);
 console.log(`  declarations found:    ${declarations.length} (${pickedDeclarations.length} read-only with prose, capped at ${DECLARATION_CAP})`);
 console.log(`  stored calls found:    ${calls.length}`);
 console.log(`  duplicate ids dropped: ${duplicatesDropped}`);
+console.log(`  fell back to 300-char sample: ${sampleFallbacks} (re-run scripts/assess.mts to eliminate)`);
+console.log(`  excerpts (marked in-item):    ${uniqueCalls.filter((c) => c.truncated === true).length}`);
 console.log("");
 console.log("summary:");
 for (const [k, v] of Object.entries(corpus.summary).sort()) console.log(`  ${k}: ${v}`);

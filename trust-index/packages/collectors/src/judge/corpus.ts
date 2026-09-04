@@ -39,6 +39,15 @@ export type StoredCall = {
   description?: string | null;
   args: Record<string, unknown>;
   text: string;
+  /**
+   * The stored text is an excerpt of a longer response.
+   *
+   * Passed through into the item so the reader is TOLD. An unmarked excerpt is
+   * the failure this whole corpus was rebuilt to remove: JSON cut mid-structure
+   * with nothing saying it had been cut reads as corruption, and a judge calling
+   * it broken is right about what it saw and wrong about the tool.
+   */
+  truncated?: boolean;
   /** Set when this call carried the injection payload; those items test gate G1. */
   injection?: boolean;
 };
@@ -146,7 +155,9 @@ export function responseItems(calls: readonly StoredCall[]): PanelItem[] {
       untrusted: {
         tool_description: c.description ?? "(none)",
         query: JSON.stringify(c.args),
-        response: c.text,
+        // The marker goes inside the content, not beside it, so it survives
+        // every path the content takes to a model.
+        response: c.truncated === true ? `${c.text}\n\n[response truncated by the harness — this is an excerpt]` : c.text,
       },
       allowed: RESPONSE_VERDICTS,
     },
