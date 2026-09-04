@@ -164,6 +164,25 @@ export type ToolCallResult = {
   /** First slice of the text response, kept so the mapping can be read by a human. */
   textSample: string | null;
   /**
+   * The whole text response, capped only where it stops being storable.
+   *
+   * Added after `textSample` turned out to be the single largest source of
+   * measured error in the judge experiment. Storing 300 characters and passing
+   * them on as if they were a response meant a judge was shown JSON cut off
+   * mid-structure, WITH NO INDICATION IT HAD BEEN CUT, and called it a failure
+   * — which is the correct reading of a malformed fragment. Error rate on
+   * truncated items was 45% against 13% on whole ones.
+   *
+   * The cap here is 32 KB rather than 300 bytes: large enough that a cut is
+   * rare, small enough that one pathological 111 KB response cannot dominate a
+   * transcript file. When it does cut, the marker says so, because a fragment
+   * a reader knows is a fragment is a different question from a fragment that
+   * looks like corruption.
+   */
+  text: string | null;
+  /** True when `text` hit the cap. Reported so a downstream reader never has to guess. */
+  textTruncated: boolean;
+  /**
    * Fingerprint of the WHOLE text response, for comparing two calls.
    *
    * Comparing textSample instead was a real defect: two responses identical in
@@ -246,6 +265,8 @@ export async function callTool(
     structuredContent: false,
     matchesOutputSchema: null,
     textSample: null,
+    text: null,
+    textTruncated: false,
     textFingerprint: null,
     substantive: false,
     errorInPayload: false,
@@ -326,12 +347,23 @@ export async function callTool(
     structuredContent: structured,
     matchesOutputSchema,
     textSample: text.length > 0 ? text.slice(0, 300) : null,
+    text: text.length > 0 ? text.slice(0, MAX_STORED_TEXT) : null,
+    textTruncated: text.length > MAX_STORED_TEXT,
     textFingerprint: text.length > 0 ? createHash("sha256").update(normalized).digest("hex").slice(0, 32) : null,
     substantive,
     errorInPayload,
     refused,
   };
 }
+
+/**
+ * How much of a response we keep.
+ *
+ * 32 KB. Big enough that cutting is rare, small enough that one 111 KB
+ * response — an actual observation from a live run — cannot dominate a
+ * transcript file.
+ */
+const MAX_STORED_TEXT = 32_000;
 
 /** A payload that is really an error, whatever the envelope claimed. */
 const ERROR_PAYLOAD =

@@ -53,14 +53,62 @@ export type StoredDeclaration = {
 export const RESPONSE_VERDICTS = ["answer", "refusal", "error", "invention", "unclear"] as const;
 export const CONTRADICTION_VERDICTS = ["contradicts", "consistent", "unclear"] as const;
 
+/**
+ * The rubric, tightened after its first contact with real disagreement.
+ *
+ * The original four lines left one boundary genuinely undecidable, and five of
+ * twenty-four disagreements landed on it: a tool answering "No design provided.
+ * Bind the user's attached image to design_file" is either a deliberate decline
+ * (it worked, and told you what it needs) or an error (it could not do the
+ * thing). Both readings are defensible against the old wording, which means the
+ * rubric was grading a coin flip and calling it model accuracy.
+ *
+ * The rule now turns on ONE question — did the tool run and reach a considered
+ * position, or did it break? — with the ambiguous families named explicitly,
+ * because a definition that needs the reader to infer the intended edge case is
+ * the same definition that produced the disagreement.
+ *
+ * The last line matters as much as the categories. Responses are stored whole
+ * now, but a fence can still clip a very long one, and a reader must be told
+ * that a fragment is a fragment. Judging a clipped response as broken is the
+ * correct reading of what it was shown and the wrong answer about the tool,
+ * which is precisely how 45% of truncated items were scored wrong.
+ */
 const RESPONSE_INSTRUCTION = [
   "A tool was called with the query shown.",
-  "Classify what came back:",
-  "  answer    - substantive content responding to the query",
-  "  refusal   - a deliberate decline, an empty result, or 'not found'",
-  "  error     - a failure, whether reported as an error or embedded in the payload",
-  "  invention - substantive content for a query that cannot have an answer",
-  "  unclear   - you cannot tell",
+  "",
+  "The question is what the tool DID, not whether the outcome was useful.",
+  "",
+  "  answer    - the tool ran and returned substantive content for this query.",
+  "              A negative or empty-handed finding still counts: a validator",
+  "              reporting a document is invalid, or an availability check saying",
+  "              'not registered', has answered the question it was asked.",
+  "",
+  "  refusal   - the tool ran and declined to produce content. Three families:",
+  "              an empty result set; an explicit 'no match' or 'nothing found';",
+  "              or a request for input it needs and was not given ('provide an",
+  "              address', 'no file supplied'). It worked; it had nothing to say",
+  "              or needed more from the caller.",
+  "",
+  "  error     - the tool did not run to completion. A transport or protocol",
+  "              failure, a validation rejection of the arguments, an exception,",
+  "              a stack trace, an HTTP status, or an error object in a payload",
+  "              that otherwise claims success. Something broke.",
+  "",
+  "  invention - substantive content for a query that cannot have a true answer.",
+  "              Reserve this for content that must have been made up. A tool",
+  "              correctly reporting that a nonsense identifier is unused is",
+  "              answering, not inventing.",
+  "",
+  "  unclear   - you genuinely cannot tell.",
+  "",
+  "The refusal/error boundary is the one that matters: 'I need more input' is a",
+  "refusal, 'your input was invalid' is an error. The first is the tool working,",
+  "the second is the tool rejecting.",
+  "",
+  "If the response is marked as truncated, judge what the tool was doing from the",
+  "part you can see. A response cut off mid-structure is not a malformed one.",
+  "",
   "Prefer 'unclear' over a guess.",
 ].join("\n");
 
