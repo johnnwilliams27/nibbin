@@ -48,7 +48,8 @@
  *   pnpm --filter @trust-index/indexer exec tsx scripts/export-cohort.mts \
  *     [--cache <dir>] [--out <dir>] [--rpc <url>] [--limit <n>] [--seed <n>]
  */
-import { mkdirSync, readFileSync, writeFileSync, readdirSync, rmSync, existsSync } from "node:fs";
+import { createReadStream, mkdirSync, writeFileSync, readdirSync, rmSync, existsSync } from "node:fs";
+import { createInterface } from "node:readline";
 import { join } from "node:path";
 import {
   DEFAULT_CONSTANTS,
@@ -184,6 +185,8 @@ type AgentBuild = {
   registeredTs: number;
   registeredOwner: string;
   owner: string;
+  /** Latest agent URI seen, from Registered or URIUpdated. Empty means none was ever set. */
+  agentUri: string;
   transfers: TransferEvent[];
   feedback: Array<FeedbackEntry & { revoked: boolean }>;
 };
@@ -193,8 +196,6 @@ async function main(): Promise<void> {
   if (!existsSync(logsPath)) throw new Error(`no cached logs at ${logsPath}; run fetch-registry-logs.mts first`);
 
   console.log(`reading ${logsPath}`);
-  const lines = readFileSync(logsPath, "utf8").split("\n").filter((l) => l.length > 0);
-  console.log(`${lines.length} cached logs`);
 
   const agents = new Map<string, AgentBuild>();
   // Index-wide reviewer tallies. These are deliberately global: a reviewer's
@@ -208,7 +209,14 @@ async function main(): Promise<void> {
   let unknownLogs = 0;
   let ignoredLogs = 0;
 
-  for (const line of lines) {
+  // Streamed a line at a time rather than read whole. The cached history runs
+  // past a gigabyte, and a JS string cannot hold that: readFileSync on it
+  // throws before any parsing starts.
+  let lineCount = 0;
+  const reader = createInterface({ input: createReadStream(logsPath, { encoding: "utf8" }), crlfDelay: Infinity });
+  for await (const line of reader) {
+    if (line.length === 0) continue;
+    lineCount += 1;
     const cached = JSON.parse(line) as CachedLog;
     const log = toRawLog(cached);
     if (log.blockNumber > asOfBlock) {
@@ -234,10 +242,14 @@ async function main(): Promise<void> {
             registeredTs: log.ts,
             registeredOwner: d.owner,
             owner: d.owner,
+            agentUri: d.tokenUri,
             transfers: [],
             feedback: [],
           });
         }
+      } else if (d.kind === "uriUpdated") {
+        const a = agents.get(d.agentId);
+        if (a !== undefined) a.agentUri = d.tokenUri;
       } else if (d.kind === "transfer") {
         const a = agents.get(d.agentId);
         if (a === undefined) continue; // transfer before its Registered log; ignore
@@ -314,6 +326,7 @@ async function main(): Promise<void> {
     }
   }
 
+  console.log(`${lineCount} cached logs`);
   console.log(
     `parsed: ${agents.size} agents, ${reviewerTotals.size} reviewers, ${revoked.size} revocations, ${ignoredLogs} recognised-but-unused, ${unknownLogs} unrecognised`,
   );
@@ -457,7 +470,14 @@ async function main(): Promise<void> {
       registered_at: isoFromUnix(a.registeredTs),
       owner_address: a.owner as Address,
       agent_wallet: wallets[i]!,
-      metadata_status: "unreachable",
+      // An agent that never set a URI has no metadata document to resolve, and
+      // "absent" says exactly that. One that did set a URI has a document this
+      // exporter did not fetch, which SPEC 10.2 treats as a coverage signal and
+      // never as a negative signal about the agent. Reporting both as
+      // "unreachable" would have mislabelled every agent that published
+      // nothing, and lifecycle reads this field to separate a placeholder
+      // registration from a real one.
+      metadata_status: a.agentUri.length === 0 ? "absent" : "unreachable",
       declared_endpoints: 0,
       agent_wallet_active: active.get(i) ?? false,
       transfers: a.transfers,
@@ -499,7 +519,7 @@ async function main(): Promise<void> {
       funder_address: "needs account-level first-inbound-transfer history",
       portfolio_top_funder_share: "derived from funder clustering",
       transfer_linkages: "same_funder needs funder data",
-      metadata_status: "set to unreachable; no metadata documents were fetched",
+      metadata_status: "absent when the agent never set a URI; otherwise unreachable, meaning a document exists but this exporter did not fetch it",
       declared_endpoints: "0; requires resolved metadata",
       validations: "empty; the Validation Registry is not indexed (SPEC stage A5)",
       commerce: "empty; commerce ingest has not run (SPEC stage A6)",
