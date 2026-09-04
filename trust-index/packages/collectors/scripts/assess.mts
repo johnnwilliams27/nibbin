@@ -13,6 +13,8 @@ import { runBattery, type BatteryOutcome } from "../src/mcp/battery.js";
 import { parseRpcBody } from "../src/mcp/probe.js";
 import { guardedFetch } from "../src/net.js";
 import type { ProbeTranscript, ToolDeclaration } from "../src/mcp/transcript.js";
+import { judgeCapabilityProbe, judgeFromEnv, PRODUCTION_JUDGE_MODEL } from "../src/judge/production.js";
+import { preflight } from "../src/capability.js";
 
 function arg(n: string, d: string): string {
   const i = process.argv.indexOf(n);
@@ -23,6 +25,19 @@ if (!process.argv.includes("--i-have-approval")) {
   process.exit(0);
 }
 const perShape = Number(arg("--per-shape", "10"));
+
+// The judge. Absent or unhealthy, judged checks become harness gaps and the
+// structural ones run regardless — a missing credential must never turn into a
+// finding about somebody's server.
+const judge = judgeFromEnv();
+const judgeHealth = (await preflight([judgeCapabilityProbe(judge)])).values().next().value;
+if (judgeHealth?.health.available === true) {
+  console.log(`judge: ${PRODUCTION_JUDGE_MODEL} (live)`);
+} else {
+  const h = judgeHealth?.health;
+  console.log(`judge: UNAVAILABLE (${h && !h.available ? `${h.reason}: ${h.detail}` : "not configured"})`);
+  console.log("       judged checks will be recorded as harness gaps, not as failures.");
+}
 const dir = arg("--transcripts", "transcripts");
 const UA = "trust-index-probe/0.1 (+https://github.com/johnnwilliams27/nibbin)";
 const H = { "content-type": "application/json", accept: "application/json, text/event-stream", "mcp-protocol-version": "2025-06-18", "user-agent": UA };
@@ -74,6 +89,7 @@ for (const [shape, list] of [...byShape].sort()) {
       o = await runBattery(c.declaration, classifyTool(c.declaration), {
         observerId: "probe:mcp:v1", ts: new Date().toISOString().slice(0, 19) + "Z",
         endpoint: c.endpoint, sessionId: sid, parseBody: parseRpcBody, spacingMs: 350, timeoutMs: 12_000,
+        ...(judge === null ? {} : { judge }),
       });
     } catch (err) { console.log(`  ${c.declaration.name}: REFUSED ${err instanceof Error ? err.message : err}`); continue; }
     outcomes.push({ ...o, server: c.server, endpoint: c.endpoint });

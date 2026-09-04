@@ -21,4 +21,6 @@ export * as judgePanel from "./judge/panel.js";
 export * as judgeMetrics from "./judge/metrics.js";
 export * as judgeCorpus from "./judge/corpus.js";
 export * as judgeMeta from "./judge/meta.js";
+// The production judge: one model, chosen by measurement. See production.ts.
+export * from "./judge/production.js";
 export * as mcp from "./mcp/index.js";
