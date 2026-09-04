@@ -262,10 +262,10 @@ describe("two vendors, three voters: the doubled lab", () => {
     expect(voters.find((v) => v.modelId === "openai-cheap-b")!.accuracy).toBe(0);
   });
 
-  it("counts a family pair outvoting a correct dissenter", async () => {
-    // The specific failure of majority voting across two vendors: three voters
-    // look like three opinions, but two share a lineage. Here the OpenAI pair
-    // agrees and is wrong, and the Anthropic voter is right and loses.
+  it("counts a bloc split and which lab was right", async () => {
+    // The specific failure of voting across two vendors: the voters look like
+    // several opinions, but each lab agrees with itself. Here the OpenAI bloc
+    // is wrong and the Anthropic voter is right.
     const run = await runPanel(items, {
       voters: [
         member("openai", say("refusal"), "cheap", "-a"),
@@ -275,9 +275,9 @@ describe("two vendors, three voters: the doubled lab", () => {
       deciders: [],
     });
     const m = scorePanel(run, items);
-    expect(m.family_majority.cases).toBe(3);
-    expect(m.family_majority.outvoted_correct_dissent).toBe(3);
-    expect(m.family_majority.rate).toBe(1);
+    expect(m.blocs.cases).toBe(3);
+    expect(m.blocs.correct_by_vendor.anthropic).toBe(3);
+    expect(m.blocs.correct_by_vendor.openai).toBeUndefined();
     // And the majority rule published the wrong answer every time.
     expect(m.structures.find((s) => s.name.startsWith("S0"))!.coverage_adjusted_accuracy).toBe(0);
   });
@@ -291,7 +291,7 @@ describe("two vendors, three voters: the doubled lab", () => {
       ],
       deciders: [],
     });
-    expect(scorePanel(run, items).family_majority.cases).toBe(0);
+    expect(scorePanel(run, items).blocs.cases).toBe(0);
   });
 });
 

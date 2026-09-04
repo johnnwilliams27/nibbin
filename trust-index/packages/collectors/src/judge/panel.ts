@@ -48,8 +48,8 @@ import type { Tier, Vendor } from "./provider.js";
 export const PANEL_PROTOCOL_VERSION = "panel.v1";
 
 /** Where a decider's own family sat, for the self-preference measurement. */
-export type Slot = "A" | "B" | "C";
-export const SLOTS: readonly Slot[] = ["A", "B", "C"];
+export type Slot = "A" | "B" | "C" | "D";
+export const SLOTS: readonly Slot[] = ["A", "B", "C", "D"];
 
 /**
  * One question put to the panel, with the answer if we know it.

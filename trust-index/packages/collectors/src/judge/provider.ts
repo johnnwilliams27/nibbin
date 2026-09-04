@@ -55,9 +55,9 @@ export type RosterSlot =
   | "voter_1"
   | "voter_2"
   | "voter_3"
+  | "voter_4"
   | "decider_1"
   | "decider_2"
-  | "decider_3"
   | "meta";
 
 /**
@@ -96,17 +96,43 @@ export type ModelChoice = {
  * between release dates, and nothing in the results would have said so. The ids
  * below were chosen from the live listing.
  *
- * TWO VENDORS, THREE SEATS PER LAYER. One vendor holds two voter seats and the
- * other holds two decider seats. The doubling cannot be avoided at this shape;
- * balancing which layer each vendor doubles in at least stops one lab from
- * being the majority of both the voting and the adjudicating. What it does not
- * fix is that a 2-1 voter majority can be one family outvoting the other
- * vendor — see `family_majority_*` in metrics.ts, which measures exactly that.
+ * FOUR VOTERS, EVENLY SPLIT. Two Anthropic against two OpenAI, so neither lab
+ * can carry a majority alone: three of four is the threshold, and a two-two
+ * vendor split is a tie the panel abstains on rather than a win for whichever
+ * lab happens to hold the extra seat. That is the main thing the even shape
+ * buys over three voters, where one lab always had the numbers.
+ *
+ * PRICE IS NOT MATCHED ACROSS THE BLOCS and should not be read as quality. The
+ * OpenAI pair is cheaper per token than the Anthropic pair at every seat. The
+ * measurement is accuracy against labels; cost is reported separately and
+ * deliberately does not enter the ranking.
+ *
+ * THIS ROSTER IS DATA, NOT ARCHITECTURE. The shape is expected to change. Every
+ * metric is written against whatever seats are present, and `voterSubsets` in
+ * metrics.ts re-derives the accuracy of EVERY smaller voter combination from
+ * one run's stored votes — so the question "which models do we actually need"
+ * is answered offline rather than by paying for another grid.
  */
 export const ROSTER: readonly ModelChoice[] = [
-  // --- voters: two OpenAI, one Anthropic ---
+  // --- voters: two Anthropic, two OpenAI ---
   {
     slot: "voter_1",
+    vendor: "anthropic",
+    tier: "cheap",
+    id: "claude-haiku-4-5-20251001",
+    verified: true,
+    note: "id from the claude-api skill",
+  },
+  {
+    slot: "voter_2",
+    vendor: "anthropic",
+    tier: "cheap",
+    id: "claude-sonnet-5",
+    verified: true,
+    note: "the stronger half of the Anthropic bloc",
+  },
+  {
+    slot: "voter_3",
     vendor: "openai",
     tier: "cheap",
     id: "gpt-5.4-mini",
@@ -114,22 +140,14 @@ export const ROSTER: readonly ModelChoice[] = [
     note: "confirmed present in the account's live listing; re-checked at run time",
   },
   {
-    slot: "voter_2",
+    slot: "voter_4",
     vendor: "openai",
     tier: "cheap",
     id: "gpt-5.4-nano",
     verified: false,
     note: "the cheapest voter; whether it clears the refusal gate is part of what we are measuring",
   },
-  {
-    slot: "voter_3",
-    vendor: "anthropic",
-    tier: "cheap",
-    id: "claude-haiku-4-5-20251001",
-    verified: true,
-    note: "id from the claude-api skill",
-  },
-  // --- deciders: one OpenAI, two Anthropic ---
+  // --- deciders: one each ---
   {
     slot: "decider_1",
     vendor: "openai",
@@ -146,14 +164,6 @@ export const ROSTER: readonly ModelChoice[] = [
     verified: true,
     note: "id from the claude-api skill",
   },
-  {
-    slot: "decider_3",
-    vendor: "anthropic",
-    tier: "premium",
-    id: "claude-sonnet-5",
-    verified: true,
-    note: "a mid-priced adjudicator, to answer whether the top tier is needed to adjudicate at all",
-  },
   // --- meta ---
   {
     slot: "meta",
@@ -161,7 +171,7 @@ export const ROSTER: readonly ModelChoice[] = [
     tier: "meta",
     id: "claude-fable-5-1",
     verified: true,
-    note: "reads the deciders' results; rejects forced tool use, hence structured outputs. Not a decider itself, so it never grades its own output",
+    note: "reads both deciders' results; rejects forced tool use, hence structured outputs. Not a decider itself, so it never grades its own output",
   },
 ];
 

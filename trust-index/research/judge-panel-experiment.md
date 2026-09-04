@@ -1,7 +1,6 @@
 # The judge panel experiment: design, and what it is blocked on
 
-Status: **built and tested; cannot run.** The OpenAI leg is satisfied; the
-Anthropic key is org-scoped and needs a workspace. 161 tests pass.
+Status: **running.** All seven models confirmed reachable; 161 tests pass.
 
 ## The design
 
@@ -10,12 +9,12 @@ same votes. Claude Fable 5.1 reads the results and recommends a structure.
 
 | Seat | Vendor | Model | $/1M in | $/1M out |
 |---|---|---|---|---|
-| voter_1 | OpenAI | `gpt-5.4-mini` | 0.75 | 4.50 |
-| voter_2 | OpenAI | `gpt-5.4-nano` | 0.20 | 1.25 |
-| voter_3 | Anthropic | `claude-haiku-4-5-20251001` | 1.00 | 5.00 |
+| voter_1 | Anthropic | `claude-haiku-4-5-20251001` | 1.00 | 5.00 |
+| voter_2 | Anthropic | `claude-sonnet-5` | 2.00 | 10.00 |
+| voter_3 | OpenAI | `gpt-5.4-mini` | 0.75 | 4.50 |
+| voter_4 | OpenAI | `gpt-5.4-nano` | 0.20 | 1.25 |
 | decider_1 | OpenAI | `gpt-5.5` | 5.00 | 30.00 |
 | decider_2 | Anthropic | `claude-opus-5` | 5.00 | 25.00 |
-| decider_3 | Anthropic | `claude-sonnet-5` | 2.00 | 10.00 |
 | meta | Anthropic | `claude-fable-5-1` | 10.00 | 50.00 |
 
 Each decider also answers alone, as a solo baseline, and runs in both
@@ -26,19 +25,31 @@ Claude models against `gpt-5` and `gpt-5-mini`. The account's own model listing
 offers up to the 5.6 family, so any accuracy gap measured that way would have
 been partly a gap between release dates, with nothing in the results saying so.
 
-**Two vendors, three seats per layer.** One lab necessarily holds two seats in
-each layer — that is forced by the shape, not chosen. OpenAI doubles in the
-voters and Anthropic in the deciders, so neither is the majority of both
-layers. Fable is the meta pass and not a decider, so it never grades its own
-output.
+**Four voters, evenly split.** Two Anthropic against two OpenAI, so neither lab
+can carry a majority alone: three of four is the threshold and a two-two vendor
+split is a tie the panel abstains on. That is what the even shape buys over
+three voters, where one lab always had the numbers. Fable is the meta pass and
+not a decider, so it never grades its own output.
 
-**What doubling costs, measured rather than assumed.** Three voters look like
-three opinions, but two share training data, RLHF lineage and tokenizer, so a
-2-1 majority can be one family agreeing with itself and outvoting the other
-vendor. `family_majority` counts exactly that: items where a same-vendor pair
-agreed, the lone other-vendor voter dissented, and the dissenter was right. No
-accuracy number reports this on its own — the majority's accuracy just looks
-slightly lower.
+**Price is not matched across the blocs** and should not be read as quality. The
+OpenAI pair is cheaper per token at every seat. Ranking is on accuracy against
+labels; cost is reported separately and deliberately does not enter it.
+
+**Bloc splits: when the labs disagree, who is right?** Voters from one lab share
+training data, RLHF lineage and tokenizer, so four voters are not four opinions
+— they are two opinions held with varying confidence. A bloc split is an item
+where each lab was internally unanimous and the labs disagreed. On an evenly
+split panel these are exactly the items majority rule cannot resolve, so they
+land on the adjudicator; which lab tends to be right on them says more about
+what a cheaper panel should be made of than any aggregate accuracy number.
+
+**The roster is data, not architecture.** The shape is expected to change, so
+`voterSubsets` re-derives the accuracy of every smaller voter combination from
+one run's stored votes — the models answered independently, so any subset's
+majority is exactly computable after the fact. "Do we need all four, and which
+ones" is an offline question. The limit, stated so it is not overclaimed: this
+works for majority-only structures. Each decider saw all four votes, so what it
+would have said given two of them is unknowable and needs its own run.
 
 ## Five things added to make it answer the question
 

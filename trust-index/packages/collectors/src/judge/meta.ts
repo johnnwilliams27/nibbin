@@ -133,11 +133,21 @@ export function renderMetrics(metrics: PanelMetrics, ranking: Ranking): string {
     );
   }
   lines.push("");
-  lines.push("FAMILY MAJORITY (one vendor's pair outvoting the other vendor's lone voter)");
+  lines.push("BLOC SPLITS (each lab internally unanimous, the labs disagreeing)");
   lines.push(
-    `cases=${metrics.family_majority.cases} the_dissenter_was_right=${metrics.family_majority.outvoted_correct_dissent} ` +
-      `rate=${metrics.family_majority.rate?.toFixed(3) ?? "n/a"}`,
+    `cases=${metrics.blocs.cases} unresolved_by_majority=${metrics.blocs.unresolved_by_majority} ` +
+      Object.entries(metrics.blocs.correct_by_vendor)
+        .map(([v, n]) => `${v}_correct=${n}`)
+        .join(" "),
   );
+  lines.push("");
+  lines.push("VOTER SUBSETS (majority only, re-derived from stored votes; best first)");
+  for (const s of metrics.subsets.slice(0, 10)) {
+    lines.push(
+      `[${s.models.join(", ")}] cov_acc=${s.coverage_adjusted_accuracy?.toFixed(3) ?? "n/a"} ` +
+        `acc=${s.accuracy?.toFixed(3) ?? "n/a"} decided=${s.decided} cost=${s.usd === null ? "n/a" : `$${s.usd.toFixed(4)}`}`,
+    );
+  }
   lines.push("");
   lines.push("PAIRWISE ERROR CORRELATION (phi; high means mistakes coincide)");
   for (const c of [...metrics.correlation].sort((x, y) => (y.phi ?? -2) - (x.phi ?? -2)).slice(0, 12)) {

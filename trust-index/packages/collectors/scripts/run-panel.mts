@@ -110,8 +110,8 @@ const make = (slot: RosterSlot): Member => {
   };
 };
 
-const voters = (["voter_1", "voter_2", "voter_3"] as const).map(make);
-const deciders = (["decider_1", "decider_2", "decider_3"] as const).map(make);
+const voters: Member[] = (["voter_1", "voter_2", "voter_3", "voter_4"] as RosterSlot[]).map(make);
+const deciders: Member[] = (["decider_1", "decider_2"] as RosterSlot[]).map(make);
 
 console.log("roster:");
 for (const m of [...voters, ...deciders]) console.log(`  ${m.tier.padEnd(8)} ${m.vendor.padEnd(10)} ${m.modelId}`);

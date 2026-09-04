@@ -36,6 +36,7 @@
  * and re-scoring under a new metric never means re-spending money.
  */
 import type { DeciderVerdict, PanelItem, PanelRun, VoteRecord, VoterVote } from "./panel.js";
+import { majorityOf } from "./panel.js";
 import type { Vendor } from "./provider.js";
 
 /** Per-1M-token prices, so a run reports what it actually cost rather than an estimate. */
@@ -119,8 +120,10 @@ export type PanelMetrics = {
   structures: StructureMetrics[];
   correlation: CorrelationCell[];
   decider_behaviour: DeciderBehaviour[];
-  /** What the two-vendor, three-voter shape costs when a family outvotes the outsider. */
-  family_majority: FamilyMajority;
+  /** What happens when the labs disagree as blocs. */
+  blocs: BlocAnalysis;
+  /** Every smaller voter combination, re-derived from the stored votes. */
+  subsets: SubsetResult[];
   /** Gate G2: did every model always return schema-valid output? */
   schema_failures: { vendor: Vendor; modelId: string; failures: number; sample: string[] }[];
 };
@@ -178,21 +181,53 @@ function votesOf(record: VoteRecord, vendor: Vendor): Extract<VoterVote, { ok: t
 }
 
 /**
- * Did one vendor's pair outvote the other vendor's lone voter, and lose?
+ * When the labs disagree as blocs, who is right?
  *
- * The specific failure of majority voting across two vendors: three voters look
- * like three opinions, but two of them share training data, RLHF lineage and
- * tokenizer, so a 2-1 split can be one family agreeing with itself. When the
- * outsider was right and the pair was wrong, the majority rule actively
- * discarded the correct answer — and no accuracy number reports that, because
- * the majority's accuracy just looks slightly lower.
+ * The sharpest question a two-vendor panel can answer about itself. Voters from
+ * one lab share training data, RLHF lineage and tokenizer, so four voters are
+ * not four opinions — they are two opinions held with varying confidence. A
+ * BLOC SPLIT is an item where each lab's voters agreed among themselves and the
+ * labs disagreed with each other: the case where the panel's apparent breadth
+ * collapses to a coin flip between two vendors.
+ *
+ * On an evenly-split panel these are exactly the items majority rule cannot
+ * resolve, so they land on the adjudicator. Knowing which lab tends to be right
+ * on them is worth more than any aggregate accuracy number, because it says
+ * what a cheaper panel should be made of.
  */
-export type FamilyMajority = {
-  /** Labelled items where a same-vendor pair agreed and the other vendor's voter dissented. */
+export type BlocAnalysis = {
+  /** Labelled items where each vendor's voters were internally unanimous and the vendors disagreed. */
   cases: number;
-  /** ...and the lone dissenter was right. */
-  outvoted_correct_dissent: number;
-  rate: number | null;
+  /** Per vendor: how often that lab's bloc held the correct verdict on those items. */
+  correct_by_vendor: Record<string, number>;
+  /** Of those items, how many majority rule left undecided (an even split). */
+  unresolved_by_majority: number;
+};
+
+/**
+ * One candidate structure: some subset of the voters, majority rule, no decider.
+ *
+ * The reason this exists is that the roster will change. Rather than paying for
+ * a new grid every time the question "do we need all four" comes up, every
+ * smaller voter combination is re-derived from the votes already stored — the
+ * models answered independently, so any subset's majority is exactly computable
+ * after the fact.
+ *
+ * THE LIMIT, STATED SO IT IS NOT OVERCLAIMED: this works for majority-only
+ * structures and not for decider structures. Each decider saw all four votes,
+ * so what it would have said given only two of them is unknown and cannot be
+ * reconstructed. A subset-plus-decider structure needs its own run.
+ */
+export type SubsetResult = {
+  models: string[];
+  vendors: string[];
+  size: number;
+  decided: number;
+  scored: number;
+  correct: number;
+  accuracy: number | null;
+  coverage_adjusted_accuracy: number | null;
+  usd: number | null;
 };
 
 function labelOf(items: ReadonlyMap<string, PanelItem>, id: string): string | null {
@@ -525,25 +560,31 @@ export function scorePanel(
     }
   }
 
-  // ---- family majority ----------------------------------------------------
-  let familyCases = 0;
-  let familyOutvoted = 0;
+  // ---- bloc analysis ------------------------------------------------------
+  let blocCases = 0;
+  let blocUnresolved = 0;
+  const blocCorrect: Record<string, number> = {};
   for (const record of run.records) {
     const label = labelOf(items, record.item_id);
     if (label === null) continue;
     const good = record.votes.filter((v): v is Extract<VoterVote, { ok: true }> => v.ok);
-    if (good.length < 3) continue;
-    const vendors = [...new Set(good.map((g) => g.vendor))];
-    if (vendors.length !== 2) continue;
-    for (const vendor of vendors) {
-      const pair = good.filter((g) => g.vendor === vendor);
-      const rest = good.filter((g) => g.vendor !== vendor);
-      if (pair.length !== 2 || rest.length !== 1) continue;
-      const dissenter = rest[0]!;
-      const pairAgrees = pair[0]!.verdict === pair[1]!.verdict;
-      if (!pairAgrees || dissenter.verdict === pair[0]!.verdict) continue;
-      familyCases += 1;
-      if (dissenter.verdict === label) familyOutvoted += 1;
+    if (good.length < 2) continue;
+    const byVendor = new Map<Vendor, Extract<VoterVote, { ok: true }>[]>();
+    for (const g of good) byVendor.set(g.vendor, [...(byVendor.get(g.vendor) ?? []), g]);
+    if (byVendor.size < 2) continue;
+    // Each lab internally unanimous...
+    const positions = [...byVendor.entries()].map(([vendor, votes]) => ({
+      vendor,
+      unanimous: new Set(votes.map((v) => v.verdict)).size === 1,
+      verdict: votes[0]!.verdict,
+    }));
+    if (!positions.every((p) => p.unanimous)) continue;
+    // ...and the labs disagreeing with each other.
+    if (new Set(positions.map((p) => p.verdict)).size < 2) continue;
+    blocCases += 1;
+    if (record.majority === null) blocUnresolved += 1;
+    for (const p of positions) {
+      if (p.verdict === label) blocCorrect[p.vendor] = (blocCorrect[p.vendor] ?? 0) + 1;
     }
   }
 
@@ -554,13 +595,114 @@ export function scorePanel(
     structures,
     correlation,
     decider_behaviour,
-    family_majority: {
-      cases: familyCases,
-      outvoted_correct_dissent: familyOutvoted,
-      rate: familyCases === 0 ? null : familyOutvoted / familyCases,
+    blocs: {
+      cases: blocCases,
+      correct_by_vendor: blocCorrect,
+      unresolved_by_majority: blocUnresolved,
     },
+    subsets: voterSubsets(run, itemList, prices),
     schema_failures,
   };
+}
+
+/**
+ * Re-derive every smaller voter combination from the stored votes.
+ *
+ * The models answered independently, so any subset's majority is exactly
+ * computable after the fact — no re-running, no extra spend. This is what makes
+ * "do we need all four, and which ones" an offline question.
+ *
+ * A subset of one is that model answering alone, which is the right reading:
+ * there is no panel to abstain on. From two upwards the same rule as the live
+ * panel applies, including that fewer than two usable votes is an abstention
+ * rather than one model speaking for the group.
+ */
+export function voterSubsets(
+  run: PanelRun,
+  itemList: readonly PanelItem[],
+  prices?: PriceSheet,
+): SubsetResult[] {
+  const items = new Map(itemList.map((i) => [i.id, i]));
+  const voters = run.voters;
+  const out: SubsetResult[] = [];
+
+  for (let mask = 1; mask < 1 << voters.length; mask += 1) {
+    const chosen = voters.filter((_, i) => (mask & (1 << i)) !== 0);
+    const ids = new Set(chosen.map((c) => c.modelId));
+    let decided = 0;
+    let scored = 0;
+    let scoredAndDecided = 0;
+    let correct = 0;
+    let inTok = 0;
+    let outTok = 0;
+
+    for (const record of run.records) {
+      const good = record.votes.filter(
+        (v): v is Extract<VoterVote, { ok: true }> => v.ok && ids.has(v.modelId),
+      );
+      for (const g of good) {
+        inTok += g.usage?.input_tokens ?? 0;
+        outTok += g.usage?.output_tokens ?? 0;
+      }
+      const verdict =
+        chosen.length === 1
+          ? (good[0]?.verdict ?? null)
+          : good.length < 2
+            ? null
+            : majorityOf(good.map((g) => g.verdict));
+      if (verdict !== null) decided += 1;
+      const label = labelOf(items, record.item_id);
+      if (label === null) continue;
+      scored += 1;
+      if (verdict === null) continue;
+      scoredAndDecided += 1;
+      if (verdict === label) correct += 1;
+    }
+
+    const usd = chosen.reduce<number | null>((acc, c) => {
+      if (acc === null) return null;
+      const p = prices?.[c.modelId];
+      return p === undefined ? null : acc;
+    }, 0);
+    out.push({
+      models: chosen.map((c) => c.modelId),
+      vendors: [...new Set(chosen.map((c) => c.vendor))],
+      size: chosen.length,
+      decided,
+      scored,
+      correct,
+      accuracy: scoredAndDecided === 0 ? null : correct / scoredAndDecided,
+      coverage_adjusted_accuracy: scored === 0 ? null : correct / scored,
+      usd: usd === null ? null : perSubsetUsd(chosen, inTok, outTok, prices),
+    });
+  }
+
+  // Best first by the number that matters: correct over every labelled item.
+  out.sort((a, b) => (b.coverage_adjusted_accuracy ?? -1) - (a.coverage_adjusted_accuracy ?? -1));
+  return out;
+}
+
+/**
+ * Cost of a subset.
+ *
+ * Token counts are pooled across the subset's members, so the split by model is
+ * approximated by each member's share of calls. Good enough to rank structures
+ * by cost; the per-model `usd` figures above are the exact ones.
+ */
+function perSubsetUsd(
+  chosen: readonly { modelId: string }[],
+  inTok: number,
+  outTok: number,
+  prices?: PriceSheet,
+): number | null {
+  if (prices === undefined || chosen.length === 0) return null;
+  let total = 0;
+  for (const c of chosen) {
+    const p = prices[c.modelId];
+    if (p === undefined) return null;
+    total += (inTok / chosen.length / 1e6) * p.input + (outTok / chosen.length / 1e6) * p.output;
+  }
+  return total;
 }
 
 /** Convenience for the roster: price sheet keyed by model id. Filled from the note's table. */
