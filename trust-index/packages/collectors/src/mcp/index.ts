@@ -29,6 +29,8 @@ export {
 } from "./assess.js";
 export { transcriptToSubject, transcriptsToSubject, repositoryOwner, endpointHost, isEphemeralTunnel } from "./subject.js";
 export { classifyTool, classifyTools, requiredCapabilities, testability } from "./shape.js";
+export { callTool, synthesizeInput, assertCallable, NotCallableError } from "./invoke.js";
+export type { ToolCallResult, SynthesizedInput, CallOptions } from "./invoke.js";
 export type { ToolShape, TargetBinding, ToolClassification } from "./shape.js";
 export type { BuildSubjectOptions, ProbeIdentity } from "./subject.js";
 export type {

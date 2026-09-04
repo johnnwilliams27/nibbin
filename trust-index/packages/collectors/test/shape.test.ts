@@ -9,6 +9,7 @@
 import { describe, expect, it } from "vitest";
 import { CAPABILITIES } from "../src/capability.js";
 import { classifyTool, classifyTools, requiredCapabilities, testability } from "../src/mcp/shape.js";
+import { callTool, synthesizeInput, NotCallableError } from "../src/mcp/invoke.js";
 import type { ToolDeclaration } from "../src/mcp/transcript.js";
 
 function tool(over: Partial<ToolDeclaration> & { name: string }): ToolDeclaration {
@@ -209,5 +210,164 @@ describe("testability", () => {
 
   it("lists the capabilities a server would need before it can be exercised", () => {
     expect(requiredCapabilities(classifyTools(tools))).toEqual([CAPABILITIES.mailbox, CAPABILITIES.repo_sandbox]);
+  });
+});
+
+describe("invocation safety", () => {
+  it("refuses to call anything not classified read-only, at the call site", async () => {
+    // The guard is re-checked inside callTool rather than inherited from
+    // whoever classified the tool. A safety rule enforced only at the point of
+    // decision and not at the point of action is one refactor from being
+    // enforced nowhere.
+    const dangerous = tool({ name: "delete_everything", inputSchema: schema({ id: { type: "string" } }) });
+    await expect(
+      callTool("https://example.com/mcp", dangerous, classifyTool(dangerous), { parseBody: () => ({ result: {} }) }),
+    ).rejects.toThrow(NotCallableError);
+  });
+
+  it("refuses a hand-built read-only classification that carries a contradiction", async () => {
+    // classifyTool never produces this, since read_only requires zero
+    // contradictions. The guard exists for a caller that constructs or caches
+    // a classification itself, which is precisely the path where a safety rule
+    // checked only at the point of decision would be bypassed.
+    const t = tool({ name: "list_things", inputSchema: schema({ q: { type: "string" } }) });
+    await expect(
+      callTool("https://example.com/mcp", t, {
+        tool: "list_things",
+        shape: "retrieval",
+        binding: { kind: "read_only", basis: "declared" },
+        contradictions: ["declares readOnlyHint but is named like a mutation"],
+        hints: { readOnly: true, destructive: null, idempotent: null },
+      }, { parseBody: () => ({ result: {} }) }),
+    ).rejects.toThrow(/contradiction/);
+  });
+
+  it("refuses a tool declaring itself both read-only and destructive", async () => {
+    const conflicted = tool({
+      name: "list_things",
+      annotations: { readOnlyHint: true, destructiveHint: true },
+      inputSchema: schema({ q: { type: "string" } }),
+    });
+    await expect(
+      callTool("https://example.com/mcp", conflicted, classifyTool(conflicted), { parseBody: () => ({ result: {} }) }),
+    ).rejects.toThrow(NotCallableError);
+  });
+
+  it("never sends anything shaped like a credential", () => {
+    const { args, skipped } = synthesizeInput(
+      schema({ query: { type: "string" }, api_key: { type: "string" }, token: { type: "string" } }),
+    );
+    expect(args).toEqual({ query: "weather" });
+    expect(skipped.map((s) => s.parameter).sort()).toEqual(["api_key", "token"]);
+  });
+
+  it("sends the smallest valid call, required fields only", () => {
+    // Optional parameters are where the sharp edges live, and the minimal call
+    // is the one whose behaviour the declaration most clearly predicts.
+    const { args } = synthesizeInput(
+      schema({ query: { type: "string" }, dangerous_flag: { type: "boolean" } }, ["query"]),
+    );
+    expect(args).toEqual({ query: "weather" });
+  });
+
+  it("prefers a declared enum or default over any guess of ours", () => {
+    const { args } = synthesizeInput(
+      schema({ mode: { type: "string", enum: ["safe", "wild"] }, fmt: { type: "string", default: "yaml" } }),
+    );
+    expect(args).toEqual({ mode: "safe", fmt: "yaml" });
+  });
+
+  it("respects the declared type over a name hint", () => {
+    const { args } = synthesizeInput(schema({ limit: { type: "string" }, query: { type: "integer" } }));
+    expect(args).toEqual({ limit: "1", query: 1 });
+  });
+
+  it("separates a tool reporting its own failure from a transport failure", async () => {
+    // A tool that says "I failed" inside a successful response is behaving
+    // correctly at the protocol level and badly at the task level. Conflating
+    // the two would make a well-behaved error look like a broken server.
+    const t = tool({ name: "search", annotations: { readOnlyHint: true }, inputSchema: schema({ q: { type: "string" } }) });
+    const fetchImpl = (async () =>
+      new Response(JSON.stringify({ jsonrpc: "2.0", id: 9, result: { content: [{ type: "text", text: "no results" }], isError: true } }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      })) as unknown as typeof fetch;
+    const r = await callTool("https://example.com/mcp", t, classifyTool(t), { parseBody: (b) => JSON.parse(b), fetchImpl });
+    expect(r.ok).toBe(true);
+    expect(r.isError).toBe(true);
+    expect(r.textSample).toBe("no results");
+  });
+
+  it("checks a response against the tool's own declared output schema", async () => {
+    const t = tool({
+      name: "search",
+      annotations: { readOnlyHint: true },
+      inputSchema: schema({ q: { type: "string" } }),
+      outputSchema: { type: "object", properties: { hits: { type: "array" } }, required: ["hits"] },
+    });
+    const reply = (structured: unknown) =>
+      (async () =>
+        new Response(JSON.stringify({ jsonrpc: "2.0", id: 9, result: { content: [], structuredContent: structured } }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        })) as unknown as typeof fetch;
+
+    const honoured = await callTool("https://example.com/mcp", t, classifyTool(t), {
+      parseBody: (b) => JSON.parse(b), fetchImpl: reply({ hits: [] }),
+    });
+    expect(honoured.matchesOutputSchema).toBe(true);
+
+    const violated = await callTool("https://example.com/mcp", t, classifyTool(t), {
+      parseBody: (b) => JSON.parse(b), fetchImpl: reply({ somethingElse: 1 }),
+    });
+    expect(violated.matchesOutputSchema).toBe(false);
+  });
+
+  it("records response size, because it comes out of the caller's context window", async () => {
+    const t = tool({ name: "search", annotations: { readOnlyHint: true }, inputSchema: schema({ q: { type: "string" } }) });
+    const big = "x".repeat(5000);
+    const fetchImpl = (async () =>
+      new Response(JSON.stringify({ jsonrpc: "2.0", id: 9, result: { content: [{ type: "text", text: big }] } }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      })) as unknown as typeof fetch;
+    const r = await callTool("https://example.com/mcp", t, classifyTool(t), { parseBody: (b) => JSON.parse(b), fetchImpl });
+    expect(r.responseBytes).toBeGreaterThan(5000);
+    expect(r.textSample!.length).toBe(300);
+  });
+});
+
+describe("side-effecting shapes are never callable", () => {
+  it("reads the leading verb, so a noun cannot drag a read into a send", () => {
+    // A first live run called get_broadcast_details and check_email_security,
+    // both of which are ordinary reads that landed in the communication bucket
+    // because "broadcast" and "email" appear in their names. Harmless in the
+    // event, wrong in the classification.
+    expect(classifyTool(tool({ name: "get_broadcast_details", description: "Fetch details of a broadcast." })).shape).toBe("retrieval");
+    expect(classifyTool(tool({ name: "check_email_security", description: "Check a domain's email security records." })).shape).toBe("retrieval");
+    expect(classifyTool(tool({ name: "list_messages", description: "List messages." })).shape).toBe("retrieval");
+    // And the verb still wins when it genuinely is a send.
+    expect(classifyTool(tool({ name: "send_broadcast", description: "Send a broadcast." })).shape).toBe("communication");
+    expect(classifyTool(tool({ name: "post_message", description: "Post a message." })).shape).toBe("communication");
+  });
+
+  it("refuses a side-effecting tool that declares itself read-only", () => {
+    // readOnlyHint is the operator's claim about one tool; the shape is what
+    // the tool is for. A tool that sends does not become safe by asserting it
+    // is a read.
+    for (const name of ["notify_subscribers", "execute_query", "charge_customer", "delete_record"]) {
+      const c = classifyTool(
+        tool({ name, description: "Does the thing.", annotations: { readOnlyHint: true }, inputSchema: schema({ x: { type: "string" } }) }),
+      );
+      expect(c.binding.kind, name).not.toBe("read_only");
+      expect(c.contradictions.join(" "), name).toMatch(/declares readOnlyHint but is a/);
+    }
+  });
+
+  it("will not infer read-only for a side-effecting shape either", () => {
+    const c = classifyTool(
+      tool({ name: "broadcast_alert", description: "Alerts everyone.", annotations: null, inputSchema: schema({ x: { type: "string" } }) }),
+    );
+    expect(c.binding.kind).not.toBe("read_only");
   });
 });

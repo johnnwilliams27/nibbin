@@ -146,11 +146,54 @@ function requiredFields(schema: unknown): string[] {
   return Array.isArray(s.required) ? s.required.filter((r): r is string => typeof r === "string") : [];
 }
 
+/**
+ * Shapes whose very nature implies a side effect leaving our control. A tool
+ * of one of these shapes is never callable, whatever it declares about itself.
+ */
+const SIDE_EFFECTING_SHAPES: ReadonlySet<ToolShape> = new Set([
+  "communication",
+  "state_mutation",
+  "code_execution",
+  "financial",
+]);
+
+/**
+ * What the tool does, from its name and description.
+ *
+ * The LEADING word decides, when it is a recognized verb. A tool name is
+ * usually verb-then-noun, so the verb says what happens and the noun says to
+ * what: `get_broadcast_details` is a read about broadcasts, and
+ * `send_broadcast` is a send. Matching any word anywhere put the first of
+ * those in the communication bucket, because "broadcast" appears in it, and
+ * a first live run then called two such tools. They were harmless reads and no
+ * harm was done, but the classification was wrong and the reason it was wrong
+ * would have kept being wrong.
+ */
 function shapeFromName(name: string, description: string | null): ToolShape {
   const w = words(name);
+  const lead = w[0];
   const text = `${name} ${description ?? ""}`.toLowerCase();
   const has = (list: readonly string[]): boolean => w.some((x) => list.includes(x));
+  const leads = (list: readonly string[]): boolean => lead !== undefined && list.includes(lead);
 
+  // Leading verb first. A read verb in front settles it before any noun can
+  // drag the tool into a side-effecting bucket.
+  if (leads(RETRIEVAL_VERBS) || lead === "check" || lead === "verify") {
+    return PUBLIC_DATA_HINTS.some((h) => text.includes(h)) ? "public_data" : "retrieval";
+  }
+  if (leads(FINANCIAL_VERBS)) return "financial";
+  if (leads(EXEC_VERBS)) return "code_execution";
+  if (leads(COMMS_VERBS)) return "communication";
+  // public_data outranks transform and generation, because it is the stronger
+  // claim: it says an independent reference can settle correctness. A currency
+  // converter is a transform in mechanism and a public-data lookup in what can
+  // be checked about it, and what can be checked is what selects the battery.
+  if (PUBLIC_DATA_HINTS.some((h) => text.includes(h))) return "public_data";
+  if (leads(TRANSFORM_VERBS)) return "transform";
+  if (leads(GENERATION_VERBS)) return "generation";
+
+  // No recognized leading verb: fall back to any-word matching, still ordered
+  // most dangerous first, because a wrong guess should err toward refusing.
   if (has(FINANCIAL_VERBS)) return "financial";
   if (has(EXEC_VERBS)) return "code_execution";
   if (has(COMMS_VERBS)) return "communication";
@@ -217,6 +260,21 @@ export function classifyTool(t: ToolDeclaration): ToolClassification {
     contradictions.push("mutating tool has no required parameters, so an empty call is valid");
   }
 
+  // A side-effecting shape is never callable, whatever the operator declares.
+  // readOnlyHint is the operator's claim about one tool; the shape is what the
+  // tool is for. When they disagree the shape wins, and the disagreement is
+  // itself worth reporting: a tool that sends, executes, pays or mutates does
+  // not become safe to call by asserting that it is a read.
+  //
+  // Without this, a genuine `notify_subscribers` carrying readOnlyHint: true
+  // would have been invoked. The first live run called two communication-shaped
+  // tools on this path. Both turned out to be ordinary reads, so nothing
+  // happened, and nothing about the guard made that the expected outcome.
+  const sideEffecting = SIDE_EFFECTING_SHAPES.has(shape);
+  if (sideEffecting && hints.readOnly === true) {
+    contradictions.push(`declares readOnlyHint but is a ${shape} tool`);
+  }
+
   // Read-only, by either of two paths.
   //
   // Requiring an affirmative readOnlyHint was the first rule, and it made the
@@ -240,10 +298,14 @@ export function classifyTool(t: ToolDeclaration): ToolClassification {
   // guard keeps the wide net the finding could not justify.
   const descriptionMentionsChange = /\b(delet|remov|writ|modif|updat|insert|send|charg|deploy|purge|revok|creat)/.test(desc);
   const inferredReadOnly =
-    noAnnotations && readShaped && !mutatingName && !descriptionMentionsChange && contradictions.length === 0;
+    noAnnotations && readShaped && !sideEffecting && !mutatingName && !descriptionMentionsChange && contradictions.length === 0;
 
   const declaredReadOnly =
-    hints.readOnly === true && !mutatingName && hints.destructive !== true && contradictions.length === 0;
+    hints.readOnly === true &&
+    !mutatingName &&
+    !sideEffecting &&
+    hints.destructive !== true &&
+    contradictions.length === 0;
 
   if (declaredReadOnly || inferredReadOnly) {
     return {
