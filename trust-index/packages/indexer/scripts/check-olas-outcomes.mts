@@ -23,7 +23,7 @@
  *
  * Usage:
  *   pnpm --filter @trust-index/indexer exec tsx scripts/check-olas-outcomes.mts \
- *     [--cache <dir>] [--rpc <url>] [--sample <n>]
+ *     [--cache <dir>] [--rpc <url>] [--from <block>]
  */
 import { createReadStream } from "node:fs";
 import { createInterface } from "node:readline";
@@ -37,7 +37,6 @@ function arg(name: string, fallback: string): string {
 }
 
 const CACHE = arg("--cache", "cohort-cache");
-const SAMPLE = Number(arg("--sample", "25"));
 const RPCS = arg("--rpc", "https://mainnet.base.org,https://gateway.tenderly.co/public/base")
   .split(",")
   .map((x) => x.trim())
