@@ -1,22 +1,27 @@
 /**
  * Event decoding for the Identity Registry and Reputation Registry (SPEC
  * 10.3, 10.3-adjacent feedback events). Each decoder takes a RawLog and
- * returns a typed, chain-agnostic record, or null when the log's topic0
- * does not match. ABI shapes are UNVERIFIED (see abi.ts); decoding itself
- * (topic/selector matching, argument layout) is exercised in tests against
- * logs this package encodes with the same ABI, which proves internal
- * consistency, not correctness against the deployed contracts.
+ * returns a typed, chain-agnostic record, or null when the log's topic0 does
+ * not match. ABI shapes are verified against the deployed Base contracts (see
+ * abi.ts and scripts/verify-abi.mts).
+ *
+ * Events the registries emit but scoring does not consume (MetadataSet,
+ * ResponseAppended, and the ERC-4906 metadata-update events) decode to a
+ * `kind: "ignored"` record rather than null, so an unrecognised log stays
+ * distinguishable from a recognised one that carries no scoring signal.
  */
 import { decodeEventLog, encodeEventTopics } from "viem";
 import type { RawLog } from "./chainSource.js";
 import {
-  AGENT_URI_UPDATED_EVENT,
   ERC721_TRANSFER_EVENT,
   FEEDBACK_REVOKED_EVENT,
   IDENTITY_REGISTRY_ABI,
+  METADATA_SET_EVENT,
   NEW_FEEDBACK_EVENT,
   REGISTERED_EVENT,
   REPUTATION_REGISTRY_ABI,
+  RESPONSE_APPENDED_EVENT,
+  URI_UPDATED_EVENT,
 } from "./abi.js";
 
 function topic0(event: Parameters<typeof encodeEventTopics>[0]["abi"][number]): string {
@@ -28,10 +33,12 @@ function topic0(event: Parameters<typeof encodeEventTopics>[0]["abi"][number]): 
 
 export const TOPIC0 = {
   registered: topic0(REGISTERED_EVENT),
-  agentUriUpdated: topic0(AGENT_URI_UPDATED_EVENT),
+  uriUpdated: topic0(URI_UPDATED_EVENT),
+  metadataSet: topic0(METADATA_SET_EVENT),
   transfer: topic0(ERC721_TRANSFER_EVENT),
   newFeedback: topic0(NEW_FEEDBACK_EVENT),
   feedbackRevoked: topic0(FEEDBACK_REVOKED_EVENT),
+  responseAppended: topic0(RESPONSE_APPENDED_EVENT),
 } as const;
 
 export type DecodedRegistered = {
@@ -42,10 +49,12 @@ export type DecodedRegistered = {
   log: RawLog;
 };
 
-export type DecodedAgentUriUpdated = {
-  kind: "agentUriUpdated";
+export type DecodedUriUpdated = {
+  kind: "uriUpdated";
   agentId: string;
   tokenUri: string;
+  /** The address that performed the update. Not always the owner. */
+  updatedBy: string;
   log: RawLog;
 };
 
@@ -57,7 +66,14 @@ export type DecodedTransfer = {
   log: RawLog;
 };
 
-export type IdentityEvent = DecodedRegistered | DecodedAgentUriUpdated | DecodedTransfer;
+/** A log this package recognises but scoring does not consume. */
+export type DecodedIgnored = {
+  kind: "ignored";
+  event: string;
+  log: RawLog;
+};
+
+export type IdentityEvent = DecodedRegistered | DecodedUriUpdated | DecodedTransfer | DecodedIgnored;
 
 /** Decode one Identity Registry log. Returns null when topic0 matches none of the known events. */
 export function decodeIdentityLog(log: RawLog): IdentityEvent | null {
@@ -66,18 +82,27 @@ export function decodeIdentityLog(log: RawLog): IdentityEvent | null {
   const args = { abi: IDENTITY_REGISTRY_ABI, data: log.data as `0x${string}`, topics: log.topics as [`0x${string}`, ...`0x${string}`[]] };
   if (t0.toLowerCase() === TOPIC0.registered.toLowerCase()) {
     const d = decodeEventLog({ ...args, eventName: "Registered" });
-    const a = d.args as unknown as { agentId: bigint; owner: string; tokenURI: string };
-    return { kind: "registered", agentId: a.agentId.toString(), owner: a.owner.toLowerCase(), tokenUri: a.tokenURI, log };
+    const a = d.args as unknown as { agentId: bigint; owner: string; agentURI: string };
+    return { kind: "registered", agentId: a.agentId.toString(), owner: a.owner.toLowerCase(), tokenUri: a.agentURI, log };
   }
-  if (t0.toLowerCase() === TOPIC0.agentUriUpdated.toLowerCase()) {
-    const d = decodeEventLog({ ...args, eventName: "AgentURIUpdated" });
-    const a = d.args as unknown as { agentId: bigint; tokenURI: string };
-    return { kind: "agentUriUpdated", agentId: a.agentId.toString(), tokenUri: a.tokenURI, log };
+  if (t0.toLowerCase() === TOPIC0.uriUpdated.toLowerCase()) {
+    const d = decodeEventLog({ ...args, eventName: "URIUpdated" });
+    const a = d.args as unknown as { agentId: bigint; newURI: string; updatedBy: string };
+    return {
+      kind: "uriUpdated",
+      agentId: a.agentId.toString(),
+      tokenUri: a.newURI,
+      updatedBy: a.updatedBy.toLowerCase(),
+      log,
+    };
   }
   if (t0.toLowerCase() === TOPIC0.transfer.toLowerCase()) {
     const d = decodeEventLog({ ...args, eventName: "Transfer" });
     const a = d.args as unknown as { from: string; to: string; tokenId: bigint };
     return { kind: "transfer", from: a.from.toLowerCase(), to: a.to.toLowerCase(), agentId: a.tokenId.toString(), log };
+  }
+  if (t0.toLowerCase() === TOPIC0.metadataSet.toLowerCase()) {
+    return { kind: "ignored", event: "MetadataSet", log };
   }
   return null;
 }
@@ -106,15 +131,17 @@ export type DecodedFeedbackRevoked = {
   log: RawLog;
 };
 
-export type ReputationEvent = DecodedNewFeedback | DecodedFeedbackRevoked;
+export type ReputationEvent = DecodedNewFeedback | DecodedFeedbackRevoked | DecodedIgnored;
 
-/** Decode one Reputation Registry log. Returns null when topic0 matches neither known event. */
+/** Decode one Reputation Registry log. Returns null when topic0 matches no known event. */
 export function decodeReputationLog(log: RawLog): ReputationEvent | null {
   const t0 = log.topics[0];
   if (t0 === undefined) return null;
   const args = { abi: REPUTATION_REGISTRY_ABI, data: log.data as `0x${string}`, topics: log.topics as [`0x${string}`, ...`0x${string}`[]] };
   if (t0.toLowerCase() === TOPIC0.newFeedback.toLowerCase()) {
     const d = decodeEventLog({ ...args, eventName: "NewFeedback" });
+    // indexedTag1 is a dynamic type marked indexed, so viem hands it back as
+    // the keccak of tag1 rather than as text. The readable tag is tag1.
     const a = d.args as unknown as {
       agentId: bigint;
       clientAddress: string;
@@ -152,6 +179,9 @@ export function decodeReputationLog(log: RawLog): ReputationEvent | null {
       feedbackIndex: Number(a.feedbackIndex),
       log,
     };
+  }
+  if (t0.toLowerCase() === TOPIC0.responseAppended.toLowerCase()) {
+    return { kind: "ignored", event: "ResponseAppended", log };
   }
   return null;
 }

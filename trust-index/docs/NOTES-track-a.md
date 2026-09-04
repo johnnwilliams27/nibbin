@@ -260,11 +260,36 @@ packages/db: 81/81 tests passing across both packages.
 
 ## ABI verification status
 
-The ERC-8004 event ABIs in packages/indexer/src/abi.ts are written from the
-SPEC 8 function descriptions and are UNVERIFIED: the official contracts repo
-(github.com/erc-8004/erc-8004-contracts) is unreachable from this build
-environment. The ERC-721 Transfer event is the standard signature and is the
-only entry considered settled. Lead tracks verification before any live run.
+RESOLVED 2026-09-04. The ABIs are verified against the deployed Base mainnet
+registries. Both registry addresses are ERC-1967 proxies; their implementations
+(identity 0x7274e874ca62410a93bd8bf61c69d8045e399c02, reputation
+0x16e0fa7f7c56b9a767e34b192b51f921be31da34) are verified on Sourcify, and
+packages/indexer/src/abi.ts now carries those published definitions. Confirmed
+a second way by decoding real logs: `scripts/verify-abi.mts` fetches live logs
+and decodes each committed event, and four captured logs are pinned in
+test/fixtures/live-base-logs.json and decoded in the unit suite.
+
+Every one of the five guessed definitions was wrong:
+
+| Event | Guessed | Actual |
+|---|---|---|
+| Registered | `(uint256 indexed, address indexed, string)` | `(uint256 indexed agentId, string agentURI, address indexed owner)` |
+| URI update | `AgentURIUpdated(uint256 indexed, string)` | `URIUpdated(uint256 indexed agentId, string newURI, address indexed updatedBy)` |
+| NewFeedback | 10 params, `uint256 feedbackIndex` | 11 params, `uint64 feedbackIndex`, extra `string indexed indexedTag1` |
+| FeedbackRevoked | `uint256` index, not indexed | `uint64 indexed feedbackIndex` |
+| (absent) | not handled | `MetadataSet`, `ResponseAppended` |
+
+The failure mode this would have produced is the dangerous one. topic0 is the
+keccak of the whole signature, so a wrong signature matches no log at all: the
+backfill would have completed, reported zero events, and looked like a quiet
+chain rather than a broken indexer. Nothing in the unit suite could have caught
+it, because encode.ts built its fixtures from the same wrong ABI the decoder
+read. That is why the ground-truth checks are committed alongside the fix.
+
+Note for other chains: this verification covers Base mainnet (8453) only. Run
+`scripts/verify-abi.mts --rpc <url>` against any new chain before backfilling
+it. The registries are deployed at the same addresses across mainnets, but that
+is an expectation, not something this repo has checked.
 
 ## Requests to the lead
 

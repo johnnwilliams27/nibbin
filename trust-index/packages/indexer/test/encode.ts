@@ -1,9 +1,15 @@
 /**
  * Test-only helper: build RawLog values that decode.ts can decode, using the
- * same ABI it decodes against. This proves decode.ts is internally
- * consistent (round-trips what viem would produce for a log matching our
- * guessed ABI); it does not and cannot prove the ABI matches the deployed
- * contracts (see abi.ts UNVERIFIED note).
+ * same ABI it decodes against.
+ *
+ * This proves decode.ts is internally consistent: it round-trips whatever viem
+ * would produce for a log matching the committed ABI. It cannot prove the ABI
+ * matches the deployed contracts, because both sides of the round trip come
+ * from the same definition. That blind spot is real and it mattered once: an
+ * earlier ABI was wrong in every event and these tests passed anyway. The
+ * checks that close it are the captured live logs in
+ * test/fixtures/live-base-logs.json, decoded in decode.test.ts, and
+ * scripts/verify-abi.mts against a live chain.
  */
 import { encodeAbiParameters, encodeEventTopics, getAddress, type AbiEvent } from "viem";
 import type { RawLog } from "../src/chainSource.js";
