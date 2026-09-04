@@ -139,7 +139,10 @@ export function renderMetrics(metrics: PanelMetrics, ranking: Ranking): string {
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([v, n]) => `${v}=${n}`)
       .join(" ");
-    lines.push(`${m.modelId} [${m.role}]: acc=${m.accuracy?.toFixed(3) ?? "n/a"} failed=${m.failed} | ${dist}`);
+    lines.push(
+      `${m.modelId} [${m.role}]: acc=${m.accuracy?.toFixed(3) ?? "n/a"} ` +
+        `failed_schema=${m.failed_schema} failed_harness=${m.failed_harness} | ${dist}`,
+    );
   }
   lines.push("");
   lines.push("BLOC SPLITS (each lab internally unanimous, the labs disagreeing)");
@@ -163,7 +166,7 @@ export function renderMetrics(metrics: PanelMetrics, ranking: Ranking): string {
     lines.push(`${c.a} vs ${c.b}: phi=${c.phi?.toFixed(3) ?? "n/a"} both_wrong=${c.both_wrong}/${c.overlap}`);
   }
   lines.push("");
-  lines.push("SCHEMA FAILURES (gate G2; any nonzero count is disqualifying)");
+  lines.push("SCHEMA FAILURES (gate G2; model's own fault only — rate limits are counted as harness)");
   if (metrics.schema_failures.length === 0) lines.push("none");
   for (const f of metrics.schema_failures) lines.push(`${f.vendor}/${f.modelId}: ${f.failures}`);
   return lines.join("\n");

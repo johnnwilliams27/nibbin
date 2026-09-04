@@ -50,8 +50,25 @@ export type ModelMetrics = {
   role: "voter" | "decider" | "solo";
   /** Items where the model returned a usable verdict. */
   answered: number;
-  /** Items where it failed to answer at all. Gate G2 lives here. */
+  /** Items where it failed to answer at all, from any cause. */
   failed: number;
+  /**
+   * Failures that are the MODEL's: unparseable output, a verdict outside the
+   * permitted set, a refusal. Gate G2 lives here and only here.
+   */
+  failed_schema: number;
+  /**
+   * Failures that are OURS: rate limits, exhausted credits, timeouts, provider
+   * 5xx. A harness gap, in exactly the sense capability.ts means it.
+   *
+   * Separated because conflating the two committed this project's signature
+   * error against its own experiment. gpt-5.5 was served on a 3-requests-per-
+   * minute account tier, failed 22 of 120 calls to rate limiting, and appeared
+   * in the results as disqualified on schema discipline with its coverage
+   * wrecked — a finding about our billing plan wearing the costume of a finding
+   * about the model.
+   */
+  failed_harness: number;
   /** Of answered items that carry a label. */
   scored: number;
   correct: number;
@@ -145,6 +162,20 @@ function usdFor(prices: PriceSheet | undefined, modelId: string, inTok: number, 
   const p = prices?.[modelId];
   if (p === undefined) return null;
   return (inTok / 1e6) * p.input + (outTok / 1e6) * p.output;
+}
+
+/**
+ * Was this failure ours or the model's?
+ *
+ * Deliberately conservative: anything recognisably an account, transport or
+ * provider-side problem is ours. An unrecognised failure counts against the
+ * model, because the alternative — excusing failures we cannot classify — is
+ * how a model gets credit for not answering.
+ */
+export function isHarnessFailure(error: string): boolean {
+  return /HTTP 429|rate limit|no credits remaining|quota|HTTP 5\d\d|ETIMEDOUT|ECONNRESET|ECONNREFUSED|aborted|socket hang up/i.test(
+    error,
+  );
 }
 
 function mean(xs: readonly number[]): number | null {
@@ -277,6 +308,7 @@ export function scorePanel(
     let outTok = 0;
     const perClass = new Map<string, { support: number; correct: number }>();
     const verdicts: Record<string, number> = {};
+    const harnessBlocked = new Set<string>();
 
     for (const record of run.records) {
       // Keyed on model id, not vendor. With two voters from one lab, a
@@ -286,6 +318,7 @@ export function scorePanel(
       if (vote === undefined) continue;
       if (!vote.ok) {
         failures.push(vote.error);
+        if (isHarnessFailure(vote.error)) harnessBlocked.add(record.item_id);
         continue;
       }
       answered.push(vote);
@@ -312,6 +345,8 @@ export function scorePanel(
       role: "voter",
       answered: answered.length,
       failed: failures.length,
+      failed_schema: failures.filter((f) => !isHarnessFailure(f)).length,
+      failed_harness: harnessBlocked.size,
       scored,
       correct,
       accuracy: scored === 0 ? null : correct / scored,
@@ -330,12 +365,13 @@ export function scorePanel(
       output_tokens: outTok,
       usd: usdFor(prices, voter.modelId, inTok, outTok),
     });
-    if (failures.length > 0) {
+    const schemaOnly = failures.filter((f) => !isHarnessFailure(f));
+    if (schemaOnly.length > 0) {
       schema_failures.push({
         vendor: voter.vendor,
         modelId: voter.modelId,
-        failures: failures.length,
-        sample: failures.slice(0, 3),
+        failures: schemaOnly.length,
+        sample: schemaOnly.slice(0, 3),
       });
     }
   }
@@ -387,6 +423,8 @@ export function scorePanel(
         role,
         answered: okOnes.length,
         failed: failures.length,
+        failed_schema: failures.filter((f) => !isHarnessFailure(f)).length,
+        failed_harness: failures.filter((f) => isHarnessFailure(f)).length,
         scored,
         correct,
         accuracy: scored === 0 ? null : correct / scored,
@@ -405,12 +443,13 @@ export function scorePanel(
         output_tokens: outTok,
         usd: usdFor(prices, first.modelId, inTok, outTok),
       });
-      if (failures.length > 0) {
+      const schemaOnly = failures.filter((f) => !isHarnessFailure(f));
+      if (schemaOnly.length > 0) {
         schema_failures.push({
           vendor: first.vendor,
           modelId: first.modelId,
-          failures: failures.length,
-          sample: failures.slice(0, 3),
+          failures: schemaOnly.length,
+          sample: schemaOnly.slice(0, 3),
         });
       }
     }
@@ -475,12 +514,19 @@ export function scorePanel(
     let held = 0;
     let splitResolved = 0;
     let splitMissed = 0;
+    let harnessBlocked = 0;
     let siblingCases = 0;
     let followedSibling = 0;
     const recordById = new Map(run.records.map((r) => [r.item_id, r]));
 
     for (const d of group) {
-      if (!d.ok) continue;
+      if (!d.ok) {
+        // A rate limit is not this structure declining to answer; it is us
+        // failing to ask. Excluded from the denominator rather than scored as a
+        // miss, which is the same rule capability.ts applies to subjects.
+        if (isHarnessFailure(d.error) && labelOf(items, d.item_id) !== null) harnessBlocked += 1;
+        continue;
+      }
       decided += 1;
       const label = labelOf(items, d.item_id);
       if (label === null) continue;
@@ -527,7 +573,8 @@ export function scorePanel(
       scored,
       correct,
       accuracy: scored === 0 ? null : correct / scored,
-      coverage_adjusted_accuracy: labelledIds.length === 0 ? null : correct / labelledIds.length,
+      coverage_adjusted_accuracy:
+        labelledIds.length - harnessBlocked <= 0 ? null : correct / (labelledIds.length - harnessBlocked),
       usd: voterCost === null || deciderCost === null || deciderCost === undefined ? null : voterCost + deciderCost,
     });
     decider_behaviour.push({
@@ -558,7 +605,8 @@ export function scorePanel(
       scored: m.scored,
       correct: m.correct,
       accuracy: m.accuracy,
-      coverage_adjusted_accuracy: labelledIds.length === 0 ? null : m.correct / labelledIds.length,
+      coverage_adjusted_accuracy:
+        labelledIds.length - m.failed_harness <= 0 ? null : m.correct / (labelledIds.length - m.failed_harness),
       usd: m.usd,
     });
   }

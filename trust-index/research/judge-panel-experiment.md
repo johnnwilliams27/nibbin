@@ -236,3 +236,92 @@ guessed, which is the behaviour we asked for and the scoring rule punishes.
 And the decorrelation argument held up under measurement: pairwise error
 correlation among the Anthropic models ran phi 0.56–0.78. Two Claude models
 agreeing really is an echo.
+
+## Run 2 (2026-09-04): the panel does not earn its keep
+
+120 labelled items, whole responses, tightened rubric, both vendors live.
+Artifact: `runs/panel-2026-09-04T21-03-01-631Z.json`.
+
+### The corpus fix was worth about twenty points
+
+| Model | Run 1 (truncated) | Run 2 (whole) |
+|---|---|---|
+| `claude-haiku-4-5` | 0.635 | 0.742 |
+| `claude-sonnet-5` | 0.694 | **0.892** |
+| `claude-opus-5` solo | 0.682 | **0.892** |
+| `claude-opus-5` decider + evidence | 0.718 | **0.908** |
+
+The diagnosis is confirmed as emphatically as it could be. Nearly everything
+run 1 measured as model error was our own storage decision.
+
+### Structures, ranked
+
+| # | Structure | acc | cov_acc | cost |
+|---|---|---|---|---|
+| 1 | Anthropic decider, votes + evidence | 0.908 | **0.908** | $2.17 |
+| 2 | Anthropic decider, votes only | 0.900 | 0.900 | $2.17 |
+| 3 | `claude-opus-5` alone | 0.892 | 0.892 | $1.43 |
+| 4 | `gpt-5.5` alone | 0.907 | 0.880 | $0.85 |
+| 5 | OpenAI decider, votes + evidence | 0.905 | 0.878 | $1.73 |
+| 6 | OpenAI decider, votes only | 0.888 | 0.861 | $1.73 |
+| 7 | **Majority of four voters, no decider** | 0.921 | **0.775** | $0.86 |
+
+### The finding that matters: one model matches the panel
+
+`claude-sonnet-5` ALONE scores **0.892** at $0.55 — level with Opus solo, and
+1.6 points below the winning seven-model structure that costs four times as
+much. The four-voter majority is the *worst* structure on the board, because it
+abstains on 19 of 120 items: its 0.921 accuracy is bought by declining every
+question it found hard.
+
+This is the solo baseline doing the job it was put there to do. It was included
+precisely so the experiment could return this answer, and it has.
+
+### The decorrelation argument does not survive contact with data
+
+The case for multiple vendors was that errors from different labs would be
+independent. They are not:
+
+| Pair | phi |
+|---|---|
+| `claude-haiku-4-5` vs `gpt-5.4-mini` (**cross-vendor**) | **0.635** |
+| `claude-opus-5` vs `claude-sonnet-5` (same vendor) | 0.599 |
+| `gpt-5.4-mini` vs `gpt-5.4-nano` (same vendor) | 0.532 |
+| `claude-opus-5` vs `gpt-5.4-nano` (**cross-vendor**) | 0.529 |
+
+The highest correlation on the board is a cross-vendor pair. Errors track ITEM
+DIFFICULTY, not model lineage: the hard items are hard for everyone. Only 3 of
+120 items produced a bloc split at all, and majority rule resolved none of them.
+
+That undercuts the central rationale for the whole panel design, and it is the
+sort of thing a benchmark exists to find out before the architecture ships
+rather than after.
+
+### A harness gap that was being scored as a model failure
+
+`gpt-5.5` failed 22 of 120 calls. Nearly all were `HTTP 429` on a 3-requests-
+per-minute account tier — ours, not the model's. Scored as schema failures they
+disqualified it under gate G2 and dragged its coverage from 0.880 to 0.733,
+moving it from fourth place to fifth.
+
+This is the project's signature error committed against its own experiment:
+reading "we could not obtain the answer" as "the model failed to give one".
+`isHarnessFailure` now separates rate limits, exhausted credits, timeouts and
+provider 5xx from real schema violations, and harness-blocked items leave the
+coverage denominator entirely — the same rule `capability.ts` applies to
+subjects. gpt-5.5's genuine schema failures are 3, not 22.
+
+**The comparison is still not clean.** gpt-5.5 answered 97 of 120 items where
+the Claude models answered all 120. Its rate limit needs lifting before the two
+vendors can be ranked against each other honestly.
+
+### Still open
+
+- The meta pass has now declined three times as `reasoning_extraction`, through
+  two different preambles. It is non-fatal and recorded as a harness gap, but
+  the cause is not the framing alone.
+- No confirmed `invention` items. The class the judge most exists to catch is
+  still unmeasured.
+- The labels remain Claude-drafted while Claude models are under test, and
+  Claude models occupy the top three places. A human review pass over a sample
+  is the only thing that can settle whether that ordering is real.
