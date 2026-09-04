@@ -494,6 +494,62 @@ export async function validateModels(
   return { ok, missing };
 }
 
+/**
+ * Make one real, minimal call per vendor.
+ *
+ * LISTING A MODEL IS NOT BEING ABLE TO CALL IT. `validateModels` reads the
+ * catalogue, which every provider serves for free, and it passed cleanly on an
+ * account with no credits: all seven models present, all seven reachable. The
+ * run then made 850 calls, every OpenAI one of which came back 429 "You have no
+ * credits remaining", and the experiment silently degraded from two vendors to
+ * one while reporting a winner.
+ *
+ * A catalogue check answers "does this model exist". Only a call answers "can we
+ * use it", and that is the question preflight is for. One cheap call per vendor
+ * costs a fraction of a cent and turns a wasted run into a five-second failure.
+ */
+export async function smokeTest(
+  choices: readonly ModelChoice[],
+  keys: Partial<Record<Vendor, string>>,
+  workspaceId?: string,
+): Promise<{ vendor: Vendor; modelId: string; ok: boolean; detail: string }[]> {
+  const out: { vendor: Vendor; modelId: string; ok: boolean; detail: string }[] = [];
+  // One model per vendor is enough: credits, billing and auth are account-wide.
+  const seen = new Set<Vendor>();
+  for (const choice of choices) {
+    if (seen.has(choice.vendor)) continue;
+    seen.add(choice.vendor);
+    const key = keys[choice.vendor];
+    if (key === undefined) {
+      out.push({ vendor: choice.vendor, modelId: choice.id, ok: false, detail: "no key" });
+      continue;
+    }
+    const client = judgeFor(choice.vendor, {
+      apiKey: key,
+      model: choice.id,
+      maxTokens: 64,
+      ...(workspaceId === undefined ? {} : { workspaceId }),
+    });
+    try {
+      await client({
+        task: "response_classification",
+        instruction: "Reply with the verdict 'ok'. This is a connectivity check.",
+        untrusted: { probe: "ping" },
+        allowed: ["ok"],
+      });
+      out.push({ vendor: choice.vendor, modelId: choice.id, ok: true, detail: "answered" });
+    } catch (err) {
+      out.push({
+        vendor: choice.vendor,
+        modelId: choice.id,
+        ok: false,
+        detail: err instanceof Error ? err.message.slice(0, 200) : "smoke call threw",
+      });
+    }
+  }
+  return out;
+}
+
 /** Read whatever keys the environment has, without asserting any of them exist. */
 export function keysFromEnv(env: NodeJS.ProcessEnv = process.env): Partial<Record<Vendor, string>> {
   const out: Partial<Record<Vendor, string>> = {};

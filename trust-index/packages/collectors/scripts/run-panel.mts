@@ -33,6 +33,7 @@ import {
   chooseModel,
   judgeFor,
   keysFromEnv,
+  smokeTest,
   validateModels,
   type RosterSlot,
   type Vendor,
@@ -83,6 +84,19 @@ if (missing.length > 0) {
   }
   process.exit(1);
 }
+
+// A catalogue check says a model exists; only a call says we can use it. One
+// minimal call per vendor, because an account with no credits lists every model
+// perfectly and then 429s on all 850 requests.
+const smoke = await smokeTest(ROSTER, keys, workspaceId);
+const dead = smoke.filter((s) => !s.ok);
+if (dead.length > 0) {
+  console.error("PREFLIGHT FAILED: a vendor lists its models but will not answer a call.\n");
+  for (const d of dead) console.error(`  ${d.vendor} (${d.modelId}): ${d.detail}`);
+  console.error("\nNothing was spent. Fix the account, then re-run.");
+  process.exit(1);
+}
+console.log(`smoke test: ${smoke.map((s) => s.vendor).join(", ")} all answered\n`);
 
 for (const m of ROSTER.filter((r) => !r.verified)) {
   console.log(`note: ${m.slot} id ${m.id} was unverified in source; confirmed against the live models listing`);
