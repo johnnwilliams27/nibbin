@@ -265,15 +265,32 @@ export function assessTranscript(t: ProbeTranscript, asOfTs: string): Observatio
       // Tool safety.
       const mutating = declared.filter((d) => isMutatingName(d.name));
       if (mutating.length > 0) {
-        const documented = mutating.filter(
-          (d) => d.description !== null && d.description.trim().length >= THRESHOLDS.min_useful_description_chars,
-        ).length;
+        const undocumented = mutating.filter(
+          (d) => d.description === null || d.description.trim().length < THRESHOLDS.min_useful_description_chars,
+        );
         out.push(
           obs(
             p,
             "tool_safety",
             "mutating_tools_documented",
-            ratio(documented, mutating.length),
+            ratio(mutating.length - undocumented.length, mutating.length),
+            t.probed_at,
+            "measured",
+            ref,
+          ),
+        );
+        // The same fact stated as an occurrence rather than a rate, because a
+        // gate has to fire on the first one. One undescribed delete tool among
+        // fifty well-described tools is a ratio of 0.98 and a hazard of 1: an
+        // agent will call it to find out what it does, and finding out is the
+        // damage. The ratio above feeds the weighted average; this feeds the
+        // mcp.undocumented_destructive_tool gate.
+        out.push(
+          obs(
+            p,
+            "tool_safety",
+            "undocumented_mutating_tool_present",
+            bool(undocumented.length === 0),
             t.probed_at,
             "measured",
             ref,
@@ -301,6 +318,21 @@ export function assessTranscript(t: ProbeTranscript, asOfTs: string): Observatio
           "tool_safety",
           "no_credential_parameters",
           ratio(credentialFree, declared.length),
+          t.probed_at,
+          "measured",
+          ref,
+        ),
+      );
+      // Occurrence form, for the mcp.credential_parameter gate. A single tool
+      // asking the caller to paste an API key is asking for a secret to be
+      // transmitted to a third party, and no ratio across the rest of the tool
+      // list makes that safe to recommend.
+      out.push(
+        obs(
+          p,
+          "tool_safety",
+          "credential_parameter_present",
+          bool(credentialFree === declared.length),
           t.probed_at,
           "measured",
           ref,

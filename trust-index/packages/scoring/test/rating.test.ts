@@ -25,7 +25,7 @@ function probedServer(overrides: Partial<Subject> = {}): Subject {
         dimension: "availability",
         value: "1.000000",
         observation_key: `avail-${i}`,
-        ts: "2026-07-01T00:00:00Z",
+        ts: "2026-07-30T00:00:00Z",
       }),
     );
     observations.push(
@@ -34,7 +34,7 @@ function probedServer(overrides: Partial<Subject> = {}): Subject {
         dimension: "protocol_conformance",
         value: "0.900000",
         observation_key: `conf-${i}`,
-        ts: "2026-07-01T00:00:00Z",
+        ts: "2026-07-30T00:00:00Z",
       }),
     );
     observations.push(
@@ -43,7 +43,7 @@ function probedServer(overrides: Partial<Subject> = {}): Subject {
         dimension: "tool_safety",
         value: "1.000000",
         observation_key: `safe-${i}`,
-        ts: "2026-07-01T00:00:00Z",
+        ts: "2026-07-30T00:00:00Z",
       }),
     );
   }
@@ -270,7 +270,7 @@ describe("gameability defences", () => {
             dimension: "availability",
             value: "1.000000",
             observation_key: `a-${i}`,
-            ts: `2026-06-${String(1 + Math.floor(i / perDay)).padStart(2, "0")}T00:00:00Z`,
+            ts: `2026-07-${String(22 + Math.floor(i / perDay)).padStart(2, "0")}T00:00:00Z`,
           }),
         ),
         observers: {
@@ -425,5 +425,299 @@ describe("subject inputs hash", () => {
     const duplicated = { ...s, observations: [...s.observations, ...s.observations] };
     expect(subjectInputsCanonical(shuffled)).toBe(subjectInputsCanonical(s));
     expect(subjectInputsCanonical(duplicated)).toBe(subjectInputsCanonical(s));
+  });
+});
+
+describe("gates", () => {
+  /** A hosted agent with enough measured evidence for a composite to publish. */
+  function agent(overrides: Partial<Subject> = {}): Subject {
+    const observations: Observation[] = [];
+    for (let i = 0; i < 8; i += 1) {
+      observations.push(
+        makeObservation({
+          observer_id: "probe:harness",
+          dimension: "task_success",
+          value: "0.900000",
+          observation_key: `task-${i}`,
+          ts: `2026-07-${String(24 + (i % 7)).padStart(2, "0")}T00:00:00Z`,
+        }),
+      );
+      observations.push(
+        makeObservation({
+          observer_id: "probe:harness",
+          dimension: "availability",
+          value: "1.000000",
+          observation_key: `avail-${i}`,
+          ts: `2026-07-${String(24 + (i % 7)).padStart(2, "0")}T00:00:00Z`,
+        }),
+      );
+    }
+    return makeSubject({
+      kind: "hosted_agent",
+      profile_id: "hosted_agent.v1",
+      observations,
+      observers: {
+        "probe:harness": makeObserver({
+          observer_id: "probe:harness",
+          observer_kind: "probe",
+          first_seen_ts: "2024-01-01T00:00:00Z",
+        }),
+      },
+      ...overrides,
+    });
+  }
+
+  /** An MCP server whose tool_safety carries a finding. */
+  function serverWithFinding(key: string | null): Subject {
+    const base = probedServer();
+    if (key === null) return base;
+    return makeSubject({
+      observations: [
+        ...base.observations,
+        makeObservation({
+          observer_id: "probe:harness",
+          dimension: "tool_safety",
+          provenance: "measured",
+          value: "0.000000",
+          observation_key: key,
+          ts: "2026-07-30T00:00:00Z",
+        }),
+      ],
+      observers: base.observers,
+    });
+  }
+
+  it("caps a composite on a single finding, however good everything else is", () => {
+    // The case that motivated gates: a weighted average lets four good
+    // dimensions dilute one hazard to a couple of points.
+    const clean = scoreSubject(serverWithFinding(null)).result;
+    const flagged = scoreSubject(serverWithFinding("credential_parameter_present")).result;
+
+    expect(clean.gates_fired).toHaveLength(0);
+    expect(flagged.gates_fired).toHaveLength(1);
+    expect(flagged.gates_fired[0]!.gate_id).toBe("mcp.credential_parameter");
+    expect(flagged.gates_fired[0]!.trigger).toBe("credential_parameter_present");
+    expect(flagged.gates_fired[0]!.reason).toMatch(/credential/);
+
+    // The ceiling is 0.45, published on the 0-100 scale.
+    expect(flagged.composite!).toBeLessThanOrEqual(45);
+    expect(clean.composite!).toBeGreaterThan(flagged.composite!);
+    expect(flagged.composite_suppression_reason).toMatch(/gate/);
+  });
+
+  it("caps the triggering dimension too, and names the gate that did it", () => {
+    const flagged = scoreSubject(serverWithFinding("credential_parameter_present")).result;
+    const safety = dim(flagged, "tool_safety");
+    expect(safety.gate_capped_by).toBe("mcp.credential_parameter");
+    expect(safety.score!).toBeLessThanOrEqual(30);
+    // The lower bound is untouched and the upper bound comes down to the cap:
+    // a gate says "no better than this", never "exactly this".
+    expect(safety.score_high!).toBeLessThanOrEqual(30);
+    expect(safety.score_low!).toBeLessThanOrEqual(safety.score!);
+  });
+
+  it("takes the strictest ceiling when several gates fire", () => {
+    const base = probedServer();
+    const both = makeSubject({
+      observations: [
+        ...base.observations,
+        makeObservation({
+          observer_id: "probe:harness",
+          dimension: "tool_safety",
+          value: "0.000000",
+          observation_key: "credential_parameter_present",
+          ts: "2026-07-30T00:00:00Z",
+        }),
+        makeObservation({
+          observer_id: "probe:harness",
+          dimension: "tool_safety",
+          value: "0.000000",
+          observation_key: "undocumented_mutating_tool_present",
+          ts: "2026-07-30T00:00:00Z",
+        }),
+      ],
+      observers: base.observers,
+    });
+    const { result } = scoreSubject(both);
+    expect(result.gates_fired.map((g) => g.gate_id)).toEqual([
+      "mcp.credential_parameter",
+      "mcp.undocumented_destructive_tool",
+    ]);
+    // 0.45 is stricter than 0.60, so 0.45 wins.
+    expect(result.composite!).toBeLessThanOrEqual(45);
+  });
+
+  it("cannot be fired by a review, so nobody can cap a rival by posting one", () => {
+    // The gate's trigger_provenance is checked independently of the
+    // dimension's accepted_provenance. Without that separation, any dimension
+    // that took opinions would hand every competitor a weapon.
+    const base = probedServer();
+    const viaReview = makeSubject({
+      kind: "hosted_agent",
+      profile_id: "hosted_agent.v1",
+      observations: [
+        ...agent().observations,
+        makeObservation({
+          observer_id: "rival",
+          dimension: "availability",
+          provenance: "third_party_review",
+          value: "0.000000",
+          observation_key: "avail-claim",
+          ts: "2026-07-30T00:00:00Z",
+        }),
+      ],
+      observers: {
+        ...agent().observers,
+        rival: makeObserver({ observer_id: "rival", first_seen_ts: "2020-01-01T00:00:00Z" }),
+      },
+    });
+    const { result } = scoreSubject(viaReview);
+    expect(result.gates_fired).toHaveLength(0);
+    // The review was not admissible on availability at all, so it is counted
+    // as rejected rather than quietly absorbed.
+    expect(dim(result, "availability").rejected_provenance_count).toBe(1);
+    expect(base.kind).toBe("mcp_server");
+  });
+
+  it("does not fire an estimate gate on thin evidence", () => {
+    // A single failed probe is a bad minute. The estimate gate reads the
+    // UPPER bound, which is high when evidence is thin, so it cannot fire.
+    const oneFailure = agent({
+      observations: [
+        ...agent().observations.filter((o) => o.dimension === "task_success"),
+        makeObservation({
+          observer_id: "probe:harness",
+          dimension: "availability",
+          value: "0.000000",
+          observation_key: "avail-0",
+          ts: "2026-07-30T00:00:00Z",
+        }),
+      ],
+    });
+    const { result } = scoreSubject(oneFailure);
+    expect(dim(result, "availability").score_high!).toBeGreaterThan(50);
+    expect(result.gates_fired).toHaveLength(0);
+  });
+
+  it("fires an estimate gate once a probe window establishes the failure", () => {
+    const downForWeeks = agent({
+      observations: [
+        ...agent().observations.filter((o) => o.dimension === "task_success"),
+        ...Array.from({ length: 20 }, (_, i) =>
+          makeObservation({
+            observer_id: "probe:harness",
+            dimension: "availability",
+            value: "0.000000",
+            observation_key: `avail-${i}`,
+            ts: `2026-07-${String(12 + i).padStart(2, "0")}T00:00:00Z`,
+          }),
+        ),
+      ],
+    });
+    const { result } = scoreSubject(downForWeeks);
+    expect(result.gates_fired.map((g) => g.gate_id)).toEqual(["hosted.persistently_unavailable"]);
+    expect(result.gates_fired[0]!.trigger).toBe("score_high");
+    expect(result.composite!).toBeLessThanOrEqual(50);
+  });
+
+  it("does not fire on a dimension with no evidence", () => {
+    // Absence of evidence is not a finding. A gate that fired on silence would
+    // cap every subject nobody has probed yet.
+    const noSafetyEvidence = probedServer({
+      observations: probedServer().observations.filter((o) => o.dimension !== "tool_safety"),
+    });
+    const { result } = scoreSubject(noSafetyEvidence);
+    expect(dim(result, "tool_safety").suppression_reason).toMatch(/no observations/);
+    expect(result.gates_fired).toHaveLength(0);
+  });
+
+  it("does not raise a score: a gate is a ceiling, never a floor", () => {
+    // caps_composite_at 0.60 must not lift a composite that is already lower.
+    const weak = probedServer({
+      observations: [
+        ...probedServer()
+          .observations.filter((o) => o.dimension !== "tool_safety")
+          .map((o) => ({ ...o, value: "0.100000" })),
+        makeObservation({
+          observer_id: "probe:harness",
+          dimension: "tool_safety",
+          value: "0.000000",
+          observation_key: "undocumented_mutating_tool_present",
+          ts: "2026-07-30T00:00:00Z",
+        }),
+      ],
+    });
+    const { result } = scoreSubject(weak);
+    expect(result.gates_fired).toHaveLength(1);
+    expect(result.composite!).toBeLessThan(60);
+  });
+});
+
+describe("per-dimension constants", () => {
+  it("decays availability far faster than maintenance", () => {
+    // A 120-day global half-life would leave a month-old uptime probe at 84
+    // percent of its weight, which is not what an availability rating means.
+    const aged = (dimension: string, ts: string): Subject =>
+      makeSubject({
+        observations: Array.from({ length: 8 }, (_, i) =>
+          makeObservation({
+            observer_id: "probe:harness",
+            dimension,
+            value: "1.000000",
+            observation_key: `k-${i}`,
+            ts: `${ts.slice(0, 8)}${String(Number(ts.slice(8, 10)) + i).padStart(2, "0")}${ts.slice(10)}`,
+          }),
+        ),
+        observers: {
+          "probe:harness": makeObserver({
+            observer_id: "probe:harness",
+            observer_kind: "probe",
+            first_seen_ts: "2024-01-01T00:00:00Z",
+          }),
+        },
+      });
+    const freshAvail = dim(scoreSubject(aged("availability", "2026-07-20T00:00:00Z")).result, "availability");
+    const staleAvail = dim(scoreSubject(aged("availability", "2026-05-01T00:00:00Z")).result, "availability");
+    const staleMaint = dim(scoreSubject(aged("maintenance", "2026-05-01T00:00:00Z")).result, "maintenance");
+
+    // Availability at 14 days: three months of age erases nearly all of it.
+    expect(staleAvail.n_eff).toBeLessThan(freshAvail.n_eff / 10);
+    // Maintenance at 365 days, same age, keeps most of its weight.
+    expect(staleMaint.n_eff).toBeGreaterThan(staleAvail.n_eff * 10);
+  });
+
+  it("hashes the profile so a rubric change is visible in the result", () => {
+    const { result } = scoreSubject(probedServer());
+    expect(result.profile_digest).toMatch(/^[0-9a-f]{64}$/);
+    // A different profile is a different digest.
+    const other = scoreSubject(
+      makeSubject({
+        kind: "hosted_agent",
+        profile_id: "hosted_agent.v1",
+        observations: probedServer().observations.filter((o) => o.dimension === "availability"),
+        observers: probedServer().observers,
+      }),
+    ).result;
+    expect(other.profile_digest).not.toBe(result.profile_digest);
+  });
+});
+
+describe("tags", () => {
+  it("never change the score or the inputs hash", () => {
+    // The whole reason tags are a separate field: a mislabelled subject is
+    // misfiled, not mis-rated, and two reproducers of identical evidence agree
+    // even when one of them tagged it.
+    const untagged = probedServer();
+    const tagged = probedServer({ tags: ["finance", "research"] });
+    const a = scoreSubject(untagged);
+    const b = scoreSubject(tagged);
+    expect(b.canonicalBytes).toBe(a.canonicalBytes);
+    expect(subjectInputsHash(tagged)).toBe(subjectInputsHash(untagged));
+  });
+
+  it("hashes the prior cohort, because a prior does enter the score", () => {
+    const wide = probedServer();
+    const narrow = probedServer({ priors: { ...wide.priors, cohort: "mcp_server/finance" } });
+    expect(subjectInputsHash(narrow)).not.toBe(subjectInputsHash(wide));
   });
 });

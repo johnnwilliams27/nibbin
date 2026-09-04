@@ -24,6 +24,11 @@ export type BuildSubjectOptions = {
   probe: ProbeIdentity;
   priors?: RatingPriorSet;
   asOfTs: string;
+  /**
+   * Descriptive labels for listing and cohort selection. Never scored, so a
+   * wrong tag misfiles a server rather than mis-rating it.
+   */
+  tags?: string[];
 };
 
 const DEFAULT_PRIORS: RatingPriorSet = {
@@ -36,6 +41,7 @@ const DEFAULT_PRIORS: RatingPriorSet = {
   by_dimension: {},
   basis: "measured_only",
   n_basis: "1.00",
+  cohort: "mcp_server",
 };
 
 /**
@@ -56,8 +62,53 @@ export function repositoryOwner(repositoryUrl: string | null): string | null {
   }
 }
 
+/**
+ * Build a Subject from a run history.
+ *
+ * This, not the single-run form, is what a deployment produces: the collector
+ * probes on a schedule and each run leaves a transcript. Merging them is what
+ * turns a rating from "we looked once" into "we have been watching", and it is
+ * the only way a measured dimension accumulates the independent daily samples
+ * the engine's volume cap is willing to count.
+ *
+ * A worked example is what made this necessary. Scoring one run alone, every
+ * dimension except availability rested on a single observation, fell under the
+ * suppression floor, and the composite was withheld for want of coverage. The
+ * fix is not a looser floor; it is more days.
+ *
+ * Transcripts must be for the same endpoint. Observation keys already carry
+ * their attempt or check name, so runs are namespaced by the run timestamp to
+ * keep two days' handshake checks distinct rather than deduplicating into one.
+ */
+export function transcriptsToSubject(
+  transcripts: readonly ProbeTranscript[],
+  options: BuildSubjectOptions,
+): Subject {
+  if (transcripts.length === 0) throw new Error("transcriptsToSubject: no transcripts");
+  const sorted = [...transcripts].sort((a, b) => (a.probed_at < b.probed_at ? -1 : a.probed_at > b.probed_at ? 1 : 0));
+  const latest = sorted[sorted.length - 1]!;
+  const endpoints = new Set(sorted.map((t) => t.endpoint));
+  if (endpoints.size > 1) {
+    throw new Error(`transcriptsToSubject: transcripts span ${endpoints.size} endpoints`);
+  }
+  const merged: ProbeTranscript = {
+    ...latest,
+    attempts: sorted.flatMap((t) => t.attempts),
+  };
+  // No namespacing. An observation's identity is its check AT A MOMENT (see
+  // observationKey in the scoring package), so two runs of the same check on
+  // different days are already distinct, and the keys stay readable and
+  // gate-matchable. Namespacing them per run was the first attempt here, and
+  // it silently stopped every gate from matching.
+  const observations = sorted.flatMap((t) => assessTranscript(t, options.asOfTs));
+  return assemble(merged, observations, options);
+}
+
 export function transcriptToSubject(t: ProbeTranscript, options: BuildSubjectOptions): Subject {
-  const observations: Observation[] = assessTranscript(t, options.asOfTs);
+  return assemble(t, assessTranscript(t, options.asOfTs), options);
+}
+
+function assemble(t: ProbeTranscript, observations: Observation[], options: BuildSubjectOptions): Subject {
   const observers: Record<string, Observer> = Object.create(null);
 
   observers[t.probe_id] = {
@@ -111,6 +162,7 @@ export function transcriptToSubject(t: ProbeTranscript, options: BuildSubjectOpt
     first_seen_ts: t.registry?.first_published_at ?? t.probed_at,
     last_active_ts: lastReachable?.ts ?? null,
     reachable,
+    tags: [...new Set(options.tags ?? [])].sort(),
     observations,
     observers,
     priors: options.priors ?? DEFAULT_PRIORS,

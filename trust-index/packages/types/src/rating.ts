@@ -117,9 +117,11 @@ export type Observation = {
   value: DecimalString;
   ts: string;
   /**
-   * Stable key for deduplication within an observer, matching the role
-   * (client_address, feedback_index) plays on chain. Two observations from one
-   * observer with the same key are the same observation.
+   * What was checked: "handshake", "credential_parameter_present",
+   * "publish_recency", or a feedback index on chain. Names the check, not the
+   * occasion: identity is this key together with `ts`, so the same check run
+   * again tomorrow is a second measurement rather than a duplicate. Gates
+   * match on this key, so it has to mean the same thing across runs.
    */
   observation_key: string;
   /**
@@ -139,6 +141,15 @@ export type RatingPriorSet = {
   basis: "high_weight_weighted_mean" | "measured_only" | "commerce_corroborated";
   /** Effective sample size behind the prior itself. Must be positive. */
   n_basis: DecimalString;
+  /**
+   * Which population these priors were computed over: "mcp_server", or
+   * "mcp_server/finance" when a tag cohort was used. Purely a provenance
+   * label, because the collector has already done the selecting and handed
+   * the engine the resulting numbers. It IS hashed, because it names where a
+   * number that enters the score came from, and "shrunk toward finance
+   * agents" and "shrunk toward everything" are different claims.
+   */
+  cohort: string;
 };
 
 /**
@@ -215,6 +226,24 @@ export type Subject = {
   /** Subject publishes something callable. The generic form of declared_endpoints. */
   reachable: boolean;
 
+  /**
+   * Descriptive labels: what the subject is FOR, as opposed to `kind`, which
+   * is what it IS. "coding", "finance", "data-extraction".
+   *
+   * Tags never enter the score. They do two other jobs: they slice listings,
+   * and upstream of the engine they select which cohort a prior is computed
+   * over. "Shrunk toward other finance agents" is a statistical statement;
+   * "finance agents get five points" is not, and the difference is the reason
+   * this field is separated from everything the estimator reads.
+   *
+   * Deliberately excluded from inputs_hash for the same reason
+   * CommerceRecord.linkage_strength is excluded on the chain path: a score
+   * must not change because a label was applied differently, and two honest
+   * reproducers of the same evidence must agree even if one of them tagged
+   * the subject and the other did not.
+   */
+  tags: string[];
+
   observations: Observation[];
   /** One entry per distinct observer_id appearing in observations. */
   observers: Record<string, Observer>;
@@ -245,6 +274,21 @@ export type DimensionScore = {
   distinct_observers: number;
   span_days: number;
   suppression_reason: string | null;
+  /** Gate id that capped this dimension, or null. See RatingGate in profiles.ts. */
+  gate_capped_by: string | null;
+};
+
+/** One gate that fired, reported whether or not a composite was published. */
+export type FiredGate = {
+  gate_id: string;
+  dimension: string;
+  /** What tripped it: an observation key, or the dimension's own upper bound. */
+  trigger: string;
+  /** The value that tripped it, on the 0-100 display scale. */
+  observed: number;
+  /** Composite ceiling this gate imposes, on the 0-100 display scale. */
+  caps_composite_at: number;
+  reason: string;
 };
 
 export type SubjectScoreResult = {
@@ -265,13 +309,23 @@ export type SubjectScoreResult = {
 
   lifecycle: RatingLifecycle;
   dimensions: DimensionScore[];
+  /** Gates that fired, ordered by gate id. Empty when none did. */
+  gates_fired: FiredGate[];
   observer_weights: Array<{ observer_id: string; weight: number }>;
   signals: Record<string, number | string | boolean | null>;
+  /**
+   * sha256 of the profile's canonical form: its dimensions, weights, accepted
+   * provenance, caps, constant overrides and gates. A rubric change changes
+   * this, so two scores carrying the same inputs_hash were produced under the
+   * same rules and not merely against the same evidence.
+   */
+  profile_digest: string;
   inputs_hash: string;
 };
 
 /** Suppression reasons the generic engine emits. */
 export const RATING_SUPPRESSION = {
+  gate: "capped by a gate; see gates_fired",
   neff_below_floor: "n_eff below suppression floor",
   no_usable_observations: "no observations with an accepted provenance",
   dimension_coverage_short: "too little of the profile's weight has a published dimension",

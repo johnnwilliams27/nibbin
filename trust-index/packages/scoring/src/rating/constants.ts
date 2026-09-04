@@ -3,7 +3,7 @@
  * run. Same discipline as constants.ts on the chain path: every DecimalString
  * is parsed exactly or throws, and nothing downstream ever sees a string.
  */
-import type { Provenance, RatingConstants } from "@trust-index/types";
+import type { DimensionSpec, Provenance, RatingConstantOverrides, RatingConstants, RatingProfile } from "@trust-index/types";
 import { ONE, parseFx } from "../fixedmath.js";
 
 export type RatingConstantsFx = {
@@ -78,4 +78,43 @@ export function parseRatingConstants(c: RatingConstants): RatingConstantsFx {
     strongMinSpanDays: parseFx(c.strong_min_span_days),
     strongMinObservers: parseFx(c.strong_min_observers),
   };
+}
+
+/**
+ * Resolve the constants in force for one dimension: the subject's constants,
+ * overlaid by the profile's overrides, overlaid by the dimension's.
+ *
+ * Only the evidence constants are overridable (see RatingConstantOverrides).
+ * The observer weighting constants are resolved once per subject and shared,
+ * so an observer has exactly one weight within one rating.
+ *
+ * The overrides live in the profile registry, which is code rather than
+ * snapshot data, so the profile digest in the result is what ties a score to
+ * the rules that produced it. Without that digest a constant could change here
+ * and two scores with the same inputs_hash would disagree.
+ */
+export function resolveDimensionConstants(
+  base: RatingConstantsFx,
+  profile: RatingProfile,
+  spec: DimensionSpec,
+): RatingConstantsFx {
+  const merged: Partial<RatingConstantOverrides> = { ...profile.constants, ...spec.constants };
+  if (Object.keys(merged).length === 0) return base;
+  const out: RatingConstantsFx = { ...base };
+  if (merged.shrinkage_k !== undefined) {
+    const v = parseFx(merged.shrinkage_k);
+    if (v < 0n) throw new RangeError(`${spec.id}: shrinkage_k must not be negative`);
+    out.shrinkageK = v;
+  }
+  if (merged.decay_half_life_days !== undefined) {
+    out.decayHalfLifeDays = positive(`${spec.id}: decay_half_life_days`, merged.decay_half_life_days);
+  }
+  if (merged.suppression_neff_floor !== undefined) {
+    out.suppressionNeffFloor = parseFx(merged.suppression_neff_floor);
+  }
+  if (merged.thin_neff_max !== undefined) out.thinNeffMax = parseFx(merged.thin_neff_max);
+  if (merged.moderate_neff_max !== undefined) out.moderateNeffMax = parseFx(merged.moderate_neff_max);
+  if (merged.strong_min_span_days !== undefined) out.strongMinSpanDays = parseFx(merged.strong_min_span_days);
+  if (merged.strong_min_observers !== undefined) out.strongMinObservers = parseFx(merged.strong_min_observers);
+  return out;
 }

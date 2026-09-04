@@ -90,8 +90,27 @@ export function computeObserverWeights(
       group = clampFx(ONE - mulFx(share, c.groupPenalty), 0n, ONE);
     }
 
+    // Velocity penalty, and who it applies to.
+    //
+    // The signal is about opinions produced faster than they can be formed: a
+    // wallet leaving 400 reviews in a day is not giving each subject real
+    // attention, and SPEC 11.2 down-weights it accordingly. That reasoning
+    // does not survive the move to measurement. A probe harness that measures
+    // 400 endpoints a day is doing precisely its job, and a settlement
+    // contract records every job that settles; penalizing either for
+    // throughput would mean the more of the world we cover, the less any of it
+    // counts.
+    //
+    // Found by a worked example: with the penalty applied to probes, every
+    // measured dimension fell below the suppression floor and every MCP server
+    // in the compendium came out unrated. Same shape as the volume-cap fix, so
+    // the same rule holds: a constraint written for opinions does not
+    // automatically transfer to measurements.
+    const velocityApplies = o.observer_kind === "reviewer" || o.observer_kind === "publisher";
     const velocity =
-      intFx(o.max_observations_single_day) > c.velocityThresholdPerDay ? c.velocityMultiplier : ONE;
+      velocityApplies && intFx(o.max_observations_single_day) > c.velocityThresholdPerDay
+        ? c.velocityMultiplier
+        : ONE;
 
     const interaction = o.has_interaction_with_subject ? c.interactionMultiplier : ONE;
 

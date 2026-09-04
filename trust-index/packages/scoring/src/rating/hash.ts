@@ -15,7 +15,14 @@
  * reproducers of the same evidence compute the same root.
  */
 import { createHash } from "node:crypto";
-import type { CanonicalValue, Observation, Observer, RatingConstants, Subject } from "@trust-index/types";
+import type {
+  CanonicalValue,
+  Observation,
+  Observer,
+  RatingConstants,
+  RatingProfile,
+  Subject,
+} from "@trust-index/types";
 import { canonicalJson } from "@trust-index/types";
 
 function canonicalDecimal(s: string): string {
@@ -35,9 +42,23 @@ function cmp(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0;
 }
 
-/** Primary key of an observation. Matches the scorer's dedupe key exactly. */
+/**
+ * Primary key of an observation. Matches the scorer's dedupe key exactly.
+ *
+ * The timestamp is part of the identity, and that is the whole point.
+ * `observation_key` names the CHECK ("handshake", "credential_parameter_present"),
+ * because a gate has to be able to match it and a reader has to be able to
+ * read it. Identity is that check at a moment. Two rows from one observer with
+ * the same check at the same instant are a duplicated row and collapse; the
+ * same check run again tomorrow is a second measurement and must not.
+ *
+ * Getting this wrong the other way is easy and quiet. Making the key alone the
+ * identity forces a collector with a run history to namespace its keys per
+ * run, which preserves the samples and silently breaks every gate that matches
+ * on a key. Found exactly that way.
+ */
 export function observationKey(o: Observation): string {
-  return `${o.observer_id}#${o.dimension}#${o.observation_key}`;
+  return `${o.observer_id}#${o.dimension}#${o.observation_key}#${o.ts}`;
 }
 
 function observationCanonical(o: Observation): CanonicalValue {
@@ -95,6 +116,65 @@ function constantsCanonical(c: RatingConstants): CanonicalValue {
   };
 }
 
+/**
+ * The profile's canonical form. Hashed into the result as `profile_digest`.
+ *
+ * The rubric lives in code, not in the Subject, so inputs_hash alone cannot
+ * tell a reader which rules produced a score: a changed weight, a new gate, or
+ * a retuned per-dimension decay would move every score in the compendium while
+ * every inputs_hash stayed put. The digest closes that. Two results carrying
+ * the same inputs_hash AND the same profile_digest were produced from the same
+ * evidence under the same rules, which is the only version of the
+ * reproducibility claim worth publishing.
+ *
+ * Labels, rubric prose and summaries are excluded: they are how the rules are
+ * explained, not what they are, and fixing a typo in a rubric must not
+ * invalidate every score computed under it.
+ */
+export function profileCanonical(p: RatingProfile): string {
+  const d = canonicalDecimal;
+  const tree: CanonicalValue = {
+    profile_id: p.profile_id,
+    kind: p.kind,
+    min_dimension_coverage: d(p.min_dimension_coverage),
+    constants: p.constants === undefined ? null : constantOverrides(p.constants),
+    dimensions: [...p.dimensions]
+      .sort((a, b) => cmp(a.id, b.id))
+      .map((dim) => ({
+        id: dim.id,
+        weight: d(dim.weight),
+        self_reported_cap: d(dim.self_reported_cap),
+        accepted_provenance: [...dim.accepted_provenance].sort(),
+        constants: dim.constants === undefined ? null : constantOverrides(dim.constants),
+      })),
+    gates: [...p.gates]
+      .sort((a, b) => cmp(a.id, b.id))
+      .map((g) => ({
+        id: g.id,
+        dimension: g.dimension,
+        trigger: g.trigger,
+        observation_key: g.observation_key,
+        at_or_below: d(g.at_or_below),
+        trigger_provenance: [...g.trigger_provenance].sort(),
+        caps_composite_at: d(g.caps_composite_at),
+        caps_dimension_at: g.caps_dimension_at === null ? null : d(g.caps_dimension_at),
+      })),
+  };
+  return canonicalJson(tree);
+}
+
+function constantOverrides(o: Partial<Record<string, string>>): CanonicalValue {
+  return Object.fromEntries(
+    Object.keys(o)
+      .sort()
+      .map((k) => [k, canonicalDecimal(o[k]!)]),
+  );
+}
+
+export function profileDigest(p: RatingProfile): string {
+  return createHash("sha256").update(profileCanonical(p), "utf8").digest("hex");
+}
+
 export function subjectInputsCanonical(s: Subject): string {
   const seen = new Set<string>();
   const observations: CanonicalValue[] = [];
@@ -119,6 +199,10 @@ export function subjectInputsCanonical(s: Subject): string {
         .sort()
         .map((id) => [id, observerCanonical(s.observers[id]!)]),
     ),
+    // tags are deliberately absent: they never enter the score, and a hash
+    // that moved when a label was applied would break agreement between two
+    // reproducers of identical evidence. `cohort` IS present, because it names
+    // the population a prior was drawn from, and that prior does enter.
     priors: {
       global: canonicalDecimal(s.priors.global),
       by_dimension: Object.fromEntries(
@@ -128,6 +212,7 @@ export function subjectInputsCanonical(s: Subject): string {
       ),
       basis: s.priors.basis,
       n_basis: canonicalDecimal(s.priors.n_basis),
+      cohort: s.priors.cohort,
     },
     constants: constantsCanonical(s.constants),
   };

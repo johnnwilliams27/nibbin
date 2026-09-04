@@ -43,6 +43,7 @@ export function makeSubject(overrides: Partial<Subject> = {}): Subject {
     first_seen_ts: "2026-01-01T00:00:00Z",
     last_active_ts: "2026-07-20T00:00:00Z",
     reachable: true,
+    tags: [],
     observations: [],
     observers: {},
     priors: {
@@ -50,6 +51,7 @@ export function makeSubject(overrides: Partial<Subject> = {}): Subject {
       by_dimension: {},
       basis: "measured_only",
       n_basis: "100.00",
+      cohort: "mcp_server",
     },
     constants: DEFAULT_RATING_CONSTANTS,
     ...overrides,

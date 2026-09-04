@@ -101,6 +101,87 @@ describe("rating profiles", () => {
     expect(() => getRatingProfile("nope.v1")).toThrow(/unknown rating profile/);
   });
 
+  it("points every gate at a dimension its profile actually defines", () => {
+    for (const p of profiles) {
+      const ids = new Set(p.dimensions.map((d) => d.id));
+      for (const g of p.gates) {
+        expect(ids.has(g.dimension), `${p.profile_id}/${g.id}`).toBe(true);
+      }
+    }
+  });
+
+  it("lets no gate fire on an opinion", () => {
+    // A gate a review could trip is a weapon pointed at competitors: anyone
+    // could post one and cap a rival. Gates take measured and attested only.
+    for (const p of profiles) {
+      for (const g of p.gates) {
+        for (const prov of g.trigger_provenance) {
+          expect(["measured", "attested"], `${p.profile_id}/${g.id}`).toContain(prov);
+        }
+        expect(g.trigger_provenance.length, `${p.profile_id}/${g.id}`).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("requires an observation key on every occurrence gate", () => {
+    // A keyless observation gate would fire on any low ratio, and a ratio is
+    // an average, which is what gates exist to escape.
+    for (const p of profiles) {
+      for (const g of p.gates) {
+        if (g.trigger !== "observation") continue;
+        expect(g.observation_key, `${p.profile_id}/${g.id}`).not.toBeNull();
+      }
+    }
+  });
+
+  it("keeps every gate ceiling a real ceiling", () => {
+    for (const p of profiles) {
+      for (const g of p.gates) {
+        const cap = FixedNum.parse(g.caps_composite_at, 12).scaled;
+        expect(cap > 0n, `${p.profile_id}/${g.id}`).toBe(true);
+        expect(cap < 10n ** 12n, `${p.profile_id}/${g.id} caps at or above 1, which caps nothing`).toBe(true);
+        if (g.caps_dimension_at !== null) {
+          const dimCap = FixedNum.parse(g.caps_dimension_at, 12).scaled;
+          expect(dimCap < 10n ** 12n, `${p.profile_id}/${g.id}`).toBe(true);
+        }
+        expect(g.reason.trim().length, `${p.profile_id}/${g.id} has no published reason`).toBeGreaterThan(20);
+      }
+    }
+  });
+
+  it("uses a unique gate id across the whole registry", () => {
+    const seen = new Set<string>();
+    for (const p of profiles) {
+      for (const g of p.gates) {
+        expect(seen.has(g.id), g.id).toBe(false);
+        seen.add(g.id);
+      }
+    }
+  });
+
+  it("overrides only constants that describe the evidence", () => {
+    // Observer weighting constants are shared per subject on purpose: a
+    // dimension that re-weighted an observer would give one party two voices
+    // in one rating.
+    const allowed = new Set([
+      "shrinkage_k",
+      "decay_half_life_days",
+      "suppression_neff_floor",
+      "thin_neff_max",
+      "moderate_neff_max",
+      "strong_min_span_days",
+      "strong_min_observers",
+    ]);
+    for (const p of profiles) {
+      for (const key of Object.keys(p.constants ?? {})) expect(allowed, p.profile_id).toContain(key);
+      for (const d of p.dimensions) {
+        for (const key of Object.keys(d.constants ?? {})) {
+          expect(allowed, `${p.profile_id}/${d.id}`).toContain(key);
+        }
+      }
+    }
+  });
+
   it("exposes a stable sorted dimension id list", () => {
     const ids = allDimensionIds();
     expect([...ids].sort()).toEqual(ids);

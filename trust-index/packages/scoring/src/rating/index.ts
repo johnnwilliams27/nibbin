@@ -61,6 +61,7 @@ import type {
   RatingCoverageTier,
   RatingLifecycle,
   RatingPriorSet,
+  RatingProfile,
   Subject,
   SubjectScoreResult,
 } from "@trust-index/types";
@@ -76,8 +77,8 @@ import {
 import { capAndSum, posterior, referenceWidthFx, type WeightedObservation } from "../estimator.js";
 import { INNER, ONE, clampFx, divFx, intFx, minFx, mulFx, parseFx, pow2NegFx } from "../fixedmath.js";
 import { floorDaysBetween, parseIsoUtcSeconds } from "../time.js";
-import { parseRatingConstants, type RatingConstantsFx } from "./constants.js";
-import { subjectInputsHash, observationKey } from "./hash.js";
+import { parseRatingConstants, resolveDimensionConstants, type RatingConstantsFx } from "./constants.js";
+import { profileDigest, subjectInputsHash, observationKey } from "./hash.js";
 import { computeObserverWeights, type ObserverWeightFx } from "./weights.js";
 
 function displayScore(valueFx: bigint): FixedNum {
@@ -136,8 +137,25 @@ type DimensionOutcome = {
   weightFx: bigint;
   published: boolean;
   meanFx: bigint;
+  lowFx: bigint;
+  highFx: bigint;
   halfFx: bigint;
-  canonical: CanonicalValue;
+  confidenceFx: bigint;
+  neffFx: bigint;
+  spanDays: number;
+  distinctObservers: number;
+  observationCount: number;
+  rejectedCount: number;
+  selfShareFx: bigint;
+  selfCapped: boolean;
+  suppressionReason: string | null;
+  /** Observations that passed the provenance filter, kept for gate evaluation. */
+  admissible: readonly Observation[];
+  /** The dimension's own resolved constants, needed to render its coverage tier. */
+  tierConstants: RatingConstantsFx;
+  /** Ceiling imposed by a gate, or null. Filled in after gates run. */
+  gateCapFx: bigint | null;
+  gateCappedBy: string | null;
 };
 
 /**
@@ -177,6 +195,7 @@ function scoreDimension(
   // Cap keys, one per bucket, each mapped back to the owning observer's
   // undecayed weight so capAndSum bounds a bucket at that observer's worth.
   const capWeights = new Map<string, bigint>();
+  const admissible: Observation[] = [];
   let rejected = 0;
   let selfSumFx = 0n;
   let otherSumFx = 0n;
@@ -214,6 +233,7 @@ function scoreDimension(
       : `${e.observer_id.length}:${e.observer_id}|*`;
     capWeights.set(capKey, observerWeightFx);
     staged.push({ obs: { address: capKey, effectiveWeightFx, valueFx }, isSelf });
+    admissible.push(e);
     observerIds.add(e.observer_id);
     if (!haveAny || entrySec < minSec) minSec = entrySec;
     if (!haveAny || entrySec > maxSec) maxSec = entrySec;
@@ -251,23 +271,133 @@ function scoreDimension(
     weightFx: parseFx(spec.weight),
     published,
     meanFx: post.meanFx,
+    lowFx: post.lowFx,
+    highFx: post.highFx,
     halfFx: post.widthFx / 2n,
-    canonical: {
-      dimension: spec.id,
-      score: published ? displayScore(post.meanFx) : null,
-      score_low: published ? displayScore(post.lowFx) : null,
-      score_high: published ? displayScore(post.highFx) : null,
-      confidence: displayAt(post.confidenceFx, PRECISION.confidence),
-      n_eff: displayAt(sums.neffFx, PRECISION.n_eff),
-      coverage_tier: coverageTier(sums.neffFx, spanDays, observerIds.size, !published, c),
-      observation_count: staged.length,
-      rejected_provenance_count: rejected,
-      self_reported_share: displayAt(selfShareFx, PRECISION.signal),
-      self_reported_capped: scaleFx !== null,
-      distinct_observers: observerIds.size,
-      span_days: spanDays,
-      suppression_reason: suppressionReason,
-    },
+    confidenceFx: post.confidenceFx,
+    neffFx: sums.neffFx,
+    spanDays,
+    distinctObservers: observerIds.size,
+    observationCount: staged.length,
+    rejectedCount: rejected,
+    selfShareFx,
+    selfCapped: scaleFx !== null,
+    suppressionReason,
+    admissible,
+    tierConstants: c,
+    gateCapFx: null,
+    gateCappedBy: null,
+  };
+}
+
+/**
+ * Run the profile's gates against the dimension outcomes.
+ *
+ * Gates fire independently and the strictest ceiling wins, because a subject
+ * with two findings is not less capped than a subject with one. A gate on a
+ * dimension that produced no admissible evidence cannot fire: absence of
+ * evidence is not a finding, and a gate that fired on silence would punish
+ * every subject nobody has probed yet.
+ */
+function applyGates(
+  profile: RatingProfile,
+  outcomes: DimensionOutcome[],
+): { fired: CanonicalValue[]; compositeCapFx: bigint | null } {
+  const byId = new Map(outcomes.map((o) => [o.spec.id, o]));
+  const fired: Array<{ id: string; canonical: CanonicalValue }> = [];
+  let compositeCapFx: bigint | null = null;
+
+  for (const gate of profile.gates) {
+    const outcome = byId.get(gate.dimension);
+    if (outcome === undefined) continue;
+    const thresholdFx = clampFx(parseFx(gate.at_or_below), 0n, ONE);
+    const allowed = new Set<string>(gate.trigger_provenance);
+    let observedFx: bigint | null = null;
+    let triggerLabel = "";
+
+    if (gate.trigger === "observation") {
+      // A keyless observation gate would fire on any low ratio, and a ratio is
+      // an average, which is the thing gates exist to escape. Refuse it rather
+      // than guess.
+      if (gate.observation_key === null) {
+        throw new Error(`gate ${gate.id} is an observation gate with no observation_key`);
+      }
+      for (const o of outcome.admissible) {
+        if (o.observation_key !== gate.observation_key) continue;
+        // Provenance is checked again here, not inherited from the dimension.
+        // A dimension may accept reviews while its gate does not, and that gap
+        // is what stops anyone capping a rival by posting an opinion.
+        if (!allowed.has(o.provenance)) continue;
+        const v = clampFx(parseFx(o.value), 0n, ONE);
+        if (v > thresholdFx) continue;
+        if (observedFx === null || v < observedFx) observedFx = v;
+      }
+      triggerLabel = gate.observation_key;
+    } else {
+      // An estimate gate needs an estimate. A suppressed dimension has none.
+      if (!outcome.published) continue;
+      if (!outcome.admissible.some((o) => allowed.has(o.provenance))) continue;
+      if (outcome.highFx <= thresholdFx) {
+        observedFx = outcome.highFx;
+        triggerLabel = "score_high";
+      }
+    }
+    if (observedFx === null) continue;
+
+    const capFx = clampFx(parseFx(gate.caps_composite_at), 0n, ONE);
+    if (compositeCapFx === null || capFx < compositeCapFx) compositeCapFx = capFx;
+    if (gate.caps_dimension_at !== null) {
+      const dimCapFx = clampFx(parseFx(gate.caps_dimension_at), 0n, ONE);
+      if (outcome.gateCapFx === null || dimCapFx < outcome.gateCapFx) {
+        outcome.gateCapFx = dimCapFx;
+        outcome.gateCappedBy = gate.id;
+      }
+    }
+    fired.push({
+      id: gate.id,
+      canonical: {
+        gate_id: gate.id,
+        dimension: gate.dimension,
+        trigger: triggerLabel,
+        observed: displayScore(observedFx),
+        caps_composite_at: displayScore(capFx),
+        reason: gate.reason,
+      },
+    });
+  }
+
+  fired.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  return { fired: fired.map((f) => f.canonical), compositeCapFx };
+}
+
+/**
+ * Render one dimension after gates have been applied. Capping moves the point
+ * estimate and the upper bound down to the ceiling and leaves the lower bound
+ * alone: a gate says "no better than this", never "exactly this", and widening
+ * the interval downward would claim knowledge the gate does not carry.
+ */
+function dimensionCanonical(o: DimensionOutcome): CanonicalValue {
+  const capFx = o.gateCapFx;
+  const capped = capFx !== null;
+  const meanFx = capped && o.meanFx > capFx ? capFx : o.meanFx;
+  const highFx = capped && o.highFx > capFx ? capFx : o.highFx;
+  const lowFx = o.lowFx > meanFx ? meanFx : o.lowFx;
+  return {
+    dimension: o.spec.id,
+    score: o.published ? displayScore(meanFx) : null,
+    score_low: o.published ? displayScore(lowFx) : null,
+    score_high: o.published ? displayScore(highFx) : null,
+    confidence: displayAt(o.confidenceFx, PRECISION.confidence),
+    n_eff: displayAt(o.neffFx, PRECISION.n_eff),
+    coverage_tier: coverageTier(o.neffFx, o.spanDays, o.distinctObservers, !o.published, o.tierConstants),
+    observation_count: o.observationCount,
+    rejected_provenance_count: o.rejectedCount,
+    self_reported_share: displayAt(o.selfShareFx, PRECISION.signal),
+    self_reported_capped: o.selfCapped,
+    distinct_observers: o.distinctObservers,
+    span_days: o.spanDays,
+    suppression_reason: o.suppressionReason,
+    gate_capped_by: o.gateCappedBy,
   };
 }
 
@@ -358,8 +488,18 @@ export function scoreSubject(subject: Subject): { result: SubjectScoreResult; ca
     const priorStr = Object.hasOwn(subject.priors.by_dimension, spec.id)
       ? subject.priors.by_dimension[spec.id]!
       : subject.priors.global;
-    return scoreDimension(spec, entries, parseFx(priorStr), c, asOfSec, weightByObserver);
+    // Constants are resolved per dimension: the subject's, overlaid by the
+    // profile's, overlaid by the dimension's. Availability decays in two
+    // weeks and maintenance in a year, and one global half-life could not
+    // serve both.
+    const dc = resolveDimensionConstants(c, profile, spec);
+    return scoreDimension(spec, entries, parseFx(priorStr), dc, asOfSec, weightByObserver);
   });
+
+  // Gates run before the composite is formed, so a capped dimension enters the
+  // roll-up already capped rather than being averaged at full value and
+  // trimmed afterwards.
+  const { fired: gatesFired, compositeCapFx } = applyGates(profile, outcomes);
 
   // Composite. The interval assumes the published dimensions are perfectly
   // correlated, so its width is the weighted mean of the dimension widths.
@@ -375,7 +515,8 @@ export function scoreSubject(subject: Subject): { result: SubjectScoreResult; ca
     totalWeightFx += o.weightFx;
     if (!o.published) continue;
     publishedWeightFx += o.weightFx;
-    weightedMeanFx += mulFx(o.weightFx, o.meanFx);
+    const cappedMeanFx = o.gateCapFx !== null && o.meanFx > o.gateCapFx ? o.gateCapFx : o.meanFx;
+    weightedMeanFx += mulFx(o.weightFx, cappedMeanFx);
     weightedHalfFx += mulFx(o.weightFx, o.halfFx);
   }
   if (totalWeightFx <= 0n) throw new Error(`profile ${profile.profile_id} has no dimension weight`);
@@ -395,7 +536,22 @@ export function scoreSubject(subject: Subject): { result: SubjectScoreResult; ca
     const refFx = referenceWidthFx(c.shrinkageK);
     compositeConfidenceFx = refFx === 0n ? 0n : ONE - minFx(ONE, divFx(2n * compositeHalfFx, refFx));
   }
-  const publish = compositeReason === null;
+  // The composite ceiling. Confidence is deliberately NOT recomputed from the
+  // capped interval: a gate does not make us more certain about the subject,
+  // it makes the number we publish a bound rather than an estimate, and
+  // reporting a narrower band as higher confidence would invert that.
+  const compositeCapped = compositeCapFx !== null && compositeMeanFx > compositeCapFx;
+  if (compositeCapped) compositeMeanFx = compositeCapFx!;
+  const compositeHighFx = clampFx(
+    compositeCapped ? minFx(compositeCapFx!, compositeMeanFx + compositeHalfFx) : compositeMeanFx + compositeHalfFx,
+    0n,
+    ONE,
+  );
+  const compositeLowFx = minFx(clampFx(compositeMeanFx - compositeHalfFx, 0n, ONE), compositeMeanFx);
+  if (compositeReason === null && compositeCapped) compositeReason = RATING_SUPPRESSION.gate;
+  // A gate caps a published composite; it never turns a withheld one into a
+  // published one, so `publish` is decided before the cap is recorded.
+  const publish = publishedWeightFx > 0n && coverageFx >= minCoverageFx;
 
   // Signals: observable conditions only, never intent (SPEC 5.5).
   const groups = new Map<string, number>();
@@ -433,19 +589,21 @@ export function scoreSubject(subject: Subject): { result: SubjectScoreResult; ca
     computed_at: subject.as_of_ts,
 
     composite: publish ? displayScore(compositeMeanFx) : null,
-    composite_low: publish ? displayScore(clampFx(compositeMeanFx - compositeHalfFx, 0n, ONE)) : null,
-    composite_high: publish ? displayScore(clampFx(compositeMeanFx + compositeHalfFx, 0n, ONE)) : null,
+    composite_low: publish ? displayScore(compositeLowFx) : null,
+    composite_high: publish ? displayScore(compositeHighFx) : null,
     composite_confidence: displayAt(compositeConfidenceFx, PRECISION.confidence),
     dimension_coverage: displayAt(coverageFx, PRECISION.signal),
     composite_suppression_reason: compositeReason,
 
     lifecycle: classify(subject, asOfSec, c),
-    dimensions: outcomes.map((o) => o.canonical),
+    dimensions: outcomes.map(dimensionCanonical),
+    gates_fired: gatesFired,
     observer_weights: observerWeights.map((w) => ({
       observer_id: w.observerId,
       weight: displayAt(w.weightFx, PRECISION.weight),
     })),
     signals,
+    profile_digest: profileDigest(profile),
     inputs_hash: subjectInputsHash(subject),
   };
 
@@ -454,7 +612,7 @@ export function scoreSubject(subject: Subject): { result: SubjectScoreResult; ca
   return { result, canonicalBytes };
 }
 
-export { subjectInputsCanonical, subjectInputsHash } from "./hash.js";
+export { subjectInputsCanonical, subjectInputsHash, profileCanonical, profileDigest } from "./hash.js";
 export { computeObserverWeights } from "./weights.js";
-export { parseRatingConstants } from "./constants.js";
+export { parseRatingConstants, resolveDimensionConstants } from "./constants.js";
 export type { RatingConstantsFx } from "./constants.js";

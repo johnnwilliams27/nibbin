@@ -26,7 +26,7 @@ export {
   MCP_RUBRIC_VERSION,
   THRESHOLDS,
 } from "./assess.js";
-export { transcriptToSubject, repositoryOwner } from "./subject.js";
+export { transcriptToSubject, transcriptsToSubject, repositoryOwner } from "./subject.js";
 export type { BuildSubjectOptions, ProbeIdentity } from "./subject.js";
 export type {
   ProbeTranscript,

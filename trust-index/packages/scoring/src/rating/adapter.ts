@@ -246,6 +246,10 @@ export function agentSnapshotToSubject(s: AgentSnapshot, options: AdapterOptions
     reachable: s.metadata_status === "resolved" && s.declared_endpoints > 0,
     observations,
     observers,
+    // Chain feedback tags (tag1) describe what an agent was hired for, which
+    // is exactly what a tag is. They are carried across for listing and for
+    // cohort selection upstream, and they never touch the score.
+    tags: [...new Set(s.feedback.filter((f) => f.tag1.length > 0).map((f) => f.tag1))].sort(),
     priors: {
       global: s.priors.global,
       // Chain contexts are tag1 values, which are not dimensions, so they do
@@ -254,6 +258,7 @@ export function agentSnapshotToSubject(s: AgentSnapshot, options: AdapterOptions
       by_dimension: { counterparty_satisfaction: s.priors.global },
       basis: s.priors.basis,
       n_basis: s.priors.n_basis,
+      cohort: `onchain_agent/${s.chain_slug}`,
     },
     constants: options.constants ?? ratingConstantsFromMethodology(s),
   };

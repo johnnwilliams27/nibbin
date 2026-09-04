@@ -32,6 +32,81 @@
 import type { DecimalString } from "./fixed.js";
 import type { Provenance, SubjectKind } from "./rating.js";
 
+/**
+ * Constants a profile or a dimension may override.
+ *
+ * Only constants that describe the EVIDENCE are overridable. The observer
+ * weighting constants (age ramp, group penalty, concentration penalty,
+ * velocity, provenance multipliers, weight floor) are deliberately not, because
+ * an observer has one weight within one subject's score. Letting a dimension
+ * re-weight an observer would give the same party two different voices in one
+ * rating, which is incoherent and would be impossible to explain on a
+ * methodology page.
+ *
+ * The motivating case is decay. A 120-day half-life is right for a reputation
+ * signal and badly wrong for availability, where a measurement from three
+ * months ago says almost nothing about whether the endpoint answers now.
+ */
+export type RatingConstantOverrides = {
+  shrinkage_k: DecimalString;
+  decay_half_life_days: DecimalString;
+  suppression_neff_floor: DecimalString;
+  thin_neff_max: DecimalString;
+  moderate_neff_max: DecimalString;
+  strong_min_span_days: DecimalString;
+  strong_min_observers: DecimalString;
+};
+
+/**
+ * A hard ceiling triggered by evidence, for the things a weighted average
+ * cannot say.
+ *
+ * Averaging is the right tool for "how good is this, roughly". It is the wrong
+ * tool for "this asks callers to paste an API key into a third-party server".
+ * A finding like that is a fact about the subject, and letting it be diluted
+ * to a rounding error by four other dimensions scoring well is how a ratings
+ * source ends up recommending something dangerous.
+ *
+ * Two trigger modes, because two different questions are being asked:
+ *
+ * - `observation`: fires when a SINGLE admissible observation is at or below
+ *   the threshold. Use for findings, where one occurrence is the whole point
+ *   and shrinking it toward a cohort mean would be absurd.
+ * - `estimate`: fires when the dimension's UPPER bound is at or below the
+ *   threshold, meaning even the optimistic reading is bad. Use where the
+ *   claim is about a rate rather than an occurrence. It cannot fire on thin
+ *   evidence, because thin evidence has a wide interval and therefore a high
+ *   upper bound.
+ *
+ * `trigger_provenance` is the gameability defence and is not optional. A gate
+ * that a review could fire is a weapon pointed at competitors: anyone could
+ * post an opinion and cap a rival's score. Gates fire on measured and attested
+ * evidence only.
+ */
+export type RatingGate = {
+  id: string;
+  /** Dimension whose evidence can trip this gate. */
+  dimension: string;
+  trigger: "observation" | "estimate";
+  /**
+   * Only observations with this key can trip an `observation` gate. Required
+   * for that mode: a gate keyed on a whole dimension would fire on any low
+   * ratio, and a ratio is an average, which is what gates exist to escape.
+   * Ignored for `estimate`.
+   */
+  observation_key: string | null;
+  /** Trips at or below this value, [0,1]. */
+  at_or_below: DecimalString;
+  /** Provenance kinds admissible as a trigger. Measured and attested only. */
+  trigger_provenance: readonly Provenance[];
+  /** Composite ceiling this gate imposes, [0,1]. */
+  caps_composite_at: DecimalString;
+  /** Ceiling on the triggering dimension itself, [0,1]. null leaves it alone. */
+  caps_dimension_at: DecimalString | null;
+  /** Published verbatim beside the capped score. Says what was found, not what it means. */
+  reason: string;
+};
+
 export type DimensionSpec = {
   id: string;
   label: string;
@@ -48,6 +123,8 @@ export type DimensionSpec = {
    * rather than dropped, so the ordering within them is preserved.
    */
   self_reported_cap: DecimalString;
+  /** Constants for this dimension only. Applied over the profile's, which are applied over the subject's. */
+  constants?: Partial<RatingConstantOverrides>;
 };
 
 export type RatingProfile = {
@@ -59,6 +136,10 @@ export type RatingProfile = {
   dimensions: readonly DimensionSpec[];
   /** Composite is withheld unless this share of dimension weight has a published score. */
   min_dimension_coverage: DecimalString;
+  /** Constants for every dimension of this profile, unless a dimension overrides them again. */
+  constants?: Partial<RatingConstantOverrides>;
+  /** Hard ceilings triggered by evidence. Empty is the normal case. */
+  gates: readonly RatingGate[];
 };
 
 /**
@@ -73,6 +154,11 @@ const AVAILABILITY: Omit<DimensionSpec, "weight"> = {
     "Share of probe attempts where the subject's declared endpoint answered within the timeout. Measured only; nobody can review a subject into being reachable.",
   accepted_provenance: ["measured"],
   self_reported_cap: "0.00",
+  // Availability is the most perishable thing this project measures. A probe
+  // from three months ago says almost nothing about whether the endpoint
+  // answers now, so it is worth a quarter of a current one rather than the
+  // 88 percent the global 120-day half-life would give it.
+  constants: { decay_half_life_days: "14" },
 };
 
 const CONFORMANCE: Omit<DimensionSpec, "weight"> = {
@@ -82,6 +168,9 @@ const CONFORMANCE: Omit<DimensionSpec, "weight"> = {
     "Share of protocol checks the subject passes: handshake, required methods, schema validity of what it returns. Measured only.",
   accepted_provenance: ["measured"],
   self_reported_cap: "0.00",
+  // Conformance changes when the subject ships, which is slower than uptime
+  // moves and faster than a reputation settles.
+  constants: { decay_half_life_days: "60" },
 };
 
 const MAINTENANCE: Omit<DimensionSpec, "weight"> = {
@@ -91,6 +180,9 @@ const MAINTENANCE: Omit<DimensionSpec, "weight"> = {
     "Evidence the subject is still being looked after: release recency, whether reported breakage gets fixed, whether declared metadata still matches behaviour.",
   accepted_provenance: ["measured", "attested"],
   self_reported_cap: "0.00",
+  // The observation is already a recency measure, so decaying it hard would
+  // discount staleness twice.
+  constants: { decay_half_life_days: "365" },
 };
 
 const DOCUMENTATION: Omit<DimensionSpec, "weight"> = {
@@ -159,6 +251,22 @@ const ONCHAIN_AGENT: RatingProfile = {
     dim(AVAILABILITY, "0.15"),
   ],
   min_dimension_coverage: "0.50",
+  gates: [
+    {
+      id: "onchain.custody_discontinuous",
+      dimension: "identity_integrity",
+      trigger: "observation",
+      observation_key: "custody_continuous",
+      at_or_below: "0.00",
+      trigger_provenance: ["measured"],
+      // Not a verdict on the new owner. A sold identity carries its old
+      // reputation into new hands, and SPEC 11.6 already resets the epoch;
+      // this stops the remaining evidence from reading as a settled record.
+      caps_composite_at: "0.75",
+      caps_dimension_at: null,
+      reason: "the identity changed hands without evidence of a custody migration",
+    },
+  ],
 };
 
 /**
@@ -189,11 +297,42 @@ const MCP_SERVER: RatingProfile = {
       accepted_provenance: ["measured", "attested"],
       weight: "0.25",
       self_reported_cap: "0.00",
+      constants: { decay_half_life_days: "60" },
     },
     dim(DOCUMENTATION, "0.15"),
     dim(MAINTENANCE, "0.10"),
   ],
   min_dimension_coverage: "0.60",
+  gates: [
+    {
+      id: "mcp.credential_parameter",
+      dimension: "tool_safety",
+      trigger: "observation",
+      observation_key: "credential_parameter_present",
+      at_or_below: "0.00",
+      trigger_provenance: ["measured", "attested"],
+      // The single most consequential thing an outsider can establish about a
+      // remote MCP server. A tool whose schema asks the caller to hand over an
+      // API key is asking for a secret to be transmitted to a third party, and
+      // no amount of good documentation elsewhere makes that safe to recommend.
+      caps_composite_at: "0.45",
+      caps_dimension_at: "0.30",
+      reason: "a declared tool asks the caller to supply a credential",
+    },
+    {
+      id: "mcp.undocumented_destructive_tool",
+      dimension: "tool_safety",
+      trigger: "observation",
+      observation_key: "undocumented_mutating_tool_present",
+      at_or_below: "0.00",
+      trigger_provenance: ["measured", "attested"],
+      // An agent will call an undescribed tool to find out what it does. When
+      // the tool deletes something, finding out is the damage.
+      caps_composite_at: "0.60",
+      caps_dimension_at: "0.50",
+      reason: "a tool whose name implies it changes state carries no usable description",
+    },
+  ],
 };
 
 /**
@@ -233,6 +372,24 @@ const HOSTED_AGENT: RatingProfile = {
     dim(MAINTENANCE, "0.05"),
   ],
   min_dimension_coverage: "0.50",
+  gates: [
+    {
+      id: "hosted.persistently_unavailable",
+      dimension: "availability",
+      trigger: "estimate",
+      observation_key: null,
+      at_or_below: "0.50",
+      trigger_provenance: ["measured"],
+      // An estimate gate, not an observation gate: one failed probe is a bad
+      // minute, and this should only fire once even the optimistic reading of
+      // a probe window says the thing is down more than half the time. Thin
+      // evidence has a wide interval and a high upper bound, so it cannot fire
+      // on a single failure.
+      caps_composite_at: "0.50",
+      caps_dimension_at: null,
+      reason: "even the optimistic reading of the probe window has the endpoint down more than half the time",
+    },
+  ],
 };
 
 /**
@@ -283,6 +440,23 @@ const CODE_PACKAGE: RatingProfile = {
     dim(OPERATOR_REPUTATION, "0.05"),
   ],
   min_dimension_coverage: "0.50",
+  gates: [
+    {
+      id: "code.known_vulnerable_dependency",
+      dimension: "dependency_hygiene",
+      trigger: "observation",
+      observation_key: "no_known_vulnerable_dependencies",
+      at_or_below: "0.00",
+      trigger_provenance: ["measured", "attested"],
+      // The case that motivated gates existing. One critical advisory in the
+      // dependency tree is a fact, and a weighted average that lets four good
+      // dimensions dilute it to two points is a rating that recommends
+      // installing the thing.
+      caps_composite_at: "0.40",
+      caps_dimension_at: "0.20",
+      reason: "a declared dependency has a known vulnerability at the observed version",
+    },
+  ],
 };
 
 export const RATING_PROFILES: Readonly<Record<string, RatingProfile>> = Object.freeze({

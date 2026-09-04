@@ -22,6 +22,7 @@ import {
   readTools,
   repositoryOwner,
   transcriptToSubject,
+  transcriptsToSubject,
   type ProbeTranscript,
 } from "../src/mcp/index.js";
 
@@ -441,11 +442,14 @@ describe("transcript to score", () => {
   it("separates a genuinely good server from a failing one across a real probe window", () => {
     // The single-day transcript above cannot tell them apart, which is the
     // honest answer for a single day. Probing daily is what buys separation.
+    // The window ends the day before as_of on purpose: availability decays on
+    // a 14-day half-life, so a fortnight of probing that stopped two weeks ago
+    // is deliberately worth about half of one that ran up to yesterday.
     const window = (reachable: boolean): ProbeTranscript =>
       goodTranscript({
         attempts: Array.from({ length: 14 }, (_, i) => ({
           attempt: i + 1,
-          ts: `2026-07-${String(7 + i).padStart(2, "0")}T00:00:00Z`,
+          ts: `2026-07-${String(18 + i).padStart(2, "0")}T00:00:00Z`,
           reachable,
           status: reachable ? 200 : null,
           reason: reachable ? null : "timeout",
@@ -458,10 +462,17 @@ describe("transcript to score", () => {
       )!;
     const up = scoreOf(window(true));
     const down = scoreOf(window(false));
-    expect(up.score!).toBeGreaterThan(85);
+    // Never 100 and never 0: fourteen days of probing is real evidence but not
+    // proof, so the estimate stays inside the prior's pull. What matters is
+    // that the two are now far apart and the interval says why.
+    expect(up.score!).toBeGreaterThan(80);
     expect(down.score!).toBeLessThan(20);
-    expect(up.confidence).toBeGreaterThan(0.6);
-    expect(up.n_eff).toBeGreaterThan(10);
+    expect(up.score! - down.score!).toBeGreaterThan(60);
+    expect(up.confidence).toBeGreaterThan(0.5);
+    expect(up.n_eff).toBeGreaterThan(8);
+    // Confidence is still only moderate after a fortnight, which is the point
+    // of publishing it: nothing here claims more certainty than it has.
+    expect(up.confidence).toBeLessThan(0.8);
   });
 
   it("rates an unreachable server on availability alone and withholds the composite", () => {
@@ -508,5 +519,147 @@ describe("transcript to score", () => {
     const withA = scoreOf(withClaim)!;
     const withoutA = scoreOf(withoutClaim)!;
     expect(Math.abs(withA - withoutA)).toBeLessThan(1);
+  });
+});
+
+describe("gates from a real transcript", () => {
+  it("caps a server whose tool asks the caller for an API key", () => {
+    const t = goodTranscript();
+    t.tools!.declared[0]!.inputSchema = {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "The search query." },
+        api_key: { type: "string", description: "Your API key." },
+      },
+      required: ["query", "api_key"],
+    };
+    const clean = scoreSubject(transcriptToSubject(goodTranscript(), { probe: PROBE_IDENTITY, asOfTs: AS_OF })).result;
+    const flagged = scoreSubject(transcriptToSubject(t, { probe: PROBE_IDENTITY, asOfTs: AS_OF })).result;
+
+    expect(clean.gates_fired).toHaveLength(0);
+    expect(flagged.gates_fired.map((g) => g.gate_id)).toEqual(["mcp.credential_parameter"]);
+    expect(flagged.composite!).toBeLessThanOrEqual(45);
+    expect(flagged.composite!).toBeLessThan(clean.composite!);
+    // The reason is published verbatim, so a reader sees what was found rather
+    // than only a lower number.
+    expect(flagged.gates_fired[0]!.reason).toMatch(/credential/);
+  });
+
+  it("caps a server with an undocumented destructive tool", () => {
+    const t = goodTranscript();
+    t.tools!.declared[1]!.description = null;
+    const { result } = scoreSubject(transcriptToSubject(t, { probe: PROBE_IDENTITY, asOfTs: AS_OF }));
+    expect(result.gates_fired.map((g) => g.gate_id)).toEqual(["mcp.undocumented_destructive_tool"]);
+    expect(result.composite!).toBeLessThanOrEqual(60);
+  });
+
+  it("emits both the rate and the occurrence, because they answer different questions", () => {
+    // One undescribed delete tool among fifty well-described tools is a ratio
+    // of 0.98 and a hazard of 1. The average needs the first; the gate needs
+    // the second.
+    const t = goodTranscript();
+    t.tools!.declared = [
+      ...Array.from({ length: 20 }, (_, i) => ({
+        name: `search_${i}`,
+        description: "Search the indexed document corpus and return matching passages.",
+        inputSchema: { type: "object", properties: { q: { type: "string", description: "query" } } },
+      })),
+      { name: "delete_everything", description: null, inputSchema: { type: "object", properties: {} } },
+    ];
+    const obs = assessTranscript(t, AS_OF);
+    expect(obs.find((o) => o.observation_key === "mutating_tools_documented")!.value).toBe("0.000000");
+    expect(obs.find((o) => o.observation_key === "undocumented_mutating_tool_present")!.value).toBe("0.000000");
+    const { result } = scoreSubject(transcriptToSubject(t, { probe: PROBE_IDENTITY, asOfTs: AS_OF }));
+    expect(result.gates_fired.map((g) => g.gate_id)).toContain("mcp.undocumented_destructive_tool");
+  });
+
+  it("carries tags without letting them touch the score", () => {
+    const options = { probe: PROBE_IDENTITY, asOfTs: AS_OF };
+    const plain = scoreSubject(transcriptToSubject(goodTranscript(), options));
+    const tagged = scoreSubject(
+      transcriptToSubject(goodTranscript(), { ...options, tags: ["search", "documentation", "search"] }),
+    );
+    expect(transcriptToSubject(goodTranscript(), { ...options, tags: ["b", "a", "a"] }).tags).toEqual(["a", "b"]);
+    expect(tagged.canonicalBytes).toBe(plain.canonicalBytes);
+  });
+});
+
+describe("run histories", () => {
+  function day(d: number, up: boolean, tools = goodTranscript().tools!.declared): ProbeTranscript {
+    const ts = `2026-07-${String(d).padStart(2, "0")}T00:00:00Z`;
+    return goodTranscript({
+      probed_at: ts,
+      attempts: [{ attempt: 1, ts, reachable: up, status: up ? 200 : null, reason: up ? null : "timeout", elapsedMs: 120 }],
+      handshake: up ? goodTranscript().handshake : null,
+      tools: up ? { ok: true, declared: tools, reason: null } : null,
+    });
+  }
+  const history = (n: number, up = true): ProbeTranscript[] =>
+    Array.from({ length: n }, (_, i) => day(31 - n + 1 + i, up));
+
+  it("publishes every dimension once a run history exists, where one run cannot", () => {
+    // Found by a worked example. Scoring a single run left every dimension
+    // except availability resting on one observation, below the suppression
+    // floor, and the composite was withheld for want of coverage. The fix is
+    // more days, not a looser floor.
+    const one = scoreSubject(transcriptsToSubject(history(1), { probe: PROBE_IDENTITY, asOfTs: AS_OF })).result;
+    const many = scoreSubject(transcriptsToSubject(history(21), { probe: PROBE_IDENTITY, asOfTs: AS_OF })).result;
+
+    expect(many.dimension_coverage).toBe(1);
+    expect(many.composite).not.toBeNull();
+    expect(many.composite!).toBeGreaterThan(one.composite!);
+    // More days is more evidence, and the interval says so.
+    expect(many.composite_confidence).toBeGreaterThan(one.composite_confidence * 3);
+    for (const d of many.dimensions) expect(d.n_eff, d.dimension).toBeGreaterThan(5);
+  });
+
+  it("does not penalize the probe for measuring many subjects a day", () => {
+    // The velocity signal is about opinions produced faster than they can be
+    // formed. A harness measuring 400 endpoints a day is doing its job, and
+    // penalizing throughput would mean the more of the world we cover, the
+    // less any of it counts.
+    const busy = { ...PROBE_IDENTITY, max_observations_single_day: 4000 };
+    const quiet = { ...PROBE_IDENTITY, max_observations_single_day: 3 };
+    const scoreWith = (probe: typeof PROBE_IDENTITY) =>
+      scoreSubject(transcriptsToSubject(history(21), { probe, asOfTs: AS_OF })).result.composite;
+    expect(scoreWith(busy)).toBe(scoreWith(quiet));
+  });
+
+  it("keeps a check name stable across runs, so gates still match", () => {
+    // The other half of the same bug. Namespacing observation keys per run
+    // preserved the daily samples and silently stopped every gate matching.
+    const withFinding = history(21).map((t) => ({
+      ...t,
+      tools: {
+        ok: true,
+        reason: null,
+        declared: [
+          { ...goodTranscript().tools!.declared[0]!, inputSchema: { type: "object", properties: { api_key: { type: "string", description: "key" } } } },
+          goodTranscript().tools!.declared[1]!,
+        ],
+      },
+    }));
+    const subject = transcriptsToSubject(withFinding, { probe: PROBE_IDENTITY, asOfTs: AS_OF });
+    const keys = subject.observations.filter((o) => o.observation_key === "credential_parameter_present");
+    expect(keys).toHaveLength(21);
+    // 21 distinct timestamps, one shared key: identity is the check AT A MOMENT.
+    expect(new Set(keys.map((o) => o.ts)).size).toBe(21);
+    const { result } = scoreSubject(subject);
+    expect(result.gates_fired.map((g) => g.gate_id)).toEqual(["mcp.credential_parameter"]);
+    expect(result.composite!).toBeLessThanOrEqual(45);
+  });
+
+  it("still collapses a genuinely duplicated run", () => {
+    const once = transcriptsToSubject(history(5), { probe: PROBE_IDENTITY, asOfTs: AS_OF });
+    const twice = transcriptsToSubject([...history(5), ...history(5)], { probe: PROBE_IDENTITY, asOfTs: AS_OF });
+    expect(scoreSubject(twice).canonicalBytes).toBe(scoreSubject(once).canonicalBytes);
+  });
+
+  it("refuses transcripts for different endpoints", () => {
+    const other = { ...day(20, true), endpoint: "https://elsewhere.example.com/mcp" };
+    expect(() =>
+      transcriptsToSubject([day(19, true), other], { probe: PROBE_IDENTITY, asOfTs: AS_OF }),
+    ).toThrow(/span 2 endpoints/);
+    expect(() => transcriptsToSubject([], { probe: PROBE_IDENTITY, asOfTs: AS_OF })).toThrow(/no transcripts/);
   });
 });
