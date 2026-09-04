@@ -12,12 +12,20 @@
  * moves scores is safe to ship provisionally. One that reshuffles tiers across
  * a plausible range is a live risk and must be said so on /methodology.
  *
+ * Two kinds of stability, reported separately (see rank.ts). Score stability
+ * asks how far the published magnitude moves. Rank stability asks whether the
+ * ordering survives. They come apart: a constant that lifts every agent by the
+ * same amount destroys the first and leaves the second untouched. Collapsing
+ * them into one verdict would overstate what an unverified constant costs a
+ * reader who only wants to compare two agents.
+ *
  * This is deliberately not a substitute for calibration. It shows stability,
  * never correctness: a constant can be perfectly stable and still wrong.
  */
 import type { AgentSnapshot, MethodologyConstants } from "@trust-index/types";
 import { score } from "@trust-index/scoring";
 import { ONE, divInt, format, parse, ratio } from "./fixed.js";
+import { rankStability, type RankStability } from "./rank.js";
 
 /** A dotted path to a tunable constant's `value` field on MethodologyConstants. */
 export type ConstantPath =
@@ -58,6 +66,8 @@ export type SweepPoint = {
   tierChanges: number;
   /** Agents whose suppression state (score null vs not) differs from the baseline. */
   suppressionFlips: number;
+  /** Whether the ordering survives this setting, independently of how far scores moved. */
+  rank: RankStability;
 };
 
 export type SensitivityResult = {
@@ -68,20 +78,49 @@ export type SensitivityResult = {
   worstMeanAbsDeltaFx: bigint;
   /** Total tier changes at the sweep's most disruptive point. */
   worstTierChanges: number;
+  /** Lowest pair-ordering agreement anywhere in the sweep. Null when no point could measure it. */
+  worstPairAgreementFx: bigint | null;
+  /** Lowest Spearman correlation anywhere in the sweep. Null when no point could measure it. */
+  worstSpearmanFx: bigint | null;
+  /** Largest single-agent rank displacement anywhere in the sweep. */
+  worstMaxRankShift: number;
+  /**
+   * The smallest baseline score gap at which pair agreement holds at or above
+   * `rankStabilityThreshold` across every setting in the sweep. This is the
+   * practical answer to "how far apart must two agents be before I can quote
+   * their ordering", and it is the number worth putting on the methodology
+   * page. Null when no tested margin reaches the threshold, which means the
+   * ordering is not safe from this constant at any separation tested.
+   */
+  safeSeparationFx: bigint | null;
   /**
    * Stable when no sweep point moves the mean score by more than
    * `stabilityThresholdPoints` and no point flips a tier. A stable constant is
    * defensible to ship provisional; an unstable one must be flagged.
    */
   stable: boolean;
+  /**
+   * Rank-stable when every sweep point keeps pair-ordering agreement at or
+   * above `rankStabilityThreshold`. A sweep that could not measure agreement at
+   * all is not called stable: an unmeasurable claim is not a supported one.
+   *
+   * A constant can be rank-stable and not score-stable, which is the useful
+   * case: comparisons and threshold gating survive it even though the published
+   * magnitude does not.
+   */
+  rankStable: boolean;
 };
 
-type Observed = { score: number | null; tier: string };
+type Observed = { score: number | null; scoreFx: bigint | null; tier: string };
 
 function observe(cohort: readonly AgentSnapshot[], constants: MethodologyConstants): Observed[] {
   return cohort.map((s) => {
     const { result } = score({ ...s, constants });
-    return { score: result.score, tier: result.coverage_tier };
+    return {
+      score: result.score,
+      scoreFx: result.score === null ? null : parse(result.score.toFixed(2)),
+      tier: result.coverage_tier,
+    };
   });
 }
 
@@ -89,17 +128,20 @@ function observe(cohort: readonly AgentSnapshot[], constants: MethodologyConstan
  * Sweep one constant across `values`, comparing every setting against the
  * cohort's own baseline constants.
  *
- * `stabilityThresholdPoints` is a reporting threshold for this analysis, not a
- * methodology constant: it decides only what the report calls stable.
+ * `stabilityThresholdPoints` and `rankStabilityThreshold` are reporting
+ * thresholds for this analysis, not methodology constants: they decide only
+ * what the report calls stable, and both the underlying measurements and the
+ * thresholds are published so a reader can apply a different strictness.
  */
 export function sweepConstant(
   cohort: readonly AgentSnapshot[],
   path: ConstantPath,
   values: readonly string[],
-  options: { stabilityThresholdPoints?: string } = {},
+  options: { stabilityThresholdPoints?: string; rankStabilityThreshold?: string } = {},
 ): SensitivityResult {
   if (cohort.length === 0) throw new RangeError("sweepConstant: empty cohort");
   const threshold = parse(options.stabilityThresholdPoints ?? "1");
+  const rankThreshold = parse(options.rankStabilityThreshold ?? "0.99");
 
   const base = cohort[0]!.constants;
   const dot = path.indexOf(".");
@@ -147,14 +189,48 @@ export function sweepConstant(
       maxAbsScoreDeltaFx: maxAbs,
       tierChanges,
       suppressionFlips,
+      rank: rankStability(
+        baseline.map((o) => o.scoreFx),
+        observedAt.map((o) => o.scoreFx),
+      ),
     };
   });
 
   let worstMeanAbsDeltaFx = 0n;
   let worstTierChanges = 0;
+  let worstPairAgreementFx: bigint | null = null;
+  let worstSpearmanFx: bigint | null = null;
+  let worstMaxRankShift = 0;
   for (const p of points) {
     if (p.meanAbsScoreDeltaFx > worstMeanAbsDeltaFx) worstMeanAbsDeltaFx = p.meanAbsScoreDeltaFx;
     if (p.tierChanges > worstTierChanges) worstTierChanges = p.tierChanges;
+    if (p.rank.pairAgreementFx !== null && (worstPairAgreementFx === null || p.rank.pairAgreementFx < worstPairAgreementFx)) {
+      worstPairAgreementFx = p.rank.pairAgreementFx;
+    }
+    if (p.rank.spearmanFx !== null && (worstSpearmanFx === null || p.rank.spearmanFx < worstSpearmanFx)) {
+      worstSpearmanFx = p.rank.spearmanFx;
+    }
+    if (p.rank.maxRankShift > worstMaxRankShift) worstMaxRankShift = p.rank.maxRankShift;
+  }
+
+  // The narrowest margin at which every setting in the sweep keeps agreement
+  // above the threshold. A margin no setting could measure does not qualify:
+  // an unmeasured claim is not a supported one.
+  let safeSeparationFx: bigint | null = null;
+  const margins = points[0]?.rank.separation ?? [];
+  for (let t = 0; t < margins.length; t += 1) {
+    let measured = false;
+    let holds = true;
+    for (const p of points) {
+      const agreement = p.rank.separation[t]?.agreementFx ?? null;
+      if (agreement === null) continue;
+      measured = true;
+      if (agreement < rankThreshold) holds = false;
+    }
+    if (measured && holds) {
+      safeSeparationFx = margins[t]!.minGapFx;
+      break;
+    }
   }
 
   return {
@@ -163,7 +239,12 @@ export function sweepConstant(
     points,
     worstMeanAbsDeltaFx,
     worstTierChanges,
+    worstPairAgreementFx,
+    worstSpearmanFx,
+    worstMaxRankShift,
+    safeSeparationFx,
     stable: worstMeanAbsDeltaFx <= threshold && worstTierChanges === 0,
+    rankStable: worstPairAgreementFx !== null && worstPairAgreementFx >= rankThreshold,
   };
 }
 

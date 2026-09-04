@@ -3,9 +3,14 @@
  *
  * Commands:
  *   sensitivity --cohort <dir> [--out <file>]
- *       Sweep every provisional constant and report score stability. Needs no
- *       labels, so this is the analysis that governs provisional labeling
- *       until a commerce label set exists.
+ *       Sweep every provisional constant one at a time and report score and
+ *       rank stability. Needs no labels, so this is the analysis that governs
+ *       provisional labeling until a commerce label set exists.
+ *   joint (--cohort <dir> | --synthetic <agents>) [--draws n] [--seed n] [--out <file>]
+ *       Vary every constant at once and report what survives. This is the band
+ *       to quote: the per-constant sweep understates the joint one. The
+ *       synthetic form exists to show how the band behaves as a cohort grows,
+ *       which a small fixture cohort cannot answer.
  *   run --cohort <dir> --split <iso-ts> --split-block <n> [--view success|discrimination] [--out <file>]
  *       Temporal-split calibration against commerce outcomes in the cohort.
  *   tune --cohort <dir> --split <iso-ts> --split-block <n> [--out <file>]
@@ -20,8 +25,15 @@
 import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { AgentSnapshot } from "@trust-index/types";
-import { renderArmComparisonReport, renderCalibrationReport, renderSensitivityReport, renderTuningReport } from "./report.js";
+import {
+  renderArmComparisonReport,
+  renderCalibrationReport,
+  renderJointSweepReport,
+  renderSensitivityReport,
+  renderTuningReport,
+} from "./report.js";
 import { compareLinkageArms } from "./compare.js";
+import { jointSweep } from "./joint.js";
 import { runCalibration } from "./run.js";
 import { runDefaultSensitivity } from "./sensitivity.js";
 import { syntheticCohort } from "./synthetic.js";
@@ -71,6 +83,38 @@ function main(argv: string[]): void {
     if (dir === null) throw new CliError("sensitivity requires --cohort <dir>");
     const { snapshots, label } = loadCohort(dir);
     emit(renderSensitivityReport(runDefaultSensitivity(snapshots), label), out);
+    return;
+  }
+
+  if (command === "joint") {
+    const dir = arg(rest, "--cohort");
+    const synthetic = arg(rest, "--synthetic");
+    if (dir === null && synthetic === null) {
+      throw new CliError("joint requires --cohort <dir> or --synthetic <agents>");
+    }
+    if (dir !== null && synthetic !== null) {
+      throw new CliError("joint takes --cohort or --synthetic, not both");
+    }
+    const draws = Number(arg(rest, "--draws") ?? "500");
+    const seed = Number(arg(rest, "--seed") ?? "1");
+    if (!Number.isInteger(draws) || draws < 0) throw new CliError(`--draws must be a non-negative integer: ${draws}`);
+    if (!Number.isInteger(seed)) throw new CliError(`--seed must be an integer: ${seed}`);
+
+    let snapshots: AgentSnapshot[];
+    let label: string;
+    if (dir !== null) {
+      ({ snapshots, label } = loadCohort(dir));
+    } else {
+      const agents = Number(synthetic);
+      if (!Number.isInteger(agents) || agents < 2) {
+        throw new CliError(`--synthetic must be an integer of at least 2: ${synthetic}`);
+      }
+      const cohortSeed = Number(arg(rest, "--cohort-seed") ?? "11");
+      if (!Number.isInteger(cohortSeed)) throw new CliError(`--cohort-seed must be an integer: ${cohortSeed}`);
+      snapshots = syntheticCohort({ agents, seed: cohortSeed, signalStrength: 1, splitDaysAgo: 30 }).snapshots;
+      label = `SYNTHETIC cohort (agents=${agents} cohort-seed=${cohortSeed}). Establishes how the band behaves at scale; establishes nothing about real agents.`;
+    }
+    emit(renderJointSweepReport(jointSweep(snapshots, { draws, seed }), label), out);
     return;
   }
 
@@ -135,7 +179,7 @@ function main(argv: string[]): void {
   }
 
   throw new CliError(
-    "usage: agent-trust-calibrate <sensitivity|run|compare-linkage|tune|demo> [options]",
+    "usage: agent-trust-calibrate <sensitivity|joint|run|compare-linkage|tune|demo> [options]",
   );
 }
 

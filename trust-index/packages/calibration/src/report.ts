@@ -16,6 +16,7 @@ import type { MetricSet, ReliabilityBin } from "./metrics.js";
 import type { CalibrationRun } from "./run.js";
 import { beatsAllBaselines, MIN_EVALUABLE_AGENTS } from "./run.js";
 import { recommendArm, type ArmComparison } from "./compare.js";
+import type { JointSweepResult } from "./joint.js";
 import type { SensitivityResult } from "./sensitivity.js";
 import type { TuningResult } from "./tune.js";
 
@@ -164,11 +165,15 @@ export function renderSensitivityReport(results: readonly SensitivityResult[], g
   out.push("## What this establishes");
   out.push("");
   out.push(
-    "Each constant below is swept across a plausible range and the cohort is rescored at every setting. The tables report how far scores move and how many agents change coverage tier.",
+    "Each constant below is swept across a plausible range and the cohort is rescored at every setting. The tables report two different things: how far the published scores move, and whether the ordering of agents survives.",
   );
   out.push("");
   out.push(
-    "This shows stability, not correctness. A constant can be perfectly stable and still be the wrong value. SPEC 12 permits shipping an untuned constant as provisional when its sweep is stable, and requires flagging one whose sweep is not. Nothing here promotes a constant to tuned; only a calibration run against real outcomes can do that.",
+    "Those are separate questions with separate answers, and the difference decides what a reader can safely do with an unverified constant. A constant that lifts every agent by the same amount moves the score a great deal and leaves the ordering untouched: a reader comparing two agents, or gating on a percentile, is unaffected by it, while a reader treating the number itself as a measurement is not. Reporting only the score movement would overstate the first reader's exposure.",
+  );
+  out.push("");
+  out.push(
+    "This shows stability, not correctness. A constant can be perfectly stable and still be the wrong value, and an ordering can be stable under every constant and still be the wrong ordering. SPEC 12 permits shipping an untuned constant as provisional when its sweep is stable, and requires flagging one whose sweep is not. Nothing here promotes a constant to tuned; only a calibration run against real outcomes can do that.",
   );
   out.push("");
   out.push(
@@ -177,25 +182,91 @@ export function renderSensitivityReport(results: readonly SensitivityResult[], g
   out.push("");
 
   const unstable = results.filter((r) => !r.stable);
+  const rankUnstable = results.filter((r) => !r.rankStable);
+  const scoreOnly = results.filter((r) => !r.stable && r.rankStable);
   out.push("## Summary");
   out.push("");
-  out.push("| Constant | Baseline | Worst mean score shift | Worst tier changes | Stable |");
-  out.push("|---|---|---|---|---|");
+  out.push("| Constant | Baseline | Worst mean score shift | Worst tier changes | Score stable | Worst pair agreement | Worst rank shift | Rank stable | Safe comparison margin |");
+  out.push("|---|---|---|---|---|---|---|---|---|");
   for (const r of results) {
     out.push(
-      `| ${r.path} | ${r.baselineValue} | ${format(r.worstMeanAbsDeltaFx, 2)} | ${r.worstTierChanges} | ${r.stable ? "yes" : "no"} |`,
+      `| ${r.path} | ${r.baselineValue} | ${format(r.worstMeanAbsDeltaFx, 2)} | ${r.worstTierChanges} | ${r.stable ? "yes" : "no"} | ${
+        r.worstPairAgreementFx === null ? "not measurable" : format(r.worstPairAgreementFx, 4)
+      } | ${r.worstMaxRankShift} | ${r.rankStable ? "yes" : "no"} | ${
+        r.safeSeparationFx === null ? "none reached" : `${format(r.safeSeparationFx, 2)} points`
+      } |`,
     );
   }
   out.push("");
   if (unstable.length > 0) {
     out.push(
-      `${unstable.length} of ${results.length} constants move the published output materially across their plausible range: ${unstable
+      `${unstable.length} of ${results.length} constants move the published score materially across their plausible range: ${unstable
         .map((r) => r.path)
         .join(", ")}. These carry the most risk while untuned and should be named on the methodology page.`,
     );
   } else {
-    out.push("Every swept constant is stable across its plausible range on this cohort.");
+    out.push("Every swept constant leaves the published score stable across its plausible range on this cohort.");
   }
+  out.push("");
+  if (rankUnstable.length > 0) {
+    out.push(
+      `${rankUnstable.length} of ${results.length} also disturb the ordering: ${rankUnstable
+        .map((r) => r.path)
+        .join(", ")}. For these, "agent A ranks above agent B" is not safe from the constant choice either.`,
+    );
+  } else {
+    out.push(
+      "No swept constant disturbs the ordering. Every pairwise comparison the index makes survives every setting tested, so relative claims are not hostage to these constants even where the absolute scores are.",
+    );
+  }
+  out.push("");
+  if (scoreOnly.length > 0) {
+    out.push(
+      `${scoreOnly.length} constants move the score without disturbing the ordering: ${scoreOnly
+        .map((r) => r.path)
+        .join(", ")}. Their uncertainty falls entirely on the published magnitude. A reader comparing agents or gating on a percentile is not exposed to it; a reader reading the number as a measurement is.`,
+    );
+    out.push("");
+  }
+
+  out.push("## How far apart two agents must be");
+  out.push("");
+  out.push(
+    "Unrestricted pair agreement counts a pair separated by a hundredth of a point the same as a pair separated by thirty, which understates how usable the ordering is: nobody quotes an ordering between two agents who are level. The margin below is the narrowest baseline score gap at which agreement holds across every setting of that constant, so it is the distance at which a comparison stops depending on the constant being right.",
+  );
+  out.push("");
+  const reached = results.filter((r) => r.safeSeparationFx !== null);
+  const widest = reached.reduce<bigint | null>(
+    (acc, r) => (acc === null || r.safeSeparationFx! > acc ? r.safeSeparationFx! : acc),
+    null,
+  );
+  if (reached.length < results.length) {
+    const unreached = results.filter((r) => r.safeSeparationFx === null).map((r) => r.path);
+    out.push(
+      `${unreached.length} constants reach the agreement threshold at no tested margin: ${unreached.join(
+        ", ",
+      )}. For these the ordering is not safe from the constant choice at any separation measured here, and a wider sweep of margins would be needed to find one if it exists.`,
+    );
+  } else if (widest !== null) {
+    out.push(
+      `Every constant reaches the agreement threshold at some margin. Taking the widest across all of them, two agents separated by at least ${format(
+        widest,
+        2,
+      )} points keep their ordering under every constant setting tested. That is the comparison the index can support today, before any constant is verified against outcomes.`,
+    );
+  }
+  out.push("");
+  out.push("| Constant | Margin at which the ordering holds |");
+  out.push("|---|---|");
+  for (const r of results) {
+    out.push(
+      `| ${r.path} | ${r.safeSeparationFx === null ? "none reached" : `${format(r.safeSeparationFx, 2)} points`} |`,
+    );
+  }
+  out.push("");
+  out.push(
+    "This margin describes one constant at a time. Two constants moving together can disturb a pair that neither disturbs alone, so the figures above are a lower bound on the margin a joint sweep would find, not an upper one.",
+  );
   out.push("");
 
   out.push("## Sweeps");
@@ -213,7 +284,166 @@ export function renderSensitivityReport(results: readonly SensitivityResult[], g
       );
     }
     out.push("");
+    out.push("Ordering at each setting, against the baseline ordering:");
+    out.push("");
+    out.push("| Value | Ranked | Pair agreement | Pairs inverted | Spearman | Top decile kept | Worst rank shift |");
+    out.push("|---|---|---|---|---|---|---|");
+    for (const p of r.points) {
+      const k = p.rank;
+      out.push(
+        `| ${p.value} | ${k.comparable} | ${k.pairAgreementFx === null ? "n/a" : format(k.pairAgreementFx, 4)} | ${k.invertedPairs} of ${k.orderedPairs} | ${
+          k.spearmanFx === null ? "n/a" : format(k.spearmanFx, 4)
+        } | ${k.topDecileRetained} of ${k.topDecileBaseline} | ${k.maxRankShift} |`,
+      );
+    }
+    out.push("");
+    out.push("Agreement by how far apart the baseline puts the pair:");
+    out.push("");
+    const margins = r.points[0]?.rank.separation ?? [];
+    out.push(`| Value | ${margins.map((m) => `gap >= ${format(m.minGapFx, 2)}`).join(" | ")} |`);
+    out.push(`|---|${margins.map(() => "---").join("|")}|`);
+    for (const p of r.points) {
+      const cells = p.rank.separation.map((sp) =>
+        sp.agreementFx === null ? "no pairs" : `${format(sp.agreementFx, 4)} (${sp.orderedPairs})`,
+      );
+      out.push(`| ${p.value} | ${cells.join(" | ")} |`);
+    }
+    out.push("");
   }
+
+  out.push("## How to read the ordering tables");
+  out.push("");
+  out.push(
+    "Pair agreement is the fraction of agent pairs that the baseline orders and the swept setting orders the same way. It is the direct measure of whether \"A is better than B\" survives the constant. Pairs the swept setting ties are counted in neither the agreed nor the inverted column, so agreement plus inversions can fall short of the ordered-pair total.",
+  );
+  out.push("");
+  out.push(
+    "Spearman is the rank correlation over the whole cohort, reported in its standard form for comparison against other work. Top decile kept counts how many of the baseline's top-decile agents remain in the top decile, which is the claim a consumer gating on a threshold depends on. The decile is taken by score threshold rather than by count, so ties at the cut line widen the set rather than being broken arbitrarily, and both sides of the count are printed.",
+  );
+  out.push("");
+  out.push(
+    "Worst rank shift is the largest number of positions any single agent moves. It is reported because the other three measures are cohort averages, and an average can stay excellent while one agent moves from second place to two hundredth.",
+  );
+  out.push("");
+  out.push(
+    "Agents that one setting suppresses and another does not have no rank to compare and are excluded from these tables. That is a coverage effect rather than an ordering effect, and the suppression flips column above already reports it.",
+  );
+  out.push("");
+  out.push(
+    "In the agreement-by-gap table each cell is the agreement among pairs separated by at least that margin, with the number of such pairs in brackets. Agreement normally rises as the margin widens, because a wider gap takes more disturbance to close. A cell reading no pairs means the cohort contains no pair that far apart, which is a statement about the cohort rather than about the constant.",
+  );
+  out.push("");
+  return out.join("\n");
+}
+
+/**
+ * Joint sweep report. This is the band a reader should be quoted, because it is
+ * the only one that varies every unverified constant at once.
+ */
+export function renderJointSweepReport(r: JointSweepResult, generatedFrom: string): string {
+  const out: string[] = [];
+  out.push("# Joint constant sweep");
+  out.push("");
+  out.push(`Source cohort: ${generatedFrom}`);
+  out.push(`Draws: ${r.draws} of a ${r.gridSize} point grid, seed ${r.seed}`);
+  out.push("");
+
+  out.push("## What this establishes");
+  out.push("");
+  out.push(
+    "Every constant is varied at the same time, and the worst effect on the cohort is reported. The per-constant sweep answers what one unverified value costs; this answers what all of them cost together, which is the honest position while none of them has been checked against outcomes.",
+  );
+  out.push("");
+  out.push(
+    `The grid is sampled rather than enumerated: ${r.draws} draws out of ${r.gridSize} combinations, from a seeded generator with no clock, so the same seed and cohort reproduce this band exactly. The two corners of the grid, every constant at its lowest and every constant at its highest, are always included. A sample gives a lower bound on the worst case: a combination worse than any drawn here is possible, and more draws tighten the bound without ever making it a proof.`,
+  );
+  out.push("");
+  out.push(
+    "As with the per-constant sweep, this measures stability rather than correctness. A band this analysis calls narrow can still be centred on the wrong value. Only calibration against real outcomes speaks to that.",
+  );
+  out.push("");
+
+  out.push("## How far the score moves");
+  out.push("");
+  out.push("| Measure | Worst observed |");
+  out.push("|---|---|");
+  out.push(
+    `| Mean score movement | ${format(r.worstMeanAbsDeltaFx, 2)} points, over ${r.worstMeanAbsDeltaCompared} agents |`,
+  );
+  out.push(`| Largest single score movement | ${format(r.worstMaxAbsDeltaFx, 2)} points |`);
+  out.push(`| Agents changing coverage tier | ${r.worstTierChanges} of ${r.cohortSize} |`);
+  out.push(`| Agents changing suppression state | ${r.worstSuppressionFlips} of ${r.cohortSize} |`);
+  out.push(`| Fewest agents any draw left scored | ${r.fewestScored} of ${r.cohortSize} |`);
+  out.push("");
+  out.push(
+    "The mean score movement is the figure to quote as the methodology band: the published score of a typical agent can move that far on the constant choice alone, and no amount of additional evidence about that agent narrows it. Only verifying the constants does.",
+  );
+  out.push("");
+  out.push(
+    "The agent count beside it matters. Some constant combinations suppress most of the cohort, and a mean taken over the few survivors is a statement about those survivors. The last row shows how far coverage collapses at the worst draw, so a band resting on a handful of agents is visible rather than implied.",
+  );
+  out.push("");
+
+  out.push("## How far apart two agents must be");
+  out.push("");
+  out.push(
+    `Each of the ${r.trackedPairs} tracked pairs is followed across every draw. A pair holds when every draw that could score both agents ordered them the way the baseline does; a draw that ties them does not support the ordering and counts against it, and a draw that suppresses either agent removes the comparison rather than breaking it. The figures below are therefore a property of the pairs, not of any single draw, which keeps a coverage collapse in one corner of the grid from standing in for an ordering result.`,
+  );
+  out.push("");
+  if (r.pairsSampled) {
+    out.push(
+      `The cohort contains ${r.totalOrderedPairs} ordered pairs, more than the tracking limit, so the tracked set is a deterministic sample of them drawn from the same seed.`,
+    );
+    out.push("");
+  }
+  if (r.safeSeparationFx === null) {
+    out.push(
+      "No tested margin reaches the survival threshold. On this cohort no comparison between two agents is safe from the joint constant choice at any separation measured here. That is the finding, and it belongs on the methodology page rather than softened: the index can rank agents only to the extent its unverified constants happen to be right.",
+    );
+  } else if (r.safeSeparationFx === 0n) {
+    out.push(
+      "Every pair holds at every margin, adjacent agents included. The ordering is not disturbed by the joint constant choice on this cohort, so relative claims are safe even though the absolute scores are not.",
+    );
+  } else {
+    out.push(
+      `Two agents separated by at least ${format(
+        r.safeSeparationFx,
+        2,
+      )} points keep their ordering under every constant combination drawn. That is the comparison the index can support today, before any constant is verified. Below that margin the ordering depends on constants nobody has checked, and the index should not be read as ranking those agents against each other.`,
+    );
+  }
+  out.push("");
+  out.push("| Baseline gap | Pairs | Held under every draw | Survival | Never evaluable |");
+  out.push("|---|---|---|---|---|");
+  for (const s of r.separation) {
+    out.push(
+      `| at least ${format(s.minGapFx, 2)} | ${s.pairs} | ${s.alwaysHeld} | ${
+        s.survivalFx === null ? "no pairs" : format(s.survivalFx, 4)
+      } | ${s.neverEvaluable} |`,
+    );
+  }
+  out.push("");
+  out.push(
+    "Survival normally rises as the margin widens, because a wider gap takes more disturbance to close. Never evaluable counts pairs at that margin which no draw could score, because at least one of the two agents was suppressed in every draw; those pairs are excluded from the survival figure rather than counted as holding.",
+  );
+  out.push("");
+
+  out.push("## Reproduction");
+  out.push("");
+  out.push("Axes swept:");
+  out.push("");
+  for (const a of r.axes) out.push(`- ${a.path}: ${a.values.join(", ")}`);
+  out.push("");
+  if (r.worstScoreDraw !== null) {
+    out.push("Constant combination producing the worst score movement:");
+    out.push("");
+    for (const [path, value] of Object.entries(r.worstScoreDraw)) out.push(`- ${path} = ${value}`);
+    out.push("");
+  }
+  out.push(
+    `Rerun with \`agent-trust-calibrate joint --cohort <dir> --draws ${r.draws - 2} --seed ${r.seed}\` to reproduce these numbers exactly.`,
+  );
+  out.push("");
   return out.join("\n");
 }
 

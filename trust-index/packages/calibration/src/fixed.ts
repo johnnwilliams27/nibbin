@@ -74,19 +74,30 @@ export function clamp(v: bigint, lo: bigint, hi: bigint): bigint {
 }
 
 /**
- * Integer square root of a SCALE-scaled value, round-half-up, via Newton's
- * method on bigints. Exact and deterministic; no floating point.
+ * Floor integer square root of a plain non-negative bigint, via Newton's
+ * method. Exact and deterministic; no floating point. Use this when the operand
+ * is an unscaled integer (a sum of squared ranks, say) rather than a
+ * SCALE-scaled value.
  */
-export function sqrt(v: bigint): bigint {
-  if (v < 0n) throw new RangeError("sqrt of a negative value");
-  if (v === 0n) return 0n;
-  // sqrt(v/ONE) * ONE = sqrt(v * ONE)
-  const target = v * ONE;
-  let x = target;
+export function isqrt(n: bigint): bigint {
+  if (n < 0n) throw new RangeError("sqrt of a negative value");
+  if (n === 0n) return 0n;
+  let x = n;
   let y = (x + 1n) / 2n;
   while (y < x) {
     x = y;
-    y = (x + target / x) / 2n;
+    y = (x + n / x) / 2n;
   }
   return x;
+}
+
+/**
+ * Square root of a SCALE-scaled value, returning a SCALE-scaled value. Floors
+ * at the working scale's last digit, which is the same treatment the scoring
+ * engine's interval math uses.
+ */
+export function sqrt(v: bigint): bigint {
+  if (v < 0n) throw new RangeError("sqrt of a negative value");
+  // sqrt(v/ONE) * ONE = sqrt(v * ONE)
+  return isqrt(v * ONE);
 }

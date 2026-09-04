@@ -71,6 +71,38 @@ score-to-probability curve alongside the score rather than leaving integrators
 to invent one. Worth raising with the author before the whitepaper claims
 calibration.
 
+**The ordering is far more robust than the score, and that changes what the
+index can claim today.** The sensitivity sweep originally measured only how far
+scores move. It now also measures whether the ordering survives, because those
+are different claims: a constant that lifts every agent by the same amount
+destroys the score and leaves every comparison intact. `research/joint-constant-sweep.md`
+and `research/joint-constant-sweep-scale.md` vary all eight constants at once and
+follow each agent pair across the draws. On a 200-agent cohort the score moves up
+to 8.75 points on the constant choice alone, while pairs at least 10 points apart
+keep their ordering in 9,999 cases out of 10,000, and pairs at least 20 points
+apart in every case. So "this agent scores 82" carries a wide unverified band,
+and "this agent ranks above that one, and they are 10 points apart" does not.
+That second claim is available now, before any constant is verified, and it is
+the one worth putting in front of a reader.
+
+Two caveats hold it down. The 11-agent fixture cohort reaches no safe margin at
+all, which is a statement about a cohort built to exercise edge cases rather than
+about the method; the margin only becomes measurable once the cohort has enough
+separated pairs to measure it with. And the scale figures come from the synthetic
+generator, so their score distribution is an assumption of ours. A real
+population is needed to turn either number into a published claim.
+
+**Aggregating across sweep draws has a trap, and the first version fell into
+it.** Taking the worst pair agreement across draws let a single degenerate corner
+of the grid decide the answer: at extreme constants almost the whole cohort is
+suppressed, two agents survive, their one comparison flips, and the reported
+agreement is zero on a sample of one pair. That number described a coverage
+collapse and was read as an ordering result. Aggregation is now per pair rather
+than per draw, so a pair holds when every draw that could score both agents
+agreed with the baseline, and a draw that suppresses an agent removes the
+comparison instead of breaking it. Coverage collapse is reported separately, as
+the fewest agents any draw left scored.
+
 **Most constants are not stable.** `research/constant-sensitivity.md`, run
 against the committed fixture cohort: 7 of 8 swept constants move the published
 output materially across their plausible ranges. `shrinkage_k` shifts scores by
