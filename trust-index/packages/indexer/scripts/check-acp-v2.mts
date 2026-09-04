@@ -38,7 +38,16 @@ function arg(name: string, fallback: string): string {
 }
 
 const CACHE = arg("--cache", "cohort-cache");
-const RPC = arg("--rpc", process.env.TRUST_INDEX_RPC_URL ?? "https://mainnet.base.org");
+/**
+ * Rotated per request. A single public endpoint returns HTTP 500 under a
+ * sustained scan, which is a rate limit wearing a server-fault costume, and
+ * spreading the load is the fix that worked for the registry backfill.
+ */
+const RPCS = arg("--rpc", process.env.TRUST_INDEX_RPC_URL ?? "https://mainnet.base.org,https://gateway.tenderly.co/public/base")
+  .split(",")
+  .map((x) => x.trim())
+  .filter((x) => x.length > 0);
+let rpcTurn = 0;
 /** ACP v2 jobManager module on Base, from the v2 root's jobManager(). */
 const JOB_MANAGER = "0x9c690c267f20c385f8a053f62bc8c7e2d4b83744";
 const IDENTITY = MAINNET_IDENTITY_REGISTRY.toLowerCase();
@@ -70,8 +79,10 @@ async function rpc(body: unknown): Promise<unknown> {
   let last = "";
   for (let a = 0; a < 4; a += 1) {
     await new Promise((r) => setTimeout(r, 120));
+    const endpoint = RPCS[rpcTurn % RPCS.length]!;
+    rpcTurn += 1;
     try {
-      const res = await fetch(RPC, {
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(body),
@@ -86,7 +97,7 @@ async function rpc(body: unknown): Promise<unknown> {
       // Logged as it happens. A silent retry ladder is indistinguishable from
       // a hang from the outside, which is exactly how the first run of this
       // script spent seven minutes looking stuck.
-      console.error(`  rpc retry ${a + 1}: ${last}`);
+      console.error(`  rpc retry ${a + 1}: ${last} (${endpoint})`);
       await new Promise((r) => setTimeout(r, 500 * 2 ** a));
     }
   }
