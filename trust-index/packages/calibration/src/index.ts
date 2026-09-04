@@ -7,6 +7,7 @@ export * from "./rank.js";
 export * from "./run.js";
 export * from "./sensitivity.js";
 export * from "./joint.js";
+export * from "./coverage.js";
 export * from "./tune.js";
 export * from "./compare.js";
 export * from "./report.js";

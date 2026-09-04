@@ -71,6 +71,49 @@ score-to-probability curve alongside the score rather than leaving integrators
 to invent one. Worth raising with the author before the whitepaper claims
 calibration.
 
+**On the real Base registry the index scores 0.75 percent of agents, and the
+suppression floor is why.** `research/real-cohort-coverage.md`, over a uniform
+2,000-agent sample of the 84,589 agents registered on Base: 743 carry feedback,
+712 carry usable feedback, and 15 receive a published score. Mean n_eff is
+0.0478 against a floor of 0.50, and the index emits 15 distinct score values in
+total.
+
+The cause is an interaction between rules that are each defensible. One
+reviewer one vote caps an agent's n_eff at one per distinct reviewer, and 401 of
+the 743 reviewed agents have exactly one reviewer; the median is one. The age
+ramp and time decay then discount that single contribution to a fraction of its
+weight. A floor of 0.50 therefore asks for roughly three recent, fully weighted,
+distinct reviewers, which almost no agent on this registry has.
+
+Part of that is our own input quality, and the report bounds it rather than
+guessing. Reviewer wallet age is understated by the exporter, so the age ramp
+bites harder than it should. Removing the age ramp lifts coverage from 15 to 39
+agents; removing decay as well lifts it to 292, which is the most generous
+correction any index build could justify and still only 14.6 percent. Dropping
+the suppression floor instead reaches 708, essentially every agent with usable
+feedback. So the floor, not the evidence and not our inputs, is what decides
+coverage.
+
+None of this says the floor is wrong. A score from one unverified review may
+well be worse than no score, and SPEC 12 asks for sparse coverage to be
+published rather than hidden. It does say the floor is the most consequential
+constant in the methodology, that it is unverified like the others, and that
+`agent-trust-calibrate coverage` should run before any band is quoted: a band
+around a score almost no agent carries is not a headline.
+
+**Feedback normalization discards 73 percent of real feedback.** Of 462,325
+feedback entries on Base, 124,244 are usable. SPEC 11.10 detects scale per
+(client, tag) from observed range and excludes rather than guesses where it
+cannot be inferred, which is the right instinct; the cost is that 2,267 of 2,336
+sampled reviewers only ever emit one distinct value, so no range exists for
+them. Widening the detection scope to per-tag across clients would recover much
+of it, at the price of assuming reviewers of the same tag share a scale. That is
+an author decision, not one to make quietly in code.
+
+**One address wrote over half the feedback in the index.** In the sampled slice,
+16,912 of 32,667 entries came from a single reviewer. The anti-flooding cap was
+written against a hypothetical and turns out to be load-bearing.
+
 **The ordering is far more robust than the score, and that changes what the
 index can claim today.** The sensitivity sweep originally measured only how far
 scores move. It now also measures whether the ordering survives, because those

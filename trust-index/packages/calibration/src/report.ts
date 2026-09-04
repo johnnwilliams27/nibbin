@@ -17,6 +17,7 @@ import type { CalibrationRun } from "./run.js";
 import { beatsAllBaselines, MIN_EVALUABLE_AGENTS } from "./run.js";
 import { recommendArm, type ArmComparison } from "./compare.js";
 import type { JointSweepResult } from "./joint.js";
+import type { CoverageReport } from "./coverage.js";
 import type { SensitivityResult } from "./sensitivity.js";
 import type { TuningResult } from "./tune.js";
 
@@ -442,6 +443,88 @@ export function renderJointSweepReport(r: JointSweepResult, generatedFrom: strin
   }
   out.push(
     `Rerun with \`agent-trust-calibrate joint --cohort <dir> --draws ${r.draws - 2} --seed ${r.seed}\` to reproduce these numbers exactly.`,
+  );
+  out.push("");
+  return out.join("\n");
+}
+
+/**
+ * Coverage report. Answers the question that comes before any band: how many
+ * agents does the methodology publish a score for at all?
+ */
+export function renderCoverageReport(r: CoverageReport, generatedFrom: string): string {
+  const out: string[] = [];
+  const pct = (n: number) => (r.baseline.total === 0 ? "0.00" : ((n / r.baseline.total) * 100).toFixed(2));
+
+  out.push("# Coverage report");
+  out.push("");
+  out.push(`Source cohort: ${generatedFrom}`);
+  out.push("");
+
+  out.push("## What this establishes");
+  out.push("");
+  out.push(
+    "How many agents receive a published score, and where the rest are lost. The sensitivity and joint sweeps measure how far a score moves; neither says how many agents have one. On a real registry that turns out to be the more consequential number, and a band around a score almost nobody carries is not a headline.",
+  );
+  out.push("");
+
+  out.push("## Where agents are lost");
+  out.push("");
+  out.push("| Stage | Agents | Share of cohort |");
+  out.push("|---|---|---|");
+  out.push(`| In the cohort | ${r.baseline.total} | 100.00% |`);
+  out.push(`| Carry any feedback | ${r.baseline.withFeedback} | ${pct(r.baseline.withFeedback)}% |`);
+  out.push(`| Carry usable feedback | ${r.baseline.withUsableFeedback} | ${pct(r.baseline.withUsableFeedback)}% |`);
+  out.push(`| Receive a published score | ${r.baseline.scored} | ${pct(r.baseline.scored)}% |`);
+  out.push("");
+  out.push(
+    "The three stages fail for different reasons and have different fixes. An agent with no feedback cannot be scored by any constant setting. An agent whose feedback is all revoked or all scale-uninferable is excluded by SPEC 11.10, which excludes rather than guesses at a scale. An agent that clears both and still has no score was suppressed for insufficient evidence weight, and that last one is a constant choice.",
+  );
+  out.push("");
+  out.push(
+    `Mean n_eff across the cohort is ${r.baseline.meanNeff.toFixed(4)}, against a suppression floor of 0.50, and the highest any agent reaches is ${r.baseline.maxNeff.toFixed(3)}. The index publishes ${r.baseline.distinctScores} distinct score values, which bounds how finely it can rank regardless of anything else.`,
+  );
+  out.push("");
+  out.push("| Coverage tier | Agents |");
+  out.push("|---|---|");
+  for (const t of r.baseline.tiers) out.push(`| ${t.tier} | ${t.count} |`);
+  out.push("");
+
+  out.push("## Why the evidence weighs so little");
+  out.push("");
+  out.push(
+    `${r.reviewersPerAgent.agents} agents have at least one reviewer. The median such agent has ${r.reviewersPerAgent.median}, the 90th percentile has ${r.reviewersPerAgent.p90}, and ${r.reviewersPerAgent.exactlyOne} have exactly one.`,
+  );
+  out.push("");
+  out.push(
+    "That interacts with two rules that are individually reasonable. One reviewer one vote (SPEC 11.1, and the anti-flooding cap) means a reviewer contributes at most their own weight no matter how many reviews they leave, so an agent reviewed by one address cannot exceed an n_eff of one however much that address says. The age ramp and time decay then discount that single contribution well below one. A floor of 0.50 therefore asks for something close to three recent, fully weighted, distinct reviewers, and most agents on the registry have one reviewer of unknown age.",
+  );
+  out.push("");
+
+  out.push("## Separating the methodology from the inputs");
+  out.push("");
+  out.push(
+    "Some of the shortfall is ours rather than the methodology's: an index build that cannot date a reviewer's wallet understates the age ramp, and one that reads a short history still applies decay. The first two variations below disable those effects to bound that artifact. They are not proposed settings, and neither is a fix. The last two vary the suppression floor itself, which is a real constant choice.",
+  );
+  out.push("");
+  out.push("| Variation | Purpose | Agents scored | Share | Mean n_eff |");
+  out.push("|---|---|---|---|---|");
+  for (const v of r.variations) {
+    const purpose =
+      v.purpose === "baseline" ? "baseline" : v.purpose === "artifact_bound" ? "bounds an input artifact" : "constant choice";
+    out.push(`| ${v.label} | ${purpose} | ${v.scored} | ${pct(v.scored)}% | ${v.meanNeff.toFixed(4)} |`);
+  }
+  out.push("");
+  const bound = r.variations.find((v) => v.label === "age ramp and decay both removed");
+  const noFloor = r.variations.find((v) => v.label.startsWith("suppression floor effectively removed"));
+  if (bound !== undefined && noFloor !== undefined) {
+    out.push(
+      `Reading this: even with every age and decay effect removed, which is more generous than any real index build could justify, coverage reaches ${pct(bound.scored)}%. So the shortfall is not mainly an artifact of thin inputs. Removing the suppression floor instead reaches ${pct(noFloor.scored)}%, which is close to the share of agents carrying usable feedback at all. The floor, not the evidence, is what decides coverage here.`,
+    );
+    out.push("");
+  }
+  out.push(
+    "None of this says the floor is wrong. Publishing a score from a single unverified review may well be worse than publishing nothing, and SPEC 12 is explicit that a sparse-coverage finding should be reported rather than hidden. It does say the floor is the single most consequential constant in the methodology, that it is currently unverified like the rest, and that it should be tuned against outcomes before the index claims to cover a registry.",
   );
   out.push("");
   return out.join("\n");

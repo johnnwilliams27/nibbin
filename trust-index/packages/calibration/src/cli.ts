@@ -9,6 +9,10 @@
  *       Sweep every provisional constant one at a time and report score and
  *       rank stability. Needs no labels, so this is the analysis that governs
  *       provisional labeling until a commerce label set exists.
+ *   coverage --cohort <dir> [--out <file>]
+ *       How many agents receive a published score at all, and where the rest
+ *       are lost. Run this before quoting any band: a band around a score
+ *       almost no agent carries is not a headline.
  *   joint (--cohort <dir> | --synthetic <agents>) [--draws n] [--seed n] [--out <file>]
  *       Vary every constant at once and report what survives. This is the band
  *       to quote: the per-constant sweep understates the joint one. The
@@ -31,12 +35,14 @@ import type { AgentSnapshot } from "@trust-index/types";
 import {
   renderArmComparisonReport,
   renderCalibrationReport,
+  renderCoverageReport,
   renderJointSweepReport,
   renderSensitivityReport,
   renderTuningReport,
 } from "./report.js";
 import { compareLinkageArms } from "./compare.js";
 import { jointSweep } from "./joint.js";
+import { analyzeCoverage } from "./coverage.js";
 import { runCalibration } from "./run.js";
 import { runDefaultSensitivity } from "./sensitivity.js";
 import { syntheticCohort } from "./synthetic.js";
@@ -133,6 +139,15 @@ function main(argv: string[]): void {
     const { sample, seed } = sampleArgs(rest);
     const { snapshots, label } = loadCohort(dir, sample, seed);
     emit(renderSensitivityReport(runDefaultSensitivity(snapshots), label), out);
+    return;
+  }
+
+  if (command === "coverage") {
+    const dir = arg(rest, "--cohort");
+    if (dir === null) throw new CliError("coverage requires --cohort <dir>");
+    const { sample, seed } = sampleArgs(rest);
+    const { snapshots, label } = loadCohort(dir, sample, seed);
+    emit(renderCoverageReport(analyzeCoverage(snapshots), label), out);
     return;
   }
 
@@ -233,7 +248,7 @@ function main(argv: string[]): void {
   }
 
   throw new CliError(
-    "usage: agent-trust-calibrate <sensitivity|joint|run|compare-linkage|tune|demo> [options]",
+    "usage: agent-trust-calibrate <sensitivity|joint|coverage|run|compare-linkage|tune|demo> [options]",
   );
 }
 
