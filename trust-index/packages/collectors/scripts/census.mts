@@ -24,7 +24,7 @@
  *   pnpm --filter @trust-index/collectors exec tsx scripts/census.mts --phase list
  *   pnpm --filter @trust-index/collectors exec tsx scripts/census.mts --phase classify --i-have-approval
  */
-import { writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { CAPABILITIES, type CapabilityId } from "../src/capability.js";
 import { classifyTools, requiredCapabilities, testability } from "../src/mcp/shape.js";
 import { listServers, type RegistryEntry } from "../src/mcp/registry.js";
@@ -260,10 +260,36 @@ async function phaseClassify(entries: RegistryEntry[]): Promise<void> {
   }
 }
 
+const CACHE = "census-remote.json";
+
+/**
+ * Phase 2 reads the cached listing rather than re-paging the registry.
+ *
+ * Without this a 200-server sample re-fetched all 903 index pages first, which
+ * is several minutes of load on someone else's service to rediscover something
+ * already on disk. Re-list explicitly with --phase list, or --refresh.
+ */
+async function loadEntries(): Promise<RegistryEntry[]> {
+  if (!has("--refresh") && existsSync(CACHE)) {
+    const cached = JSON.parse(readFileSync(CACHE, "utf8")) as RegistryEntry[];
+    if (cached.length > 0) {
+      console.log(`Using cached listing: ${cached.length} remote servers from ${CACHE}.`);
+      console.log("Pass --refresh to re-read the registry index.\n");
+      return cached;
+    }
+    // An empty cache is a failed run's leftovers, not a population. Re-list.
+    console.log(`${CACHE} is empty, so it is a failed run's leftovers rather than a population. Re-listing.\n`);
+  }
+  return phaseList();
+}
+
 async function main(): Promise<void> {
   const phase = arg("--phase", "list");
-  const entries = await phaseList();
-  if (phase === "classify") await phaseClassify(entries);
+  if (phase === "list") {
+    await phaseList();
+    return;
+  }
+  await phaseClassify(await loadEntries());
 }
 
 main().catch((err) => {
