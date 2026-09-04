@@ -29,10 +29,15 @@ const say =
   (verdict: string, reason = "r"): JudgeClient =>
   async () => ({ verdict, reason });
 
-const member = (vendor: Vendor, client: JudgeClient, tier: "cheap" | "premium" = "cheap"): Member => ({
+const member = (
+  vendor: Vendor,
+  client: JudgeClient,
+  tier: "cheap" | "premium" = "cheap",
+  suffix = "",
+): Member => ({
   vendor,
   tier,
-  modelId: `${vendor}-${tier}`,
+  modelId: `${vendor}-${tier}${suffix}`,
   client,
 });
 
@@ -237,6 +242,59 @@ describe("scoring is against labels, never against agreement", () => {
   });
 });
 
+describe("two vendors, three voters: the doubled lab", () => {
+  const items = [item("a", "answer"), item("b", "answer"), item("c", "answer")];
+
+  it("scores two voters from the same vendor separately", async () => {
+    // Keyed on vendor, one of these would have been scored twice and the other
+    // never — and both numbers would have looked entirely plausible.
+    const run = await runPanel(items, {
+      voters: [
+        member("openai", say("answer"), "cheap", "-a"),
+        member("openai", say("refusal"), "cheap", "-b"),
+        member("anthropic", say("answer")),
+      ],
+      deciders: [],
+    });
+    const voters = scorePanel(run, items).models.filter((m) => m.role === "voter");
+    expect(voters).toHaveLength(3);
+    expect(voters.find((v) => v.modelId === "openai-cheap-a")!.accuracy).toBe(1);
+    expect(voters.find((v) => v.modelId === "openai-cheap-b")!.accuracy).toBe(0);
+  });
+
+  it("counts a family pair outvoting a correct dissenter", async () => {
+    // The specific failure of majority voting across two vendors: three voters
+    // look like three opinions, but two share a lineage. Here the OpenAI pair
+    // agrees and is wrong, and the Anthropic voter is right and loses.
+    const run = await runPanel(items, {
+      voters: [
+        member("openai", say("refusal"), "cheap", "-a"),
+        member("openai", say("refusal"), "cheap", "-b"),
+        member("anthropic", say("answer")),
+      ],
+      deciders: [],
+    });
+    const m = scorePanel(run, items);
+    expect(m.family_majority.cases).toBe(3);
+    expect(m.family_majority.outvoted_correct_dissent).toBe(3);
+    expect(m.family_majority.rate).toBe(1);
+    // And the majority rule published the wrong answer every time.
+    expect(m.structures.find((s) => s.name.startsWith("S0"))!.coverage_adjusted_accuracy).toBe(0);
+  });
+
+  it("does not count a split where the pair disagrees with itself", async () => {
+    const run = await runPanel(items, {
+      voters: [
+        member("openai", say("refusal"), "cheap", "-a"),
+        member("openai", say("error"), "cheap", "-b"),
+        member("anthropic", say("answer")),
+      ],
+      deciders: [],
+    });
+    expect(scorePanel(run, items).family_majority.cases).toBe(0);
+  });
+});
+
 describe("the ranking is arithmetic, and it flags what accuracy hides", () => {
   it("flags a decider that breaks more than it rescues", async () => {
     const items3 = [item("a", "answer"), item("b", "answer"), item("c", "answer")];
@@ -350,7 +408,7 @@ describe("adapters force structure and never repair it", () => {
 describe("model ids are validated rather than trusted", () => {
   it("reports a missing key as a missing model, not a working one", async () => {
     const { ok, missing } = await validateModels(
-      [{ vendor: "openai", tier: "cheap", id: "gpt-x", verified: false, note: "" }],
+      [{ slot: "voter_1", vendor: "openai", tier: "cheap", id: "gpt-x", verified: false, note: "" }],
       {},
     );
     expect(ok).toHaveLength(0);
@@ -367,8 +425,8 @@ describe("model ids are validated rather than trusted", () => {
     })) as unknown as typeof fetch;
     const { ok, missing } = await validateModels(
       [
-        { vendor: "openai", tier: "premium", id: "gpt-5", verified: false, note: "" },
-        { vendor: "openai", tier: "cheap", id: "gpt-5-typo", verified: false, note: "" },
+        { slot: "decider_1", vendor: "openai", tier: "premium", id: "gpt-5", verified: false, note: "" },
+        { slot: "voter_1", vendor: "openai", tier: "cheap", id: "gpt-5-typo", verified: false, note: "" },
       ],
       { openai: "k" },
       listing,

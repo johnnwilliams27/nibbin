@@ -1,24 +1,44 @@
 # The judge panel experiment: design, and what it is blocked on
 
-Status: **built and tested; cannot run.** Three vendor credentials are missing.
-Everything else is in place and 158 tests pass.
+Status: **built and tested; cannot run.** The OpenAI leg is satisfied; the
+Anthropic key is org-scoped and needs a workspace. 161 tests pass.
 
-## The design as specified
+## The design
 
-Three cheap models from three labs vote on every item. Three premium models each
-adjudicate the same votes. A final Claude pass reads the results and recommends
-a structure.
+Three cheap models vote on every item. Three premium models each adjudicate the
+same votes. Claude Fable 5.1 reads the results and recommends a structure.
 
-```
-                  ┌──────────────┐
-   item ─────────►│ cheap OpenAI │──┐
-        ─────────►│ cheap Claude │──┼──► anonymised A/B/C votes
-        ─────────►│ cheap Grok   │──┘         │
-                  └──────────────┘            │
-                                              ├──► premium OpenAI ──┐
-                                              ├──► premium Claude ──┼──► meta pass
-                                              └──► premium Grok  ───┘   (Claude)
-```
+| Seat | Vendor | Model | $/1M in | $/1M out |
+|---|---|---|---|---|
+| voter_1 | OpenAI | `gpt-5.4-mini` | 0.75 | 4.50 |
+| voter_2 | OpenAI | `gpt-5.4-nano` | 0.20 | 1.25 |
+| voter_3 | Anthropic | `claude-haiku-4-5-20251001` | 1.00 | 5.00 |
+| decider_1 | OpenAI | `gpt-5.5` | 5.00 | 30.00 |
+| decider_2 | Anthropic | `claude-opus-5` | 5.00 | 25.00 |
+| decider_3 | Anthropic | `claude-sonnet-5` | 2.00 | 10.00 |
+| meta | Anthropic | `claude-fable-5-1` | 10.00 | 50.00 |
+
+Each decider also answers alone, as a solo baseline, and runs in both
+presentations (`votes_only`, `votes_and_evidence`).
+
+**Generation parity is part of fairness.** An earlier roster paired current
+Claude models against `gpt-5` and `gpt-5-mini`. The account's own model listing
+offers up to the 5.6 family, so any accuracy gap measured that way would have
+been partly a gap between release dates, with nothing in the results saying so.
+
+**Two vendors, three seats per layer.** One lab necessarily holds two seats in
+each layer — that is forced by the shape, not chosen. OpenAI doubles in the
+voters and Anthropic in the deciders, so neither is the majority of both
+layers. Fable is the meta pass and not a decider, so it never grades its own
+output.
+
+**What doubling costs, measured rather than assumed.** Three voters look like
+three opinions, but two share training data, RLHF lineage and tokenizer, so a
+2-1 majority can be one family agreeing with itself and outvoting the other
+vendor. `family_majority` counts exactly that: items where a same-vendor pair
+agreed, the lone other-vendor voter dissented, and the dissenter was right. No
+accuracy number reports this on its own — the majority's accuracy just looks
+slightly lower.
 
 ## Five things added to make it answer the question
 
@@ -39,9 +59,10 @@ produce that answer is a procurement exercise, not an experiment.
 
 **4. Anonymisation, permuted per item by a seeded shuffle.** Votes reach the
 decider as Judge A/B/C with no vendor named. This controls position bias and
-makes self-preference *measurable*: the sharp form is, on items where its own
-lab's voter was wrong and the others were right, how often did it follow the
-sibling anyway.
+makes self-preference *measurable*: the sharp form is, on items where every
+voter from its own lab was wrong and some other vendor's voter was right, how
+often did it follow the family anyway. Siblings are plural here, because a lab
+holding two voter seats has two of them.
 
 **5. Both presentations.** `votes_only` shows the decider the verdicts and
 reasons; `votes_and_evidence` re-sends the original content at roughly ten times
@@ -60,6 +81,12 @@ adjudication and nobody knows it without measuring.
 - **Coverage-adjusted accuracy.** Correct over *all* labelled items, abstentions
   counted as misses. Plain accuracy lets a structure win by answering only the
   easy third.
+- **Family majority.** How often a same-vendor pair outvoted a correct dissenter
+  from the other lab. On a two-vendor panel this is the price of the third seat,
+  and it is invisible in every other number here.
+- **Split resolution.** Rescue and breakage only count items where the voters
+  agreed. `split_resolved` / `split_missed` cover the items where they did not,
+  which is where an adjudicator earns its price.
 - **Schema discipline (gate G2).** Any failure to return valid structured output
   is disqualifying. No repair pass, no re-prompt, no regexing a verdict out of
   prose — a harness that silently repairs bad output cannot measure it.
@@ -113,15 +140,14 @@ labelling script rather than buried:
 
 ## What it is blocked on
 
-Preflight refuses to start on a partial roster, because a two-vendor panel is
-not a smaller version of this experiment but a different one whose agreement
-numbers would be compared against three-vendor expectations.
+Preflight refuses to start on a partial roster, because a panel missing a seat
+is not a smaller version of this experiment but a different one whose agreement
+numbers would be read against the full shape's expectations.
 
 | Capability | Needed for | How to provide |
 |---|---|---|
-| `judge_model_openai` | cheap + premium OpenAI legs | OpenAI platform account, key in `OPENAI_API_KEY`, billing enabled |
-| `judge_model_anthropic` | cheap + premium Claude legs, meta pass | Anthropic Console key in `ANTHROPIC_API_KEY` (a host-managed CLI session is not a usable key) |
-| `judge_model_xai` | cheap + premium Grok legs | xAI console account, key in `XAI_API_KEY`, billing enabled |
+| `judge_model_openai` | voter_1, voter_2, decider_1 | **Satisfied.** All three ids confirmed against the live listing |
+| `judge_model_anthropic` | voter_3, decider_2, decider_3, meta | **Blocked.** The key is org-scoped and is rejected on every request until it names a workspace: set `ANTHROPIC_WORKSPACE_ID`, or use a workspace-scoped key |
 
 Model ids are validated against each provider's live models listing before the
 run starts. The Anthropic ids come from the `claude-api` skill and are confirmed;

@@ -119,6 +119,8 @@ export type PanelMetrics = {
   structures: StructureMetrics[];
   correlation: CorrelationCell[];
   decider_behaviour: DeciderBehaviour[];
+  /** What the two-vendor, three-voter shape costs when a family outvotes the outsider. */
+  family_majority: FamilyMajority;
   /** Gate G2: did every model always return schema-valid output? */
   schema_failures: { vendor: Vendor; modelId: string; failures: number; sample: string[] }[];
 };
@@ -163,9 +165,35 @@ export function phi(a: readonly boolean[], b: readonly boolean[]): number | null
   return (n11 * n00 - n10 * n01) / denom;
 }
 
-function voteOf(record: VoteRecord, vendor: Vendor): VoterVote | undefined {
-  return record.votes.find((v) => v.vendor === vendor);
+/**
+ * Every vote from one vendor.
+ *
+ * Plural, because a three-voter panel drawn from two vendors gives one of them
+ * two seats. An earlier single-vote lookup returned whichever happened to be
+ * first, which would have made the self-preference number a measurement of
+ * array order.
+ */
+function votesOf(record: VoteRecord, vendor: Vendor): Extract<VoterVote, { ok: true }>[] {
+  return record.votes.filter((v): v is Extract<VoterVote, { ok: true }> => v.ok && v.vendor === vendor);
 }
+
+/**
+ * Did one vendor's pair outvote the other vendor's lone voter, and lose?
+ *
+ * The specific failure of majority voting across two vendors: three voters look
+ * like three opinions, but two of them share training data, RLHF lineage and
+ * tokenizer, so a 2-1 split can be one family agreeing with itself. When the
+ * outsider was right and the pair was wrong, the majority rule actively
+ * discarded the correct answer — and no accuracy number reports that, because
+ * the majority's accuracy just looks slightly lower.
+ */
+export type FamilyMajority = {
+  /** Labelled items where a same-vendor pair agreed and the other vendor's voter dissented. */
+  cases: number;
+  /** ...and the lone dissenter was right. */
+  outvoted_correct_dissent: number;
+  rate: number | null;
+};
 
 function labelOf(items: ReadonlyMap<string, PanelItem>, id: string): string | null {
   return items.get(id)?.label ?? null;
@@ -202,7 +230,10 @@ export function scorePanel(
     const perClass = new Map<string, { support: number; correct: number }>();
 
     for (const record of run.records) {
-      const vote = voteOf(record, voter.vendor);
+      // Keyed on model id, not vendor. With two voters from one lab, a
+      // vendor-keyed lookup would score whichever came first twice and the
+      // other never, and both would carry a plausible-looking accuracy.
+      const vote = record.votes.find((v) => v.modelId === voter.modelId);
       if (vote === undefined) continue;
       if (!vote.ok) {
         failures.push(vote.error);
@@ -416,16 +447,19 @@ export function scorePanel(
         else missed += 1;
       }
 
-      const sibling = voteOf(record, d.vendor);
-      const others = record.votes.filter((v) => v.vendor !== d.vendor);
+      // Siblings are every voter from the decider's own lab — two of them when
+      // that lab holds two seats. The case only counts when ALL of them were
+      // wrong and some other vendor's voter was right; following the family
+      // then is following it against the available evidence.
+      const siblings = votesOf(record, d.vendor);
+      const others = record.votes.filter((v) => v.ok && v.vendor !== d.vendor);
       if (
-        sibling !== undefined &&
-        sibling.ok &&
-        sibling.verdict !== label &&
+        siblings.length > 0 &&
+        siblings.every((s) => s.verdict !== label) &&
         others.some((o) => o.ok && o.verdict === label)
       ) {
         siblingCases += 1;
-        if (d.verdict === sibling.verdict) followedSibling += 1;
+        if (siblings.some((s) => s.verdict === d.verdict)) followedSibling += 1;
       }
     }
 
@@ -491,6 +525,28 @@ export function scorePanel(
     }
   }
 
+  // ---- family majority ----------------------------------------------------
+  let familyCases = 0;
+  let familyOutvoted = 0;
+  for (const record of run.records) {
+    const label = labelOf(items, record.item_id);
+    if (label === null) continue;
+    const good = record.votes.filter((v): v is Extract<VoterVote, { ok: true }> => v.ok);
+    if (good.length < 3) continue;
+    const vendors = [...new Set(good.map((g) => g.vendor))];
+    if (vendors.length !== 2) continue;
+    for (const vendor of vendors) {
+      const pair = good.filter((g) => g.vendor === vendor);
+      const rest = good.filter((g) => g.vendor !== vendor);
+      if (pair.length !== 2 || rest.length !== 1) continue;
+      const dissenter = rest[0]!;
+      const pairAgrees = pair[0]!.verdict === pair[1]!.verdict;
+      if (!pairAgrees || dissenter.verdict === pair[0]!.verdict) continue;
+      familyCases += 1;
+      if (dissenter.verdict === label) familyOutvoted += 1;
+    }
+  }
+
   return {
     items: run.items,
     labelled: labelledIds.length,
@@ -498,6 +554,11 @@ export function scorePanel(
     structures,
     correlation,
     decider_behaviour,
+    family_majority: {
+      cases: familyCases,
+      outvoted_correct_dissent: familyOutvoted,
+      rate: familyCases === 0 ? null : familyOutvoted / familyCases,
+    },
     schema_failures,
   };
 }

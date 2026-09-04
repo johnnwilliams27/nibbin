@@ -43,6 +43,24 @@ export type Vendor = "openai" | "anthropic";
 export type Tier = "cheap" | "premium" | "meta";
 
 /**
+ * A seat in the experiment.
+ *
+ * Named seats rather than (vendor, tier) lookups, because with three voters
+ * drawn from two vendors one vendor necessarily holds two seats, and a lookup
+ * keyed on vendor could not tell them apart. The doubling is forced by the
+ * shape — it is not a preference — and naming the seats is what makes it
+ * visible in the roster instead of implicit in a loop.
+ */
+export type RosterSlot =
+  | "voter_1"
+  | "voter_2"
+  | "voter_3"
+  | "decider_1"
+  | "decider_2"
+  | "decider_3"
+  | "meta";
+
+/**
  * A model we intend to use, and whether anyone has confirmed it exists.
  *
  * `verified` is about OUR knowledge, not the vendor's catalogue. Anthropic ids
@@ -52,6 +70,7 @@ export type Tier = "cheap" | "premium" | "meta";
  * is not there.
  */
 export type ModelChoice = {
+  slot: RosterSlot;
   vendor: Vendor;
   tier: Tier;
   /** The id sent on the wire. */
@@ -67,15 +86,60 @@ export type ModelChoice = {
  * because "which model was that, exactly" is the first question anyone will
  * ask of the results, and the answer must not require reading three scripts.
  */
+/**
+ * The roster.
+ *
+ * GENERATION PARITY IS PART OF FAIRNESS. An earlier version of this file paired
+ * current Claude models against `gpt-5` and `gpt-5-mini`, which the account's
+ * own model listing shows to be a generation behind — it offers up to the 5.6
+ * family. Any accuracy gap measured that way would have been partly a gap
+ * between release dates, and nothing in the results would have said so. The ids
+ * below were chosen from the live listing.
+ *
+ * TWO VENDORS, THREE SEATS PER LAYER. One vendor holds two voter seats and the
+ * other holds two decider seats. The doubling cannot be avoided at this shape;
+ * balancing which layer each vendor doubles in at least stops one lab from
+ * being the majority of both the voting and the adjudicating. What it does not
+ * fix is that a 2-1 voter majority can be one family outvoting the other
+ * vendor — see `family_majority_*` in metrics.ts, which measures exactly that.
+ */
 export const ROSTER: readonly ModelChoice[] = [
+  // --- voters: two OpenAI, one Anthropic ---
   {
+    slot: "voter_1",
+    vendor: "openai",
+    tier: "cheap",
+    id: "gpt-5.4-mini",
+    verified: false,
+    note: "confirmed present in the account's live listing; re-checked at run time",
+  },
+  {
+    slot: "voter_2",
+    vendor: "openai",
+    tier: "cheap",
+    id: "gpt-5.4-nano",
+    verified: false,
+    note: "the cheapest voter; whether it clears the refusal gate is part of what we are measuring",
+  },
+  {
+    slot: "voter_3",
     vendor: "anthropic",
     tier: "cheap",
     id: "claude-haiku-4-5-20251001",
     verified: true,
     note: "id from the claude-api skill",
   },
+  // --- deciders: one OpenAI, two Anthropic ---
   {
+    slot: "decider_1",
+    vendor: "openai",
+    tier: "premium",
+    id: "gpt-5.5",
+    verified: false,
+    note: "confirmed present in the account's live listing; re-checked at run time",
+  },
+  {
+    slot: "decider_2",
     vendor: "anthropic",
     tier: "premium",
     id: "claude-opus-5",
@@ -83,31 +147,27 @@ export const ROSTER: readonly ModelChoice[] = [
     note: "id from the claude-api skill",
   },
   {
+    slot: "decider_3",
+    vendor: "anthropic",
+    tier: "premium",
+    id: "claude-sonnet-5",
+    verified: true,
+    note: "a mid-priced adjudicator, to answer whether the top tier is needed to adjudicate at all",
+  },
+  // --- meta ---
+  {
+    slot: "meta",
     vendor: "anthropic",
     tier: "meta",
     id: "claude-fable-5-1",
     verified: true,
-    note: "reads the deciders' results; rejects forced tool use, hence structured outputs",
-  },
-  {
-    vendor: "openai",
-    tier: "cheap",
-    id: "gpt-5-mini",
-    verified: false,
-    note: "CONFIRM against /v1/models before the run counts",
-  },
-  {
-    vendor: "openai",
-    tier: "premium",
-    id: "gpt-5",
-    verified: false,
-    note: "CONFIRM against /v1/models before the run counts",
+    note: "reads the deciders' results; rejects forced tool use, hence structured outputs. Not a decider itself, so it never grades its own output",
   },
 ];
 
-export function chooseModel(vendor: Vendor, tier: Tier): ModelChoice {
-  const found = ROSTER.find((m) => m.vendor === vendor && m.tier === tier);
-  if (found === undefined) throw new JudgeError(`no ${tier} model configured for ${vendor}`);
+export function chooseModel(slot: RosterSlot): ModelChoice {
+  const found = ROSTER.find((m) => m.slot === slot);
+  if (found === undefined) throw new JudgeError(`no model configured for slot ${slot}`);
   return found;
 }
 

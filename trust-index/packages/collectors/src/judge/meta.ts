@@ -133,6 +133,12 @@ export function renderMetrics(metrics: PanelMetrics, ranking: Ranking): string {
     );
   }
   lines.push("");
+  lines.push("FAMILY MAJORITY (one vendor's pair outvoting the other vendor's lone voter)");
+  lines.push(
+    `cases=${metrics.family_majority.cases} the_dissenter_was_right=${metrics.family_majority.outvoted_correct_dissent} ` +
+      `rate=${metrics.family_majority.rate?.toFixed(3) ?? "n/a"}`,
+  );
+  lines.push("");
   lines.push("PAIRWISE ERROR CORRELATION (phi; high means mistakes coincide)");
   for (const c of [...metrics.correlation].sort((x, y) => (y.phi ?? -2) - (x.phi ?? -2)).slice(0, 12)) {
     lines.push(`${c.a} vs ${c.b}: phi=${c.phi?.toFixed(3) ?? "n/a"} both_wrong=${c.both_wrong}/${c.overlap}`);

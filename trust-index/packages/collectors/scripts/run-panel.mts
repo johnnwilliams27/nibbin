@@ -27,7 +27,16 @@ import { loadCorpus, type CorpusFile } from "../src/judge/corpus.js";
 import { runPanel, type Member } from "../src/judge/panel.js";
 import { priceSheet, scorePanel } from "../src/judge/metrics.js";
 import { rankStructures, recommendStructure, renderMetrics } from "../src/judge/meta.js";
-import { ROSTER, VENDOR_CONFIG, chooseModel, judgeFor, keysFromEnv, validateModels, type Vendor } from "../src/judge/provider.js";
+import {
+  ROSTER,
+  VENDOR_CONFIG,
+  chooseModel,
+  judgeFor,
+  keysFromEnv,
+  validateModels,
+  type RosterSlot,
+  type Vendor,
+} from "../src/judge/provider.js";
 
 const ROOT = join(import.meta.dirname, "..");
 const OUT_DIR = join(ROOT, "runs");
@@ -40,9 +49,11 @@ const OUT_DIR = join(ROOT, "runs");
 const PRICES = priceSheet([
   { modelId: "claude-fable-5-1", input: 10, output: 50 },
   { modelId: "claude-opus-5", input: 5, output: 25 },
+  { modelId: "claude-sonnet-5", input: 2, output: 10 },
   { modelId: "claude-haiku-4-5-20251001", input: 1, output: 5 },
-  { modelId: "gpt-5", input: 1.25, output: 10 },
-  { modelId: "gpt-5-mini", input: 0.25, output: 2 },
+  { modelId: "gpt-5.5", input: 5, output: 30 },
+  { modelId: "gpt-5.4-mini", input: 0.75, output: 4.5 },
+  { modelId: "gpt-5.4-nano", input: 0.2, output: 1.25 },
 ]);
 
 const keys = keysFromEnv();
@@ -57,7 +68,7 @@ if (missing.length > 0) {
   const byVendor = new Map<Vendor, string[]>();
   for (const m of missing) {
     const list = byVendor.get(m.choice.vendor) ?? [];
-    list.push(`${m.choice.tier} (${m.choice.id}): ${m.detail}`);
+    list.push(`${m.choice.slot} (${m.choice.id}): ${m.detail}`);
     byVendor.set(m.choice.vendor, list);
   }
   for (const [vendor, details] of byVendor) {
@@ -74,20 +85,21 @@ if (missing.length > 0) {
 }
 
 for (const m of ROSTER.filter((r) => !r.verified)) {
-  console.log(`note: ${m.vendor} ${m.tier} id ${m.id} was unverified in source and has now been confirmed against the live models listing`);
+  console.log(`note: ${m.slot} id ${m.id} was unverified in source; confirmed against the live models listing`);
 }
 
 const corpus = JSON.parse(readFileSync(join(ROOT, "corpus", "response-classification.json"), "utf8")) as CorpusFile;
 const items = loadCorpus(corpus, true);
 console.log(`corpus ${corpus.corpus_version}: ${items.length} labelled items\n`);
 
-const make = (vendor: Vendor, tier: "cheap" | "premium" | "meta"): Member => {
-  const choice = chooseModel(vendor, tier);
+const make = (slot: RosterSlot): Member => {
+  const choice = chooseModel(slot);
+  const vendor = choice.vendor;
   const key = keys[vendor];
   if (key === undefined) throw new Error(`unreachable: ${vendor} passed preflight without a key`);
   return {
     vendor,
-    tier,
+    tier: choice.tier,
     modelId: choice.id,
     client: judgeFor(vendor, {
       apiKey: key,
@@ -98,8 +110,12 @@ const make = (vendor: Vendor, tier: "cheap" | "premium" | "meta"): Member => {
   };
 };
 
-const voters = (["openai", "anthropic"] as const).map((v) => make(v, "cheap"));
-const deciders = (["openai", "anthropic"] as const).map((v) => make(v, "premium"));
+const voters = (["voter_1", "voter_2", "voter_3"] as const).map(make);
+const deciders = (["decider_1", "decider_2", "decider_3"] as const).map(make);
+
+console.log("roster:");
+for (const m of [...voters, ...deciders]) console.log(`  ${m.tier.padEnd(8)} ${m.vendor.padEnd(10)} ${m.modelId}`);
+console.log(`  meta     anthropic  ${chooseModel("meta").id}\n`);
 
 const run = await runPanel(items, {
   voters,
@@ -115,7 +131,7 @@ const metrics = scorePanel(run, items, PRICES);
 const ranking = rankStructures(metrics);
 
 // The meta pass. Its pick is explanatory; ranking.winner is authoritative.
-const metaModel = chooseModel("anthropic", "meta");
+const metaModel = chooseModel("meta");
 const recommendation = await recommendStructure(
   metrics,
   ranking,
