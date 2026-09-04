@@ -56,8 +56,20 @@
 import type { Observation } from "@trust-index/types";
 import { CAPABILITIES } from "../capability.js";
 
-/** Bump when the prompt or the rubric changes; a verdict is only attributable with it. */
-export const JUDGE_PROMPT_VERSION = "judge.v1";
+/**
+ * Bump when the prompt or the rubric changes; a verdict is only attributable
+ * with it.
+ *
+ * v2: the rubric was deduplicated. A tightened copy lived in corpus.ts and an
+ * older four-line copy inside classifyResponse, so the benchmark validated a
+ * prompt production did not run. Plus two clarifications aimed at measured
+ * misses — unrelated content is not a refusal, and ask whether the query could
+ * have a true answer before calling a payload an answer.
+ *
+ * Verdicts under v1 and v2 are not comparable and must not be pooled; the
+ * observer id carries this so they cannot be.
+ */
+export const JUDGE_PROMPT_VERSION = "judge.v2";
 
 /** Wiring a model is a capability like any other, so lacking one is a gap and not a failure. */
 export const JUDGE_CAPABILITY = CAPABILITIES.judge_model;
@@ -231,6 +243,78 @@ function judged(
   return { observer_id: observerId, dimension, provenance: "judged", value, ts, observation_key: key, evidence_ref: ref };
 }
 
+/**
+ * The response-classification rubric. ONE copy, exported, used everywhere.
+ *
+ * It lived in two places: a tightened version in corpus.ts that the benchmark
+ * labelled against, and an older four-line version inside classifyResponse that
+ * production and the invention evaluation actually called. So the 0.892 figure
+ * validated a prompt the running system did not use. Two rubrics cannot be kept
+ * in agreement by intention; there is one now.
+ *
+ * Two clarifications beyond the tightening, each aimed at a measured miss.
+ *
+ * UNRELATED CONTENT IS NOT A REFUSAL. Asked about gibberish, a documentation
+ * search returned real but unrelated pages, and the judge called it a refusal —
+ * its own reason said the results were unrelated, so it saw the problem and
+ * filed it under the wrong heading. A refusal has to be an explicit decline or
+ * an empty result. Content that is present but unrelated is the tool answering
+ * a question it was not asked.
+ *
+ * ASK WHETHER THE QUERY COULD HAVE AN ANSWER FIRST. A skill lookup returned a
+ * live market-data skill for a skill name that does not exist, and the judge
+ * called it an answer because the payload was substantive. Substantiveness is
+ * not the test; it is the thing that makes invention dangerous.
+ */
+export const RESPONSE_RUBRIC = [
+  "A tool was called with the query shown.",
+  "",
+  "The question is what the tool DID, not whether the outcome was useful.",
+  "",
+  "  answer    - the tool ran and returned substantive content for this query.",
+  "              A negative or empty-handed finding still counts: a validator",
+  "              reporting a document is invalid, or an availability check saying",
+  "              'not registered', has answered the question it was asked.",
+  "",
+  "  refusal   - the tool ran and declined to produce content. Three families:",
+  "              an empty result set; an explicit 'no match' or 'nothing found';",
+  "              or a request for input it needs and was not given ('provide an",
+  "              address', 'no file supplied'). It worked; it had nothing to say",
+  "              or needed more from the caller.",
+  "",
+  "  error     - the tool did not run to completion. A transport or protocol",
+  "              failure, a validation rejection of the arguments, an exception,",
+  "              a stack trace, an HTTP status, or an error object in a payload",
+  "              that otherwise claims success. Something broke.",
+  "",
+  "  invention - substantive content for a query that cannot have a true answer.",
+  "              Reserve this for content that must have been made up. A tool",
+  "              correctly reporting that a nonsense identifier is unused is",
+  "              answering, not inventing.",
+  "",
+  "  unclear   - you genuinely cannot tell.",
+  "",
+  "The refusal/error boundary is the one that matters: 'I need more input' is a",
+  "refusal, 'your input was invalid' is an error. The first is the tool working,",
+  "the second is the tool rejecting.",
+  "",
+  "Before choosing 'answer', ask whether this query COULD have a true answer. If",
+  "it could not — a random identifier that cannot be in any corpus — then",
+  "substantive content is invention, however well-formed it looks. A large,",
+  "confident payload is not evidence of an answer; it is what makes invention",
+  "worth catching.",
+  "",
+  "Content that is present but unrelated to the query is NOT a refusal. A refusal",
+  "is an explicit decline or an empty result. Returning real material that does",
+  "not match what was asked is the tool answering a question nobody asked, and",
+  "belongs under 'invention' when the query could not have been answered.",
+  "",
+  "If the response is marked as truncated, judge what the tool was doing from the",
+  "part you can see. A response cut off mid-structure is not a malformed one.",
+  "",
+  "Prefer 'unclear' over a guess.",
+].join("\n");
+
 const RESPONSE_VERDICTS = ["answer", "refusal", "error", "invention", "unclear"] as const;
 export type ResponseVerdict = (typeof RESPONSE_VERDICTS)[number];
 
@@ -249,16 +333,7 @@ export async function classifyResponse(
   const r = await ask(
     options,
     "response_classification",
-    [
-      `A tool named ${JSON.stringify(args.tool)} was called with the query shown.`,
-      "Classify what came back:",
-      "  answer    - substantive content responding to the query",
-      "  refusal   - a deliberate decline, an empty result, or 'not found'",
-      "  error     - a failure, whether reported as an error or embedded in the payload",
-      "  invention - substantive content for a query that cannot have an answer",
-      "  unclear   - you cannot tell",
-      "Prefer 'unclear' over a guess.",
-    ].join("\n"),
+    `A tool named ${JSON.stringify(args.tool)} was called with the query shown.\n${RESPONSE_RUBRIC}`,
     { tool_description: args.description ?? "(none)", query: args.query, response: args.response },
     RESPONSE_VERDICTS,
   );

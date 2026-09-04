@@ -34,8 +34,10 @@ console.log(
 console.log(`  resolution:     gaps under ${PRODUCTION_JUDGE_EVIDENCE.resolution_points} points are not distinguishable at this n`);
 console.log("");
 console.log("measured on the class a structural check cannot do:");
-console.log("  invention recall   4/6");
-console.log("  false accusations  0/25   (the heuristic that found the candidates: 81% false positive)");
+console.log("  invention recall   6/6    (4/6 under judge.v1)");
+console.log("  false accusations  1/25   (the heuristic that found the candidates: 81% false positive)");
+console.log("                            the one accusation is a case labelled borderline before the run;");
+console.log("                            the label was left alone rather than revised to flatter the score");
 console.log("");
 console.log("closed since the decision:");
 console.log("  - label conflict bounded: 12 of 120 disputed; flipping all 12 leaves the");

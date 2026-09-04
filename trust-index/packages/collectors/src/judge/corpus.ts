@@ -30,6 +30,7 @@
  * reported. An accuracy number over a corpus that is 90% easy answers tells us
  * nothing about the 10% that decides whether a rating is libel.
  */
+import { RESPONSE_RUBRIC } from "./index.js";
 import type { PanelItem } from "./panel.js";
 
 /** The minimum a stored call has to carry to become an item. */
@@ -83,43 +84,7 @@ export const CONTRADICTION_VERDICTS = ["contradicts", "consistent", "unclear"] a
  * correct reading of what it was shown and the wrong answer about the tool,
  * which is precisely how 45% of truncated items were scored wrong.
  */
-const RESPONSE_INSTRUCTION = [
-  "A tool was called with the query shown.",
-  "",
-  "The question is what the tool DID, not whether the outcome was useful.",
-  "",
-  "  answer    - the tool ran and returned substantive content for this query.",
-  "              A negative or empty-handed finding still counts: a validator",
-  "              reporting a document is invalid, or an availability check saying",
-  "              'not registered', has answered the question it was asked.",
-  "",
-  "  refusal   - the tool ran and declined to produce content. Three families:",
-  "              an empty result set; an explicit 'no match' or 'nothing found';",
-  "              or a request for input it needs and was not given ('provide an",
-  "              address', 'no file supplied'). It worked; it had nothing to say",
-  "              or needed more from the caller.",
-  "",
-  "  error     - the tool did not run to completion. A transport or protocol",
-  "              failure, a validation rejection of the arguments, an exception,",
-  "              a stack trace, an HTTP status, or an error object in a payload",
-  "              that otherwise claims success. Something broke.",
-  "",
-  "  invention - substantive content for a query that cannot have a true answer.",
-  "              Reserve this for content that must have been made up. A tool",
-  "              correctly reporting that a nonsense identifier is unused is",
-  "              answering, not inventing.",
-  "",
-  "  unclear   - you genuinely cannot tell.",
-  "",
-  "The refusal/error boundary is the one that matters: 'I need more input' is a",
-  "refusal, 'your input was invalid' is an error. The first is the tool working,",
-  "the second is the tool rejecting.",
-  "",
-  "If the response is marked as truncated, judge what the tool was doing from the",
-  "part you can see. A response cut off mid-structure is not a malformed one.",
-  "",
-  "Prefer 'unclear' over a guess.",
-].join("\n");
+const RESPONSE_INSTRUCTION = RESPONSE_RUBRIC;
 
 const CONTRADICTION_INSTRUCTION = [
   "The tool below declares itself read-only.",
