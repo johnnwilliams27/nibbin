@@ -551,8 +551,17 @@ export function scoreSubject(subject: Subject): { result: SubjectScoreResult; ca
   const coverageFx = assessableWeightFx === 0n ? 0n : divFx(publishedWeightFx, assessableWeightFx);
   const minCoverageFx = clampFx(parseFx(profile.min_dimension_coverage), 0n, ONE);
 
+  const minCompletenessFx = clampFx(parseFx(profile.min_assessment_completeness), 0n, ONE);
+
   let compositeReason: string | null = null;
   if (publishedWeightFx === 0n) compositeReason = RATING_SUPPRESSION.no_usable_observations;
+  // Completeness is checked BEFORE coverage, because the two floors otherwise
+  // combine into a hole. A server behind an HTTP 401 answers, so availability
+  // is measurable and everything else is a harness gap; coverage over the
+  // assessable share is then a perfect 1.0 and a server we could not test
+  // publishes a high composite from one dimension. Assessing a quarter of a
+  // profile and liking what you see is not a rating.
+  else if (completenessFx < minCompletenessFx) compositeReason = RATING_SUPPRESSION.assessment_incomplete;
   else if (coverageFx < minCoverageFx) compositeReason = RATING_SUPPRESSION.dimension_coverage_short;
 
   let compositeMeanFx = 0n;
@@ -579,7 +588,7 @@ export function scoreSubject(subject: Subject): { result: SubjectScoreResult; ca
   if (compositeReason === null && compositeCapped) compositeReason = RATING_SUPPRESSION.gate;
   // A gate caps a published composite; it never turns a withheld one into a
   // published one, so `publish` is decided before the cap is recorded.
-  const publish = publishedWeightFx > 0n && coverageFx >= minCoverageFx;
+  const publish = publishedWeightFx > 0n && completenessFx >= minCompletenessFx && coverageFx >= minCoverageFx;
 
   // Signals: observable conditions only, never intent (SPEC 5.5).
   const groups = new Map<string, number>();

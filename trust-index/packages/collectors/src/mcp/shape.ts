@@ -50,8 +50,16 @@ export type ToolShape =
 
 /** How, and whether, we can exercise it. */
 export type TargetBinding =
-  /** No side effect to redirect. Call it normally. */
-  | { kind: "read_only" }
+  /**
+   * No side effect to redirect. Call it normally.
+   *
+   * `declared` means the operator asserted readOnlyHint and nothing
+   * contradicts it. `inferred` means the tool carries no annotations at all
+   * and its name, description and shape agree it is a read. The distinction is
+   * published rather than flattened, because a caller deciding how much to
+   * trust the classification should be able to see which it was.
+   */
+  | { kind: "read_only"; basis: "declared" | "inferred" }
   /** Acts on something we name. Point it at our sandbox and diff. */
   | { kind: "substitutable"; parameter: string; capability: CapabilityId }
   /** Acts on the operator's own resource. Guard probes only. */
@@ -192,11 +200,36 @@ export function classifyTool(t: ToolDeclaration): ToolClassification {
     contradictions.push("mutating tool has no required parameters, so an empty call is valid");
   }
 
-  // Read-only wins only on agreement: the operator says so AND nothing else
-  // contradicts it. A single unverified hint is not enough to authorize a call.
-  const readOnly = hints.readOnly === true && !mutatingName && hints.destructive !== true && contradictions.length === 0;
-  if (readOnly) {
-    return { tool: t.name, shape, binding: { kind: "read_only" }, contradictions, hints };
+  // Read-only, by either of two paths.
+  //
+  // Requiring an affirmative readOnlyHint was the first rule, and it made the
+  // classifier useless: 53% of tools in the first real sample carry no
+  // annotations at all, so 622 of 937 tools landed as untouchable while 401
+  // were retrieval-shaped. A tool named search_documents(query) with a
+  // read-shaped description and no mutating signal anywhere was being treated
+  // as dangerous for want of an annotation the protocol added recently.
+  //
+  // Declining to trust ONE unverified hint is right. Making that hint the only
+  // admissible evidence is a different thing. Multi-signal agreement across
+  // name, description and schema is the same standard of evidence the
+  // classifier applies everywhere else, so it is the second path.
+  const noAnnotations = hints.readOnly === null && hints.destructive === null && hints.idempotent === null;
+  const readShaped = shape === "retrieval" || shape === "public_data" || shape === "transform";
+  const descriptionMentionsChange = /\b(delet|remov|writ|modif|updat|insert|send|charg|deploy|purge|revok|creat)/.test(desc);
+  const inferredReadOnly =
+    noAnnotations && readShaped && !mutatingName && !descriptionMentionsChange && contradictions.length === 0;
+
+  const declaredReadOnly =
+    hints.readOnly === true && !mutatingName && hints.destructive !== true && contradictions.length === 0;
+
+  if (declaredReadOnly || inferredReadOnly) {
+    return {
+      tool: t.name,
+      shape,
+      binding: { kind: "read_only", basis: declaredReadOnly ? "declared" : "inferred" },
+      contradictions,
+      hints,
+    };
   }
 
   // Can we supply the target? Whole-name matching on parameters, so

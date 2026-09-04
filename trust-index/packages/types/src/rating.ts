@@ -297,6 +297,23 @@ export type Subject = {
    */
   tags: string[];
 
+  /**
+   * Cluster this SUBJECT belongs to: the endpoint host for an MCP server, the
+   * repository owner for a code package. Distinct from Observer.independence_group,
+   * which clusters who is reporting rather than what is being rated.
+   *
+   * It never affects this subject's own score. A server is not worse because
+   * its neighbours share a gateway. Its only use is upstream, in computing a
+   * cohort prior: the census found two operators holding 16.1% of the MCP
+   * population on two gateways, so a per-subject prior would make "typical MCP
+   * server" substantially mean "typical server of those two operators", and
+   * their availability is correlated besides.
+   *
+   * Excluded from inputs_hash for the same reason tags are: it says nothing
+   * about this subject's evidence.
+   */
+  independence_group: string | null;
+
   observations: Observation[];
   /** One entry per distinct observer_id appearing in observations. */
   observers: Record<string, Observer>;
@@ -409,6 +426,7 @@ export const RATING_SUPPRESSION = {
   neff_below_floor: "n_eff below suppression floor",
   no_usable_observations: "no observations with an accepted provenance",
   dimension_coverage_short: "too little of the profile's weight has a published dimension",
+  assessment_incomplete: "too little of the profile could be assessed at all; see harness_gaps",
 } as const;
 
 function d(v: string): DecimalString {

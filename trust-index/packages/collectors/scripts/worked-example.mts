@@ -23,7 +23,8 @@ function run(day: number, up: boolean, tools: ReturnType<typeof tool>[]): ProbeT
     attempts: [{ attempt: 1, ts, reachable: up, status: up ? 200 : null, reason: up ? null : "timeout", elapsedMs: 120 }],
     handshake: up ? { ok: true, protocolVersion: "2025-06-18", serverName: "example", serverVersion: "1.0", instructions: "Search first.", reason: null } : null,
     tools: up ? { ok: true, declared: tools, reason: null } : null,
-    registry: { name: "com.example/docs", description: "A document search server backed by an indexed corpus of internal documentation.", version: "1.0", published_at: "2026-07-15T00:00:00Z", first_published_at: "2025-03-01T00:00:00Z", repository_url: "https://github.com/example/docs-mcp" },
+    registry: { name: "com.example/docs", description: "A document search server backed by an indexed corpus of internal documentation.", version: "1.0", published_at: "2026-07-15T00:00:00Z", first_published_at: "2025-03-01T00:00:00Z", repository_url: "https://github.com/example/docs-mcp", version_count: 3 },
+    auth: { required: false, status: 200, scheme: null },
   };
 }
 

@@ -19,7 +19,7 @@
  * is not something a ratings source gets to do.
  */
 import { guardedFetch, vetUrl, type GuardedFetchOptions } from "../net.js";
-import type { HandshakeResult, ProbeAttempt, ProbeTranscript, RegistryFacts, ToolDeclaration, ToolsResult } from "./transcript.js";
+import type { AuthResult, HandshakeResult, ProbeAttempt, ProbeTranscript, RegistryFacts, ToolDeclaration, ToolsResult } from "./transcript.js";
 
 export const PROBE_ID = "probe:mcp:v1";
 const PROTOCOL_VERSION = "2025-06-18";
@@ -133,6 +133,7 @@ export async function probeMcpServer(
   let handshake: HandshakeResult | null = null;
   let tools: ToolsResult | null = null;
   let sessionId: string | null = null;
+  let auth: AuthResult | null = null;
 
   const vetted = vetUrl(endpoint);
   if (!vetted.allowed) {
@@ -150,6 +151,7 @@ export async function probeMcpServer(
       handshake: null,
       tools: null,
       registry,
+      auth: null,
     };
   }
 
@@ -175,10 +177,30 @@ export async function probeMcpServer(
     });
 
     if (!res.ok) {
+      // 401 and 403 mean the endpoint ANSWERED and declined us. That is
+      // availability evidence, not its absence: the server is up and doing its
+      // job. Everything downstream of the handshake becomes unassessable, and
+      // the rubric turns that into a harness gap rather than a failing score.
+      if (res.status === 401 || res.status === 403) {
+        auth = { required: true, status: res.status, scheme: null };
+        attempts.push({ attempt: i, ts, reachable: true, status: res.status, reason: null, elapsedMs: res.elapsedMs });
+        if (handshake === null) {
+          handshake = {
+            ok: false,
+            protocolVersion: null,
+            serverName: null,
+            serverVersion: null,
+            instructions: null,
+            reason: `authentication required (HTTP ${res.status})`,
+          };
+        }
+        continue;
+      }
       attempts.push({ attempt: i, ts, reachable: false, status: res.status, reason: res.reason, elapsedMs: res.elapsedMs });
       continue;
     }
     attempts.push({ attempt: i, ts, reachable: true, status: res.status, reason: null, elapsedMs: res.elapsedMs });
+    if (auth === null) auth = { required: false, status: res.status, scheme: null };
 
     // Only the first successful attempt needs the protocol work; the rest are
     // measuring availability and should not hammer the server further.
@@ -262,5 +284,6 @@ export async function probeMcpServer(
     handshake,
     tools,
     registry,
+    auth,
   };
 }

@@ -40,6 +40,15 @@ export type CapabilityId = string;
 export const CAPABILITIES = {
   /** No credential needed. Calling a public read-only tool. */
   none: "none",
+  /**
+   * An account or token for a specific MCP server that refuses anonymous
+   * clients. The largest single capability gap by a wide margin: 48% of a
+   * 200-server sample returned HTTP 401. Unlike the sandboxes below, this is
+   * not one account that unlocks many subjects; it is potentially one per
+   * operator, which is why it needs its own provisioning strategy rather than
+   * a line in the same queue.
+   */
+  mcp_account: "mcp_account",
   /** A mailbox we own and can read, with a catch-all domain for unique addresses. */
   mailbox: "mailbox",
   /** Outbound SMS to a number we own. */

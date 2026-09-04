@@ -29,7 +29,8 @@
  * named constants rather than inline literals so a calibration run can move
  * them in one place.
  */
-import type { Observation } from "@trust-index/types";
+import type { AssessmentGap, Observation } from "@trust-index/types";
+import { CAPABILITIES } from "../capability.js";
 import { classifyTools } from "./shape.js";
 import type { ProbeTranscript, ToolDeclaration } from "./transcript.js";
 
@@ -39,12 +40,19 @@ export const MCP_RUBRIC_VERSION = "mcp.rubric.v1";
 export const THRESHOLDS = {
   /** A description shorter than this tells a caller nothing about what the tool does. */
   min_useful_description_chars: 20,
-  /** Freshly published counts as fully maintained. */
-  maintenance_fresh_days: 90,
+  /**
+   * Freshly published counts as fully maintained. Recalibrated from the
+   * observed population: publish age runs p10=5, p25=15, p50=45, p75=93,
+   * p90=150 days with nothing older than a year. The previous 90/730 ramp put
+   * 74% of servers at exactly 1.0, which is a constant wearing a dimension's
+   * clothes. 14/180 spreads the population: p50 lands at 0.81, p75 at 0.52,
+   * p90 at 0.18.
+   */
+  maintenance_fresh_days: 14,
   /** Beyond this, a package with no publish is treated as unmaintained. */
-  maintenance_stale_days: 730,
-  /** A registry description shorter than this is a name, not a description. */
-  min_registry_description_chars: 40,
+  maintenance_stale_days: 180,
+  /** Versions at or above which a server is demonstrably being iterated on. */
+  maintenance_versions_for_full_credit: 5,
 } as const;
 
 /**
@@ -212,7 +220,16 @@ export function assessTranscript(t: ProbeTranscript, asOfTs: string): Observatio
 
   // Conformance. Every check below is only emitted once the preceding step
   // actually ran: an unreachable server is unreachable, not non-conformant.
-  if (t.handshake !== null) {
+  //
+  // And a server that answered with HTTP 401 is neither. It is up, working,
+  // and declining a client with no account, so NOTHING about its conformance
+  // has been demonstrated either way. Emitting handshake=0 here was the same
+  // error the auth handling exists to remove, arriving by a second path: the
+  // transcript records a failed handshake, the rubric scores the failure, and
+  // half the population reads as non-conformant because we have no login.
+  // transcriptGaps() reports these as a missing capability instead.
+  const authBlocked = t.auth?.required === true;
+  if (t.handshake !== null && !authBlocked) {
     const h = t.handshake;
     out.push(obs(p, "protocol_conformance", "handshake", bool(h.ok), t.probed_at, "measured", ref));
     if (h.ok) {
@@ -241,7 +258,7 @@ export function assessTranscript(t: ProbeTranscript, asOfTs: string): Observatio
     }
   }
 
-  if (t.tools !== null) {
+  if (t.tools !== null && !authBlocked) {
     const tools = t.tools;
     out.push(obs(p, "protocol_conformance", "tools_list", bool(tools.ok), t.probed_at, "measured", ref));
     if (tools.ok && tools.declared.length > 0) {
@@ -416,7 +433,7 @@ export function assessTranscript(t: ProbeTranscript, asOfTs: string): Observatio
     }
   }
 
-  if (t.handshake !== null && t.handshake.ok) {
+  if (t.handshake !== null && t.handshake.ok && !authBlocked) {
     out.push(
       obs(
         p,
@@ -451,20 +468,80 @@ export function assessTranscript(t: ProbeTranscript, asOfTs: string): Observatio
         );
       }
     }
-    if (r.description !== null) {
+    // The registry description length check is deliberately GONE. Observed
+    // lengths run p10=58 to a maximum of 104, so the field has a hard cap and
+    // essentially everyone fills it: 96.3% cleared the old 40-character
+    // threshold. It could not discriminate by construction, and raising the
+    // threshold would not have helped. Documentation now rests on tool-level
+    // descriptions, which vary. The self-reported cap machinery stays and
+    // simply has nothing to bite on, which is the correct state rather than a
+    // gap.
+
+    // Version count: real variance, available without contacting anyone.
+    // Roughly two thirds of servers have published exactly one version and
+    // some have eight, so this discriminates where publish recency alone
+    // barely does.
+    if (r.version_count !== null) {
+      const full = THRESHOLDS.maintenance_versions_for_full_credit;
       out.push(
         obs(
-          `publisher:${r.name}`,
-          "documentation",
-          "registry_description",
-          bool(r.description.trim().length >= THRESHOLDS.min_registry_description_chars),
+          p,
+          "maintenance",
+          "version_count",
+          r.version_count >= full ? ONE_VALUE : ratio(r.version_count - 1, full - 1),
           t.probed_at,
-          "self_reported",
-          null,
+          "measured",
+          r.repository_url,
         ),
       );
     }
   }
 
   return out;
+}
+
+/**
+ * Checks that could not run, and whose fault that was.
+ *
+ * Separate from assessTranscript because gaps are not observations and must
+ * never be able to become them. The engine refuses to score a gap; this is
+ * where the collector decides one exists.
+ *
+ * The case that matters: an endpoint returning HTTP 401 is up and working and
+ * declining an anonymous client. Everything past the handshake is then
+ * unassessable for want of an account, which is our missing capability, not
+ * the server's failing. Half the sampled population is in this state.
+ */
+export function transcriptGaps(t: ProbeTranscript): AssessmentGap[] {
+  const gaps: AssessmentGap[] = [];
+  if (t.auth?.required === true) {
+    for (const [dimension, check] of [
+      ["protocol_conformance", "handshake"],
+      ["protocol_conformance", "tools_list"],
+      ["tool_safety", "declarations_consistent"],
+      ["documentation", "tools_described"],
+    ] as const) {
+      gaps.push({
+        dimension,
+        check,
+        cause: "harness_capability_missing",
+        capability: CAPABILITIES.mcp_account,
+        detail: `endpoint requires authentication (HTTP ${t.auth.status ?? "401"}); no account held for ${t.endpoint}`,
+      });
+    }
+    return gaps;
+  }
+  // A handshake that failed for any other reason is the subject's doing, and
+  // it stops us judging what comes after it. Real information, but only about
+  // the step that failed.
+  if (t.handshake !== null && !t.handshake.ok) {
+    gaps.push({
+      dimension: "tool_safety",
+      check: "declarations_consistent",
+      cause: "subject_blocked",
+      capability: null,
+      detail: `handshake failed: ${t.handshake.reason ?? "unknown"}`,
+    });
+  }
+  return gaps;
 }

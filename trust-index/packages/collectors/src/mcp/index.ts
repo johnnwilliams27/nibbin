@@ -19,6 +19,7 @@ export { probeMcpServer, parseRpcBody, readTools, isoNow, PROBE_ID } from "./pro
 export type { ProbeOptions } from "./probe.js";
 export {
   assessTranscript,
+  transcriptGaps,
   isMutatingName,
   isCredentialParam,
   maintenanceValue,
@@ -26,7 +27,7 @@ export {
   MCP_RUBRIC_VERSION,
   THRESHOLDS,
 } from "./assess.js";
-export { transcriptToSubject, transcriptsToSubject, repositoryOwner } from "./subject.js";
+export { transcriptToSubject, transcriptsToSubject, repositoryOwner, endpointHost, isEphemeralTunnel } from "./subject.js";
 export { classifyTool, classifyTools, requiredCapabilities, testability } from "./shape.js";
 export type { ToolShape, TargetBinding, ToolClassification } from "./shape.js";
 export type { BuildSubjectOptions, ProbeIdentity } from "./subject.js";

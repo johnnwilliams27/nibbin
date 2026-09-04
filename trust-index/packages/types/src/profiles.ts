@@ -136,6 +136,18 @@ export type RatingProfile = {
   dimensions: readonly DimensionSpec[];
   /** Composite is withheld unless this share of dimension weight has a published score. */
   min_dimension_coverage: DecimalString;
+  /**
+   * Composite is withheld unless this share of the profile weight was
+   * ASSESSABLE at all, whatever the coverage over that share turned out to be.
+   *
+   * Without this the two floors combine into a hole. A server behind an HTTP
+   * 401 answers, so availability is measurable, and everything else is a
+   * harness gap. Coverage over the assessable share is then 1.0, it clears
+   * min_dimension_coverage, and a server we could not test publishes a high
+   * composite computed from one dimension. "We assessed a quarter of the
+   * profile and it looked fine" is not a rating.
+   */
+  min_assessment_completeness: DecimalString;
   /** Constants for every dimension of this profile, unless a dimension overrides them again. */
   constants?: Partial<RatingConstantOverrides>;
   /** Hard ceilings triggered by evidence. Empty is the normal case. */
@@ -251,6 +263,7 @@ const ONCHAIN_AGENT: RatingProfile = {
     dim(AVAILABILITY, "0.15"),
   ],
   min_dimension_coverage: "0.50",
+  min_assessment_completeness: "0.50",
   gates: [
     {
       id: "onchain.custody_discontinuous",
@@ -303,6 +316,7 @@ const MCP_SERVER: RatingProfile = {
     dim(MAINTENANCE, "0.10"),
   ],
   min_dimension_coverage: "0.60",
+  min_assessment_completeness: "0.60",
   gates: [
     {
       id: "mcp.credential_parameter",
@@ -372,6 +386,7 @@ const HOSTED_AGENT: RatingProfile = {
     dim(MAINTENANCE, "0.05"),
   ],
   min_dimension_coverage: "0.50",
+  min_assessment_completeness: "0.50",
   gates: [
     {
       id: "hosted.persistently_unavailable",
@@ -440,6 +455,7 @@ const CODE_PACKAGE: RatingProfile = {
     dim(OPERATOR_REPUTATION, "0.05"),
   ],
   min_dimension_coverage: "0.50",
+  min_assessment_completeness: "0.50",
   gates: [
     {
       id: "code.known_vulnerable_dependency",

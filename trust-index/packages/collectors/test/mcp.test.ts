@@ -23,6 +23,8 @@ import {
   repositoryOwner,
   transcriptToSubject,
   transcriptsToSubject,
+  transcriptGaps,
+  classifyTool,
   type ProbeTranscript,
 } from "../src/mcp/index.js";
 
@@ -89,7 +91,9 @@ function goodTranscript(overrides: Partial<ProbeTranscript> = {}): ProbeTranscri
       published_at: "2026-07-01T00:00:00Z",
       first_published_at: "2025-03-01T00:00:00Z",
       repository_url: "https://github.com/example/docs-mcp",
+      version_count: 3,
     },
+    auth: { required: false, status: 200, scheme: null },
     ...overrides,
   };
 }
@@ -126,14 +130,22 @@ describe("rubric helpers", () => {
     for (const n of ["query", "tokens_used", "id"]) expect(isCredentialParam(n), n).toBe(false);
   });
 
-  it("ramps maintenance rather than cliffing it", () => {
+  it("ramps maintenance across where the population actually lies", () => {
+    // Recalibrated from the census: publish age runs p10=5, p25=15, p50=45,
+    // p75=93, p90=150 days, with nothing older than a year. The previous
+    // 90/730 ramp put 74% of servers at exactly 1.0, which is a constant
+    // wearing a dimension's clothes.
     expect(maintenanceValue(0)).toBe("1.000000");
-    expect(maintenanceValue(90)).toBe("1.000000");
-    expect(maintenanceValue(730)).toBe("0.000000");
+    expect(maintenanceValue(14)).toBe("1.000000");
+    expect(maintenanceValue(180)).toBe("0.000000");
     expect(maintenanceValue(9999)).toBe("0.000000");
-    const mid = Number(maintenanceValue(410));
-    expect(mid).toBeGreaterThan(0.45);
-    expect(mid).toBeLessThan(0.55);
+    // The population percentiles now spread across the range instead of
+    // stacking on the ceiling.
+    expect(Number(maintenanceValue(45))).toBeGreaterThan(0.75);
+    expect(Number(maintenanceValue(45))).toBeLessThan(0.85);
+    expect(Number(maintenanceValue(93))).toBeGreaterThan(0.45);
+    expect(Number(maintenanceValue(93))).toBeLessThan(0.6);
+    expect(Number(maintenanceValue(150))).toBeLessThan(0.25);
   });
 
   it("reads a repository owner as an independence group", () => {
@@ -215,15 +227,17 @@ describe("assessTranscript", () => {
     expect(obs.find((o) => o.observation_key === "tool_schemas_callable")!.value).toBe("0.500000");
   });
 
-  it("marks the publisher's own description as self-reported", () => {
+  it("no longer scores the publisher's own description, because it cannot discriminate", () => {
+    // Observed description lengths run p10=58 to a maximum of 104, so the
+    // registry field has a hard cap and 96.3% of the population cleared the
+    // old 40-character threshold. A check that passes almost everyone is not
+    // evidence, and raising the threshold would not have fixed a field with a
+    // ceiling.
     const obs = assessTranscript(goodTranscript(), AS_OF);
-    const registryDescription = obs.find((o) => o.observation_key === "registry_description")!;
-    expect(registryDescription.provenance).toBe("self_reported");
-    expect(registryDescription.observer_id).toBe("publisher:com.example/docs");
-    // Everything the probe produced is measured.
-    for (const o of obs.filter((x) => x.observer_id === "probe:mcp:v1")) {
-      expect(o.provenance, o.observation_key).toBe("measured");
-    }
+    expect(obs.find((o) => o.observation_key === "registry_description")).toBeUndefined();
+    expect(obs.some((o) => o.provenance === "self_reported")).toBe(false);
+    // Everything the rubric now produces is measured.
+    for (const o of obs) expect(o.provenance, o.observation_key).toBe("measured");
   });
 
   it("is a pure function of the transcript and the as-of time", () => {
@@ -433,16 +447,18 @@ describe("transcript to score", () => {
     expect(availability.score!).toBeLessThan(80);
     expect(availability.confidence).toBeLessThan(0.5);
     expect(availability.coverage_tier).toBe("thin");
-    // Maintenance rests on a single recency measurement. It clears the
-    // suppression floor and is published as thin, with a wide interval, which
-    // is the honest reading of one observation rather than a withheld one.
+    // Maintenance now rests on two measurements, recency and version count,
+    // taken on the same day by the same observer. The day bucket holds them to
+    // one voice, so it stays thin with a wide interval.
     const maintenance = byDim.get("maintenance")!;
-    expect(maintenance.observation_count).toBe(1);
+    expect(maintenance.observation_count).toBe(2);
     expect(maintenance.coverage_tier).toBe("thin");
     expect(maintenance.score_high! - maintenance.score_low!).toBeGreaterThan(20);
-    // Documentation carries the publisher's own claim alongside the probe's
-    // measurements, and the cap holds that claim to a minority share.
-    expect(byDim.get("documentation")!.self_reported_share).toBeLessThanOrEqual(0.4001);
+    // Documentation is now entirely measured. The registry-description check
+    // was removed because 96.3% of the population cleared it, so the only
+    // self-reported observation in the rubric is gone and the cap it exercised
+    // has nothing to bite on. That is the correct state, not a regression.
+    expect(byDim.get("documentation")!.self_reported_share).toBe(0);
   });
 
   it("separates a genuinely good server from a failing one across a real probe window", () => {
@@ -669,5 +685,117 @@ describe("run histories", () => {
       transcriptsToSubject([day(19, true), other], { probe: PROBE_IDENTITY, asOfTs: AS_OF }),
     ).toThrow(/span 2 endpoints/);
     expect(() => transcriptsToSubject([], { probe: PROBE_IDENTITY, asOfTs: AS_OF })).toThrow(/no transcripts/);
+  });
+});
+
+describe("authentication is a harness gap, not unavailability", () => {
+  it("records a 401 as answered, and everything past the handshake as our gap", () => {
+    // 48% of a 200-server sample returned HTTP 401. Those servers are up and
+    // correctly declining an anonymous client. Scoring them as down would rate
+    // half the population as broken when the missing thing is ours.
+    const t = goodTranscript({
+      attempts: [{ attempt: 1, ts: "2026-07-20T00:00:00Z", reachable: true, status: 401, reason: null, elapsedMs: 90 }],
+      handshake: {
+        ok: false, protocolVersion: null, serverName: null, serverVersion: null,
+        instructions: null, reason: "authentication required (HTTP 401)",
+      },
+      tools: null,
+      auth: { required: true, status: 401, scheme: null },
+    });
+    const gaps = transcriptGaps(t);
+    expect(gaps.length).toBeGreaterThan(0);
+    for (const g of gaps) {
+      expect(g.cause).toBe("harness_capability_missing");
+      expect(g.capability).toBe("mcp_account");
+    }
+    // The endpoint answered, so availability evidence is real and positive.
+    const obs = assessTranscript(t, AS_OF);
+    const availability = obs.filter((o) => o.dimension === "availability");
+    expect(availability).toHaveLength(1);
+    expect(availability[0]!.value).toBe("1.000000");
+  });
+
+  it("withholds the composite rather than rating a server we could not test", () => {
+    // Availability alone would otherwise be 1.0 coverage over the assessable
+    // share and publish a high composite for a server behind a login.
+    const t = goodTranscript({
+      attempts: [{ attempt: 1, ts: "2026-07-20T00:00:00Z", reachable: true, status: 401, reason: null, elapsedMs: 90 }],
+      handshake: {
+        ok: false, protocolVersion: null, serverName: null, serverVersion: null,
+        instructions: null, reason: "authentication required (HTTP 401)",
+      },
+      tools: null,
+      auth: { required: true, status: 401, scheme: null },
+    });
+    const { result } = scoreSubject(transcriptsToSubject([t], { probe: PROBE_IDENTITY, asOfTs: AS_OF }));
+    expect(result.composite).toBeNull();
+    expect(result.composite_suppression_reason).toMatch(/could be assessed at all/);
+    expect(result.harness_gaps.length).toBeGreaterThan(0);
+    expect(result.harness_gaps[0]!.capability).toBe("mcp_account");
+    expect(result.assessment_completeness).toBeLessThan(0.6);
+  });
+
+  it("keeps a non-auth handshake failure attributed to the subject", () => {
+    const t = goodTranscript({
+      handshake: {
+        ok: false, protocolVersion: null, serverName: null, serverVersion: null,
+        instructions: null, reason: "unsupported protocol version",
+      },
+      tools: null,
+      auth: { required: false, status: 200, scheme: null },
+    });
+    const gaps = transcriptGaps(t);
+    expect(gaps.every((g) => g.cause === "subject_blocked")).toBe(true);
+  });
+
+  it("tags an ephemeral tunnel endpoint without treating it as a special case", () => {
+    const t = goodTranscript({ endpoint: "https://openings-vote-drilling.trycloudflare.com/mcp" });
+    const s = transcriptsToSubject([t], { probe: PROBE_IDENTITY, asOfTs: AS_OF });
+    expect(s.tags).toContain("ephemeral-endpoint");
+    expect(s.independence_group).toBe("openings-vote-drilling.trycloudflare.com");
+  });
+});
+
+describe("classifier accepts inference when annotations are absent", () => {
+  it("calls a read-shaped tool that carries no annotations", () => {
+    // 53% of tools in the sample carry no annotations, so requiring an
+    // affirmative readOnlyHint left 622 of 937 tools untouchable while 401
+    // were retrieval-shaped.
+    const c = classifyTool({
+      name: "search_documents",
+      description: "Search the indexed corpus and return matching passages.",
+      inputSchema: { type: "object", properties: { query: { type: "string" } }, required: ["query"] },
+      outputSchema: null,
+      annotations: null,
+    });
+    expect(c.binding.kind).toBe("read_only");
+    if (c.binding.kind === "read_only") expect(c.binding.basis).toBe("inferred");
+  });
+
+  it("publishes which basis it used, so a reader can weigh the classification", () => {
+    const declared = classifyTool({
+      name: "search_documents",
+      description: "Search the indexed corpus and return matching passages.",
+      inputSchema: { type: "object", properties: { query: { type: "string" } } },
+      outputSchema: null,
+      annotations: { readOnlyHint: true },
+    });
+    expect(declared.binding.kind).toBe("read_only");
+    if (declared.binding.kind === "read_only") expect(declared.binding.basis).toBe("declared");
+  });
+
+  it("still refuses to infer when any signal disagrees", () => {
+    for (const t of [
+      { name: "delete_documents", description: "Search the corpus.", annotations: null },
+      { name: "search_documents", description: "Searches, then removes stale entries.", annotations: null },
+      { name: "frobnicate", description: "Does something.", annotations: null },
+    ]) {
+      const c = classifyTool({
+        ...t,
+        inputSchema: { type: "object", properties: { q: { type: "string" } } },
+        outputSchema: null,
+      });
+      expect(c.binding.kind, t.name).not.toBe("read_only");
+    }
   });
 });

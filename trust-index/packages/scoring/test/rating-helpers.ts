@@ -45,6 +45,7 @@ export function makeSubject(overrides: Partial<Subject> = {}): Subject {
     reachable: true,
     tags: [],
     gaps: [],
+    independence_group: null,
     observations: [],
     observers: {},
     priors: {

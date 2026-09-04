@@ -255,6 +255,10 @@ export function agentSnapshotToSubject(s: AgentSnapshot, options: AdapterOptions
     // reason, recorded in the doc comment above, and that is a fact about what
     // a snapshot holds rather than a defect in our tooling.
     gaps: [],
+    // On chain the natural cluster is the funder of the agent's owner, which
+    // the snapshot does not carry. Left null rather than guessed: an unknown
+    // group must never be presented as established independence.
+    independence_group: null,
     priors: {
       global: s.priors.global,
       // Chain contexts are tag1 values, which are not dimensions, so they do

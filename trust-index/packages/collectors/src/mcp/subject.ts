@@ -8,7 +8,7 @@
  */
 import type { AssessmentGap, Observation, Observer, RatingPriorSet, Subject } from "@trust-index/types";
 import { DEFAULT_RATING_CONSTANTS } from "@trust-index/types";
-import { assessTranscript } from "./assess.js";
+import { assessTranscript, transcriptGaps } from "./assess.js";
 import type { ProbeTranscript } from "./transcript.js";
 
 export type ProbeIdentity = {
@@ -114,6 +114,35 @@ export function transcriptToSubject(t: ProbeTranscript, options: BuildSubjectOpt
   return assemble(t, assessTranscript(t, options.asOfTs), options);
 }
 
+/** Endpoint hosts that are ephemeral developer tunnels rather than deployments. */
+const EPHEMERAL_TUNNEL_DOMAINS = [
+  "trycloudflare.com",
+  "ngrok.io",
+  "ngrok-free.app",
+  "ngrok.app",
+  "loca.lt",
+  "localhost.run",
+  "serveo.net",
+] as const;
+
+export function isEphemeralTunnel(endpoint: string): boolean {
+  try {
+    const h = new URL(endpoint).host.toLowerCase();
+    return EPHEMERAL_TUNNEL_DOMAINS.some((d) => h === d || h.endsWith(`.${d}`));
+  } catch {
+    return false;
+  }
+}
+
+/** The subject's cluster: the endpoint host. Used for cohort priors, never for its own score. */
+export function endpointHost(endpoint: string): string | null {
+  try {
+    return new URL(endpoint).host.toLowerCase();
+  } catch {
+    return null;
+  }
+}
+
 function assemble(t: ProbeTranscript, observations: Observation[], options: BuildSubjectOptions): Subject {
   const observers: Record<string, Observer> = Object.create(null);
 
@@ -168,8 +197,18 @@ function assemble(t: ProbeTranscript, observations: Observation[], options: Buil
     first_seen_ts: t.registry?.first_published_at ?? t.probed_at,
     last_active_ts: lastReachable?.ts ?? null,
     reachable,
-    tags: [...new Set(options.tags ?? [])].sort(),
-    gaps: options.gaps ?? [],
+    // 146 servers in the population sit on ephemeral developer tunnels. They
+    // are near-certainly dead and will correctly read as unavailable; the tag
+    // makes them a filterable category rather than an unexplained cluster of
+    // failures.
+    tags: [
+      ...new Set([...(options.tags ?? []), ...(isEphemeralTunnel(t.endpoint) ? ["ephemeral-endpoint"] : [])]),
+    ].sort(),
+    // Gaps come from the transcript unless the caller supplies its own, so an
+    // HTTP 401 becomes a missing capability rather than a failing score without
+    // the caller having to remember to ask for it.
+    gaps: options.gaps ?? transcriptGaps(t),
+    independence_group: endpointHost(t.endpoint),
     observations,
     observers,
     priors: options.priors ?? DEFAULT_PRIORS,

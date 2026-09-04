@@ -24,11 +24,12 @@
  *   pnpm --filter @trust-index/collectors exec tsx scripts/census.mts --phase list
  *   pnpm --filter @trust-index/collectors exec tsx scripts/census.mts --phase classify --i-have-approval
  */
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { CAPABILITIES, type CapabilityId } from "../src/capability.js";
 import { classifyTools, requiredCapabilities, testability } from "../src/mcp/shape.js";
 import { listServers, type RegistryEntry } from "../src/mcp/registry.js";
 import { probeMcpServer } from "../src/mcp/probe.js";
+import type { ProbeTranscript } from "../src/mcp/transcript.js";
 
 function arg(name: string, fallback: string): string {
   const i = process.argv.indexOf(name);
@@ -141,7 +142,17 @@ async function phaseClassify(entries: RegistryEntry[]): Promise<void> {
   let contradictions = 0;
   let serversFullyTestable = 0;
 
+  // Transcripts are persisted. transcript.ts states that a stored transcript
+  // can be re-judged under a new rubric without re-probing anyone's server, and
+  // the first run of this census did not save them, so 34 contradictions could
+  // not be checked for false positives without contacting those servers again.
+  const TRANSCRIPT_DIR = arg("--transcripts", "transcripts");
+  mkdirSync(TRANSCRIPT_DIR, { recursive: true });
+  const safeName = (n: string): string => n.replace(/[^A-Za-z0-9._-]/g, "_").slice(0, 180);
+
   const failureReasons = new Map<string, number>();
+  let authRequired = 0;
+  const authHosts = new Set<string>();
   const contradictionKinds = new Map<string, number>();
   const annotationsSeen = { any: 0, readOnly: 0, destructive: 0 };
   const withOutputSchema = { tools: 0 };
@@ -157,15 +168,28 @@ async function phaseClassify(entries: RegistryEntry[]): Promise<void> {
       const endpoint = e.remotes[0]!.url;
       // Spaced, so 200 servers is a trickle rather than a burst.
       await new Promise((r) => setTimeout(r, 250));
-      const t = await probeMcpServer(endpoint, e.facts, { attempts: 1, timeoutMs: 8000 });
+      const t: ProbeTranscript = await probeMcpServer(endpoint, e.facts, { attempts: 1, timeoutMs: 8000 });
       done += 1;
       if (done % 25 === 0) console.error(`  ...${done}/${sample.length}`);
+      writeFileSync(`${TRANSCRIPT_DIR}/${safeName(e.facts.name)}.json`, JSON.stringify(t, null, 2));
 
       const ok = t.attempts.some((a) => a.reachable);
       if (ok) reachable += 1;
       else {
         const why = (t.attempts[0]?.reason ?? "unknown").slice(0, 48);
         failureReasons.set(why, (failureReasons.get(why) ?? 0) + 1);
+        continue;
+      }
+      // Authentication required is OUR missing capability, attributed here at
+      // the point of failure. The first run counted these as HTTP 401 failures
+      // and they never reached classification, so the largest provisioning
+      // need by an order of magnitude was invisible in the provisioning report.
+      if (t.auth?.required === true) {
+        authRequired += 1;
+        authHosts.add(hostOf(endpoint));
+        const set = perCapability.get(CAPABILITIES.mcp_account) ?? new Set<string>();
+        set.add(e.facts.name);
+        perCapability.set(CAPABILITIES.mcp_account, set);
         continue;
       }
       if (t.handshake?.ok !== true) {
@@ -195,7 +219,8 @@ async function phaseClassify(entries: RegistryEntry[]): Promise<void> {
       const classified = classifyTools(t.tools.declared);
       for (const c of classified) {
         shapeCounts.set(c.shape, (shapeCounts.get(c.shape) ?? 0) + 1);
-        bindingCounts.set(c.binding.kind, (bindingCounts.get(c.binding.kind) ?? 0) + 1);
+        const label = c.binding.kind === "read_only" ? `read_only (${c.binding.basis})` : c.binding.kind;
+        bindingCounts.set(label, (bindingCounts.get(label) ?? 0) + 1);
         contradictions += c.contradictions.length;
         for (const k of c.contradictions) {
           const kind = k.split("(")[0]!.trim().slice(0, 60);
@@ -215,6 +240,8 @@ async function phaseClassify(entries: RegistryEntry[]): Promise<void> {
   await Promise.all(workers);
 
   console.log(`reachable:            ${reachable} of ${sample.length}`);
+  console.log(`answered but required authentication: ${authRequired} across ${authHosts.size} hosts`);
+  console.log(`  (a harness gap, not unavailability: those servers are up and declining an anonymous client)`);
   console.log(`listed their tools:   ${listedTools}`);
   console.log(`tools declared:       ${totalTools}`);
   console.log(`declaration contradictions found: ${contradictions}`);
@@ -251,6 +278,8 @@ async function phaseClassify(entries: RegistryEntry[]): Promise<void> {
     const at = (p: number) => toolCounts[Math.min(toolCounts.length - 1, Math.floor(toolCounts.length * p))];
     console.log(`\nTools per server: p25 ${at(0.25)}  p50 ${at(0.5)}  p75 ${at(0.75)}  p90 ${at(0.9)}  max ${toolCounts[toolCounts.length - 1]}`);
   }
+
+  console.log(`\nTranscripts written to ${TRANSCRIPT_DIR}/ so the rubric can be re-run without re-probing.`);
 
   console.log(`\nProvisioning queue, ranked by servers unlocked:`);
   console.log(`\n| Capability | Servers it would unlock |`);

@@ -18,6 +18,7 @@ import {
   type CapabilityProbe,
   type CapabilityReport,
 } from "../src/capability.js";
+import { computeCohortPrior } from "../src/prior.js";
 import type { AssessmentGap } from "@trust-index/types";
 
 const healthy = (id: string): CapabilityProbe => ({
@@ -181,5 +182,66 @@ describe("subjectsBlockedBy", () => {
     ]);
     expect(subjectsBlockedBy(gapsBySubject, "mailbox")).toEqual(["a", "b"]);
     expect(subjectsBlockedBy(gapsBySubject, "repo_sandbox")).toEqual(["c"]);
+  });
+});
+
+describe("cluster-corrected cohort priors", () => {
+  it("stops one operator defining what typical means", async () => {
+    // The census found two operators holding 16.1% of the MCP population on
+    // two gateways. A per-subject mean hands them 16.1% of the prior; a
+    // per-host mean hands them 0.018% and throws away 2,429 genuinely distinct
+    // services. 1/sqrt(g) is where those two failure modes balance.
+    const dims = (score: number) => [{ dimension: "availability", score, n_eff: 10 }];
+    const subjects = [
+      // One operator, 100 servers, all scoring badly.
+      ...Array.from({ length: 100 }, () => ({ independence_group: "gateway.example", dimensions: dims(10) })),
+      // Forty independent operators, all scoring well.
+      ...Array.from({ length: 40 }, (_, i) => ({ independence_group: `host-${i}.example`, dimensions: dims(90) })),
+    ];
+    const { priors } = computeCohortPrior(subjects, "mcp_server", { minContributors: 10 });
+    const prior = Number(priors.global);
+
+    // Per-subject weighting would give 100/140 of the weight to one operator
+    // and land near 0.33. Cluster correction gives that operator sqrt(100)=10
+    // against 40, landing the prior nearer the independent majority.
+    expect(prior).toBeGreaterThan(0.6);
+    expect(prior).toBeLessThan(0.85);
+  });
+
+  it("reports the cluster-corrected effective count, not the subject count", async () => {
+    const subjects = Array.from({ length: 64 }, () => ({
+      independence_group: "one.example",
+      dimensions: [{ dimension: "availability", score: 50, n_eff: 5 }],
+    }));
+    const { priors } = computeCohortPrior(subjects, "mcp_server", { minContributors: 10 });
+    // 64 correlated subjects are worth sqrt(64) = 8, not 64. Reporting 64
+    // would overstate what the prior rests on.
+    expect(Number(priors.n_basis)).toBeCloseTo(8, 1);
+  });
+
+  it("fails closed rather than publishing a prior from too few subjects", async () => {
+    const { priors } = computeCohortPrior(
+      [{ independence_group: null, dimensions: [{ dimension: "availability", score: 90, n_eff: 3 }] }],
+      "mcp_server",
+      { minContributors: 30 },
+    );
+    // No per-dimension prior, and the global falls back rather than being
+    // computed from one subject.
+    expect(priors.by_dimension.availability).toBeUndefined();
+    expect(priors.global).toBe("0.550000");
+  });
+
+  it("ignores suppressed dimensions, which are not evidence about a population", async () => {
+    const subjects = Array.from({ length: 40 }, (_, i) => ({
+      independence_group: `h-${i}`,
+      dimensions: [
+        { dimension: "availability", score: 80, n_eff: 9 },
+        { dimension: "tool_safety", score: null, n_eff: 0 },
+      ],
+    }));
+    const { priors, contributors } = computeCohortPrior(subjects, "mcp_server", { minContributors: 10 });
+    expect(contributors.availability).toBe(40);
+    expect(contributors.tool_safety).toBeUndefined();
+    expect(priors.by_dimension.tool_safety).toBeUndefined();
   });
 });

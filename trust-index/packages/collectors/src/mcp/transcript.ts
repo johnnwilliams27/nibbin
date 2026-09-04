@@ -84,6 +84,25 @@ export type RegistryFacts = {
   first_published_at: string | null;
   /** Where the source lives, when declared. */
   repository_url: string | null;
+  /** Published versions of this server seen in the registry. null when not counted. */
+  version_count: number | null;
+};
+
+/**
+ * The endpoint answered but refused an anonymous client.
+ *
+ * HTTP 401 was 48% of the first 200-server sample. Those servers are up,
+ * working, and correctly declining a client with no account. Recording that as
+ * unavailability would rate half the population as down when the missing thing
+ * is ours, which is the exact failure AssessmentGap exists to prevent. It is
+ * recorded here as its own fact so the rubric can emit a harness gap rather
+ * than an observation.
+ */
+export type AuthResult = {
+  required: boolean;
+  status: number | null;
+  /** WWW-Authenticate or equivalent, when the server says how to authenticate. */
+  scheme: string | null;
 };
 
 export type ProbeTranscript = {
@@ -100,4 +119,6 @@ export type ProbeTranscript = {
   /** null when the handshake never succeeded. */
   tools: ToolsResult | null;
   registry: RegistryFacts | null;
+  /** null when no attempt reached a status that could establish it. */
+  auth: AuthResult | null;
 };

@@ -107,6 +107,7 @@ export function parseEntry(raw: unknown): RegistryEntry | null {
       published_at: publishedAt,
       first_published_at: firstPublishedAt,
       repository_url: str(repo.url),
+      version_count: null,
     },
     remotes,
     isLatest,
@@ -139,6 +140,10 @@ export async function listServers(options: ListOptions = {}): Promise<ListResult
 
   const byName = new Map<string, RegistryEntry>();
   const seenNames = new Set<string>();
+  // Versions per server. Real variance (roughly two thirds publish once, some
+  // publish eight times) and it costs nothing, since every version is already
+  // a row we are reading.
+  const versionCounts = new Map<string, number>();
   const failures: string[] = [];
   let cursor: string | null = null;
   let rowCount = 0;
@@ -181,6 +186,7 @@ export async function listServers(options: ListOptions = {}): Promise<ListResult
       const entry = parseEntry(row);
       if (entry === null) continue;
       seenNames.add(entry.facts.name);
+      versionCounts.set(entry.facts.name, (versionCounts.get(entry.facts.name) ?? 0) + 1);
       if (remoteOnly && entry.remotes.length === 0) continue;
       // Latest wins; a non-latest row never displaces a latest one.
       const existing = byName.get(entry.facts.name);
@@ -208,6 +214,10 @@ export async function listServers(options: ListOptions = {}): Promise<ListResult
     failures.push(
       `parsed only ${seenNames.size} distinct servers from ${rowCount} rows, which is too few to be versions alone. Suspect a parser defect.`,
     );
+  }
+
+  for (const entry of byName.values()) {
+    entry.facts.version_count = versionCounts.get(entry.facts.name) ?? null;
   }
 
   return {
