@@ -49,11 +49,19 @@ function hostOf(url: string): string {
 
 async function phaseList(): Promise<RegistryEntry[]> {
   console.log("Phase 1: reading the public registry index.\n");
-  const res = await listServers({ remoteOnly: false, maxPages: 400 });
+  const res = await listServers({ remoteOnly: false, maxPages: 1500 });
 
   console.log(`version rows seen:      ${res.rowCount}`);
   console.log(`distinct servers:       ${res.distinctServers}`);
   console.log(`pages fetched:          ${res.pages}${res.truncated ? " (TRUNCATED by page cap)" : ""}`);
+  // Refuse to report a population when the listing did not actually parse.
+  // Printing a number here that came from a parser defect is exactly how a
+  // confident wrong figure gets quoted later.
+  if (res.rowCount > 0 && res.distinctServers === 0) {
+    console.error("\nABORT: fetched rows but parsed none. This is a parser defect, not an empty registry.");
+    for (const f of res.failures) console.error(`  ${f}`);
+    process.exit(1);
+  }
   if (res.failures.length > 0) {
     // Reported, never swallowed. A partial listing presented as a whole is the
     // error this project has made more than any other.

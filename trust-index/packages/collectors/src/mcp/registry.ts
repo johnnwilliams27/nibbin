@@ -26,6 +26,8 @@ export type RegistryEntry = {
   remotes: Array<{ type: string; url: string }>;
   /** True when the registry marks this row as the server's current version. */
   isLatest: boolean;
+  /** Registry lifecycle status ("active", and whatever else it uses for withdrawn entries). */
+  status: string | null;
 };
 
 export type ListResult = {
@@ -45,22 +47,44 @@ function str(v: unknown): string | null {
   return typeof v === "string" && v.length > 0 ? v : null;
 }
 
-/** Parse one registry row. Returns null when the row has no usable name. */
+/**
+ * Parse one registry row. Returns null when the row has no usable name.
+ *
+ * The row is nested: `{server: {...}, _meta: {...}}`, with the fields that
+ * matter under `server` and the publish timestamps under a namespaced key
+ * beside it. An earlier version of this parser assumed a flat row and returned
+ * null for every one of 40,000 rows, and the census printed "0 distinct
+ * servers" as though that were a finding about the registry. Both shapes are
+ * accepted now, and both key conventions, because this API has changed shape
+ * before and the cost of tolerating the old one is nothing.
+ */
 export function parseEntry(raw: unknown): RegistryEntry | null {
   if (typeof raw !== "object" || raw === null) return null;
-  const r = raw as Record<string, unknown>;
+  const row = raw as Record<string, unknown>;
+  // Nested form first, flat form as the fallback.
+  const r = (typeof row.server === "object" && row.server !== null ? row.server : row) as Record<string, unknown>;
   const name = str(r.name);
   if (name === null) return null;
 
-  // Publish timestamps live under a namespaced _meta key. Read both the
-  // official block and the row itself, since the registry has carried them in
-  // both places.
-  const meta = (typeof r._meta === "object" && r._meta !== null ? r._meta : {}) as Record<string, unknown>;
+  // _meta sits beside `server`, not inside it, and its keys are camelCase.
+  // Both spellings are read so a revert or a mixed deployment does not blank
+  // the timestamps.
+  const metaHost = (typeof row._meta === "object" && row._meta !== null ? row._meta : r._meta) as
+    | Record<string, unknown>
+    | undefined;
+  const meta = (metaHost ?? {}) as Record<string, unknown>;
   const official = (meta["io.modelcontextprotocol.registry/official"] ?? {}) as Record<string, unknown>;
   const publishedAt =
-    str(official.updated_at) ?? str(official.published_at) ?? str(r.updated_at) ?? str(r.published_at);
-  const firstPublishedAt = str(official.published_at) ?? str(r.published_at);
-  const isLatest = official.is_latest === undefined ? true : official.is_latest === true;
+    str(official.updatedAt) ??
+    str(official.updated_at) ??
+    str(official.publishedAt) ??
+    str(official.published_at) ??
+    str(r.updated_at) ??
+    str(r.published_at);
+  const firstPublishedAt = str(official.publishedAt) ?? str(official.published_at) ?? str(r.published_at);
+  const latestFlag = official.isLatest ?? official.is_latest;
+  const isLatest = latestFlag === undefined ? true : latestFlag === true;
+  const status = str(official.status);
 
   const repo = (typeof r.repository === "object" && r.repository !== null ? r.repository : {}) as Record<string, unknown>;
 
@@ -86,6 +110,7 @@ export function parseEntry(raw: unknown): RegistryEntry | null {
     },
     remotes,
     isLatest,
+    status,
   };
 }
 
@@ -168,6 +193,21 @@ export async function listServers(options: ListOptions = {}): Promise<ListResult
     const next = str(metadata.next_cursor) ?? str(metadata.nextCursor);
     if (next === null || rows.length === 0) break;
     cursor = next;
+  }
+
+  // A parse rate near zero is a bug in us, not a fact about the registry.
+  // Without this the census reported "0 distinct servers" from 40,000 rows it
+  // had successfully fetched and then failed to read, which is the project's
+  // oldest error wearing a new hat: a failure to obtain data presented as a
+  // fact about the data.
+  if (rowCount > 0 && seenNames.size === 0) {
+    failures.push(
+      `parsed 0 of ${rowCount} rows: the registry response shape is not what this parser expects. This is a parser defect, not an empty registry.`,
+    );
+  } else if (rowCount >= 100 && seenNames.size * 20 < rowCount) {
+    failures.push(
+      `parsed only ${seenNames.size} distinct servers from ${rowCount} rows, which is too few to be versions alone. Suspect a parser defect.`,
+    );
   }
 
   return {
