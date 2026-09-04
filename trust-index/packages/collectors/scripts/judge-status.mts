@@ -33,9 +33,16 @@ console.log(
 );
 console.log(`  resolution:     gaps under ${PRODUCTION_JUDGE_EVIDENCE.resolution_points} points are not distinguishable at this n`);
 console.log("");
-console.log("open questions that could overturn the choice:");
-console.log("  - labels were Claude-drafted while Claude models were under test");
+console.log("measured on the class a structural check cannot do:");
+console.log("  invention recall   4/6");
+console.log("  false accusations  0/25   (the heuristic that found the candidates: 81% false positive)");
+console.log("");
+console.log("closed since the decision:");
+console.log("  - label conflict bounded: 12 of 120 disputed; flipping all 12 leaves the");
+console.log("    conclusion intact by 12.5 points against a 5.4-point resolution");
+console.log("  - invention class now measured, having been unmeasurable at decision time");
+console.log("");
+console.log("still open:");
 console.log("  - gpt-5.5 answered 97 of 120 items under our rate limit, not its own capability");
-console.log("  - zero 'invention' items, the class the judge most exists to catch");
 
 if (report?.health.available !== true) process.exitCode = 1;

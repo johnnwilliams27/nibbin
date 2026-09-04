@@ -41,12 +41,32 @@
  *
  * WHAT WOULD OVERTURN IT
  *
- * Cheap to check, because scoring is pure and the votes are stored. A human
- * review pass over a stratified sample of labels; a rate-limit lift and a clean
- * re-run of the OpenAI leg; or an invention corpus, since zero of the 120 items
- * exercise the one class this judge most exists to catch. Any of those can move
- * the answer, and `scripts/rescore.mts` re-derives every number without
- * spending anything.
+ * Cheap to check, because scoring is pure and the votes are stored, and two of
+ * the three open questions have since been closed.
+ *
+ * LABELS (closed). The ground truth was Claude-drafted while Claude models were
+ * under test. `scripts/label-sensitivity.mts` bounds it: only 12 of 120 items
+ * are disputed, and flipping every one of them to the models' own preferred
+ * reading still leaves the voting panel losing to the best single model by 12.5
+ * points against a 5.4-point resolution. The ordering among the tied top
+ * structures does move, and remains unsettled — but this choice does not rest
+ * on it.
+ *
+ * INVENTION (closed, and it is the reason to keep a judge at all).
+ * `scripts/invention-eval.mts` measures the one class the corpus could not.
+ * Against six real fabrications found by probing 117 retrieval tools:
+ *
+ *   invention recall     4/6
+ *   false accusations    0/25
+ *   the structural heuristic that produced the candidates: 81% false positive
+ *
+ * Both misses are conservative — one fabrication read as a plain answer, one as
+ * a refusal — and nothing honest was ever accused. That asymmetry is the right
+ * one for a public ratings source: a missed invention costs coverage, a false
+ * accusation costs somebody's reputation.
+ *
+ * A rate-limit lift and a clean re-run of the OpenAI leg is the one still open,
+ * and `scripts/rescore.mts` re-derives every number without spending anything.
  *
  * The panel harness is kept, not deleted. It is how this decision gets revisited
  * when the models change, which they will.
