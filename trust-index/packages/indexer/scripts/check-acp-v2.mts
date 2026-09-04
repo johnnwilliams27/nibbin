@@ -54,6 +54,12 @@ const IDENTITY = MAINNET_IDENTITY_REGISTRY.toLowerCase();
 const V2_JOB_CREATED = toEventSelector("JobCreated(uint256,uint256,address,address,address,uint256)");
 const V2_PHASE = toEventSelector("JobPhaseUpdated(uint256,uint8,uint8)");
 const REGISTRY_DEPLOY_BLOCK = 41_663_783;
+/**
+ * Per-request timeout. Forty seconds multiplied by a retry ladder makes a slow
+ * endpoint look like a hang: the process sits on a socket that accepted the
+ * connection and never answered, doing no I/O at all.
+ */
+const REQUEST_TIMEOUT_MS = Number(arg("--timeout", "12000"));
 const ZERO = "0x0000000000000000000000000000000000000000";
 
 const V2_JOB_CREATED_ABI = [
@@ -86,7 +92,7 @@ async function rpc(body: unknown): Promise<unknown> {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(body),
-        signal: AbortSignal.timeout(40_000),
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
       if (res.status === 429 || res.status >= 500) throw new Error(`http ${res.status}`);
       const j = await res.json();
@@ -108,7 +114,7 @@ async function main(): Promise<void> {
   const headRes = (await rpc({ jsonrpc: "2.0", id: 1, method: "eth_blockNumber", params: [] })) as { result: string };
   const head = Number(headRes.result);
   console.log(`scanning ACP v2 jobManager ${JOB_MANAGER}`);
-  console.log(`blocks ${REGISTRY_DEPLOY_BLOCK} to ${head}\n`);
+  console.log(`blocks ${arg("--from", String(REGISTRY_DEPLOY_BLOCK))} to ${head}\n`);
 
   const providers = new Set<string>();
   const clients = new Set<string>();
@@ -116,7 +122,10 @@ async function main(): Promise<void> {
   const accountIds = new Set<string>();
   const phaseCounts = new Map<number, number>();
   let created = 0;
-  let cursor = REGISTRY_DEPLOY_BLOCK;
+  // Default to the registry's deployment, but allow a narrower recent window:
+  // the overlap question is answered by any window where v2 is busy, and the
+  // full nine-million-block range is not worth a public endpoint's patience.
+  let cursor = Number(arg("--from", String(REGISTRY_DEPLOY_BLOCK)));
   let span = 9000;
   let reported = cursor;
 
@@ -167,9 +176,9 @@ async function main(): Promise<void> {
       }
     }
     cursor = to + 1;
-    if (cursor - reported > 500_000) {
+    if (cursor - reported > 200_000) {
       reported = cursor;
-      console.log(`  ...block ${cursor}, ${created} jobs so far`);
+      console.error(`  ...block ${cursor}, ${created} jobs so far`);
     }
   }
 

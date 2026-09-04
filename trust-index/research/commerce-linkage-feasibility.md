@@ -82,11 +82,38 @@ across 3,017 jobs and 289 distinct parties, not one address belongs to a
 registered agent. ACP's agents and ERC-8004's agents are different populations
 that share a chain.
 
-Separately, ACP v1 is no longer where the activity is. The v2 deployment at
+## ACP v2, where the activity actually is
+
+v1 is not where ACP runs any more. The v2 deployment at
 `0xa6C9BA866992cfD7fd6460ba912bfa405adA9df0` is a modular system whose
-`jobManager` module (`0x9c690c267f20c385f8a053f62bc8c7e2d4b83744`) was emitting
-98 logs per 9,000 blocks at the time of writing. Its job volume and its parties
-have not been checked, and it is the obvious next place to look.
+`jobManager` module (`0x9c690c267f20c385f8a053f62bc8c7e2d4b83744`) is busy:
+1,924 jobs in the ~500,000 blocks to 50,853,288, roughly twelve days.
+
+Scanning that window with `scripts/check-acp-v2.mts`:
+
+| | Count | Matching a declared agent wallet |
+|---|---|---|
+| Providers | 12 | 0 |
+| Clients | 35 | **2** |
+| Evaluators | 7 | 0 |
+
+The two client matches are agents 61440 and 58627. This is the first non-empty
+intersection found anywhere in this investigation, and it is the wrong side of
+the transaction: a job's outcome is evidence about the provider who did the
+work, not about the client who commissioned it. Zero providers match, so there
+are still no usable labels.
+
+Two other things the window shows. The provider set is tiny and concentrated,
+twelve addresses serving 1,924 jobs, so even a perfect linkage would yield at
+most twelve labeled agents against a floor of thirty. And the terminal outcomes
+in-window are sparse (1 completed, 24 rejected, 1 expired against 386 jobs still
+in negotiation), because jobs created recently have not resolved yet; a wider
+window would be needed before the outcome mix means anything.
+
+What this changes: the populations are beginning to touch, which they were not
+on v1. Two registered agents are transacting on ACP today. That is worth
+re-checking on a schedule rather than concluding from once, because the trend
+matters more than the current count.
 
 ## What this does and does not establish
 
@@ -103,7 +130,6 @@ than widen.
 
 ## What would change the answer
 
-- Check ACP v2, where the jobs actually are now.
 - Check Olas, which the outcome mapping still covers only from documentation.
 - A commerce platform whose agents register on ERC-8004, so the two populations
   are one population. This is the only durable fix.
