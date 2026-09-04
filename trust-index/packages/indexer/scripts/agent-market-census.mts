@@ -61,8 +61,14 @@ async function getJson(url: string, timeoutMs = 25_000): Promise<unknown> {
  */
 async function mcpRegistry(): Promise<SourceResult> {
   const detail: Record<string, number> = {};
-  let total = 0;
-  let withRemotes = 0;
+  // The registry lists every VERSION of a server as its own row, so counting
+  // rows overstates the population by roughly threefold. A first pass reported
+  // 90,152 "servers" where there are 26,907 distinct ones. Servers are counted
+  // by name; rows are reported alongside so the difference is visible rather
+  // than hidden.
+  const names = new Set<string>();
+  const namesWithRemotes = new Set<string>();
+  let rows = 0;
   let cursor: string | null = null;
   let truncated = false;
   try {
@@ -74,39 +80,46 @@ async function mcpRegistry(): Promise<SourceResult> {
     for (let page = 0; page < maxPages; page += 1) {
       const url = `https://registry.modelcontextprotocol.io/v0/servers?limit=100${cursor === null ? "" : `&cursor=${encodeURIComponent(cursor)}`}`;
       const body = (await getJson(url)) as {
-        servers?: Array<{ server?: { remotes?: unknown[]; packages?: unknown[] } }>;
+        servers?: Array<{ server?: { name?: string; remotes?: unknown[]; packages?: unknown[] } }>;
         metadata?: { nextCursor?: string };
       };
-      const rows = body.servers ?? [];
-      if (rows.length === 0) break;
-      for (const r of rows) {
-        total += 1;
+      const page_rows = body.servers ?? [];
+      if (page_rows.length === 0) break;
+      for (const r of page_rows) {
+        rows += 1;
+        const name = r.server?.name;
+        if (name === undefined) continue;
+        names.add(name);
         const remotes = r.server?.remotes;
-        if (Array.isArray(remotes) && remotes.length > 0) withRemotes += 1;
-        else detail["install only (no remote endpoint)"] = (detail["install only (no remote endpoint)"] ?? 0) + 1;
+        // A server counts as remotely callable if ANY of its versions exposes
+        // a remote, since that is the version a third party would exercise.
+        if (Array.isArray(remotes) && remotes.length > 0) namesWithRemotes.add(name);
       }
       cursor = body.metadata?.nextCursor ?? null;
       if (cursor === null) {
         detail["enumeration"] = 1; // reached the true end of the registry
         break;
       }
-      if (total >= MAX) {
+      if (rows >= MAX) {
         truncated = true;
         break;
       }
       await new Promise((r) => setTimeout(r, 120));
     }
     delete detail["enumeration"];
-    detail["exposes a remote endpoint"] = withRemotes;
+    detail["version rows returned"] = rows;
+    detail["distinct servers"] = names.size;
+    detail["servers exposing a remote endpoint"] = namesWithRemotes.size;
+    detail["servers install-only"] = names.size - namesWithRemotes.size;
     return {
       source: "Official MCP registry",
       kind: "tool provider",
       enumerable: true,
       note: truncated
-        ? `TRUNCATED at the --max limit of ${MAX}; the registry has more. This is a floor, not a total.`
-        : "Cursor-paginated, no API key, enumerated to the end. Remotes are the subset a third party could exercise without installing anything.",
-      total,
-      callable: withRemotes,
+        ? `TRUNCATED at the --max row limit of ${MAX}; the registry has more. This is a floor, not a total.`
+        : "Cursor-paginated, no API key, enumerated to the end with no duplicate rows. Counted by distinct server name, not by version row. Remotes are the subset a third party could exercise without installing anything.",
+      total: names.size,
+      callable: namesWithRemotes.size,
       detail,
     };
   } catch (err) {
@@ -114,8 +127,8 @@ async function mcpRegistry(): Promise<SourceResult> {
       source: "Official MCP registry",
       kind: "tool provider",
       enumerable: false,
-      note: `enumeration failed after ${total}: ${err instanceof Error ? err.message : String(err)}`,
-      total: total > 0 ? total : null,
+      note: `enumeration failed after ${rows} rows: ${err instanceof Error ? err.message : String(err)}`,
+      total: names.size > 0 ? names.size : null,
       callable: null,
       detail,
     };
