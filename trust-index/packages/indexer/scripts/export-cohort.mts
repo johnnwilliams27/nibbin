@@ -73,11 +73,15 @@ function arg(name: string, fallback: string): string {
 const CACHE = arg("--cache", "cohort-cache");
 const OUT = arg("--out", "cohort");
 /**
- * Rotated per request, for the same reason fetch-registry-logs.mts rotates: a
- * single public endpoint under sustained load returns HTTP 500, and an
- * unthrottled run of batches trips that within a few hundred calls.
+ * Rotated per request when more than one is supplied, for the same reason
+ * fetch-registry-logs.mts rotates. The default is a single endpoint here
+ * rather than the fetcher's pair: the alternates rate-limit batched eth_call
+ * far harder than they rate-limit eth_getLogs, so including one meant every
+ * other batch fell back to issuing its calls individually, which is slower
+ * than not rotating at all. Supply your own list if you have endpoints that
+ * tolerate it.
  */
-const RPCS = arg("--rpc", process.env.TRUST_INDEX_RPC_URL ?? "https://mainnet.base.org,https://gateway.tenderly.co/public/base")
+const RPCS = arg("--rpc", process.env.TRUST_INDEX_RPC_URL ?? "https://mainnet.base.org")
   .split(",")
   .map((x) => x.trim())
   .filter((x) => x.length > 0);
