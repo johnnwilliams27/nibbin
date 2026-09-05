@@ -378,6 +378,57 @@ export function classifyTool(t: ToolDeclaration): ToolClassification {
     contradictions.push(`declares readOnlyHint but is named like a write (${leadingVerb})`);
   }
 
+  // Reads that are not free, and reads that make somebody else make a call.
+  //
+  // The write guard asks "does this change the subject's state". A dry run over
+  // the corpus surfaced two things that pass that test and are still not ours
+  // to invoke six times:
+  //
+  //   METERED. `list_tickers` — "List all tickers that traded on a given date.
+  //   $0.005 USDC." A read, priced per call. Probing it spends somebody's
+  //   money, and `chat_completion` — "Send a conversation to any text model
+  //   available through CCAPI (Claude, GPT, Gemini...)" — bills the operator
+  //   for six completions to tell us nothing we could not learn elsewhere.
+  //
+  //   SECOND HOP. `verify_payment_endpoint` — "Run a live check against a
+  //   merchant's declared payment endpoint." Reading it is free for the
+  //   operator and causes six live requests to a FOURTH party who never
+  //   appeared in any registry and cannot be asked.
+  //
+  // Neither is a finding about the subject, so neither is scored. They become
+  // an unprobed tool and a `not_applicable` gap: we chose not to look, and the
+  // gap model exists so that choice never reads as their failure.
+  const CHARGES_PER_CALL =
+    /(\$\s?\d|\bUSDC\b|\bper[- ]call\b|\bcredits?\b|\bbilled?\b|\bbilling\b|\bpaid tier\b|\bpricing\b|\bcosts? \d|\bfee\b|\bsubscription\b)/i;
+  const SECOND_HOP =
+    /\b(live check against|calls? out to|makes? a request to|fetches? the (remote|external|target)|pings? the|against a merchant|third[- ]party endpoint|forwards? (it|the request) to)\b/i;
+  // A read that runs a model is expensive per call whoever pays for it.
+  // `chat_completion` — "Send a conversation to any text model available
+  // through CCAPI (Claude, GPT, Gemini, DeepSeek...)" — declares readOnlyHint,
+  // truthfully: it changes nothing. Six probe calls still bill its operator for
+  // six completions, and tell us only that a proxy proxies.
+  const EXPENSIVE_COMPUTE =
+    /\b(text model|language model|\bllm\b|chat completion|completions?\b|inference|gpt-?[0-9]|claude|gemini|deepseek|generate (an? )?(image|video|music|audio|speech)|text-to-|render (a |the )?video)\b/i;
+  const meteredOrSecondHop =
+    (CHARGES_PER_CALL.test(desc) && !/\bfree\b/i.test(desc)) || SECOND_HOP.test(desc) || EXPENSIVE_COMPUTE.test(desc);
+
+  if ((declaredReadOnly || inferredReadOnly) && meteredOrSecondHop) {
+    return {
+      tool: t.name,
+      shape,
+      binding: {
+        kind: "operator_bound",
+        reason: SECOND_HOP.test(desc)
+          ? "reads, but causes a live call to a third party we cannot ask"
+          : EXPENSIVE_COMPUTE.test(desc)
+            ? "reads, but runs a model per call, so probing it spends real compute"
+            : "reads, but is metered per call and probing it spends someone else's money",
+      },
+      contradictions,
+      hints,
+    };
+  }
+
   if (declaredReadOnly || inferredReadOnly) {
     return {
       tool: t.name,

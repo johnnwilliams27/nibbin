@@ -761,6 +761,26 @@ describe("we never call a tool that might write", () => {
     expect(classifyTool(decl(name, "Returns information about the item.")).binding.kind).not.toBe("read_only");
   });
 
+  // A dry run over the corpus found three things that pass the write guard and
+  // are still not ours to call six times. None is a finding about the subject,
+  // so none is scored; they become an unprobed tool and a not_applicable gap.
+  it.each([
+    ["list_tickers", "List all tickers that traded on a given date. $0.005 USDC.", /spends someone else's money/],
+    ["chat_completion", "Send a conversation to any text model available through CCAPI.", /spends real compute/],
+    ["verify_payment_endpoint", "Run a live check against a merchant's declared payment endpoint.", /third party we cannot ask/],
+  ])("declines %s, which reads but is not free to call", (name, description, reason) => {
+    const c = classifyTool(decl(name, description, { readOnlyHint: true }));
+    expect(c.binding.kind).toBe("operator_bound");
+    expect((c.binding as { reason: string }).reason).toMatch(reason);
+  });
+
+  it("still calls a directory that says it is free", () => {
+    // The screen keys on price language, and "FREE." is price language. A tool
+    // advertising that it costs nothing must not be excluded for saying so.
+    const c = classifyTool(decl("list_buildings", "FREE. The campus directory: every building and which key scope unlocks it."));
+    expect(c.binding.kind).toBe("read_only");
+  });
+
   it.each(["search_documents", "get_weather", "lookup_ticker", "list_repos", "convert_units", "parse_timestamp"])(
     "still calls %s, so the guard has not eaten the corpus",
     (name) => {
