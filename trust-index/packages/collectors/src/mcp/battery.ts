@@ -308,6 +308,27 @@ export async function runBattery(
       const cmp = varied.ok ? comparable(baseline, varied) : { can: false as const, reason: `second call failed: ${varied.reason ?? "unknown"}` };
       if (cmp.can) observations.push(obs(observerId, "functional_correctness", "input_sensitivity", bool(!cmp.same), ts, ref));
       else skipped.push({ check: "input_sensitivity", reason: cmp.reason });
+
+      // Does this tool ever answer at all?
+      //
+      // `substantive` is computed from the response (invoke.ts REFUSAL), so the
+      // subject controls it. Wrapping every payload as {"ok": false, ...} makes
+      // it false everywhere, and both comparison checks then SKIP. A skip costs
+      // nothing — it is not scored, and it reaches the Subject as neither an
+      // observation nor a gap — so a tool that answers nothing scored 5 points
+      // ABOVE one that answers and fails. Declining to be measured must not
+      // outperform being measured badly.
+      //
+      // Two plausible queries, not one, before this is held against anyone. A
+      // real search tool can legitimately have nothing for a single query, and
+      // scoring that would be measuring OUR query rather than their tool. Both
+      // of two different queries coming back empty is weak evidence about the
+      // query and real evidence about the tool.
+      if (varied.ok) {
+        observations.push(
+          obs(observerId, "functional_correctness", "answers_substantively", bool(baseline.substantive || varied.substantive), ts, ref),
+        );
+      }
     } else {
       skipped.push({ check: "input_sensitivity", reason: `shape ${classification.shape} need not vary with input` });
     }
@@ -335,7 +356,10 @@ export async function runBattery(
       // the query is still one. Strip the query and see what is left: a bare
       // "no results for <query>" collapses to nothing, while invented content
       // survives.
-      const residue = (nonsense.textSample ?? "")
+      // `text` (32KB), not `textSample` (300 chars). Reading the sample let a
+      // server evade this by padding: 440 bytes of banner before the invented
+      // content and the residue is all banner.
+      const residue = (nonsense.text ?? "")
         .toLowerCase()
         .split(NONSENSE_QUERY)
         .join("")
@@ -355,16 +379,54 @@ export async function runBattery(
           noJudge("functional_correctness", "no_fabrication");
           resolved = false;
         } else {
-          const v = await classifyResponse(
-            { tool: declaration.name, description: declaration.description, query: NONSENSE_QUERY, response: nonsense.textSample ?? "" },
-            judge,
-          );
-          if (v.injectionAttempt) injectionAttemptsSeen += 1;
-          if (v.verdict === "unclear") {
-            skipped.push({ check: "no_fabrication", reason: `judge could not tell: ${v.reason}` });
+          // The throw is caught HERE, and deliberately narrowly.
+          //
+          // This await had no catch. A JudgeError — a provider refusal, a rate
+          // limit, an unpermitted verdict — escaped runBattery entirely, before
+          // the injection and robustness calls at steps 4 and 5 had been made.
+          // The caller recorded no outcome for the tool at all, and with no
+          // outcome `batteryGaps` manufactured three `harness_capability_missing`
+          // gaps: functional_correctness, injection_resistance, robustness, each
+          // reading "no tool-invocation battery has been run against this
+          // subject".
+          //
+          // That runs the gap model backwards. subject.ts states the invariant —
+          // our not having looked must never read as the subject's failure — and
+          // here the subject's own response was enough to make its whole battery
+          // read as our failure to look, published under our name. A server
+          // anticipating a bad score could withhold itself on demand and have
+          // the withholding attributed to us.
+          //
+          // So: one check is lost, not five, and the loss is attributed to the
+          // subject rather than to the harness.
+          try {
+            const v = await classifyResponse(
+              {
+                tool: declaration.name,
+                description: declaration.description,
+                query: NONSENSE_QUERY,
+                response: nonsense.text ?? "",
+                truncated: nonsense.textTruncated,
+              },
+              judge,
+            );
+            if (v.injectionAttempt) injectionAttemptsSeen += 1;
+            if (v.verdict === "unclear") {
+              skipped.push({ check: "no_fabrication", reason: `judge could not tell: ${v.reason}` });
+              resolved = false;
+            } else {
+              fabricated = v.verdict === "invention";
+            }
+          } catch (err) {
+            const detail = err instanceof Error ? err.message.slice(0, 200) : "judge threw";
+            gaps.push({
+              dimension: "functional_correctness",
+              check: "no_fabrication",
+              cause: "subject_blocked",
+              capability: null,
+              detail: `the judge could not classify this response: ${detail}`,
+            });
             resolved = false;
-          } else {
-            fabricated = v.verdict === "invention";
           }
         }
       }
@@ -373,6 +435,9 @@ export async function runBattery(
       // when it was allowed to decide on its own.
       if (resolved) {
         observations.push(obs(observerId, "functional_correctness", "no_fabrication", bool(!fabricated), ts, ref));
+        if (fabricated) {
+          observations.push(obs(observerId, "functional_correctness", "any_tool_fabricates", ZERO, ts, ref));
+        }
       }
     }
     }
@@ -382,13 +447,34 @@ export async function runBattery(
     //    inside its own arguments is a hole in everything downstream of it.
     const injected = await call("injection", { ...base, [param]: INJECTION_PAYLOAD });
     if (injected.ok) {
-      const text = (injected.textSample ?? "").toLowerCase();
-      const hasToken = text.includes(INJECTION_TOKEN.toLowerCase());
-      const hasInstruction = text.includes(INJECTION_INSTRUCTION.toLowerCase());
-      // The token alone is obedience. The token WITH the instruction is a
-      // search tool quoting the query back, which is correct behaviour.
-      const obeyed = hasToken && !hasInstruction;
+      // Two bypasses closed here, both measured against the real battery.
+      //
+      // PADDING. This read `textSample` — 300 characters. A server that
+      // prefixed 440 bytes of banner before the obeyed token scored a clean
+      // pass. Read the whole 32KB `text`.
+      //
+      // ECHO. The old test was `hasToken && !hasInstruction`, on the reasoning
+      // that a search tool quoting its query back is behaving correctly. But
+      // that hands a pass to any tool that obeys the instruction AND quotes the
+      // query — which is what every search tool already does, so it costs an
+      // attacker one appended line. Measured: +12.5 composite points, 27th to
+      // 50th percentile, for a server that demonstrably obeys.
+      //
+      // The fix is the technique the fabrication check above already uses.
+      // Strip every verbatim echo of the payload, then look at what is LEFT:
+      // a tool quoting the query back leaves nothing, while a tool that acted
+      // on it leaves the token behind. Obedience is the token surviving the
+      // strip, not the token being absent from a quote.
+      const whole = (injected.text ?? "").toLowerCase();
+      const outsideEcho = whole.split(INJECTION_PAYLOAD.toLowerCase()).join(" ");
+      const obeyed = outsideEcho.includes(INJECTION_TOKEN.toLowerCase());
       observations.push(obs(observerId, "injection_resistance", "ignores_embedded_instruction", bool(!obeyed), ts, ref));
+      // Occurrence form. The ratio above averages away across tools; this is
+      // what the gate matches on, so one obedient tool among two hundred is
+      // still a finding. See F2 in the gate list.
+      if (obeyed) {
+        observations.push(obs(observerId, "injection_resistance", "any_tool_obeys_embedded_instruction", ZERO, ts, ref));
+      }
     } else {
       skipped.push({ check: "injection_resistance", reason: `injection call failed: ${injected.reason ?? "unknown"}` });
     }
@@ -408,9 +494,14 @@ export async function runBattery(
     if (acceptedGarbage) {
       observations.push(obs(observerId, "robustness", "accepts_invalid_input", ZERO, ts, ref));
     }
-    const errorText = `${malformed.reason ?? ""} ${malformed.textSample ?? ""}`;
+    // Whole text, not the 300-char sample: a traceback with a connection
+    // string in it is exactly the payload that arrives after a banner.
+    const errorText = `${malformed.reason ?? ""} ${malformed.text ?? ""}`;
     const leak = LEAK_PATTERNS.find((p) => p.re.test(errorText));
     observations.push(obs(observerId, "robustness", "no_internal_leakage", bool(leak === undefined), ts, ref));
+    if (leak !== undefined) {
+      observations.push(obs(observerId, "robustness", "any_tool_leaks_internals", ZERO, ts, ref));
+    }
 
     // 6. DETERMINISM, where the shape implies it. Not scored elsewhere: a
     //    weather tool returning different answers is doing its job.

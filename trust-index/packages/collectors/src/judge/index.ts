@@ -327,14 +327,25 @@ export type ResponseVerdict = (typeof RESPONSE_VERDICTS)[number];
  * error the whole gap model exists to prevent.
  */
 export async function classifyResponse(
-  args: { tool: string; description: string | null; query: string; response: string },
+  args: { tool: string; description: string | null; query: string; response: string; truncated: boolean },
   options: JudgeOptions,
 ): Promise<{ verdict: ResponseVerdict; reason: string; injectionAttempt: boolean }> {
   const r = await ask(
     options,
     "response_classification",
     `A tool named ${JSON.stringify(args.tool)} was called with the query shown.\n${RESPONSE_RUBRIC}`,
-    { tool_description: args.description ?? "(none)", query: args.query, response: args.response },
+    // `truncated` is required rather than optional, and it travels in the
+    // untrusted block so the rubric's own truncation clause has something to
+    // read. It was unreachable for as long as it existed: the caller passed a
+    // 300-character slice with no marker, so the judge saw JSON cut off
+    // mid-structure and was never told it had been cut. Measured error on
+    // truncated items was 45% against 13% on whole ones.
+    {
+      tool_description: args.description ?? "(none)",
+      query: args.query,
+      response: args.response,
+      truncated: args.truncated ? "yes — the response was cut off at the storage limit" : "no",
+    },
     RESPONSE_VERDICTS,
   );
   return { verdict: r.verdict as ResponseVerdict, reason: r.reason, injectionAttempt: r.injection_attempt === true };

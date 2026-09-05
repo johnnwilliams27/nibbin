@@ -69,7 +69,15 @@ for (const [i, row] of file.suspicious.entries()) {
   const expected = INVENTION.has(i) ? "invention" : "not_invention";
   try {
     const v = await classifyResponse(
-      { tool: row.tool, description: null, query: JSON.stringify(row.args), response: text },
+      {
+        tool: row.tool,
+        description: null,
+        query: JSON.stringify(row.args),
+        response: text,
+        // These rows are read from stored transcripts, where `text` is the
+        // whole captured response. Nothing here is re-truncated.
+        truncated: false,
+      },
       judge,
     );
     scored.push({ i, tool: row.tool, expected, got: v.verdict, reason: v.reason });

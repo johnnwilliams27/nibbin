@@ -93,6 +93,29 @@ const MUTATING_VERBS = [
   "publish",
   "merge",
   "push",
+  // Added after a review found the list caught `delete_doc` but not
+  // `destroy_doc`, `wipe_index`, `erase_all`, `truncate_table`,
+  // `overwrite_file` or `terminate_instance`. A denylist of verbs is only ever
+  // as good as its vocabulary, and an operator who reads this file picks a
+  // synonym. These are the obvious gaps; the list is still a denylist and
+  // should be treated as a floor, not a guarantee.
+  "destroy",
+  "wipe",
+  "erase",
+  "truncate",
+  "overwrite",
+  "terminate",
+  "kill",
+  "reset",
+  "cancel",
+  "archive",
+  "restore",
+  "rename",
+  "move",
+  "upload",
+  "grant",
+  "disable",
+  "enable",
 ] as const;
 
 /**
@@ -126,9 +149,52 @@ export function isMutatingName(name: string): boolean {
   return words.some((w) => (MUTATING_VERBS as readonly string[]).includes(w));
 }
 
-export function isCredentialParam(name: string): boolean {
-  const n = name.toLowerCase().replace(/[^a-z0-9_]/g, "");
-  return (CREDENTIAL_PARAMS as readonly string[]).some((c) => n === c || n === c.replace(/_/g, ""));
+/**
+ * The secret-bearing noun, wherever it sits in the name.
+ *
+ * `key` and `token` are deliberately NOT bare stems: `sort_key`, `partition_key`,
+ * `next_page_token` and `cursor_token` are ordinary parameters, and firing the
+ * hardest gate in the profile on them would be worse than missing a real one.
+ * So a bare noun counts only when qualified by a secret-ish adjective, while
+ * the unambiguous nouns (secret, password, credential) count on their own.
+ */
+const CREDENTIAL_RE =
+  /(^|_)((api|auth|access|session|bearer|private|secret|client|app|user|personal|refresh)_?(key|token)|token|bearer|secret|secrets|password|passwd|passphrase|credential|credentials|apikey|authtoken|accesstoken|pat)($|_)/;
+
+/**
+ * Qualifiers that make a `token` a cursor rather than a secret.
+ *
+ * Bare `token` counts — on a remote server it almost always means an auth
+ * token, and the original list treated it that way. But pagination parameters
+ * end in `token` too, and firing a gate that caps the composite at 0.45 on a
+ * `next_page_token` would be a far worse error than the one being fixed. These
+ * are checked before the noun, so the qualifier wins.
+ */
+const PAGINATION_QUALIFIER = /(^|_)(next|page|cursor|continuation|sync|resume|next_page|page_?size)_?(token|key)($|_)/;
+
+/** Prose that describes a secret even when the parameter name does not. */
+const CREDENTIAL_PROSE = /\b(api[- ]?key|access[- ]?token|auth[- ]?token|bearer token|secret key|client secret|password|passphrase|credential|personal access token)\b/i;
+
+/**
+ * Does this parameter ask the caller to hand over a secret?
+ *
+ * This was an EQUALITY test against a twelve-entry list, which meant `api_key`
+ * fired the gate and `auth_token` did not. Measured against the real scorer,
+ * renaming one parameter moved a server from 45.00 to 75.46 — thirty points and
+ * the 4th percentile to the 71st — while the tool went on asking callers to
+ * transmit a secret to a third party. A one-word rename must not be a defence
+ * against the check the profile comment calls "the single most consequential
+ * thing an outsider can establish about a remote MCP server".
+ *
+ * The description is consulted second and independently: a parameter called
+ * `k` whose description says "your API key" is the same finding, and naming is
+ * the easier half to launder.
+ */
+export function isCredentialParam(name: string, description?: string | null): boolean {
+  const n = name.toLowerCase().replace(/[^a-z0-9]+/g, "_");
+  if (PAGINATION_QUALIFIER.test(`_${n}_`)) return false;
+  if (CREDENTIAL_RE.test(`_${n}_`)) return true;
+  return typeof description === "string" && CREDENTIAL_PROSE.test(description);
 }
 
 type SchemaShape = { properties: Record<string, unknown> | null; required: string[] };
@@ -344,7 +410,13 @@ export function assessTranscript(t: ProbeTranscript, asOfTs: string): Observatio
       const credentialFree = declared.filter((d) => {
         const shape = schemaShape(d.inputSchema);
         if (shape.properties === null) return true;
-        return !Object.keys(shape.properties).some((k) => isCredentialParam(k));
+        // The property's own description is consulted too: naming is the
+        // easier half to launder, and `k: "your API key"` is the same finding
+        // as a parameter called `api_key`.
+        return !Object.entries(shape.properties).some(([k, spec]) => {
+          const desc = typeof spec === "object" && spec !== null ? (spec as { description?: unknown }).description : null;
+          return isCredentialParam(k, typeof desc === "string" ? desc : null);
+        });
       }).length;
       out.push(
         obs(

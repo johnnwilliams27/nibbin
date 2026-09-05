@@ -15,6 +15,7 @@ import { guardedFetch } from "../src/net.js";
 import type { ProbeTranscript, ToolDeclaration } from "../src/mcp/transcript.js";
 import { judgeCapabilityProbe, judgeFromEnv, PRODUCTION_JUDGE_MODEL } from "../src/judge/production.js";
 import { preflight } from "../src/capability.js";
+import { observationCheck } from "@trust-index/scoring";
 
 function arg(n: string, d: string): string {
   const i = process.argv.indexOf(n);
@@ -93,7 +94,12 @@ for (const [shape, list] of [...byShape].sort()) {
       });
     } catch (err) { console.log(`  ${c.declaration.name}: REFUSED ${err instanceof Error ? err.message : err}`); continue; }
     outcomes.push({ ...o, server: c.server, endpoint: c.endpoint });
-    const v = (k: string) => o.observations.find((x) => x.observation_key === k)?.value;
+    // observationCheck strips the ":<tool>" suffix the battery now scopes
+    // every key with. Matching the bare key here silently produced an empty
+    // summary: every DEAD/OBEYS-INJECTION/LEAKS flag and both tables below
+    // printed nothing, and the "30 of 70 tools did not work" figure quoted
+    // elsewhere could no longer be reproduced by the code that produced it.
+    const v = (k: string) => o.observations.find((x) => observationCheck(x.observation_key) === k)?.value;
     const mark = (k: string, label: string) => (v(k) === undefined ? "" : v(k) === "1.000000" ? "" : ` ${label}`);
     console.log(
       `  ${c.declaration.name.padEnd(32)} ${o.calls.length} calls${mark("invocation_succeeds", "DEAD")}${mark("input_sensitivity", "IGNORES-INPUT")}` +
@@ -109,7 +115,7 @@ const CHECKS = ["invocation_succeeds", "input_sensitivity", "no_fabrication", "i
 console.log(`\n\n| Check | Ran | Passed | Failed | Pass rate |`);
 console.log("|---|---|---|---|---|");
 for (const k of CHECKS) {
-  const vals = outcomes.flatMap((o) => o.observations.filter((x) => x.observation_key === k).map((x) => x.value));
+  const vals = outcomes.flatMap((o) => o.observations.filter((x) => observationCheck(x.observation_key) === k).map((x) => x.value));
   if (vals.length === 0) continue;
   const pass = vals.filter((x) => x === "1.000000").length;
   console.log(`| ${k} | ${vals.length} | ${pass} | ${vals.length - pass} | ${((pass / vals.length) * 100).toFixed(0)}% |`);
@@ -120,7 +126,7 @@ console.log("|---|---|" + CHECKS.slice(1, 6).map(() => "---|").join(""));
 for (const [shape] of [...byShape].sort()) {
   const os = outcomes.filter((o) => o.shape === shape);
   const cell = (k: string) => {
-    const v = os.flatMap((o) => o.observations.filter((x) => x.observation_key === k).map((x) => x.value));
+    const v = os.flatMap((o) => o.observations.filter((x) => observationCheck(x.observation_key) === k).map((x) => x.value));
     return v.length === 0 ? "-" : `${v.filter((x) => x === "1.000000").length}/${v.length}`;
   };
   console.log(`| ${shape} | ${os.length} | ${CHECKS.slice(1, 6).map(cell).join(" | ")} |`);

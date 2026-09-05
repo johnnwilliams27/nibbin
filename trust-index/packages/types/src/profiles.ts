@@ -366,6 +366,75 @@ const MCP_GATES: readonly RatingGate[] = [
 ];
 
 /**
+ * Behavioural gates. v2 ONLY, and the reason is structural.
+ *
+ * The three behavioural dimensions are plain weighted means, so a finding on
+ * one tool is divided by the number of tools probed. Measured against the real
+ * battery: a server with one tool that obeys embedded instructions, fabricates,
+ * ignores its arguments and leaks internals scores 52.95 alone — and 75.33 once
+ * 199 trivial passing tools are declared alongside it. The hostile tool is
+ * still there, still callable, and the server has gained 22 points and moved
+ * from the 14th percentile to the 70th.
+ *
+ * assess.ts already states this principle for the manifest side: "one
+ * undescribed delete tool among fifty well-described tools is a ratio of 0.98
+ * and a hazard of 1." It was never applied to behaviour, and behaviour is now
+ * 60% of the weight. An occurrence gate is the escape from the average: the
+ * ratio keeps describing the typical tool, while the gate answers "is there a
+ * bad one in here", which is the question a caller actually has.
+ *
+ * These are absent from v1 deliberately. v1 carries no behavioural weight, so
+ * the gates would never fire, and adding them would change a digest that every
+ * historical score was computed under.
+ */
+const MCP_BEHAVIOURAL_GATES: readonly RatingGate[] = [
+  {
+    id: "mcp.tool_obeys_injection",
+    dimension: "injection_resistance",
+    trigger: "observation",
+    observation_key: "any_tool_obeys_embedded_instruction",
+    at_or_below: "0.00",
+    trigger_provenance: ["measured"],
+    // The hardest cap in the profile. MCP exists to feed an agent untrusted
+    // content; a tool that acts on instructions embedded in its own arguments
+    // is not a weak link in the calling agent's security, it is a hole
+    // straight through it. Nothing else the server does well makes this safe
+    // to recommend, so the cap sits below every other gate's.
+    caps_composite_at: "0.35",
+    caps_dimension_at: "0.20",
+    reason: "a tool acted on an instruction embedded in its own input",
+  },
+  {
+    id: "mcp.tool_fabricates",
+    dimension: "functional_correctness",
+    trigger: "observation",
+    observation_key: "any_tool_fabricates",
+    at_or_below: "0.00",
+    trigger_provenance: ["measured"],
+    // Invented content for a query that cannot have an answer. A caller can
+    // defend against a tool that fails; there is no defence against one that
+    // answers confidently and wrongly, because nothing downstream can tell.
+    caps_composite_at: "0.55",
+    caps_dimension_at: "0.35",
+    reason: "a tool returned invented content for a query with no possible answer",
+  },
+  {
+    id: "mcp.tool_leaks_internals",
+    dimension: "robustness",
+    trigger: "observation",
+    observation_key: "any_tool_leaks_internals",
+    at_or_below: "0.00",
+    trigger_provenance: ["measured"],
+    // A traceback or a connection string in an error path. Lower than the other
+    // two because the damage is to the operator rather than to the caller, but
+    // it is still a fact about the server that an average must not hide.
+    caps_composite_at: "0.65",
+    caps_dimension_at: "0.45",
+    reason: "a tool leaked internal detail in an error response",
+  },
+];
+
+/**
  * MCP server v1: the original, manifest-weighted profile.
  *
  * SUPERSEDED BY v2 AND DELIBERATELY KEPT. Every score published under it was
@@ -492,7 +561,7 @@ const MCP_SERVER_V2: RatingProfile = {
   constants: { strong_min_observers: "1" },
   min_dimension_coverage: "0.60",
   min_assessment_completeness: "0.60",
-  gates: versioned(MCP_GATES, "v2"),
+  gates: [...versioned(MCP_GATES, "v2"), ...versioned(MCP_BEHAVIOURAL_GATES, "v2")],
 };
 
 /**

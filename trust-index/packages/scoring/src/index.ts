@@ -386,5 +386,5 @@ export { normalizeValue } from "./normalize.js";
  * evidence that is not required to come from a chain. Re-exported here so a
  * consumer holding @trust-index/scoring gets both without knowing the layout.
  */
-export { scoreSubject, subjectInputsCanonical, subjectInputsHash } from "./rating/index.js";
+export { scoreSubject, subjectInputsCanonical, subjectInputsHash, observationCheck } from "./rating/index.js";
 export { agentSnapshotToSubject, ratingConstantsFromMethodology } from "./rating/adapter.js";

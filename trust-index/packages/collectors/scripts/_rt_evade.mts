@@ -62,5 +62,6 @@ for (const mode of ["honest_bad", "echo", "notsubst", "both"] as const) {
   console.log(`=== ${mode} ===  composite=${result.composite}`);
   console.log(`    obs: ${b.observations.map((o) => `${o.observation_key.split(":")[0]}=${o.value.slice(0, 4)}`).join("  ")}`);
   console.log(`    skipped: ${b.skipped.map((x) => x.check).join(", ") || "-"}`);
-  console.log(`    fc=${d.functional_correctness.score} inj=${d.injection_resistance.score} rob=${d.robustness.score}`);
+  console.log(`    gates=${result.gates_fired?.map((g:any)=>g.gate_id ?? g.id).join(",") || "-"}
+    fc=${d.functional_correctness.score} inj=${d.injection_resistance.score} rob=${d.robustness.score}`);
 }

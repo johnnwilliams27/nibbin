@@ -709,7 +709,7 @@ export function scoreSubject(subject: Subject): { result: SubjectScoreResult; ca
   return { result, canonicalBytes };
 }
 
-export { subjectInputsCanonical, subjectInputsHash, profileCanonical, profileDigest } from "./hash.js";
+export { subjectInputsCanonical, subjectInputsHash, profileCanonical, profileDigest, observationCheck } from "./hash.js";
 export { computeObserverWeights } from "./weights.js";
 export { parseRatingConstants, resolveDimensionConstants } from "./constants.js";
 export type { RatingConstantsFx } from "./constants.js";
