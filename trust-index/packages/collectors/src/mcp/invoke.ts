@@ -29,11 +29,20 @@
  */
 import { createHash } from "node:crypto";
 import { guardedFetch } from "../net.js";
+import { requestId } from "./probe-identity.js";
 import type { ToolClassification } from "./shape.js";
 import type { ToolDeclaration } from "./transcript.js";
 
 const PROTOCOL_VERSION = "2025-06-18";
-const USER_AGENT = "trust-index-probe/0.1 (+https://github.com/johnnwilliams27/nibbin)";
+/**
+ * Fallback identity, used only when the caller passes none.
+ *
+ * The old value was `trust-index-probe/0.1` plus this repository's URL, which
+ * announced to every server exactly which source file held the constants it was
+ * about to be tested with. Callers should pass a per-subject identity from
+ * probe-identity.ts; this generic string is the floor, not the intent.
+ */
+const USER_AGENT = "mcp-client/1.0.0";
 
 /**
  * Benign values by parameter name. Chosen to be plausible enough that a
@@ -240,6 +249,8 @@ export type CallOptions = {
   fetchImpl?: typeof fetch;
   /** Parse a JSON-RPC body that may be JSON or an event stream. Injected from probe.ts. */
   parseBody: (body: string, contentType: string | null) => { result?: unknown; error?: { message?: string; code?: number } } | { parseError: string };
+  /** Per-subject user-agent. See probe-identity.ts for why this is not a constant. */
+  userAgent?: string;
 };
 
 export async function callTool(
@@ -277,14 +288,16 @@ export async function callTool(
     "content-type": "application/json",
     accept: "application/json, text/event-stream",
     "mcp-protocol-version": PROTOCOL_VERSION,
-    "user-agent": USER_AGENT,
+    "user-agent": options.userAgent ?? USER_AGENT,
   };
   if (options.sessionId != null) headers["mcp-session-id"] = options.sessionId;
 
   const res = await guardedFetch(endpoint, {
     method: "POST",
     headers,
-    body: JSON.stringify({ jsonrpc: "2.0", id: 9, method: "tools/call", params: { name: declaration.name, arguments: args } }),
+    // A random id per call. Every tools/call used the literal 9, which no real
+    // client does and which is trivial to match on.
+    body: JSON.stringify({ jsonrpc: "2.0", id: requestId(), method: "tools/call", params: { name: declaration.name, arguments: args } }),
     timeoutMs: options.timeoutMs ?? 15_000,
     maxBytes: options.maxBytes ?? 2 * 1024 * 1024,
     ...(options.fetchImpl === undefined ? {} : { fetchImpl: options.fetchImpl }),

@@ -53,6 +53,7 @@
  * the score exactly. The model's non-determinism lives in collection, next to
  * the network's, where non-determinism already lived.
  */
+import { randomBytes } from "node:crypto";
 import type { Observation } from "@trust-index/types";
 import { CAPABILITIES } from "../capability.js";
 
@@ -144,9 +145,19 @@ export function fence(name: string, content: string, nonce: string): string {
   return `<${name} nonce="${nonce}">\n${clipped}\n</${name} nonce="${nonce}">`;
 }
 
-/** Random enough that content cannot guess it and close the fence. */
+/**
+ * Random enough that content cannot guess it and close the fence.
+ *
+ * `crypto.randomBytes`, not `Math.random`. The old version drew 64 bits from
+ * V8's xorshift128+, whose internal state is recoverable from a handful of
+ * outputs — the wrong primitive for a value this file calls "unguessable per
+ * call". Not exploitable as things stand, because the nonce is never echoed to
+ * a subject and no subject sees judge output, but the fence is the boundary
+ * holding attacker-authored text out of the instruction channel and it should
+ * not rest on a PRNG designed for speed.
+ */
 export function nonce(): string {
-  return Array.from({ length: 4 }, () => Math.floor(Math.random() * 0xffff).toString(16).padStart(4, "0")).join("");
+  return randomBytes(8).toString("hex");
 }
 
 /**

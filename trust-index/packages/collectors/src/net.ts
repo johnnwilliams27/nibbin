@@ -45,6 +45,12 @@ function isBlockedIPv6(addr: string): boolean {
   if (/^f[cd]/.test(addr)) return true; // unique-local fc00::/7
   if (addr.startsWith("64:ff9b:")) return true; // NAT64
   if (addr.startsWith("::ffff:") || (addr.startsWith("::") && addr.includes("."))) return true;
+  // The claim above ("any embedded-IPv4 form is blocked outright") was not
+  // true. The deprecated IPv4-COMPATIBLE form writes 169.254.169.254 as
+  // ::a9fe:a9fe — no dot after normalisation, no ::ffff: prefix — and passed.
+  // Anything in ::/96 other than the two well-known literals is an embedded
+  // address or an unrouted oddity, and neither is worth fetching.
+  if (/^(::|0:0:0:0:0:0:)/.test(addr)) return true;
   return false;
 }
 
@@ -52,6 +58,10 @@ function isBlockedIPv6(addr: string): boolean {
 export function isBlockedHost(hostname: string): boolean {
   const h = hostname.toLowerCase();
   if (h === "" || h === "localhost" || h.endsWith(".localhost")) return true;
+  // The same three suffixes the battery's leak scan calls an "internal
+  // hostname" when it finds them in somebody else's error output. Resolving one
+  // of ours is how a public registry URL reaches a cluster-internal service.
+  if (/\.(internal|local|intranet|lan|home\.arpa)$/.test(h) || h.endsWith(".svc.cluster.local")) return true;
   // IPv6 literals keep their brackets in a WHATWG hostname; only then apply the
   // IPv6 rules, so a DNS name like "fc2.com" is not mistaken for an fc00::/7 host.
   if (h.startsWith("[") && h.endsWith("]")) return isBlockedIPv6(h.slice(1, -1));
@@ -120,6 +130,10 @@ export async function guardedFetch(raw: string, options: GuardedFetchOptions = {
   const started = now();
   const elapsed = (): number => now() - started;
 
+  // One deadline for the whole call, redirects included. See the note at the
+  // fetch below.
+  const deadline = AbortSignal.timeout(timeoutMs);
+
   let current = raw;
   for (let hop = 0; hop <= maxRedirects; hop += 1) {
     const vetted = vetUrl(current);
@@ -129,7 +143,11 @@ export async function guardedFetch(raw: string, options: GuardedFetchOptions = {
       res = await doFetch(vetted.url.toString(), {
         method: options.method ?? "GET",
         redirect: "manual",
-        signal: AbortSignal.timeout(timeoutMs),
+        // ONE signal for the whole call, not one per hop. A fresh timeout
+        // inside the redirect loop meant the real worst case was
+        // (maxRedirects + 1) x timeoutMs — 60 seconds — before any byte cap
+        // could apply.
+        signal: deadline,
         ...(options.headers === undefined ? {} : { headers: options.headers }),
         ...(options.body === undefined ? {} : { body: options.body }),
       });
@@ -156,11 +174,44 @@ export async function guardedFetch(raw: string, options: GuardedFetchOptions = {
     }
     let text: string;
     try {
-      const buf = await res.arrayBuffer();
-      if (buf.byteLength > maxBytes) {
-        return { ok: false, reason: `body over ${maxBytes} bytes`, status: res.status, elapsedMs: elapsed() };
+      // Streamed, and aborted AT the cap.
+      //
+      // This was `await res.arrayBuffer()` followed by a length check, which
+      // materialises the whole body before deciding it was too big — so the cap
+      // bounded what we KEPT, not what we read. The content-length pre-check
+      // above does not help: a chunked response declares no length, and a
+      // hostile server chooses chunked.
+      const body = res.body;
+      if (body === null) {
+        text = "";
+      } else {
+        const reader = body.getReader();
+        const chunks: Uint8Array[] = [];
+        let total = 0;
+        let over = false;
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (value === undefined) continue;
+          total += value.byteLength;
+          if (total > maxBytes) {
+            over = true;
+            await reader.cancel().catch(() => {});
+            break;
+          }
+          chunks.push(value);
+        }
+        if (over) {
+          return { ok: false, reason: `body over ${maxBytes} bytes`, status: res.status, elapsedMs: elapsed() };
+        }
+        const joined = new Uint8Array(total);
+        let at = 0;
+        for (const c of chunks) {
+          joined.set(c, at);
+          at += c.byteLength;
+        }
+        text = new TextDecoder().decode(joined);
       }
-      text = new TextDecoder().decode(buf);
     } catch (err) {
       const reason = err instanceof Error ? err.message.slice(0, 120) : "body read failed";
       return { ok: false, reason, status: res.status, elapsedMs: elapsed() };

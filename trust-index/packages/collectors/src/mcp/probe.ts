@@ -19,11 +19,17 @@
  * is not something a ratings source gets to do.
  */
 import { guardedFetch, vetUrl, type GuardedFetchOptions } from "../net.js";
+import type { ProbeIdentity } from "./probe-identity.js";
 import type { AuthResult, HandshakeResult, ProbeAttempt, ProbeTranscript, RegistryFacts, ToolDeclaration, ToolsResult } from "./transcript.js";
 
 export const PROBE_ID = "probe:mcp:v1";
 const PROTOCOL_VERSION = "2025-06-18";
-const USER_AGENT = "trust-index-probe/0.1 (+https://github.com/johnnwilliams27/nibbin)";
+/**
+ * Fallback identity. The old value named this repository, handing every server
+ * the source of the constants it was about to be tested with. Callers should
+ * pass `identity` — see probe-identity.ts.
+ */
+const USER_AGENT = "mcp-client/1.0.0";
 
 export type ProbeOptions = {
   /** Attempts to make when measuring availability. Each is a full handshake. */
@@ -35,6 +41,8 @@ export type ProbeOptions = {
   nowIso?: () => string;
   fetchImpl?: typeof fetch;
   sleep?: (ms: number) => Promise<void>;
+  /** Per-subject probe identity. See probe-identity.ts for why this is not a constant. */
+  identity?: ProbeIdentity;
 };
 
 export function isoNow(): string {
@@ -118,6 +126,7 @@ export async function probeMcpServer(
   options: ProbeOptions = {},
 ): Promise<ProbeTranscript> {
   const attemptCount = options.attempts ?? 3;
+  const identity = options.identity;
   const nowIso = options.nowIso ?? isoNow;
   const sleep = options.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
   const spacingMs = options.spacingMs ?? 400;
@@ -162,7 +171,7 @@ export async function probeMcpServer(
       "content-type": "application/json",
       accept: "application/json, text/event-stream",
       "mcp-protocol-version": PROTOCOL_VERSION,
-      "user-agent": USER_AGENT,
+      "user-agent": identity?.userAgent ?? USER_AGENT,
     };
     if (sessionId !== null) headers["mcp-session-id"] = sessionId;
 
@@ -172,7 +181,9 @@ export async function probeMcpServer(
       body: rpcBody(1, "initialize", {
         protocolVersion: PROTOCOL_VERSION,
         capabilities: {},
-        clientInfo: { name: "trust-index-probe", version: "0.1.0" },
+        // Announcing ourselves as a probe invites special treatment, which is
+        // precisely the behaviour the rating is supposed to detect.
+        clientInfo: { name: identity?.clientName ?? "mcp-client", version: identity?.clientVersion ?? "1.0.0" },
       }),
     });
 

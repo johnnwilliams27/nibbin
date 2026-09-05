@@ -16,6 +16,7 @@ import type { ProbeTranscript, ToolDeclaration } from "../src/mcp/transcript.js"
 import { judgeCapabilityProbe, judgeFromEnv, PRODUCTION_JUDGE_MODEL } from "../src/judge/production.js";
 import { preflight } from "../src/capability.js";
 import { observationCheck } from "@trust-index/scoring";
+import { probeIdentity, probeSeed } from "../src/mcp/probe-identity.js";
 
 function arg(n: string, d: string): string {
   const i = process.argv.indexOf(n);
@@ -40,8 +41,22 @@ if (judgeHealth?.health.available === true) {
   console.log("       judged checks will be recorded as harness gaps, not as failures.");
 }
 const dir = arg("--transcripts", "transcripts");
-const UA = "trust-index-probe/0.1 (+https://github.com/johnnwilliams27/nibbin)";
-const H = { "content-type": "application/json", accept: "application/json, text/event-stream", "mcp-protocol-version": "2025-06-18", "user-agent": UA };
+// The handshake carries a fingerprint too. Announcing ourselves as
+// "trust-index-probe" with a link to this repository told every server where to
+// find the constants it was about to be tested with.
+const seedInfo = probeSeed();
+console.log(
+  seedInfo.reproducible
+    ? "probe:  per-subject values derived from TRUST_INDEX_PROBE_SEED (this run is reproducible)"
+    : "probe:  per-subject values derived from an EPHEMERAL seed — unguessable, but this run cannot be replayed.\n" +
+      "        Set TRUST_INDEX_PROBE_SEED to make it reproducible.",
+);
+const headersFor = (endpoint: string): Record<string, string> => ({
+  "content-type": "application/json",
+  accept: "application/json, text/event-stream",
+  "mcp-protocol-version": "2025-06-18",
+  "user-agent": probeIdentity(endpoint).userAgent,
+});
 
 type Cand = { server: string; endpoint: string; declaration: ToolDeclaration; shape: string };
 const byShape = new Map<string, Cand[]>();
@@ -65,9 +80,11 @@ const all = [...byShape.values()].flat();
 console.log(`Assessing ${all.length} tools across ${byShape.size} shapes, ~5 calls each.\n`);
 
 async function session(endpoint: string): Promise<string | null | undefined> {
+  const id = probeIdentity(endpoint);
+  const H = headersFor(endpoint);
   const r = await guardedFetch(endpoint, {
     method: "POST", headers: H, timeoutMs: 10_000,
-    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "trust-index-probe", version: "0.1.0" } } }),
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: id.clientName, version: id.clientVersion } } }),
   });
   if (!r.ok) return undefined;
   const sid = r.headers.get("mcp-session-id");
@@ -90,6 +107,10 @@ for (const [shape, list] of [...byShape].sort()) {
       o = await runBattery(c.declaration, classifyTool(c.declaration), {
         observerId: "probe:mcp:v1", ts: new Date().toISOString().slice(0, 19) + "Z",
         endpoint: c.endpoint, sessionId: sid, parseBody: parseRpcBody, spacingMs: 350, timeoutMs: 12_000,
+        // Per-subject probe values. Keyed on the endpoint, so two servers never
+        // see the same nonsense query or injection token and neither can be
+        // learned by grepping this repository.
+        identity: probeIdentity(c.endpoint),
         ...(judge === null ? {} : { judge }),
       });
     } catch (err) { console.log(`  ${c.declaration.name}: REFUSED ${err instanceof Error ? err.message : err}`); continue; }

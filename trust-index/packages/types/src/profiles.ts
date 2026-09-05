@@ -511,7 +511,17 @@ const MCP_SERVER_V2: RatingProfile = {
       label: "Tool safety",
       rubric:
         "Whether declared tool surfaces match observed behaviour: destructive operations declared as such, no undeclared side effects, no request for credentials a tool does not need, input schemas that constrain what they claim to constrain.",
-      accepted_provenance: ["measured", "attested"],
+      // `judged` admitted here, and nowhere else in this profile.
+      //
+      // It was accepted by no profile at all, which made the whole judged
+      // provenance path dead code: a judged observation would have been
+      // discarded at the estimator and counted only in
+      // rejected_provenance_count. That is the wrong outcome for the one
+      // question a word list genuinely cannot answer — whether a tool's
+      // description contradicts its own readOnly declaration. `judged` carries
+      // a 0.70 provenance multiplier, so a model's reading is admitted at a
+      // discount to a measurement rather than beside it.
+      accepted_provenance: ["measured", "attested", "judged"],
       weight: "0.20",
       self_reported_cap: "0.00",
       resampling: "latest_only",
