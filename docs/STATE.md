@@ -251,6 +251,12 @@ structural grants before IG/QB live), #29 (retention enforcement before claims p
 ## Outstanding for John
 - (Both combined gates are signed: M2+M3+M6 on 2026-06-11 via PR #32, M4+M5 on 2026-06-12.)
 - ROTATE the Supabase access token + the Vercel token (both shared in chat; all uses complete).
+- ROTATE the two Anthropic API keys + the OpenAI API key shared in chat 2026-09-04/05 for the
+  trust-index judge benchmark. All benchmark runs are complete and the results are stored, so
+  rotation costs nothing. The keys were held only in the session scratchpad (chmod 600, outside the
+  repo) and never committed — but they are in the conversation transcript, which is the reason to
+  rotate. `ANTHROPIC_API_KEY` is read from the environment by
+  `packages/collectors/src/judge/production.ts`; nothing in the repo pins a key value.
 - Swap Stripe to LIVE keys before real launch (prod runs test-mode Stripe now).
 - Provide Google Cloud + Meta developer accounts → enable Google/Apple auth providers + file the
   two approvals (the only remaining M1 items).
