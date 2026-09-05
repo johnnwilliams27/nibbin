@@ -85,7 +85,16 @@ export type RegistryFacts = {
   /** Where the source lives, when declared. */
   repository_url: string | null;
   /** Published versions of this server seen in the registry. null when not counted. */
-  version_count: number | null;
+  /**
+   * Versions the registry lists for this server.
+   *
+   * Optional because transcripts persisted before this field existed do not
+   * carry it, and pretending otherwise is what broke every end-to-end score:
+   * the declaration said `number | null`, the stored data had neither, and the
+   * absent case was never handled. Readers must check for a number rather than
+   * test against null.
+   */
+  version_count?: number | null;
 };
 
 /**

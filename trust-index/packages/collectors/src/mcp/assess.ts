@@ -146,6 +146,14 @@ function schemaIsCallable(schema: unknown): boolean {
  * rounded half up. No float ever reaches an observation value.
  */
 export function ratio(numerator: number, denominator: number): string {
+  // Finiteness first. `NaN <= 0` is false, so a NaN sailed past the positivity
+  // check straight into BigInt, which threw "The number NaN cannot be converted
+  // to a BigInt" from three frames away — a message that says nothing about
+  // which observation was malformed. Every one of 600 real transcripts failed
+  // this way and the error named none of them.
+  if (!Number.isFinite(numerator) || !Number.isFinite(denominator)) {
+    throw new RangeError(`ratio: both arguments must be finite, got ${numerator}/${denominator}`);
+  }
   if (denominator <= 0) throw new RangeError("ratio: denominator must be positive");
   const scaled = (BigInt(numerator) * 2_000_000n + BigInt(denominator)) / (2n * BigInt(denominator));
   const s = scaled.toString().padStart(7, "0");
@@ -481,7 +489,11 @@ export function assessTranscript(t: ProbeTranscript, asOfTs: string): Observatio
     // Roughly two thirds of servers have published exactly one version and
     // some have eight, so this discriminates where publish recency alone
     // barely does.
-    if (r.version_count !== null) {
+    // `typeof`, not `!== null`. The persisted transcripts have no
+    // version_count field at all — the type declared `number | null` and the
+    // data had neither, so `undefined !== null` passed and `undefined - 1`
+    // became NaN. A type is a claim about data, and this one was wrong.
+    if (typeof r.version_count === "number" && Number.isFinite(r.version_count)) {
       const full = THRESHOLDS.maintenance_versions_for_full_credit;
       out.push(
         obs(

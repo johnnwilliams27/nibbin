@@ -799,3 +799,42 @@ describe("classifier accepts inference when annotations are absent", () => {
     }
   });
 });
+
+describe("a missing field is not a null field", () => {
+  it("rejects a non-finite ratio instead of crashing three frames later", () => {
+    // Every one of 600 real transcripts died here. `NaN <= 0` is false, so a
+    // NaN passed the positivity check and reached BigInt, which threw "The
+    // number NaN cannot be converted to a BigInt" from inside a conversion
+    // that names no observation, no dimension and no subject.
+    expect(() => ratio(Number.NaN, 4)).toThrow(/finite/);
+    expect(() => ratio(1, Number.NaN)).toThrow(/finite/);
+    expect(() => ratio(Number.POSITIVE_INFINITY, 4)).toThrow(/finite/);
+    expect(ratio(1, 4)).toBe("0.250000");
+  });
+
+  it("scores a transcript whose registry facts predate version_count", () => {
+    // The type said `number | null`; the persisted data had neither, and
+    // `undefined !== null` let it through to `undefined - 1`. A fixture with
+    // the field present could never have caught this, which is why it survived
+    // until the pipeline was run over the real population.
+    const t = {
+      transcript_version: "1",
+      probe_id: "probe:mcp:v1",
+      endpoint: "https://example.com/mcp",
+      probed_at: "2026-09-04T08:30:28Z",
+      attempts: [{ attempt: 1, ts: "2026-09-04T08:30:28Z", reachable: true, status: 200, reason: null, elapsedMs: 100 }],
+      handshake: { ok: true, protocolVersion: "2025-06-18", serverName: "x", serverVersion: "1", instructions: null, reason: null },
+      tools: { ok: true, declared: [], reason: null },
+      registry: {
+        name: "example/server",
+        description: "A server with registry facts written before version_count existed.",
+        version: "1.0.0",
+        published_at: "2026-08-01T00:00:00Z",
+        first_published_at: "2026-08-01T00:00:00Z",
+        repository_url: null,
+      },
+      auth: { required: false, status: 200, scheme: null },
+    } as unknown as Parameters<typeof assessTranscript>[0];
+    expect(() => assessTranscript(t, "2026-09-05T00:00:00Z")).not.toThrow();
+  });
+});
