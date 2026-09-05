@@ -1,5 +1,38 @@
 # STATE
 
+- **Trust Index — behavioural rating + adversarial hardening — 2026-09-05, NOT GATED.** A ratings
+  engine for MCP servers (and, via the same evidence contract, on-chain agents), living in
+  `trust-index/`. Not part of any signed milestone; recorded here because it had no entry at all.
+  - **The structural finding that reshaped it:** all 19 checks reaching a rating read MANIFESTS, and
+    zero behavioural checks reached one — while 30 of 70 invoked tools did not actually work. The
+    population's p10–p90 spread was 2.4 points across 8 distinct scores, i.e. the rating was a
+    constant wearing a dimension's clothes. Wiring the invocation battery in and reweighting
+    (`mcp_server.v2`: 60% behaviour) took it to **31.2 across 23 distinct scores** on 70 published
+    of 600 probed. v1 is kept registered and superseded, because `profile_digest` exists so a reader
+    can tell which rules produced a historical number.
+  - **Judge chosen by measurement, not preference:** a 120-item labelled benchmark over seven
+    structures (4 voters / 2 deciders / 1 meta, plus every smaller subset re-derived from stored
+    votes). The voting panel LOST — it abstained on 19 of 120, declining exactly the questions worth
+    asking. Top five structures sit inside the 5.4-point resolution, so the cheapest was taken:
+    **one model, no panel, claude-sonnet-5**. The panel harness is kept for re-deciding when models
+    change.
+  - **Adversarial pass (2026-09-05), 12 findings, all fixed.** Five were P1 and each is now pinned
+    by a regression test that fails without its fix. Injection resistance gave a clean pass to a
+    tool that obeyed and quoted the query back (+12.5), or that padded past the 300-char sample.
+    199 trivial tools diluted one hostile tool from 52.95 to 75.33 (+22.4) — behavioural occurrence
+    gates added. `isCredentialParam` was an equality test, so `api_key` fired the hardest gate in
+    the profile and `auth_token` did not (+30.5 for a rename). Every probe constant was a literal in
+    a public repo, worth +17.5 to anyone who grepped, widening to 44.6 under a daily schedule — now
+    per-subject HMAC values from `TRUST_INDEX_PROBE_SEED`. And an unhandled judge error let a
+    subject convert its own failing evidence into OUR harness gap, published under our name.
+  - **Known-open, deliberately:** the 0.892 judge headline was measured on whole responses while
+    production sent 300-char fragments; the call site is fixed and the invention class re-measured
+    (6/6, 1/25) but the 120-item number has not been re-earned. A public DNS name resolving to
+    loopback (`localtest.me`) still passes `vetUrl` — `net.ts` documents this and the fix is the
+    resolve-then-pin it describes and does not implement. gpt-5.5 answered 97 of 120 items under our
+    rate limit, so the benchmark's vendor ordering means nothing (its structural findings survive).
+    No human has reviewed a sample of the Claude-drafted ground-truth labels.
+
 - **Desktop 0.2.5 — daemon lifecycle + NSIS process-kill (privacy) — gated 2026-06-24.** Fixes the orphaned-`observerd` class: NSIS preinstall+uninstall `taskkill` the daemon, the app kills its exact daemon PID on exit, and the daemon's own watchdog self-suspends + exits when the parent app is gone (fail-closed: it calls `shutdown_capture()` before exiting). Capture stays gated to **Active** studies via `capture_allowed`. Adversarial gate `docs/gates/2026-06-24-desktop-daemon-lifecycle-gate.md` = **PASS-WITH-MINOR** (0 Critical, 0 Important, 3 Minor). **Accepted residual (gate MINOR-2):** if the app *crashes* (not a clean exit) mid-Active-study, the daemon legitimately keeps capturing until the study's own deadline — capture was already authorized for that study, so this is within the consent envelope, not a leak. **Deferred (gate MINOR-1):** the parent-liveness heartbeat refresh is currently gated behind a successful `read_status`; if status is unreadable on a live app the daemon may fail-closed (self-exit) after ~5min. No privacy leak (fail-closed); refactor to refresh unconditionally is a follow-up.
 
 - **Company Brain repositioning — decided 2026-06-22.** John decided to reframe Nibbin as a *company brain* (per the YC RFS signals: Tom Blomfield "Company Brain" + Diana Hu "AI Operating System for Companies"). Canonical spec: `docs/COMPANY-BRAIN.md`. Program decomposition + ground-truth reconciliation: `docs/superpowers/specs/2026-06-22-company-brain-program-decomposition.md`. Key decisions recorded there (D17–D21). Direction: broaden positioning from individuals/freelancers → **one person or an organization, the same brain** (D19); multi-user stays roadmap, not present-tense. Tenancy seam already built (account hierarchy + RLS); the pivot to multi-seat is RBAC + SOC 2 + governance, not a re-architecture. Build program decomposed into independent worktree chunks (F1/F2 foundation → P1–P6 parallel wave → C1/C2 follow-on → D1 doc reconciliation). D1 (this repositioning + doc reconciliation) is independent and lands first. Doc changes applied to: `SPEC.md` (§1 broadened, §4.2/§4.8 per-account framing, §12 multi-user row), `.claude/skills/brand-voice/SKILL.md` (locked §14.1 taglines), `docs/GTM.md` (spectrum note), `docs/MOAT.md` (spectrum note), `docs/PRODUCT-FOUNDATION.md` (framing note), `docs/decisions/2026-06-22-connector-strategy-diy-vs-aggregator.md` (D17 SUPERSEDED note).

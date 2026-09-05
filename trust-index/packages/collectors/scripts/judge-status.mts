@@ -46,5 +46,8 @@ console.log("  - invention class now measured, having been unmeasurable at decis
 console.log("");
 console.log("still open:");
 console.log("  - gpt-5.5 answered 97 of 120 items under our rate limit, not its own capability");
+console.log(`  - the headline was ${PRODUCTION_JUDGE_EVIDENCE.headline_measured_on}.`);
+console.log("    The call site is fixed and the invention class was re-measured on the running");
+console.log(`    configuration (${PRODUCTION_JUDGE_EVIDENCE.invention_recall_after_fix}), but the 120-item number has not been re-earned.`);
 
 if (report?.health.available !== true) process.exitCode = 1;

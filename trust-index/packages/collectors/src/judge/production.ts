@@ -88,7 +88,20 @@ import { anthropicJudge, chooseModel } from "./provider.js";
 /** The model this project judges with. Changing it is a measurement, not an opinion. */
 export const PRODUCTION_JUDGE_MODEL = "claude-sonnet-5";
 
-/** The benchmark this choice rests on, so a reader can find the evidence. */
+/**
+ * The benchmark this choice rests on, so a reader can find the evidence.
+ *
+ * READ `headline_measured_on` BEFORE QUOTING THE ACCURACY. The 120-item run was
+ * scored on whole responses, and for as long as it existed the PRODUCTION call
+ * site passed the judge a 300-character slice with no truncation marker —
+ * exactly the configuration measured at 45% error against 13% on whole ones.
+ * The number therefore described a system we were not running. The call site is
+ * fixed; the headline has not been re-earned, because doing so costs another
+ * full run.
+ *
+ * What HAS been re-measured on the running configuration is the invention
+ * class, below, which is the one this judge exists for.
+ */
 export const PRODUCTION_JUDGE_EVIDENCE = {
   run: "runs/panel-2026-09-04T21-03-01-631Z.json",
   corpus_items: 120,
@@ -96,6 +109,21 @@ export const PRODUCTION_JUDGE_EVIDENCE = {
   ci95: [0.836, 0.948] as const,
   /** Structures inside this many points are not distinguishable at n=120. */
   resolution_points: 5.4,
+  /**
+   * The headline was measured on whole responses while production sent
+   * fragments. It is not a claim about the system as it ran between those two
+   * dates.
+   */
+  headline_measured_on: "whole responses; production sent 300-char fragments until this was fixed",
+  /**
+   * Re-run after the fix, on the running configuration: 6/6 invention recall,
+   * 1/25 false accusations — identical to the pre-fix result. That is weaker
+   * evidence than it looks, and worth saying: invention-eval reads stored
+   * transcripts and already used the full `text` field, so it was never the
+   * caller passing fragments. It confirms the judge is unchanged by the prompt
+   * and signature edits; it does not independently re-earn the 0.892.
+   */
+  invention_recall_after_fix: "6/6, 1/25 false accusations (2026-09-05)",
 };
 
 export type ProductionJudgeConfig = {
