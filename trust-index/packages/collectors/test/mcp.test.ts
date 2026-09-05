@@ -21,6 +21,7 @@ import {
   ratio,
   readTools,
   repositoryOwner,
+  batteryGaps,
   transcriptToSubject,
   transcriptsToSubject,
   transcriptGaps,
@@ -424,7 +425,7 @@ describe("listServers", () => {
 
 describe("transcript to score", () => {
   it("scores an MCP server through the same engine that scores an on-chain agent", () => {
-    const subject = transcriptToSubject(goodTranscript(), { probe: PROBE_IDENTITY, asOfTs: AS_OF });
+    const subject = transcriptToSubject(goodTranscript(), { probe: PROBE_IDENTITY, asOfTs: AS_OF, profileId: "mcp_server.v1" });
     expect(subject.kind).toBe("mcp_server");
     expect(subject.profile_id).toBe("mcp_server.v1");
 
@@ -479,7 +480,7 @@ describe("transcript to score", () => {
         })),
       });
     const scoreOf = (t: ProbeTranscript) =>
-      scoreSubject(transcriptToSubject(t, { probe: PROBE_IDENTITY, asOfTs: AS_OF })).result.dimensions.find(
+      scoreSubject(transcriptToSubject(t, { probe: PROBE_IDENTITY, asOfTs: AS_OF, profileId: "mcp_server.v1" })).result.dimensions.find(
         (d) => d.dimension === "availability",
       )!;
     const up = scoreOf(window(true));
@@ -506,7 +507,7 @@ describe("transcript to score", () => {
       handshake: null,
       tools: null,
     });
-    const subject = transcriptToSubject(t, { probe: PROBE_IDENTITY, asOfTs: AS_OF });
+    const subject = transcriptToSubject(t, { probe: PROBE_IDENTITY, asOfTs: AS_OF, profileId: "mcp_server.v1" });
     const { result } = scoreSubject(subject);
     expect(subject.reachable).toBe(false);
     // Two failed attempts on one day is one sample, so the estimate is pulled
@@ -523,7 +524,7 @@ describe("transcript to score", () => {
   });
 
   it("is deterministic: the same transcript yields the same bytes", () => {
-    const build = () => transcriptToSubject(goodTranscript(), { probe: PROBE_IDENTITY, asOfTs: AS_OF });
+    const build = () => transcriptToSubject(goodTranscript(), { probe: PROBE_IDENTITY, asOfTs: AS_OF, profileId: "mcp_server.v1" });
     expect(scoreSubject(build()).canonicalBytes).toBe(scoreSubject(build()).canonicalBytes);
   });
 
@@ -533,7 +534,7 @@ describe("transcript to score", () => {
       registry: { ...goodTranscript().registry!, description: null },
     });
     const scoreOf = (t: ProbeTranscript): number | null =>
-      scoreSubject(transcriptToSubject(t, { probe: PROBE_IDENTITY, asOfTs: AS_OF })).result.composite;
+      scoreSubject(transcriptToSubject(t, { probe: PROBE_IDENTITY, asOfTs: AS_OF, profileId: "mcp_server.v1" })).result.composite;
     // The publisher's claim is admissible on documentation and capped there,
     // and documentation has no independent measurement in this transcript
     // besides the probe's, so the claim moves the composite by nothing
@@ -555,8 +556,8 @@ describe("gates from a real transcript", () => {
       },
       required: ["query", "api_key"],
     };
-    const clean = scoreSubject(transcriptToSubject(goodTranscript(), { probe: PROBE_IDENTITY, asOfTs: AS_OF })).result;
-    const flagged = scoreSubject(transcriptToSubject(t, { probe: PROBE_IDENTITY, asOfTs: AS_OF })).result;
+    const clean = scoreSubject(transcriptToSubject(goodTranscript(), { probe: PROBE_IDENTITY, asOfTs: AS_OF, profileId: "mcp_server.v1" })).result;
+    const flagged = scoreSubject(transcriptToSubject(t, { probe: PROBE_IDENTITY, asOfTs: AS_OF, profileId: "mcp_server.v1" })).result;
 
     expect(clean.gates_fired).toHaveLength(0);
     expect(flagged.gates_fired.map((g) => g.gate_id)).toEqual(["mcp.credential_parameter"]);
@@ -570,7 +571,7 @@ describe("gates from a real transcript", () => {
   it("caps a server with an undocumented destructive tool", () => {
     const t = goodTranscript();
     t.tools!.declared[1]!.description = null;
-    const { result } = scoreSubject(transcriptToSubject(t, { probe: PROBE_IDENTITY, asOfTs: AS_OF }));
+    const { result } = scoreSubject(transcriptToSubject(t, { probe: PROBE_IDENTITY, asOfTs: AS_OF, profileId: "mcp_server.v1" }));
     expect(result.gates_fired.map((g) => g.gate_id)).toEqual(["mcp.undocumented_destructive_tool"]);
     expect(result.composite!).toBeLessThanOrEqual(60);
   });
@@ -593,12 +594,12 @@ describe("gates from a real transcript", () => {
     const obs = assessTranscript(t, AS_OF);
     expect(obs.find((o) => o.observation_key === "mutating_tools_documented")!.value).toBe("0.000000");
     expect(obs.find((o) => o.observation_key === "undocumented_mutating_tool_present")!.value).toBe("0.000000");
-    const { result } = scoreSubject(transcriptToSubject(t, { probe: PROBE_IDENTITY, asOfTs: AS_OF }));
+    const { result } = scoreSubject(transcriptToSubject(t, { probe: PROBE_IDENTITY, asOfTs: AS_OF, profileId: "mcp_server.v1" }));
     expect(result.gates_fired.map((g) => g.gate_id)).toContain("mcp.undocumented_destructive_tool");
   });
 
   it("carries tags without letting them touch the score", () => {
-    const options = { probe: PROBE_IDENTITY, asOfTs: AS_OF };
+    const options = { probe: PROBE_IDENTITY, asOfTs: AS_OF, profileId: "mcp_server.v1" };
     const plain = scoreSubject(transcriptToSubject(goodTranscript(), options));
     const tagged = scoreSubject(
       transcriptToSubject(goodTranscript(), { ...options, tags: ["search", "documentation", "search"] }),
@@ -626,8 +627,8 @@ describe("run histories", () => {
     // except availability resting on one observation, below the suppression
     // floor, and the composite was withheld for want of coverage. The fix is
     // more days, not a looser floor.
-    const one = scoreSubject(transcriptsToSubject(history(1), { probe: PROBE_IDENTITY, asOfTs: AS_OF })).result;
-    const many = scoreSubject(transcriptsToSubject(history(21), { probe: PROBE_IDENTITY, asOfTs: AS_OF })).result;
+    const one = scoreSubject(transcriptsToSubject(history(1), { probe: PROBE_IDENTITY, asOfTs: AS_OF, profileId: "mcp_server.v1" })).result;
+    const many = scoreSubject(transcriptsToSubject(history(21), { probe: PROBE_IDENTITY, asOfTs: AS_OF, profileId: "mcp_server.v1" })).result;
 
     expect(many.dimension_coverage).toBe(1);
     expect(many.composite).not.toBeNull();
@@ -663,7 +664,7 @@ describe("run histories", () => {
         ],
       },
     }));
-    const subject = transcriptsToSubject(withFinding, { probe: PROBE_IDENTITY, asOfTs: AS_OF });
+    const subject = transcriptsToSubject(withFinding, { probe: PROBE_IDENTITY, asOfTs: AS_OF, profileId: "mcp_server.v1" });
     const keys = subject.observations.filter((o) => o.observation_key === "credential_parameter_present");
     expect(keys).toHaveLength(21);
     // 21 distinct timestamps, one shared key: identity is the check AT A MOMENT.
@@ -674,17 +675,17 @@ describe("run histories", () => {
   });
 
   it("still collapses a genuinely duplicated run", () => {
-    const once = transcriptsToSubject(history(5), { probe: PROBE_IDENTITY, asOfTs: AS_OF });
-    const twice = transcriptsToSubject([...history(5), ...history(5)], { probe: PROBE_IDENTITY, asOfTs: AS_OF });
+    const once = transcriptsToSubject(history(5), { probe: PROBE_IDENTITY, asOfTs: AS_OF, profileId: "mcp_server.v1" });
+    const twice = transcriptsToSubject([...history(5), ...history(5)], { probe: PROBE_IDENTITY, asOfTs: AS_OF, profileId: "mcp_server.v1" });
     expect(scoreSubject(twice).canonicalBytes).toBe(scoreSubject(once).canonicalBytes);
   });
 
   it("refuses transcripts for different endpoints", () => {
     const other = { ...day(20, true), endpoint: "https://elsewhere.example.com/mcp" };
     expect(() =>
-      transcriptsToSubject([day(19, true), other], { probe: PROBE_IDENTITY, asOfTs: AS_OF }),
+      transcriptsToSubject([day(19, true), other], { probe: PROBE_IDENTITY, asOfTs: AS_OF, profileId: "mcp_server.v1" }),
     ).toThrow(/span 2 endpoints/);
-    expect(() => transcriptsToSubject([], { probe: PROBE_IDENTITY, asOfTs: AS_OF })).toThrow(/no transcripts/);
+    expect(() => transcriptsToSubject([], { probe: PROBE_IDENTITY, asOfTs: AS_OF, profileId: "mcp_server.v1" })).toThrow(/no transcripts/);
   });
 });
 
@@ -727,7 +728,7 @@ describe("authentication is a harness gap, not unavailability", () => {
       tools: null,
       auth: { required: true, status: 401, scheme: null },
     });
-    const { result } = scoreSubject(transcriptsToSubject([t], { probe: PROBE_IDENTITY, asOfTs: AS_OF }));
+    const { result } = scoreSubject(transcriptsToSubject([t], { probe: PROBE_IDENTITY, asOfTs: AS_OF, profileId: "mcp_server.v1" }));
     expect(result.composite).toBeNull();
     expect(result.composite_suppression_reason).toMatch(/could be assessed at all/);
     expect(result.harness_gaps.length).toBeGreaterThan(0);
@@ -750,7 +751,7 @@ describe("authentication is a harness gap, not unavailability", () => {
 
   it("tags an ephemeral tunnel endpoint without treating it as a special case", () => {
     const t = goodTranscript({ endpoint: "https://openings-vote-drilling.trycloudflare.com/mcp" });
-    const s = transcriptsToSubject([t], { probe: PROBE_IDENTITY, asOfTs: AS_OF });
+    const s = transcriptsToSubject([t], { probe: PROBE_IDENTITY, asOfTs: AS_OF, profileId: "mcp_server.v1" });
     expect(s.tags).toContain("ephemeral-endpoint");
     expect(s.independence_group).toBe("openings-vote-drilling.trycloudflare.com");
   });
@@ -836,5 +837,38 @@ describe("a missing field is not a null field", () => {
       auth: { required: false, status: 200, scheme: null },
     } as unknown as Parameters<typeof assessTranscript>[0];
     expect(() => assessTranscript(t, "2026-09-05T00:00:00Z")).not.toThrow();
+  });
+});
+
+describe("behaviour is rated, not just declared", () => {
+  it("refuses to rate a server nobody has called, and says why", () => {
+    // The failure this whole change exists to fix. Under v1 a subject built from
+    // a transcript alone published a composite, and every check behind it read a
+    // manifest: 30 of 70 invoked tools did not work and no rating could see it.
+    // Under v2 the behavioural dimensions carry 60% of the weight, so a subject
+    // with no battery run is withheld — and withheld as UNASSESSED rather than
+    // as low-scoring, which is the distinction the gap model exists to keep.
+    const subject = transcriptToSubject(goodTranscript(), {
+      probe: PROBE_IDENTITY,
+      asOfTs: AS_OF,
+      gaps: batteryGaps([]),
+    });
+    expect(subject.profile_id).toBe("mcp_server.v2");
+    const { result } = scoreSubject(subject);
+    expect(result.composite).toBeNull();
+    expect(result.harness_gaps.length).toBeGreaterThan(0);
+    for (const d of ["functional_correctness", "injection_resistance", "robustness"]) {
+      expect(subject.gaps.some((g) => g.dimension === d && g.cause === "harness_capability_missing")).toBe(true);
+    }
+  });
+
+  it("keeps one tool's failure from erasing another's, on the same server at the same instant", () => {
+    // Observation identity is observer + dimension + key + timestamp. With a
+    // bare key, a server's twenty tools probed in the same second dedupe to one
+    // observation and nineteen results vanish — so the battery scopes each key
+    // to its tool.
+    const keys = ["invocation_succeeds:alpha", "invocation_succeeds:beta"];
+    expect(new Set(keys).size).toBe(2);
+    expect(keys.map((k) => k.split(":")[0])).toEqual(["invocation_succeeds", "invocation_succeeds"]);
   });
 });

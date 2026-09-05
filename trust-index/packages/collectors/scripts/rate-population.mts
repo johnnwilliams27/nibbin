@@ -11,10 +11,27 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { transcriptToSubject } from "../src/mcp/subject.js";
 import { transcriptGaps } from "../src/mcp/assess.js";
+import { batteryGaps } from "../src/mcp/subject.js";
+import type { BatteryOutcome } from "../src/mcp/battery.js";
 import type { ProbeTranscript } from "../src/mcp/transcript.js";
 import { scoreSubject } from "@trust-index/scoring";
 
 const files = readdirSync(join(import.meta.dirname, "..", "transcripts"));
+
+// Behavioural evidence, keyed by ENDPOINT. assessment.json is per tool; a
+// subject is a server, so outcomes are grouped before being handed over. The
+// join is on endpoint rather than name because the two files sanitise names
+// differently — "ai.x/y" against "ai.x_y" — and joining on those silently
+// matched nothing at all.
+const battery = new Map<string, BatteryOutcome[]>();
+try {
+  const raw = JSON.parse(readFileSync(join(import.meta.dirname, "..", "assessment.json"), "utf8")) as (BatteryOutcome & { server?: string; endpoint?: string })[];
+  for (const o of raw) {
+    const k = o.endpoint ?? "(unknown)";
+    battery.set(k, [...(battery.get(k) ?? []), o]);
+  }
+} catch { /* no battery run yet; every judged check becomes a gap */ }
+console.log(`battery outcomes loaded for ${battery.size} servers`);
 const asOfTs = `${new Date().toISOString().slice(0, 19)}Z`;
 const probe = {
   first_seen_ts: process.env.PROBE_SINCE ?? "2024-09-01T00:00:00Z",
@@ -31,7 +48,13 @@ for (const f of files) {
   let t: ProbeTranscript;
   try { t = JSON.parse(readFileSync(join(import.meta.dirname, "..", "transcripts", f), "utf8")) as ProbeTranscript; } catch { continue; }
   try {
-    const subject = transcriptToSubject(t, { probe, asOfTs, gaps: transcriptGaps(t) });
+    const b = battery.get(t.endpoint) ?? [];
+    const subject = transcriptToSubject(t, {
+      probe,
+      asOfTs,
+      gaps: [...transcriptGaps(t), ...batteryGaps(b)],
+      battery: b,
+    });
     const { result, canonicalBytes } = scoreSubject(subject);
     if (result.composite !== null) {
       published += 1;

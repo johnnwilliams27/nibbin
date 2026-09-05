@@ -293,31 +293,17 @@ const ONCHAIN_AGENT: RatingProfile = {
  * destructive operation, and a caller who reads one number needs to know which
  * of those two things it is.
  */
-const MCP_SERVER: RatingProfile = {
-  profile_id: "mcp_server.v1",
-  kind: "mcp_server",
-  label: "MCP server",
-  summary:
-    "A Model Context Protocol server, rated on whether it answers, whether it speaks the protocol correctly, whether its declared tools match what they do, and whether it is still maintained.",
-  dimensions: [
-    dim(AVAILABILITY, "0.25"),
-    dim(CONFORMANCE, "0.25"),
-    {
-      id: "tool_safety",
-      label: "Tool safety",
-      rubric:
-        "Whether declared tool surfaces match observed behaviour: destructive operations declared as such, no undeclared side effects, no request for credentials a tool does not need, input schemas that constrain what they claim to constrain.",
-      accepted_provenance: ["measured", "attested"],
-      weight: "0.25",
-      self_reported_cap: "0.00",
-      constants: { decay_half_life_days: "60" },
-    },
-    dim(DOCUMENTATION, "0.15"),
-    dim(MAINTENANCE, "0.10"),
-  ],
-  min_dimension_coverage: "0.60",
-  min_assessment_completeness: "0.60",
-  gates: [
+/**
+ * Gate ids are unique across the whole registry, so a fired gate names exactly
+ * one rule. v2 therefore carries its own ids rather than reusing v1's: the caps
+ * are identical but the rule sets are not, because the same cap lands on a
+ * different weighting and means something different about the subject.
+ */
+function versioned(gates: readonly RatingGate[], version: string): readonly RatingGate[] {
+  return gates.map((g) => ({ ...g, id: g.id.replace(/^mcp\./, `mcp.${version}.`) }));
+}
+
+const MCP_GATES: readonly RatingGate[] = [
     {
       id: "mcp.credential_parameter",
       dimension: "tool_safety",
@@ -346,7 +332,119 @@ const MCP_SERVER: RatingProfile = {
       caps_dimension_at: "0.50",
       reason: "a tool whose name implies it changes state carries no usable description",
     },
+];
+
+/**
+ * MCP server v1: the original, manifest-weighted profile.
+ *
+ * SUPERSEDED BY v2 AND DELIBERATELY KEPT. Every score published under it was
+ * computed against these weights, and `profile_digest` exists precisely so a
+ * reader can tell which rules produced a number. Deleting the profile would
+ * make every historical result unverifiable — the failure the digest was built
+ * to prevent — so v1 stays registered, and stays wrong in the specific way it
+ * was always wrong: 0.75 of its weight sits on availability, conformance and
+ * tool safety as read from the manifest, and measured over 600 servers those
+ * checks barely separate anyone.
+ */
+const MCP_SERVER_V1: RatingProfile = {
+  profile_id: "mcp_server.v1",
+  kind: "mcp_server",
+  label: "MCP server (v1, manifest-weighted)",
+  summary:
+    "A Model Context Protocol server, rated on whether it answers, whether it speaks the protocol correctly, whether its declared tools match what they do, and whether it is still maintained.",
+  dimensions: [
+    dim(AVAILABILITY, "0.25"),
+    dim(CONFORMANCE, "0.25"),
+    {
+      id: "tool_safety",
+      label: "Tool safety",
+      rubric:
+        "Whether declared tool surfaces match observed behaviour: destructive operations declared as such, no undeclared side effects, no request for credentials a tool does not need, input schemas that constrain what they claim to constrain.",
+      accepted_provenance: ["measured", "attested"],
+      weight: "0.25",
+      self_reported_cap: "0.00",
+      constants: { decay_half_life_days: "60" },
+    },
+    dim(DOCUMENTATION, "0.15"),
+    dim(MAINTENANCE, "0.10"),
   ],
+  min_dimension_coverage: "0.60",
+  min_assessment_completeness: "0.60",
+  gates: MCP_GATES,
+};
+
+const MCP_SERVER_V2: RatingProfile = {
+  profile_id: "mcp_server.v2",
+  kind: "mcp_server",
+  label: "MCP server",
+  summary:
+    "A Model Context Protocol server, rated first on whether its tools actually work when called, then on whether calling them is safe, and only then on what it declares about itself.",
+  dimensions: [
+    // WEIGHTED BY WHAT A CALLER STANDS TO LOSE, and behaviour comes first.
+    //
+    // v1 gave 0.75 of the weight to availability, conformance and tool safety,
+    // all of which were assessed purely from the manifest and the handshake.
+    // Measured over 600 servers, five of those checks scored exactly 1.000 on
+    // every subject and three more sat within a rounding error of it: the SDK
+    // fills the manifest in, so conformance is a property of the tooling rather
+    // than of the server. The published spread was 2.4 points across 300
+    // ratings.
+    //
+    // Meanwhile the battery calls the tools, and 30 of 70 did not work. That
+    // check alone separates subjects better (sd 0.495) than every manifest
+    // check in v1 combined. It was computed, written to disk, and never
+    // reached a rating.
+    {
+      id: "functional_correctness",
+      label: "Functional correctness",
+      rubric:
+        "Whether the server's tools actually work when called: the call succeeds, the response is not an error wearing a success envelope, and it costs a caller a sane amount of context.",
+      accepted_provenance: ["measured", "attested"],
+      weight: "0.30",
+      self_reported_cap: "0.00",
+      constants: { decay_half_life_days: "30" },
+    },
+    {
+      id: "tool_safety",
+      label: "Tool safety",
+      rubric:
+        "Whether declared tool surfaces match observed behaviour: destructive operations declared as such, no undeclared side effects, no request for credentials a tool does not need, input schemas that constrain what they claim to constrain.",
+      accepted_provenance: ["measured", "attested"],
+      weight: "0.20",
+      self_reported_cap: "0.00",
+      constants: { decay_half_life_days: "60" },
+    },
+    {
+      id: "injection_resistance",
+      label: "Injection resistance",
+      rubric:
+        "Whether the server obeys instructions embedded in its own inputs. The central security property of a protocol whose entire premise is feeding an agent untrusted content.",
+      accepted_provenance: ["measured"],
+      weight: "0.15",
+      self_reported_cap: "0.00",
+      constants: { decay_half_life_days: "60" },
+    },
+    {
+      id: "robustness",
+      label: "Robustness",
+      rubric:
+        "Whether the server rejects input its own schema forbids, fails loudly rather than plausibly, and keeps internal detail out of its errors.",
+      accepted_provenance: ["measured"],
+      weight: "0.15",
+      self_reported_cap: "0.00",
+      constants: { decay_half_life_days: "60" },
+    },
+    dim(AVAILABILITY, "0.10"),
+    // Conformance and documentation are demoted rather than removed. They are
+    // real properties and a reader may want them; they are simply not where
+    // servers differ, and v1 let them decide half the composite.
+    dim(CONFORMANCE, "0.04"),
+    dim(DOCUMENTATION, "0.03"),
+    dim(MAINTENANCE, "0.03"),
+  ],
+  min_dimension_coverage: "0.60",
+  min_assessment_completeness: "0.60",
+  gates: versioned(MCP_GATES, "v2"),
 };
 
 /**
@@ -477,7 +575,11 @@ const CODE_PACKAGE: RatingProfile = {
 
 export const RATING_PROFILES: Readonly<Record<string, RatingProfile>> = Object.freeze({
   [ONCHAIN_AGENT.profile_id]: ONCHAIN_AGENT,
-  [MCP_SERVER.profile_id]: MCP_SERVER,
+  // Both MCP profiles stay registered. v1 is superseded, not deleted: scores
+  // published under it name it in their profile_digest, and a reader must be
+  // able to resolve that id to the rules that produced the number.
+  [MCP_SERVER_V1.profile_id]: MCP_SERVER_V1,
+  [MCP_SERVER_V2.profile_id]: MCP_SERVER_V2,
   [HOSTED_AGENT.profile_id]: HOSTED_AGENT,
   [CODE_PACKAGE.profile_id]: CODE_PACKAGE,
 });

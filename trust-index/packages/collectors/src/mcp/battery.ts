@@ -146,6 +146,16 @@ function comparable(a: ToolCallResult, b: ToolCallResult): { can: false; reason:
   return { can: true, same: a.textFingerprint === b.textFingerprint };
 }
 
+/**
+ * A battery observation.
+ *
+ * `tool` is appended to the observation key because a battery observation is
+ * about ONE TOOL and a subject is a whole server. Observation identity is
+ * observer + dimension + key + timestamp, so twenty tools probed in the same
+ * second under a bare key like `invocation_succeeds` collapse to a single
+ * observation and the nineteen that failed disappear. Gates still match,
+ * because gate matching compares the base check before the colon.
+ */
 function obs(
   observerId: string,
   dimension: string,
@@ -153,8 +163,17 @@ function obs(
   value: string,
   ts: string,
   ref: string | null,
+  tool?: string,
 ): Observation {
-  return { observer_id: observerId, dimension, provenance: "measured", value, ts, observation_key: key, evidence_ref: ref };
+  return {
+    observer_id: observerId,
+    dimension,
+    provenance: "measured",
+    value,
+    ts,
+    observation_key: tool === undefined ? key : `${key}:${tool}`,
+    evidence_ref: ref,
+  };
 }
 
 export type BatteryOptions = CallOptions & {
@@ -243,7 +262,21 @@ export async function runBattery(
     for (const c of ["input_sensitivity", "no_fabrication", "injection_resistance", "error_handling_structured"]) {
       skipped.push({ check: c, reason: `baseline call failed: ${baseline.reason ?? "unknown"}` });
     }
-    return { tool: declaration.name, shape: classification.shape, calls, observations, skipped, gaps, injectionAttemptsSeen };
+    return {
+    tool: declaration.name,
+    shape: classification.shape,
+    calls,
+    // Scoped to the tool. A battery observation is about ONE TOOL while a
+    // subject is a whole server, and observation identity is observer +
+    // dimension + key + timestamp — so twenty tools probed in the same second
+    // under a bare `invocation_succeeds` collapse into one observation and the
+    // nineteen failures vanish. Gates still fire: gate matching compares the
+    // base check before the colon.
+    observations: observations.map((o) => ({ ...o, observation_key: `${o.observation_key}:${declaration.name}` })),
+    skipped,
+    gaps,
+    injectionAttemptsSeen,
+  };
   }
 
   // Response cost: what this takes out of the caller's context window. Banded
@@ -389,7 +422,21 @@ export async function runBattery(
     }
   }
 
-  return { tool: declaration.name, shape: classification.shape, calls, observations, skipped, gaps, injectionAttemptsSeen };
+  return {
+    tool: declaration.name,
+    shape: classification.shape,
+    calls,
+    // Scoped to the tool. A battery observation is about ONE TOOL while a
+    // subject is a whole server, and observation identity is observer +
+    // dimension + key + timestamp — so twenty tools probed in the same second
+    // under a bare `invocation_succeeds` collapse into one observation and the
+    // nineteen failures vanish. Gates still fire: gate matching compares the
+    // base check before the colon.
+    observations: observations.map((o) => ({ ...o, observation_key: `${o.observation_key}:${declaration.name}` })),
+    skipped,
+    gaps,
+    injectionAttemptsSeen,
+  };
 }
 
 /**

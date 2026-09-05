@@ -78,7 +78,7 @@ import { capAndSum, posterior, referenceWidthFx, type WeightedObservation } from
 import { INNER, ONE, clampFx, divFx, intFx, minFx, mulFx, parseFx, pow2NegFx } from "../fixedmath.js";
 import { floorDaysBetween, parseIsoUtcSeconds } from "../time.js";
 import { parseRatingConstants, resolveDimensionConstants, type RatingConstantsFx } from "./constants.js";
-import { profileDigest, subjectInputsHash, observationKey } from "./hash.js";
+import { profileDigest, subjectInputsHash, observationKey, observationCheck } from "./hash.js";
 import { computeObserverWeights, type ObserverWeightFx } from "./weights.js";
 
 function displayScore(valueFx: bigint): FixedNum {
@@ -327,7 +327,8 @@ function applyGates(
         throw new Error(`gate ${gate.id} is an observation gate with no observation_key`);
       }
       for (const o of outcome.admissible) {
-        if (o.observation_key !== gate.observation_key) continue;
+        // Base check, not the whole key: see observationCheck.
+        if (observationCheck(o.observation_key) !== gate.observation_key) continue;
         // Provenance is checked again here, not inherited from the dimension.
         // A dimension may accept reviews while its gate does not, and that gap
         // is what stops anyone capping a rival by posting an opinion.

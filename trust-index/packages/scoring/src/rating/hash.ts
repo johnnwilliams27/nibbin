@@ -57,6 +57,22 @@ function cmp(a: string, b: string): number {
  * run, which preserves the samples and silently breaks every gate that matches
  * on a key. Found exactly that way.
  */
+/**
+ * The check an observation is an instance of.
+ *
+ * Observation keys carry an instance suffix after a colon — `availability:1`
+ * for the first probe attempt, `invocation_succeeds:search_docs` for one tool
+ * of many on a server. Identity needs the suffix, or a server's twenty tools
+ * would dedupe down to one observation and the nineteen that failed would
+ * vanish. Gate matching needs the base, or a gate written against
+ * `credential_parameter_present` would never fire once the collector started
+ * distinguishing which tool it found it on.
+ */
+export function observationCheck(observationKey: string): string {
+  const i = observationKey.indexOf(":");
+  return i === -1 ? observationKey : observationKey.slice(0, i);
+}
+
 export function observationKey(o: Observation): string {
   return `${o.observer_id}#${o.dimension}#${o.observation_key}#${o.ts}`;
 }
@@ -138,6 +154,11 @@ export function profileCanonical(p: RatingProfile): string {
     profile_id: p.profile_id,
     kind: p.kind,
     min_dimension_coverage: d(p.min_dimension_coverage),
+    // Omitted until it was pointed out. It decides 259 of 600 outcomes in the
+    // current population — the dominant withholding reason — so a profile
+    // could change what it publishes with every digest unmoved, which makes
+    // the reproducibility claim above false rather than incomplete.
+    min_assessment_completeness: d(p.min_assessment_completeness),
     constants: p.constants === undefined ? null : constantOverrides(p.constants),
     dimensions: [...p.dimensions]
       .sort((a, b) => cmp(a.id, b.id))

@@ -406,7 +406,9 @@ describe("the correctness battery", () => {
     });
 
   const valueOf = (o: Awaited<ReturnType<typeof runBattery>>, key: string) =>
-    o.observations.find((x) => x.observation_key === key)?.value ?? null;
+    // Battery keys are scoped per tool (`invocation_succeeds:search_docs`), so a
+    // lookup matches the base check the same way gate matching does.
+    o.observations.find((x) => x.observation_key.split(":")[0] === key)?.value ?? null;
 
   it("catches a tool that does not read its input", async () => {
     // The differential test needs no oracle at all. Identical output for two
@@ -635,8 +637,8 @@ describe("the correctness battery", () => {
     const o = await run(dead);
     expect(valueOf(o, "invocation_succeeds")).toBe("0.000000");
     expect(o.skipped.map((s) => s.check)).toContain("no_fabrication");
-    expect(o.observations.some((x) => x.observation_key === "no_fabrication")).toBe(false);
-    expect(o.observations.some((x) => x.observation_key === "input_sensitivity")).toBe(false);
+    expect(o.observations.some((x) => x.observation_key.split(":")[0] === "no_fabrication")).toBe(false);
+    expect(o.observations.some((x) => x.observation_key.split(":")[0] === "input_sensitivity")).toBe(false);
   });
 
   it("skips the probes for a tool with nothing to vary", async () => {
@@ -696,7 +698,7 @@ describe("refusals are not answers", () => {
             status: 200, headers: { "content-type": "application/json" },
           })) as unknown as typeof fetch,
       });
-      const probed = o.observations.some((x) => x.observation_key === "no_fabrication");
+      const probed = o.observations.some((x) => x.observation_key.split(":")[0] === "no_fabrication");
       expect(probed, `${name} (${shape})`).toBe(classifyTool(t).shape === "retrieval");
     }
   });

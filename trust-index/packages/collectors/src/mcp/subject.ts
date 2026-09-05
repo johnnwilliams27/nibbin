@@ -9,6 +9,7 @@
 import type { AssessmentGap, Observation, Observer, RatingPriorSet, Subject } from "@trust-index/types";
 import { DEFAULT_RATING_CONSTANTS } from "@trust-index/types";
 import { assessTranscript, transcriptGaps } from "./assess.js";
+import type { BatteryOutcome } from "./battery.js";
 import type { ProbeTranscript } from "./transcript.js";
 
 export type ProbeIdentity = {
@@ -35,6 +36,25 @@ export type BuildSubjectOptions = {
    * subject's rating as an absence of evidence.
    */
   gaps?: AssessmentGap[];
+  /**
+   * Behavioural evidence: what happened when the tools were actually called.
+   *
+   * Optional, and its absence is a gap rather than a silence. Without it a
+   * subject is rated on its manifest alone — which is what this pipeline did
+   * until it was measured: all 19 checks reaching a rating read a declaration
+   * or a handshake, while 30 of 70 invoked tools did not work and no rating
+   * could see it. src/mcp/invoke.ts opens by warning about exactly that.
+   */
+  battery?: readonly BatteryOutcome[];
+  /**
+   * Which rubric to score against. Defaults to the current one.
+   *
+   * Selectable because both MCP profiles stay registered: v1 is manifest-
+   * weighted and can rate a subject from a transcript alone, v2 puts 60% of the
+   * weight on behaviour and therefore cannot. Anything re-scoring historical
+   * results has to be able to name the rules those results were produced under.
+   */
+  profileId?: string;
 };
 
 const DEFAULT_PRIORS: RatingPriorSet = {
@@ -106,13 +126,57 @@ export function transcriptsToSubject(
   // different days are already distinct, and the keys stay readable and
   // gate-matchable. Namespacing them per run was the first attempt here, and
   // it silently stopped every gate from matching.
-  const observations = sorted.flatMap((t) => assessTranscript(t, options.asOfTs));
+  const observations = [
+    ...sorted.flatMap((t) => assessTranscript(t, options.asOfTs)),
+    ...batteryObservations(options),
+  ];
   return assemble(merged, observations, options);
 }
 
 export function transcriptToSubject(t: ProbeTranscript, options: BuildSubjectOptions): Subject {
-  return assemble(t, assessTranscript(t, options.asOfTs), options);
+  return assemble(t, [...assessTranscript(t, options.asOfTs), ...batteryObservations(options)], options);
 }
+
+/**
+ * Observations from the battery, and the gaps it recorded.
+ *
+ * The battery already emits `measured` observations against
+ * functional_correctness, protocol_conformance, injection_resistance and
+ * robustness, scoped per tool. Nothing needs translating; the only reason they
+ * were absent from every rating is that nobody passed them in.
+ */
+function batteryObservations(options: BuildSubjectOptions): Observation[] {
+  return (options.battery ?? []).flatMap((b) => b.observations);
+}
+
+/**
+ * Gaps the battery recorded, plus the gap of not having run it at all.
+ *
+ * The second half matters more than the first. Under a behaviour-weighted
+ * profile, a subject with no battery run has no observations for
+ * functional_correctness, injection_resistance or robustness — and with no gaps
+ * either, the engine reads that as "this dimension was not covered" rather than
+ * "we never tested it". The rating is withheld either way, but the stated
+ * reason is wrong, and the stated reason is the product: the whole gap model
+ * exists so that our not having looked never reads as the subject's failure.
+ */
+export function batteryGaps(battery: readonly BatteryOutcome[]): AssessmentGap[] {
+  const recorded = battery.flatMap((b) => b.gaps);
+  if (battery.length > 0) return recorded;
+  return [
+    ...recorded,
+    ...BEHAVIOURAL_DIMENSIONS.map((dimension) => ({
+      dimension,
+      check: "battery",
+      cause: "harness_capability_missing" as const,
+      capability: "tool_invocation",
+      detail: "no tool-invocation battery has been run against this subject",
+    })),
+  ];
+}
+
+/** Dimensions that only a battery run can supply evidence for. */
+const BEHAVIOURAL_DIMENSIONS = ["functional_correctness", "injection_resistance", "robustness"] as const;
 
 /** Endpoint hosts that are ephemeral developer tunnels rather than deployments. */
 const EPHEMERAL_TUNNEL_DOMAINS = [
@@ -192,7 +256,7 @@ function assemble(t: ProbeTranscript, observations: Observation[], options: Buil
       ref: t.registry?.name ?? t.endpoint,
       url: t.endpoint,
     },
-    profile_id: "mcp_server.v1",
+    profile_id: options.profileId ?? "mcp_server.v2",
     as_of_ts: options.asOfTs,
     first_seen_ts: t.registry?.first_published_at ?? t.probed_at,
     last_active_ts: lastReachable?.ts ?? null,
