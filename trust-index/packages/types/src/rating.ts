@@ -277,6 +277,20 @@ export type Subject = {
   };
   /** Profile id from profiles.ts. Decides which dimensions exist and how they roll up. */
   profile_id: string;
+  /**
+   * Version of the COLLECTOR rubric that turned raw evidence into these
+   * observation values. Hashed, because it decides every number here.
+   *
+   * `profile_digest` covers the scoring rules and `inputs_hash` covers the
+   * observations, and between them they missed the step that produces the
+   * observations. A collector's normalisation functions are where the judgement
+   * lives: `maintenanceValue` was retuned from a 90/730-day ramp to 14/180
+   * explicitly to spread the population, which moved every maintenance score in
+   * the compendium, and no digest anywhere changed. Two results agreeing on
+   * inputs_hash and profile_digest were still not necessarily produced by the
+   * same rules.
+   */
+  rubric_version: string;
 
   as_of_ts: string;
   /** When the subject was first observed to exist. Drives lifecycle, not scoring. */

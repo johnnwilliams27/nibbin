@@ -48,6 +48,14 @@ import { normalizeValue } from "../normalize.js";
 import { parseIsoUtcSeconds } from "../time.js";
 
 /**
+ * This adapter IS the collector rubric for the chain path: epoch filtering,
+ * scale detection and value normalisation all decide what an observation is
+ * worth before the engine ever sees it. Changing any of those rules changes
+ * every chain score, so it changes this string. See `Subject.rubric_version`.
+ */
+export const CHAIN_ADAPTER_RUBRIC_VERSION = "onchain.adapter.v1";
+
+/**
  * Emitted at INNER precision rather than the 6-place wire precision, so the
  * adapter is lossless: a normalized value round-trips through the Subject
  * without a rounding step the chain path does not have.
@@ -206,8 +214,14 @@ export function agentSnapshotToSubject(s: AgentSnapshot, options: AdapterOptions
   observers[indexObserverId] = {
     observer_id: indexObserverId,
     observer_kind: "probe",
-    // The index has observed this chain since the agent registered, which is
-    // the longest window it can honestly claim for this subject.
+    // A proxy: the index has watched this chain since the agent registered,
+    // which is the longest window it can honestly claim for this subject. It
+    // used to matter and no longer does — the observer age ramp is now exempt
+    // for observer_kind "probe", because a measurement reproducible from a
+    // stored transcript does not become more accurate as the instrument ages.
+    // Before that exemption this line meant `identity_integrity` was suppressed
+    // for any recently registered agent, so the index's confidence in its own
+    // metadata read was a function of how old the AGENT was.
     first_seen_ts: s.registered_at,
     total_observations: indicators.length,
     distinct_subjects: 1,
@@ -240,6 +254,7 @@ export function agentSnapshotToSubject(s: AgentSnapshot, options: AdapterOptions
       url: null,
     },
     profile_id: "onchain_agent.v1",
+    rubric_version: CHAIN_ADAPTER_RUBRIC_VERSION,
     as_of_ts: s.as_of_ts,
     first_seen_ts: s.registered_at,
     last_active_ts: lastActiveTs,

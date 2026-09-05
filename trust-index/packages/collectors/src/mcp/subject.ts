@@ -8,7 +8,7 @@
  */
 import type { AssessmentGap, Observation, Observer, RatingPriorSet, Subject } from "@trust-index/types";
 import { DEFAULT_RATING_CONSTANTS } from "@trust-index/types";
-import { assessTranscript, transcriptGaps } from "./assess.js";
+import { assessTranscript, MCP_RUBRIC_VERSION, transcriptGaps } from "./assess.js";
 import type { BatteryOutcome } from "./battery.js";
 import type { ProbeTranscript } from "./transcript.js";
 
@@ -257,6 +257,7 @@ function assemble(t: ProbeTranscript, observations: Observation[], options: Buil
       url: t.endpoint,
     },
     profile_id: options.profileId ?? "mcp_server.v2",
+    rubric_version: MCP_RUBRIC_VERSION,
     as_of_ts: options.asOfTs,
     first_seen_ts: t.registry?.first_published_at ?? t.probed_at,
     last_active_ts: lastReachable?.ts ?? null,

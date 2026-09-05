@@ -478,6 +478,18 @@ const MCP_SERVER_V2: RatingProfile = {
     dim(DOCUMENTATION, "0.03"),
     dim(MAINTENANCE, "0.03"),
   ],
+  // `strong` coverage requires strong_min_observers distinct observers, and the
+  // default of 10 was written for on-chain counterparties. A probe-based
+  // collector has exactly one observer, forever, so the top rung of the
+  // published coverage ladder was unreachable by construction — dead code for
+  // the only collector that exists.
+  //
+  // Set to 1 here, and the residual risk is stated rather than hidden: one
+  // instrument sampling repeatedly cannot detect its own systematic error the
+  // way ten independent observers can. `strong` on this profile therefore means
+  // "sampled deeply over a long window", not "corroborated". strong_min_span_days
+  // still applies, so it cannot be reached in a day.
+  constants: { strong_min_observers: "1" },
   min_dimension_coverage: "0.60",
   min_assessment_completeness: "0.60",
   gates: versioned(MCP_GATES, "v2"),

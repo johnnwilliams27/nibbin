@@ -34,7 +34,15 @@ import { CAPABILITIES } from "../capability.js";
 import { classifyTools } from "./shape.js";
 import type { ProbeTranscript, ToolDeclaration } from "./transcript.js";
 
-/** Rubric version. Changing a threshold or a rule changes this. */
+/**
+ * Rubric version for the whole MCP collector, not just this file: the
+ * thresholds below, the battery's check definitions and pass/fail rules, and
+ * subject.ts's assembly all decide what an observation is worth before the
+ * scoring engine sees it. Changing any threshold or rule in any of them
+ * changes this string. It is hashed into the result — see
+ * `Subject.rubric_version` for why `profile_digest` and `inputs_hash` between
+ * them were not enough.
+ */
 export const MCP_RUBRIC_VERSION = "mcp.rubric.v1";
 
 export const THRESHOLDS = {

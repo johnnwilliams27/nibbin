@@ -211,6 +211,9 @@ export function subjectInputsCanonical(s: Subject): string {
     subject_id: s.subject_id,
     source: { registry: s.source.registry, ref: s.source.ref, url: s.source.url },
     profile_id: s.profile_id,
+    // See Subject.rubric_version: the collector's normalisation is where the
+    // judgement lives, and it was outside the reproducibility envelope entirely.
+    rubric_version: s.rubric_version,
     as_of_ts: s.as_of_ts,
     first_seen_ts: s.first_seen_ts,
     last_active_ts: s.last_active_ts,

@@ -413,6 +413,17 @@ describe("subject inputs hash", () => {
     expect(subjectInputsHash(tweaked)).not.toBe(subjectInputsHash(s));
   });
 
+  it("changes when the collector rubric changes", () => {
+    // The hole this closes: maintenanceValue was retuned from a 90/730-day
+    // ramp to 14/180 to spread the population. Every maintenance score in the
+    // compendium moved and no digest changed, because profile_digest covers
+    // the scoring rules and inputs_hash covered only the observations — not
+    // the code that decides what an observation is worth.
+    const s = probedServer();
+    const retuned = { ...s, rubric_version: "mcp.rubric.v2" };
+    expect(subjectInputsHash(retuned)).not.toBe(subjectInputsHash(s));
+  });
+
   it("is invariant to how a decimal was spelled", () => {
     const s = probedServer();
     const spelled = { ...s, constants: { ...DEFAULT_RATING_CONSTANTS, shrinkage_k: "5" } };

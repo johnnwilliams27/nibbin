@@ -39,6 +39,7 @@ export function makeSubject(overrides: Partial<Subject> = {}): Subject {
     subject_id: "example.com/mcp",
     source: { registry: "mcp-registry", ref: "example.com/mcp", url: "https://example.com/mcp" },
     profile_id: "mcp_server.v1",
+    rubric_version: "test.rubric.v1",
     as_of_ts: "2026-08-01T00:00:00Z",
     first_seen_ts: "2026-01-01T00:00:00Z",
     last_active_ts: "2026-07-20T00:00:00Z",
