@@ -264,13 +264,27 @@ export async function runBattery(
   // proposeArguments before it can reach a request.
   let probeValues: { primary: string; alternate: string } | null = null;
   if (param !== null && judge !== undefined) {
-    const p = await proposeArguments(
-      { tool: declaration.name, description: declaration.description, parameter: param, schema: declaration.inputSchema },
-      judge,
-    );
-    if (p !== null) {
-      probeValues = { primary: p.primary, alternate: p.alternate };
-      if (p.injectionAttempt) injectionAttemptsSeen += 1;
+    // The SAME defect as the fabrication judge, and worse for being first: an
+    // unguarded throw here killed the whole battery before a single call was
+    // made, so every dimension came back empty and was reported as our failure
+    // to look. Found by the regression test written for the other instance,
+    // which is the argument for writing it against the real battery rather than
+    // against a fixture.
+    //
+    // A proposal is an optimisation — better probe arguments than a synthesized
+    // "test" string — so losing it costs precision, not the check. The battery
+    // continues on synthesized values and nothing is recorded against anyone.
+    try {
+      const p = await proposeArguments(
+        { tool: declaration.name, description: declaration.description, parameter: param, schema: declaration.inputSchema },
+        judge,
+      );
+      if (p !== null) {
+        probeValues = { primary: p.primary, alternate: p.alternate };
+        if (p.injectionAttempt) injectionAttemptsSeen += 1;
+      }
+    } catch {
+      // Deliberately not a gap: no check was lost, only a better input for one.
     }
   }
   if (param !== null && probeValues !== null) base[param] = probeValues.primary;
