@@ -27,6 +27,14 @@ if (!process.argv.includes("--i-have-approval")) {
   process.exit(0);
 }
 const perShape = Number(arg("--per-shape", "10"));
+/**
+ * Tools per server. One is enough to ask "does this server work"; it is NOT
+ * enough to ask "is there a bad tool in here", which is the question the
+ * occurrence gates exist for and the one a 199-decoy dilution attack targets.
+ * Three is a compromise: some multi-tool coverage without multiplying the load
+ * we put on somebody else's server by the size of their surface.
+ */
+const maxToolsPerServer = Number(arg("--max-tools-per-server", "1"));
 
 // The judge. Absent or unhealthy, judged checks become harness gaps and the
 // structural ones run regardless — a missing credential must never turn into a
@@ -64,7 +72,8 @@ const usedServers = new Set<string>();
 for (const f of readdirSync(dir).filter((x) => x.endsWith(".json")).sort()) {
   const t = JSON.parse(readFileSync(`${dir}/${f}`, "utf8")) as ProbeTranscript;
   if (t.tools?.ok !== true || t.auth?.required === true) continue;
-  if (usedServers.has(t.endpoint)) continue;
+
+  let takenHere = 0;
   for (const d of t.tools.declared) {
     const c = classifyTool(d);
     if (c.binding.kind !== "read_only") continue;
@@ -73,7 +82,8 @@ for (const f of readdirSync(dir).filter((x) => x.endsWith(".json")).sort()) {
     list.push({ server: f.replace(/\.json$/, ""), endpoint: t.endpoint, declaration: d, shape: c.shape });
     byShape.set(c.shape, list);
     usedServers.add(t.endpoint);
-    break;
+    takenHere += 1;
+    if (takenHere >= maxToolsPerServer) break;
   }
 }
 const all = [...byShape.values()].flat();
@@ -96,6 +106,7 @@ async function session(endpoint: string): Promise<string | null | undefined> {
   return sid;
 }
 
+const OUT = arg("--out", "assessment.json");
 const outcomes: Array<BatteryOutcome & { server: string; endpoint: string }> = [];
 for (const [shape, list] of [...byShape].sort()) {
   console.log(`\n=== ${shape} ===`);
@@ -115,6 +126,9 @@ for (const [shape, list] of [...byShape].sort()) {
       });
     } catch (err) { console.log(`  ${c.declaration.name}: REFUSED ${err instanceof Error ? err.message : err}`); continue; }
     outcomes.push({ ...o, server: c.server, endpoint: c.endpoint });
+    // Written as we go. A previous long run was lost in full because the file
+    // was only written after a post-processing step that threw.
+    writeFileSync(OUT, JSON.stringify(outcomes, null, 2));
     // observationCheck strips the ":<tool>" suffix the battery now scopes
     // every key with. Matching the bare key here silently produced an empty
     // summary: every DEAD/OBEYS-INJECTION/LEAKS flag and both tables below
@@ -130,7 +144,7 @@ for (const [shape, list] of [...byShape].sort()) {
     );
   }
 }
-writeFileSync("assessment.json", JSON.stringify(outcomes, null, 2));
+writeFileSync(OUT, JSON.stringify(outcomes, null, 2));
 
 const CHECKS = ["invocation_succeeds", "input_sensitivity", "no_fabrication", "ignores_embedded_instruction", "rejects_invalid_input", "no_internal_leakage", "response_cost", "honours_output_schema", "reports_errors_via_protocol"];
 console.log(`\n\n| Check | Ran | Passed | Failed | Pass rate |`);

@@ -296,16 +296,87 @@ export function classifyTool(t: ToolDeclaration): ToolClassification {
   // false positive only costs us coverage: we decline to exercise something
   // that was safe. Over-caution about what we send is the right bias, so the
   // guard keeps the wide net the finding could not justify.
-  const descriptionMentionsChange = /\b(delet|remov|writ|modif|updat|insert|send|charg|deploy|purge|revok|creat)/.test(desc);
+  const descriptionMentionsChange =
+    /\b(delet|remov|writ|modif|updat|insert|send|charg|deploy|purge|revok|creat|attach|append|submit|regist|upload|link|record|store|sav|publish|assign|enrol|book|order|schedul)/.test(
+      desc,
+    );
+
+  // THE INFERENCE PATH IS AN ALLOWLIST, NOT A DENYLIST.
+  //
+  // It was a denylist, and a denylist decided whether we write to somebody
+  // else's system. `add_trade` — "Attach a specific trade execution record to a
+  // finding you published" — passed every check: "add" was not in the mutating
+  // verbs, "attach" was not in the description pattern, and the ticker and
+  // sector vocabulary shaped it as public_data. We called it four times. It
+  // returned 422 each time, because the server requires an `agent_id` its own
+  // schema does not declare, so nothing was written. That was luck. A complete
+  // schema and we would have attached four fabricated trade records to a
+  // stranger's reputation system.
+  //
+  // No denylist of mutating verbs can be complete — English has more ways to
+  // say "write" than anyone will enumerate, and the cost of the one that is
+  // missed is unbounded and lands on a third party. So the question is
+  // inverted: not "does this look mutating" but "does this affirmatively look
+  // like a read". The leading verb must be one we recognise as a read. That is
+  // a rule whose failure mode is declining to probe something safe, which costs
+  // us coverage and costs nobody else anything.
+  const READ_VERBS = new Set([
+    "get", "search", "list", "find", "fetch", "read", "query", "lookup", "look", "check", "browse",
+    "describe", "show", "count", "resolve", "view", "inspect", "scan", "detect", "identify",
+    "analyze", "analyse", "calculate", "compute", "convert", "translate", "format", "parse",
+    "validate", "verify", "compare", "estimate", "predict", "summarize", "summarise", "explain",
+    "extract", "filter", "match", "suggest", "recommend", "status", "info", "help", "docs",
+  ]);
+  const leadingVerb = t.name
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .split(/[^A-Za-z0-9]+/)
+    .filter((w) => w.length > 0)
+    .map((w) => w.toLowerCase())[0];
+  const namedLikeARead = leadingVerb !== undefined && READ_VERBS.has(leadingVerb);
+
+  // A second, WIDER write vocabulary, used only to decide whether we call.
+  //
+  // Deliberately not merged into assess.ts's MUTATING_VERBS, because the two
+  // fail in opposite directions and the existing design says so: as a published
+  // finding, a false positive accuses an operator of shipping an undocumented
+  // destructive tool; as a call guard, a false positive only means we decline
+  // to probe something that was safe. `add_numbers` on a calculator belongs in
+  // this list and must stay out of that one.
+  const WRITEISH_VERBS = new Set([
+    "add", "attach", "append", "submit", "register", "link", "record", "store", "save", "upsert",
+    "apply", "assign", "book", "order", "schedule", "enroll", "enrol", "subscribe", "invite",
+    "share", "import", "sync", "set", "mark", "flag", "vote", "claim", "mint", "buy", "sell",
+    "trade", "withdraw", "deposit", "approve", "reject", "cancel", "start", "stop", "restart",
+    "trigger", "emit", "queue", "enqueue", "dispatch", "notify", "alert", "email", "message",
+    "upload", "install", "provision", "allocate", "reserve", "lock", "unlock", "rename", "move",
+    "copy", "clone", "generate", "build", "compile", "train", "fine", "index", "ingest", "seed",
+  ]);
+  const writeishName = leadingVerb !== undefined && WRITEISH_VERBS.has(leadingVerb);
+
   const inferredReadOnly =
-    noAnnotations && readShaped && !sideEffecting && !mutatingName && !descriptionMentionsChange && contradictions.length === 0;
+    noAnnotations &&
+    readShaped &&
+    namedLikeARead &&
+    !writeishName &&
+    !sideEffecting &&
+    !mutatingName &&
+    !descriptionMentionsChange &&
+    contradictions.length === 0;
 
   const declaredReadOnly =
     hints.readOnly === true &&
     !mutatingName &&
+    // An operator's annotation does not override their own tool's name. This
+    // path had the same hole as the inference path: readOnlyHint: true on
+    // `add_trade` was enough to make it callable, and the annotation is exactly
+    // the unverified claim the rest of this file refuses to take on trust.
+    !writeishName &&
     !sideEffecting &&
     hints.destructive !== true &&
     contradictions.length === 0;
+  if (hints.readOnly === true && writeishName) {
+    contradictions.push(`declares readOnlyHint but is named like a write (${leadingVerb})`);
+  }
 
   if (declaredReadOnly || inferredReadOnly) {
     return {

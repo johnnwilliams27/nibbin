@@ -703,3 +703,68 @@ describe("refusals are not answers", () => {
     }
   });
 });
+
+/**
+ * The guard that decides whether we WRITE to somebody else's system.
+ *
+ * This is the highest-consequence decision in the collector and it was a
+ * denylist of mutating verbs. `add_trade` — "Attach a specific trade execution
+ * record to a finding you published" — passed every check: "add" was not in the
+ * verb list, "attach" was not in the description pattern, and its ticker/sector
+ * vocabulary shaped it as public_data. We called it four times during a live
+ * re-probe. Every call returned 422, because the server requires an `agent_id`
+ * its own schema does not declare, so nothing was written. That was luck.
+ *
+ * The rule is now an allowlist: the leading verb must affirmatively read as a
+ * read. Its failure mode is declining to probe something safe, which costs us
+ * coverage and costs nobody else anything.
+ */
+describe("we never call a tool that might write", () => {
+  const decl = (name: string, description: string, annotations: unknown = null) =>
+    ({
+      name,
+      description,
+      inputSchema: { type: "object", properties: { q: { type: "string" } }, required: ["q"] },
+      outputSchema: null,
+      annotations,
+    }) as unknown as Parameters<typeof classifyTool>[0];
+
+  it("refuses the real add_trade declaration that got through", () => {
+    const real = decl(
+      "add_trade",
+      "Attach a specific trade execution record to a finding you published. Linking actual trades to a finding is the mechanism for upgrading the finding's credibility weight from CLAIMED 0.5x toward EVIDENCED 2.0x. Sector is inferred automatically from ticker.",
+    );
+    expect(classifyTool(real).binding.kind).not.toBe("read_only");
+  });
+
+  it("does not let an operator's own annotation override their tool's name", () => {
+    // readOnlyHint is an unverified claim, and the rest of this file already
+    // refuses to take it on trust when the SHAPE disagrees. The name is
+    // evidence of the same kind.
+    const c = classifyTool(decl("add_trade", "Attach a record.", { readOnlyHint: true }));
+    expect(c.binding.kind).not.toBe("read_only");
+    expect(c.contradictions.join(" ")).toMatch(/named like a write/);
+  });
+
+  it.each([
+    "append_row",
+    "submit_order",
+    "register_agent",
+    "record_vote",
+    "store_document",
+    "attach_file",
+    "mint_token",
+    "buy_credits",
+    "set_preference",
+    "sync_calendar",
+  ])("refuses %s even with a read-shaped description", (name) => {
+    expect(classifyTool(decl(name, "Returns information about the item.")).binding.kind).not.toBe("read_only");
+  });
+
+  it.each(["search_documents", "get_weather", "lookup_ticker", "list_repos", "convert_units", "parse_timestamp"])(
+    "still calls %s, so the guard has not eaten the corpus",
+    (name) => {
+      expect(classifyTool(decl(name, "Returns information about the item.")).binding.kind).toBe("read_only");
+    },
+  );
+});
