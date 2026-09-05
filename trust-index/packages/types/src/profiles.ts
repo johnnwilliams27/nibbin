@@ -107,6 +107,27 @@ export type RatingGate = {
   reason: string;
 };
 
+/**
+ * Whether re-observing a dimension produces new information.
+ *
+ * `independent_per_day` — a genuine repeat sample of a quantity that can
+ * change between probes. Availability is the clean case: the endpoint really
+ * might be down today and up tomorrow, so thirty days of probes are thirty
+ * observations and the interval should narrow accordingly.
+ *
+ * `latest_only` — a re-read of something static. Re-reading a registry's
+ * publish date, or a manifest's tool list, produces the same fact again. Under
+ * per-day bucketing those re-reads accumulate: replaying ONE byte-identical
+ * transcript as 365 daily runs drives n_eff to 263 and confidence to 0.88 on a
+ * single fact, and the composite to 96. That is not evidence accumulating, it
+ * is a loop. Only the most recent reading of each check counts.
+ *
+ * Defaulting to `latest_only` would be wrong for availability and defaulting to
+ * `independent_per_day` is what produced the inflation, so it is required per
+ * dimension rather than defaulted at all.
+ */
+export type ResamplingPolicy = "independent_per_day" | "latest_only";
+
 export type DimensionSpec = {
   id: string;
   label: string;
@@ -123,6 +144,8 @@ export type DimensionSpec = {
    * rather than dropped, so the ordering within them is preserved.
    */
   self_reported_cap: DecimalString;
+  /** Whether repeat observations here are independent samples. See ResamplingPolicy. */
+  resampling: ResamplingPolicy;
   /** Constants for this dimension only. Applied over the profile's, which are applied over the subject's. */
   constants?: Partial<RatingConstantOverrides>;
 };
@@ -166,6 +189,7 @@ const AVAILABILITY: Omit<DimensionSpec, "weight"> = {
     "Share of probe attempts where the subject's declared endpoint answered within the timeout. Measured only; nobody can review a subject into being reachable.",
   accepted_provenance: ["measured"],
   self_reported_cap: "0.00",
+  resampling: "independent_per_day",
   // Availability is the most perishable thing this project measures. A probe
   // from three months ago says almost nothing about whether the endpoint
   // answers now, so it is worth a quarter of a current one rather than the
@@ -180,6 +204,7 @@ const CONFORMANCE: Omit<DimensionSpec, "weight"> = {
     "Share of protocol checks the subject passes: handshake, required methods, schema validity of what it returns. Measured only.",
   accepted_provenance: ["measured"],
   self_reported_cap: "0.00",
+  resampling: "latest_only",
   // Conformance changes when the subject ships, which is slower than uptime
   // moves and faster than a reputation settles.
   constants: { decay_half_life_days: "60" },
@@ -192,6 +217,7 @@ const MAINTENANCE: Omit<DimensionSpec, "weight"> = {
     "Evidence the subject is still being looked after: release recency, whether reported breakage gets fixed, whether declared metadata still matches behaviour.",
   accepted_provenance: ["measured", "attested"],
   self_reported_cap: "0.00",
+  resampling: "latest_only",
   // The observation is already a recency measure, so decaying it hard would
   // discount staleness twice.
   constants: { decay_half_life_days: "365" },
@@ -204,6 +230,7 @@ const DOCUMENTATION: Omit<DimensionSpec, "weight"> = {
     "Whether a caller can tell what the subject does and how to call it correctly, from what the subject publishes. The subject's own description is admissible here because it is the artifact being judged, and capped because judging it is still our job.",
   accepted_provenance: ["measured", "self_reported"],
   self_reported_cap: "0.40",
+  resampling: "latest_only",
 };
 
 const OPERATOR_REPUTATION: Omit<DimensionSpec, "weight"> = {
@@ -213,6 +240,7 @@ const OPERATOR_REPUTATION: Omit<DimensionSpec, "weight"> = {
     "What independent parties report about the operator behind the subject. Weighted by observer independence, and never the largest share of a composite.",
   accepted_provenance: ["third_party_review", "attested"],
   self_reported_cap: "0.00",
+  resampling: "latest_only",
 };
 
 function dim(base: Omit<DimensionSpec, "weight">, weight: DecimalString): DimensionSpec {
@@ -241,6 +269,7 @@ const ONCHAIN_AGENT: RatingProfile = {
       accepted_provenance: ["third_party_review", "attested"],
       weight: "0.35",
       self_reported_cap: "0.00",
+      resampling: "latest_only",
     },
     {
       id: "delivery",
@@ -250,6 +279,7 @@ const ONCHAIN_AGENT: RatingProfile = {
       accepted_provenance: ["measured", "attested"],
       weight: "0.30",
       self_reported_cap: "0.00",
+      resampling: "latest_only",
     },
     {
       id: "identity_integrity",
@@ -259,6 +289,7 @@ const ONCHAIN_AGENT: RatingProfile = {
       accepted_provenance: ["measured"],
       weight: "0.20",
       self_reported_cap: "0.00",
+      resampling: "latest_only",
     },
     dim(AVAILABILITY, "0.15"),
   ],
@@ -363,6 +394,7 @@ const MCP_SERVER_V1: RatingProfile = {
       accepted_provenance: ["measured", "attested"],
       weight: "0.25",
       self_reported_cap: "0.00",
+      resampling: "latest_only",
       constants: { decay_half_life_days: "60" },
     },
     dim(DOCUMENTATION, "0.15"),
@@ -402,6 +434,7 @@ const MCP_SERVER_V2: RatingProfile = {
       accepted_provenance: ["measured", "attested"],
       weight: "0.30",
       self_reported_cap: "0.00",
+      resampling: "independent_per_day",
       constants: { decay_half_life_days: "30" },
     },
     {
@@ -412,6 +445,7 @@ const MCP_SERVER_V2: RatingProfile = {
       accepted_provenance: ["measured", "attested"],
       weight: "0.20",
       self_reported_cap: "0.00",
+      resampling: "latest_only",
       constants: { decay_half_life_days: "60" },
     },
     {
@@ -422,6 +456,7 @@ const MCP_SERVER_V2: RatingProfile = {
       accepted_provenance: ["measured"],
       weight: "0.15",
       self_reported_cap: "0.00",
+      resampling: "latest_only",
       constants: { decay_half_life_days: "60" },
     },
     {
@@ -432,6 +467,7 @@ const MCP_SERVER_V2: RatingProfile = {
       accepted_provenance: ["measured"],
       weight: "0.15",
       self_reported_cap: "0.00",
+      resampling: "latest_only",
       constants: { decay_half_life_days: "60" },
     },
     dim(AVAILABILITY, "0.10"),
@@ -468,6 +504,7 @@ const HOSTED_AGENT: RatingProfile = {
       accepted_provenance: ["measured", "attested"],
       weight: "0.35",
       self_reported_cap: "0.00",
+      resampling: "latest_only",
     },
     dim(AVAILABILITY, "0.20"),
     dim(CONFORMANCE, "0.15"),
@@ -479,6 +516,7 @@ const HOSTED_AGENT: RatingProfile = {
       accepted_provenance: ["third_party_review", "attested"],
       weight: "0.15",
       self_reported_cap: "0.00",
+      resampling: "latest_only",
     },
     dim(DOCUMENTATION, "0.10"),
     dim(MAINTENANCE, "0.05"),
@@ -530,6 +568,7 @@ const CODE_PACKAGE: RatingProfile = {
       accepted_provenance: ["measured", "attested"],
       weight: "0.25",
       self_reported_cap: "0.00",
+      resampling: "latest_only",
     },
     {
       id: "dependency_hygiene",
@@ -539,6 +578,7 @@ const CODE_PACKAGE: RatingProfile = {
       accepted_provenance: ["measured"],
       weight: "0.20",
       self_reported_cap: "0.00",
+      resampling: "latest_only",
     },
     dim(DOCUMENTATION, "0.15"),
     {
@@ -549,6 +589,7 @@ const CODE_PACKAGE: RatingProfile = {
       accepted_provenance: ["measured"],
       weight: "0.10",
       self_reported_cap: "0.00",
+      resampling: "latest_only",
     },
     dim(OPERATOR_REPUTATION, "0.05"),
   ],

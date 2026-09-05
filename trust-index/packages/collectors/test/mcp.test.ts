@@ -493,9 +493,13 @@ describe("transcript to score", () => {
     expect(up.score! - down.score!).toBeGreaterThan(60);
     expect(up.confidence).toBeGreaterThan(0.5);
     expect(up.n_eff).toBeGreaterThan(8);
-    // Confidence is still only moderate after a fortnight, which is the point
-    // of publishing it: nothing here claims more certainty than it has.
-    expect(up.confidence).toBeLessThan(0.8);
+    // Confidence is high but not absolute after a fortnight of daily probing,
+    // which is the point of publishing it: nothing here claims more certainty
+    // than it has. The bound moved from 0.8 to 0.9 when the prior started
+    // counting for the strength it declares (n_basis 1.00) rather than for
+    // shrinkage_k (5.00) — fourteen real samples now outweigh the prior, as
+    // they should, instead of being outvoted five to one by a hand-typed number.
+    expect(up.confidence).toBeLessThan(0.9);
   });
 
   it("rates an unreachable server on availability alone and withholds the composite", () => {
@@ -622,20 +626,30 @@ describe("run histories", () => {
   const history = (n: number, up = true): ProbeTranscript[] =>
     Array.from({ length: n }, (_, i) => day(31 - n + 1 + i, up));
 
-  it("publishes every dimension once a run history exists, where one run cannot", () => {
-    // Found by a worked example. Scoring a single run left every dimension
-    // except availability resting on one observation, below the suppression
-    // floor, and the composite was withheld for want of coverage. The fix is
-    // more days, not a looser floor.
+  it("accumulates evidence only where re-probing is a new sample", () => {
+    // This test used to assert that 21 runs raised n_eff above 5 on EVERY
+    // dimension, and that assertion was the bug. Re-reading a manifest twenty
+    // one times is one fact read twenty one times: taken as independent
+    // samples it drove n_eff to 263 on a single registry field and published a
+    // composite of 96 at 0.88 confidence, from one byte-identical transcript
+    // replayed. Each dimension now declares whether re-observing it is a fresh
+    // sample.
     const one = scoreSubject(transcriptsToSubject(history(1), { probe: PROBE_IDENTITY, asOfTs: AS_OF, profileId: "mcp_server.v1" })).result;
     const many = scoreSubject(transcriptsToSubject(history(21), { probe: PROBE_IDENTITY, asOfTs: AS_OF, profileId: "mcp_server.v1" })).result;
 
     expect(many.dimension_coverage).toBe(1);
     expect(many.composite).not.toBeNull();
-    expect(many.composite!).toBeGreaterThan(one.composite!);
-    // More days is more evidence, and the interval says so.
-    expect(many.composite_confidence).toBeGreaterThan(one.composite_confidence * 3);
-    for (const d of many.dimensions) expect(d.n_eff, d.dimension).toBeGreaterThan(5);
+
+    const nEff = (r: typeof many, id: string) => r.dimensions.find((d) => d.dimension === id)!.n_eff;
+    // Availability genuinely varies between probes, so twenty one days of it
+    // are twenty one observations and the interval narrows.
+    expect(nEff(many, "availability")).toBeGreaterThan(nEff(one, "availability") * 5);
+    expect(many.composite_confidence).toBeGreaterThan(one.composite_confidence);
+    // The declaration-derived dimensions do not move, however many times the
+    // same declaration is read.
+    for (const id of ["protocol_conformance", "documentation", "maintenance"]) {
+      expect(nEff(many, id), id).toBeCloseTo(nEff(one, id), 1);
+    }
   });
 
   it("does not penalize the probe for measuring many subjects a day", () => {

@@ -73,11 +73,31 @@ export function computeObserverWeights(
   }
 
   return sorted.map((o) => {
+    // Age ramp, and who it applies to.
+    //
+    // Age is a proxy for "has this reviewer had time to build a track record",
+    // which is a property of OPINIONS. A probe's measurement is reproducible
+    // from its stored transcript, and re-reading that transcript a year later
+    // returns the same bytes: the harness getting older does not make the
+    // observation more accurate. Applying the ramp to a probe therefore rates
+    // the subject on the age of our own tooling.
+    //
+    // It also blocked launch outright. n_eff is approximately the observer's
+    // weight for a single-observer collector, and the suppression floor is
+    // 0.50, so nothing at all published until the harness passed roughly 150
+    // days — and a new ratings service has, by definition, a new harness. Swept
+    // over the real population: 30 days published 0 of 600, 100 days 0, 150
+    // days 292, 200 days 300.
+    //
+    // Same reasoning, and the same exemption, as the velocity penalty below,
+    // which was corrected for probes for exactly this reason. A constraint
+    // written for opinions does not automatically transfer to measurements.
+    const ageApplies = o.observer_kind !== "probe";
     const seenSec = parseIsoUtcSeconds(o.first_seen_ts);
     const ageSeconds = asOfSec >= seenSec ? asOfSec - seenSec : 0;
     const ageDaysFx = divRoundHalfUp(BigInt(ageSeconds) * ONE, 86400n);
     const ageRatio = minFx(ONE, divFx(ageDaysFx, c.ageRampDays));
-    const age = c.ageFloor + mulFx(ONE - c.ageFloor, ageRatio);
+    const age = ageApplies ? c.ageFloor + mulFx(ONE - c.ageFloor, ageRatio) : ONE;
 
     // Group share: how much of this subject's observer set shares this
     // observer's group, excluding the observer itself. One observer alone in

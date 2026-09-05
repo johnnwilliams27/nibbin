@@ -64,6 +64,7 @@ import type {
   RatingProfile,
   Subject,
   SubjectScoreResult,
+  ResamplingPolicy,
 } from "@trust-index/types";
 import {
   FixedNum,
@@ -80,6 +81,32 @@ import { floorDaysBetween, parseIsoUtcSeconds } from "../time.js";
 import { parseRatingConstants, resolveDimensionConstants, type RatingConstantsFx } from "./constants.js";
 import { profileDigest, subjectInputsHash, observationKey, observationCheck } from "./hash.js";
 import { computeObserverWeights, type ObserverWeightFx } from "./weights.js";
+
+/**
+ * Apply a dimension's resampling policy before anything is weighted.
+ *
+ * Under `latest_only`, repeated readings of the same check are the same fact
+ * read again, so only the most recent survives. Without this the per-day volume
+ * bucket treats each re-read as an independent sample: replaying one
+ * byte-identical transcript as 365 daily runs took n_eff on `maintenance` to
+ * 263 and the composite to 96 with 0.88 confidence, on a single registry field.
+ * The pipeline had exactly two states — collapsed onto the prior, or inflated —
+ * and the road between them was a loop.
+ *
+ * `independent_per_day` keeps every reading, which is correct where the value
+ * genuinely varies between probes: an endpoint that answered yesterday and
+ * timed out today has produced two observations, not one.
+ */
+function resample(entries: readonly Observation[], policy: ResamplingPolicy): Observation[] {
+  if (policy === "independent_per_day") return [...entries];
+  const latest = new Map<string, Observation>();
+  for (const e of entries) {
+    const k = `${e.observer_id}#${e.observation_key}`;
+    const prev = latest.get(k);
+    if (prev === undefined || prev.ts < e.ts) latest.set(k, e);
+  }
+  return [...latest.values()];
+}
 
 function displayScore(valueFx: bigint): FixedNum {
   return new FixedNum(rescale(valueFx * 100n, INNER, PRECISION.score), PRECISION.score);
@@ -183,6 +210,16 @@ function scoreDimension(
   spec: DimensionSpec,
   entries: readonly Observation[],
   priorFx: bigint,
+  /**
+   * How many observations the prior is worth, from the prior's own `n_basis`.
+   *
+   * `n_basis` is documented as "effective sample size behind the prior itself"
+   * and was never read: every prior was applied with the weight of
+   * `shrinkage_k`, so DEFAULT_PRIORS declared a strength of 1.00 and the engine
+   * used 5. A prior's influence should equal its evidential weight, and
+   * shrinkage_k now acts as the ceiling on that rather than as the value.
+   */
+  priorNFx: bigint,
   c: RatingConstantsFx,
   asOfSec: number,
   weightByObserver: ReadonlyMap<string, bigint>,
@@ -262,7 +299,7 @@ function scoreDimension(
     staged.map((s) => s.obs),
     capWeights,
   );
-  const post = posterior(sums, priorFx, c.shrinkageK);
+  const post = posterior(sums, priorFx, priorNFx);
   const spanDays = haveAny ? floorDaysBetween(maxSec, minSec) : 0;
 
   let suppressionReason: string | null = null;
@@ -489,7 +526,7 @@ export function scoreSubject(subject: Subject): { result: SubjectScoreResult; ca
 
   const priorGlobalFx = parseFx(subject.priors.global);
   const outcomes: DimensionOutcome[] = profile.dimensions.map((spec) => {
-    const entries = usable.filter((o) => o.dimension === spec.id);
+    const entries = resample(usable.filter((o) => o.dimension === spec.id), spec.resampling);
     const priorStr = Object.hasOwn(subject.priors.by_dimension, spec.id)
       ? subject.priors.by_dimension[spec.id]!
       : subject.priors.global;
@@ -498,7 +535,10 @@ export function scoreSubject(subject: Subject): { result: SubjectScoreResult; ca
     // weeks and maintenance in a year, and one global half-life could not
     // serve both.
     const dc = resolveDimensionConstants(c, profile, spec);
-    return scoreDimension(spec, entries, parseFx(priorStr), dc, asOfSec, weightByObserver);
+    // The prior counts for what it says it counts for, capped by shrinkage_k so
+    // a prior cannot claim unlimited strength.
+    const priorNFx = minFx(parseFx(subject.priors.n_basis), dc.shrinkageK);
+    return scoreDimension(spec, entries, parseFx(priorStr), priorNFx, dc, asOfSec, weightByObserver);
   });
 
   // Gates run before the composite is formed, so a capped dimension enters the
