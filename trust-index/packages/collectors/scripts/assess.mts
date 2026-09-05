@@ -7,7 +7,7 @@
  *
  * Usage: pnpm exec tsx scripts/assess.mts --i-have-approval [--per-shape 10]
  */
-import { readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { classifyTool } from "../src/mcp/shape.js";
 import { runBattery, type BatteryOutcome } from "../src/mcp/battery.js";
 import { parseRpcBody } from "../src/mcp/probe.js";
@@ -107,10 +107,22 @@ async function session(endpoint: string): Promise<string | null | undefined> {
 }
 
 const OUT = arg("--out", "assessment.json");
-const outcomes: Array<BatteryOutcome & { server: string; endpoint: string }> = [];
+
+/**
+ * Resume, so an interrupted run does not re-probe servers that already
+ * answered. Probing is done to people who did not ask for it; making them
+ * absorb the same battery twice because our process died is not their problem
+ * to pay for. Keyed on endpoint + tool, which is what an outcome is about.
+ */
+const outcomes: Array<BatteryOutcome & { server: string; endpoint: string }> = existsSync(OUT)
+  ? (JSON.parse(readFileSync(OUT, "utf8")) as Array<BatteryOutcome & { server: string; endpoint: string }>)
+  : [];
+const alreadyDone = new Set(outcomes.map((o) => `${o.endpoint}\u0000${o.tool}`));
+if (outcomes.length > 0) console.log(`resuming: ${outcomes.length} tools already probed, skipping those\n`);
 for (const [shape, list] of [...byShape].sort()) {
   console.log(`\n=== ${shape} ===`);
   for (const c of list) {
+    if (alreadyDone.has(`${c.endpoint}\u0000${c.declaration.name}`)) continue;
     const sid = await session(c.endpoint);
     if (sid === undefined) { console.log(`  ${c.declaration.name}: no session`); continue; }
     let o: BatteryOutcome;
