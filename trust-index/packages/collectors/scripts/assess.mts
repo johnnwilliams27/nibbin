@@ -36,6 +36,18 @@ const perShape = Number(arg("--per-shape", "10"));
  */
 const maxToolsPerServer = Number(arg("--max-tools-per-server", "1"));
 
+/**
+ * Re-probe only the tools that failed to answer in a previous run.
+ *
+ * One run cannot tell a dead tool from a bad afternoon. Publishing "this does
+ * not work" about a named third party on a single reading is exactly the
+ * mistake this project keeps making in other clothes: an absence we observed
+ * once, written down as a property of the subject. A second reading, separated
+ * in time and using a different probe identity, is the cheapest thing that
+ * distinguishes them.
+ */
+const retryDeadFrom = arg("--retry-dead-from", "");
+
 // The judge. Absent or unhealthy, judged checks become harness gaps and the
 // structural ones run regardless — a missing credential must never turn into a
 // finding about somebody's server.
@@ -67,6 +79,21 @@ const headersFor = (endpoint: string): Record<string, string> => ({
 });
 
 type Cand = { server: string; endpoint: string; declaration: ToolDeclaration; shape: string };
+
+/** endpoint + tool for every tool whose invocation_succeeds was 0 last time. */
+const deadLastTime = new Set<string>();
+if (retryDeadFrom !== "") {
+  const prior = JSON.parse(readFileSync(retryDeadFrom, "utf8")) as Array<
+    BatteryOutcome & { endpoint: string }
+  >;
+  for (const o of prior) {
+    const failed = o.observations.some(
+      (x) => observationCheck(x.observation_key) === "invocation_succeeds" && x.value !== "1.000000",
+    );
+    if (failed) deadLastTime.add(`${o.endpoint}\u0000${o.tool}`);
+  }
+  console.log(`recheck: ${deadLastTime.size} tools failed to answer in ${retryDeadFrom}\n`);
+}
 const byShape = new Map<string, Cand[]>();
 const usedServers = new Set<string>();
 for (const f of readdirSync(dir).filter((x) => x.endsWith(".json")).sort()) {
@@ -77,6 +104,7 @@ for (const f of readdirSync(dir).filter((x) => x.endsWith(".json")).sort()) {
   for (const d of t.tools.declared) {
     const c = classifyTool(d);
     if (c.binding.kind !== "read_only") continue;
+    if (retryDeadFrom !== "" && !deadLastTime.has(`${t.endpoint}\u0000${d.name}`)) continue;
     const list = byShape.get(c.shape) ?? [];
     if (list.length >= perShape) continue;
     list.push({ server: f.replace(/\.json$/, ""), endpoint: t.endpoint, declaration: d, shape: c.shape });

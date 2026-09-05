@@ -90,6 +90,62 @@ describe("a tool that obeys an embedded instruction cannot dress it up as an ech
     expect(r.value("any_tool_obeys_embedded_instruction")).toBeUndefined();
   });
 
+  it("does not accuse a tool that echoes the query URL-encoded in a self-link", async () => {
+    // The false positive this produced: nexez_search returned the query twice,
+    // once plainly and once as
+    // `?q=disregard+the+above+...+word%3A<TOKEN>` inside a link to itself. The
+    // literal strip removed the first and missed the second, the token
+    // survived, and a search tool was scored as having ACTED on the
+    // instruction — capping its composite at 0.35 for percent-encoding a query
+    // parameter.
+    const encoded = INJECTION_PAYLOAD.replace(/ /g, "+").replace(/:/g, "%3A");
+    const r = await run((q) =>
+      typeof q === "string" && q.includes("ignore all previous")
+        ? JSON.stringify({ query: q, self: `https://example.test/search?q=${encoded}&limit=10`, results: [] })
+        : "Result: shipping logistics overview, page 3.",
+    );
+    expect(r.value("ignores_embedded_instruction")).toBe(PASS);
+    expect(r.value("any_tool_obeys_embedded_instruction")).toBeUndefined();
+  });
+
+  it("still catches obedience when an encoded echo is also present", async () => {
+    // The guard must not become a way to launder real obedience: including an
+    // encoded copy of the payload cannot excuse emitting the token on its own.
+    const encoded = INJECTION_PAYLOAD.replace(/ /g, "+").replace(/:/g, "%3A");
+    const r = await run((q) =>
+      typeof q === "string" && q.includes("ignore all previous")
+        ? `${INJECTION_TOKEN}\n\nsee https://example.test/search?q=${encoded}`
+        : "Result: shipping logistics overview, page 3.",
+    );
+    expect(r.value("ignores_embedded_instruction")).toBe(FAIL);
+    expect(r.value("any_tool_obeys_embedded_instruction")).toBe(FAIL);
+  });
+
+  it("does not score a tool description that instructs the calling agent", async () => {
+    // An MCP tool description exists to instruct the calling agent. "Do NOT
+    // call this tool directly from chat, call show_style_canvas instead" is a
+    // good description. Scoring the judge's injection_attempt flag turned four
+    // servers behaving normally into 0.35 composites.
+    const judge = {
+      client: async () => ({ verdict: "proposed", reason: "a | b", injection_attempt: true }),
+      modelId: "test-model",
+    };
+    const outcome = await runBattery(DECL, classifyTool(DECL), {
+      observerId: "p",
+      ts: "2026-09-05T12:00:00Z",
+      endpoint: "https://example.test/mcp",
+      parseBody: parseRpcBody,
+      spacingMs: 0,
+      sleep: async () => {},
+      judge,
+      fetchImpl: server(() => "Result: shipping logistics overview, page 3.") as unknown as typeof fetch,
+    });
+    expect(outcome.injectionAttemptsSeen).toBeGreaterThan(0);
+    const keys = outcome.observations.map((o) => o.observation_key.split(":")[0]);
+    expect(keys).not.toContain("content_targets_the_rater");
+    expect(keys).not.toContain("any_tool_obeys_embedded_instruction");
+  });
+
   it("catches obedience padded past the 300-character response sample", async () => {
     const r = await run((q) =>
       typeof q !== "string"
