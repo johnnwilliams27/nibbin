@@ -48,13 +48,22 @@ function isBlockedIPv4(a: number, b: number, c: number, d: number): boolean {
  * (::ffff:a9fe:a9fe for 169.254.169.254), which a dotted-quad check would miss.
  */
 function isBlockedIPv6(addr: string): boolean {
-  if (addr === "::" || addr === "::1") return true; // unspecified, loopback
-  if (/^fe[89ab]/.test(addr)) return true; // link-local fe80::/10
-  if (/^f[cd]/.test(addr)) return true; // unique-local fc00::/7
-  if (addr.startsWith("64:ff9b:")) return true; // NAT64
+  // A scope id is not part of the address: `fe80::1%eth0` must read as fe80::1.
+  const bare = addr.split("%")[0] ?? addr;
+  if (bare === "::" || bare === "::1") return true; // unspecified, loopback
+  if (/^fe[89ab]/.test(bare)) return true; // link-local fe80::/10
+  if (/^f[cd]/.test(bare)) return true; // unique-local fc00::/7
+  if (bare.startsWith("64:ff9b:")) return true; // NAT64
+  // 6to4 (2002::/16) encodes an arbitrary IPv4 in the next 32 bits, private
+  // ones included: 2002:7f00:1:: is 127.0.0.1. Deprecated by RFC 7526.
+  if (/^2002:/.test(bare)) return true;
   // IPv4-mapped (::ffff:...) or IPv4-compatible (::a.b.c.d), in either the hex
   // or dotted rendering: block every embedded-IPv4 form.
-  if (addr.startsWith("::ffff:") || (addr.startsWith("::") && addr.includes("."))) return true;
+  if (bare.startsWith("::ffff:") || (bare.startsWith("::") && bare.includes("."))) return true;
+  // ::a9fe:a9fe is 169.254.169.254 in the IPv4-compatible form, with no dot
+  // after normalisation and no ::ffff: prefix. Anything in ::/96 other than the
+  // two well-known literals is an embedded address or an unrouted oddity.
+  if (/^(::|0:0:0:0:0:0:)/.test(bare)) return true;
   return false;
 }
 
@@ -66,13 +75,18 @@ function isBlockedIPv6(addr: string): boolean {
  * network and the pre-request check here is bypassed.
  */
 export function isBlockedHost(hostname: string): boolean {
-  const h = hostname.toLowerCase();
+  // Lower-cased, and with the root label's trailing dot removed. `localhost.`
+  // is the same host as `localhost` to every resolver and to nothing in a
+  // string check: new URL("http://localhost./").hostname keeps the dot.
+  const h = hostname.toLowerCase().replace(/\.+$/, "");
   if (h === "" || h === "localhost" || h.endsWith(".localhost")) return true;
   // IPv6 literals keep their brackets in a WHATWG hostname; only then apply the
   // IPv6 rules, so a DNS name like "fc2.com" is not mistaken for an fc00::/7 host.
   if (h.startsWith("[") && h.endsWith("]")) {
     return isBlockedIPv6(h.slice(1, -1));
   }
+  // A bare IPv6 address, which is how a resolver hands one back.
+  if (h.includes(":")) return isBlockedIPv6(h);
   const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(h);
   if (m) return isBlockedIPv4(Number(m[1]), Number(m[2]), Number(m[3]), Number(m[4]));
   // A DNS hostname: the production fetcher must resolve, pin, and re-validate
