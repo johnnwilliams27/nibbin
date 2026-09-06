@@ -4,4 +4,5 @@ export * from "./migrations.js";
 export * from "./snapshot.js";
 export * from "./stores.js";
 export * from "./ratings.js";
+export * from "./persist.js";
 export * from "./format.js";
