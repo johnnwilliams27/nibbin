@@ -644,3 +644,23 @@ describe("the byte cap stops the transfer, not just the reading", () => {
     expect(written).toBeLessThan(64 * 1024 * 1024);
   });
 });
+
+describe("the transport does not change what a subject sees", () => {
+  it("declares a content-length rather than chunking the body", async () => {
+    // node:http falls back to chunked transfer encoding without an explicit
+    // length, and the client this replaced always sent one. A subject that
+    // rejects a chunked POST would have started failing for a reason that is
+    // ours, which is the error this project keeps catching in its own numbers.
+    const { port, requests } = await loopbackServer((_req, res) => res.end("{}"));
+    const body = JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize" });
+    await pinnedFetch(`http://subject.invalid:${port}/mcp`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body,
+      signal: AbortSignal.timeout(3000),
+      addresses: ["127.0.0.1"],
+    });
+    expect(requests[0]?.headers["content-length"]).toBe(String(Buffer.byteLength(body)));
+    expect(requests[0]?.headers["transfer-encoding"]).toBeUndefined();
+  });
+});

@@ -362,6 +362,15 @@ export const pinnedFetch: PinnedTransport = (rawUrl, init) =>
       cb(null, first.address, first.family);
     };
 
+    // An explicit content-length, because node:http falls back to chunked
+    // transfer encoding without one and the global fetch this replaced always
+    // sent a length for a string body. A subject that answers a length-declared
+    // POST and rejects a chunked one would have looked like it broke, and a
+    // measurement that changed because our client changed is the exact class of
+    // error this project keeps finding in its own results.
+    const headers = { ...init.headers };
+    if (init.body !== undefined) headers["content-length"] = String(Buffer.byteLength(init.body));
+
     const isHttps = url.protocol === "https:";
     const request = isHttps ? httpsRequest : httpRequest;
     const req = request({
@@ -370,7 +379,7 @@ export const pinnedFetch: PinnedTransport = (rawUrl, init) =>
       ...(url.port === "" ? {} : { port: Number(url.port) }),
       path: `${url.pathname}${url.search}`,
       method: init.method,
-      headers: init.headers,
+      headers,
       lookup: lookup as unknown as LookupFunction,
       // A fresh agent per request. A pooled socket is pinned to the address it
       // was opened against, and reusing one across subjects would leak that
