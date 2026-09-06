@@ -43,6 +43,8 @@ export type ProbeOptions = {
   sleep?: (ms: number) => Promise<void>;
   /** Per-subject probe identity. See probe-identity.ts for why this is not a constant. */
   identity?: ProbeIdentity;
+  /** DNS resolution, injected. See CallOptions.resolver. */
+  resolver?: (h: string) => Promise<Array<{ address: string; family: number }>>;
 };
 
 export function isoNow(): string {

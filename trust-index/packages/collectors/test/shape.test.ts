@@ -11,6 +11,9 @@ import { CAPABILITIES } from "../src/capability.js";
 import { classifyTool, classifyTools, requiredCapabilities, testability } from "../src/mcp/shape.js";
 import { callTool, synthesizeInput, NotCallableError } from "../src/mcp/invoke.js";
 import { runBattery, INJECTION_INSTRUCTION, INJECTION_TOKEN, NONSENSE_QUERY } from "../src/mcp/battery.js";
+/** Reserved TLDs do not resolve; say what the fake hosts point at. */
+const publicDns = async () => [{ address: "93.184.216.34", family: 4 }];
+
 import type { ToolDeclaration } from "../src/mcp/transcript.js";
 
 function tool(over: Partial<ToolDeclaration> & { name: string }): ToolDeclaration {

@@ -13,12 +13,25 @@
  * the indexer is a chain package and a collector for a code host has no
  * business depending on viem to make an HTTP request.
  *
- * What this does NOT do: resolve DNS. A hostname that resolves to a private
- * address passes this check. Callers must therefore also follow redirects
- * manually and re-run this guard on every Location, which `guardedFetch`
- * below does, and a production deployment should additionally pin the
- * resolved address.
+ * The literal check is only half of it. A hostname is not an address, and a
+ * public name that resolves to a private one — `localtest.me` points at
+ * 127.0.0.1, and anyone can publish such a record — walks straight through a
+ * string check. So `guardedFetch` resolves the name and vets every address it
+ * gets back, on the first request and again on every redirect.
+ *
+ * What that still does NOT close, stated plainly rather than implied: DNS
+ * REBINDING. We vet the addresses a name resolves to, then the HTTP client
+ * resolves the name again to connect, and a record with a very short TTL can
+ * differ between the two. Closing that needs the connection pinned to the
+ * address we vetted, which means owning the socket — an `undici` dispatcher
+ * with a custom lookup, or `https.request` with one. Neither is wired here,
+ * and in a deployment that egresses through a proxy the proxy resolves the
+ * name anyway, so the pin has to live wherever the socket is actually opened.
  */
+import { lookup as dnsLookupCb } from "node:dns";
+import { promisify } from "node:util";
+
+const dnsLookup = promisify(dnsLookupCb);
 
 /** True for an IPv4 dotted-quad that is private, loopback, link-local, or reserved. */
 function isBlockedIPv4(a: number, b: number, c: number, d: number): boolean {
@@ -87,6 +100,37 @@ export function vetUrl(raw: string): GuardVerdict {
   return { allowed: true, url };
 }
 
+/**
+ * Does this hostname resolve to anywhere we refuse to talk to?
+ *
+ * Conservative on purpose. A name resolving to several addresses is refused if
+ * ANY of them is blocked: a record mixing a public address with 127.0.0.1 is
+ * not a name we want to race against, and legitimate hosts do not do it.
+ *
+ * An IP literal needs no resolution — `isBlockedHost` already decided — and a
+ * resolution failure is a failure to reach the subject, not a finding about it.
+ */
+export async function vetResolved(
+  hostname: string,
+  resolver: (h: string) => Promise<Array<{ address: string; family: number }>> = (h) =>
+    dnsLookup(h, { all: true }) as Promise<Array<{ address: string; family: number }>>,
+): Promise<{ allowed: true } | { allowed: false; reason: string }> {
+  // Bracketed IPv6 and dotted-quad IPv4 literals were vetted by isBlockedHost.
+  if (/^\[.*\]$/.test(hostname) || /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname)) return { allowed: true };
+  let addresses: Array<{ address: string; family: number }>;
+  try {
+    addresses = await resolver(hostname);
+  } catch (err) {
+    return { allowed: false, reason: `dns lookup failed: ${err instanceof Error ? err.message.slice(0, 80) : "unknown"}` };
+  }
+  if (addresses.length === 0) return { allowed: false, reason: "dns returned no addresses" };
+  for (const { address, family } of addresses) {
+    const blocked = family === 6 ? isBlockedIPv6(address.toLowerCase()) : isBlockedHost(address);
+    if (blocked) return { allowed: false, reason: `resolves to a blocked address (${address})` };
+  }
+  return { allowed: true };
+}
+
 export type HttpOutcome =
   | { ok: true; status: number; headers: Headers; body: string; elapsedMs: number }
   | { ok: false; reason: string; status: number | null; elapsedMs: number };
@@ -98,6 +142,8 @@ export type GuardedFetchOptions = {
   timeoutMs?: number;
   maxBytes?: number;
   maxRedirects?: number;
+  /** Injected in tests so DNS behaviour is deterministic and offline. */
+  resolver?: (h: string) => Promise<Array<{ address: string; family: number }>>;
   /** Injected for tests. Defaults to the global fetch. */
   fetchImpl?: typeof fetch;
   /** Injected for tests and for determinism: elapsed time must not come from a wall clock in scored paths. */
@@ -138,6 +184,12 @@ export async function guardedFetch(raw: string, options: GuardedFetchOptions = {
   for (let hop = 0; hop <= maxRedirects; hop += 1) {
     const vetted = vetUrl(current);
     if (!vetted.allowed) return { ok: false, reason: vetted.reason, status: null, elapsedMs: elapsed() };
+    // Re-run on every hop: a redirect to a name that resolves privately is the
+    // same attack with an extra step.
+    const resolved = await (options.resolver === undefined
+      ? vetResolved(vetted.url.hostname)
+      : vetResolved(vetted.url.hostname, options.resolver));
+    if (!resolved.allowed) return { ok: false, reason: resolved.reason, status: null, elapsedMs: elapsed() };
     let res: Response;
     try {
       res = await doFetch(vetted.url.toString(), {

@@ -251,6 +251,13 @@ export type CallOptions = {
   parseBody: (body: string, contentType: string | null) => { result?: unknown; error?: { message?: string; code?: number } } | { parseError: string };
   /** Per-subject user-agent. See probe-identity.ts for why this is not a constant. */
   userAgent?: string;
+  /**
+   * DNS resolution, injected. guardedFetch resolves every hostname and refuses
+   * addresses it will not talk to, so a caller supplying its own fetch has to
+   * supply its own resolution too or the guard fails closed on a name that does
+   * not exist.
+   */
+  resolver?: (h: string) => Promise<Array<{ address: string; family: number }>>;
 };
 
 export async function callTool(
@@ -301,6 +308,7 @@ export async function callTool(
     timeoutMs: options.timeoutMs ?? 15_000,
     maxBytes: options.maxBytes ?? 2 * 1024 * 1024,
     ...(options.fetchImpl === undefined ? {} : { fetchImpl: options.fetchImpl }),
+    ...(options.resolver === undefined ? {} : { resolver: options.resolver }),
   });
 
   if (!res.ok) return { ...base, reason: res.reason, elapsedMs: res.elapsedMs };

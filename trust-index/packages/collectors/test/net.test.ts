@@ -4,7 +4,7 @@
  * of our own network.
  */
 import { describe, expect, it } from "vitest";
-import { guardedFetch, isBlockedHost, vetUrl } from "../src/net.js";
+import { guardedFetch, isBlockedHost, vetUrl, vetResolved } from "../src/net.js";
 import { isBlockedHost as indexerIsBlockedHost } from "../../indexer/src/metadata.js";
 
 const BLOCKED = [
@@ -76,6 +76,9 @@ function response(init: { status?: number; body?: string; headers?: Record<strin
   });
 }
 
+/** Every host in these tests resolves publicly, so they run offline. */
+const publicDns = async () => [{ address: "93.184.216.34", family: 4 }];
+
 describe("guardedFetch", () => {
   it("re-runs the host guard on every redirect", async () => {
     // The bypass this exists to stop: a public hostname that 302s into the
@@ -89,7 +92,7 @@ describe("guardedFetch", () => {
       return response({ body: '{"secret":true}' });
     }) as unknown as typeof fetch;
 
-    const res = await guardedFetch("https://example.com/mcp", { fetchImpl });
+    const res = await guardedFetch("https://example.com/mcp", { fetchImpl, resolver: publicDns });
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.reason).toBe("blocked host");
     expect(seen).toHaveLength(1);
@@ -102,7 +105,7 @@ describe("guardedFetch", () => {
       }
       return response({ body: '{"ok":true}' });
     }) as unknown as typeof fetch;
-    const res = await guardedFetch("https://example.com/mcp", { fetchImpl });
+    const res = await guardedFetch("https://example.com/mcp", { fetchImpl, resolver: publicDns });
     expect(res.ok).toBe(true);
     if (res.ok) expect(res.body).toBe('{"ok":true}');
   });
@@ -110,7 +113,7 @@ describe("guardedFetch", () => {
   it("stops after the redirect limit rather than looping", async () => {
     const fetchImpl = (async () =>
       response({ status: 302, headers: { location: "https://example.com/again" } })) as unknown as typeof fetch;
-    const res = await guardedFetch("https://example.com/mcp", { fetchImpl, maxRedirects: 2 });
+    const res = await guardedFetch("https://example.com/mcp", { fetchImpl, maxRedirects: 2, resolver: publicDns });
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.reason).toMatch(/more than 2 redirects/);
   });
@@ -118,14 +121,14 @@ describe("guardedFetch", () => {
   it("rejects an oversize body on its declared length", async () => {
     const fetchImpl = (async () =>
       response({ headers: { "content-length": "999999" } })) as unknown as typeof fetch;
-    const res = await guardedFetch("https://example.com/x", { fetchImpl, maxBytes: 1024 });
+    const res = await guardedFetch("https://example.com/x", { fetchImpl, maxBytes: 1024, resolver: publicDns });
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.reason).toMatch(/over 1024 bytes/);
   });
 
   it("rejects an oversize body that declared no length", async () => {
     const fetchImpl = (async () => response({ body: "x".repeat(5000) })) as unknown as typeof fetch;
-    const res = await guardedFetch("https://example.com/x", { fetchImpl, maxBytes: 1024 });
+    const res = await guardedFetch("https://example.com/x", { fetchImpl, maxBytes: 1024, resolver: publicDns });
     expect(res.ok).toBe(false);
   });
 
@@ -133,18 +136,90 @@ describe("guardedFetch", () => {
     const fetchImpl = (async () => {
       throw new Error("ECONNREFUSED");
     }) as unknown as typeof fetch;
-    const res = await guardedFetch("https://example.com/x", { fetchImpl });
+    const res = await guardedFetch("https://example.com/x", { fetchImpl, resolver: publicDns });
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.reason).toMatch(/ECONNREFUSED/);
   });
 
   it("reports an HTTP error status as a failure with its status", async () => {
     const fetchImpl = (async () => response({ status: 503, body: "nope" })) as unknown as typeof fetch;
-    const res = await guardedFetch("https://example.com/x", { fetchImpl });
+    const res = await guardedFetch("https://example.com/x", { fetchImpl, resolver: publicDns });
     expect(res.ok).toBe(false);
     if (!res.ok) {
       expect(res.status).toBe(503);
       expect(res.reason).toBe("HTTP 503");
     }
+  });
+});
+
+/**
+ * A hostname is not an address.
+ *
+ * `localtest.me` is a public DNS name that resolves to 127.0.0.1, and anyone
+ * can publish such a record. Every literal check in this file passes it,
+ * because there is nothing wrong with the string. The endpoints we probe come
+ * from a public registry, so this is the shape of a live blind-POST SSRF
+ * against our own network.
+ *
+ * Resolution is injected here rather than performed, so these run offline and
+ * do not depend on what a real resolver happens to return today.
+ */
+describe("names are resolved and the addresses vetted", () => {
+  const resolves = (...addresses: string[]) =>
+    async () => addresses.map((address) => ({ address, family: address.includes(":") ? 6 : 4 }));
+
+  it("refuses a public name that resolves to loopback", async () => {
+    const v = await vetResolved("localtest.me", resolves("127.0.0.1"));
+    expect(v.allowed).toBe(false);
+    expect(v.allowed === false && v.reason).toMatch(/127\.0\.0\.1/);
+  });
+
+  it.each([
+    ["cloud metadata", "169.254.169.254"],
+    ["private", "10.1.2.3"],
+    ["private", "192.168.0.5"],
+    ["carrier-grade NAT", "100.100.1.1"],
+    ["IPv6 loopback", "::1"],
+    ["IPv6 unique-local", "fd00::1"],
+  ])("refuses a name resolving to %s", async (_label, address) => {
+    expect((await vetResolved("evil.example", resolves(address))).allowed).toBe(false);
+  });
+
+  it("refuses a name that resolves to a public AND a private address", async () => {
+    // The rebinding-adjacent case: a record mixing the two is not something to
+    // race against, and no legitimate host publishes one.
+    expect((await vetResolved("split.example", resolves("93.184.216.34", "127.0.0.1"))).allowed).toBe(false);
+  });
+
+  it("allows an ordinary public name", async () => {
+    expect((await vetResolved("example.com", resolves("93.184.216.34"))).allowed).toBe(true);
+  });
+
+  it("does not resolve an IP literal, which was already vetted", async () => {
+    let called = false;
+    const spy = async () => { called = true; return []; };
+    expect((await vetResolved("93.184.216.34", spy)).allowed).toBe(true);
+    expect((await vetResolved("[2606:2800:220:1:248:1893:25c8:1946]", spy)).allowed).toBe(true);
+    expect(called).toBe(false);
+  });
+
+  it("treats a resolution failure as our inability to reach, not a finding", async () => {
+    const v = await vetResolved("nxdomain.example", async () => { throw new Error("ENOTFOUND"); });
+    expect(v.allowed).toBe(false);
+    expect(v.allowed === false && v.reason).toMatch(/dns lookup failed/);
+  });
+
+  it("blocks a redirect to a name that resolves privately", async () => {
+    // Same attack with an extra step, so the check runs on every hop.
+    const fetchImpl = (async (url: string) =>
+      url.includes("start")
+        ? new Response(null, { status: 302, headers: { location: "https://inner.example/" } })
+        : new Response("secret", { status: 200 })) as unknown as typeof fetch;
+    const out = await guardedFetch("https://start.example/", {
+      fetchImpl,
+      resolver: async (h) => [{ address: h === "inner.example" ? "127.0.0.1" : "93.184.216.34", family: 4 }],
+    });
+    expect(out.ok).toBe(false);
+    expect(out.ok === false && out.reason).toMatch(/blocked address/);
   });
 });

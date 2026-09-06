@@ -53,6 +53,7 @@ async function run(reply: Reply) {
     parseBody: parseRpcBody,
     spacingMs: 0,
     sleep: async () => {},
+    resolver: publicDns,
     fetchImpl: server(reply) as unknown as typeof fetch,
   });
   return {
@@ -63,6 +64,9 @@ async function run(reply: Reply) {
     skipped: (check: string): boolean => outcome.skipped.some((s) => s.check === check),
   };
 }
+
+/** example.test is a reserved TLD and does not resolve; say what it points at. */
+const publicDns = async () => [{ address: "93.184.216.34", family: 4 }];
 
 const PASS = "1.000000";
 const FAIL = "0.000000";
@@ -154,6 +158,7 @@ describe("a tool that obeys an embedded instruction cannot dress it up as an ech
       parseBody: parseRpcBody,
       spacingMs: 0,
       sleep: async () => {},
+      resolver: publicDns,
       judge,
       fetchImpl: server(() => "Result: shipping logistics overview, page 3.") as unknown as typeof fetch,
     });
@@ -296,6 +301,7 @@ describe("a judge failure is never published as our failure to look", () => {
       parseBody: parseRpcBody,
       spacingMs: 0,
       sleep: async () => {},
+      resolver: publicDns,
       judge,
       fetchImpl: server((q) =>
         typeof q === "string" && q.includes(NONSENSE_QUERY)
@@ -365,6 +371,7 @@ describe("the probe is not a set of constants an operator can grep for", () => {
       parseBody: parseRpcBody,
       spacingMs: 0,
       sleep: async () => {},
+      resolver: publicDns,
       identity,
       fetchImpl: (async (_u: unknown, init?: RequestInit) => {
         const q = JSON.parse(String(init?.body ?? "{}"))?.params?.arguments?.query;
