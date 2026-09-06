@@ -34,6 +34,7 @@ import { callTool, synthesizeInput, type ToolCallResult } from "../src/mcp/invok
 import { parseRpcBody } from "../src/mcp/probe.js";
 import { guardedFetch } from "../src/net.js";
 import { NONSENSE_QUERY } from "../src/mcp/battery.js";
+import { selectToolsForAssessment } from "../src/mcp/select.js";
 import type { ProbeTranscript, ToolDeclaration } from "../src/mcp/transcript.js";
 
 function arg(n: string, d: string): string {
@@ -57,8 +58,14 @@ const H = {
 type Cand = { server: string; endpoint: string; declaration: ToolDeclaration };
 
 // ---- pick retrieval-shaped, read-only tools ---------------------------------
-const seenServer = new Set<string>();
-const candidates: Cand[] = [];
+//
+// One tool per server, so a single prolific operator cannot dominate the sample
+// and turn one server's habits into a population statistic. WHICH tool used to
+// be the first one their declaration happened to list, which is the defect
+// src/mcp/select.ts removes — and it mattered more here than anywhere: this
+// script's output is a population statistic about fabrication, and the operator
+// was choosing the one tool that represented them in it.
+const inputs: Array<{ server: string; transcript: ProbeTranscript }> = [];
 for (const file of readdirSync(join(ROOT, "transcripts"))) {
   let t: ProbeTranscript;
   try {
@@ -66,29 +73,30 @@ for (const file of readdirSync(join(ROOT, "transcripts"))) {
   } catch {
     continue;
   }
-  if (t.tools?.ok !== true || t.endpoint === null) continue;
-  const server = t.registry?.name ?? file.replace(/\.json$/, "");
-  // One tool per server, so a single prolific operator cannot dominate the
-  // sample and turn one server's habits into a population statistic.
-  if (seenServer.has(server)) continue;
-  for (const d of t.tools.declared ?? []) {
-    const c = classifyTool(d);
-    if (c.shape !== "retrieval" || c.binding.kind !== "read_only") continue;
-    // It has to take a free-text query for a nonsense string to mean anything.
-    const props = (d.inputSchema as { properties?: Record<string, unknown> } | null)?.properties ?? {};
-    const required = ((d.inputSchema as { required?: string[] } | null)?.required ?? []).filter(
-      (r) => typeof r === "string",
-    );
-    const queryParam = required.find((r) => /query|q|search|term|keyword|text|name|id|slug/i.test(r));
-    if (queryParam === undefined || Object.keys(props).length === 0) continue;
-    candidates.push({ server, endpoint: t.endpoint, declaration: d });
-    seenServer.add(server);
-    break;
-  }
-  if (candidates.length >= limit) break;
+  if (t.endpoint === null) continue;
+  inputs.push({ server: t.registry?.name ?? file.replace(/\.json$/, ""), transcript: t });
 }
 
-console.log(`retrieval tools to probe: ${candidates.length} (one per server)\n`);
+/** Only a tool that searches a fixed corpus, with a free-text parameter to poison. */
+const usable = (endpoint: string, name: string): boolean => {
+  const t = inputs.find((i) => i.transcript.endpoint === endpoint)?.transcript;
+  const d = t?.tools?.declared.find((x) => x.name === name);
+  if (d === undefined) return false;
+  if (classifyTool(d).shape !== "retrieval") return false;
+  const props = (d.inputSchema as { properties?: Record<string, unknown> } | null)?.properties ?? {};
+  const required = ((d.inputSchema as { required?: string[] } | null)?.required ?? []).filter(
+    (r): r is string => typeof r === "string",
+  );
+  const queryParam = required.find((r) => /query|q|search|term|keyword|text|name|id|slug/i.test(r));
+  return queryParam !== undefined && Object.keys(props).length > 0;
+};
+
+const selection = selectToolsForAssessment(inputs, { perServer: 1, only: usable });
+const candidates: Cand[] = selection.selected
+  .slice(0, limit)
+  .map((s) => ({ server: s.server, endpoint: s.endpoint, declaration: s.declaration }));
+
+console.log(`retrieval tools to probe: ${candidates.length} (one per server, ranked by informativeness)\n`);
 
 // Two steps, matching assess.mts. A single `initialize` without the follow-up
 // `notifications/initialized` leaves most servers refusing every later call —

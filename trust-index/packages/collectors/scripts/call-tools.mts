@@ -17,6 +17,7 @@
  */
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { classifyTool } from "../src/mcp/shape.js";
+import { describeSelection, selectToolsForAssessment } from "../src/mcp/select.js";
 import { callTool, synthesizeInput, type ToolCallResult } from "../src/mcp/invoke.js";
 import { parseRpcBody } from "../src/mcp/probe.js";
 import { guardedFetch } from "../src/net.js";
@@ -36,28 +37,36 @@ if (!process.argv.includes("--i-have-approval")) {
 
 type Candidate = { server: string; endpoint: string; declaration: ToolDeclaration; shape: string; basis: string };
 
-// Selection: one tool per server, at most `perShape` per shape, so the mapping
-// reflects variety rather than one prolific server's whole catalogue.
+// Selection: ONE tool per server — this script maps the variety of responses
+// across the population, so one prolific operator's catalogue must not become
+// the population. Which one is no longer the first the server happens to
+// declare: that loop lived here too, and it let the operator pick the single
+// tool their whole server would be characterised by. src/mcp/select.ts ranks
+// them; `--per-shape` is a cap on our own effort and is reported, never silent.
+const inputs = readdirSync(dir)
+  .filter((x) => x.endsWith(".json"))
+  .sort()
+  .map((f) => ({
+    server: f.replace(/\.json$/, ""),
+    transcript: JSON.parse(readFileSync(`${dir}/${f}`, "utf8")) as ProbeTranscript,
+  }));
+const selection = selectToolsForAssessment(inputs, { perServer: 1, perShape });
+for (const line of describeSelection(selection, perShape)) console.log(line);
+
 const candidates = new Map<string, Candidate[]>();
-const usedServers = new Set<string>();
-for (const f of readdirSync(dir).filter((x) => x.endsWith(".json")).sort()) {
-  const t = JSON.parse(readFileSync(`${dir}/${f}`, "utf8")) as ProbeTranscript;
-  if (t.tools?.ok !== true) continue;
-  if (t.auth?.required === true) continue;
-  for (const d of t.tools.declared) {
-    const c = classifyTool(d);
-    if (c.binding.kind !== "read_only") continue;
-    const list = candidates.get(c.shape) ?? [];
-    if (list.length >= perShape) continue;
-    if (usedServers.has(t.endpoint)) continue;
-    usedServers.add(t.endpoint);
-    list.push({ server: f.replace(/\.json$/, ""), endpoint: t.endpoint, declaration: d, shape: c.shape, basis: c.binding.basis });
-    candidates.set(c.shape, list);
-    break;
-  }
+for (const s of selection.selected) {
+  const list = candidates.get(s.shape) ?? [];
+  list.push({
+    server: s.server,
+    endpoint: s.endpoint,
+    declaration: s.declaration,
+    shape: s.shape,
+    basis: s.classification.binding.kind === "read_only" ? s.classification.binding.basis : "n/a",
+  });
+  candidates.set(s.shape, list);
 }
 
-console.log(`Selected ${[...candidates.values()].flat().length} tools across ${candidates.size} shapes.\n`);
+console.log(`\nSelected ${[...candidates.values()].flat().length} tools across ${candidates.size} shapes.\n`);
 for (const [shape, list] of [...candidates].sort()) {
   console.log(`  ${shape.padEnd(14)} ${list.length}`);
 }

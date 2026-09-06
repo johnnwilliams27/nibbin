@@ -23,6 +23,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             </a>
             <ul className="nav-links">
               <li>
+                <a href="/compendium">Compendium</a>
+              </li>
+              <li>
                 <a href="/methodology">Methodology</a>
               </li>
               <li>

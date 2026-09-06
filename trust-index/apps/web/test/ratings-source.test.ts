@@ -68,11 +68,19 @@ function contract(name: string, make: () => RatingsSource): void {
 
     it("serves coverage and completeness together, unmerged and distinct", async () => {
       const d = await src.getSubject(WITHHELD_INCOMPLETE, { through_day: DAY });
-      expect(d!.coverage.dimension_coverage).toBe("1.0000");
-      expect(d!.coverage.assessment_completeness).toBe("0.1300");
-      // The two disagreeing is the whole reason they are two fields: everything
-      // we could reach passed, and we could reach an eighth of the profile.
+      // The relationship, not the constants: this subject is the case where
+      // everything we could reach passed and we could reach a fraction of the
+      // profile. Coverage is full, completeness is not, and the two are
+      // different numbers. Pinning the exact values in the shared contract
+      // would make it fail whenever the engine is retuned, which changes what
+      // the numbers ARE and not whether they may be merged. The frozen fixture
+      // carries the literals; see the block after the contract.
+      expect(Number(d!.coverage.dimension_coverage)).toBe(1);
+      expect(Number(d!.coverage.assessment_completeness)).toBeLessThan(1);
       expect(d!.coverage.dimension_coverage).not.toBe(d!.coverage.assessment_completeness);
+      // Both are exact decimals, not floats that happen to print.
+      expect(d!.coverage.dimension_coverage).toMatch(/^\d\.\d+$/);
+      expect(d!.coverage.assessment_completeness).toMatch(/^\d\.\d+$/);
     });
 
     it("attributes the shortfall to our harness, with the capability each check needed", async () => {
@@ -224,6 +232,19 @@ function contract(name: string, make: () => RatingsSource): void {
 }
 
 contract("FixtureRatingsSource", () => new FixtureRatingsSource());
+
+/**
+ * The committed sample is frozen, so it can carry the exact numbers the shared
+ * contract deliberately does not. This is the case the whole schema exists for,
+ * written down as a literal: full coverage of what we could assess, thirteen
+ * percent of the profile attempted.
+ */
+describe("the coverage/completeness case, exactly", () => {
+  it("keeps 1.0000 and 0.1300 apart", async () => {
+    const d = await new FixtureRatingsSource().getSubject(WITHHELD_INCOMPLETE, { through_day: DAY });
+    expect(d!.coverage).toEqual({ dimension_coverage: "1.0000", assessment_completeness: "0.1300" });
+  });
+});
 
 // Skips loudly rather than silently: the name says which half of the contract
 // did not run, so a green suite on a machine with no database cannot be

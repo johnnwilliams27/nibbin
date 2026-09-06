@@ -27,7 +27,14 @@ export function IntervalFigure({
   low: number;
   high: number;
   point: number;
-  nEff: number;
+  /**
+   * Omitted where the figure has no effective sample size to report. The
+   * composite carries an interval but no n_eff of its own — that is a
+   * per-dimension quantity — and printing "n_eff 0.00" beside it would be a
+   * number nobody measured, sitting in the caption a reader uses to judge how
+   * much evidence is behind the band.
+   */
+  nEff?: number;
   label?: string;
 }) {
   const lowX = toX(low);
@@ -94,7 +101,9 @@ export function IntervalFigure({
         <span>{formatScore(point)}</span>
         <span>{formatScore(high)}</span>
       </div>
-      <figcaption className="interval-neff num">n_eff {formatNEff(nEff)}</figcaption>
+      {nEff === undefined ? null : (
+        <figcaption className="interval-neff num">n_eff {formatNEff(nEff)}</figcaption>
+      )}
     </figure>
   );
 }

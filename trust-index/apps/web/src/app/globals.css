@@ -306,3 +306,86 @@ table.data-table tbody tr:last-child td {
 .kv-list dd {
   margin: 0;
 }
+
+/* ---------------------------------------------------------------------------
+ * Compendium: the subject-shaped surface.
+ *
+ * Same register as everything above — hairlines, no cards, no verdict colour.
+ * The one new idea is the day-series status strip, where the four day-states
+ * are told apart by geometry alone (filled, hollow, dashed, absent), so the
+ * figure survives greyscale, colourblindness and a printout.
+ * ------------------------------------------------------------------------- */
+
+.note {
+  color: var(--color-slate);
+  font-size: 0.86rem;
+  max-width: 68ch;
+}
+
+.muted {
+  color: var(--color-slate);
+}
+
+.coverage-pair .kv-list {
+  margin-bottom: 0.75rem;
+}
+
+.day-series {
+  margin: 0;
+}
+
+.day-series-axis {
+  display: flex;
+  justify-content: space-between;
+  color: var(--color-slate);
+  font-size: 0.78rem;
+  margin-top: 0.2rem;
+}
+
+.day-series-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.1rem;
+  color: var(--color-slate);
+  font-size: 0.8rem;
+  margin: 0.6rem 0 0.5rem;
+}
+
+.day-series-legend .glyph {
+  display: inline-block;
+  width: 0.7rem;
+  height: 0.7rem;
+  margin-right: 0.3rem;
+  vertical-align: -0.05rem;
+}
+
+/* Filled: assessed and withheld. */
+.glyph-filled {
+  background: var(--color-band);
+}
+
+/* Hollow: the run happened without this subject. */
+.glyph-hollow {
+  border: 1px solid var(--color-band);
+}
+
+/* Dashed: no run at all. The gap is ours. */
+.glyph-dashed {
+  border: 1px dashed var(--color-hairline);
+}
+
+/* A point on the value axis: the only state with a number behind it. */
+.glyph-point {
+  border-radius: 50%;
+  background: var(--color-marker);
+  width: 0.45rem;
+  height: 0.45rem;
+  margin-left: 0.12rem;
+  margin-right: 0.42rem;
+}
+
+table.data-table caption {
+  caption-side: top;
+  text-align: left;
+  padding: 0.5rem 0.6rem;
+}
