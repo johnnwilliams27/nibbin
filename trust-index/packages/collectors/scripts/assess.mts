@@ -5,7 +5,13 @@
  * re-probed to decide what to assess. Read-only tools only, re-checked inside
  * callTool. Spaced.
  *
- * Usage: pnpm exec tsx scripts/assess.mts --i-have-approval [--per-shape 10]
+ * WHICH tools is not decided here. It used to be, in a loop that walked each
+ * server's declaration in order, which handed the operator the choice of what we
+ * tested. That now lives in src/mcp/select.ts, ranked by how much probing a tool
+ * can tell us, with a module header explaining every signal and a test suite.
+ *
+ * Usage: pnpm exec tsx scripts/assess.mts --i-have-approval
+ *          [--max-tools-per-server 3] [--per-shape N] [--retry-dead-from f.json]
  */
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { classifyTool } from "../src/mcp/shape.js";
@@ -17,6 +23,7 @@ import { judgeCapabilityProbe, judgeFromEnv, PRODUCTION_JUDGE_MODEL } from "../s
 import { preflight } from "../src/capability.js";
 import { observationCheck } from "@trust-index/scoring";
 import { probeIdentity, probeSeed } from "../src/mcp/probe-identity.js";
+import { describeSelection, MAX_TOOLS_PER_SERVER, selectToolsForAssessment } from "../src/mcp/select.js";
 
 function arg(n: string, d: string): string {
   const i = process.argv.indexOf(n);
@@ -26,15 +33,37 @@ if (!process.argv.includes("--i-have-approval")) {
   console.log("This CALLS tools repeatedly on third-party servers. Re-run with --i-have-approval.");
   process.exit(0);
 }
-const perShape = Number(arg("--per-shape", "10"));
+/**
+ * A GLOBAL cap on tools of one shape, across every server. Off by default now,
+ * and that is the fix rather than an oversight.
+ *
+ * It used to default to 10 and it counted across all servers, so once ten
+ * `retrieval` tools had been taken the eleventh server with only retrieval tools
+ * got nothing — silently, decided by alphabetical filename order. Replayed over
+ * the stored transcripts at the old defaults: 36 of 161 eligible servers probed,
+ * 125 starved. At `--max-tools-per-server 3`, which the comment below already
+ * argued for, it got worse: 22 probed, 139 starved. The published population
+ * only ever existed because somebody passed a large `--per-shape` at the
+ * console; nothing in the code guaranteed it.
+ *
+ * A global cap is a budget on our own effort. A per-server cap is a limit on the
+ * load any single operator absorbs. Only the second is owed to anyone, so only
+ * the second is a default. Pass a number to reinstate the first and
+ * describeSelection will print every server it takes tools away from.
+ */
+const perShape = Number(arg("--per-shape", "0"));
 /**
  * Tools per server. One is enough to ask "does this server work"; it is NOT
  * enough to ask "is there a bad tool in here", which is the question the
  * occurrence gates exist for and the one a 199-decoy dilution attack targets.
  * Three is a compromise: some multi-tool coverage without multiplying the load
  * we put on somebody else's server by the size of their surface.
+ *
+ * The constant said 1 while this comment argued for 3, for long enough that a
+ * hostile tool anywhere but first in a declaration was never called. It now says
+ * what the comment says.
  */
-const maxToolsPerServer = Number(arg("--max-tools-per-server", "1"));
+const maxToolsPerServer = Number(arg("--max-tools-per-server", String(MAX_TOOLS_PER_SERVER)));
 
 /**
  * Re-probe only the tools that failed to answer in a previous run.
@@ -94,28 +123,33 @@ if (retryDeadFrom !== "") {
   }
   console.log(`recheck: ${deadLastTime.size} tools failed to answer in ${retryDeadFrom}\n`);
 }
-const byShape = new Map<string, Cand[]>();
-const usedServers = new Set<string>();
-for (const f of readdirSync(dir).filter((x) => x.endsWith(".json")).sort()) {
-  const t = JSON.parse(readFileSync(`${dir}/${f}`, "utf8")) as ProbeTranscript;
-  if (t.tools?.ok !== true || t.auth?.required === true) continue;
+const inputs = readdirSync(dir)
+  .filter((x) => x.endsWith(".json"))
+  .sort()
+  .map((f) => ({
+    server: f.replace(/\.json$/, ""),
+    transcript: JSON.parse(readFileSync(`${dir}/${f}`, "utf8")) as ProbeTranscript,
+  }));
+const selection = selectToolsForAssessment(inputs, {
+  perServer: maxToolsPerServer,
+  perShape,
+  ...(retryDeadFrom === ""
+    ? {}
+    : { only: (endpoint: string, tool: string) => deadLastTime.has(`${endpoint}\u0000${tool}`) }),
+});
+// Printed before anything is called, always. The starvation lines are the whole
+// point: a server that drops to zero tools is a server we chose not to rate,
+// and the selection this replaced made that choice 139 times without a word.
+for (const line of describeSelection(selection, perShape)) console.log(line);
 
-  let takenHere = 0;
-  for (const d of t.tools.declared) {
-    const c = classifyTool(d);
-    if (c.binding.kind !== "read_only") continue;
-    if (retryDeadFrom !== "" && !deadLastTime.has(`${t.endpoint}\u0000${d.name}`)) continue;
-    const list = byShape.get(c.shape) ?? [];
-    if (list.length >= perShape) continue;
-    list.push({ server: f.replace(/\.json$/, ""), endpoint: t.endpoint, declaration: d, shape: c.shape });
-    byShape.set(c.shape, list);
-    usedServers.add(t.endpoint);
-    takenHere += 1;
-    if (takenHere >= maxToolsPerServer) break;
-  }
+const byShape = new Map<string, Cand[]>();
+for (const s of selection.selected) {
+  const list = byShape.get(s.shape) ?? [];
+  list.push({ server: s.server, endpoint: s.endpoint, declaration: s.declaration, shape: s.shape });
+  byShape.set(s.shape, list);
 }
 const all = [...byShape.values()].flat();
-console.log(`Assessing ${all.length} tools across ${byShape.size} shapes, ~5 calls each.\n`);
+console.log(`\nAssessing ${all.length} tools across ${byShape.size} shapes, ~5 calls each.\n`);
 
 async function session(endpoint: string): Promise<string | null | undefined> {
   const id = probeIdentity(endpoint);

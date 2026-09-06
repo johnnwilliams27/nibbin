@@ -176,7 +176,7 @@ export type BatteryOutcome = {
  * is different — "weather" plausibly matches something in most corpora, so an
  * empty result there is weak evidence about the tool rather than about us.
  */
-function parameterKind(name: string): "freetext" | "identifier" {
+export function parameterKind(name: string): "freetext" | "identifier" {
   const n = name.toLowerCase().replace(/[^a-z0-9]+/g, "_");
   if (/(^|_)(id|ids|uuid|guid|slug|key|code|ticker|symbol|sku|isbn|hash|ref|handle|username|email|number|no)($|_)/.test(`_${n}_`)) {
     return "identifier";
@@ -189,8 +189,16 @@ function parameterKind(name: string): "freetext" | "identifier" {
   return "identifier";
 }
 
-/** Find the first required string parameter, which is what most probes vary. */
-function firstStringParameter(schema: unknown): string | null {
+/**
+ * Find the first required string parameter, which is what most probes vary.
+ *
+ * Exported because select.ts asks the same question BEFORE probing: a tool with
+ * no such parameter has three of the battery's arms skipped by the rule below,
+ * so it can answer at most half of what we came to ask. Sharing the predicate
+ * rather than re-deriving it is deliberate — a selector that predicts a battery
+ * it no longer matches is a worse defect than no selector.
+ */
+export function firstStringParameter(schema: unknown): string | null {
   if (typeof schema !== "object" || schema === null) return null;
   const s = schema as Record<string, unknown>;
   const props = typeof s.properties === "object" && s.properties !== null ? (s.properties as Record<string, unknown>) : {};

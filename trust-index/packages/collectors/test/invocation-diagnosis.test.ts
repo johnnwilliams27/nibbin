@@ -134,3 +134,52 @@ describe("a certainly-absent identifier keeps the shape it should have", () => {
     expect(absentIdentifier("id", { properties: {} }, id)).not.toBe(absentIdentifier("id", { properties: {} }, other));
   });
 });
+
+/**
+ * An allowance we spent is not a wall we cannot pass.
+ *
+ * The vocabulary here was `429|rate.?limit|too many requests|quota`, and the
+ * only real instance in the corpus said "Anonymous preview limit reached (5
+ * calls/day)". That is not the phrase "rate limit", so the check fell through to
+ * the auth wall, matched "API key" in the same message, and
+ * `ai.echoloc_company-technographics` was filed as needing an account we would
+ * have to create — when waiting a day clears it for nothing. The auth triage had
+ * to correct that reading by hand.
+ */
+describe("a rate limit is not an auth wall, even when they mention a key in the same breath", () => {
+  it.each([
+    [
+      "echoloc, verbatim",
+      result({
+        isError: true,
+        text:
+          "Anonymous preview limit reached (5 calls/day). Without an API key you get an anonymous preview " +
+          "(5 tool calls/day, trimmed results). For full data send an echoloc API key in the 'X-API-Key' header. " +
+          "Free beta key (100 requests/month, instant): sign up at https://echoloc.ai/auth",
+      }),
+    ],
+    ["daily limit", result({ isError: true, text: "Daily limit reached. Try again tomorrow." })],
+    ["free-tier exhaustion", result({ isError: true, text: "You have used all your free-tier requests for this month." })],
+    ["429", result({ ok: false, reason: "HTTP 429" })],
+    ["quota", result({ isError: true, text: "Quota exceeded for this project." })],
+  ])("%s is rate_limited, not needs_credentials", (_label, r) => {
+    expect(diagnoseInvocation(r).verdict).toBe("rate_limited");
+  });
+
+  it("still reads a plain 401 that merely advertises a free tier as an auth wall", () => {
+    // The distinction is EXHAUSTION. Mentioning an allowance is not spending it,
+    // and a great many genuine 401s name their free tier in the refusal.
+    const r = result({
+      ok: false,
+      reason: "HTTP 401",
+      text: "Unauthorized. Free beta key available: 100 requests/month, instant, no card required.",
+    });
+    expect(diagnoseInvocation(r).verdict).toBe("needs_credentials");
+  });
+
+  it("never reads a rate limit as the subject failing", () => {
+    for (const text of ["Rate limit exceeded", "Anonymous preview limit reached (5 calls/day)", "Too many requests"]) {
+      expect(diagnoseInvocation(result({ isError: true, text })).verdict).not.toBe("subject_failed");
+    }
+  });
+});

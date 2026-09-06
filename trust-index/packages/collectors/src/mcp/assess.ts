@@ -43,7 +43,7 @@ import type { ProbeTranscript, ToolDeclaration } from "./transcript.js";
  * `Subject.rubric_version` for why `profile_digest` and `inputs_hash` between
  * them were not enough.
  */
-export const MCP_RUBRIC_VERSION = "mcp.rubric.v2";
+export const MCP_RUBRIC_VERSION = "mcp.rubric.v3";
 
 /**
  * v1 -> v2, and why the bump matters more than the string.
@@ -64,7 +64,26 @@ export const MCP_RUBRIC_VERSION = "mcp.rubric.v2";
  *   - callability is an allowlist of read verbs plus metered and second-hop
  *     screens, so v2 probes a smaller, different set of tools than v1.
  */
-export const MCP_RUBRIC_SUPERSEDED = ["mcp.rubric.v1"] as const;
+export const MCP_RUBRIC_SUPERSEDED = ["mcp.rubric.v1", "mcp.rubric.v2"] as const;
+
+/**
+ * v2 -> v3. Bumped for the same reason v2 was: WHICH TOOLS GET PROBED IS PART
+ * OF THE RUBRIC, and it changed.
+ *
+ *   - selection is no longer positional. src/mcp/select.ts ranks a server's
+ *     eligible tools by how much probing them can establish, so v3 probes a
+ *     different set of tools from v2 on the same transcripts. A v2 result and a
+ *     v3 result about one server are not comparable, in exactly the sense the
+ *     v1 -> v2 note describes.
+ *   - the per-server budget is 3 rather than 1, so the occurrence gates
+ *     (`mcp.tool_obeys_injection` and friends) see more than one tool.
+ *   - the global per-shape cap no longer starves servers by default. Under v2's
+ *     shipped defaults 125 of 161 eligible servers were never probed at all, so
+ *     "no rating" under v2 frequently meant "not selected" rather than anything
+ *     about the server.
+ *   - an endpoint that rate-limits us is a harness gap, not a conformance
+ *     failure. HTTP 429 previously produced availability=0.
+ */
 
 export const THRESHOLDS = {
   /** A description shorter than this tells a caller nothing about what the tool does. */
@@ -331,8 +350,16 @@ export function assessTranscript(t: ProbeTranscript, asOfTs: string): Observatio
   // transcript records a failed handshake, the rubric scores the failure, and
   // half the population reads as non-conformant because we have no login.
   // transcriptGaps() reports these as a missing capability instead.
+  //
+  // A 429 is the same fact reached by a different door: the server answered and
+  // told us we had called too often. Nothing about its conformance has been
+  // demonstrated either, and the thing that ran out was OURS. Recording
+  // handshake=0 there would be the auth error again with a different status
+  // code — see RateLimitResult.
   const authBlocked = t.auth?.required === true;
-  if (t.handshake !== null && !authBlocked) {
+  const rateLimited = t.rate_limit?.limited === true;
+  const cannotJudge = authBlocked || rateLimited;
+  if (t.handshake !== null && !cannotJudge) {
     const h = t.handshake;
     out.push(obs(p, "protocol_conformance", "handshake", bool(h.ok), t.probed_at, "measured", ref));
     if (h.ok) {
@@ -361,7 +388,7 @@ export function assessTranscript(t: ProbeTranscript, asOfTs: string): Observatio
     }
   }
 
-  if (t.tools !== null && !authBlocked) {
+  if (t.tools !== null && !cannotJudge) {
     const tools = t.tools;
     out.push(obs(p, "protocol_conformance", "tools_list", bool(tools.ok), t.probed_at, "measured", ref));
     if (tools.ok && tools.declared.length > 0) {
@@ -542,7 +569,7 @@ export function assessTranscript(t: ProbeTranscript, asOfTs: string): Observatio
     }
   }
 
-  if (t.handshake !== null && t.handshake.ok && !authBlocked) {
+  if (t.handshake !== null && t.handshake.ok && !cannotJudge) {
     out.push(
       obs(
         p,
@@ -640,6 +667,28 @@ export function transcriptGaps(t: ProbeTranscript): AssessmentGap[] {
         cause: "harness_capability_missing",
         capability: CAPABILITIES.mcp_account,
         detail: `endpoint requires authentication (HTTP ${t.auth.status ?? "401"}); no account held for ${t.endpoint}`,
+      });
+    }
+    return gaps;
+  }
+  // Rate limited. Unhealthy rather than missing: we HAVE the capability to call
+  // an anonymous endpoint and we spent the allowance it gave us. Waiting clears
+  // it and no credential is required, which is exactly the distinction the auth
+  // triage had to make by hand for echoloc after the tool-call layer recorded
+  // its "anonymous preview limit reached" as a missing account.
+  if (t.rate_limit?.limited === true) {
+    for (const [dimension, check] of [
+      ["protocol_conformance", "handshake"],
+      ["protocol_conformance", "tools_list"],
+      ["tool_safety", "declarations_consistent"],
+      ["documentation", "tools_described"],
+    ] as const) {
+      gaps.push({
+        dimension,
+        check,
+        cause: "harness_capability_unhealthy",
+        capability: CAPABILITIES.mcp_account,
+        detail: `endpoint rate-limited us (HTTP ${t.rate_limit.status ?? "429"}); the allowance we spent is ours, not a fault of ${t.endpoint}`,
       });
     }
     return gaps;

@@ -114,6 +114,27 @@ export type AuthResult = {
   scheme: string | null;
 };
 
+/**
+ * The endpoint answered HTTP 429: up, working, and telling us we called too
+ * often.
+ *
+ * Its own field, and not folded into `attempts[].reachable`, because a 429 was
+ * being recorded as `reachable: false` — an availability observation of ZERO
+ * against a server that had just answered us. That is the project's defining
+ * error in its usual disguise: we could not obtain the data, therefore the data
+ * is not there. `diagnoseInvocation` already separates `rate_limited` from
+ * `subject_failed` at the tool-call layer; this is the same distinction one
+ * layer up, where nothing had been drawing it.
+ *
+ * Optional because transcripts persisted before this field existed do not carry
+ * it. Read it with a `=== true` test, never against null — the version_count
+ * field learned that lesson the expensive way.
+ */
+export type RateLimitResult = {
+  limited: boolean;
+  status: number | null;
+};
+
 export type ProbeTranscript = {
   transcript_version: "1";
   /** Stable id of the probe harness. Becomes the observer_id, so a rubric change that needs a new observer changes this. */
@@ -130,4 +151,6 @@ export type ProbeTranscript = {
   registry: RegistryFacts | null;
   /** null when no attempt reached a status that could establish it. */
   auth: AuthResult | null;
+  /** Present, and `limited: true`, when the endpoint rate-limited us. See RateLimitResult. */
+  rate_limit?: RateLimitResult | null;
 };

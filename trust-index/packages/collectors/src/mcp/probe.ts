@@ -20,7 +20,7 @@
  */
 import { guardedFetch, vetUrl, type GuardedFetchOptions } from "../net.js";
 import type { ProbeIdentity } from "./probe-identity.js";
-import type { AuthResult, HandshakeResult, ProbeAttempt, ProbeTranscript, RegistryFacts, ToolDeclaration, ToolsResult } from "./transcript.js";
+import type { AuthResult, HandshakeResult, ProbeAttempt, ProbeTranscript, RateLimitResult, RegistryFacts, ToolDeclaration, ToolsResult } from "./transcript.js";
 
 export const PROBE_ID = "probe:mcp:v1";
 const PROTOCOL_VERSION = "2025-06-18";
@@ -145,6 +145,7 @@ export async function probeMcpServer(
   let tools: ToolsResult | null = null;
   let sessionId: string | null = null;
   let auth: AuthResult | null = null;
+  let rateLimit: RateLimitResult | null = null;
 
   const vetted = vetUrl(endpoint);
   if (!vetted.allowed) {
@@ -205,6 +206,29 @@ export async function probeMcpServer(
             serverVersion: null,
             instructions: null,
             reason: `authentication required (HTTP ${res.status})`,
+          };
+        }
+        continue;
+      }
+      // 429 is the same shape of fact as 401 and was not being treated as one.
+      // The endpoint answered; it is up, it is working, and it is telling us we
+      // called too often. Recording that as `reachable: false` emitted an
+      // availability observation of ZERO against a server that had just
+      // replied — our exhausted allowance, written down as their downtime.
+      // diagnoseInvocation already draws this line at the tool-call layer.
+      if (res.status === 429) {
+        // Retry-After is not recorded: HttpOutcome carries no headers on a
+        // non-2xx status, and widening it is another module's business.
+        rateLimit = { limited: true, status: res.status };
+        attempts.push({ attempt: i, ts, reachable: true, status: res.status, reason: null, elapsedMs: res.elapsedMs });
+        if (handshake === null) {
+          handshake = {
+            ok: false,
+            protocolVersion: null,
+            serverName: null,
+            serverVersion: null,
+            instructions: null,
+            reason: `rate limited (HTTP ${res.status})`,
           };
         }
         continue;
@@ -298,5 +322,6 @@ export async function probeMcpServer(
     tools,
     registry,
     auth,
+    rate_limit: rateLimit,
   };
 }

@@ -29,6 +29,23 @@ export {
 } from "./assess.js";
 export { batteryGaps, transcriptToSubject, transcriptsToSubject, repositoryOwner, endpointHost, isEphemeralTunnel } from "./subject.js";
 export { classifyTool, classifyTools, requiredCapabilities, testability } from "./shape.js";
+export {
+  selectToolsForAssessment,
+  describeSelection,
+  informativeness,
+  diversityGroup,
+  readsCallerOwnedData,
+  MAX_TOOLS_PER_SERVER,
+  SELECTION_WEIGHTS,
+} from "./select.js";
+export type {
+  SelectionInput,
+  SelectionOptions,
+  SelectionResult,
+  SelectedTool,
+  ToolInformativeness,
+  CapEvent,
+} from "./select.js";
 export { callTool, synthesizeInput, assertCallable, NotCallableError } from "./invoke.js";
 export { runBattery, INJECTION_PAYLOAD, INJECTION_TOKEN, NONSENSE_QUERY } from "./battery.js";
 export type { BatteryOutcome, BatteryOptions } from "./battery.js";
@@ -42,4 +59,6 @@ export type {
   ToolsResult,
   ToolDeclaration,
   RegistryFacts,
+  AuthResult,
+  RateLimitResult,
 } from "./transcript.js";

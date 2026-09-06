@@ -195,7 +195,30 @@ const INVENTED_ID =
   /not[_ ]found|no such|does not exist|unknown (id|slug|symbol|signup)|no (firm|provider|record|results?) (with|found)/i;
 const SUBJECT_FAILURE =
   /http 5\d\d|internal server error|upstream|temporarily unavailable|error executing tool|http 404/i;
-const RATE_LIMIT = /http 429|rate.?limit|too many requests|quota/i;
+/**
+ * We used up an allowance, rather than never having had one.
+ *
+ * The vocabulary was `429|rate.?limit|too many requests|quota` and it missed the
+ * only real instance in the corpus. `ai.echoloc_company-technographics` answered
+ * `list_technologies` with:
+ *
+ *     "Anonymous preview limit reached (5 calls/day). Without an API key you get
+ *      an anonymous preview (5 tool calls/day, trimmed results)..."
+ *
+ * "preview limit reached" is not "rate limit", so the check fell through to
+ * AUTH_WALL, matched "API key", and the tool was recorded as
+ * `harness_capability_missing / mcp_account` — we need an account. That reading
+ * is wrong in a way that matters: waiting a day clears it, and the auth triage
+ * had to correct it by hand, calling it "a rate-limit artefact, not an auth
+ * wall". Same bug class as everything else here — an allowance we spent became a
+ * property of the server's front door.
+ *
+ * Deliberately matches EXHAUSTION, never the mention of an allowance. Plenty of
+ * genuine 401s advertise a free tier in the same breath ("Unauthorized. Free
+ * beta key: 100 requests/month"), and those are auth walls.
+ */
+const RATE_LIMIT =
+  /http 429|rate.?limit|too many requests|quota (exceeded|exhausted|reached)|(daily|monthly|hourly|weekly|usage|preview|anonymous|free[- ]?tier|request|call|api) limit (reached|exceeded|hit)|limit reached|limit exceeded|exceeded your|you have (used|exhausted) (all|your)|try again (later|in \d|tomorrow)|retry[- ]after/i;
 
 /** Read a completed call and decide whose failure it was. */
 export function diagnoseInvocation(r: ToolCallResult): InvocationDiagnosis {
@@ -204,6 +227,13 @@ export function diagnoseInvocation(r: ToolCallResult): InvocationDiagnosis {
   const hit = (re: RegExp): string => (blob.match(re)?.[0] ?? "").slice(0, 80);
 
   // Order matters. A 401 whose body also says "not found" is an auth wall.
+  //
+  // Rate limit is tested BEFORE the auth wall, and that ordering is the whole
+  // point rather than an accident: a server that says "you have used your five
+  // anonymous calls, here is where to get a key" is saying both things at once,
+  // and the distinction that matters downstream is that waiting also clears a
+  // rate limit. `harness_capability_unhealthy` says "we spent an allowance";
+  // `harness_capability_missing` says "we can never do this without an account".
   if (RATE_LIMIT.test(blob)) return { verdict: "rate_limited", detail: hit(RATE_LIMIT) };
   if (AUTH_WALL.test(blob)) return { verdict: "needs_credentials", detail: hit(AUTH_WALL) };
   if (!r.ok && /timeout|abort/i.test(blob)) return { verdict: "subject_failed", detail: "timed out" };

@@ -886,3 +886,85 @@ describe("behaviour is rated, not just declared", () => {
     expect(keys.map((k) => k.split(":")[0])).toEqual(["invocation_succeeds", "invocation_succeeds"]);
   });
 });
+
+/**
+ * A rate limit is ours, and it is not downtime.
+ *
+ * HTTP 429 was landing in the same branch as a connection failure: `reachable:
+ * false`, which becomes an availability observation of ZERO against a server
+ * that had just answered us. That is the project's defining error wearing a
+ * status code — we could not obtain the data, so the data was recorded as absent
+ * — and `diagnoseInvocation` had already drawn the line correctly one layer
+ * down, where a 429 is `rate_limited` rather than `subject_failed`.
+ */
+describe("a rate limit is our exhausted allowance, not their outage", () => {
+  it("records a 429 as the endpoint answering", async () => {
+    const limited = (async () =>
+      new Response("rate limited", { status: 429, headers: { "content-type": "text/plain" } })) as unknown as typeof fetch;
+    const t = await probeMcpServer("https://example.com/mcp", null, {
+      fetchImpl: limited,
+      nowIso: () => "2026-07-20T00:00:00Z",
+      sleep: async () => {},
+      attempts: 1,
+    });
+    expect(t.attempts[0]!.reachable).toBe(true);
+    expect(t.attempts[0]!.status).toBe(429);
+    expect(t.rate_limit?.limited).toBe(true);
+    expect(t.auth?.required).not.toBe(true);
+    expect(t.handshake?.reason).toMatch(/rate limited/);
+  });
+
+  it("emits availability of 1 and no conformance failure", () => {
+    const t = goodTranscript({
+      attempts: [{ attempt: 1, ts: "2026-07-20T00:00:00Z", reachable: true, status: 429, reason: null, elapsedMs: 60 }],
+      handshake: {
+        ok: false, protocolVersion: null, serverName: null, serverVersion: null,
+        instructions: null, reason: "rate limited (HTTP 429)",
+      },
+      tools: null,
+      auth: null,
+      rate_limit: { limited: true, status: 429 },
+    });
+    const obs = assessTranscript(t, AS_OF);
+    const availability = obs.filter((o) => o.dimension === "availability");
+    expect(availability).toHaveLength(1);
+    expect(availability[0]!.value).toBe("1.000000");
+    // Nothing past the handshake was demonstrated either way, so nothing past
+    // the handshake is scored. A zero here would be manufactured signal.
+    expect(obs.filter((o) => o.observation_key === "handshake")).toHaveLength(0);
+    expect(obs.filter((o) => o.dimension === "protocol_conformance")).toHaveLength(0);
+  });
+
+  it("records it as an unhealthy capability, not a missing account", () => {
+    // The distinction has consequences: waiting clears a rate limit and no
+    // credential is required, so filing it as `harness_capability_missing /
+    // mcp_account` would put the server on the list of things we need to sign
+    // up for. The auth triage had to undo exactly that call by hand.
+    const t = goodTranscript({
+      attempts: [{ attempt: 1, ts: "2026-07-20T00:00:00Z", reachable: true, status: 429, reason: null, elapsedMs: 60 }],
+      handshake: {
+        ok: false, protocolVersion: null, serverName: null, serverVersion: null,
+        instructions: null, reason: "rate limited (HTTP 429)",
+      },
+      tools: null,
+      auth: null,
+      rate_limit: { limited: true, status: 429 },
+    });
+    const gaps = transcriptGaps(t);
+    expect(gaps.length).toBeGreaterThan(0);
+    for (const g of gaps) {
+      expect(g.cause).toBe("harness_capability_unhealthy");
+      expect(g.detail).toMatch(/allowance we spent is ours/);
+    }
+  });
+
+  it("leaves a transcript with no rate_limit field alone", () => {
+    // Persisted transcripts predate the field. `undefined` must read as "not
+    // rate limited", never as a truthy object — the version_count field taught
+    // this lesson by turning `undefined - 1` into NaN across 600 files.
+    const t = goodTranscript();
+    expect(t.rate_limit).toBeUndefined();
+    expect(transcriptGaps(t)).toEqual([]);
+    expect(assessTranscript(t, AS_OF).some((o) => o.observation_key === "handshake")).toBe(true);
+  });
+});
