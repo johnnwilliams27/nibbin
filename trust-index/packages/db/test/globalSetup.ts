@@ -3,6 +3,16 @@
  * random local port, waits until it accepts connections, and hands the URL to
  * tests via vitest provide/inject. Set TRUST_INDEX_TEST_DB_URL to use an
  * existing database instead (no container is started or removed then).
+ *
+ * WITH NEITHER, `dbUrl` is provided as "" and the database-backed tests skip.
+ *
+ * It used to throw instead, which is why this package's tests had never once
+ * run: every environment without a Docker daemon — this one included — failed
+ * in global setup, taking the pure unit tests down with it and reporting "no
+ * test files found". A missing daemon is a statement about the machine, not
+ * about the code, and it should cost the tests that genuinely need a database
+ * and nothing else. The tests that skip say so in their names, so a green run
+ * on a machine with no database cannot be mistaken for a green run with one.
  */
 import { execFileSync } from "node:child_process";
 import pg from "pg";
@@ -38,6 +48,17 @@ export default async function setup(project: TestProject): Promise<() => void> {
   if (existing !== undefined && existing !== "") {
     await waitForReady(existing, 30_000);
     project.provide("dbUrl", existing);
+    return () => undefined;
+  }
+
+  try {
+    docker("version", "--format", "{{.Server.Version}}");
+  } catch {
+    console.warn(
+      "[db tests] no TRUST_INDEX_TEST_DB_URL and no reachable Docker daemon — " +
+        "database-backed tests will SKIP. Point TRUST_INDEX_TEST_DB_URL at a postgres to run them.",
+    );
+    project.provide("dbUrl", "");
     return () => undefined;
   }
 

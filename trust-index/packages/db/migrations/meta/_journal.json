@@ -15,6 +15,13 @@
       "when": 1788476788439,
       "tag": "0001_blue_sentinel",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788717281119,
+      "tag": "0002_rating_snapshots",
+      "breakpoints": true
     }
   ]
 }
