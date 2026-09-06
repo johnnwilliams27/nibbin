@@ -43,7 +43,28 @@ import type { ProbeTranscript, ToolDeclaration } from "./transcript.js";
  * `Subject.rubric_version` for why `profile_digest` and `inputs_hash` between
  * them were not enough.
  */
-export const MCP_RUBRIC_VERSION = "mcp.rubric.v1";
+export const MCP_RUBRIC_VERSION = "mcp.rubric.v2";
+
+/**
+ * v1 -> v2, and why the bump matters more than the string.
+ *
+ * This field exists because `maintenanceValue` was once retuned from a 90/730
+ * day ramp to 14/180, every maintenance score in the compendium moved, and no
+ * digest anywhere changed. Today the collector rubric changed far more than
+ * that and the version had not moved either — the same failure, in the field
+ * built to catch it.
+ *
+ * What v2 covers that v1 did not:
+ *   - injection is decided by a control arm, not by string-matching an echo.
+ *     A v1 verdict came from a check that no longer exists, and cannot be
+ *     re-derived from v1 data because no control call was made.
+ *   - `content_targets_the_rater` is recorded and no longer scored.
+ *   - credential parameters match by stem and by description, not by equality.
+ *   - `answers_substantively` exists.
+ *   - callability is an allowlist of read verbs plus metered and second-hop
+ *     screens, so v2 probes a smaller, different set of tools than v1.
+ */
+export const MCP_RUBRIC_SUPERSEDED = ["mcp.rubric.v1"] as const;
 
 export const THRESHOLDS = {
   /** A description shorter than this tells a caller nothing about what the tool does. */
