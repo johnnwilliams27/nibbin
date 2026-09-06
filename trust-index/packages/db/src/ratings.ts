@@ -382,3 +382,256 @@ export async function readLatestSnapshots(
       desc(rating_results.utc_day),
     );
 }
+
+/* -------------------------------------------------------------------------
+ * The serving reads.
+ *
+ * `readLatestSnapshots` above returns whole rows, `frame_json` and
+ * `result_json` included — about 3KB each, which is right for a rebuild and
+ * wrong for a listing of six hundred. The three functions below are the read
+ * path a reader actually goes through: a page of a kind, one subject's latest
+ * row, and that row's dimensions. They select columns rather than rows, filter
+ * and order and paginate in SQL, and touch neither jsonb column.
+ * ---------------------------------------------------------------------- */
+
+/** The columns a listing row needs. Deliberately no jsonb: see above. */
+export const SNAPSHOT_SUMMARY_COLUMNS = {
+  kind: rating_results.kind,
+  source_registry: rating_results.source_registry,
+  subject_id: rating_results.subject_id,
+  profile_id: rating_results.profile_id,
+  utc_day: rating_results.utc_day,
+  computed_at: rating_results.computed_at,
+  rating_methodology_version: rating_results.rating_methodology_version,
+  composite: rating_results.composite,
+  composite_low: rating_results.composite_low,
+  composite_high: rating_results.composite_high,
+  composite_confidence: rating_results.composite_confidence,
+  dimension_coverage: rating_results.dimension_coverage,
+  assessment_completeness: rating_results.assessment_completeness,
+  composite_suppression_reason: rating_results.composite_suppression_reason,
+  lifecycle: rating_results.lifecycle,
+  observation_count: rating_results.observation_count,
+  coverage_tier: rating_results.coverage_tier,
+  coverage_tier_basis: rating_results.coverage_tier_basis,
+  profile_digest: rating_results.profile_digest,
+  inputs_hash: rating_results.inputs_hash,
+  rubric_version: rating_results.rubric_version,
+} as const;
+
+export type SnapshotSummary = {
+  [K in keyof typeof SNAPSHOT_SUMMARY_COLUMNS]: (typeof rating_results.$inferSelect)[K];
+};
+
+/**
+ * Which snapshots a listing asks for.
+ *
+ * `withheld` is a first-class filter and not an afterthought. On the live
+ * population 439 of 600 subjects are withheld, every one of them because OUR
+ * harness could not assess enough of the profile — so "show me the ones we
+ * failed to assess" is the operator's most useful query, and a listing that
+ * could only return published rows would hide the largest fact about the run.
+ */
+export type SnapshotState = "all" | "scored" | "withheld";
+
+/**
+ * How a listing is ordered.
+ *
+ * `composite_desc` puts withheld rows LAST rather than treating a null
+ * composite as a low score — nulls last, not nulls low. Sorting a withheld
+ * rating to the bottom of a score-ordered list is a presentation choice;
+ * sorting it there because null compared as zero would be the bug this whole
+ * schema is shaped to prevent. Ties and withheld rows fall back to the
+ * subject key so the order is total and pagination cannot repeat or skip a row.
+ */
+export type SnapshotOrder = "composite_desc" | "composite_asc" | "subject_asc" | "day_desc";
+
+export type SnapshotPageQuery = {
+  kind: string;
+  profile_id: string;
+  throughDay: string;
+  days?: number;
+  source_registry?: string;
+  state?: SnapshotState;
+  order?: SnapshotOrder;
+  limit: number;
+  offset?: number;
+};
+
+/**
+ * One page of the compendium: the most recent snapshot per subject for a kind,
+ * filtered, ordered and paginated in the database.
+ *
+ * `total` is the count under the same filter and not the count of the page, so
+ * a caller can say "161 of 600" without a second round trip. It is computed
+ * from the same distinct-on subquery, so it counts SUBJECTS and not rows: a
+ * subject with 30 stored days contributes one.
+ */
+export async function readLatestSnapshotPage(
+  db: Db,
+  q: SnapshotPageQuery,
+): Promise<{ items: SnapshotSummary[]; total: number }> {
+  const from = shiftUtcDay(q.throughDay, -((q.days ?? RETENTION_DAYS) - 1));
+  const latest = db
+    .selectDistinctOn([rating_results.source_registry, rating_results.subject_id], SNAPSHOT_SUMMARY_COLUMNS)
+    .from(rating_results)
+    .where(
+      and(
+        eq(rating_results.kind, q.kind),
+        eq(rating_results.profile_id, q.profile_id),
+        ...(q.source_registry === undefined ? [] : [eq(rating_results.source_registry, q.source_registry)]),
+        sql`${rating_results.utc_day} >= ${from}`,
+        sql`${rating_results.utc_day} <= ${q.throughDay}`,
+      ),
+    )
+    .orderBy(asc(rating_results.source_registry), asc(rating_results.subject_id), desc(rating_results.utc_day))
+    .as("latest");
+
+  const state = q.state ?? "all";
+  const stateFilter =
+    state === "scored"
+      ? sql`${latest.composite} is not null`
+      : state === "withheld"
+        ? sql`${latest.composite} is null`
+        : undefined;
+
+  // NULLS LAST on both directions: a withheld rating has no place on a score
+  // axis at either end, so it sits after every scored row whichever way the
+  // scored rows run.
+  const orderBy = {
+    composite_desc: [sql`${latest.composite} desc nulls last`],
+    composite_asc: [sql`${latest.composite} asc nulls last`],
+    subject_asc: [],
+    day_desc: [sql`${latest.utc_day} desc`],
+  }[q.order ?? "composite_desc"];
+
+  const [items, counted] = await Promise.all([
+    db
+      .select()
+      .from(latest)
+      .where(stateFilter)
+      .orderBy(...orderBy, sql`${latest.source_registry} asc`, sql`${latest.subject_id} asc`)
+      .limit(q.limit)
+      .offset(q.offset ?? 0),
+    db.select({ n: sql<number>`count(*)::int` }).from(latest).where(stateFilter),
+  ]);
+  return { items, total: counted[0]?.n ?? 0 };
+}
+
+/**
+ * One subject's most recent snapshot within the window, whole row.
+ *
+ * Whole row here and columns in the listing, because a detail page needs
+ * `result_json` — gates_fired and harness_gaps live there and nowhere else,
+ * and a rating served without the gate that capped it or the gap that blocked
+ * it is the rating minus the reason for it.
+ */
+export async function readLatestSnapshot(
+  db: Db,
+  q: {
+    kind: string;
+    source_registry: string;
+    subject_id: string;
+    profile_id: string;
+    throughDay: string;
+    days?: number;
+  },
+): Promise<typeof rating_results.$inferSelect | null> {
+  const from = shiftUtcDay(q.throughDay, -((q.days ?? RETENTION_DAYS) - 1));
+  const rows = await db
+    .select()
+    .from(rating_results)
+    .where(
+      and(
+        eq(rating_results.kind, q.kind),
+        eq(rating_results.source_registry, q.source_registry),
+        eq(rating_results.subject_id, q.subject_id),
+        eq(rating_results.profile_id, q.profile_id),
+        sql`${rating_results.utc_day} >= ${from}`,
+        sql`${rating_results.utc_day} <= ${q.throughDay}`,
+      ),
+    )
+    .orderBy(desc(rating_results.utc_day))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+/**
+ * The per-dimension rows of one stored day, in profile order as written.
+ *
+ * Ordered by dimension name for a stable read; the profile's own order is not
+ * recoverable from this table and inventing one would be a display decision
+ * made in the wrong place.
+ */
+export async function readDimensionScores(
+  db: Db,
+  q: { kind: string; source_registry: string; subject_id: string; profile_id: string; utc_day: string },
+): Promise<Array<typeof rating_dimension_scores.$inferSelect>> {
+  return db
+    .select()
+    .from(rating_dimension_scores)
+    .where(
+      and(
+        eq(rating_dimension_scores.kind, q.kind),
+        eq(rating_dimension_scores.source_registry, q.source_registry),
+        eq(rating_dimension_scores.subject_id, q.subject_id),
+        eq(rating_dimension_scores.profile_id, q.profile_id),
+        eq(rating_dimension_scores.utc_day, q.utc_day),
+      ),
+    )
+    .orderBy(asc(rating_dimension_scores.dimension));
+}
+
+/**
+ * The kinds and registries that currently have stored ratings, with counts.
+ *
+ * Cheap enough to be the listing page's header and the API's index. Counts
+ * subjects, not rows, for the same reason readLatestSnapshotPage does.
+ */
+export async function readRatedKinds(
+  db: Db,
+  q: { throughDay: string; days?: number },
+): Promise<Array<{ kind: string; source_registry: string; profile_id: string; subjects: number; latest_day: string }>> {
+  const from = shiftUtcDay(q.throughDay, -((q.days ?? RETENTION_DAYS) - 1));
+  return db
+    .select({
+      kind: rating_results.kind,
+      source_registry: rating_results.source_registry,
+      profile_id: rating_results.profile_id,
+      subjects: sql<number>`count(distinct ${rating_results.subject_id})::int`,
+      latest_day: sql<string>`max(${rating_results.utc_day})`,
+    })
+    .from(rating_results)
+    .where(
+      and(sql`${rating_results.utc_day} >= ${from}`, sql`${rating_results.utc_day} <= ${q.throughDay}`),
+    )
+    .groupBy(rating_results.kind, rating_results.source_registry, rating_results.profile_id)
+    .orderBy(asc(rating_results.kind), asc(rating_results.source_registry));
+}
+
+/**
+ * The run ledger, newest day first, and the latest day anything is stored for.
+ *
+ * The honest companion to the four day-states. A reader looking at a fortnight
+ * of `not_run` is looking at OUR outage, and this is where they find out that we
+ * knew about it: a `failed` row with an error is a better answer than silence,
+ * and a day with no row at all is the worst answer, which is why it is
+ * distinguishable from both.
+ */
+export async function readRunLedger(
+  db: Db,
+  q?: { limit?: number },
+): Promise<{
+  runs: Array<typeof collection_runs.$inferSelect>;
+  latest_stored_day: string | null;
+}> {
+  const [runs, latest] = await Promise.all([
+    db
+      .select()
+      .from(collection_runs)
+      .orderBy(desc(collection_runs.utc_day), asc(collection_runs.collector))
+      .limit(q?.limit ?? RETENTION_DAYS),
+    db.select({ day: sql<string | null>`max(${rating_results.utc_day})` }).from(rating_results),
+  ]);
+  return { runs, latest_stored_day: latest[0]?.day ?? null };
+}

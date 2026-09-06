@@ -23,6 +23,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@trust-index/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       '@trust-index/types':
         specifier: workspace:*
         version: link:../../packages/types

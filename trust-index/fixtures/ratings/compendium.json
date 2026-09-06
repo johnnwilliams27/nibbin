@@ -1,0 +1,1729 @@
+{
+  "fixture_version": "1",
+  "generated_from": "live mcp-registry store",
+  "through_day": "2026-09-06",
+  "note": "Committed sample of the real compendium. Five subjects chosen to cover a scored rating, a withheld-for-incompleteness rating, a withheld rating with a gate fired, and the coverage-1.00/completeness-0.13 case. listKinds() is derived from these rows, so the fixture cannot claim a population it does not contain.",
+  "health": {
+    "runs": [
+      {
+        "collector": "mcp",
+        "utc_day": "2026-09-06",
+        "status": "succeeded",
+        "started_at": "2026-09-06T18:11:39Z",
+        "finished_at": "2026-09-06T18:11:46Z",
+        "subjects_seen": 600,
+        "results_published": 161,
+        "results_withheld": 439,
+        "subjects_failed": 0,
+        "error": null
+      },
+      {
+        "collector": "mcp",
+        "utc_day": "2026-09-05",
+        "status": "failed",
+        "started_at": "2026-09-05T02:00:00Z",
+        "finished_at": null,
+        "subjects_seen": 0,
+        "results_published": 0,
+        "results_withheld": 0,
+        "subjects_failed": 0,
+        "error": "collector died"
+      },
+      {
+        "collector": "mcp",
+        "utc_day": "2026-09-04",
+        "status": "succeeded",
+        "started_at": "2026-09-04T02:00:00Z",
+        "finished_at": "2026-09-04T03:00:00Z",
+        "subjects_seen": 0,
+        "results_published": 0,
+        "results_withheld": 0,
+        "subjects_failed": 0,
+        "error": null
+      },
+      {
+        "collector": "mcp",
+        "utc_day": "2026-09-03",
+        "status": "succeeded",
+        "started_at": "2026-09-03T02:00:00Z",
+        "finished_at": "2026-09-03T03:00:00Z",
+        "subjects_seen": 0,
+        "results_published": 0,
+        "results_withheld": 0,
+        "subjects_failed": 0,
+        "error": null
+      },
+      {
+        "collector": "mcp",
+        "utc_day": "2026-09-02",
+        "status": "succeeded",
+        "started_at": "2026-09-02T02:00:00Z",
+        "finished_at": "2026-09-02T03:00:00Z",
+        "subjects_seen": 0,
+        "results_published": 0,
+        "results_withheld": 0,
+        "subjects_failed": 0,
+        "error": null
+      }
+    ],
+    "latest_stored_day": "2026-09-06"
+  },
+  "subjects": [
+    {
+      "ref": {
+        "kind": "mcp_server",
+        "source_registry": "mcp-registry",
+        "subject_id": "ai.alpic.alpix/Alpix"
+      },
+      "profile_id": "mcp_server.v2",
+      "utc_day": "2026-09-06",
+      "computed_at": "2026-09-06T18:11:39Z",
+      "rating_methodology_version": "r0.1.0",
+      "lifecycle": "live",
+      "observation_count": 27,
+      "coverage": {
+        "dimension_coverage": "0.7000",
+        "assessment_completeness": "1.0000"
+      },
+      "coverage_tier": "thin",
+      "coverage_tier_basis": "min_published_dimension",
+      "digests": {
+        "profile_digest": "401bd8d62839e310a29cf191abc71c75a1f1982c58dab954df8434d7e79d5669",
+        "inputs_hash": "6b47ec12eaf274afe752b7ac65ae091a9b98be0ad23e9a43c71273c42213f955",
+        "rubric_version": "mcp.rubric.v2"
+      },
+      "rating": {
+        "state": "scored",
+        "composite": "77.17",
+        "composite_low": "30.01",
+        "composite_high": "100.00",
+        "composite_confidence": "0.0000"
+      },
+      "source": {
+        "registry": "mcp-registry",
+        "ref": "ai.alpic.alpix/Alpix",
+        "url": "https://alpix.alpic.ai"
+      },
+      "dimensions": [
+        {
+          "dimension": "availability",
+          "coverage_tier": "thin",
+          "confidence": "0.2908",
+          "n_eff": "0.89",
+          "observation_count": 1,
+          "rejected_provenance_count": 0,
+          "self_reported_share": "0.0000",
+          "self_reported_capped": false,
+          "distinct_observers": 1,
+          "span_days": 0,
+          "gate_capped_by": null,
+          "state": "scored",
+          "score": "76.16",
+          "score_low": "27.02",
+          "score_high": "100.00"
+        },
+        {
+          "dimension": "documentation",
+          "coverage_tier": "thin",
+          "confidence": "0.2190",
+          "n_eff": "0.99",
+          "observation_count": 4,
+          "rejected_provenance_count": 0,
+          "self_reported_share": "0.0000",
+          "self_reported_capped": false,
+          "distinct_observers": 1,
+          "span_days": 0,
+          "gate_capped_by": null,
+          "state": "scored",
+          "score": "64.93",
+          "score_low": "10.81",
+          "score_high": "100.00"
+        },
+        {
+          "dimension": "functional_correctness",
+          "coverage_tier": "thin",
+          "confidence": "0.3151",
+          "n_eff": "0.99",
+          "observation_count": 4,
+          "rejected_provenance_count": 0,
+          "self_reported_share": "0.0000",
+          "self_reported_capped": false,
+          "distinct_observers": 1,
+          "span_days": 0,
+          "gate_capped_by": null,
+          "state": "scored",
+          "score": "77.36",
+          "score_low": "29.90",
+          "score_high": "100.00"
+        },
+        {
+          "dimension": "injection_resistance",
+          "coverage_tier": "none",
+          "confidence": "0.0050",
+          "n_eff": "0.00",
+          "observation_count": 0,
+          "rejected_provenance_count": 0,
+          "self_reported_share": "0.0000",
+          "self_reported_capped": false,
+          "distinct_observers": 0,
+          "span_days": 0,
+          "gate_capped_by": null,
+          "state": "withheld",
+          "suppression_reason": "no observations with an accepted provenance"
+        },
+        {
+          "dimension": "maintenance",
+          "coverage_tier": "thin",
+          "confidence": "0.3170",
+          "n_eff": "1.00",
+          "observation_count": 1,
+          "rejected_provenance_count": 0,
+          "self_reported_share": "0.0000",
+          "self_reported_capped": false,
+          "distinct_observers": 1,
+          "span_days": 0,
+          "gate_capped_by": null,
+          "state": "scored",
+          "score": "77.45",
+          "score_low": "30.12",
+          "score_high": "100.00"
+        },
+        {
+          "dimension": "protocol_conformance",
+          "coverage_tier": "thin",
+          "confidence": "0.4905",
+          "n_eff": "1.97",
+          "observation_count": 10,
+          "rejected_provenance_count": 0,
+          "self_reported_share": "0.0000",
+          "self_reported_capped": false,
+          "distinct_observers": 1,
+          "span_days": 1,
+          "gate_capped_by": null,
+          "state": "scored",
+          "score": "84.83",
+          "score_low": "49.53",
+          "score_high": "100.00"
+        },
+        {
+          "dimension": "robustness",
+          "coverage_tier": "none",
+          "confidence": "0.0050",
+          "n_eff": "0.00",
+          "observation_count": 0,
+          "rejected_provenance_count": 0,
+          "self_reported_share": "0.0000",
+          "self_reported_capped": false,
+          "distinct_observers": 0,
+          "span_days": 0,
+          "gate_capped_by": null,
+          "state": "withheld",
+          "suppression_reason": "no observations with an accepted provenance"
+        },
+        {
+          "dimension": "tool_safety",
+          "coverage_tier": "thin",
+          "confidence": "0.3214",
+          "n_eff": "1.01",
+          "observation_count": 7,
+          "rejected_provenance_count": 0,
+          "self_reported_share": "0.0000",
+          "self_reported_capped": false,
+          "distinct_observers": 2,
+          "span_days": 1,
+          "gate_capped_by": null,
+          "state": "scored",
+          "score": "77.66",
+          "score_low": "30.64",
+          "score_high": "100.00"
+        }
+      ],
+      "gates_fired": [],
+      "harness_gaps": []
+    },
+    {
+      "ref": {
+        "kind": "mcp_server",
+        "source_registry": "mcp-registry",
+        "subject_id": "ai.name/nameai-mcp"
+      },
+      "profile_id": "mcp_server.v2",
+      "utc_day": "2026-09-06",
+      "computed_at": "2026-09-06T18:11:39Z",
+      "rating_methodology_version": "r0.1.0",
+      "lifecycle": "live",
+      "observation_count": 33,
+      "coverage": {
+        "dimension_coverage": "1.0000",
+        "assessment_completeness": "1.0000"
+      },
+      "coverage_tier": "thin",
+      "coverage_tier_basis": "min_published_dimension",
+      "digests": {
+        "profile_digest": "401bd8d62839e310a29cf191abc71c75a1f1982c58dab954df8434d7e79d5669",
+        "inputs_hash": "76b0b4838d6167cd5f2c739ee1e39f0ba6dc59e1564c39a96067ea7b7779a500",
+        "rubric_version": "mcp.rubric.v2"
+      },
+      "rating": {
+        "state": "scored",
+        "composite": "76.88",
+        "composite_low": "29.58",
+        "composite_high": "100.00",
+        "composite_confidence": "0.0000"
+      },
+      "source": {
+        "registry": "mcp-registry",
+        "ref": "ai.name/nameai-mcp",
+        "url": "https://nameai-mcp.h.namekart.com/mcp"
+      },
+      "dimensions": [
+        {
+          "dimension": "availability",
+          "coverage_tier": "thin",
+          "confidence": "0.2908",
+          "n_eff": "0.89",
+          "observation_count": 1,
+          "rejected_provenance_count": 0,
+          "self_reported_share": "0.0000",
+          "self_reported_capped": false,
+          "distinct_observers": 1,
+          "span_days": 0,
+          "gate_capped_by": null,
+          "state": "scored",
+          "score": "76.16",
+          "score_low": "27.02",
+          "score_high": "100.00"
+        },
+        {
+          "dimension": "documentation",
+          "coverage_tier": "thin",
+          "confidence": "0.1827",
+          "n_eff": "0.99",
+          "observation_count": 4,
+          "rejected_provenance_count": 0,
+          "self_reported_share": "0.0000",
+          "self_reported_capped": false,
+          "distinct_observers": 1,
+          "span_days": 0,
+          "gate_capped_by": null,
+          "state": "scored",
+          "score": "52.52",
+          "score_low": "0.00",
+          "score_high": "100.00"
+        },
+        {
+          "dimension": "functional_correctness",
+          "coverage_tier": "thin",
+          "confidence": "0.3152",
+          "n_eff": "0.99",
+          "observation_count": 6,
+          "rejected_provenance_count": 0,
+          "self_reported_share": "0.0000",
+          "self_reported_capped": false,
+          "distinct_observers": 1,
+          "span_days": 0,
+          "gate_capped_by": null,
+          "state": "scored",
+          "score": "77.36",
+          "score_low": "29.90",
+          "score_high": "100.00"
+        },
+        {
+          "dimension": "injection_resistance",
+          "coverage_tier": "thin",
+          "confidence": "0.3166",
+          "n_eff": "0.99",
+          "observation_count": 2,
+          "rejected_provenance_count": 0,
+          "self_reported_share": "0.0000",
+          "self_reported_capped": false,
+          "distinct_observers": 1,
+          "span_days": 0,
+          "gate_capped_by": null,
+          "state": "scored",
+          "score": "77.43",
+          "score_low": "30.07",
+          "score_high": "100.00"
+        },
+        {
+          "dimension": "maintenance",
+          "coverage_tier": "thin",
+          "confidence": "0.3170",
+          "n_eff": "1.00",
+          "observation_count": 1,
+          "rejected_provenance_count": 0,
+          "self_reported_share": "0.0000",
+          "self_reported_capped": false,
+          "distinct_observers": 1,
+          "span_days": 0,
+          "gate_capped_by": null,
+          "state": "scored",
+          "score": "77.45",
+          "score_low": "30.12",
+          "score_high": "100.00"
+        },
+        {
+          "dimension": "protocol_conformance",
+          "coverage_tier": "thin",
+          "confidence": "0.4905",
+          "n_eff": "1.97",
+          "observation_count": 8,
+          "rejected_provenance_count": 0,
+          "self_reported_share": "0.0000",
+          "self_reported_capped": false,
+          "distinct_observers": 1,
+          "span_days": 1,
+          "gate_capped_by": null,
+          "state": "scored",
+          "score": "84.83",
+          "score_low": "49.53",
+          "score_high": "100.00"
+        },
+        {
+          "dimension": "robustness",
+          "coverage_tier": "thin",
+          "confidence": "0.3166",
+          "n_eff": "0.99",
+          "observation_count": 4,
+          "rejected_provenance_count": 0,
+          "self_reported_share": "0.0000",
+          "self_reported_capped": false,
+          "distinct_observers": 1,
+          "span_days": 0,
+          "gate_capped_by": null,
+          "state": "scored",
+          "score": "77.43",
+          "score_low": "30.07",
+          "score_high": "100.00"
+        },
+        {
+          "dimension": "tool_safety",
+          "coverage_tier": "thin",
+          "confidence": "0.3214",
+          "n_eff": "1.01",
+          "observation_count": 7,
+          "rejected_provenance_count": 0,
+          "self_reported_share": "0.0000",
+          "self_reported_capped": false,
+          "distinct_observers": 2,
+          "span_days": 1,
+          "gate_capped_by": null,
+          "state": "scored",
+          "score": "77.66",
+          "score_low": "30.64",
+          "score_high": "100.00"
+        }
+      ],
+      "gates_fired": [],
+      "harness_gaps": []
+    },
+    {
+      "ref": {
+        "kind": "mcp_server",
+        "source_registry": "mcp-registry",
+        "subject_id": "ai.aislabs/recorder"
+      },
+      "profile_id": "mcp_server.v2",
+      "utc_day": "2026-09-06",
+      "computed_at": "2026-09-06T18:11:39Z",
+      "rating_methodology_version": "r0.1.0",
+      "lifecycle": "live",
+      "observation_count": 19,
+      "coverage": {
+        "dimension_coverage": "1.0000",
+        "assessment_completeness": "0.4000"
+      },
+      "coverage_tier": "thin",
+      "coverage_tier_basis": "min_published_dimension",
+      "digests": {
+        "profile_digest": "401bd8d62839e310a29cf191abc71c75a1f1982c58dab954df8434d7e79d5669",
+        "inputs_hash": "eede910f809a43dd912b06dc06b2090e9eac821c02652e93266ceb8434801558",
+        "rubric_version": "mcp.rubric.v2"
+      },
+      "rating": {
+        "state": "withheld",
+        "suppression_reason": "too little of the profile could be assessed at all; see harness_gaps",
+        "composite_confidence": "0.0000"
+      },
+      "source": {
+        "registry": "mcp-registry",
+        "ref": "ai.aislabs/recorder",
+        "url": "https://api.aislabs.ai/recorder/mcp"
+      },
+      "dimensions": [
+        {
+          "dimension": "availability",
+          "coverage_tier": "thin",
+          "confidence": "0.2908",
+          "n_eff": "0.89",
+          "observation_count": 1,
+          "rejected_provenance_count": 0,
+          "self_reported_share": "0.0000",
+          "self_reported_capped": false,
+          "distinct_observers": 1,
+          "span_days": 0,
+          "gate_capped_by": null,
+          "state": "scored",
+          "score": "76.16",
+          "score_low": "27.02",
+          "score_high": "100.00"
+        },
+        {
+          "dimension": "documentation",
+          "coverage_tier": "thin",
+          "confidence": "0.1892",
+          "n_eff": "0.99",
+          "observation_count": 4,
+          "rejected_provenance_count": 0,
+          "self_reported_share": "0.0000",
+          "self_reported_capped": false,
+          "distinct_observers": 1,
+          "span_days": 0,
+          "gate_capped_by": null,
+          "state": "scored",
+          "score": "43.21",
+          "score_low": "0.00",
+          "score_high": "99.39"
+        },
+        {
+          "dimension": "functional_correctness",
+          "coverage_tier": "none",
+          "confidence": "0.0050",
+          "n_eff": "0.00",
+          "observation_count": 0,
+          "rejected_provenance_count": 0,
+          "self_reported_share": "0.0000",
+          "self_reported_capped": false,
+          "distinct_observers": 0,
+          "span_days": 0,
+          "gate_capped_by": null,
+          "state": "withheld",
+          "suppression_reason": "no observations with an accepted provenance"
+        },
+        {
+          "dimension": "injection_resistance",
+          "coverage_tier": "none",
+          "confidence": "0.0050",
+          "n_eff": "0.00",
+          "observation_count": 0,
+          "rejected_provenance_count": 0,
+          "self_reported_share": "0.0000",
+          "self_reported_capped": false,
+          "distinct_observers": 0,
+          "span_days": 0,
+          "gate_capped_by": null,
+          "state": "withheld",
+          "suppression_reason": "no observations with an accepted provenance"
+        },
+        {
+          "dimension": "maintenance",
+          "coverage_tier": "thin",
+          "confidence": "0.3170",
+          "n_eff": "1.00",
+          "observation_count": 1,
+          "rejected_provenance_count": 0,
+          "self_reported_share": "0.0000",
+          "self_reported_capped": false,
+          "distinct_observers": 1,
+          "span_days": 0,
+          "gate_capped_by": null,
+          "state": "scored",
+          "score": "77.45",
+          "score_low": "30.12",
+          "score_high": "100.00"
+        },
+        {
+          "dimension": "protocol_conformance",
+          "coverage_tier": "thin",
+          "confidence": "0.3116",
+          "n_eff": "0.97",
+          "observation_count": 6,
+          "rejected_provenance_count": 0,
+          "self_reported_share": "0.0000",
+          "self_reported_capped": false,
+          "distinct_observers": 1,
+          "span_days": 0,
+          "gate_capped_by": null,
+          "state": "scored",
+          "score": "77.19",
+          "score_low": "29.48",
+          "score_high": "100.00"
+        },
+        {
+          "dimension": "robustness",
+          "coverage_tier": "none",
+          "confidence": "0.0050",
+          "n_eff": "0.00",
+          "observation_count": 0,
+          "rejected_provenance_count": 0,
+          "self_reported_share": "0.0000",
+          "self_reported_capped": false,
+          "distinct_observers": 0,
+          "span_days": 0,
+          "gate_capped_by": null,
+          "state": "withheld",
+          "suppression_reason": "no observations with an accepted provenance"
+        },
+        {
+          "dimension": "tool_safety",
+          "coverage_tier": "thin",
+          "confidence": "0.2224",
+          "n_eff": "0.97",
+          "observation_count": 7,
+          "rejected_provenance_count": 0,
+          "self_reported_share": "0.0000",
+          "self_reported_capped": false,
+          "distinct_observers": 1,
+          "span_days": 0,
+          "gate_capped_by": "mcp.v2.credential_parameter",
+          "state": "scored",
+          "score": "30.00",
+          "score_low": "12.03",
+          "score_high": "30.00"
+        }
+      ],
+      "gates_fired": [
+        {
+          "reason": "a declared tool asks the caller to supply a credential",
+          "gate_id": "mcp.v2.credential_parameter",
+          "trigger": "credential_parameter_present",
+          "observed": 0,
+          "dimension": "tool_safety",
+          "caps_composite_at": 45
+        }
+      ],
+      "harness_gaps": [
+        {
+          "check": "battery",
+          "detail": "no tool-invocation battery has been run against this subject",
+          "dimension": "functional_correctness",
+          "capability": "tool_invocation"
+        },
+        {
+          "check": "battery",
+          "detail": "no tool-invocation battery has been run against this subject",
+          "dimension": "injection_resistance",
+          "capability": "tool_invocation"
+        },
+        {
+          "check": "battery",
+          "detail": "no tool-invocation battery has been run against this subject",
+          "dimension": "robustness",
+          "capability": "tool_invocation"
+        }
+      ]
+    },
+    {
+      "ref": {
+        "kind": "mcp_server",
+        "source_registry": "mcp-registry",
+        "subject_id": "ad.inside/inside-ads"
+      },
+      "profile_id": "mcp_server.v2",
+      "utc_day": "2026-09-06",
+      "computed_at": "2026-09-06T18:11:39Z",
+      "rating_methodology_version": "r0.1.0",
+      "lifecycle": "live",
+      "observation_count": 19,
+      "coverage": {
+        "dimension_coverage": "1.0000",
+        "assessment_completeness": "0.4000"
+      },
+      "coverage_tier": "thin",
+      "coverage_tier_basis": "min_published_dimension",
+      "digests": {
+        "profile_digest": "401bd8d62839e310a29cf191abc71c75a1f1982c58dab954df8434d7e79d5669",
+        "inputs_hash": "06701f51fa737707b6cb66898a3c6c679ead556314ecd6cad80799543f18f7c3",
+        "rubric_version": "mcp.rubric.v2"
+      },
+      "rating": {
+        "state": "withheld",
+        "suppression_reason": "too little of the profile could be assessed at all; see harness_gaps",
+        "composite_confidence": "0.0000"
+      },
+      "source": {
+        "registry": "mcp-registry",
+        "ref": "ad.inside/inside-ads",
+        "url": "https://app.inside.ad/api/mcp"
+      },
+      "dimensions": [
+        {
+          "dimension": "availability",
+          "coverage_tier": "thin",
+          "confidence": "0.2908",
+          "n_eff": "0.89",
+          "observation_count": 1,
+          "rejected_provenance_count": 0,
+          "self_reported_share": "0.0000",
+          "self_reported_capped": false,
+          "distinct_observers": 1,
+          "span_days": 0,
+          "gate_capped_by": null,
+          "state": "scored",
+          "score": "76.16",
+          "score_low": "27.02",
+          "score_high": "100.00"
+        },
+        {
+          "dimension": "documentation",
+          "coverage_tier": "thin",
+          "confidence": "0.2190",
+          "n_eff": "0.99",
+          "observation_count": 4,
+          "rejected_provenance_count": 0,
+          "self_reported_share": "0.0000",
+          "self_reported_capped": false,
+          "distinct_observers": 1,
+          "span_days": 0,
+          "gate_capped_by": null,
+          "state": "scored",
+          "score": "64.93",
+          "score_low": "10.81",
+          "score_high": "100.00"
+        },
+        {
+          "dimension": "functional_correctness",
+          "coverage_tier": "none",
+          "confidence": "0.0050",
+          "n_eff": "0.00",
+          "observation_count": 0,
+          "rejected_provenance_count": 0,
+          "self_reported_share": "0.0000",
+          "self_reported_capped": false,
+          "distinct_observers": 0,
+          "span_days": 0,
+          "gate_capped_by": null,
+          "state": "withheld",
+          "suppression_reason": "no observations with an accepted provenance"
+        },
+        {
+          "dimension": "injection_resistance",
+          "coverage_tier": "none",
+          "confidence": "0.0050",
+          "n_eff": "0.00",
+          "observation_count": 0,
+          "rejected_provenance_count": 0,
+          "self_reported_share": "0.0000",
+          "self_reported_capped": false,
+          "distinct_observers": 0,
+          "span_days": 0,
+          "gate_capped_by": null,
+          "state": "withheld",
+          "suppression_reason": "no observations with an accepted provenance"
+        },
+        {
+          "dimension": "maintenance",
+          "coverage_tier": "thin",
+          "confidence": "0.3045",
+          "n_eff": "1.00",
+          "observation_count": 1,
+          "rejected_provenance_count": 0,
+          "self_reported_share": "0.0000",
+          "self_reported_capped": false,
+          "distinct_observers": 1,
+          "span_days": 0,
+          "gate_capped_by": null,
+          "state": "scored",
+          "score": "76.25",
+          "score_low": "28.05",
+          "score_high": "100.00"
+        },
+        {
+          "dimension": "protocol_conformance",
+          "coverage_tier": "thin",
+          "confidence": "0.3116",
+          "n_eff": "0.97",
+          "observation_count": 6,
+          "rejected_provenance_count": 0,
+          "self_reported_share": "0.0000",
+          "self_reported_capped": false,
+          "distinct_observers": 1,
+          "span_days": 0,
+          "gate_capped_by": null,
+          "state": "scored",
+          "score": "77.19",
+          "score_low": "29.48",
+          "score_high": "100.00"
+        },
+        {
+          "dimension": "robustness",
+          "coverage_tier": "none",
+          "confidence": "0.0050",
+          "n_eff": "0.00",
+          "observation_count": 0,
+          "rejected_provenance_count": 0,
+          "self_reported_share": "0.0000",
+          "self_reported_capped": false,
+          "distinct_observers": 0,
+          "span_days": 0,
+          "gate_capped_by": null,
+          "state": "withheld",
+          "suppression_reason": "no observations with an accepted provenance"
+        },
+        {
+          "dimension": "tool_safety",
+          "coverage_tier": "thin",
+          "confidence": "0.3116",
+          "n_eff": "0.97",
+          "observation_count": 7,
+          "rejected_provenance_count": 0,
+          "self_reported_share": "0.0000",
+          "self_reported_capped": false,
+          "distinct_observers": 1,
+          "span_days": 0,
+          "gate_capped_by": null,
+          "state": "scored",
+          "score": "77.19",
+          "score_low": "29.48",
+          "score_high": "100.00"
+        }
+      ],
+      "gates_fired": [],
+      "harness_gaps": [
+        {
+          "check": "battery",
+          "detail": "no tool-invocation battery has been run against this subject",
+          "dimension": "functional_correctness",
+          "capability": "tool_invocation"
+        },
+        {
+          "check": "battery",
+          "detail": "no tool-invocation battery has been run against this subject",
+          "dimension": "injection_resistance",
+          "capability": "tool_invocation"
+        },
+        {
+          "check": "battery",
+          "detail": "no tool-invocation battery has been run against this subject",
+          "dimension": "robustness",
+          "capability": "tool_invocation"
+        }
+      ]
+    },
+    {
+      "ref": {
+        "kind": "mcp_server",
+        "source_registry": "mcp-registry",
+        "subject_id": "ae.propick/propick"
+      },
+      "profile_id": "mcp_server.v2",
+      "utc_day": "2026-09-06",
+      "computed_at": "2026-09-06T18:11:39Z",
+      "rating_methodology_version": "r0.1.0",
+      "lifecycle": "live",
+      "observation_count": 2,
+      "coverage": {
+        "dimension_coverage": "1.0000",
+        "assessment_completeness": "0.1300"
+      },
+      "coverage_tier": "thin",
+      "coverage_tier_basis": "min_published_dimension",
+      "digests": {
+        "profile_digest": "401bd8d62839e310a29cf191abc71c75a1f1982c58dab954df8434d7e79d5669",
+        "inputs_hash": "2eb8e569e669770af594a763823601bfe56279a6aadcff57b0438b3854b97ee1",
+        "rubric_version": "mcp.rubric.v2"
+      },
+      "rating": {
+        "state": "withheld",
+        "suppression_reason": "too little of the profile could be assessed at all; see harness_gaps",
+        "composite_confidence": "0.0000"
+      },
+      "source": {
+        "registry": "mcp-registry",
+        "ref": "ae.propick/propick",
+        "url": "https://propick.ae/mcp"
+      },
+      "dimensions": [
+        {
+          "dimension": "availability",
+          "coverage_tier": "thin",
+          "confidence": "0.2908",
+          "n_eff": "0.89",
+          "observation_count": 1,
+          "rejected_provenance_count": 0,
+          "self_reported_share": "0.0000",
+          "self_reported_capped": false,
+          "distinct_observers": 1,
+          "span_days": 0,
+          "gate_capped_by": null,
+          "state": "scored",
+          "score": "76.16",
+          "score_low": "27.02",
+          "score_high": "100.00"
+        },
+        {
+          "dimension": "documentation",
+          "coverage_tier": "none",
+          "confidence": "0.0050",
+          "n_eff": "0.00",
+          "observation_count": 0,
+          "rejected_provenance_count": 0,
+          "self_reported_share": "0.0000",
+          "self_reported_capped": false,
+          "distinct_observers": 0,
+          "span_days": 0,
+          "gate_capped_by": null,
+          "state": "withheld",
+          "suppression_reason": "no observations with an accepted provenance"
+        },
+        {
+          "dimension": "functional_correctness",
+          "coverage_tier": "none",
+          "confidence": "0.0050",
+          "n_eff": "0.00",
+          "observation_count": 0,
+          "rejected_provenance_count": 0,
+          "self_reported_share": "0.0000",
+          "self_reported_capped": false,
+          "distinct_observers": 0,
+          "span_days": 0,
+          "gate_capped_by": null,
+          "state": "withheld",
+          "suppression_reason": "no observations with an accepted provenance"
+        },
+        {
+          "dimension": "injection_resistance",
+          "coverage_tier": "none",
+          "confidence": "0.0050",
+          "n_eff": "0.00",
+          "observation_count": 0,
+          "rejected_provenance_count": 0,
+          "self_reported_share": "0.0000",
+          "self_reported_capped": false,
+          "distinct_observers": 0,
+          "span_days": 0,
+          "gate_capped_by": null,
+          "state": "withheld",
+          "suppression_reason": "no observations with an accepted provenance"
+        },
+        {
+          "dimension": "maintenance",
+          "coverage_tier": "thin",
+          "confidence": "0.3170",
+          "n_eff": "1.00",
+          "observation_count": 1,
+          "rejected_provenance_count": 0,
+          "self_reported_share": "0.0000",
+          "self_reported_capped": false,
+          "distinct_observers": 1,
+          "span_days": 0,
+          "gate_capped_by": null,
+          "state": "scored",
+          "score": "77.45",
+          "score_low": "30.12",
+          "score_high": "100.00"
+        },
+        {
+          "dimension": "protocol_conformance",
+          "coverage_tier": "none",
+          "confidence": "0.0050",
+          "n_eff": "0.00",
+          "observation_count": 0,
+          "rejected_provenance_count": 0,
+          "self_reported_share": "0.0000",
+          "self_reported_capped": false,
+          "distinct_observers": 0,
+          "span_days": 0,
+          "gate_capped_by": null,
+          "state": "withheld",
+          "suppression_reason": "no observations with an accepted provenance"
+        },
+        {
+          "dimension": "robustness",
+          "coverage_tier": "none",
+          "confidence": "0.0050",
+          "n_eff": "0.00",
+          "observation_count": 0,
+          "rejected_provenance_count": 0,
+          "self_reported_share": "0.0000",
+          "self_reported_capped": false,
+          "distinct_observers": 0,
+          "span_days": 0,
+          "gate_capped_by": null,
+          "state": "withheld",
+          "suppression_reason": "no observations with an accepted provenance"
+        },
+        {
+          "dimension": "tool_safety",
+          "coverage_tier": "none",
+          "confidence": "0.0050",
+          "n_eff": "0.00",
+          "observation_count": 0,
+          "rejected_provenance_count": 0,
+          "self_reported_share": "0.0000",
+          "self_reported_capped": false,
+          "distinct_observers": 0,
+          "span_days": 0,
+          "gate_capped_by": null,
+          "state": "withheld",
+          "suppression_reason": "no observations with an accepted provenance"
+        }
+      ],
+      "gates_fired": [],
+      "harness_gaps": [
+        {
+          "check": "tools_described",
+          "detail": "endpoint requires authentication (HTTP 401); no account held for https://propick.ae/mcp",
+          "dimension": "documentation",
+          "capability": "mcp_account"
+        },
+        {
+          "check": "battery",
+          "detail": "no tool-invocation battery has been run against this subject",
+          "dimension": "functional_correctness",
+          "capability": "tool_invocation"
+        },
+        {
+          "check": "battery",
+          "detail": "no tool-invocation battery has been run against this subject",
+          "dimension": "injection_resistance",
+          "capability": "tool_invocation"
+        },
+        {
+          "check": "handshake",
+          "detail": "endpoint requires authentication (HTTP 401); no account held for https://propick.ae/mcp",
+          "dimension": "protocol_conformance",
+          "capability": "mcp_account"
+        },
+        {
+          "check": "tools_list",
+          "detail": "endpoint requires authentication (HTTP 401); no account held for https://propick.ae/mcp",
+          "dimension": "protocol_conformance",
+          "capability": "mcp_account"
+        },
+        {
+          "check": "battery",
+          "detail": "no tool-invocation battery has been run against this subject",
+          "dimension": "robustness",
+          "capability": "tool_invocation"
+        },
+        {
+          "check": "declarations_consistent",
+          "detail": "endpoint requires authentication (HTTP 401); no account held for https://propick.ae/mcp",
+          "dimension": "tool_safety",
+          "capability": "mcp_account"
+        }
+      ]
+    }
+  ],
+  "series": [
+    {
+      "ref": {
+        "kind": "mcp_server",
+        "source_registry": "mcp-registry",
+        "subject_id": "ai.alpic.alpix/Alpix"
+      },
+      "profile_id": "mcp_server.v2",
+      "days": [
+        {
+          "utc_day": "2026-08-08",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-09",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-10",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-11",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-12",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-13",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-14",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-15",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-16",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-17",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-18",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-19",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-20",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-21",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-22",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-23",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-24",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-25",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-26",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-27",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-28",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-29",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-30",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-31",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-09-01",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-09-02",
+          "state": "not_assessed"
+        },
+        {
+          "utc_day": "2026-09-03",
+          "state": "not_assessed"
+        },
+        {
+          "utc_day": "2026-09-04",
+          "state": "not_assessed"
+        },
+        {
+          "utc_day": "2026-09-05",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-09-06",
+          "coverage": {
+            "dimension_coverage": "0.7000",
+            "assessment_completeness": "1.0000"
+          },
+          "observation_count": 27,
+          "digests": {
+            "profile_digest": "401bd8d62839e310a29cf191abc71c75a1f1982c58dab954df8434d7e79d5669",
+            "rubric_version": "mcp.rubric.v2"
+          },
+          "state": "scored",
+          "composite": "77.17",
+          "composite_low": "30.01",
+          "composite_high": "100.00",
+          "composite_confidence": "0.0000",
+          "coverage_tier": "thin"
+        }
+      ],
+      "from_day": "2026-08-08",
+      "through_day": "2026-09-06"
+    },
+    {
+      "ref": {
+        "kind": "mcp_server",
+        "source_registry": "mcp-registry",
+        "subject_id": "ai.name/nameai-mcp"
+      },
+      "profile_id": "mcp_server.v2",
+      "days": [
+        {
+          "utc_day": "2026-08-08",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-09",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-10",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-11",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-12",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-13",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-14",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-15",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-16",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-17",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-18",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-19",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-20",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-21",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-22",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-23",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-24",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-25",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-26",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-27",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-28",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-29",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-30",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-31",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-09-01",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-09-02",
+          "state": "not_assessed"
+        },
+        {
+          "utc_day": "2026-09-03",
+          "state": "not_assessed"
+        },
+        {
+          "utc_day": "2026-09-04",
+          "state": "not_assessed"
+        },
+        {
+          "utc_day": "2026-09-05",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-09-06",
+          "coverage": {
+            "dimension_coverage": "1.0000",
+            "assessment_completeness": "1.0000"
+          },
+          "observation_count": 33,
+          "digests": {
+            "profile_digest": "401bd8d62839e310a29cf191abc71c75a1f1982c58dab954df8434d7e79d5669",
+            "rubric_version": "mcp.rubric.v2"
+          },
+          "state": "scored",
+          "composite": "76.88",
+          "composite_low": "29.58",
+          "composite_high": "100.00",
+          "composite_confidence": "0.0000",
+          "coverage_tier": "thin"
+        }
+      ],
+      "from_day": "2026-08-08",
+      "through_day": "2026-09-06"
+    },
+    {
+      "ref": {
+        "kind": "mcp_server",
+        "source_registry": "mcp-registry",
+        "subject_id": "ai.aislabs/recorder"
+      },
+      "profile_id": "mcp_server.v2",
+      "days": [
+        {
+          "utc_day": "2026-08-08",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-09",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-10",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-11",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-12",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-13",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-14",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-15",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-16",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-17",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-18",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-19",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-20",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-21",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-22",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-23",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-24",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-25",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-26",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-27",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-28",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-29",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-30",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-31",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-09-01",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-09-02",
+          "state": "not_assessed"
+        },
+        {
+          "utc_day": "2026-09-03",
+          "state": "not_assessed"
+        },
+        {
+          "utc_day": "2026-09-04",
+          "state": "not_assessed"
+        },
+        {
+          "utc_day": "2026-09-05",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-09-06",
+          "coverage": {
+            "dimension_coverage": "1.0000",
+            "assessment_completeness": "0.4000"
+          },
+          "observation_count": 19,
+          "digests": {
+            "profile_digest": "401bd8d62839e310a29cf191abc71c75a1f1982c58dab954df8434d7e79d5669",
+            "rubric_version": "mcp.rubric.v2"
+          },
+          "state": "withheld",
+          "suppression_reason": "too little of the profile could be assessed at all; see harness_gaps"
+        }
+      ],
+      "from_day": "2026-08-08",
+      "through_day": "2026-09-06"
+    },
+    {
+      "ref": {
+        "kind": "mcp_server",
+        "source_registry": "mcp-registry",
+        "subject_id": "ad.inside/inside-ads"
+      },
+      "profile_id": "mcp_server.v2",
+      "days": [
+        {
+          "utc_day": "2026-08-08",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-09",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-10",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-11",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-12",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-13",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-14",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-15",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-16",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-17",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-18",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-19",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-20",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-21",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-22",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-23",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-24",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-25",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-26",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-27",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-28",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-29",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-30",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-31",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-09-01",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-09-02",
+          "state": "not_assessed"
+        },
+        {
+          "utc_day": "2026-09-03",
+          "state": "not_assessed"
+        },
+        {
+          "utc_day": "2026-09-04",
+          "state": "not_assessed"
+        },
+        {
+          "utc_day": "2026-09-05",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-09-06",
+          "coverage": {
+            "dimension_coverage": "1.0000",
+            "assessment_completeness": "0.4000"
+          },
+          "observation_count": 19,
+          "digests": {
+            "profile_digest": "401bd8d62839e310a29cf191abc71c75a1f1982c58dab954df8434d7e79d5669",
+            "rubric_version": "mcp.rubric.v2"
+          },
+          "state": "withheld",
+          "suppression_reason": "too little of the profile could be assessed at all; see harness_gaps"
+        }
+      ],
+      "from_day": "2026-08-08",
+      "through_day": "2026-09-06"
+    },
+    {
+      "ref": {
+        "kind": "mcp_server",
+        "source_registry": "mcp-registry",
+        "subject_id": "ae.propick/propick"
+      },
+      "profile_id": "mcp_server.v2",
+      "days": [
+        {
+          "utc_day": "2026-08-08",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-09",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-10",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-11",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-12",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-13",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-14",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-15",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-16",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-17",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-18",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-19",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-20",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-21",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-22",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-23",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-24",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-25",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-26",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-27",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-28",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-29",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-30",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-08-31",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-09-01",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-09-02",
+          "state": "not_assessed"
+        },
+        {
+          "utc_day": "2026-09-03",
+          "state": "not_assessed"
+        },
+        {
+          "utc_day": "2026-09-04",
+          "state": "not_assessed"
+        },
+        {
+          "utc_day": "2026-09-05",
+          "state": "not_run"
+        },
+        {
+          "utc_day": "2026-09-06",
+          "coverage": {
+            "dimension_coverage": "1.0000",
+            "assessment_completeness": "0.1300"
+          },
+          "observation_count": 2,
+          "digests": {
+            "profile_digest": "401bd8d62839e310a29cf191abc71c75a1f1982c58dab954df8434d7e79d5669",
+            "rubric_version": "mcp.rubric.v2"
+          },
+          "state": "withheld",
+          "suppression_reason": "too little of the profile could be assessed at all; see harness_gaps"
+        }
+      ],
+      "from_day": "2026-08-08",
+      "through_day": "2026-09-06"
+    }
+  ]
+}
