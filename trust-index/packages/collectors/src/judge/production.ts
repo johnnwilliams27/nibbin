@@ -17,6 +17,14 @@
  *   gpt-5.5 alone                    0.880     [0.822, 0.938]    $0.85
  *   four-voter majority              0.775     [0.700, 0.850]    $0.86
  *
+ * THIS TABLE IS HISTORY, NOT THE CURRENT HEADLINE. Every row was measured on
+ * whole responses under the older prompt. The chosen structure was re-measured
+ * on the shipping configuration on 2026-09-06 and scores 0.858 [0.785, 0.910]
+ * — see PRODUCTION_JUDGE_EVIDENCE below and docs/judge-headline-remeasure.md.
+ * The table is kept because what it decides is RELATIVE — which structure to
+ * run — and that comparison is internally consistent. Do not quote a number
+ * from it as the judge's accuracy.
+ *
  * At n=120 a gap under 5.4 points is not distinguishable. The top five are one
  * cluster — the "winning" structure beats a single Sonnet by TWO ITEMS — so the
  * only real finding is that the voting panel is WORSE, and it is worse for a
@@ -103,27 +111,60 @@ export const PRODUCTION_JUDGE_MODEL = "claude-sonnet-5";
  * class, below, which is the one this judge exists for.
  */
 export const PRODUCTION_JUDGE_EVIDENCE = {
-  run: "runs/panel-2026-09-04T21-03-01-631Z.json",
+  run: "runs/judge-benchmark-2026-09-06T18-17-37-522Z.json",
   corpus_items: 120,
-  coverage_adjusted_accuracy: 0.892,
-  ci95: [0.836, 0.948] as const,
+  /**
+   * Re-measured 2026-09-06 on the configuration we actually ship: whole
+   * responses, `truncated` present, current prompt. 103/120, no abstentions,
+   * nothing harness-blocked.
+   */
+  coverage_adjusted_accuracy: 0.858,
+  ci95: [0.785, 0.91] as const,
   /** Structures inside this many points are not distinguishable at n=120. */
   resolution_points: 5.4,
   /**
-   * The headline was measured on whole responses while production sent
-   * fragments. It is not a claim about the system as it ran between those two
-   * dates.
+   * The previous headline, and why it is not simply "the old number".
+   *
+   * 0.892 [0.836, 0.948] was measured on whole responses while the production
+   * call site passed a 300-character slice with no truncation marker — the
+   * configuration separately measured at 45% error against 13% on whole ones.
+   * It described a system we were not running.
+   *
+   * The two runs are NOT distinguishable at n=120: each headline sits inside
+   * the other's interval. Reading a regression from this pair is reading noise.
+   * 0.858 is quoted because it is the number measured on what ships.
    */
-  headline_measured_on: "whole responses; production sent 300-char fragments until this was fixed",
+  superseded_headline: "0.892 [0.836, 0.948], measured on whole responses while production sent fragments",
   /**
-   * Re-run after the fix, on the running configuration: 6/6 invention recall,
-   * 1/25 false accusations — identical to the pre-fix result. That is weaker
-   * evidence than it looks, and worth saying: invention-eval reads stored
-   * transcripts and already used the full `text` field, so it was never the
-   * caller passing fragments. It confirms the judge is unchanged by the prompt
-   * and signature edits; it does not independently re-earn the 0.892.
+   * Where the 17 misses actually come from — see docs/judge-headline-remeasure.md.
+   *
+   * Seven of them land on a boundary this rubric defines TWICE, incompatibly:
+   * an empty-handed finding is an `answer` at line 286 and an explicit "no
+   * match" is a `refusal` at line 291, and a search returning no_match is both.
+   * That single contradiction is 41% of all measured error, and no amount of
+   * re-measuring fixes it — it needs a product decision about whether a tool
+   * that honestly finds nothing has worked.
+   *
+   * One miss is a genuine judge defect: it called 2026-dated release data
+   * invention because the dates sit past its training. It treats its own cutoff
+   * as the edge of reality, which fires hardest against subjects whose data is
+   * most current.
+   */
+  known_error_structure: "7 rubric self-contradiction, 7 answer/invention boundary, 1 cutoff-as-reality-test",
+  /**
+   * Invention recall, re-run after the fragment fix: 6/6, 1/25 false
+   * accusations — identical to the pre-fix result. Weaker evidence than it
+   * looks: invention-eval reads stored transcripts and already used the full
+   * `text` field, so it was never the caller passing fragments.
    */
   invention_recall_after_fix: "6/6, 1/25 false accusations (2026-09-05)",
+  /**
+   * THE STANDING WEAKNESS. The labels were drafted by a Claude model while
+   * Claude models were under test, and no human has reviewed a sample. This
+   * run does not improve that and must not be read as if it does — it does
+   * narrow it to a specific 17-item worklist.
+   */
+  labels_unreviewed: true,
 };
 
 export type ProductionJudgeConfig = {

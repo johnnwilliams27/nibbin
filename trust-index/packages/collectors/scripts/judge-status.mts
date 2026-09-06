@@ -43,11 +43,23 @@ console.log("closed since the decision:");
 console.log("  - label conflict bounded: 12 of 120 disputed; flipping all 12 leaves the");
 console.log("    conclusion intact by 12.5 points against a 5.4-point resolution");
 console.log("  - invention class now measured, having been unmeasurable at decision time");
+console.log("  - the 120-item headline RE-EARNED on the shipping configuration:");
+console.log(
+  `    ${PRODUCTION_JUDGE_EVIDENCE.coverage_adjusted_accuracy} [${PRODUCTION_JUDGE_EVIDENCE.ci95[0]}, ${PRODUCTION_JUDGE_EVIDENCE.ci95[1]}], superseding ${PRODUCTION_JUDGE_EVIDENCE.superseded_headline}.`,
+);
+console.log("    Not distinguishable at n=120 — each sits inside the other's interval.");
 console.log("");
 console.log("still open:");
 console.log("  - gpt-5.5 answered 97 of 120 items under our rate limit, not its own capability");
-console.log(`  - the headline was ${PRODUCTION_JUDGE_EVIDENCE.headline_measured_on}.`);
-console.log("    The call site is fixed and the invention class was re-measured on the running");
-console.log(`    configuration (${PRODUCTION_JUDGE_EVIDENCE.invention_recall_after_fix}), but the 120-item number has not been re-earned.`);
+console.log(`  - miss structure: ${PRODUCTION_JUDGE_EVIDENCE.known_error_structure}.`);
+console.log("    The rubric defines the answer/refusal boundary twice and incompatibly");
+console.log("    (judge/index.ts:286 vs :291); that contradiction alone is 41% of measured");
+console.log("    error and needs a product decision, not more measurement.");
+console.log("  - the judge treats its training cutoff as the edge of reality: it called");
+console.log("    2026-dated release data invention. Fires hardest against the most current data.");
+console.log(
+  `  - labels still unreviewed by a human (${PRODUCTION_JUDGE_EVIDENCE.labels_unreviewed}); now narrowed to a 17-item worklist.`,
+);
+console.log("    See docs/judge-headline-remeasure.md.");
 
 if (report?.health.available !== true) process.exitCode = 1;

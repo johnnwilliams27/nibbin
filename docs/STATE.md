@@ -25,7 +25,20 @@
     a public repo, worth +17.5 to anyone who grepped, widening to 44.6 under a daily schedule — now
     per-subject HMAC values from `TRUST_INDEX_PROBE_SEED`. And an unhandled judge error let a
     subject convert its own failing evidence into OUR harness gap, published under our name.
-  - **Known-open, deliberately:** the 0.892 judge headline was measured on whole responses while
+  - **Judge headline RE-EARNED 2026-09-06: `0.858 [0.785, 0.910]`** on the shipping configuration
+    (whole responses, `truncated` present, current prompt), 103/120, zero abstentions, nothing
+    harness-blocked. Supersedes 0.892, which was measured on whole responses while production sent
+    300-char fragments. **The two are not distinguishable at n=120** — each sits inside the other's
+    interval — so this is not a regression, it is the first number that describes what ships.
+    The 17 misses are not 17 mistakes: **seven land on a boundary the rubric defines twice and
+    incompatibly** (an empty-handed finding is an `answer` at judge/index.ts:286; an explicit "no
+    match" is a `refusal` at :291; a search returning `no_match` is both), which is 41% of all
+    measured error and needs a product decision, not more measurement — does a tool that honestly
+    finds nothing count as working? One miss is a real judge defect: it called 2026-dated release
+    data invention because the dates sit past its training, i.e. it treats its own cutoff as the
+    edge of reality, which fires hardest against subjects whose data is most current. Full analysis
+    and the ordered fix list: `trust-index/docs/judge-headline-remeasure.md`.
+  - **Known-open, deliberately:** the older 0.892 judge headline was measured on whole responses while
     production sent 300-char fragments; the call site is fixed and the invention class re-measured
     (6/6, 1/25) but the 120-item number has not been re-earned. A public DNS name resolving to
     loopback (`localtest.me`) still passes `vetUrl` — `net.ts` documents this and the fix is the
