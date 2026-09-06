@@ -18,3 +18,10 @@ cohort-base/
 # seed plus the rubric version, not the checked-in bytes.
 assessment*.json
 transcripts/
+
+# Underscore-prefixed scripts are throwaway diagnostics — an agent or a person
+# working something out at the console. They were committed once, removed a few
+# hours later, and once auto-committed out from under an agent that was still
+# using them. Anything worth keeping gets a real name and a comment explaining
+# what question it answers.
+packages/*/scripts/_*.mts
