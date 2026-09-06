@@ -40,13 +40,14 @@ import { CAPABILITIES } from "../capability.js";
 import {
   JUDGE_PROMPT_VERSION,
   classifyResponse,
+  describedShape,
   judgeDeclarationContradiction,
   proposeArguments,
   type JudgeOptions,
 } from "../judge/index.js";
 import { callTool, diagnoseInvocation, synthesizeInput, type CallOptions, type ToolCallResult } from "./invoke.js";
 import type { ToolClassification } from "./shape.js";
-import { jitteredSpacing, type ProbeIdentity } from "./probe-identity.js";
+import { absentIdentifier, jitteredSpacing, type ProbeIdentity } from "./probe-identity.js";
 import type { ToolDeclaration } from "./transcript.js";
 
 /**
@@ -492,6 +493,66 @@ export async function runBattery(
     observations.push(obs(observerId, "protocol_conformance", "honours_output_schema", bool(baseline.matchesOutputSchema), ts, ref));
   }
 
+  // No declared schema, but a description that promises a shape.
+  //
+  // 21% of tools publish an outputSchema and are checked directly above.
+  // Another 43% state their shape only in prose — "Returns a JSON-LD ItemList",
+  // "Returns product handles" — and nothing held them to it. That is the
+  // operator's own contract, and checking behaviour against what its author
+  // wrote is the same move as declaration_consistent_with_behaviour.
+  //
+  // Two guards against inventing a finding. The judge answers `unclear`
+  // freely and most descriptions earn it, because a vague description is not a
+  // defect. And only a GROSS mismatch is scored: promised a list, sent a bare
+  // string. A missing optional key is not a contract violation.
+  if (
+    baseline.matchesOutputSchema === null
+    && judge !== undefined
+    && typeof declaration.description === "string"
+    && declaration.description.length > 40
+    && baseline.substantive
+  ) {
+    try {
+      const predicted = await describedShape({ tool: declaration.name, description: declaration.description }, judge);
+      if (predicted.kind === "unclear") {
+        skipped.push({ check: "matches_described_shape", reason: "the description does not promise a shape" });
+      } else {
+        const text = (baseline.text ?? "").trim();
+        let actual: "object" | "array" | "scalar" | "prose" = "prose";
+        try {
+          const parsed: unknown = JSON.parse(text);
+          actual = Array.isArray(parsed)
+            ? "array"
+            : typeof parsed === "object" && parsed !== null
+              ? "object"
+              : "scalar";
+        } catch {
+          actual = text.length < 60 && !/\s/.test(text) ? "scalar" : "prose";
+        }
+        // An object whose main content is a list satisfies "array", which is how
+        // almost every real API returns a collection.
+        const listInsideObject =
+          actual === "object" && /"(items|results|data|records|rows|entries|list|matches)"\s*:\s*\[/.test(text);
+        const satisfied =
+          predicted.kind === actual
+          || (predicted.kind === "array" && listInsideObject)
+          || (predicted.kind === "object" && actual === "array");
+        observations.push({
+          observer_id: judge.observerId ?? `judge:${judge.modelId}:${JUDGE_PROMPT_VERSION}`,
+          dimension: "protocol_conformance",
+          provenance: "judged",
+          value: bool(satisfied),
+          ts,
+          observation_key: "matches_described_shape",
+          evidence_ref: ref,
+        });
+      }
+    } catch {
+      // A judge failure costs this one check and is attributed to nobody.
+      skipped.push({ check: "matches_described_shape", reason: "the judge could not read the description" });
+    }
+  }
+
   if (param === null) {
     for (const c of ["input_sensitivity", "no_fabrication", "injection_resistance"]) {
       skipped.push({ check: c, reason: "tool declares no free-form string parameter to vary" });
@@ -528,11 +589,53 @@ export async function runBattery(
           observations.push(
             obs(observerId, "functional_correctness", "answers_substantively", bool(baseline.substantive || varied.substantive), ts, ref),
           );
-        } else {
+        } else if (param !== null) {
+          // An identifier parameter is not a dead end, it is a different
+          // question. We stopped asking "did it answer" — which we had made
+          // unanswerable by inventing the id — and started asking "does it
+          // handle absence correctly", which has exactly one right answer and
+          // is worth knowing before you build on a lookup.
           skipped.push({
             check: "answers_substantively",
-            reason: `${param} is an identifier and we invented its value, so an empty answer is expected`,
+            reason: `${param} is an identifier and we invented its value; asking handles_absent_identifier instead`,
           });
+          const absent = absentIdentifier(param, declaration.inputSchema, identity);
+          const missing = await call("absence", { ...base, [param]: absent });
+          if (!missing.ok) {
+            skipped.push({ check: "handles_absent_identifier", reason: `absence call failed: ${missing.reason ?? "unknown"}` });
+          } else {
+            // Three outcomes, and only one of them is right.
+            //
+            //   It says so           — a protocol error, an error in the
+            //                          payload, or an empty result. Correct.
+            //   It invents a record  — substantive content for an identifier
+            //                          that cannot exist. The worst outcome a
+            //                          lookup can have, and invisible to any
+            //                          manifest.
+            //   It rejects the shape — our value was not well formed, so we
+            //                          learned about validation and nothing
+            //                          about absence. Not scored.
+            const text = (missing.text ?? "").toLowerCase();
+            const rejectedFormat = /invalid|malformed|must (be|match)|expected .* format|is not a valid/.test(text);
+            if (rejectedFormat) {
+              skipped.push({
+                check: "handles_absent_identifier",
+                reason: "the tool rejected the FORMAT of our identifier, so absence was never tested",
+              });
+            } else {
+              const saysAbsent =
+                missing.isError === true
+                || missing.errorInPayload
+                || !missing.substantive
+                || /not[_ ]?found|no such|does not exist|unknown|empty|no (results?|match|record)/.test(text);
+              observations.push(obs(observerId, "functional_correctness", "handles_absent_identifier", bool(saysAbsent), ts, ref));
+              if (!saysAbsent) {
+                // A record conjured for an id that cannot exist is fabrication,
+                // and fires the same gate as inventing an answer to a query.
+                observations.push(obs(observerId, "functional_correctness", "any_tool_fabricates", ZERO, ts, ref));
+              }
+            }
+          }
         }
       }
     } else {

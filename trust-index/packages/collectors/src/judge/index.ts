@@ -75,7 +75,7 @@ export const JUDGE_PROMPT_VERSION = "judge.v2";
 /** Wiring a model is a capability like any other, so lacking one is a gap and not a failure. */
 export const JUDGE_CAPABILITY = CAPABILITIES.judge_model;
 
-export type JudgeTask = "declaration_contradiction" | "response_classification" | "argument_proposal";
+export type JudgeTask = "declaration_contradiction" | "response_classification" | "argument_proposal" | "response_shape";
 
 /**
  * One request to the model. `untrusted` is everything written by the subject;
@@ -325,6 +325,64 @@ export const RESPONSE_RUBRIC = [
   "",
   "Prefer 'unclear' over a guess.",
 ].join("\n");
+
+/**
+ * What shape should a successful response have, according to the tool's own
+ * description?
+ *
+ * 21% of declared tools publish an outputSchema, which is checkable directly.
+ * Another 43% state a shape only in prose — "Returns a JSON-LD ItemList",
+ * "Returns product handles for get_price/validate_order" — and nothing was
+ * checking those against what the tool actually sends. That is the operator's
+ * own contract, and holding someone to what they wrote is the same principle
+ * as declaration_consistent_with_behaviour.
+ *
+ * `unclear` is the expected answer most of the time and carries no penalty. A
+ * description that does not determine a shape is not a defect; guessing one and
+ * scoring against the guess would be.
+ */
+const SHAPE_RUBRIC = [
+  "",
+  "Read the tool description and say what a SUCCESSFUL response should look",
+  "like structurally. You are not judging quality, only shape.",
+  "",
+  "  object  - a JSON object. Name required top-level keys only where the",
+  "            description names them explicitly.",
+  "  array   - a JSON array, or an object whose main content is a list.",
+  "  scalar  - a single number, boolean, or short string.",
+  "  prose   - human-readable text, not structured data.",
+  "  unclear - the description does not determine a shape.",
+  "",
+  "Choose 'unclear' unless the description is explicit. Most descriptions are",
+  "not, and that is normal — a vague description is not a defect and must not",
+  "be scored as one. Only commit to a shape the operator has actually promised.",
+].join("\n");
+
+const SHAPE_KINDS = ["object", "array", "scalar", "prose", "unclear"] as const;
+export type DescribedShape = (typeof SHAPE_KINDS)[number];
+
+/**
+ * Predict the response shape a tool's description promises.
+ *
+ * Returns `unclear` freely. The keys, when given, are only those the
+ * description names outright.
+ */
+export async function describedShape(
+  args: { tool: string; description: string },
+  options: JudgeOptions,
+): Promise<{ kind: DescribedShape; keys: string[]; reason: string }> {
+  const r = await ask(
+    options,
+    "response_shape",
+    `A tool named ${JSON.stringify(args.tool)} describes itself as shown.${SHAPE_RUBRIC}`,
+    { tool_description: args.description },
+    SHAPE_KINDS,
+  );
+  // Keys arrive in the reason field as a comma list; anything unparseable
+  // simply yields no keys, which weakens the check rather than breaking it.
+  const keys = (r.reason.match(/[a-zA-Z_][\w.:-]{1,40}/g) ?? []).filter((k) => k.length > 2).slice(0, 8);
+  return { kind: r.verdict as DescribedShape, keys, reason: r.reason };
+}
 
 const RESPONSE_VERDICTS = ["answer", "refusal", "error", "invention", "unclear"] as const;
 export type ResponseVerdict = (typeof RESPONSE_VERDICTS)[number];

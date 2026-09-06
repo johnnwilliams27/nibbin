@@ -83,3 +83,54 @@ describe("an auth wall wins over anything else in the same body", () => {
     expect(diagnoseInvocation(r).verdict).toBe("needs_credentials");
   });
 });
+
+/**
+ * Absence has a shape, and so does a description.
+ *
+ * Two checks that replaced skips. We were writing "we invented this identifier
+ * so we can learn nothing" and stopping there; but a lookup handed a
+ * well-formed identifier that does not exist has exactly one correct
+ * behaviour, and a tool whose description promises a JSON list has told us
+ * what its response should look like.
+ */
+import { absentIdentifier } from "../src/mcp/probe-identity.js";
+
+describe("a certainly-absent identifier keeps the shape it should have", () => {
+  const id = { nonsenseQuery: "bcdfghjklmnpqrstvwxz245678" };
+
+  it("keeps a uuid a uuid, so the tool cannot reject the format instead", () => {
+    const v = absentIdentifier("record_uuid", { properties: { record_uuid: { type: "string", format: "uuid" } } }, id);
+    expect(v).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-8[0-9a-f]{3}-[0-9a-f]{12}$/);
+  });
+
+  it("uses a reserved TLD for URLs, so absence is by construction and not by luck", () => {
+    expect(absentIdentifier("website", { properties: {} }, id)).toMatch(/^https:\/\/[a-z0-9]+\.invalid\/$/);
+    expect(absentIdentifier("email", { properties: {} }, id)).toMatch(/@example\.invalid$/);
+  });
+
+  it("keeps a ticker ticker-shaped", () => {
+    expect(absentIdentifier("ticker", { properties: {} }, id)).toMatch(/^[A-Z0-9]{1,5}$/);
+  });
+
+  it("falls back to a slug, which is what catalogue lookups expect", () => {
+    expect(absentIdentifier("product_slug", { properties: {} }, id)).toMatch(/^[a-z0-9]+-[a-z0-9]+$/);
+  });
+
+  it("does not send a value that plausibly exists", () => {
+    // The trap this avoids: our synthesizer supplies example.com and AAPL on
+    // purpose, so 37 tools answering correctly about a REAL domain would have
+    // been recorded as inventing records.
+    for (const p of ["domain", "url", "ticker", "id", "slug"]) {
+      const v = absentIdentifier(p, { properties: {} }, id).toLowerCase();
+      expect(v).not.toContain("example.com");
+      expect(v).not.toBe("aapl");
+      expect(v).not.toBe("test");
+    }
+  });
+
+  it("is stable for a subject and different across subjects", () => {
+    const other = { nonsenseQuery: "zzxxwwvvttssrrqqppnnmmllkk" };
+    expect(absentIdentifier("id", { properties: {} }, id)).toBe(absentIdentifier("id", { properties: {} }, id));
+    expect(absentIdentifier("id", { properties: {} }, id)).not.toBe(absentIdentifier("id", { properties: {} }, other));
+  });
+});

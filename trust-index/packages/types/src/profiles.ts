@@ -210,6 +210,21 @@ const CONFORMANCE: Omit<DimensionSpec, "weight"> = {
   constants: { decay_half_life_days: "60" },
 };
 
+/**
+ * v2 only. Admitting `judged` to the SHARED spec would change v1's digest, and
+ * every score published under v1 was computed without it.
+ *
+ * The addition is `matches_described_shape`: 21% of tools publish an
+ * outputSchema and are checked directly, while 43% state their response shape
+ * only in prose. A model reading that description is the only way to hold an
+ * operator to what they wrote, and at 0.70 it is admitted at a discount to the
+ * schema check beside it.
+ */
+const CONFORMANCE_V2: Omit<DimensionSpec, "weight"> = {
+  ...CONFORMANCE,
+  accepted_provenance: ["measured", "judged"],
+};
+
 const MAINTENANCE: Omit<DimensionSpec, "weight"> = {
   id: "maintenance",
   label: "Maintenance",
@@ -553,7 +568,7 @@ const MCP_SERVER_V2: RatingProfile = {
     // Conformance and documentation are demoted rather than removed. They are
     // real properties and a reader may want them; they are simply not where
     // servers differ, and v1 let them decide half the composite.
-    dim(CONFORMANCE, "0.04"),
+    dim(CONFORMANCE_V2, "0.04"),
     dim(DOCUMENTATION, "0.03"),
     dim(MAINTENANCE, "0.03"),
   ],
