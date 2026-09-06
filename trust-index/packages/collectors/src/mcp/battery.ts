@@ -161,6 +161,33 @@ export type BatteryOutcome = {
   injectionVerdict: { obeyed: boolean; tokenPresent: boolean; basis: string } | null;
 };
 
+/**
+ * Is this parameter a free-text query, or an identifier?
+ *
+ * The distinction decides whether several checks mean anything at all. We
+ * synthesize arguments, so an identifier parameter gets an INVENTED id —
+ * "wireless-bluetooth-headphones-xl2000", "john-smith-plumbing", ticker
+ * "test". A tool that answers "not found" to those is working perfectly, and
+ * `answers_substantively` recorded 29 such tools as failing to answer.
+ *
+ * That is the same error as scoring a missing credential: our inability to
+ * supply a real identifier became a fact about their tool. A free-text query
+ * is different — "weather" plausibly matches something in most corpora, so an
+ * empty result there is weak evidence about the tool rather than about us.
+ */
+function parameterKind(name: string): "freetext" | "identifier" {
+  const n = name.toLowerCase().replace(/[^a-z0-9]+/g, "_");
+  if (/(^|_)(id|ids|uuid|guid|slug|key|code|ticker|symbol|sku|isbn|hash|ref|handle|username|email|number|no)($|_)/.test(`_${n}_`)) {
+    return "identifier";
+  }
+  if (/(^|_)(query|q|search|term|keyword|keywords|text|prompt|question|topic|description|message|input)($|_)/.test(`_${n}_`)) {
+    return "freetext";
+  }
+  // Unknown names are treated as identifiers, which is the conservative
+  // direction: it costs a check rather than manufacturing a finding.
+  return "identifier";
+}
+
 /** Find the first required string parameter, which is what most probes vary. */
 function firstStringParameter(schema: unknown): string | null {
   if (typeof schema !== "object" || schema === null) return null;
@@ -494,9 +521,19 @@ export async function runBattery(
       // of two different queries coming back empty is weak evidence about the
       // query and real evidence about the tool.
       if (varied.ok) {
-        observations.push(
-          obs(observerId, "functional_correctness", "answers_substantively", bool(baseline.substantive || varied.substantive), ts, ref),
-        );
+        // Only where we supplied something that could plausibly match. On an
+        // identifier parameter we invented the value, so "not found" is the
+        // tool working and says nothing about whether it answers.
+        if (param !== null && parameterKind(param) === "freetext") {
+          observations.push(
+            obs(observerId, "functional_correctness", "answers_substantively", bool(baseline.substantive || varied.substantive), ts, ref),
+          );
+        } else {
+          skipped.push({
+            check: "answers_substantively",
+            reason: `${param} is an identifier and we invented its value, so an empty answer is expected`,
+          });
+        }
       }
     } else {
       skipped.push({ check: "input_sensitivity", reason: `shape ${classification.shape} need not vary with input` });
@@ -710,8 +747,17 @@ export async function runBattery(
     // "[object object].hood", and another simply returned results. A tool that
     // silently accepts garbage is worse to build on than one that rejects it,
     // because the caller never learns they were wrong.
-    const rejectedProperly = (malformed.ok && malformed.isError === true) || (malformed.reason ?? "").startsWith("jsonrpc error");
-    const acceptedGarbage = malformed.ok && malformed.isError !== true;
+    // A tool that returns a validation error in its PAYLOAD rejected the input.
+    // It failed to use the protocol to say so, which reports_errors_via_protocol
+    // already penalises — scoring it here as well charged one defect twice, and
+    // charged it as the more serious of the two. search_transport answered our
+    // wrong-typed argument with {"detail":[{"type":"string_type",...}]} and was
+    // recorded as having accepted garbage.
+    const rejectedProperly =
+      (malformed.ok && malformed.isError === true)
+      || (malformed.reason ?? "").startsWith("jsonrpc error")
+      || (malformed.ok && malformed.errorInPayload);
+    const acceptedGarbage = malformed.ok && malformed.isError !== true && !malformed.errorInPayload;
     observations.push(obs(observerId, "robustness", "rejects_invalid_input", bool(rejectedProperly), ts, ref));
     if (acceptedGarbage) {
       observations.push(obs(observerId, "robustness", "accepts_invalid_input", ZERO, ts, ref));
