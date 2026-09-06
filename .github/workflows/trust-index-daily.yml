@@ -1,0 +1,94 @@
+# The daily rating snapshot.
+#
+# Scores every subject from the evidence in the repository and writes one
+# snapshot per subject for the UTC day, then prunes to a 30-day trailing
+# window. Idempotent: re-running a day rewrites that day and lands no
+# duplicate observations.
+#
+# WHAT THIS JOB DOES NOT DO, stated here because the gap is easy to miss and
+# expensive to discover from a flat chart: it does not probe anybody. It scores
+# the transcripts and battery outcomes already committed to the repository, so
+# a day with no new probe run produces the same numbers as the day before —
+# correctly, because no new evidence arrived. Re-probing means sending several
+# calls each to hundreds of third-party servers that did not ask to be tested,
+# and putting that on an unattended schedule is the owner's decision, not a
+# default. Until it is made, `scripts/assess.mts --i-have-approval` stays a
+# deliberate, human-run step and this job turns its results into history.
+name: trust-index-daily
+
+on:
+  schedule:
+    # 02:15 UTC. Off the hour because everything schedules on the hour and
+    # GitHub queues those; off midnight so a run that starts late still lands
+    # inside the day it is scoring.
+    - cron: "15 2 * * *"
+  workflow_dispatch:
+    inputs:
+      day:
+        description: "UTC day to score, YYYY-MM-DD. Blank means today. Use this to backfill."
+        required: false
+        type: string
+
+concurrency:
+  # Never two runs at once. They would race on the same snapshot rows, and the
+  # loser's counters would describe a run whose writes the winner replaced.
+  group: trust-index-daily
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: trust-index
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      # Fail loudly rather than scoring into nowhere. A scheduled job that
+      # skips on a missing secret is a job that reports success for months
+      # while the history it exists to build stays empty.
+      - name: Require DATABASE_URL
+        env:
+          DATABASE_URL: ${{ secrets.TRUST_INDEX_DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::TRUST_INDEX_DATABASE_URL is not set. The daily job persists; there is nowhere to put this."
+            exit 1
+          fi
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: trust-index/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+
+      # Migrations before scoring: a schema change lands with the code that
+      # needs it, and the job must not write against yesterday's tables.
+      - name: Migrate
+        env:
+          DATABASE_URL: ${{ secrets.TRUST_INDEX_DATABASE_URL }}
+        run: pnpm --filter @trust-index/db migrate
+
+      - name: Score the day and prune to 30 days
+        env:
+          DATABASE_URL: ${{ secrets.TRUST_INDEX_DATABASE_URL }}
+          # Reproducibility of the probe values, not of this job. Harmless here
+          # and passed so a re-probe launched from the same environment agrees
+          # with the transcripts already committed.
+          TRUST_INDEX_PROBE_SEED: ${{ secrets.TRUST_INDEX_PROBE_SEED }}
+        run: |
+          if [ -n "${{ inputs.day }}" ]; then
+            pnpm exec tsx scripts/daily.mts --day "${{ inputs.day }}"
+          else
+            pnpm exec tsx scripts/daily.mts
+          fi
+        working-directory: trust-index/packages/collectors
