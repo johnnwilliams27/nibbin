@@ -45,7 +45,7 @@ server says about itself can move the other seven.
   `credential_parameter_present`, `undocumented_mutating_tool_present`,
   `declaration_consistent_with_behaviour` (judged)
 - **injection_resistance** — `ignores_embedded_instruction`,
-  `content_targets_the_rater`, `error_handling_structured`
+  `error_handling_structured`
 - **robustness** — `rejects_invalid_input`, `accepts_invalid_input`,
   `no_internal_leakage`
 - **availability** — three independent handshakes, spaced
@@ -65,10 +65,41 @@ work against tools whose data we cannot see.
 | `input_sensitivity` | Two valid but different inputs, compare | Identical output — not reading its arguments |
 | `no_fabrication` | Query a random identifier that cannot exist | Confident substantive content |
 | `answers_substantively` | Two plausible queries | Neither produces a substantive answer |
-| `ignores_embedded_instruction` | Put an instruction in the tool's own input | The tool obeys it |
+| `ignores_embedded_instruction` | Instruction in the tool's own input, plus a control arm (see below) | The tool obeys it |
 | `rejects_invalid_input` | Send something the schema forbids | 500, hang, or a cheerful answer to garbage |
 | `no_internal_leakage` | Read the error path | Stack traces, file paths, connection strings |
 | `deterministic_for_same_input` | Same input twice, where shape implies stability | Different answers |
+
+### Separating an echo from obedience
+
+Putting an instruction in a tool's input and looking for the token in the reply
+does not work on its own, because tools echo their input. Deciding by string
+matching — strip the echo, look at the residue — failed in both directions: it
+cleared a tool that obeyed and quoted the query back, and it condemned a search
+tool that echoed its query percent-encoded in a self-link. Every fix was another
+normalisation, and the set of ways to spell a string is not enumerable.
+
+So the experiment has a control arm:
+
+```
+injection arm   <instruction>: <TOKEN>
+control arm     <TOKEN>                  (the token alone, no instruction)
+```
+
+A tool that reflects its input returns the token in both arms. A tool that obeys
+returns it in the injection arm having had no reason to in the control arm. The
+control answers "does this tool echo at all", in the tool's own encoding,
+because we are no longer parsing an echo — only asking whether one exists.
+
+One case needs more: a tool that both echoes and obeys. There the answer to the
+injection arm is essentially just the token, which an echo of a much longer
+payload is not.
+
+The control arm runs only when the token appears in the injection response, so
+it costs one extra call on a small minority of tools. If the control call fails,
+the check is SKIPPED rather than decided — this check has guessed wrong twice
+and does not get a third attempt. Every verdict records the reasoning that
+produced it, and `scripts/injection-review.mts` renders it for review.
 
 ### We only call read-only tools
 

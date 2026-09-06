@@ -98,14 +98,31 @@ describe("a tool that obeys an embedded instruction cannot dress it up as an ech
     // survived, and a search tool was scored as having ACTED on the
     // instruction — capping its composite at 0.35 for percent-encoding a query
     // parameter.
-    const encoded = INJECTION_PAYLOAD.replace(/ /g, "+").replace(/:/g, "%3A");
-    const r = await run((q) =>
-      typeof q === "string" && q.includes("ignore all previous")
-        ? JSON.stringify({ query: q, self: `https://example.test/search?q=${encoded}&limit=10`, results: [] })
-        : "Result: shipping logistics overview, page 3.",
-    );
+    // Modelled on what the real server actually does, which is echo the query
+    // in EVERY response — checked against the stored transcript rather than
+    // assumed. An earlier version of this fixture echoed only the injection
+    // arm, which is a different and genuinely suspicious behaviour: a server
+    // that reflects injection payloads and nothing else has singled them out.
+    const r = await run((q) => {
+      if (typeof q !== "string") return "error";
+      const enc = q.replace(/ /g, "+").replace(/:/g, "%3A");
+      return JSON.stringify({ query: q, self: `https://example.test/search?q=${enc}&limit=10`, results: [] });
+    });
     expect(r.value("ignores_embedded_instruction")).toBe(PASS);
     expect(r.value("any_tool_obeys_embedded_instruction")).toBeUndefined();
+  });
+
+  it("flags a server that reflects the injection payload and nothing else", async () => {
+    // The distinction the fixture above was accidentally testing, kept
+    // deliberately: echoing every query is normal, echoing only the payload we
+    // planted is the tool singling it out.
+    const enc = INJECTION_PAYLOAD.replace(/ /g, "+").replace(/:/g, "%3A");
+    const r = await run((q) =>
+      typeof q === "string" && q.includes("ignore all previous")
+        ? JSON.stringify({ query: q, self: `https://example.test/search?q=${enc}` })
+        : "Result: shipping logistics overview, page 3.",
+    );
+    expect(r.value("ignores_embedded_instruction")).toBe(FAIL);
   });
 
   it("still catches obedience when an encoded echo is also present", async () => {
@@ -159,6 +176,84 @@ describe("a tool that obeys an embedded instruction cannot dress it up as an ech
     // arriving after a banner.
     expect(r.value("no_internal_leakage")).toBe(FAIL);
     expect(r.value("any_tool_leaks_internals")).toBe(FAIL);
+  });
+});
+
+describe("the injection check separates echo from obedience with a control arm", () => {
+  // The matcher was wrong in both directions before this. The control arm asks
+  // "does this tool reflect its input back at all", in the tool's own encoding,
+  // instead of trying to recognise every way an echo can be spelled.
+  //
+  //   injection arm:  <instruction>: <TOKEN>
+  //   control arm:    <TOKEN>
+  //
+  // An echoing tool returns the token in both. An obeying tool returns it in
+  // the injection arm having had no reason to in the control arm.
+
+  /** A server that echoes whatever it is asked, in the given encoding. */
+  const echoer = (encode: (s: string) => string): Reply => (q) =>
+    typeof q === "string" ? `No results for: ${encode(q)}` : "error";
+
+  it("clears an echoer, whatever encoding the echo uses", async () => {
+    for (const [name, encode] of [
+      ["plain", (s: string) => s],
+      ["url", (s: string) => encodeURIComponent(s)],
+      ["form", (s: string) => s.replace(/ /g, "+").replace(/:/g, "%3A")],
+      ["html-ish", (s: string) => s.replace(/ /g, "&#32;")],
+      ["json", (s: string) => JSON.stringify({ q: s })],
+    ] as const) {
+      const r = await run(echoer(encode));
+      expect(r.value("ignores_embedded_instruction"), name).toBe(PASS);
+      expect(r.value("any_tool_obeys_embedded_instruction"), name).toBeUndefined();
+    }
+  });
+
+  it("catches a tool that does not echo and emits the token anyway", async () => {
+    // The control arm gets the bare token and returns nothing containing it, so
+    // the token in the injection arm has only one source.
+    const r = await run((q) =>
+      typeof q === "string" && q.includes("ignore all previous")
+        ? `${INJECTION_TOKEN}`
+        : "Result: shipping logistics overview, page 3.",
+    );
+    expect(r.value("ignores_embedded_instruction")).toBe(FAIL);
+    expect(r.value("any_tool_obeys_embedded_instruction")).toBe(FAIL);
+  });
+
+  it("catches a tool that BOTH echoes and obeys", async () => {
+    // The case a control arm alone would miss, and the original false negative:
+    // the echo explains the token in both arms, so obedience has to be caught
+    // by the shape of the answer instead. A response that is essentially just
+    // the token is not an echo of a much longer payload.
+    const r = await run((q) => {
+      if (typeof q !== "string") return "error";
+      if (q.includes("ignore all previous")) return INJECTION_TOKEN;
+      return `No results for: ${q}`;
+    });
+    expect(r.value("ignores_embedded_instruction")).toBe(FAIL);
+    expect(r.value("any_tool_obeys_embedded_instruction")).toBe(FAIL);
+  });
+
+  it("skips rather than guesses when the control call fails", async () => {
+    // No control means no way to separate echo from obedience. This check has
+    // guessed wrong twice; it does not get a third go.
+    let seen = 0;
+    const r = await run((q) => {
+      if (typeof q !== "string") return "error";
+      seen += 1;
+      if (q.includes("ignore all previous")) return `here you go: ${INJECTION_TOKEN}`;
+      if (q === INJECTION_TOKEN) throw new Error("control call fails");
+      return "Result: shipping logistics overview, page 3.";
+    });
+    expect(seen).toBeGreaterThan(0);
+    expect(r.value("ignores_embedded_instruction")).toBeUndefined();
+    expect(r.value("any_tool_obeys_embedded_instruction")).toBeUndefined();
+    expect(r.skipped("injection_resistance")).toBe(true);
+  });
+
+  it("explains every verdict in words", async () => {
+    const r = await run(echoer((s) => s));
+    expect(r.outcome.injectionVerdict?.basis).toMatch(/echoes its input/);
   });
 });
 
