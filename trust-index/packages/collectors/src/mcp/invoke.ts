@@ -151,6 +151,71 @@ export function synthesizeInput(schema: unknown): SynthesizedInput {
   return { args, skipped };
 }
 
+/**
+ * Whose failure was it?
+ *
+ * `invocation_succeeds` was `ok && !isError`, and that scored 205 of 409 tools
+ * as broken. Classifying every one of those failures by its actual response
+ * found that 163 were OURS:
+ *
+ *   130  the server wants credentials we do not have
+ *    16  the tool rejected arguments we synthesized
+ *    16  the tool correctly reported that an identifier WE INVENTED does not
+ *        exist — "No firm with slug 'acme-consulting'" is a working tool
+ *     1  we hit their rate limit
+ *
+ * Twenty-eight were the subject's: 5xx, timeouts, dead endpoints, internal
+ * errors. Six point eight percent, against a headline of fifty.
+ *
+ * This is principle 1 at the largest scale it has failed on in this project.
+ * "We have no account" and "we guessed a slug" became "this tool does not
+ * work", published about a named third party. The figure was measured three
+ * times and agreed with itself every time, because all three measurements
+ * shared the defect — consistency is not correctness.
+ */
+export type InvocationDiagnosis =
+  /** The call completed and the tool answered, including a correct "no such id". */
+  | { verdict: "worked" }
+  /** The subject failed: 5xx, timeout, dead endpoint, internal error. Scored. */
+  | { verdict: "subject_failed"; detail: string }
+  /** They want credentials. A gap, never a finding. */
+  | { verdict: "needs_credentials"; detail: string }
+  /** Our synthesized arguments were not valid for their schema. Our failure to ask. */
+  | { verdict: "our_arguments"; detail: string }
+  /** We called too fast. Ours. */
+  | { verdict: "rate_limited"; detail: string }
+  /** We cannot tell, so nothing is recorded either way. */
+  | { verdict: "undetermined"; detail: string };
+
+const AUTH_WALL =
+  /http 40[13]|unauthor|forbidden|authentication|\bauth\b|api[_ ]?key|bearer|credential|permission denied|not configured|set [A-Z_]+_API_KEY|login|sign in|sem conta ativa/i;
+const OUR_ARGUMENTS =
+  /-32602|invalid arguments|input validation|validation error|is not of type|must be (one of|a non-empty)|is required|provide (either|`|a )|at least one|invalid_?(query|input|type|task)|expected .* received|unknown_metric|invalid .* format|supported tasks|http 400/i;
+const INVENTED_ID =
+  /not[_ ]found|no such|does not exist|unknown (id|slug|symbol|signup)|no (firm|provider|record|results?) (with|found)/i;
+const SUBJECT_FAILURE =
+  /http 5\d\d|internal server error|upstream|temporarily unavailable|error executing tool|http 404/i;
+const RATE_LIMIT = /http 429|rate.?limit|too many requests|quota/i;
+
+/** Read a completed call and decide whose failure it was. */
+export function diagnoseInvocation(r: ToolCallResult): InvocationDiagnosis {
+  if (r.ok && r.isError !== true) return { verdict: "worked" };
+  const blob = `${r.reason ?? ""} ${r.text ?? ""}`.slice(0, 4000);
+  const hit = (re: RegExp): string => (blob.match(re)?.[0] ?? "").slice(0, 80);
+
+  // Order matters. A 401 whose body also says "not found" is an auth wall.
+  if (RATE_LIMIT.test(blob)) return { verdict: "rate_limited", detail: hit(RATE_LIMIT) };
+  if (AUTH_WALL.test(blob)) return { verdict: "needs_credentials", detail: hit(AUTH_WALL) };
+  if (!r.ok && /timeout|abort/i.test(blob)) return { verdict: "subject_failed", detail: "timed out" };
+  if (SUBJECT_FAILURE.test(blob)) return { verdict: "subject_failed", detail: hit(SUBJECT_FAILURE) };
+  if (!r.ok && /body over/i.test(blob)) return { verdict: "subject_failed", detail: "response over the byte cap" };
+  // A tool that correctly reports our invented identifier is missing WORKED.
+  if (INVENTED_ID.test(blob)) return { verdict: "worked" };
+  if (OUR_ARGUMENTS.test(blob)) return { verdict: "our_arguments", detail: hit(OUR_ARGUMENTS) };
+  if (!r.ok) return { verdict: "subject_failed", detail: (r.reason ?? "call failed").slice(0, 80) };
+  return { verdict: "undetermined", detail: (r.text ?? "").replace(/\s+/g, " ").slice(0, 80) };
+}
+
 export type ToolCallResult = {
   tool: string;
   shape: string;

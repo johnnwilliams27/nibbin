@@ -44,7 +44,7 @@ import {
   proposeArguments,
   type JudgeOptions,
 } from "../judge/index.js";
-import { callTool, synthesizeInput, type CallOptions, type ToolCallResult } from "./invoke.js";
+import { callTool, diagnoseInvocation, synthesizeInput, type CallOptions, type ToolCallResult } from "./invoke.js";
 import type { ToolClassification } from "./shape.js";
 import { jitteredSpacing, type ProbeIdentity } from "./probe-identity.js";
 import type { ToolDeclaration } from "./transcript.js";
@@ -379,12 +379,56 @@ export async function runBattery(
   };
 
   // 1. Baseline.
+  //
+  // `ok && !isError` was scoring 205 of 409 tools as broken, and 163 of those
+  // failures were ours: 130 servers wanting credentials we do not have, 16
+  // rejecting arguments we synthesized, 16 correctly reporting that an
+  // identifier we invented does not exist. Only 28 were the subject's. See
+  // diagnoseInvocation.
   const baseline = await call("baseline", base);
-  observations.push(obs(observerId, "functional_correctness", "invocation_succeeds", bool(baseline.ok && !baseline.isError), ts, ref));
-  if (!baseline.ok) {
+  const diagnosis = diagnoseInvocation(baseline);
+  switch (diagnosis.verdict) {
+    case "worked":
+      observations.push(obs(observerId, "functional_correctness", "invocation_succeeds", ONE, ts, ref));
+      break;
+    case "subject_failed":
+      observations.push(obs(observerId, "functional_correctness", "invocation_succeeds", ZERO, ts, ref));
+      break;
+    case "needs_credentials":
+      // A gap, and specifically a HARNESS gap: the dimension leaves the
+      // denominator entirely rather than the subject bearing it. We were never
+      // entitled to an answer without an account.
+      gaps.push({
+        dimension: "functional_correctness",
+        check: "invocation_succeeds",
+        cause: "harness_capability_missing",
+        capability: CAPABILITIES.mcp_account,
+        detail: `the server requires credentials we do not hold: ${diagnosis.detail}`,
+      });
+      break;
+    case "rate_limited":
+      gaps.push({
+        dimension: "functional_correctness",
+        check: "invocation_succeeds",
+        cause: "harness_capability_unhealthy",
+        capability: CAPABILITIES.mcp_account,
+        detail: `we called faster than they allow: ${diagnosis.detail}`,
+      });
+      break;
+    case "our_arguments":
+      // We could not form a valid call from their schema. That is a fact about
+      // our argument synthesis, not about their tool.
+      skipped.push({ check: "invocation_succeeds", reason: `our synthesized arguments were rejected: ${diagnosis.detail}` });
+      break;
+    case "undetermined":
+      skipped.push({ check: "invocation_succeeds", reason: `the tool reported an error we cannot attribute: ${diagnosis.detail}` });
+      break;
+  }
+  // Anything but a working call leaves the rest uninterpretable.
+  if (diagnosis.verdict !== "worked") {
     // Nothing downstream is interpretable. Not a failing battery, an unrun one.
     for (const c of ["input_sensitivity", "no_fabrication", "injection_resistance", "error_handling_structured"]) {
-      skipped.push({ check: c, reason: `baseline call failed: ${baseline.reason ?? "unknown"}` });
+      skipped.push({ check: c, reason: `baseline did not produce a usable answer (${diagnosis.verdict})` });
     }
     return {
     tool: declaration.name,
