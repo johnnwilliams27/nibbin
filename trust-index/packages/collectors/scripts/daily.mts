@@ -22,6 +22,7 @@ import {
   finishRun,
   persistScoredSubject,
   pruneExpiredSnapshots,
+  shiftUtcDay,
   startRun,
   utcDay,
   type RunCounters,
@@ -61,7 +62,33 @@ if (url === undefined || url === "") {
 }
 
 const root = join(import.meta.dirname, "..");
-const asOfTs = `${new Date().toISOString().slice(0, 19)}Z`;
+
+/**
+ * As-of is a function of the DAY, not of the clock.
+ *
+ * This was `new Date()`, and that was wrong in a way only re-running showed.
+ * `as_of_ts` is what observation decay and lifecycle are measured from, and it
+ * is inside `inputs_hash` — so scoring the same day twice produced slightly
+ * different composites AND a different hash for identical evidence. Measured:
+ * two of 600 composites moved on a re-run with no code change at all, and every
+ * inputs_hash moved. That defeats the reproducibility the snapshot rests on,
+ * where a reader rebuilds the subject from the stored frame plus the day's
+ * observations and checks the result against the stored hash.
+ *
+ * It is worse for backfills, which is the case that makes it obvious:
+ * re-scoring last August with today's clock decays that day's evidence by
+ * everything that has happened since, and calls the result last August's
+ * rating.
+ *
+ * The day's exclusive end boundary is the natural choice. Every run of day D —
+ * tonight's, tomorrow's retry, a backfill next year — evaluates as of the same
+ * instant, so the snapshot is a function of the evidence and nothing else. For
+ * a run early in its own day this is a few hours ahead of the wall clock, which
+ * costs nothing real: the decay half-life is 120 days and lifecycle thresholds
+ * are whole days. `computed_at` on the row still records the actual clock
+ * reading, which is where "when did this run" belongs.
+ */
+const asOfTs = `${shiftUtcDay(day, 1)}T00:00:00Z`;
 
 // Behavioural evidence, keyed by ENDPOINT. The assessment file is per tool; a
 // subject is a server, so outcomes are grouped before assembly. The join is on

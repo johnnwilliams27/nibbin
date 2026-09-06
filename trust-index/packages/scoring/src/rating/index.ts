@@ -556,17 +556,60 @@ export function scoreSubject(subject: Subject): { result: SubjectScoreResult; ca
   // reported as ours to fix. Reading a failure to obtain data as a fact about
   // the data is the error that has cost this project the most, and this is the
   // one place it could be published under someone else's name.
-  const blockedDimensions = new Set<string>();
+  // COUNTED PER CHECK, NOT PER DIMENSION.
+  //
+  // This was `blockedDimensions.has(o.spec.id) && !o.published`: a harness gap
+  // left the denominator only when the dimension published NOTHING. That is
+  // right per dimension and wrong per check. Once one check of a dimension got
+  // through, every other check we were unable to run stopped counting, the
+  // dimension kept its full profile weight on whatever fragment we did get, and
+  // the result asserted assessment_completeness 1.00 — which this type's own
+  // documentation tells a reader to interpret as "fully assessable and came up
+  // short".
+  //
+  // Measured on mcp_server.v2 tool_safety (5 checks, weight 0.20): four checks
+  // blocked by a credential we do not hold, one run and failed, gave composite
+  // 67.50 against 77.50 with everything green, and reported completeness 1.00
+  // and four harness gaps in the same breath. Ten points off the subject for a
+  // credential WE lack, published as though we had assessed everything.
+  //
+  // Latent when written — the MCP collector gaps whole dimensions, so no live
+  // subject had both a gap and a published score on one dimension — and
+  // reachable by the first collector whose capabilities are per check, which
+  // is what every non-MCP collector will be.
+  //
+  // A dimension is therefore assessable in PROPORTION to the checks we could
+  // attempt: distinct checks observed, over that plus distinct checks gapped.
+  // Nothing new is needed to compute it; the gaps already name their checks.
+  // Whole-dimension blocking is unchanged (0 attempted over 0+N blocked = 0),
+  // so this only moves results the old rule got wrong.
+  const blockedChecks = new Map<string, Set<string>>();
   for (const g of subject.gaps) {
     if (g.cause !== "harness_capability_missing" && g.cause !== "harness_capability_unhealthy") continue;
-    blockedDimensions.add(g.dimension);
+    const set = blockedChecks.get(g.dimension) ?? new Set<string>();
+    set.add(g.check);
+    blockedChecks.set(g.dimension, set);
+  }
+  const attemptedChecks = new Map<string, Set<string>>();
+  for (const o of subject.observations) {
+    const set = attemptedChecks.get(o.dimension) ?? new Set<string>();
+    set.add(observationCheck(o.observation_key));
+    attemptedChecks.set(o.dimension, set);
   }
   let assessableWeightFx = 0n;
   for (const o of outcomes) {
-    // Blocked only counts when nothing got through: a dimension with a
-    // published score was clearly assessable, whatever else was missing.
-    if (blockedDimensions.has(o.spec.id) && !o.published) continue;
-    assessableWeightFx += o.weightFx;
+    const blocked = blockedChecks.get(o.spec.id);
+    if (blocked === undefined || blocked.size === 0) {
+      assessableWeightFx += o.weightFx;
+      continue;
+    }
+    // A check that was gapped AND still produced an observation was attempted;
+    // it must not be counted on both sides.
+    const attempted = attemptedChecks.get(o.spec.id) ?? new Set<string>();
+    const trulyBlocked = [...blocked].filter((c) => !attempted.has(c)).length;
+    const denominator = attempted.size + trulyBlocked;
+    if (denominator === 0) continue;
+    assessableWeightFx += (o.weightFx * BigInt(attempted.size)) / BigInt(denominator);
   }
 
   // Composite. The interval assumes the published dimensions are perfectly

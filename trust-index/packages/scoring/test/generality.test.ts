@@ -176,7 +176,7 @@ describe("a missing collector must never read as the subject falling short", () 
    * from the MCP collector, which gaps whole dimensions; reachable by the first
    * collector whose capabilities are per check.
    */
-  it("DEFECT: a partly blocked dimension scores the subject on the fragment we got", () => {
+  it("FIXED (r0.2.0): a partly blocked dimension is assessable in proportion to the checks we ran", () => {
     const full = scoreSubject(
       mcpSubject(
         [...MCP_CORE, ...["c1", "c2", "c3", "c4", "c5"].map((k) => measured("tool_safety", k, "1"))],
@@ -193,12 +193,20 @@ describe("a missing collector must never read as the subject falling short", () 
     expect(wholly.assessment_completeness).toBeCloseTo(0.8, 6);
     expect(wholly.composite).toBe(full.composite);
 
-    // Blocking four of five checks is not. Completeness claims 1.00, and the
-    // one check we managed to run takes the whole 0.20 weight down with it.
-    expect(partly.assessment_completeness).toBe(1);
+    // Blocking four of five checks used to report completeness 1.00 alongside
+    // four harness gaps — "we assessed all of this" and "we could not assess
+    // four of these" in the same result. It now reports the share of the
+    // profile's weight we could actually attempt: 0.80 from the untouched
+    // dimensions, plus one fifth of tool_safety's 0.20.
+    expect(partly.assessment_completeness).toBeCloseTo(0.84, 6);
     expect(partly.harness_gaps).toHaveLength(4);
+
+    // The dimension score itself is still computed on the evidence we have,
+    // and that is correct: we measured what we could and it failed. What was
+    // wrong was claiming we had seen everything. A reader now gets the score
+    // AND the fact that 16% of the weight was never attempted, which is the
+    // pair that keeps our shortfall from reading as the subject's.
     expect(partly.composite).toBeLessThan(full.composite!);
-    expect(full.composite! - partly.composite!).toBeCloseTo(10, 2);
   });
 });
 

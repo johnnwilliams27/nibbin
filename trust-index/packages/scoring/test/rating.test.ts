@@ -845,10 +845,24 @@ describe("harness gaps are never findings", () => {
     expect(scoreSubject(withGap("harness_capability_missing")).result.composite).not.toBeNull();
   });
 
-  it("still counts a dimension as assessed when evidence got through anyway", () => {
+  it("counts a partly blocked dimension in proportion to the checks that ran", () => {
     // One check blocked out of several does not make the dimension
-    // unassessable. Only a dimension with a gap AND no published score drops
-    // out of the denominator.
+    // unassessable — it is still scored, still published, still carries its
+    // weight. That much has always been right and is unchanged here.
+    //
+    // What changed in r0.2.0 is that assessability stopped being BINARY. The
+    // old rule dropped a blocked dimension from the completeness denominator
+    // only when it published nothing at all, so any dimension that got one
+    // check through counted as fully assessed. Read at dimension granularity
+    // that is defensible; read at check granularity it is not, and it fails
+    // hardest exactly where it matters most — four checks of five blocked by a
+    // credential we lack reported assessment_completeness 1.00 alongside four
+    // harness gaps, which is "we assessed all of this" and "we could not
+    // assess most of this" in one result.
+    //
+    // Proportional keeps the old intent (the dimension is assessed) without
+    // the false claim (we saw everything). Here one blocked check of several
+    // costs a few points of completeness rather than zero or all of them.
     const partial = probedServer({
       gaps: [
         {
@@ -862,7 +876,8 @@ describe("harness gaps are never findings", () => {
     });
     const { result } = scoreSubject(partial);
     expect(dim(result, "tool_safety").score).not.toBeNull();
-    expect(result.assessment_completeness).toBe(1);
+    expect(result.assessment_completeness).toBeGreaterThan(0.9);
+    expect(result.assessment_completeness).toBeLessThan(1);
     // The gap is still reported, because it is still work for us.
     expect(result.harness_gaps).toHaveLength(1);
   });

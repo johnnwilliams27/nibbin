@@ -468,7 +468,24 @@ function d(v: string): DecimalString {
  * cannot move past the cap.
  */
 export const DEFAULT_RATING_CONSTANTS: RatingConstants = {
-  rating_methodology_version: "r0.1.0",
+  /**
+   * r0.2.0 — assessment_completeness is counted per CHECK, not per dimension.
+   *
+   * Bumped because the change moves published numbers while NO digest moves.
+   * `profile_digest` covers the scoring rules, `inputs_hash` covers the
+   * evidence, `rubric_version` covers the collector — and none of the three
+   * covers the engine. This project has already been caught by exactly that
+   * gap once: retuning `maintenanceValue` moved every maintenance score in the
+   * compendium and not one digest changed, so two results that looked
+   * comparable were not. This field is what makes an engine change visible, so
+   * it has to move whenever the engine's arithmetic does.
+   *
+   * r0.1.0 dropped a harness-blocked dimension from the completeness
+   * denominator only when it published nothing at all, so a dimension where we
+   * ran one check of five kept its full weight and reported completeness 1.00.
+   * See rating/index.ts.
+   */
+  rating_methodology_version: "r0.2.0",
   shrinkage_k: d("5.00"),
   decay_half_life_days: d("120"),
   age_ramp_days: d("365"),
