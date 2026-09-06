@@ -9,7 +9,7 @@
  *
  *   TRUST_INDEX_TEST_DB_URL=postgres://... pnpm --filter @trust-index/db test
  */
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, inject, it } from "vitest";
 import type { DimensionScore, SubjectScoreResult } from "@trust-index/types";
 import { createDb, type DbHandle } from "./client.js";
@@ -130,13 +130,50 @@ withDb("daily snapshot store (needs a database)", () => {
   let h: DbHandle;
   const KEY = { kind: "mcp_server", source_registry: "test", profile_id: "mcp_server.v2" };
 
+  /**
+   * Ledger rows this suite inserts, named so cleanup can remove exactly them.
+   *
+   * They use a hyphen where dailyRunId() uses a colon ("mcp-2026-09-02" against
+   * "mcp:2026-09-02") specifically so a test row can never collide with, or be
+   * mistaken for, a run the real collector recorded.
+   */
+  const FIXTURE_RUN_IDS = ["mcp-2026-09-02", "mcp-2026-09-03", "mcp-2026-09-04", "mcp-2026-09-05"];
+
+  /**
+   * SCOPED cleanup, and this is not a stylistic preference.
+   *
+   * These deletes used to be unqualified — `delete(rating_results)` with no
+   * where clause, three tables of it. Against the disposable container global
+   * setup starts, that is harmless. Against the database an operator names in
+   * TRUST_INDEX_TEST_DB_URL, which the runbook tells everyone to point at their
+   * working store so these tests run at all, it silently destroyed thirty days
+   * of ratings and the entire run ledger on every `pnpm -r test`.
+   *
+   * It cost a real day: a populated store came back from a test run holding
+   * seven fixture rows and no ratings, with the collector's own observations
+   * still present, which reads exactly like a job that half-failed. Retention
+   * data does not come back, and the ledger is the only record of which nights
+   * ran.
+   *
+   * So: every row this suite writes lives under source_registry "test", and
+   * cleanup removes that registry and these run ids and nothing else. A test
+   * that needs a table empty should assert over its own rows instead.
+   */
+  const scrub = async (): Promise<void> => {
+    await h.db.delete(rating_dimension_scores).where(eq(rating_dimension_scores.source_registry, "test"));
+    await h.db.delete(rating_results).where(eq(rating_results.source_registry, "test"));
+    await h.db.delete(collection_runs).where(inArray(collection_runs.run_id, FIXTURE_RUN_IDS));
+  };
+
   beforeAll(async () => {
     h = createDb(url);
-    await h.db.delete(rating_dimension_scores);
-    await h.db.delete(rating_results);
-    await h.db.delete(collection_runs);
+    await scrub();
   });
   afterAll(async () => {
+    // Leaving the fixture ledger rows behind would make days 09-02..09-05 read
+    // as `not_assessed` for every real subject in the store, which is a lie
+    // about our own collector.
+    if (h) await scrub();
     await h?.close();
   });
 
@@ -263,11 +300,18 @@ withDb("daily snapshot store (needs a database)", () => {
       .where(eqAll("rescore", "2026-09-06"));
     expect(rows.map((r) => r.dimension)).toEqual(["a"]);
     expect(rows[0]?.score).toBe("55.00");
-    const all = await h.db.select().from(rating_results);
+    // Scoped to this suite's registry: these assertions must not depend on what
+    // else the store happens to hold.
+    const all = await h.db.select().from(rating_results).where(eq(rating_results.source_registry, "test"));
     expect(all.filter((r) => r.subject_id === "rescore")).toHaveLength(1);
   });
 
   it("prunes to exactly the retention window, and takes dimension rows with it", async () => {
+    // pruneExpiredSnapshots is global by design — it is the retention sweep the
+    // daily job runs — so this test deletes any row in the store older than the
+    // cutoff, exactly as production would. That is the behaviour under test and
+    // not a scoping oversight; the assertions below are still scoped so they do
+    // not depend on what else is stored.
     const through = "2026-09-06";
     const oldest = shiftUtcDay(through, -(RETENTION_DAYS - 1)); // kept
     const expired = shiftUtcDay(oldest, -1); // dropped
@@ -280,11 +324,14 @@ withDb("daily snapshot store (needs a database)", () => {
     expect(pruned.results_deleted).toBeGreaterThanOrEqual(1);
     expect(pruned.dimensions_deleted).toBeGreaterThanOrEqual(1);
 
-    const kept = await h.db.select().from(rating_results);
+    const kept = await h.db.select().from(rating_results).where(eq(rating_results.source_registry, "test"));
     const days = kept.filter((r) => r.subject_id === "retention").map((r) => r.utc_day).sort();
     expect(days).toEqual([oldest, through]);
     // No orphans: nothing in the dimension table older than the cutoff.
-    const dims = await h.db.select().from(rating_dimension_scores);
+    const dims = await h.db
+      .select()
+      .from(rating_dimension_scores)
+      .where(eq(rating_dimension_scores.source_registry, "test"));
     expect(dims.filter((d) => d.utc_day < oldest)).toHaveLength(0);
   });
 });
