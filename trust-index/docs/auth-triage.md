@@ -4,14 +4,16 @@
 No account was created, no form submitted, no email entered, no terms accepted. Every row
 below is a decision for the account owner to make.
 
-Four servers — `ai.lumify_sports-intelligence`, `ai.chronary_mcp`,
-`ai.echoloc_company-technographics` and `ai.creativescope_creative-intelligence` — have since
-been worked end to end to see whether a free-tier key could be obtained without a human. None
-could. Those attempts created no account and submitted no form either; what they found is
-written up in the attempt logs below, including a correction — the same correction, arrived at
-four times — to how these servers' auth walls are recorded. Echoloc is the one where it did not
-matter: **it turned out to need no credential at all**, and re-probing it anonymously rated all
-three of its tools.
+Five servers — `ai.lumify_sports-intelligence`, `ai.chronary_mcp`,
+`ai.echoloc_company-technographics`, `ai.creativescope_creative-intelligence` and
+`ai.framethrower_framethrower` — have since been worked end to end to see whether a key could
+be obtained without a human. None could. Those attempts created no account and submitted no
+form either; what they found is written up in the attempt logs below, including a correction —
+the same correction, arrived at five times — to how these servers' auth walls are recorded.
+Echoloc is the one where it did not matter: **it turned out to need no credential at all**, and
+re-probing it anonymously rated all three of its tools. FrameThrower is the one where the
+remaining human step is now a single command plus a sign-in
+(`scripts/obtain-oauth-credential.mts`).
 
 **Source data:** `packages/collectors/assessment.json` (gaps with cause
 `harness_capability_missing`), `packages/collectors/transcripts/*.json` (registry metadata,
@@ -147,7 +149,7 @@ with no card and no sales contact.
 | `ai.echoloc_company-technographics` | `https://api.echoloc.ai/mcp` | *"Anonymous preview limit reached (5 calls/day). … Free beta key (100 requests/month, instant)"* | https://echoloc.ai/auth?mode=signup&returnTo=%2Fapp%2Fapi (key at https://echoloc.ai/app/api; details https://echoloc.ai/for-agents/) | **Not obtainable by us — attempted 2026-09-08, see the section below.** A key exists only behind a Supabase account, and that account needs a mailbox we do not have (or a real person's Google identity) plus terms acceptance. For a human it is ~60 seconds | **3/3 already rated without it** (see below): the anonymous re-probe worked. A key is still worth a human's minute — it lifts 5 calls/day to 100/month and un-trims the profiles — but nothing is blocked on it |
 | `ai.creativescope_creative-intelligence` | `https://mcp.creativescope.ai/mcp` | HTTP 401 with a real `WWW-Authenticate: Bearer resource_metadata=…` challenge on `tools/call`, `resources/list` and `prompts/list` — `initialize` and `tools/list` are open (see the attempt log below) | https://creativescope.ai/mcp — "Get free API key" | **Not obtainable by us — attempted 2026-09-08, see the section below.** The only account-creation route is a **6-digit code emailed** to a work address, behind a **required "I agree to the Terms and Privacy Policy" checkbox**. OAuth is the same account by another door. No CAPTCHA anywhere — the wall is identity and contract, not bot detection | **No longer "yes" — and not for the reason we assumed.** The free tier is **the rankings tools only**; `search_creatives`, `get_creative_detail` and the advertiser/image tools are Pro. **All three tools our planner selected for this subject are Pro-tier**, so a free key would rate none of them without a probe-selection change |
 | `ai.marketintell_marketintell` | `https://api.marketintell.ai/mcp` | HTTP 401; handshake names both paths | https://marketintell.ai/signup **or** in-band `register_challenge` → `register` | **Notable:** the second path is SHA-256 proof-of-work self-signup taking only `{challenge_id, nonce, name}` — **no email, no form, no ToS click**. Issues a Free-tier key | **Yes.** Corpus-backed market data, and the lowest legal friction of anything on this list. Still account creation, so still the owner's call |
-| `ai.klarix_intelligence` | `https://mcp.klarix.ai/mcp` | HTTP 401; handshake lists free vs Pro tools | https://klarix.ai/mcp#get-key | Work email → free key. 25 **one-time** credits, 7 free read-only narrative tools | Yes, with a caveat: 25 credits is a burn-down, not renewable, so it may not survive repeat assessment runs |
+| `ai.klarix_intelligence` | `https://mcp.klarix.ai/mcp` | 401 at `tools/call` only; `initialize`/`tools/list` answer anonymously | https://klarix.ai/mcp#get-key | Work email → free key, shown inline, **no confirmation link**. 25 **one-time** credits, 7 free narrative tools. Attempted 2026-09-08 and stopped: the only issuance path is a web form carrying a honeypot bot trap, and Klarix's ToS §12 forbids automated access to their website (see attempt log) | **No, for us.** Even with a key: 2 of our 3 probed tools are Pro+, and one battery run (~24 calls) would eat the whole 25-credit lifetime allowance |
 | `ai.chronary_mcp` | `https://api.chronary.ai/mcp` | HTTP 401 | https://console.chronary.ai/signup | No card; 50K API calls/month free; keys instant. Also an agent self-signup endpoint (`POST /v1/agent/sign-up`, email + OTP) | Marginal — generous renewable tier, but own-account: a fresh org has no agents/calendars/events, so reads come back empty |
 | `ai.auralogs_auralogs` | `https://mcp.auralogs.ai/mcp` | HTTP 401 | https://auralogs.ai → Settings → API & MCP keys | Free plan, 10,000 logs/month, no card. Key is a genuine **read-scoped** key (`aura_read_…`) — exactly the credential shape we want | Marginal — best-shaped credential on the list, but own-account: no logs ingested means three empty reads |
 | `ai.novence_mcp` | `https://api.novence.ai/mcp` | *"Unauthorized: provide Authorization Bearer API key (or call bootstrap first)"* | In-band `bootstrap` tool | One tool call: *"Create an account + nv_ API key from an email. No Bearer key required … Returns apiKey immediately — do not wait for OTP."* **Requires an email address — the owner's decision, not ours** | Marginal — trivial mechanically, but own-account (no projects, no files, no deployments) |
@@ -457,6 +459,160 @@ textbook HTTP 401 — and *both* are recorded as `required: false` because neith
 minutes of the owner's time at https://console.chronary.ai/signup — but it should be spent
 only if the owner also wants to *populate* the account, because the credential alone does not
 make this server ratable. Recommend leaving `ai.chronary_mcp` unrated and recording the gap.
+
+---
+
+## Attempt log: `ai.framethrower_framethrower` (2026-09-08) — no credential obtained, but the flow is now one command
+
+*No account was created, no form submitted, no email entered, no terms accepted, no browser
+driven. Nothing was stored in `subject_credentials` because there is no secret to store.*
+
+The runner-up was worked end to end. Unlike lumify and chronary, **nothing here is
+circumvention-shaped and nothing is ambiguous** — the server implements the MCP authorization
+spec properly, and the wall is exactly one step wide: a human sign-in.
+
+**Where the wall actually is.** Confirmed by direct probe, not inferred:
+
+| Call | Result |
+|---|---|
+| `initialize` | **200**, full `instructions` returned |
+| `tools/list` | **200**, all four tools declared |
+| `tools/call search_frames` | **401** — `{"code":-32000,"message":"Unauthorized: Authentication required","www-authenticate":"Bearer resource_metadata=..."}` |
+
+**Correction to the transcript.** `packages/collectors/transcripts/ai.framethrower_framethrower.json`
+records `auth: {required: false, status: 200}`. This is the **same misclassification found on
+lumify**, arrived at independently: the handshake is anonymous, so a classifier watching only
+the handshake's HTTP status calls the server open. FrameThrower is the better-behaved case of
+the two — it returns a real HTTP 401 *and* a spec-compliant `WWW-Authenticate` header naming
+its resource metadata, so the fix is available to us and cheap. **Two of two servers checked
+this way were mislabelled; this should be treated as a systematic defect in the auth classifier
+rather than two anecdotes.**
+
+**Every automated route, checked and closed:**
+
+| Route | Result |
+|---|---|
+| `/.well-known/oauth-protected-resource` and `/.well-known/oauth-authorization-server` | **Both 200.** Unlike lumify, full OAuth 2.1 metadata is published |
+| `registration_endpoint` (RFC 7591 dynamic client registration) | **Open.** Returns a `client_id` with `token_endpoint_auth_method: none` to an anonymous POST. No vendor-side app pre-registration needed, no personal data, no terms — this is the standard MCP client bootstrap |
+| `client_credentials` grant | **Not supported.** `grant_types_supported` is `["authorization_code","refresh_token"]`, and `POST /api/auth/mcp/token` with `grant_type=client_credentials` returns `{"error":"invalid_request","error_description":"code is required"}`. **There is no machine path to a token** |
+| `GET /api/auth/mcp/authorize` with a valid PKCE challenge | **302 → `/login`.** The authorization endpoint hands off to a human sign-in page. This is the terminal step |
+| `https://framethrower.ai/register` | Email + password, or **Continue with Google**; the page carries a `termsOfService` link and confirms the **$2 free credits**. Creating it binds the owner's identity and accepts the vendor's terms — theirs to accept, not ours |
+| Settings → API token (claimed in the original row) | **Unverified and unverifiable** — it sits behind the login. The row above has been corrected to say so rather than repeat it as fact |
+
+**What was built instead:** `packages/collectors/scripts/obtain-oauth-credential.mts`. It does
+every part of the flow that is *not* the human step — discovery from the resource metadata,
+dynamic client registration, PKCE S256, the localhost callback listener, the token exchange,
+verification against `userinfo`, and the encrypted write via `putCredential` — so the owner's
+share of the work is signing in and closing a tab. It refuses to start unless `DATABASE_URL`
+and `TRUST_INDEX_CREDENTIAL_KEY` are both set, because obtaining a token we cannot store would
+put a live secret in a terminal, and it carries the package's `--i-have-approval` gate. The
+whole automated portion is verified working end to end against FrameThrower; only the sign-in
+is outstanding. It takes `--endpoint`/`--subject-id`, so it should work unchanged against any
+of the other 14 `oauth-user-account` servers that publish the same metadata.
+
+**One limitation this surfaced, worth fixing before the OAuth servers are onboarded in bulk.**
+`subject_credentials` has a single `secret_ct` slot and `applyCredential` sends it as the
+bearer, so **a refresh token has nowhere to live.** FrameThrower's access token is time-boxed;
+when it lapses the row goes stale and a human must re-run the script. For one server that is
+fine, and `staleCredentials()` will surface it before a run mistakes it for the subject's
+failure — but across 15 OAuth subjects it becomes recurring human toil that a refresh-token
+column would remove entirely.
+
+**Verdict:** `oauth-user-account` for a human, `human_identity_required` for us — a gap of
+ours, not a failure of the operator's. FrameThrower is the best-behaved auth implementation
+found in this cohort. It remains the strongest runner-up: corpus-backed (5,489 films), four
+declared read-only tools, and real data on a brand-new account. If the owner wants it, it is
+one command plus a sign-in, and the token lands in `subject_credentials` as `tier: free`,
+`scheme: bearer`, with `expires_at` set from the token response.
+
+---
+
+## Attempt log: `ai.klarix_intelligence` (2026-09-08) — no credential obtained
+
+*No account was created, no form submitted, no email entered, no terms accepted, no browser
+driven. Nothing was written to `subject_credentials`.* The row promised the cheapest kind of
+signup on this list — one field, key returned on screen, no confirmation link — and that part
+is true. It closed anyway, on two boundaries, and the "WORTH IT" column turned out to be
+wrong for a reason that has nothing to do with the wall.
+
+**Where the wall actually is.** Not at the handshake. `initialize`, `tools/list` and
+`resources/list` all answer **200 anonymously**; `resources/read klarix://status` and every
+`tools/call` answer **401** with `WWW-Authenticate: Bearer realm="klarix-mcp"` and a JSON-RPC
+`-32002 AUTH_HEADER_MISSING`. The error copy is unusually good — it names all three accepted
+headers, links the signup page, and warns that a proxy may have stripped `Authorization` so
+retry on `X-Api-Key`.
+
+**Every route, hunted in the playbook's order:**
+
+| Route | Result |
+|---|---|
+| `handshake.instructions` | Names one path only: https://klarix.ai/mcp#get-key. No endpoint, no in-band registration tool |
+| `resources/list` → `resources/read` | Lists exactly one resource, `klarix://status`. Reading it is **401** — unlike Lumify, there is no open resource to mine |
+| `WWW-Authenticate` → RFC 9728 / RFC 7591 | The challenge carries a bare `realm` and no `resource_metadata`. `/.well-known/oauth-protected-resource{,/mcp}`, `/.well-known/oauth-authorization-server{,/mcp}` and `/.well-known/openid-configuration` are **401 on `mcp.` and `api.`** (the auth middleware answers before routing, so the 401 is not even evidence the route exists) and **404 on `klarix.ai`**. No OAuth metadata, therefore no dynamic client registration |
+| `/.well-known/mcp` | **Open**, on both `mcp.` and `api.`: an MCP server card v1.0 declaring `authentication: {required: true, schemes: ["bearer"]}` and all 15 tools with their plan tier. Good conformance signal; no key in it |
+| Published REST surface | `GET /v1/health`, `/v1/tools`, `/v1/whoami` and `/openapi.json` on `api.klarix.ai` answer **200 without a key** — `whoami` is explicitly the "what did the server receive" debugger and costs no credit. Genuinely useful, and it is the operator's own agent-facing courtesy |
+| `/v1/{keys,keys/free,auth/signup,auth/challenge,signup,register,trial,account,free-key,mcp/keys}` | All **401** from the same middleware — indistinguishable from 404. The OpenAPI 3.1 document (both copies, `klarix.ai/openapi.json` and `api.klarix.ai/openapi.json`) declares 18 paths and **none of them issues a key**. No MarketIntell-style proof-of-work endpoint exists here |
+| `llms.txt` / `llms-full.txt` | Both published and both agent-addressed. Both point key acquisition at the same human page. Auth section says only `Bearer klx_live_…` from `klarix.ai/mcp#get-key` |
+| Portal (`app.klarix.ai/login`, "Settings → API keys" per the API docs) | A client portal behind a login. Needs an account that only the web form or a sales engagement creates |
+| The web form itself | **Named and stopped — see below** |
+
+**Why the form was not submitted.** Two independent stops, either one sufficient:
+
+1. **It is bot-gated, and their terms say so in words.** The form (chunk
+   `/_next/static/chunks/03ja1w7.gfe1~.js`) POSTs `{email}` to `POST /api/mcp/keys` on
+   `klarix.ai` and renders the key inline — *"Copy this key now. We only show the full value
+   once."* Beside the visible email input it carries
+   `<input type="text" name="website" tabIndex={-1} className="hidden" aria-hidden>` — a
+   honeypot, i.e. bot detection, on the one issuance path. And Klarix's Terms of Service §12
+   Acceptable Use reads, verbatim: *"Use automated systems (bots, scrapers) to access or
+   extract data from our website."* Submitting that form from a script **or** from a driven
+   browser is the automated website access they prohibit, on a form built to catch exactly
+   that. Not attempted.
+2. **Issuing the key binds the owner's company.** ToS §1: *"By accessing klarix.ai … or using
+   services provided by Klarix … you agree to be bound by these Terms. If you are entering
+   into these Terms on behalf of a company or organization, you represent and warrant that
+   you have authority to bind that entity."* There is no checkbox on the form, so this is
+   browse-wrap rather than a click — but the account would be keyed to a work email, and the
+   only truthful address available is the owner's real published one. Enrolling it, and the
+   representation that comes with it, is theirs to make. (No mailbox is available to us
+   either; that one is *not* the blocker here, since the key is displayed rather than
+   emailed.)
+
+**The finding that actually decides this row: a free key would not buy us much.** The
+"WORTH IT" column said yes-with-a-caveat about credits. Two harder facts:
+
+- **2 of the 3 tools the planner selected are Pro+.** We probe `find_matched_prospects`
+  (Pro+), `get_competitor_battlecard` (Free) and `score_prospect_fit` (Pro+). The operator
+  states plainly that *"free keys cannot call Pro+ tools"*, so a free key unblocks **one of
+  our three probed tools** unless the plan is re-selected against the seven free narrative
+  tools first — the same probe-selection defect flagged for Mitosis above.
+- **25 credits is one battery run, once, ever.** `runBattery` issues up to eight calls per
+  tool; three tools is up to ~24 calls against a **one-time, non-renewable** 25-credit
+  allowance. `initialize` and `tools/list` are free, but every `tools/call` spends a credit.
+  The first full run would exhaust the account, and every later run would file as
+  `harness_capability_unhealthy` — our spent allowance, correctly recorded as our gap, but a
+  gap that never reopens.
+
+**Correction to the transcript — third instance of the same defect.**
+`packages/collectors/transcripts/ai.klarix_intelligence.json` records
+`auth: {required: false, status: 200}` because `initialize` succeeds anonymously, exactly as
+Lumify and Chronary do. `probe.ts` sets `auth.required` from the handshake hop alone
+(`probe.ts:240`), and `assess.ts:359` / `select.ts:433` both read that field as though it
+described tool auth. Klarix is a clean HTTP 401 at `tools/call`, Lumify is an in-band
+JSON-RPC error inside a 200, Chronary is a 401 on everything but the handshake — all three
+recorded as `required: false`. The scoring is *not* wrong today (the call layer diagnoses its
+own 401s and files `harness_capability_missing`, `capability: mcp_account`, which is what the
+klarix rows in `assessment.json` show), so this is a metadata defect rather than a
+mis-rating. But it means the transcript's `auth` block cannot be used to answer "how many of
+the 439 are auth-walled", and three of the servers worked by hand are already this shape.
+
+**Verdict:** `free-api-key` for a human, `terms_acceptance_required` + `bot_check_present`
+for us. About thirty seconds of the owner's time at https://klarix.ai/mcp#get-key with a work
+email; the key appears on the page and drops into `subject_credentials` as `scheme: header`,
+`param_name: x-api-key` (or `bearer`), `tier: free`, `quota_note: "25 one-time credits,
+non-renewable; 7 free tools, 8 tools Pro+"`, `expires_at: null`. **Recommend not spending it
+yet** — re-select the probe plan onto the free-tier tools first, or the one-shot allowance is
+spent on two tools the key cannot call.
 
 ---
 
