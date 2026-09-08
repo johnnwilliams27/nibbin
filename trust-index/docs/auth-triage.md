@@ -145,7 +145,7 @@ with no card and no sales contact.
 | Server | Endpoint | What it said | Signup / docs URL | EFFORT (for a human) | WORTH IT |
 |---|---|---|---|---|---|
 | `ai.lumify_sports-intelligence` | `https://lumify.ai/mcp` | JSON-RPC `-32001 Unauthorized: provide a valid Lumify API key as a Bearer token`, returned **inside an HTTP 200** (not a 401 — see the attempt log below); handshake: *"Read the lumify://docs/quickstart resource … including the zero-signup instant-key auth path"* | https://lumify.ai/register | **Not obtainable by us — attempted 2026-09-08, see the section below.** The advertised zero-signup instant key is Cloudflare-Turnstile-gated by the operator's own spec; the persistent account needs a real person's name, a verifiable mailbox, and terms acceptance | **Yes for a human, no for us.** Corpus-backed, 24 declared read-only tools, 1,000 non-expiring credits. Every route in is closed to an automated client |
-| `ai.drillr_drillr` | `https://gateway.drillr.ai/mcp/data` | HTTP 401 | https://drillr.ai/signup → key at `/account/api-keys` | Create account, "free credits to start", key self-serve | **Yes.** `list_tables` / `get_table_schema` / `run_sql` over 90+ financial tables is close to an ideal read-only probe surface — real data, no account population needed |
+| `ai.drillr_drillr` | `https://gateway.drillr.ai/mcp/data` | HTTP 401 | https://drillr.ai/signup → key at `/account/api-keys` | Create account, 80 non-expiring free credits, no card, key self-serve. **Reclassified `oauth-user-account` — see attempt log 2026-09-08.** The self-serve key sits behind a Supabase login whose signup needs email confirmation + terms acceptance | **For a human, yes** — `list_tables` / `get_table_schema` / `run_sql` over 90+ financial tables is close to an ideal read-only probe surface, real data, no account population needed. **For us, no path:** `email_confirmation_required` + `terms_acceptance_required` |
 | `ai.echoloc_company-technographics` | `https://api.echoloc.ai/mcp` | *"Anonymous preview limit reached (5 calls/day). … Free beta key (100 requests/month, instant)"* | https://echoloc.ai/auth?mode=signup&returnTo=%2Fapp%2Fapi (key at https://echoloc.ai/app/api; details https://echoloc.ai/for-agents/) | **Not obtainable by us — attempted 2026-09-08, see the section below.** A key exists only behind a Supabase account, and that account needs a mailbox we do not have (or a real person's Google identity) plus terms acceptance. For a human it is ~60 seconds | **3/3 already rated without it** (see below): the anonymous re-probe worked. A key is still worth a human's minute — it lifts 5 calls/day to 100/month and un-trims the profiles — but nothing is blocked on it |
 | `ai.creativescope_creative-intelligence` | `https://mcp.creativescope.ai/mcp` | HTTP 401 with a real `WWW-Authenticate: Bearer resource_metadata=…` challenge on `tools/call`, `resources/list` and `prompts/list` — `initialize` and `tools/list` are open (see the attempt log below) | https://creativescope.ai/mcp — "Get free API key" | **Not obtainable by us — attempted 2026-09-08, see the section below.** The only account-creation route is a **6-digit code emailed** to a work address, behind a **required "I agree to the Terms and Privacy Policy" checkbox**. OAuth is the same account by another door. No CAPTCHA anywhere — the wall is identity and contract, not bot detection | **No longer "yes" — and not for the reason we assumed.** The free tier is **the rankings tools only**; `search_creatives`, `get_creative_detail` and the advertiser/image tools are Pro. **All three tools our planner selected for this subject are Pro-tier**, so a free key would rate none of them without a probe-selection change |
 | `ai.marketintell_marketintell` | `https://api.marketintell.ai/mcp` | HTTP 401; handshake names both paths | https://marketintell.ai/signup **or** in-band `register_challenge` → `register` | **Notable:** the second path is SHA-256 proof-of-work self-signup taking only `{challenge_id, nonce, name}` — **no email, no form, no ToS click**. Issues a Free-tier key | **Yes.** Corpus-backed market data, and the lowest legal friction of anything on this list. Still account creation, so still the owner's call |
@@ -593,14 +593,14 @@ retry on `X-Api-Key`.
   `harness_capability_unhealthy` — our spent allowance, correctly recorded as our gap, but a
   gap that never reopens.
 
-**Correction to the transcript — third instance of the same defect.**
+**Correction to the transcript — the same defect again.**
 `packages/collectors/transcripts/ai.klarix_intelligence.json` records
 `auth: {required: false, status: 200}` because `initialize` succeeds anonymously, exactly as
-Lumify and Chronary do. `probe.ts` sets `auth.required` from the handshake hop alone
-(`probe.ts:240`), and `assess.ts:359` / `select.ts:433` both read that field as though it
-described tool auth. Klarix is a clean HTTP 401 at `tools/call`, Lumify is an in-band
-JSON-RPC error inside a 200, Chronary is a 401 on everything but the handshake — all three
-recorded as `required: false`. The scoring is *not* wrong today (the call layer diagnoses its
+Lumify, Chronary, FrameThrower and Drillr do. `probe.ts` sets `auth.required` from the
+handshake hop alone (`probe.ts:240`), and `assess.ts:359` / `select.ts:433` both read that
+field as though it described tool auth. Klarix is a clean HTTP 401 at `tools/call`, Lumify is
+an in-band JSON-RPC error inside a 200, Chronary is a 401 on everything but the handshake —
+every one of them recorded as `required: false`. The scoring is *not* wrong today (the call layer diagnoses its
 own 401s and files `harness_capability_missing`, `capability: mcp_account`, which is what the
 klarix rows in `assessment.json` show), so this is a metadata defect rather than a
 mis-rating. But it means the transcript's `auth` block cannot be used to answer "how many of
@@ -613,6 +613,134 @@ email; the key appears on the page and drops into `subject_credentials` as `sche
 non-renewable; 7 free tools, 8 tools Pro+"`, `expires_at: null`. **Recommend not spending it
 yet** — re-select the probe plan onto the free-tier tools first, or the one-shot allowance is
 spent on two tools the key cannot call.
+
+---
+
+## Attempt log: `ai.creativescope_creative-intelligence` (2026-09-08) — no credential obtained
+
+*No account was created, no form submitted, no email entered, no terms accepted, no browser
+driven, no payment offered. Nothing was stored in `subject_credentials` because there is no
+secret to store.*
+
+This was the fourth pick on the list below, chosen for one reason: **10 calls/day free
+forever** is the only genuinely renewable daily allowance in the whole triage, which is exactly
+the shape a daily rating job wants. The allowance is real. It is not reachable by us, and —
+separately, and more usefully — it would not have rated this subject even if it were.
+
+### 1. Every automated route to a key is closed
+
+Hunted in the prescribed order; each step is a fact from the server, not an inference.
+
+1. **Handshake instructions: none.** `initialize` returns `instructions: null`. It does carry a
+   `serverInfo.description` naming the signup page
+   (`https://www.creativescope.ai/account?utm_source=mcp&utm_medium=agent&utm_campaign=mcp_signup`)
+   — a human page, not an endpoint.
+2. **The MCP non-tool surface is walled; `tools/list` is not.** `initialize` and `tools/list`
+   answer 200 anonymously. `resources/list`, `resources/templates/list`, `prompts/list` and
+   `tools/call` all answer **HTTP 401** with
+   `{"error":"authorization_required","error_description":"OAuth authorization or an API key is
+   required. Get a free API key at https://creativescope.ai/mcp", …}`. The usual "read the docs
+   resource" move is unavailable here: the resource surface sits behind the same wall as the
+   tools.
+3. **RFC 9728 → RFC 8414 → RFC 7591 all work, and none of it helps.** This is the most fully
+   specified auth chain in the triage, and it is worth recording precisely because it *looked*
+   like the win:
+   - `WWW-Authenticate: Bearer resource_metadata="https://mcp.creativescope.ai/.well-known/oauth-protected-resource", scope="mcp:use"`
+   - that document resolves and names `authorization_servers: ["https://api.creativescope.ai"]`
+   - `https://api.creativescope.ai/.well-known/oauth-authorization-server` resolves and
+     advertises `registration_endpoint: /oauth/register`, `code_challenge_methods_supported:
+     ["S256"]` and `token_endpoint_auth_methods_supported: ["none"]` — a textbook public-client
+     setup — and, decisively, **`grant_types_supported: ["authorization_code",
+     "refresh_token"]`**.
+   - `POST /oauth/register` genuinely works unauthenticated: `201` with a `client_id`, for a
+     client registered truthfully as `Nibbin Trust Index` / `https://nibbin.ai`. **Dynamic
+     client registration is not the wall.**
+   - `GET /oauth/authorize` (with PKCE, `scope=mcp:use`, and the `resource` parameter it
+     requires — RFC 8707; omitting it returns `invalid_target`) then serves the CreativeScope
+     **account page**. The authorization step is a human sign-in.
+   - `POST /oauth/token` with `client_credentials`, `device_code` or `password` returns
+     `unsupported_grant_type: "Only authorization_code and refresh_token grants are
+     supported."` `/oauth/device_authorization`, `/oauth/device/code` and `/oauth/par` all 404.
+
+   **The lesson to carry to the other 438:** a working RFC 7591 registration endpoint is not a
+   credential. It issues a *client*, not an *account*. Without a machine grant type —
+   `client_credentials` above all — DCR gets you exactly as far as the login page. Check
+   `grant_types_supported` *before* spending effort on a registration flow.
+4. **No self-serve key endpoint.** Swept the API host: `/v1/auth/{signup,challenge,register}`,
+   `/v1/keys`, `/api/keys`, `/signup`, `/api/{signup,register,free-key,trial,anonymous}`,
+   `/api/agent/{register,sign-up}`, `/v1/agent/sign-up`, `/api/auth/*` — all 404. There is no
+   MarketIntell-style in-band registration here.
+5. **The real signup route, read out of the vendor's own bundle.** The account page's Nuxt
+   chunks name it exactly: `POST /api/overseas/auth/code` → `POST /api/overseas/auth/verify`,
+   with `POST /api/overseas/auth/google` as the alternative. Both confirmed live on
+   `api.creativescope.ai` by posting an **empty** body — `{"message":"Enter a valid email
+   address."}` and `{"message":"Google credential is required."}`. No address was ever
+   submitted, so no mail was sent to anybody.
+
+### 2. The two things that stop us, stated plainly
+
+The register form in `AuthDialog` is three fields and a checkbox, and its own copy settles it:
+
+- **Work email\*** (required) — *"No password — we email you a 6-digit code."* The flow is
+  send-code → enter-code → *"Verify & create account"*. **There is no path to an account that
+  does not require receiving an email.** We have no mailbox. Recorded and stopped, per the
+  mailbox rule.
+- **Company** (optional — and the only field we could have filled truthfully).
+- **A required checkbox**: *"I agree to the Terms and Privacy Policy"*, `required` in the
+  markup, guarded by *"Please agree to the Terms and Privacy Policy before continuing."* The
+  Google button is disabled behind the same checkbox (`aria-label="Agree to the Terms and
+  Privacy Policy to continue with Google"`). The Terms say *"By creating an account or using
+  the Service, you agree to these Terms"* and require being *"at least 18 years old and able to
+  form a binding contract"* with Hong Kong Chengguo Shuhang Information Technology Co.,
+  Limited. **That is a contract and it binds the owner's company. Theirs to accept, not ours.**
+  Recorded and stopped.
+
+**Worth saying because it is unusual:** there is **no CAPTCHA and no bot detection** anywhere
+in this flow — no Turnstile, no reCAPTCHA, no hCaptcha in any bundle, and DCR is open to an
+unauthenticated POST. Unlike Lumify, nothing here was technically stopping us. The wall is
+purely identity and contract, which is the cleanest possible statement of why this is the
+owner's decision and not a harness gap.
+
+### 3. The finding that outlives the credential: a free key would not rate this subject
+
+The row promised "three probes/run fit trivially" inside 10 calls/day. The call budget is fine.
+The **tier** is not:
+
+| Tier | Tools |
+|---|---|
+| **Free** | rankings only — `get_creative_rankings`, `get_game_rank_markets`, `get_game_rank_trend` |
+| **Pro / Team** | `search_creatives`, `get_creative_detail`, `find_similar_creatives`, `search_advertisers`, `get_advertiser_profile`, `generate_weekly_creative_brief`, the three `*reference_image_search*` tools |
+
+The three tools our planner selected for this subject in `assessment.json` are
+**`search_advertisers`, `get_reference_image_search_status` and
+`get_reference_image_search_results`** — all three Pro. A free key would have turned three
+`HTTP 401`s into three plan-gate errors and rated nothing, while *looking* like a credential
+success. (The two image tools are also async job pollers seeded with an invented `job_id`, so
+they would fail on a paid key too.)
+
+Two defects are stacked here, and the credential is the smaller one:
+
+- **Probe selection ignores tier.** `get_creative_rankings` — free, corpus-backed, and exactly
+  the read-only shape we want — was available and was not chosen. Same class of defect as the
+  Mitosis row above: we pick tools without regard to which ones we can reach.
+- **A plan gate is not an auth wall.** If a credentialed run ever hits these tools, the refusal
+  is "your plan does not include this tool" — neither a server failure nor
+  `harness_capability_missing`. It belongs with the echoloc rate-limit fix: our constraint,
+  recorded as ours.
+
+**Correction to the transcript.** `packages/collectors/transcripts/ai.creativescope_creative-intelligence.json`
+records `auth: {required: false, status: 200, scheme: null}`. Auth is required for every tool
+call, every resource and every prompt, and the server announces it correctly — HTTP 401 plus a
+well-formed `WWW-Authenticate` challenge naming both the scheme (`Bearer`) and the scope
+(`mcp:use`). This is another server whose recorded `auth` block is wrong because the probe
+reads auth off the `initialize` hop alone: Lumify hid it in a 200, Chronary and Echoloc
+answered a bare 401, CreativeScope answers a fully compliant one — and all of them are filed
+`required: false`. The field measures handshake auth and is being read as tool auth.
+
+**Verdict:** `email_verification_required` **and** `terms_acceptance_required` — either alone
+would stop us. About 30 seconds of the owner's time at https://creativescope.ai/mcp if they
+want it. Recommend leaving `ai.creativescope_creative-intelligence` unrated and recording the
+gap — **and fixing the probe selection first**, because that is worth more here than the key.
 
 ---
 
@@ -629,7 +757,11 @@ surfaces** that match how we probe.
    verifiable mailbox, and terms acceptance. See the attempt log above. Five minutes of a
    human's time; nothing more we can do on it.
 2. **`ai.drillr_drillr`** — `list_tables` / `get_table_schema` / `run_sql` over 90+ financial
-   tables is almost a purpose-built read-only probe surface, and free credits are offered.
+   tables is almost a purpose-built read-only probe surface, and 80 non-expiring free credits
+   are offered. **Worked end to end 2026-09-08 (attempt log below): no path for us.** It is
+   `oauth-user-account`, not `free-api-key` — both the OAuth flow and the `/account/api-keys`
+   key terminate at a Supabase signup that needs email confirmation (no mailbox) and terms
+   acceptance (owner's). One-command FrameThrower flow plus a human sign-in if the owner wants it.
 3. ~~**`ai.echoloc_company-technographics`**~~ — **done, and it cost nothing.** The cheapest
    action was not a signup: re-probing it anonymously on a fresh day answered all three
    tools. See "Echoloc: the re-probe worked; the key is not obtainable by us" below. A key is
@@ -655,3 +787,69 @@ with $2 credits.
   novence, dataecho) expect a setup tool call before the read tools. Until we can drive that,
   a valid credential would not help — and our current gap label quietly implies operator
   fault where none exists.
+
+---
+
+## Attempt log: `ai.drillr_drillr` (2026-09-08) — no credential obtained; oauth-user-account, not free-api-key
+
+*No account was created, no form submitted, no email entered, no terms accepted, no browser
+driven (the environment's proxy blocks it — see below). Nothing was stored in
+`subject_credentials` because no secret could be obtained without crossing a boundary that is
+the owner's to cross.*
+
+The top-ranked pick above was worked end to end. `list_tables` / `get_table_schema` /
+`run_sql` over 90+ financial tables is exactly the read-only surface the row promised — the
+data would probe well. But **the row's classification is wrong: this is `oauth-user-account`,
+not `free-api-key`.** Both credentialing paths drillr offers terminate at a drillr.ai account
+sign-in, and account creation crosses two of our hard boundaries at once.
+
+**Where the wall is** (direct probe, not inferred):
+
+| Call | Result |
+|---|---|
+| `initialize` | **200**, full `instructions` returned (handshake is anonymous) |
+| `resources/list`, `prompts/list` | **`-32601 Method not found`** — server declares only `tools`, so avenue (2), open resources, does not exist here |
+| `tools/call list_tables` (unauthenticated) | **401** `{"error":"Unauthorized"}`, header `WWW-Authenticate: Bearer resource_metadata="https://gateway.drillr.ai/.well-known/oauth-protected-resource"` |
+
+**Transcript correction.** `packages/collectors/transcripts/ai.drillr_drillr.json` records
+`auth: {required: false, status: 200}` — the **same handshake-vs-tool misclassification** found
+on lumify and framethrower, a third instance of the systematic classifier defect. The handshake
+is open; the wall is at `tools/call` and is a spec-compliant 401 + `WWW-Authenticate`.
+
+**Every automated route, checked and closed:**
+
+| Route | Result |
+|---|---|
+| `/.well-known/oauth-protected-resource` (+ `/mcp/data` variant) and `/.well-known/oauth-authorization-server` | **All 200.** Full OAuth 2.1 metadata published; AS = `https://gateway.drillr.ai` |
+| `registration_endpoint` (RFC 7591 dynamic client registration) | **Open and anonymous.** `POST /oauth/register` → **201** with a `client_id` and `token_endpoint_auth_method: none`, reproducibly, no personal data. This is the standard MCP client bootstrap and it is *not* the wall |
+| `client_credentials` grant | **Not supported.** `grant_types_supported` = `["authorization_code","refresh_token"]`; `POST /oauth/token grant_type=client_credentials` → **400 `unsupported_grant_type`**. No machine path to a token |
+| `GET /oauth/authorize` with valid PKCE S256 + `resource` | **302 → `https://drillr.ai/oauth/consent?mcp_state=…`.** The authorization endpoint hands off to a human consent page that requires a logged-in drillr.ai session. Terminal human step |
+| `gateway.drillr.ai` HTTP surface (`/`, `/docs`, `/openapi.json`, `/v1/auth/*`, `/api/keys`, `/signup`) | **All 404.** No in-band signup endpoint (unlike MarketIntell's proof-of-work path) |
+| `drillr.ai/signup` account creation | **Supabase GoTrue email/password (or Continue with Google).** The auth bundle carries "confirm your email" / "Verify" (email confirmation) and an affirmative Terms/Privacy step (`/api/legal/accept`, "agree to"). `drillr.ai/pricing` confirms the free tier: **80 credits, non-expiring, no card, key at `/account/api-keys`** — but the key page sits behind the login |
+
+**Two boundaries, either one disqualifying for us:**
+- **Email confirmation with no mailbox.** GoTrue signup requires a real address and an emailed
+  confirmation. No mailbox is available to the rater — record and stop.
+- **Affirmative terms acceptance.** Signup requires accepting drillr's Terms/Privacy, which
+  binds the owner's company — theirs to accept, not ours.
+
+The "Continue with Google" alternative needs a real personal Google identity — also not ours.
+
+**Environment note (not drillr's fault, ours to record):** the pre-installed Chromium cannot
+tunnel through this session's agent proxy — every navigation, drillr and `example.com` alike,
+returns `ERR_CONNECTION_RESET` (proxy `recentRelayFailures`: `ws_closed_mid_exchange`). So the
+web-signup avenue (avenue 5) could not even be driven to observe the form. `guardedFetch`
+(node, direct egress) worked throughout; only the browser path is unavailable here.
+
+**No new code needed.** drillr publishes the same OAuth 2.1 metadata FrameThrower does, so
+`packages/collectors/scripts/obtain-oauth-credential.mts --endpoint https://gateway.drillr.ai/mcp/data
+--subject-id ai.drillr/drillr` drives the entire automated portion (discovery, DCR, PKCE,
+callback, token exchange, encrypted write). Only the account-creation-plus-consent step is
+outstanding, and that is the owner's.
+
+**Verdict:** `oauth-user-account` for a human, `email_confirmation_required` + `terms_acceptance_required`
+for us — a gap of ours, not a failure of the operator's. The row in the free-api-key table above
+should be re-read in light of this: the *key* is self-serve, but only from inside an account
+whose creation we cannot complete. If the owner wants it, it is the one-command FrameThrower flow
+plus a sign-in; the token would land as `tier: free`, `scheme: bearer`, quota **80 non-expiring
+credits**.
