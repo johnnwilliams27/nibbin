@@ -847,3 +847,80 @@ export const collection_runs = pgTable(
   },
   (t) => [index("collection_runs_day_idx").on(t.collector, t.utc_day)],
 );
+
+/**
+ * Credentials for subjects that will not answer without one.
+ *
+ * WHY THIS IS A TABLE AND NOT A FILE. 439 of 600 subjects are withheld for
+ * "too little of the profile could be assessed at all", and `tool_invocation`
+ * blocks all 439 while `mcp_account` blocks 259 of them. That is not a scoring
+ * problem, it is a locked door, and it is the single largest thing standing
+ * between this compendium and being worth reading. A credential obtained once
+ * has to survive the process that obtained it, or every assessment starts from
+ * zero. The daily job already connects here; so this is where they live.
+ *
+ * THE SECRET IS ENCRYPTED AT REST and the key is never in this database. AES-
+ * 256-GCM under a key from TRUST_INDEX_CREDENTIAL_KEY, so a dump of this table
+ * — a backup, a read replica, a support ticket with a pg_dump attached — hands
+ * over nothing usable. `secret_ct` holds iv:tag:ciphertext; nothing else in
+ * this row is sensitive, which is deliberate: an operator debugging a 401 needs
+ * to see WHICH credential was used and when it was obtained without being able
+ * to read it.
+ *
+ * WHAT IS RECORDED BESIDE THE SECRET matters as much as the secret. A free tier
+ * with a quota is a rating input in its own right: a run that fails because we
+ * exhausted an allowance is OUR gap (harness_capability_unhealthy), not the
+ * subject's failure, and `quota_note` plus `expires_at` are what let the
+ * harness tell those apart instead of recording an exhausted key as a broken
+ * server. This project has already made that exact mistake once, filing
+ * echoloc's 5-calls/day anonymous limit as a missing account.
+ */
+export const subject_credentials = pgTable(
+  "subject_credentials",
+  {
+    /** The MCP endpoint this credential authenticates against. */
+    endpoint: text("endpoint").primaryKey(),
+    /** Registry id of the subject, for joining back to `subjects`. */
+    subject_id: text("subject_id").notNull(),
+
+    /**
+     * How to present it: "header" (send header_name), "bearer" (Authorization:
+     * Bearer), or "query" (query_param). Read from the server's own docs, not
+     * guessed — a credential sent the wrong way is indistinguishable from no
+     * credential, and would be recorded as an auth wall we could not pass.
+     */
+    scheme: text("scheme").notNull(),
+    /** Header or query-parameter name when the scheme needs one, e.g. "x-api-key". */
+    param_name: text("param_name"),
+
+    /** AES-256-GCM, formatted iv:tag:ciphertext, all base64. Never logged, never returned by a listing. */
+    secret_ct: text("secret_ct").notNull(),
+
+    /** free | trial | paid. A trial that lapses is a scheduled harness gap, not a surprise. */
+    tier: text("tier").notNull(),
+    /** Quota in the operator's own words: "1000 credits, non-expiring", "100 req/month". */
+    quota_note: text("quota_note"),
+    /** When the credential stops working, if it is time-boxed. NULL means no stated expiry. */
+    expires_at: ts("expires_at"),
+
+    /**
+     * How it was obtained, in one line: "in-band proof-of-work signup",
+     * "web form, plus-addressed mailbox". Kept because a credential nobody can
+     * explain the provenance of is one nobody can renew, revoke, or defend.
+     */
+    obtained_via: text("obtained_via").notNull(),
+    obtained_at: ts("obtained_at").notNull(),
+    /** The identity the account is registered under, when there is one. Never a password. */
+    account_ref: text("account_ref"),
+
+    /** active | exhausted | expired | revoked. Only `active` is used by a run. */
+    status: text("status").notNull().default("active"),
+    /** Last time a probe actually authenticated with it. NULL means never yet exercised. */
+    last_verified_at: ts("last_verified_at"),
+    notes: text("notes"),
+  },
+  (t) => [
+    index("subject_credentials_status_idx").on(t.status),
+    index("subject_credentials_expiry_idx").on(t.expires_at),
+  ],
+);
