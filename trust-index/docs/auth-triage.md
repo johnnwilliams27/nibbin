@@ -4,16 +4,19 @@
 No account was created, no form submitted, no email entered, no terms accepted. Every row
 below is a decision for the account owner to make.
 
-Five servers — `ai.lumify_sports-intelligence`, `ai.chronary_mcp`,
-`ai.echoloc_company-technographics`, `ai.creativescope_creative-intelligence` and
-`ai.framethrower_framethrower` — have since been worked end to end to see whether a key could
-be obtained without a human. None could. Those attempts created no account and submitted no
-form either; what they found is written up in the attempt logs below, including a correction —
-the same correction, arrived at five times — to how these servers' auth walls are recorded.
+Several servers — `ai.lumify_sports-intelligence`, `ai.chronary_mcp`,
+`ai.echoloc_company-technographics`, `ai.creativescope_creative-intelligence`,
+`ai.framethrower_framethrower`, `ai.drillr_drillr` and `ai.klarix_intelligence` — have since
+been worked end to end to see whether a key could be obtained without a human. None could.
+Those attempts created no account and submitted no form either; what they found is written up
+in the attempt logs below, including a correction — the same correction, arrived at
+independently every time — to how these servers' auth walls are recorded.
 Echoloc is the one where it did not matter: **it turned out to need no credential at all**, and
 re-probing it anonymously rated all three of its tools. FrameThrower is the one where the
 remaining human step is now a single command plus a sign-in
-(`scripts/obtain-oauth-credential.mts`).
+(`scripts/obtain-oauth-credential.mts`). Klarix is the one where the key is genuinely thirty
+seconds of a human's time — and where getting it would still be the wrong move until the probe
+plan stops selecting two Pro+ tools out of three.
 
 **Source data:** `packages/collectors/assessment.json` (gaps with cause
 `harness_capability_missing`), `packages/collectors/transcripts/*.json` (registry metadata,
@@ -766,9 +769,15 @@ surfaces** that match how we probe.
    action was not a signup: re-probing it anonymously on a fresh day answered all three
    tools. See "Echoloc: the re-probe worked; the key is not obtainable by us" below. A key is
    still free/instant/100-req-month for a human, but it is now an upgrade, not an unblock.
-4. **`ai.creativescope_creative-intelligence`** — 10 calls/day *free forever* is the only
-   truly renewable daily allowance found; three probes/run fit trivially, and the data is
-   vendor-side.
+4. **`ai.creativescope_creative-intelligence`** — 10 calls/day *free forever* is still the
+   only truly renewable daily allowance found, and the data is vendor-side. **Worked end to
+   end 2026-09-08 (attempt log above): no path for us, and a key would not have helped
+   anyway.** Account creation needs an emailed 6-digit code (no mailbox) *and* an affirmative
+   terms checkbox (owner's). Its OAuth chain is fully RFC-compliant down to a working dynamic
+   client registration — and stops dead at `grant_types_supported:
+   ["authorization_code","refresh_token"]`. Separately: **all three tools our planner picked
+   for this subject are Pro-tier**, so the free key unlocks none of them. Fix the probe
+   selection before asking the owner for the key.
 5. **`ai.marketintell_marketintell`** — corpus-backed market data, and its in-band
    proof-of-work signup issues a free key from `{challenge_id, nonce, name}` with **no email,
    no form, and no terms to accept**. That makes it the lowest-legal-friction credential on
@@ -778,8 +787,14 @@ surfaces** that match how we probe.
 returns real corpus data on a brand-new account (5,489 films, read-only search), free signup
 with $2 credits.
 
-### Two things worth doing before obtaining any credential at all
+### Three things worth doing before obtaining any credential at all
 
+- **Teach the planner about per-tool plan tiers.** Klarix declares each tool's plan in its own
+  description ("Plan: Free." / "Plan: Pro+.") and in its `/.well-known/mcp` server card, and
+  the planner still selected two Pro+ tools out of three. A free key there would unblock one
+  probed tool and spend a one-time 25-credit allowance doing it. Any server with a free tier
+  narrower than its tool list has this problem, and it is cheap to fix: prefer tools the
+  operator marks free when a free credential is what we hold.
 - **Re-probe the seven partial servers on their public tools** (table above). Mitosis alone
   moves from "un-ratable" to rated with no credential, and echoloc's failure was a rate limit
   we could simply wait out — now demonstrated rather than predicted.
