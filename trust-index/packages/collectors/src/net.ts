@@ -42,6 +42,7 @@
 import { lookup as dnsLookupCb } from "node:dns";
 import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
+import { networkInterfaces } from "node:os";
 import type { LookupFunction } from "node:net";
 import { Readable } from "node:stream";
 import { promisify } from "node:util";
@@ -324,6 +325,22 @@ function withDeadline<T>(promise: Promise<T>, signal: AbortSignal, what: string)
  * hand the credential over, and no subject we probe has any business sending us
  * one to begin with.
  */
+/**
+ * Does this machine have a routable IPv6 interface at all?
+ *
+ * Cached: the answer cannot change within a process, and asking per request
+ * would put a syscall in the hot path of every probe.
+ */
+let ipv6Route: boolean | null = null;
+function hasIpv6Route(): boolean {
+  if (ipv6Route === null) {
+    ipv6Route = Object.values(networkInterfaces()).some((addrs) =>
+      (addrs ?? []).some((a) => a.family === "IPv6" && !a.internal),
+    );
+  }
+  return ipv6Route;
+}
+
 export const pinnedFetch: PinnedTransport = (rawUrl, init) =>
   new Promise<Response>((resolve, reject) => {
     let url: URL;
@@ -363,19 +380,22 @@ export const pinnedFetch: PinnedTransport = (rawUrl, init) =>
       const entries = pinned
         .map((address) => ({ address, family: address.includes(":") ? 6 : 4 }))
         .filter((e) => wanted === 0 || e.family === wanted)
-        // IPv4 FIRST when the caller has no preference.
+        // DROP IPv6 ENTIRELY WHEN THIS HOST HAS NO IPv6 ROUTE.
         //
-        // This returned addresses in resolver order, and a host whose AAAA came
-        // back first was dialled over IPv6. In an environment with no IPv6
-        // route that fails with EAFNOSUPPORT from inside net.connect — not a
-        // rejected promise the caller can catch, but an unhandled error that
-        // killed a 15,000-server sweep about 7,000 in.
+        // First attempt at this only SORTED IPv4 ahead of IPv6, on the
+        // reasoning that the v6 entry could stay for environments that support
+        // it. That was not enough and the same crash came back: Node dials the
+        // families in PARALLEL (Happy Eyeballs), so a v6 address that is merely
+        // second is still attempted, still throws EAFNOSUPPORT from inside
+        // net.connect, and still arrives as an unhandled error rather than a
+        // rejected promise. Ordering does not prevent an attempt; only removal
+        // does.
         //
-        // Ordering IPv4 first costs nothing where IPv6 works (the v6 entry is
-        // still returned, just second, and Happy Eyeballs still has it) and
-        // fixes the case where it does not. The vetting is unchanged: both
-        // families were already checked before they got here, so this reorders
-        // trusted addresses and admits nothing new.
+        // `hasIpv6Route` is computed once from the interface list, so this is a
+        // no-op wherever IPv6 genuinely works. Vetting is unchanged — both
+        // families were checked before reaching here, so this narrows a trusted
+        // set and admits nothing new.
+        .filter((e) => e.family === 4 || hasIpv6Route())
         .sort((a, b) => a.family - b.family);
       const first = entries[0];
       if (first === undefined) {

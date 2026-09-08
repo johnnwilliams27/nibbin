@@ -81,6 +81,13 @@ if (templated.length > 0) console.log(`skipping ${templated.length} registry row
 const todo = LIMIT > 0 ? real.slice(0, LIMIT) : real;
 console.log(`retrying ${todo.length} servers  (${todo.filter((j) => j.sse).length} via SSE, ${todo.filter((j) => !j.sse).length} plain retry)\n`);
 
+// The same guard the wide sweep needed. An OS-level connect failure arrives as
+// an unhandled error, not a rejected promise, so without this one bad socket
+// ends the whole pass — which is exactly how the first run of this script died.
+let unhandled = 0;
+process.on("unhandledRejection", (r) => { unhandled += 1; if (unhandled <= 3) console.error(`  [unhandled] ${String(r).slice(0, 120)}`); });
+process.on("uncaughtException", (e) => { unhandled += 1; if (unhandled <= 3) console.error(`  [uncaught] ${String(e).slice(0, 120)}`); });
+
 let done = 0, recovered = 0, walled = 0, still = 0;
 let cursor = 0;
 const workers = Array.from({ length: CONCURRENCY }, async () => {
@@ -143,4 +150,4 @@ const workers = Array.from({ length: CONCURRENCY }, async () => {
   }
 });
 await Promise.all(workers);
-console.log(`\nRECOVERED ${recovered}  |  now known auth-walled ${walled}  |  still no reading ${still}`);
+console.log(`\nRECOVERED ${recovered}  |  now known auth-walled ${walled}  |  still no reading ${still}` + (unhandled > 0 ? `  |  transport errors survived ${unhandled}` : ""));
