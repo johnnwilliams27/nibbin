@@ -362,7 +362,21 @@ export const pinnedFetch: PinnedTransport = (rawUrl, init) =>
       const wanted = opts.family === 4 || opts.family === 6 ? opts.family : 0;
       const entries = pinned
         .map((address) => ({ address, family: address.includes(":") ? 6 : 4 }))
-        .filter((e) => wanted === 0 || e.family === wanted);
+        .filter((e) => wanted === 0 || e.family === wanted)
+        // IPv4 FIRST when the caller has no preference.
+        //
+        // This returned addresses in resolver order, and a host whose AAAA came
+        // back first was dialled over IPv6. In an environment with no IPv6
+        // route that fails with EAFNOSUPPORT from inside net.connect — not a
+        // rejected promise the caller can catch, but an unhandled error that
+        // killed a 15,000-server sweep about 7,000 in.
+        //
+        // Ordering IPv4 first costs nothing where IPv6 works (the v6 entry is
+        // still returned, just second, and Happy Eyeballs still has it) and
+        // fixes the case where it does not. The vetting is unchanged: both
+        // families were already checked before they got here, so this reorders
+        // trusted addresses and admits nothing new.
+        .sort((a, b) => a.family - b.family);
       const first = entries[0];
       if (first === undefined) {
         const err: NodeJS.ErrnoException = new Error("no pinned address for the requested family");

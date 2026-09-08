@@ -116,6 +116,28 @@ console.log(
     `\n`,
 );
 
+/**
+ * One bad socket must not end the sweep.
+ *
+ * A connect that fails at the OS level — EAFNOSUPPORT on an IPv6 address in an
+ * environment with no IPv6 route, most memorably — surfaces as an unhandled
+ * error rather than a rejected promise, so the per-probe try/catch never sees
+ * it and node exits. That cost roughly 7,000 servers of a 15,000-server run.
+ *
+ * Logged and counted, never silent: swallowing these would turn a systematic
+ * transport failure into a quiet gap in the population, which is exactly the
+ * shape of error this project keeps having to dig back out of its own results.
+ */
+let unhandled = 0;
+process.on("unhandledRejection", (reason) => {
+  unhandled += 1;
+  if (unhandled <= 5) console.error(`  [unhandled] ${String(reason).slice(0, 160)}`);
+});
+process.on("uncaughtException", (err) => {
+  unhandled += 1;
+  if (unhandled <= 5) console.error(`  [uncaught] ${String(err).slice(0, 160)}`);
+});
+
 /** In-flight count and last-dispatch time, per host. */
 const inflight = new Map<string, number>();
 const lastAt = new Map<string, number>();
@@ -188,5 +210,6 @@ await Promise.all(workers);
 console.log(
   `\ndone in ${Math.round((Date.now() - started) / 60000)}m: ${done} probed  ` +
     `tools listed ${ok}  auth-walled ${walled}  no reading ${failed}\n` +
-    `transcripts now on disk: ${readdirSync(DIR).filter((f) => f.endsWith(".json")).length}`,
+    `transcripts now on disk: ${readdirSync(DIR).filter((f) => f.endsWith(".json")).length}` +
+    (unhandled > 0 ? `\ntransport errors survived: ${unhandled}` : ""),
 );
