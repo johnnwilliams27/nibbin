@@ -241,8 +241,11 @@ async function phaseClassify(entries: RegistryEntry[]): Promise<void> {
   await Promise.all(workers);
 
   console.log(`reachable:            ${reachable} of ${sample.length}`);
-  console.log(`answered but required authentication: ${authRequired} across ${authHosts.size} hosts`);
+  console.log(`answered but required authentication AT THE HANDSHAKE: ${authRequired} across ${authHosts.size} hosts`);
   console.log(`  (a harness gap, not unavailability: those servers are up and declining an anonymous client)`);
+  console.log(`  this is the count of servers walled at \`initialize\` and NOT the count of auth-walled servers.`);
+  console.log(`  Most MCP servers leave \`initialize\` open and wall \`tools/call\`, often as a JSON-RPC error`);
+  console.log(`  inside an HTTP 200. Run scripts/measure-tool-auth.mts for the tool-surface number.`);
   console.log(`listed their tools:   ${listedTools}`);
   console.log(`tools declared:       ${totalTools}`);
   console.log(`declaration contradictions found: ${contradictions}`);
