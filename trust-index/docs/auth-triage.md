@@ -4,11 +4,11 @@
 No account was created, no form submitted, no email entered, no terms accepted. Every row
 below is a decision for the account owner to make.
 
-One server, `ai.lumify_sports-intelligence`, has since been worked end to end to see whether
-a free-tier key could be obtained without a human. It could not. That attempt created no
-account and submitted no form either; what it found is written up under
-[Attempt log](#attempt-log-ailumify_sports-intelligence-2026-09-08--no-credential-obtained),
-including a correction to how this server's auth wall is recorded.
+Two servers, `ai.lumify_sports-intelligence` and `ai.chronary_mcp`, have since been worked end
+to end to see whether a free-tier key could be obtained without a human. Neither could. Those
+attempts created no account and submitted no form either; what they found is written up in the
+attempt logs below, including a correction — the same correction, arrived at twice — to how
+both servers' auth walls are recorded.
 
 **Source data:** `packages/collectors/assessment.json` (gaps with cause
 `harness_capability_missing`), `packages/collectors/transcripts/*.json` (registry metadata,
@@ -54,12 +54,19 @@ than recording the gap honestly.
 
 This is the single strongest filter on "WORTH IT" and it cuts across every auth kind.
 
+The split above was read off tool descriptions. **Chronary is the first entry checked against
+the operator's own schema** (2026-09-08, attempt log below) and it lands where it was placed:
+all 54 tools are org-scoped, none reads anything the account did not create, and the only tool
+that would answer non-empty on day one is `get_usage` — our own metering. That is one
+confirmation, not a validation of the whole list, but it suggests the list is sound and that
+the cheapest way to check any other row is `openapi.json` rather than a signup.
+
 ### 2. Seven servers are gated on *some* tools only — we can rate the public surface now
 
 | Server | Public surface | Gated surface |
 |---|---|---|
 | `ai.compeller_compel` | `get_capabilities`, `list_styles` (2/3 probed OK) | `search_music` |
-| `ai.echoloc_company-technographics` | `search_companies_by_technologies`, `get_company_by_domain` (2/3 OK) | `list_technologies` — and we only failed it because we **hit the 5-calls/day anonymous cap**, not because it is gated |
+| `ai.echoloc_company-technographics` | **all three** — re-probed anonymously 2026-09-08 and `list_technologies` answered too (see the section below) | none. The original 2/3 was the **5-calls/day anonymous cap**, not a gate |
 | `ai.foliora_search` | `get_product`, `get_snapshot` (2/3 OK) | `list_sites` |
 | `ai.dataecho_mcp` | `get_site` (1/3 OK); `publish_site` also works anonymously | `list_sites`, `search_sites` |
 | `ai.moonlings_moonlings` | `ping` (1/3 OK) — server explicitly documents it as free | `check_report_status`, `get_report_result` |
@@ -69,8 +76,8 @@ This is the single strongest filter on "WORTH IT" and it cuts across every auth 
 **Action independent of any credential:** re-run the probe planner against these seven with
 public tools selected. Mitosis in particular is currently recorded as fully un-ratable when
 it has four declared no-auth tools; that is a **probe-selection defect on our side**, not an
-auth wall. Echoloc is a rate-limit artefact, not an auth wall — re-probing on a fresh day
-likely clears it with no credential at all.
+auth wall. Echoloc is a rate-limit artefact, not an auth wall — **confirmed 2026-09-08**: a
+fresh-day anonymous re-probe answered all three tools with real data and no credential.
 
 ---
 
@@ -125,6 +132,93 @@ all three read tools return empty (see the empty-account problem above).
 
 ---
 
+## Echoloc: the re-probe worked; the key is not obtainable by us
+
+*Attempted 2026-09-08. No account was created, no form submitted, no email entered, no terms
+accepted, no browser driven. Nothing was stored in `subject_credentials` because there is no
+secret to store.*
+
+### 1. The anonymous re-probe alone restores the missing tool
+
+The original 2/3 was recorded on 2026-09-04 after we spent the day's five anonymous calls.
+Re-probing on a fresh day, with the harness's own defaults (`initialize` → `tools/list` →
+one `tools/call` per tool), **all three tools answered with real data and no credential**:
+
+| Tool | Anonymous result |
+|---|---|
+| `search_companies_by_technologies` | `total: 13482` for Snowflake; five named companies with domain, industry, country, size band, `usage_count`, `hiring_velocity` |
+| `get_company_by_domain` | `walgreens.com` → id, name, industry, country, `employees_range_min` — core fields only, plus a trim notice |
+| `list_technologies` | `total: 10617`; Python 84,806 / AWS 60,624 / Power BI 58,350 … |
+
+`initialize` and `tools/list` are explicitly uncharged ("Discovery … needs no key"), so the
+handshake and the declared surface cost nothing at all.
+
+**So the answer to "does re-probing alone fix it" is yes for the probe, and only partly for
+the battery.** The anonymous allowance is **5 tool calls per day for the whole server**, and
+`runBattery` issues up to eight calls per tool — baseline, differential, absence, fabrication,
+injection, injection_control, malformed, determinism — across three tools, so **up to ~24**.
+A full anonymous battery run gets roughly five calls in and is capped for the rest.
+
+Two consequences worth writing down rather than rediscovering:
+
+- **Coverage, not completeness.** Anonymously we can rate *that each tool works*
+  (`functional_correctness / invocation_succeeds`) but not `no_fabrication`,
+  `injection_resistance`, `input_sensitivity` or determinism, because those need the later
+  calls in the battery. The trimmed anonymous payloads also flatten the very thing the server
+  is differentiated on — the adoption-direction fields never appear in preview output.
+- **The misfiling is already fixed in code.** `diagnoseInvocation`'s `RATE_LIMIT` pattern now
+  matches "preview limit reached" and is tested *before* `AUTH_WALL`, so exhausting the cap
+  now files as `harness_capability_unhealthy` ("we spent an allowance") rather than
+  `harness_capability_missing` ("they need an account we lack"). Echoloc is the named case in
+  that comment. A capped anonymous run is therefore recorded as **our** gap, which is correct.
+
+### 2. Every automated route to a key is closed
+
+Hunted in the order the playbook prescribes; each step is a fact from the server, not an
+inference:
+
+1. **Handshake instructions** name only the human signup page
+   (`echoloc.ai/auth?mode=signup`) and `hello@echoloc.ai` for production keys. No endpoint.
+2. **MCP non-tool surface is absent.** `resources/list`, `resources/templates/list` and
+   `prompts/list` all return `-32601 Method not found`. There is no in-band registration tool
+   — nothing like MarketIntell's `register_challenge`/`register`.
+3. **No RFC 7591 dynamic client registration.** No `WWW-Authenticate` header is ever emitted
+   (the server answers anonymous calls 200, and `api.echoloc.ai/api/user/api-key` answers a
+   bare `401` with no challenge). `/.well-known/oauth-protected-resource`,
+   `/.well-known/oauth-authorization-server`, `/.well-known/mcp` and `/register` on
+   `api.echoloc.ai` all 404.
+4. **No self-serve key endpoint.** The published OpenAPI 3.1 document
+   (`api.echoloc.ai/openapi.json`) declares eight paths — `/api/v2/{search,facets,export,
+   save-from-search}`, the three `/api/corporate/v1/*` data endpoints, and `/` — with
+   `components.securitySchemes: null`. There is no auth, signup or key path in it.
+5. **The real key route needs a logged-in session.** The web app fetches
+   `GET https://api.echoloc.ai/api/user/api-key` with
+   `Authorization: Bearer <Supabase access_token>`; unauthenticated it is `401`.
+6. **Auth is Supabase, and its own public settings close the door.**
+   `GET /auth/v1/settings` on the project reports `"mailer_autoconfirm": false`,
+   `"anonymous_users": false`, and exactly two enabled providers: `email` and `google`. The
+   signup handler in the app bundle confirms it — on success it switches to a `check_email`
+   state reading *"Check your email for the confirmation link to complete registration."*
+
+That leaves three doors, and all three are ones we do not walk through:
+
+- **Email + password** requires a confirmation link delivered to a mailbox. We have none.
+  (Recorded and stopped here, per the mailbox rule.)
+- **Google** is a real person's identity. Inventing one is deception; using the owner's is
+  not ours to do.
+- **Anonymous Supabase sessions** are disabled server-side, so there is no identity-free
+  session to trade for a key.
+
+Independently of the mailbox, the signup form states *"By signing in, you agree to our Terms
+of Service and Privacy Policy"* — affirmative terms acceptance that binds the account owner.
+That is a stop condition on its own.
+
+**Verdict:** still `free-api-key` *for a human* — genuinely 60 seconds, no card, no sales
+call. Not obtainable by an automated client. And, unusually for this list, **nothing is
+blocked on it**: echoloc is ratable today at 3/3 tools anonymously.
+
+---
+
 ## free-api-key — self-serve, no human identity beyond an account (22)
 
 Ordered most tractable first. "Instant" means the vendor states the key is issued immediately
@@ -134,7 +228,7 @@ with no card and no sales contact.
 |---|---|---|---|---|---|
 | `ai.lumify_sports-intelligence` | `https://lumify.ai/mcp` | JSON-RPC `-32001 Unauthorized: provide a valid Lumify API key as a Bearer token`, returned **inside an HTTP 200** (not a 401 — see the attempt log below); handshake: *"Read the lumify://docs/quickstart resource … including the zero-signup instant-key auth path"* | https://lumify.ai/register | **Not obtainable by us — attempted 2026-09-08, see the section below.** The advertised zero-signup instant key is Cloudflare-Turnstile-gated by the operator's own spec; the persistent account needs a real person's name, a verifiable mailbox, and terms acceptance | **Yes for a human, no for us.** Corpus-backed, 24 declared read-only tools, 1,000 non-expiring credits. Every route in is closed to an automated client |
 | `ai.drillr_drillr` | `https://gateway.drillr.ai/mcp/data` | HTTP 401 | https://drillr.ai/signup → key at `/account/api-keys` | Create account, "free credits to start", key self-serve | **Yes.** `list_tables` / `get_table_schema` / `run_sql` over 90+ financial tables is close to an ideal read-only probe surface — real data, no account population needed |
-| `ai.echoloc_company-technographics` | `https://api.echoloc.ai/mcp` | *"Anonymous preview limit reached (5 calls/day). … Free beta key (100 requests/month, instant)"* | https://echoloc.ai/auth?mode=signup&returnTo=%2Fapp%2Fapi (key at https://echoloc.ai/app/api; details https://echoloc.ai/for-agents/) | Sign up, copy key from the API page. Free beta 100 req/month | **Yes — cheapest win.** Already 2/3 rated. The failure is a *rate limit*, not a wall; a key removes it and un-trims results. Try a re-probe first |
+| `ai.echoloc_company-technographics` | `https://api.echoloc.ai/mcp` | *"Anonymous preview limit reached (5 calls/day). … Free beta key (100 requests/month, instant)"* | https://echoloc.ai/auth?mode=signup&returnTo=%2Fapp%2Fapi (key at https://echoloc.ai/app/api; details https://echoloc.ai/for-agents/) | **Not obtainable by us — attempted 2026-09-08, see the section below.** A key exists only behind a Supabase account, and that account needs a mailbox we do not have (or a real person's Google identity) plus terms acceptance. For a human it is ~60 seconds | **3/3 already rated without it** (see below): the anonymous re-probe worked. A key is still worth a human's minute — it lifts 5 calls/day to 100/month and un-trims the profiles — but nothing is blocked on it |
 | `ai.creativescope_creative-intelligence` | `https://mcp.creativescope.ai/mcp` | HTTP 401 | https://creativescope.ai — "Get free API key" | *"Sign up with your email. 30 seconds, no card."* 10 calls/day **free forever** | **Yes.** Renewable daily allowance survives repeat probing; corpus-backed ad-creative data |
 | `ai.marketintell_marketintell` | `https://api.marketintell.ai/mcp` | HTTP 401; handshake names both paths | https://marketintell.ai/signup **or** in-band `register_challenge` → `register` | **Notable:** the second path is SHA-256 proof-of-work self-signup taking only `{challenge_id, nonce, name}` — **no email, no form, no ToS click**. Issues a Free-tier key | **Yes.** Corpus-backed market data, and the lowest legal friction of anything on this list. Still account creation, so still the owner's call |
 | `ai.klarix_intelligence` | `https://mcp.klarix.ai/mcp` | HTTP 401; handshake lists free vs Pro tools | https://klarix.ai/mcp#get-key | Work email → free key. 25 **one-time** credits, 7 free read-only narrative tools | Yes, with a caveat: 25 credits is a burn-down, not renewable, so it may not survive repeat assessment runs |
@@ -272,6 +366,97 @@ into `subject_credentials` as `tier: free`, `quota_note: "1,000 credits, non-exp
 
 ---
 
+## Attempt log: `ai.chronary_mcp` (2026-09-08) — no credential obtained
+
+Worked end to end because the row promised the most agent-native onboarding in the cohort: a
+documented `POST /v1/agent/sign-up` that hands back a working key *before* any human reads an
+OTP. The endpoint is real and it does that. We still stopped, on a boundary that is not ours
+to cross, and the second half of the row — the empty-account worry — is now confirmed from
+the operator's own schema rather than guessed.
+
+**The map, which the operator publishes in full.** `GET https://api.chronary.ai/openapi.json`
+is open, 193 KB, and carries four custom extensions that exist to onboard an agent:
+
+| Extension | Value |
+|---|---|
+| `x-agent-self-signup` | `{url: /v1/agent/sign-up, verify_url: /v1/agent/verify, restricted_key_returned: true, human_in_the_loop: "otp_email", rate_limit: "5 req/60s per IP"}` |
+| `x-agent-bootstrap-script` | `npx @chronary/agent-init@latest` — "performs sign-up, prompts for OTP, verifies… accepts `CHRONARY_EMAIL` and `CHRONARY_OTP`" |
+| `x-mcp-server-card` | https://chronary.ai/.well-known/mcp/server-card.json — names `obtain_via: https://api.chronary.ai/v1/agent/sign-up` |
+| `x-api-catalog` | RFC 9727 linkset at https://chronary.ai/.well-known/api-catalog |
+
+`GET /health`, `GET /v1/plans`, `GET /v1/capacity` (`{"percent_full":3,"status":"open"}`) and
+`GET /v1/auth/terms/current` all answer unauthenticated. The free plan is as advertised:
+**50,000 API calls/month, 3 agents, 10 calendars, 2,500 events, no card**.
+
+**Why the OTP was not the blocker.** Worth stating, because the row implied it was. The
+operator documents the sign-up response as returning `org_id` + `agent_id` + `api_key`
+immediately, on an org in status `unverified`, plan `free-agent-unverified` — "fully usable
+for reads and writes within the standard per-resource quotas". `POST /v1/agent/verify` only
+*graduates the plan tier*. A mailbox would not have been needed to get a usable key.
+
+**What actually stopped it: `tos_version` is a required field of the sign-up body.**
+
+```
+AgentSignUpBody: required [email, agent_name, tos_version]
+GET /v1/auth/terms/current →
+  {"version":"2026-05-11","effective_at":"2026-05-11",
+   "url":"https://chronary.ai/terms/v/2026-05-11","material":true}
+```
+
+Submitting that string is not a version negotiation, it is the acceptance. The operator says
+so about the sibling endpoint that takes the same field: it "appends an immutable row to
+`tos_acceptances` … capturing the accepting org, client IP, user-agent, and the ToS document
+SHA-256". And the document at that URL is a binding agreement with **Chronary LLC, a
+Washington limited liability company**, whose §3 requires the accepting party to represent
+that they are **18 or older with legal capacity**, and whose preamble requires that anyone
+accepting on behalf of an organization **has authority to bind it**. Those are
+representations no agent can truthfully make on the owner's behalf. **Named and stopped.**
+The email requirement is a second, independent stop — §3 also requires a valid address, and
+no mailbox is available to us.
+
+**Every other route, checked and closed:**
+
+| Route | Result |
+|---|---|
+| `initialize`, `tools/list`, `resources/list`, `resources/templates/list`, `prompts/list` | All **200** anonymously. 54 tools, 1 resource, 1 resource template, 4 prompts enumerated — metadata only |
+| `resources/read chronary://about` | **401.** Unlike Lumify, the resource is listed but not readable, so there is no open resource to mine |
+| `tools/call` — spot-checked `get_usage`, `list_agents`, `list_calendars`, `list_booking_pages`, `list_proposals`, `get_audit_log`, `list_webhooks`, `list_scoped_keys`, `accept_terms` | **401** on all nine. There is **no public MCP tool surface at all** — this server does not belong with the seven partially-gated ones above |
+| `/.well-known/oauth-protected-resource`, `…/mcp`, `/.well-known/oauth-authorization-server`, `/.well-known/mcp` | All **404**, and the 401 carries no `WWW-Authenticate`. No OAuth metadata, so no RFC 7591 dynamic client registration |
+| `POST /v1/agent/sign-up` | The only self-serve path. Closed on terms acceptance and on the email requirement, above |
+| `POST /v1/invite/claim` / `GET /v1/invite/verify` | Public, but consume a **signed invite token delivered to an email captured at intake**. Token possession *is* the identity proof; we have no token and no inbox to receive one |
+| `POST /v1/waitlist` | Public, but only files an intake row — "no organization is created until the prospect is approved by a founder". Needs an email, yields no key |
+| `POST /v1/auth/claim/initiate` | Needs a console session JWT, which needs an account. Chicken-and-egg |
+| `POST /v1/keys` (mint a scoped `chr_ak_`) | Requires an existing org key **and** the Pro plan (`scoped_keys: 0` on Free) |
+| Published demo/sandbox key | None. Every `chr_sk_`/`chr_ak_` string in the OpenAPI, server card and llms.txt is a placeholder |
+| Console signup via a browser | **Not attempted, deliberately.** It is the same two walls with a form in front of them — the page cannot be submitted without an email and a terms tick. Driving it would be doing by hand exactly what we declined to do over HTTP |
+
+**The empty-account question, answered from the schema rather than assumed.** The row said
+reads "come back empty"; that is right, and it is now checkable without a key. All 54 tools
+are scoped to the caller's own organization — `list_agents`, `list_calendars`, `list_events`,
+`get_availability`, `list_proposals`, `list_webhooks`, `list_booking_pages`,
+`list_ical_subscriptions`, `get_audit_log` — and a fresh org owns none of those objects. The
+single exception is `get_usage`, which would return real plan limits beside all-zero
+counters: non-empty, but it is our own metering, not corpus data. Nothing in the tool surface
+reads anything the account did not itself create. **A Chronary key would buy three empty
+reads**, which is a worse rating input than the honest gap we have now. Everything Chronary
+serves publicly — plans, capacity, health, terms, booking-page slots — is REST-only and
+exposed through no MCP tool.
+
+**Correction to the transcript.** `packages/collectors/transcripts/ai.chronary_mcp.json`
+records `auth: {required: false, status: 200}` and no `tools/call` attempt, because the
+probe reads auth off the `initialize` hop alone. Auth is required for **everything that
+matters** here. This is the same classifier defect flagged on Lumify arriving by the opposite
+route: Lumify returns an in-band JSON-RPC error inside an HTTP 200, Chronary returns a
+textbook HTTP 401 — and *both* are recorded as `required: false` because neither wall is at
+`initialize`. The field is measuring handshake auth and being read as tool auth.
+
+**Verdict:** `free-api-key` for a human, `terms_acceptance_required` for us. Roughly two
+minutes of the owner's time at https://console.chronary.ai/signup — but it should be spent
+only if the owner also wants to *populate* the account, because the credential alone does not
+make this server ratable. Recommend leaving `ai.chronary_mcp` unrated and recording the gap.
+
+---
+
 ## Recommendation: the five to pursue first
 
 Chosen for **corpus-backed data** (real results on a fresh account), a **renewable or
@@ -286,9 +471,10 @@ surfaces** that match how we probe.
    human's time; nothing more we can do on it.
 2. **`ai.drillr_drillr`** — `list_tables` / `get_table_schema` / `run_sql` over 90+ financial
    tables is almost a purpose-built read-only probe surface, and free credits are offered.
-3. **`ai.echoloc_company-technographics`** — the cheapest action here is not a signup at all:
-   **re-probe it.** We failed one tool on a 5-calls/day anonymous cap, not an auth wall. If a
-   key is still wanted, it is free, instant, and 100 req/month.
+3. ~~**`ai.echoloc_company-technographics`**~~ — **done, and it cost nothing.** The cheapest
+   action was not a signup: re-probing it anonymously on a fresh day answered all three
+   tools. See "Echoloc: the re-probe worked; the key is not obtainable by us" below. A key is
+   still free/instant/100-req-month for a human, but it is now an upgrade, not an unblock.
 4. **`ai.creativescope_creative-intelligence`** — 10 calls/day *free forever* is the only
    truly renewable daily allowance found; three probes/run fit trivially, and the data is
    vendor-side.
@@ -304,8 +490,8 @@ with $2 credits.
 ### Two things worth doing before obtaining any credential at all
 
 - **Re-probe the seven partial servers on their public tools** (table above). Mitosis alone
-  moves from "un-ratable" to rated with no credential, and echoloc's failure is a rate limit
-  we can simply wait out.
+  moves from "un-ratable" to rated with no credential, and echoloc's failure was a rate limit
+  we could simply wait out — now demonstrated rather than predicted.
 - **Fix the pre-flight-config gap in the harness.** Four servers (datamerge, facesign,
   novence, dataecho) expect a setup tool call before the read tools. Until we can drive that,
   a valid credential would not help — and our current gap label quietly implies operator
