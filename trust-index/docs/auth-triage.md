@@ -4,11 +4,14 @@
 No account was created, no form submitted, no email entered, no terms accepted. Every row
 below is a decision for the account owner to make.
 
-Two servers, `ai.lumify_sports-intelligence` and `ai.chronary_mcp`, have since been worked end
-to end to see whether a free-tier key could be obtained without a human. Neither could. Those
-attempts created no account and submitted no form either; what they found is written up in the
-attempt logs below, including a correction — the same correction, arrived at twice — to how
-both servers' auth walls are recorded.
+Four servers — `ai.lumify_sports-intelligence`, `ai.chronary_mcp`,
+`ai.echoloc_company-technographics` and `ai.creativescope_creative-intelligence` — have since
+been worked end to end to see whether a free-tier key could be obtained without a human. None
+could. Those attempts created no account and submitted no form either; what they found is
+written up in the attempt logs below, including a correction — the same correction, arrived at
+four times — to how these servers' auth walls are recorded. Echoloc is the one where it did not
+matter: **it turned out to need no credential at all**, and re-probing it anonymously rated all
+three of its tools.
 
 **Source data:** `packages/collectors/assessment.json` (gaps with cause
 `harness_capability_missing`), `packages/collectors/transcripts/*.json` (registry metadata,
@@ -132,7 +135,97 @@ all three read tools return empty (see the empty-account problem above).
 
 ---
 
-## Echoloc: the re-probe worked; the key is not obtainable by us
+## free-api-key — self-serve, no human identity beyond an account (22)
+
+Ordered most tractable first. "Instant" means the vendor states the key is issued immediately
+with no card and no sales contact.
+
+| Server | Endpoint | What it said | Signup / docs URL | EFFORT (for a human) | WORTH IT |
+|---|---|---|---|---|---|
+| `ai.lumify_sports-intelligence` | `https://lumify.ai/mcp` | JSON-RPC `-32001 Unauthorized: provide a valid Lumify API key as a Bearer token`, returned **inside an HTTP 200** (not a 401 — see the attempt log below); handshake: *"Read the lumify://docs/quickstart resource … including the zero-signup instant-key auth path"* | https://lumify.ai/register | **Not obtainable by us — attempted 2026-09-08, see the section below.** The advertised zero-signup instant key is Cloudflare-Turnstile-gated by the operator's own spec; the persistent account needs a real person's name, a verifiable mailbox, and terms acceptance | **Yes for a human, no for us.** Corpus-backed, 24 declared read-only tools, 1,000 non-expiring credits. Every route in is closed to an automated client |
+| `ai.drillr_drillr` | `https://gateway.drillr.ai/mcp/data` | HTTP 401 | https://drillr.ai/signup → key at `/account/api-keys` | Create account, "free credits to start", key self-serve | **Yes.** `list_tables` / `get_table_schema` / `run_sql` over 90+ financial tables is close to an ideal read-only probe surface — real data, no account population needed |
+| `ai.echoloc_company-technographics` | `https://api.echoloc.ai/mcp` | *"Anonymous preview limit reached (5 calls/day). … Free beta key (100 requests/month, instant)"* | https://echoloc.ai/auth?mode=signup&returnTo=%2Fapp%2Fapi (key at https://echoloc.ai/app/api; details https://echoloc.ai/for-agents/) | **Not obtainable by us — attempted 2026-09-08, see the section below.** A key exists only behind a Supabase account, and that account needs a mailbox we do not have (or a real person's Google identity) plus terms acceptance. For a human it is ~60 seconds | **3/3 already rated without it** (see below): the anonymous re-probe worked. A key is still worth a human's minute — it lifts 5 calls/day to 100/month and un-trims the profiles — but nothing is blocked on it |
+| `ai.creativescope_creative-intelligence` | `https://mcp.creativescope.ai/mcp` | HTTP 401 with a real `WWW-Authenticate: Bearer resource_metadata=…` challenge on `tools/call`, `resources/list` and `prompts/list` — `initialize` and `tools/list` are open (see the attempt log below) | https://creativescope.ai/mcp — "Get free API key" | **Not obtainable by us — attempted 2026-09-08, see the section below.** The only account-creation route is a **6-digit code emailed** to a work address, behind a **required "I agree to the Terms and Privacy Policy" checkbox**. OAuth is the same account by another door. No CAPTCHA anywhere — the wall is identity and contract, not bot detection | **No longer "yes" — and not for the reason we assumed.** The free tier is **the rankings tools only**; `search_creatives`, `get_creative_detail` and the advertiser/image tools are Pro. **All three tools our planner selected for this subject are Pro-tier**, so a free key would rate none of them without a probe-selection change |
+| `ai.marketintell_marketintell` | `https://api.marketintell.ai/mcp` | HTTP 401; handshake names both paths | https://marketintell.ai/signup **or** in-band `register_challenge` → `register` | **Notable:** the second path is SHA-256 proof-of-work self-signup taking only `{challenge_id, nonce, name}` — **no email, no form, no ToS click**. Issues a Free-tier key | **Yes.** Corpus-backed market data, and the lowest legal friction of anything on this list. Still account creation, so still the owner's call |
+| `ai.klarix_intelligence` | `https://mcp.klarix.ai/mcp` | HTTP 401; handshake lists free vs Pro tools | https://klarix.ai/mcp#get-key | Work email → free key. 25 **one-time** credits, 7 free read-only narrative tools | Yes, with a caveat: 25 credits is a burn-down, not renewable, so it may not survive repeat assessment runs |
+| `ai.chronary_mcp` | `https://api.chronary.ai/mcp` | HTTP 401 | https://console.chronary.ai/signup | No card; 50K API calls/month free; keys instant. Also an agent self-signup endpoint (`POST /v1/agent/sign-up`, email + OTP) | Marginal — generous renewable tier, but own-account: a fresh org has no agents/calendars/events, so reads come back empty |
+| `ai.auralogs_auralogs` | `https://mcp.auralogs.ai/mcp` | HTTP 401 | https://auralogs.ai → Settings → API & MCP keys | Free plan, 10,000 logs/month, no card. Key is a genuine **read-scoped** key (`aura_read_…`) — exactly the credential shape we want | Marginal — best-shaped credential on the list, but own-account: no logs ingested means three empty reads |
+| `ai.novence_mcp` | `https://api.novence.ai/mcp` | *"Unauthorized: provide Authorization Bearer API key (or call bootstrap first)"* | In-band `bootstrap` tool | One tool call: *"Create an account + nv_ API key from an email. No Bearer key required … Returns apiKey immediately — do not wait for OTP."* **Requires an email address — the owner's decision, not ours** | Marginal — trivial mechanically, but own-account (no projects, no files, no deployments) |
+| `ai.datamerge_mcp` | `https://mcp.datamerge.ai` | *"DataMerge client not configured. Please call configure_datamerge or set DATAMERGE_API_KEY."* | https://app.datamerge.ai | Create account (20 free credits), then the harness must call `configure_datamerge` with the key before each session | Yes — corpus-backed B2B data, and it also forces us to fix the pre-flight-config harness gap that affects 4+ servers |
+| `ai.flowcastle_flowcastle` | `https://api.flowcastle.ai/api/mcp` | *"This tool requires an API key. Create an application key in the FlowCastle dashboard (Application → API → MCP tab)…"* | https://dashboard.flowcastle.ai/login | Free plan $0, no card, 2,000 events/month; key from dashboard | Marginal — own-account (no bots to read) |
+| `ai.noevant_fidenta-verify` | `https://verify.noevant.ai/mcp` | HTTP 401 | https://verify.noevant.ai/signup | Free tier: 40 claim checks then 10/month, no card | Yes — corpus-backed fact-checking; three reads fit comfortably in the free allowance |
+| `ai.canaryusers_canaryusers` | `https://www.canaryusers.ai/api/mcp` | HTTP 401 | https://canaryusers.ai (Start free) | Free 100 credits/month (~2 deep scans), no card | No — tools *run scans against a deployed app*; read-only probes need a prior scan to exist |
+| `ai.dreamlit_mcp` | `https://mcp.dreamlit.ai/mcp` | HTTP 401 | https://app.dreamlit.ai/signup | "Free to start — no credit card required" | No — own-account workflow platform; empty workspace |
+| `ai.finestructure_fine-structure` | `https://finestructure.ai/api/mcp` | HTTP 401 | https://finestructure.ai/api-keys | Free signup, no card, free tier includes AI credits; scoped API token self-serve | No — own-account app builder; `list_apps` returns empty by the server's own admission |
+| `ai.dataecho_mcp` | `https://dataecho.ai/mcp` | *"unauthorized: Provide Authorization: Bearer <API_KEY> or use the anonymous flow … call request_login_code, then verify_login_code"* | In-band email OTP (`request_login_code` → `verify_login_code`) | Email + 6-digit code, in-band. **Requires entering an email — owner's decision** | No — already 1/3 rated via `get_site`; the gated tools list the *account's own* sites, which would be empty |
+| `ai.alphacreek_alphacreek-mcp` | `https://mcp.alphacreek.ai/mcp` | HTTP 401 | https://www.alphacreek.ai/auth/jwt/register (docs `/docs`, connect `/connect`) | Register (JWT). Handshake implies a monthly free limit ("tell the user their monthly limit is reached"). Allowance not published | Yes if the free tier is real — corpus-backed SEC/FCA filings, entirely read-only. **Verify the tier before spending effort** |
+| `ai.geodesiclabs_governance-platform` | `https://app.geodesiclabs.ai/mcp` | *"validation error … api_key Field required"* | geodesiclabs.ai (handshake: *"Sign up at geodesiclabs.ai for an API key"*) | Sign up for a key. **Note the unusual shape: `api_key` is a required *tool parameter*, not a header** — our harness would need per-tool credential injection | No — own-account (needs a Blueprint to exist first), plus a harness change |
+| `ai.foura_mcp` | `https://mcp.foura.ai/mcp` | HTTP 401 | https://foura.ai/dashboard/#api-keys | Create/reveal key in dashboard (`pk_live_…`). **Free tier not documented in the README or on the site** | Unclear — verify pricing first. Web-fetch tooling is corpus-backed and would probe well if a free tier exists |
+| `ai.compeller_compel` | `https://compeller.ai/api/mcp` | *"API token required. Set Authorization: Bearer <token> header."* | https://compeller.ai/signup; token at `/account` → API Access; or `POST /api/v1/auth/signup` (email + agent name) | Self-serve token; free allowance not published (render minutes are metered) | No — already 2/3 rated on the public surface; the one gated tool is not worth an account |
+| `ai.mangii_manga` | `https://mcp.mangii.ai/mcp` | HTTP 401 | https://mangii.ai/console/keys | Mint a key in the console. Credits are consumed per generation (standard 1 / hd 2 / ultra 5); free allowance not published | No — generation-heavy, and read probes would spend credits |
+| `ai.facesign_facesign-mcp` | `https://mcp.facesign.ai/mcp` | *"FaceSign API key is not set for this session. Please ask the user for their FaceSign API key and call the set_api_key tool first."* | facesign.ai (site returns **HTTP 403** to us — signup path not verifiable) | Unknown. Mechanism is clear (user-supplied key via `set_api_key`); the tier and signup route are not | No — cannot verify the tier, own-account, and needs the pre-flight-config harness change |
+
+---
+
+## oauth-user-account — needs a real human identity or real personal data (15)
+
+Nothing in this group can be obtained by us. Each requires a person to sign in as themselves,
+and in several cases to expose their actual personal data to our probe.
+
+| Server | Endpoint | What it said | Signup / docs URL | EFFORT (for a human) | WORTH IT |
+|---|---|---|---|---|---|
+| `ai.mitosislabs_mitosis` | `https://mitosislabs.ai/api/mcp` | HTTP 401 | https://mitosislabs.ai | OAuth to a personal memory vault | **No credential needed — fix the probe instead.** Four declared tools (`get_pricing`, `search_docs`, `get_platform_status`, `list_skills`) are documented as no-sign-in. Re-probe those |
+| `ai.moonlings_moonlings` | `https://moonlings.ai/api/mcp` | *"This tool requires authentication: connect via OAuth (you get a free starter grant) or send a Moonlings API key as a Bearer token. The free `ping` tool wo…"* | https://moonlings.ai | OAuth, free starter grant | Marginal — `ping` already rated. The two gated tools poll *reports the account created*, so they need a prior paid scan |
+| `ai.foliora_search` | `https://www.foliora.ai/mcp` | HTTP 401 | https://www.foliora.ai/login; free preview at `/preview` | OAuth or read-scoped API key; *"costs an email address and nothing else — no card, no charge, no sales call"* | No — 2/3 already rated on public preview; the gated tool lists the account's own sites |
+| `ai.forkmate_forkmate` | `https://mcp.forkmate.ai/` | HTTP 401 | https://app.forkmate.ai/auth/login?intent=sign-up | OAuth, *"Everything Forkmate does is free — no credit card, no plan to pick"* | No — reads someone's actual **food diary**. Free, but empty on a new account and personal data by nature |
+| `ai.gondola_gondola` | `https://mcp.gondola.ai/mcp` | HTTP 401 | https://gondola.ai/mcp | OAuth inside the MCP client; free; account created as part of the flow | No — reads the traveler's **loyalty accounts and trip history**. Empty and personal |
+| `ai.framethrower_framethrower` | `https://framethrower.ai/api/mcp` | `initialize`/`tools/list` 200; every `tools/call` → HTTP 401 `Unauthorized: Authentication required` (see verified findings below) | https://framethrower.ai/register | OAuth 2.1, free signup, $2 free credits. (A Settings → API token was reported earlier but is **unverified** — it is behind the login) | **Strongest runner-up.** Genuinely corpus-backed (5,489 films, read-only search) — the only own-identity server here that returns real data on a fresh account |
+| `ai.betterpost_server` | `https://betterpost.ai/mcp` | HTTP 401 | https://betterpost.ai | Sign in with a BetterPost account, 100 free credits | No — generation-oriented, own-account |
+| `ai.latticenet_latticenet` | `https://latticenet.ai/mcp` | HTTP 401 | https://latticenet.ai/login (public feed: `/spectate`) | Google/GitHub OAuth. **The sign-in is explicitly a personal vouch**: "a real person standing behind you"; a human may vouch for exactly one agent | No — the credential is a personal reputational endorsement of an agent. Not something to obtain for a rating harness. Note `/spectate` is public if we want a read surface |
+| `ai.memoryrouter_memoryrouter` | `https://mcp.memoryrouter.ai/mcp` | HTTP 401 | https://app.memoryrouter.ai/signup | OAuth to a memory vault; 14-day trial then **$20/month** | No — paid after trial, own-account, and reads a personal memory store |
+| `ai.decisionlog_mcp` | `https://www.decisionlog.ai/api/mcp` | HTTP 401 | https://www.decisionlog.ai/auth.md ; sign-in https://www.decisionlog.ai/sign-in | OAuth 2.1 PKCE with dynamic client registration for humans. **Machine clients using `client_credentials` "must be provisioned by an authorized Decision Log administrator"** — i.e. our use case is admin-gated | No — the machine path is effectively invite-only; the human path yields an empty append-only log |
+| `ai.com.mcp_strava` | `https://strava.run.mcp.com.ai/mcp` | HTTP 401 | https://mcp.com.ai (HAPI gateway; auth not documented publicly) | OAuth as a **Strava user**, exposing that person's real activity history | No |
+| `ai.com.mcp_linkedin` | `https://linkedin.run.mcp.com.ai/mcp` | HTTP 401 | https://mcp.com.ai | OAuth as a **LinkedIn user**, exposing a real profile; LinkedIn API access is itself partner-gated | No |
+| `ac.inference.sh_mcp` | `https://api.inference.sh/mcp` | *"Authentication"* | https://app.inference.sh (auth docs `/docs/api/authentication`) | Account at app.inference.sh; pay-per-run model, free tier not documented | No — the probed tools list the account's own apps/knowledge/skills; empty on signup |
+| `ai.betslipdoctor_mcp` | `https://api.betslipdoctor.ai/api/mcp` | HTTP 401 | https://betslipdoctor.ai (subscribe on web or in the iPhone app) | OAuth **as a paying subscriber**; $29.99 / $49.99 / $79.99 per month. Handshake: "each call runs as the one user whose OAuth grant authenticates the request" | No — paid *and* own-account |
+| `ai.kontato_kontato` | `https://api.kontato.ai/mcp` | *"Sessao sem conta ativa. Passe `owner_phone` … NESTA chamada"* | (see full finding above) | A human supplies **a WhatsApp number they personally own**; `provision` binds the account to it and `verify_number` requires an OTP sent to that phone | **No.** Guessing a number provisions an account against a stranger's phone. Not ours to do |
+
+---
+
+## paid-tier — money changes hands before any tool call (10)
+
+| Server | Endpoint | What it said | Signup / docs URL | EFFORT (for a human) | WORTH IT |
+|---|---|---|---|---|---|
+| `ai.mainbook_bank-statement-converter` | `https://mcp.mainbook.ai/mcp` | HTTP 401 | https://mainbook.ai/mcp, signup `/auth/signup` | Pay-as-you-go page credits, from $50 for ~277 pages. (10 free pages exist on the web UI with no signup, but not via MCP) | No — handshake itself warns `convert_bank_statement` "creates a paid page-credit job, so do not call it speculatively" |
+| `ai.ccapi_mcp` | `https://api.ccapi.ai/mcp` | HTTP 401 | https://ccapi.ai/register | Account free, but *"add a small amount of credit to try the models"* — no free allowance. Handshake: "Every tool call consumes the account's balance" | No — we would be spending real money per probe |
+| `ai.imaginode_imaginode` | `https://imaginode.ai/api/mcp` | HTTP 401 | https://imaginode.ai/profile | *"Get an API key at https://imaginode.ai/profile (verified account required)"*; every generation costs credits | No — verified account plus paid credits, for a generation surface |
+| `ai.kifly_mcp` | `https://kifly.ai/api/mcp` | HTTP 401 | https://kifly.ai (docs `/docs`, hello@kifly.ai) | 14-day trial, then Starter $29/mo. Auth mechanism not documented | No |
+| `ai.ninar_ninar` | `https://ninar.ai/mcp` | HTTP 401 | https://ninar.ai/auth/login-page | Free plan exists but **API access begins at the Scale tier, $299/month** | No — clearly out of proportion |
+| `ai.myriade_myriade` | `https://app.myriade.ai/mcp/` | HTTP 401 | https://myriade.ai/request-trial | "Request trial" — sales-led, flat platform + seat pricing. No self-serve signup | No — contact sales, and the tools query *the customer's own warehouse* |
+| `ai.getminds_minds` | `https://getminds.ai/mcp` | HTTP 401 | https://getminds.ai (Plans / Book demo) | No published self-serve path; pricing page reveals no tiers. Demo-led | No |
+| `ai.memoket_memoket` | `https://mcp.memoket.ai/mcp` | HTTP 401 | https://memoket.ai | Access is bundled with a **$199 hardware device** (Memoket Gem); the MCP reads that device's recordings | No — hardware purchase, and own-account |
+| `ai.com.mcp_contabo` | `https://contabo.run.mcp.com.ai/mcp` | HTTP 401 | https://mcp.com.ai (runMCP; Starter $9/mo, Pro $199/mo) | Requires a **paying Contabo hosting customer's** API credentials — a real cloud account with real servers | No — 1/3 already rated (`tool_search` is public); the other 123 tools manage live infrastructure |
+| `ai.com.mcp_openai-tools` | `https://openai-tools.run.mcp.com.ai/mcp` | HTTP 401 | https://mcp.com.ai | Requires a **paid OpenAI API key**; every call bills OpenAI | No |
+
+---
+
+## invite-or-waitlist (1)
+
+| Server | Endpoint | What it said | Signup / docs URL | EFFORT | WORTH IT |
+|---|---|---|---|---|---|
+| `ai.openmandate_mcp` | `https://mcp.openmandate.ai/mcp` | HTTP 401 | https://openmandate.ai/api-keys (site returns **HTTP 403** to us) | **None available.** The operator's own registry description reads: *"OpenMandate is in private development and is not accepting new mandates or integrations."* | No — closed by the operator's own statement. Record as `operator_closed`, not as a gap of ours |
+
+---
+
+## unknown (1)
+
+| Server | Endpoint | What it said | Signup / docs URL | EFFORT | WORTH IT |
+|---|---|---|---|---|---|
+| `ai.meacheal_mrc-data` | `https://api.meacheal.ai/mcp` | HTTP 401 | https://meacheal.ai (links to https://api.meacheal.ai but publishes no auth, pricing, or signup) | Unknown — no discoverable signup, pricing, or key-issuance path | Unclear. The data (Chinese apparel supply chain, corpus-backed) would probe well, but there is no route in. Worth one email to the operator rather than any signup attempt |
+
+---
+
+## Attempt log: `ai.echoloc_company-technographics` (2026-09-08) — no credential obtained, and none needed
 
 *Attempted 2026-09-08. No account was created, no form submitted, no email entered, no terms
 accepted, no browser driven. Nothing was stored in `subject_credentials` because there is no
@@ -216,96 +309,6 @@ That is a stop condition on its own.
 **Verdict:** still `free-api-key` *for a human* — genuinely 60 seconds, no card, no sales
 call. Not obtainable by an automated client. And, unusually for this list, **nothing is
 blocked on it**: echoloc is ratable today at 3/3 tools anonymously.
-
----
-
-## free-api-key — self-serve, no human identity beyond an account (22)
-
-Ordered most tractable first. "Instant" means the vendor states the key is issued immediately
-with no card and no sales contact.
-
-| Server | Endpoint | What it said | Signup / docs URL | EFFORT (for a human) | WORTH IT |
-|---|---|---|---|---|---|
-| `ai.lumify_sports-intelligence` | `https://lumify.ai/mcp` | JSON-RPC `-32001 Unauthorized: provide a valid Lumify API key as a Bearer token`, returned **inside an HTTP 200** (not a 401 — see the attempt log below); handshake: *"Read the lumify://docs/quickstart resource … including the zero-signup instant-key auth path"* | https://lumify.ai/register | **Not obtainable by us — attempted 2026-09-08, see the section below.** The advertised zero-signup instant key is Cloudflare-Turnstile-gated by the operator's own spec; the persistent account needs a real person's name, a verifiable mailbox, and terms acceptance | **Yes for a human, no for us.** Corpus-backed, 24 declared read-only tools, 1,000 non-expiring credits. Every route in is closed to an automated client |
-| `ai.drillr_drillr` | `https://gateway.drillr.ai/mcp/data` | HTTP 401 | https://drillr.ai/signup → key at `/account/api-keys` | Create account, "free credits to start", key self-serve | **Yes.** `list_tables` / `get_table_schema` / `run_sql` over 90+ financial tables is close to an ideal read-only probe surface — real data, no account population needed |
-| `ai.echoloc_company-technographics` | `https://api.echoloc.ai/mcp` | *"Anonymous preview limit reached (5 calls/day). … Free beta key (100 requests/month, instant)"* | https://echoloc.ai/auth?mode=signup&returnTo=%2Fapp%2Fapi (key at https://echoloc.ai/app/api; details https://echoloc.ai/for-agents/) | **Not obtainable by us — attempted 2026-09-08, see the section below.** A key exists only behind a Supabase account, and that account needs a mailbox we do not have (or a real person's Google identity) plus terms acceptance. For a human it is ~60 seconds | **3/3 already rated without it** (see below): the anonymous re-probe worked. A key is still worth a human's minute — it lifts 5 calls/day to 100/month and un-trims the profiles — but nothing is blocked on it |
-| `ai.creativescope_creative-intelligence` | `https://mcp.creativescope.ai/mcp` | HTTP 401 | https://creativescope.ai — "Get free API key" | *"Sign up with your email. 30 seconds, no card."* 10 calls/day **free forever** | **Yes.** Renewable daily allowance survives repeat probing; corpus-backed ad-creative data |
-| `ai.marketintell_marketintell` | `https://api.marketintell.ai/mcp` | HTTP 401; handshake names both paths | https://marketintell.ai/signup **or** in-band `register_challenge` → `register` | **Notable:** the second path is SHA-256 proof-of-work self-signup taking only `{challenge_id, nonce, name}` — **no email, no form, no ToS click**. Issues a Free-tier key | **Yes.** Corpus-backed market data, and the lowest legal friction of anything on this list. Still account creation, so still the owner's call |
-| `ai.klarix_intelligence` | `https://mcp.klarix.ai/mcp` | HTTP 401; handshake lists free vs Pro tools | https://klarix.ai/mcp#get-key | Work email → free key. 25 **one-time** credits, 7 free read-only narrative tools | Yes, with a caveat: 25 credits is a burn-down, not renewable, so it may not survive repeat assessment runs |
-| `ai.chronary_mcp` | `https://api.chronary.ai/mcp` | HTTP 401 | https://console.chronary.ai/signup | No card; 50K API calls/month free; keys instant. Also an agent self-signup endpoint (`POST /v1/agent/sign-up`, email + OTP) | Marginal — generous renewable tier, but own-account: a fresh org has no agents/calendars/events, so reads come back empty |
-| `ai.auralogs_auralogs` | `https://mcp.auralogs.ai/mcp` | HTTP 401 | https://auralogs.ai → Settings → API & MCP keys | Free plan, 10,000 logs/month, no card. Key is a genuine **read-scoped** key (`aura_read_…`) — exactly the credential shape we want | Marginal — best-shaped credential on the list, but own-account: no logs ingested means three empty reads |
-| `ai.novence_mcp` | `https://api.novence.ai/mcp` | *"Unauthorized: provide Authorization Bearer API key (or call bootstrap first)"* | In-band `bootstrap` tool | One tool call: *"Create an account + nv_ API key from an email. No Bearer key required … Returns apiKey immediately — do not wait for OTP."* **Requires an email address — the owner's decision, not ours** | Marginal — trivial mechanically, but own-account (no projects, no files, no deployments) |
-| `ai.datamerge_mcp` | `https://mcp.datamerge.ai` | *"DataMerge client not configured. Please call configure_datamerge or set DATAMERGE_API_KEY."* | https://app.datamerge.ai | Create account (20 free credits), then the harness must call `configure_datamerge` with the key before each session | Yes — corpus-backed B2B data, and it also forces us to fix the pre-flight-config harness gap that affects 4+ servers |
-| `ai.flowcastle_flowcastle` | `https://api.flowcastle.ai/api/mcp` | *"This tool requires an API key. Create an application key in the FlowCastle dashboard (Application → API → MCP tab)…"* | https://dashboard.flowcastle.ai/login | Free plan $0, no card, 2,000 events/month; key from dashboard | Marginal — own-account (no bots to read) |
-| `ai.noevant_fidenta-verify` | `https://verify.noevant.ai/mcp` | HTTP 401 | https://verify.noevant.ai/signup | Free tier: 40 claim checks then 10/month, no card | Yes — corpus-backed fact-checking; three reads fit comfortably in the free allowance |
-| `ai.canaryusers_canaryusers` | `https://www.canaryusers.ai/api/mcp` | HTTP 401 | https://canaryusers.ai (Start free) | Free 100 credits/month (~2 deep scans), no card | No — tools *run scans against a deployed app*; read-only probes need a prior scan to exist |
-| `ai.dreamlit_mcp` | `https://mcp.dreamlit.ai/mcp` | HTTP 401 | https://app.dreamlit.ai/signup | "Free to start — no credit card required" | No — own-account workflow platform; empty workspace |
-| `ai.finestructure_fine-structure` | `https://finestructure.ai/api/mcp` | HTTP 401 | https://finestructure.ai/api-keys | Free signup, no card, free tier includes AI credits; scoped API token self-serve | No — own-account app builder; `list_apps` returns empty by the server's own admission |
-| `ai.dataecho_mcp` | `https://dataecho.ai/mcp` | *"unauthorized: Provide Authorization: Bearer <API_KEY> or use the anonymous flow … call request_login_code, then verify_login_code"* | In-band email OTP (`request_login_code` → `verify_login_code`) | Email + 6-digit code, in-band. **Requires entering an email — owner's decision** | No — already 1/3 rated via `get_site`; the gated tools list the *account's own* sites, which would be empty |
-| `ai.alphacreek_alphacreek-mcp` | `https://mcp.alphacreek.ai/mcp` | HTTP 401 | https://www.alphacreek.ai/auth/jwt/register (docs `/docs`, connect `/connect`) | Register (JWT). Handshake implies a monthly free limit ("tell the user their monthly limit is reached"). Allowance not published | Yes if the free tier is real — corpus-backed SEC/FCA filings, entirely read-only. **Verify the tier before spending effort** |
-| `ai.geodesiclabs_governance-platform` | `https://app.geodesiclabs.ai/mcp` | *"validation error … api_key Field required"* | geodesiclabs.ai (handshake: *"Sign up at geodesiclabs.ai for an API key"*) | Sign up for a key. **Note the unusual shape: `api_key` is a required *tool parameter*, not a header** — our harness would need per-tool credential injection | No — own-account (needs a Blueprint to exist first), plus a harness change |
-| `ai.foura_mcp` | `https://mcp.foura.ai/mcp` | HTTP 401 | https://foura.ai/dashboard/#api-keys | Create/reveal key in dashboard (`pk_live_…`). **Free tier not documented in the README or on the site** | Unclear — verify pricing first. Web-fetch tooling is corpus-backed and would probe well if a free tier exists |
-| `ai.compeller_compel` | `https://compeller.ai/api/mcp` | *"API token required. Set Authorization: Bearer <token> header."* | https://compeller.ai/signup; token at `/account` → API Access; or `POST /api/v1/auth/signup` (email + agent name) | Self-serve token; free allowance not published (render minutes are metered) | No — already 2/3 rated on the public surface; the one gated tool is not worth an account |
-| `ai.mangii_manga` | `https://mcp.mangii.ai/mcp` | HTTP 401 | https://mangii.ai/console/keys | Mint a key in the console. Credits are consumed per generation (standard 1 / hd 2 / ultra 5); free allowance not published | No — generation-heavy, and read probes would spend credits |
-| `ai.facesign_facesign-mcp` | `https://mcp.facesign.ai/mcp` | *"FaceSign API key is not set for this session. Please ask the user for their FaceSign API key and call the set_api_key tool first."* | facesign.ai (site returns **HTTP 403** to us — signup path not verifiable) | Unknown. Mechanism is clear (user-supplied key via `set_api_key`); the tier and signup route are not | No — cannot verify the tier, own-account, and needs the pre-flight-config harness change |
-
----
-
-## oauth-user-account — needs a real human identity or real personal data (15)
-
-Nothing in this group can be obtained by us. Each requires a person to sign in as themselves,
-and in several cases to expose their actual personal data to our probe.
-
-| Server | Endpoint | What it said | Signup / docs URL | EFFORT (for a human) | WORTH IT |
-|---|---|---|---|---|---|
-| `ai.mitosislabs_mitosis` | `https://mitosislabs.ai/api/mcp` | HTTP 401 | https://mitosislabs.ai | OAuth to a personal memory vault | **No credential needed — fix the probe instead.** Four declared tools (`get_pricing`, `search_docs`, `get_platform_status`, `list_skills`) are documented as no-sign-in. Re-probe those |
-| `ai.moonlings_moonlings` | `https://moonlings.ai/api/mcp` | *"This tool requires authentication: connect via OAuth (you get a free starter grant) or send a Moonlings API key as a Bearer token. The free `ping` tool wo…"* | https://moonlings.ai | OAuth, free starter grant | Marginal — `ping` already rated. The two gated tools poll *reports the account created*, so they need a prior paid scan |
-| `ai.foliora_search` | `https://www.foliora.ai/mcp` | HTTP 401 | https://www.foliora.ai/login; free preview at `/preview` | OAuth or read-scoped API key; *"costs an email address and nothing else — no card, no charge, no sales call"* | No — 2/3 already rated on public preview; the gated tool lists the account's own sites |
-| `ai.forkmate_forkmate` | `https://mcp.forkmate.ai/` | HTTP 401 | https://app.forkmate.ai/auth/login?intent=sign-up | OAuth, *"Everything Forkmate does is free — no credit card, no plan to pick"* | No — reads someone's actual **food diary**. Free, but empty on a new account and personal data by nature |
-| `ai.gondola_gondola` | `https://mcp.gondola.ai/mcp` | HTTP 401 | https://gondola.ai/mcp | OAuth inside the MCP client; free; account created as part of the flow | No — reads the traveler's **loyalty accounts and trip history**. Empty and personal |
-| `ai.framethrower_framethrower` | `https://framethrower.ai/api/mcp` | HTTP 401 | https://framethrower.ai/register | OAuth 2.1, free signup, $2 free credits; an API token is also available in Settings → API | **Strongest runner-up.** Genuinely corpus-backed (5,489 films, read-only search) — the only own-identity server here that returns real data on a fresh account |
-| `ai.betterpost_server` | `https://betterpost.ai/mcp` | HTTP 401 | https://betterpost.ai | Sign in with a BetterPost account, 100 free credits | No — generation-oriented, own-account |
-| `ai.latticenet_latticenet` | `https://latticenet.ai/mcp` | HTTP 401 | https://latticenet.ai/login (public feed: `/spectate`) | Google/GitHub OAuth. **The sign-in is explicitly a personal vouch**: "a real person standing behind you"; a human may vouch for exactly one agent | No — the credential is a personal reputational endorsement of an agent. Not something to obtain for a rating harness. Note `/spectate` is public if we want a read surface |
-| `ai.memoryrouter_memoryrouter` | `https://mcp.memoryrouter.ai/mcp` | HTTP 401 | https://app.memoryrouter.ai/signup | OAuth to a memory vault; 14-day trial then **$20/month** | No — paid after trial, own-account, and reads a personal memory store |
-| `ai.decisionlog_mcp` | `https://www.decisionlog.ai/api/mcp` | HTTP 401 | https://www.decisionlog.ai/auth.md ; sign-in https://www.decisionlog.ai/sign-in | OAuth 2.1 PKCE with dynamic client registration for humans. **Machine clients using `client_credentials` "must be provisioned by an authorized Decision Log administrator"** — i.e. our use case is admin-gated | No — the machine path is effectively invite-only; the human path yields an empty append-only log |
-| `ai.com.mcp_strava` | `https://strava.run.mcp.com.ai/mcp` | HTTP 401 | https://mcp.com.ai (HAPI gateway; auth not documented publicly) | OAuth as a **Strava user**, exposing that person's real activity history | No |
-| `ai.com.mcp_linkedin` | `https://linkedin.run.mcp.com.ai/mcp` | HTTP 401 | https://mcp.com.ai | OAuth as a **LinkedIn user**, exposing a real profile; LinkedIn API access is itself partner-gated | No |
-| `ac.inference.sh_mcp` | `https://api.inference.sh/mcp` | *"Authentication"* | https://app.inference.sh (auth docs `/docs/api/authentication`) | Account at app.inference.sh; pay-per-run model, free tier not documented | No — the probed tools list the account's own apps/knowledge/skills; empty on signup |
-| `ai.betslipdoctor_mcp` | `https://api.betslipdoctor.ai/api/mcp` | HTTP 401 | https://betslipdoctor.ai (subscribe on web or in the iPhone app) | OAuth **as a paying subscriber**; $29.99 / $49.99 / $79.99 per month. Handshake: "each call runs as the one user whose OAuth grant authenticates the request" | No — paid *and* own-account |
-| `ai.kontato_kontato` | `https://api.kontato.ai/mcp` | *"Sessao sem conta ativa. Passe `owner_phone` … NESTA chamada"* | (see full finding above) | A human supplies **a WhatsApp number they personally own**; `provision` binds the account to it and `verify_number` requires an OTP sent to that phone | **No.** Guessing a number provisions an account against a stranger's phone. Not ours to do |
-
----
-
-## paid-tier — money changes hands before any tool call (10)
-
-| Server | Endpoint | What it said | Signup / docs URL | EFFORT (for a human) | WORTH IT |
-|---|---|---|---|---|---|
-| `ai.mainbook_bank-statement-converter` | `https://mcp.mainbook.ai/mcp` | HTTP 401 | https://mainbook.ai/mcp, signup `/auth/signup` | Pay-as-you-go page credits, from $50 for ~277 pages. (10 free pages exist on the web UI with no signup, but not via MCP) | No — handshake itself warns `convert_bank_statement` "creates a paid page-credit job, so do not call it speculatively" |
-| `ai.ccapi_mcp` | `https://api.ccapi.ai/mcp` | HTTP 401 | https://ccapi.ai/register | Account free, but *"add a small amount of credit to try the models"* — no free allowance. Handshake: "Every tool call consumes the account's balance" | No — we would be spending real money per probe |
-| `ai.imaginode_imaginode` | `https://imaginode.ai/api/mcp` | HTTP 401 | https://imaginode.ai/profile | *"Get an API key at https://imaginode.ai/profile (verified account required)"*; every generation costs credits | No — verified account plus paid credits, for a generation surface |
-| `ai.kifly_mcp` | `https://kifly.ai/api/mcp` | HTTP 401 | https://kifly.ai (docs `/docs`, hello@kifly.ai) | 14-day trial, then Starter $29/mo. Auth mechanism not documented | No |
-| `ai.ninar_ninar` | `https://ninar.ai/mcp` | HTTP 401 | https://ninar.ai/auth/login-page | Free plan exists but **API access begins at the Scale tier, $299/month** | No — clearly out of proportion |
-| `ai.myriade_myriade` | `https://app.myriade.ai/mcp/` | HTTP 401 | https://myriade.ai/request-trial | "Request trial" — sales-led, flat platform + seat pricing. No self-serve signup | No — contact sales, and the tools query *the customer's own warehouse* |
-| `ai.getminds_minds` | `https://getminds.ai/mcp` | HTTP 401 | https://getminds.ai (Plans / Book demo) | No published self-serve path; pricing page reveals no tiers. Demo-led | No |
-| `ai.memoket_memoket` | `https://mcp.memoket.ai/mcp` | HTTP 401 | https://memoket.ai | Access is bundled with a **$199 hardware device** (Memoket Gem); the MCP reads that device's recordings | No — hardware purchase, and own-account |
-| `ai.com.mcp_contabo` | `https://contabo.run.mcp.com.ai/mcp` | HTTP 401 | https://mcp.com.ai (runMCP; Starter $9/mo, Pro $199/mo) | Requires a **paying Contabo hosting customer's** API credentials — a real cloud account with real servers | No — 1/3 already rated (`tool_search` is public); the other 123 tools manage live infrastructure |
-| `ai.com.mcp_openai-tools` | `https://openai-tools.run.mcp.com.ai/mcp` | HTTP 401 | https://mcp.com.ai | Requires a **paid OpenAI API key**; every call bills OpenAI | No |
-
----
-
-## invite-or-waitlist (1)
-
-| Server | Endpoint | What it said | Signup / docs URL | EFFORT | WORTH IT |
-|---|---|---|---|---|---|
-| `ai.openmandate_mcp` | `https://mcp.openmandate.ai/mcp` | HTTP 401 | https://openmandate.ai/api-keys (site returns **HTTP 403** to us) | **None available.** The operator's own registry description reads: *"OpenMandate is in private development and is not accepting new mandates or integrations."* | No — closed by the operator's own statement. Record as `operator_closed`, not as a gap of ours |
-
----
-
-## unknown (1)
-
-| Server | Endpoint | What it said | Signup / docs URL | EFFORT | WORTH IT |
-|---|---|---|---|---|---|
-| `ai.meacheal_mrc-data` | `https://api.meacheal.ai/mcp` | HTTP 401 | https://meacheal.ai (links to https://api.meacheal.ai but publishes no auth, pricing, or signup) | Unknown — no discoverable signup, pricing, or key-issuance path | Unclear. The data (Chinese apparel supply chain, corpus-backed) would probe well, but there is no route in. Worth one email to the operator rather than any signup attempt |
 
 ---
 
