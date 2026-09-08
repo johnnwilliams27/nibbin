@@ -4,6 +4,12 @@
 No account was created, no form submitted, no email entered, no terms accepted. Every row
 below is a decision for the account owner to make.
 
+One server, `ai.lumify_sports-intelligence`, has since been worked end to end to see whether
+a free-tier key could be obtained without a human. It could not. That attempt created no
+account and submitted no form either; what it found is written up under
+[Attempt log](#attempt-log-ailumify_sports-intelligence-2026-09-08--no-credential-obtained),
+including a correction to how this server's auth wall is recorded.
+
 **Source data:** `packages/collectors/assessment.json` (gaps with cause
 `harness_capability_missing`), `packages/collectors/transcripts/*.json` (registry metadata,
 handshake instructions, declared tool schemas), plus vendor homepages/docs fetched over HTTP.
@@ -126,7 +132,7 @@ with no card and no sales contact.
 
 | Server | Endpoint | What it said | Signup / docs URL | EFFORT (for a human) | WORTH IT |
 |---|---|---|---|---|---|
-| `ai.lumify_sports-intelligence` | `https://lumify.ai/mcp` | `Unauthorized` (HTTP 401); handshake: *"Read the lumify://docs/quickstart resource … including the zero-signup instant-key auth path"* | https://lumify.ai/register | Create account, key instant, no card. 1,000 free credits that **never expire**, full endpoint access, 20 req/min. Server also advertises a zero-signup instant-key path in its own quickstart resource | **Yes — top pick.** Corpus-backed, 25 declared read-only tools, renewable-equivalent allowance |
+| `ai.lumify_sports-intelligence` | `https://lumify.ai/mcp` | JSON-RPC `-32001 Unauthorized: provide a valid Lumify API key as a Bearer token`, returned **inside an HTTP 200** (not a 401 — see the attempt log below); handshake: *"Read the lumify://docs/quickstart resource … including the zero-signup instant-key auth path"* | https://lumify.ai/register | **Not obtainable by us — attempted 2026-09-08, see the section below.** The advertised zero-signup instant key is Cloudflare-Turnstile-gated by the operator's own spec; the persistent account needs a real person's name, a verifiable mailbox, and terms acceptance | **Yes for a human, no for us.** Corpus-backed, 24 declared read-only tools, 1,000 non-expiring credits. Every route in is closed to an automated client |
 | `ai.drillr_drillr` | `https://gateway.drillr.ai/mcp/data` | HTTP 401 | https://drillr.ai/signup → key at `/account/api-keys` | Create account, "free credits to start", key self-serve | **Yes.** `list_tables` / `get_table_schema` / `run_sql` over 90+ financial tables is close to an ideal read-only probe surface — real data, no account population needed |
 | `ai.echoloc_company-technographics` | `https://api.echoloc.ai/mcp` | *"Anonymous preview limit reached (5 calls/day). … Free beta key (100 requests/month, instant)"* | https://echoloc.ai/auth?mode=signup&returnTo=%2Fapp%2Fapi (key at https://echoloc.ai/app/api; details https://echoloc.ai/for-agents/) | Sign up, copy key from the API page. Free beta 100 req/month | **Yes — cheapest win.** Already 2/3 rated. The failure is a *rate limit*, not a wall; a key removes it and un-trims results. Try a re-probe first |
 | `ai.creativescope_creative-intelligence` | `https://mcp.creativescope.ai/mcp` | HTTP 401 | https://creativescope.ai — "Get free API key" | *"Sign up with your email. 30 seconds, no card."* 10 calls/day **free forever** | **Yes.** Renewable daily allowance survives repeat probing; corpus-backed ad-creative data |
@@ -209,6 +215,63 @@ and in several cases to expose their actual personal data to our probe.
 
 ---
 
+## Attempt log: `ai.lumify_sports-intelligence` (2026-09-08) — no credential obtained
+
+The top pick above was worked end to end. It did not yield a key, and the reason is worth
+recording precisely, because the row as originally written implied a route that does not
+exist for an automated client.
+
+**What the operator advertises.** Four separate machine-readable surfaces all say the same
+thing: the MCP handshake `instructions`, the `lumify://docs/quickstart` resource,
+`https://lumify.ai/.well-known/agent.json`, and `https://lumify.ai/.well-known/mcp/server-card.json`.
+Each promises *"a working API key in seconds with no signup, email, or card"* via a
+**Get instant trial key** button at https://lumify.ai/docs/ai (100 credits, 14-day expiry).
+
+**What the implementation actually requires.** The button POSTs
+`{"cf-turnstile-response": token}` to `POST /v1/trial-key`. The rendered button carries
+`data-sitekey="0x4AAAAAAD3L7DdNP1YYrbzi"`, and the operator's own OpenAPI summary
+(https://lumify.ai/openapi-llms.txt) states it without ambiguity:
+
+> `POST /v1/trial-key` — Issue an instant, unauthenticated trial API key. Issues a throwaway
+> API key with no signup or email verification — 100 lifetime credits, 14-day expiry, one per
+> network per 7 days. **Requires a valid Cloudflare Turnstile token.** Intended for the
+> 'Get instant trial key' button on /docs/ai, **not for building a persistent integration** —
+> use /register for that.
+
+Turnstile is bot detection. Driving a browser through it to mint a key for a rating harness
+is exactly the circumvention we do not do, and the operator has additionally said in writing
+that this key is not for a standing integration — which is what a stored credential is. Both
+reasons are independent and both are terminal. **Not attempted. Named and stopped.**
+
+**Every other route, checked and closed:**
+
+| Route | Result |
+|---|---|
+| `resources/list` + `resources/read` | Fully **open** without a key — both `lumify://sports` and `lumify://docs/quickstart` read fine. Good conformance signal for the server; no credential in them |
+| `tools/call` (e.g. `list_sports`) | HTTP **200** carrying JSON-RPC `-32001 Unauthorized: provide a valid Lumify API key as a Bearer token` |
+| `/.well-known/oauth-protected-resource`, `/.well-known/oauth-authorization-server`, `/.well-known/mcp` | All **404**. No OAuth metadata, so no RFC 7591 dynamic client registration to fall back on |
+| `POST /api/agent/keys` (the documented "provision API access programmatically" recipe) | Chicken-and-egg by the operator's own note: *"needs an existing session or key to bootstrap"*. Same shape as MarketIntell's `register` tool |
+| `GET /v1/estimate/tools`, `GET /v1/sports` | **401**. Even the endpoints documented as "always free" (zero credits) still require a key, so there is no unauthenticated read surface on the REST side |
+| Published demo/sample key in the docs | None. Every `lmfy-` string in the docs, llms.txt, SKILL.md and OpenAPI dumps is a placeholder (`lmfy-...`, `lmfy-YOUR_KEY`, `lmfy-abc123.def456...`) |
+| `POST /register` (the persistent 1,000-credit account) | Closed on **three** of our boundaries at once. The form requires `first_name` + `last_name` (a real person we do not have and will not invent), an `email` that must be verified before the free tier activates (no mailbox is available to us), and submitting it *is* the act of agreeing to the Terms of Service (binds the owner's company; theirs to accept, not ours) |
+
+**Correction to the transcript.** `packages/collectors/transcripts/ai.lumify_sports-intelligence.json`
+records `auth: {required: false, status: 200}` because `initialize` succeeds anonymously.
+That is true but misleading: the wall is at `tools/call`, and it is signalled *in band* as a
+JSON-RPC error inside an HTTP 200 rather than as an HTTP 401. Any auth classifier that only
+watches HTTP status will mislabel this server. Worth a look at how many of the 439 are the
+same shape.
+
+**Verdict:** `free-api-key` for a human, `human_identity_required` for us. This is a gap of
+ours (no mailbox, no legal authority to accept terms, no licence to pass a bot check), not a
+failure of the operator's — Lumify publishes more agent-facing onboarding material than
+almost anything else in the cohort. If the account owner wants this one, it is about five
+minutes of their time at https://lumify.ai/register, and the resulting key drops straight
+into `subject_credentials` as `tier: free`, `quota_note: "1,000 credits, non-expiring; 20 req/min"`,
+`expires_at: null`.
+
+---
+
 ## Recommendation: the five to pursue first
 
 Chosen for **corpus-backed data** (real results on a fresh account), a **renewable or
@@ -216,8 +279,11 @@ non-expiring free allowance** (survives repeat assessment runs), and **read-only
 surfaces** that match how we probe.
 
 1. **`ai.lumify_sports-intelligence`** — 1,000 non-expiring free credits, no card, full
-   endpoint access, 25 declared read-only tools, and the server documents its own
-   "zero-signup instant-key" path. Best return on effort on the entire list.
+   endpoint access, 24 declared read-only tools. Still the best return on effort, but the
+   effort is now known to be **the owner's, not ours**: the advertised "zero-signup
+   instant-key" path turned out to be Turnstile-gated, and `/register` needs a real name, a
+   verifiable mailbox, and terms acceptance. See the attempt log above. Five minutes of a
+   human's time; nothing more we can do on it.
 2. **`ai.drillr_drillr`** — `list_tables` / `get_table_schema` / `run_sql` over 90+ financial
    tables is almost a purpose-built read-only probe surface, and free credits are offered.
 3. **`ai.echoloc_company-technographics`** — the cheapest action here is not a signup at all:
