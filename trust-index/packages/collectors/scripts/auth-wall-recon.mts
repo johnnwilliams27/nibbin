@@ -86,7 +86,9 @@ const subjects: Array<{ id: string; t: ProbeTranscript }> = readdirSync(dir)
   .filter((f) => f.endsWith(".json"))
   .sort()
   .map((f) => ({ id: f.replace(/\.json$/, ""), t: JSON.parse(readFileSync(`${dir}/${f}`, "utf8")) as ProbeTranscript }))
-  .filter(({ id, t }) => handshakeWalled(t) && (only === "" || id.includes(only)))
+  // `--only` takes a comma-separated list of substrings, so a corrected pass can
+  // redo the handful of rows a fix actually changes rather than the whole 259.
+  .filter(({ id, t }) => handshakeWalled(t) && (only === "" || only.split(",").some((s) => id.includes(s.trim()))))
   .slice(0, limit);
 
 console.log(`${subjects.length} handshake-walled subjects`);
@@ -161,14 +163,35 @@ for (const { id, t } of subjects) {
   let pr: Recon["protected_resource"] = null;
   let as: Recon["authorization_server"] = null;
   if (origin !== null) {
-    const prDoc = await wellKnown(origin, "/.well-known/oauth-protected-resource");
+    // RFC 9728 puts the resource identifier's PATH into the well-known URL —
+    // `https://host/.well-known/oauth-protected-resource/mcp`, not the bare
+    // root — and a spec-compliant server hands you the exact location in its
+    // `WWW-Authenticate` challenge. Guessing the root missed every server that
+    // scopes it, which was most of the ones that publish it at all. Follow the
+    // pointer the server gave; fall back to the root only when it gave none.
+    const pointer = /resource_metadata="?([^",]+)"?/i.exec(hs.challenge ?? "")?.[1] ?? null;
+    const prDoc = pointer === null
+      ? await wellKnown(origin, "/.well-known/oauth-protected-resource")
+      : await wellKnown(pointer, "");
     pr = prDoc === null
       ? { found: false, authorization_servers: [], scopes: [] }
       : { found: true, authorization_servers: strings(prDoc.authorization_servers), scopes: strings(prDoc.scopes_supported) };
     // Ask the authorization server the protected-resource document names, when
-    // it names one; otherwise the endpoint's own origin.
-    const asOrigin = pr.authorization_servers[0] ?? origin;
-    const asDoc = await wellKnown(asOrigin.replace(/\/$/, ""), "/.well-known/oauth-authorization-server");
+    // it names one; otherwise the endpoint's own origin. An issuer with a path
+    // takes the RFC 8414 path-insertion form, which is why the well-known
+    // segment goes after the origin and before the issuer's path.
+    const asBase = (pr.authorization_servers[0] ?? origin).replace(/\/$/, "");
+    let asDoc = await wellKnown(asBase, "/.well-known/oauth-authorization-server");
+    if (asDoc === null) {
+      try {
+        const u = new URL(asBase);
+        if (u.pathname !== "/" && u.pathname !== "") {
+          asDoc = await wellKnown(u.origin, `/.well-known/oauth-authorization-server${u.pathname}`);
+        }
+      } catch {
+        /* asBase was not a URL; the fallback simply does not apply */
+      }
+    }
     if (asDoc === null) {
       as = { found: false, issuer: null, registration_endpoint: null, grant_types_supported: [], machine_grant: false };
     } else {
