@@ -791,3 +791,109 @@ describe("we never call a tool that might write", () => {
     },
   );
 });
+
+/**
+ * The `described` basis: reads recognised by their description alone.
+ *
+ * 130 servers — 809 tools — used to reach the end of classifyTool unclassified,
+ * and it was almost never because they looked dangerous. Zero of the 809
+ * declared any MCP annotation, and only 11 were named like a mutation. The rest
+ * were simply named something the read-verb allowlist did not contain. A guard
+ * against gaming that removes a fifth of the population from assessment has
+ * stopped protecting the rating and started preventing it.
+ *
+ * These tests pin the two halves that have to hold at once: the widening
+ * actually admits the honest reads, and it admits nothing that writes.
+ */
+describe("read_only by description (basis: described)", () => {
+  const decl = (name: string, description: string, annotations: unknown = null) =>
+    ({
+      name,
+      description,
+      inputSchema: { type: "object", properties: { q: { type: "string" } }, required: ["q"] },
+      outputSchema: null,
+      annotations,
+    }) as unknown as Parameters<typeof classifyTool>[0];
+
+  it.each([
+    ["goji_guide_contents", "The table of contents for \"Be the Answer\", the guide to AI visibility."],
+    ["brief_teaser", "FREE. Today's top-3 CVE priorities from the daily ranking. Ranked by exploitation."],
+    ["goji_browse_glossary", "Lists the plain-English glossary — every term, across AI search and branding."],
+  ])("admits %s, whose name no allowlist contains", (name, description) => {
+    const c = classifyTool(decl(name, description));
+    expect(c.binding.kind).toBe("read_only");
+    // Recorded as its own basis, never folded into `inferred`. The evidence is
+    // the operator's own prose, which is weaker than a name we recognise, and a
+    // later audit has to be able to select these out as a class.
+    expect((c.binding as { basis: string }).basis).toBe("described");
+  });
+
+  it("does not admit a write just because its description reads like prose", () => {
+    // `add_trade` is the tool this whole guard was hardened around: "Attach a
+    // specific trade execution record to a finding you published." We called it
+    // four times, and nothing was written only because the server required a
+    // field its own schema did not declare. It stays refused on its name.
+    const c = classifyTool(
+      decl("add_trade", "Returns the updated finding. Linking actual trades to a finding upgrades its weight."),
+    );
+    expect(c.binding.kind).not.toBe("read_only");
+  });
+
+  it.each([
+    ["create_checkout", "Create the order and get a hosted payment link for a chosen offer."],
+    ["book_demo", "Book a free discovery call at a specific slot for a real person."],
+    ["report_server", "Submit an agent usage report for an MCP server. Reports are aggregated."],
+    ["send_message", "Returns the delivery receipt once the network relays it to the maker."],
+  ])("refuses %s, which describes a change however it is phrased", (name, description) => {
+    expect(classifyTool(decl(name, description)).binding.kind).not.toBe("read_only");
+  });
+
+  it("reads a noun as a noun", () => {
+    // Six stems were removed from the description veto — link, record, store,
+    // regist, book, order — because in this corpus they are overwhelmingly
+    // nouns inside plainly read-only prose. `link` alone vetoed 70 read-like
+    // tools and every sampled instance was "checkout link", "share link",
+    // "login/request link". The verb senses are still caught by name:
+    // all six are in WRITEISH_VERBS.
+    expect(
+      classifyTool(decl("advisors_prepare", "Returns the ordinary login/request link for an existing advisor."))
+        .binding.kind,
+    ).toBe("read_only");
+    // The net does not parse negation, and that is the intended bias: the real
+    // tool's description says "it does not create an order", and "creat" vetoes
+    // it. Declining a safe tool costs coverage; the reverse costs a stranger.
+    expect(
+      classifyTool(decl("advisors_prepare", "Returns the ordinary login/request link; it does not create an order."))
+        .binding.kind,
+    ).not.toBe("read_only");
+    expect(
+      classifyTool(decl("check_contractor", "Returns match: the license record with status and provenance.")).binding
+        .kind,
+    ).toBe("read_only");
+    expect(
+      classifyTool(decl("query_registry", "Search the registry for MCP servers. Returns only connectable ones."))
+        .binding.kind,
+    ).toBe("read_only");
+    // But the verb sense, by name, is still refused.
+    expect(classifyTool(decl("link_account", "Returns the account.")).binding.kind).not.toBe("read_only");
+    expect(classifyTool(decl("record_vote", "Returns the tally.")).binding.kind).not.toBe("read_only");
+  });
+
+  it("still refuses a described read that costs someone money", () => {
+    // The metered and second-hop screens apply to this path exactly as they do
+    // to the other two: a read we have to pay for, or that makes a fourth party
+    // answer, is still not ours to call six times.
+    const c = classifyTool(
+      decl("pricing_snapshot", "Returns the current per-call rates. $0.005 USDC per successful call."),
+    );
+    expect(c.binding.kind).toBe("operator_bound");
+  });
+
+  it("does not override an explicit annotation", () => {
+    // An operator who annotated destructiveHint gets believed, prose or no prose.
+    const c = classifyTool(
+      decl("purge_index", "Returns a summary of the catalogue.", { destructiveHint: true }),
+    );
+    expect(c.binding.kind).not.toBe("read_only");
+  });
+});

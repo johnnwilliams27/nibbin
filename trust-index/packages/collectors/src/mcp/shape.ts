@@ -59,7 +59,7 @@ export type TargetBinding =
    * published rather than flattened, because a caller deciding how much to
    * trust the classification should be able to see which it was.
    */
-  | { kind: "read_only"; basis: "declared" | "inferred" }
+  | { kind: "read_only"; basis: "declared" | "inferred" | "described" }
   /** Acts on something we name. Point it at our sandbox and diff. */
   | { kind: "substitutable"; parameter: string; capability: CapabilityId }
   /** Acts on the operator's own resource. Guard probes only. */
@@ -296,10 +296,36 @@ export function classifyTool(t: ToolDeclaration): ToolClassification {
   // false positive only costs us coverage: we decline to exercise something
   // that was safe. Over-caution about what we send is the right bias, so the
   // guard keeps the wide net the finding could not justify.
+  // Stems that are write verbs and are rarely anything else. A description
+  // containing one of these is treated as describing a change, wherever it
+  // appears, and that wide net is kept on purpose.
   const descriptionMentionsChange =
-    /\b(delet|remov|writ|modif|updat|insert|send|charg|deploy|purge|revok|creat|attach|append|submit|regist|upload|link|record|store|sav|publish|assign|enrol|book|order|schedul)/.test(
+    /\b(delet|remov|writ|modif|updat|insert|send|charg|deploy|purge|revok|creat|attach|append|submit|upload|sav|publish|assign|enrol|schedul)/.test(
       desc,
     );
+
+  // SIX STEMS WERE REMOVED FROM THAT NET: link, record, store, regist, book,
+  // order. Not a loosening — a correctness fix, and it was costing more than
+  // anything else in this file.
+  //
+  // In this corpus they occur overwhelmingly as NOUNS inside plainly read-only
+  // descriptions: "returns a single checkout link", "the ordinary login/request
+  // link", "from the owner's share link", "the license record with status and
+  // provenance", "Agent Flight Recorder", "Search the Arclan registry", "a
+  // registered monitor". `link` alone vetoed 70 read-like tools, and every
+  // sampled instance was a noun.
+  //
+  // The verb senses are not lost, because they were never being caught here in
+  // the first place: link, record, store, register, book and order are all in
+  // WRITEISH_VERBS below, so a tool NAMED for any of them is refused by name
+  // before its description is consulted. `add_trade` — the tool this whole
+  // guard was hardened around, whose description says "Linking actual trades to
+  // a finding" — is still refused, on "add". Keeping these stems in the text
+  // net was belt-and-braces that caught nouns and let the braces do the work.
+  //
+  // This narrowing applies to the inference path too, deliberately. A false
+  // veto is wrong wherever it fires, and the name guards behind it are the same
+  // in both cases.
 
   // THE INFERENCE PATH IS AN ALLOWLIST, NOT A DENYLIST.
   //
@@ -378,6 +404,60 @@ export function classifyTool(t: ToolDeclaration): ToolClassification {
     contradictions.push(`declares readOnlyHint but is named like a write (${leadingVerb})`);
   }
 
+  // THE THIRD PATH: the description says it reads, and nothing contradicts it.
+  //
+  // WHY THIS EXISTS. The allowlist above declines anything whose NAME does not
+  // lead with a verb we recognise, and its comment calls that failure mode
+  // cheap: "declining to probe something safe, which costs us coverage and
+  // costs nobody else anything." Measured against the corpus, that was wrong on
+  // the second half. 130 servers — 809 tools — reach the end of this function
+  // with no classification at all, and the reason is almost never that they
+  // look dangerous:
+  //
+  //     0 of 809 declare ANY MCP annotation. No readOnlyHint, no
+  //       destructiveHint, nothing. There is no operator claim to accept or
+  //       reject, because the operator made none.
+  //    11 of 809 are named like a mutation. The other 798 are simply named
+  //       something the allowlist does not contain — `goji_guide_contents`
+  //       ("the table of contents for a guide"), `brief_teaser` ("FREE.
+  //       Today's top-3 CVE priorities"), `estimate_campaign`, `resolve_name`.
+  //
+  // Those servers are then published as unrated, or rated on manifest evidence
+  // alone. That is this project's oldest error wearing a safety hat: we could
+  // not categorise it, and the compendium says something about them anyway. A
+  // guard against gaming that instead removes a fifth of the population from
+  // assessment has stopped protecting the rating and started preventing it.
+  //
+  // WHAT THE EVIDENCE IS, AND WHAT IT IS WORTH. The operator's own description,
+  // required to affirmatively describe a read, with every write signal in this
+  // file still able to veto it. That is a weaker claim than an annotation and
+  // MUCH weaker than a name we recognise, which is exactly why it is recorded
+  // as its own basis rather than folded into `inferred`. A reader — and a
+  // later audit — can select on it, and if these calls turn out badly they can
+  // be found and removed as a class.
+  //
+  // The incentive is not symmetric but it does not point the wrong way. An
+  // operator who writes "returns a list" over a tool that deletes gets their
+  // own data deleted by our probe. What that does not cover is a tool acting on
+  // a THIRD party, which is why SECOND_HOP below still applies and why
+  // `descriptionMentionsChange` keeps its deliberately wide net here.
+  //
+  // Note what the previous rule rewarded: publishing no annotations was a
+  // reliable way never to be behaviourally tested. That was the largest escape
+  // hatch left in the method.
+  const DESCRIBES_A_READ =
+    /\b(returns?|retrieves?|reports?|shows?|lists?|searches|search |look(s)? up|lookup|queries|browse|inspects?|explains?|summari[sz]es?|resolves?|converts?|estimates?|analy[sz]es?|checks? (whether|if|the|for)|table of contents|glossary|catalog(ue)?|directory|read[- ]only|no account|free\b)/i;
+  const describedReadOnly =
+    noAnnotations &&
+    !namedLikeARead && // the inference path already handles these
+    DESCRIBES_A_READ.test(desc) &&
+    desc.trim().length >= 40 && // a description too short to contradict itself is not evidence
+    !writeishName &&
+    !mutatingName &&
+    !sideEffecting &&
+    !descriptionMentionsChange &&
+    contradictions.length === 0;
+
   // Reads that are not free, and reads that make somebody else make a call.
   //
   // The write guard asks "does this change the subject's state". A dry run over
@@ -412,7 +492,7 @@ export function classifyTool(t: ToolDeclaration): ToolClassification {
   const meteredOrSecondHop =
     (CHARGES_PER_CALL.test(desc) && !/\bfree\b/i.test(desc)) || SECOND_HOP.test(desc) || EXPENSIVE_COMPUTE.test(desc);
 
-  if ((declaredReadOnly || inferredReadOnly) && meteredOrSecondHop) {
+  if ((declaredReadOnly || inferredReadOnly || describedReadOnly) && meteredOrSecondHop) {
     return {
       tool: t.name,
       shape,
@@ -429,11 +509,14 @@ export function classifyTool(t: ToolDeclaration): ToolClassification {
     };
   }
 
-  if (declaredReadOnly || inferredReadOnly) {
+  if (declaredReadOnly || inferredReadOnly || describedReadOnly) {
     return {
       tool: t.name,
       shape,
-      binding: { kind: "read_only", basis: declaredReadOnly ? "declared" : "inferred" },
+      binding: {
+        kind: "read_only",
+        basis: declaredReadOnly ? "declared" : inferredReadOnly ? "inferred" : "described",
+      },
       contradictions,
       hints,
     };
