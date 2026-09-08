@@ -77,6 +77,21 @@ export type ToolClassification = {
   contradictions: string[];
   /** Declared annotation hints, as given. Never trusted for safety, useful as a claim to check. */
   hints: { readOnly: boolean | null; destructive: boolean | null; idempotent: boolean | null };
+  /**
+   * The tool costs its OPERATOR money or compute per call — a metered read, or
+   * one that runs a model. We call it anyway; this records that we knew.
+   *
+   * It used to be an exclusion. The owner's call, and the arithmetic supports
+   * it: a handful of calls a day against a $0.005 endpoint is fractions of a
+   * penny, and the alternative was publishing a rating of a server we had
+   * declined to test. An accurate test is the point of the index.
+   *
+   * Kept as a field rather than dropped, for two reasons that outlive the
+   * decision. It bounds our own exposure if anyone ever asks what we spent on
+   * their behalf, and it is the list to reach for if we later want sponsored
+   * test allowances instead.
+   */
+  metered: boolean;
 };
 
 /**
@@ -213,7 +228,11 @@ function shapeFromName(name: string, description: string | null): ToolShape {
  * contradiction, because a tool whose name and annotations tell different
  * stories is itself the finding.
  */
-export function classifyTool(t: ToolDeclaration): ToolClassification {
+export function classifyTool(
+  t: ToolDeclaration,
+  opts: { allowSecondHop?: boolean } = {},
+): ToolClassification {
+  const allowSecondHop = opts.allowSecondHop === true;
   const hints = readHints(t);
   const mutatingName = isMutatingName(t.name);
   const shape = shapeFromName(t.name, t.description);
@@ -489,23 +508,33 @@ export function classifyTool(t: ToolDeclaration): ToolClassification {
   // six completions, and tell us only that a proxy proxies.
   const EXPENSIVE_COMPUTE =
     /\b(text model|language model|\bllm\b|chat completion|completions?\b|inference|gpt-?[0-9]|claude|gemini|deepseek|generate (an? )?(image|video|music|audio|speech)|text-to-|render (a |the )?video)\b/i;
-  const meteredOrSecondHop =
-    (CHARGES_PER_CALL.test(desc) && !/\bfree\b/i.test(desc)) || SECOND_HOP.test(desc) || EXPENSIVE_COMPUTE.test(desc);
+  // METERED IS NO LONGER AN EXCLUSION. It is a label.
+  //
+  // Cost used to refuse the call. It does not any more: a few calls a day
+  // against a $0.005 endpoint is fractions of a penny, and the thing it bought
+  // was a published rating of a server we had chosen not to test. That trade is
+  // the wrong way round for a ratings source, and the owner called it.
+  const metered = (CHARGES_PER_CALL.test(desc) && !/\bfree\b/i.test(desc)) || EXPENSIVE_COMPUTE.test(desc);
 
-  if ((declaredReadOnly || inferredReadOnly || describedReadOnly) && meteredOrSecondHop) {
+  // SECOND HOP STILL REFUSES, and it is a different question from cost.
+  //
+  // `verify_payment_endpoint` — "Run a live check against a merchant's declared
+  // payment endpoint" — is FREE for the operator. What it does is point our
+  // traffic at a merchant who is not in any registry, never published
+  // themselves as rateable, and has no way to ask us to stop. The cost argument
+  // does not reach them because there is no relationship to reason about. Set
+  // `allowSecondHop` to override.
+  if ((declaredReadOnly || inferredReadOnly || describedReadOnly) && SECOND_HOP.test(desc) && !allowSecondHop) {
     return {
       tool: t.name,
       shape,
       binding: {
         kind: "operator_bound",
-        reason: SECOND_HOP.test(desc)
-          ? "reads, but causes a live call to a third party we cannot ask"
-          : EXPENSIVE_COMPUTE.test(desc)
-            ? "reads, but runs a model per call, so probing it spends real compute"
-            : "reads, but is metered per call and probing it spends someone else's money",
+        reason: "reads, but causes a live call to a third party we cannot ask",
       },
       contradictions,
       hints,
+      metered,
     };
   }
 
@@ -519,6 +548,7 @@ export function classifyTool(t: ToolDeclaration): ToolClassification {
       },
       contradictions,
       hints,
+      metered,
     };
   }
 
@@ -534,6 +564,7 @@ export function classifyTool(t: ToolDeclaration): ToolClassification {
       binding: { kind: "substitutable", parameter: hit, capability: entry.capability },
       contradictions,
       hints,
+      metered,
     };
   }
 
@@ -549,11 +580,15 @@ export function classifyTool(t: ToolDeclaration): ToolClassification {
     },
     contradictions,
     hints,
+    metered,
   };
 }
 
-export function classifyTools(tools: readonly ToolDeclaration[]): ToolClassification[] {
-  return tools.map(classifyTool);
+export function classifyTools(
+  tools: readonly ToolDeclaration[],
+  opts: { allowSecondHop?: boolean } = {},
+): ToolClassification[] {
+  return tools.map((t) => classifyTool(t, opts));
 }
 
 /** Capabilities a set of tools would need before any of them could be exercised. */

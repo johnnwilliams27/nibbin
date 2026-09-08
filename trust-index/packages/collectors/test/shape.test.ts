@@ -242,6 +242,7 @@ describe("invocation safety", () => {
         binding: { kind: "read_only", basis: "declared" },
         contradictions: ["declares readOnlyHint but is named like a mutation"],
         hints: { readOnly: true, destructive: null, idempotent: null },
+        metered: false,
       }, { parseBody: () => ({ result: {} }) }),
     ).rejects.toThrow(/contradiction/);
   });
@@ -764,17 +765,44 @@ describe("we never call a tool that might write", () => {
     expect(classifyTool(decl(name, "Returns information about the item.")).binding.kind).not.toBe("read_only");
   });
 
-  // A dry run over the corpus found three things that pass the write guard and
-  // are still not ours to call six times. None is a finding about the subject,
-  // so none is scored; they become an unprobed tool and a not_applicable gap.
+  // COST NO LONGER DECLINES A CALL. It labels one.
+  //
+  // These two used to be refused. A few calls a day against a $0.005 endpoint
+  // is fractions of a penny, and what the refusal bought was a published rating
+  // of a server we had chosen not to test — the wrong trade for a ratings
+  // source. They are called now, and `metered` records that we knew.
   it.each([
-    ["list_tickers", "List all tickers that traded on a given date. $0.005 USDC.", /spends someone else's money/],
-    ["chat_completion", "Send a conversation to any text model available through CCAPI.", /spends real compute/],
-    ["verify_payment_endpoint", "Run a live check against a merchant's declared payment endpoint.", /third party we cannot ask/],
-  ])("declines %s, which reads but is not free to call", (name, description, reason) => {
+    ["list_tickers", "List all tickers that traded on a given date. $0.005 USDC."],
+    ["chat_completion", "Send a conversation to any text model available through CCAPI."],
+  ])("calls %s, and marks it metered", (name, description) => {
     const c = classifyTool(decl(name, description, { readOnlyHint: true }));
+    expect(c.binding.kind).toBe("read_only");
+    expect(c.metered).toBe(true);
+  });
+
+  it("does not mark a free tool as metered", () => {
+    const c = classifyTool(decl("list_buildings", "FREE. The campus directory: every building.", { readOnlyHint: true }));
+    expect(c.binding.kind).toBe("read_only");
+    expect(c.metered).toBe(false);
+  });
+
+  it("still refuses a second hop, which is not a cost question", () => {
+    // verify_payment_endpoint is FREE for the operator. What it does is point
+    // our traffic at a merchant who is in no registry, never published
+    // themselves as rateable, and cannot ask us to stop. The cost argument does
+    // not reach them because there is no relationship to reason about.
+    const c = classifyTool(
+      decl("verify_payment_endpoint", "Run a live check against a merchant's declared payment endpoint.", { readOnlyHint: true }),
+    );
     expect(c.binding.kind).toBe("operator_bound");
-    expect((c.binding as { reason: string }).reason).toMatch(reason);
+    expect((c.binding as { reason: string }).reason).toMatch(/third party we cannot ask/);
+    // ...and it is overridable, because that is a judgement, not a law.
+    expect(
+      classifyTool(
+        decl("verify_payment_endpoint", "Run a live check against a merchant's declared payment endpoint.", { readOnlyHint: true }),
+        { allowSecondHop: true },
+      ).binding.kind,
+    ).toBe("read_only");
   });
 
   it("still calls a directory that says it is free", () => {
@@ -879,14 +907,12 @@ describe("read_only by description (basis: described)", () => {
     expect(classifyTool(decl("record_vote", "Returns the tally.")).binding.kind).not.toBe("read_only");
   });
 
-  it("still refuses a described read that costs someone money", () => {
-    // The metered and second-hop screens apply to this path exactly as they do
-    // to the other two: a read we have to pay for, or that makes a fourth party
-    // answer, is still not ours to call six times.
+  it("marks a described read as metered without refusing it", () => {
     const c = classifyTool(
       decl("pricing_snapshot", "Returns the current per-call rates. $0.005 USDC per successful call."),
     );
-    expect(c.binding.kind).toBe("operator_bound");
+    expect(c.binding.kind).toBe("read_only");
+    expect(c.metered).toBe(true);
   });
 
   it("does not override an explicit annotation", () => {
