@@ -896,6 +896,30 @@ export const subject_credentials = pgTable(
     /** AES-256-GCM, formatted iv:tag:ciphertext, all base64. Never logged, never returned by a listing. */
     secret_ct: text("secret_ct").notNull(),
 
+    /**
+     * A refresh token, when the credential is an OAuth pair rather than a
+     * static key. Encrypted the same way; NULL for a plain API key.
+     *
+     * THIS EXISTS BECAUSE ITS ABSENCE WOULD HAVE PUBLISHED OUR BUG AS THEIR
+     * FAILURE. FrameThrower issues a one-hour access token plus a refresh
+     * token, and its refresh tokens ROTATE: each use returns a new one and
+     * invalidates the old. With one secret column the only survivable thing to
+     * store was the refresh token — which `applyCredential` would then send
+     * as a bearer, earning a 401, which the harness reads as the subject
+     * refusing us. A live instance of the error this project keeps making.
+     *
+     * So: `secret_ct` is what you PRESENT, `refresh_ct` is what you REDEEM,
+     * and a rotating refresh must be written back with `rotateCredential` or
+     * the row dies after a single use.
+     */
+    refresh_ct: text("refresh_ct"),
+    /** When the presented secret stops working, distinct from the account's own expiry. */
+    secret_expires_at: ts("secret_expires_at"),
+    /** True when redeeming the refresh token invalidates it, so a caller MUST write the new one back. */
+    refresh_rotates: boolean("refresh_rotates").notNull().default(false),
+    /** Token endpoint and client_id for minting, when applicable. No secret: a public client. */
+    mint_json: jsonb("mint_json"),
+
     /** free | trial | paid. A trial that lapses is a scheduled harness gap, not a surprise. */
     tier: text("tier").notNull(),
     /** Quota in the operator's own words: "1000 credits, non-expiring", "100 req/month". */
