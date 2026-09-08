@@ -47,6 +47,15 @@ export type SseProbeResult = {
   status: number | null;
   reason: string | null;
   elapsedMs: number;
+  /**
+   * The server answered the stream open by DECLINING us: 401 or 403. That is an
+   * auth wall, not a dead server, and the retry pass files it as `auth-walled`
+   * (a known, rateable state) rather than as one more "no reading". Null when the
+   * GET was not an auth refusal.
+   */
+  authStatus: number | null;
+  /** The `WWW-Authenticate` challenge, when the refusal carried one. */
+  wwwAuthenticate: string | null;
 };
 
 /** Split an SSE buffer into complete frames, returning the remainder. */
@@ -69,12 +78,57 @@ export function parseFrames(buffer: string): { frames: Array<{ event: string; da
   return { frames, rest };
 }
 
-async function dial(url: string, init: { method: string; headers: Record<string, string>; body?: string; signal: AbortSignal }) {
-  const vetted = vetUrl(url);
-  if (!vetted.allowed) throw new Error(`blocked: ${vetted.reason}`);
-  const resolved = await vetResolved(vetted.url.hostname);
-  if (!resolved.allowed) throw new Error(`blocked: ${resolved.reason}`);
-  return pinnedFetch(vetted.url.toString(), { ...init, addresses: resolved.addresses });
+/**
+ * Origin-bound headers that must not follow a redirect to another host — the
+ * same set `guardedFetch` strips, kept here because `pinnedFetch` does not
+ * redirect on its own and this dial has to.
+ */
+const ORIGIN_BOUND = new Set(["authorization", "proxy-authorization", "cookie", "mcp-session-id", "x-api-key", "api-key"]);
+
+/**
+ * Dial through the same guard as everything else, and FOLLOW REDIRECTS.
+ *
+ * `pinnedFetch` returns a 3xx as-is — it does not chase the Location, and this
+ * cost us real servers: an SSE endpoint that answers `GET /sse` with
+ * `307 -> /sse/` (one trailing slash) was recorded as an HTTP 404 no-reading,
+ * because the probe read the redirect's status and stopped. `guardedFetch` does
+ * follow redirects, but it also reads the whole body to a cap, which never
+ * returns on a stream that is open by design — so the SSE GET cannot use it and
+ * has to redirect here. Each hop is re-vetted (`vetUrl` + `vetResolved`) exactly
+ * as the first, and anything origin-bound is dropped when the host changes.
+ */
+async function dial(
+  url: string,
+  init: { method: string; headers: Record<string, string>; body?: string; signal: AbortSignal },
+  maxRedirects = 3,
+): Promise<Response> {
+  let current = url;
+  let headers = init.headers;
+  for (let hop = 0; hop <= maxRedirects; hop += 1) {
+    const vetted = vetUrl(current);
+    if (!vetted.allowed) throw new Error(`blocked: ${vetted.reason}`);
+    const resolved = await vetResolved(vetted.url.hostname);
+    if (!resolved.allowed) throw new Error(`blocked: ${resolved.reason}`);
+    const res = await pinnedFetch(vetted.url.toString(), { ...init, headers, addresses: resolved.addresses });
+    if (res.status >= 300 && res.status < 400) {
+      const location = res.headers.get("location");
+      if (location === null) return res;
+      let next: URL;
+      try {
+        next = new URL(location, vetted.url);
+      } catch {
+        return res;
+      }
+      if (next.origin !== vetted.url.origin) {
+        headers = Object.fromEntries(Object.entries(headers).filter(([k]) => !ORIGIN_BOUND.has(k.toLowerCase())));
+      }
+      await res.body?.cancel().catch(() => undefined);
+      current = next.toString();
+      continue;
+    }
+    return res;
+  }
+  throw new Error(`more than ${maxRedirects} redirects`);
 }
 
 /**
@@ -109,10 +163,24 @@ export async function probeViaSse(
     status = res.status;
     const ctype = res.headers.get("content-type") ?? "";
     if (!res.ok || !ctype.includes("text/event-stream")) {
-      return { ok: false, messageUrl: null, replies, status, reason: `GET did not open a stream (${status}, ${ctype || "no content-type"})`, elapsedMs: Date.now() - started };
+      // 401/403 is the server ANSWERING and declining us — an auth wall, which
+      // is a known and rateable state, not a dead endpoint. Surfaced so the
+      // caller files it as `auth-walled` rather than as one more no-reading, the
+      // same line probe.ts draws for the streamable transport.
+      const isAuth = status === 401 || status === 403;
+      return {
+        ok: false,
+        messageUrl: null,
+        replies,
+        status,
+        reason: `GET did not open a stream (${status}, ${ctype || "no content-type"})`,
+        elapsedMs: Date.now() - started,
+        authStatus: isAuth ? status : null,
+        wwwAuthenticate: isAuth ? res.headers.get("www-authenticate") : null,
+      };
     }
     if (res.body === null) {
-      return { ok: false, messageUrl: null, replies, status, reason: "stream had no body", elapsedMs: Date.now() - started };
+      return { ok: false, messageUrl: null, replies, status, reason: "stream had no body", elapsedMs: Date.now() - started, authStatus: null, wwwAuthenticate: null };
     }
 
     const reader = res.body.getReader();
@@ -145,7 +213,7 @@ export async function probeViaSse(
       bytes += value?.byteLength ?? 0;
       if (bytes > maxBytes) {
         void reader.cancel();
-        return { ok: false, messageUrl, replies, status, reason: "stream exceeded byte cap", elapsedMs: Date.now() - started };
+        return { ok: false, messageUrl, replies, status, reason: "stream exceeded byte cap", elapsedMs: Date.now() - started, authStatus: null, wwwAuthenticate: null };
       }
       buffer += decoder.decode(value, { stream: true });
       const { frames, rest } = parseFrames(buffer);
@@ -196,6 +264,8 @@ export async function probeViaSse(
       status,
       reason: messageUrl === null ? "stream opened but no endpoint event arrived" : null,
       elapsedMs: Date.now() - started,
+      authStatus: null,
+      wwwAuthenticate: null,
     };
   } catch (err) {
     const aborted = controller.signal.aborted;
@@ -206,6 +276,8 @@ export async function probeViaSse(
       status,
       reason: aborted ? "the exchange exceeded its deadline" : String(err).slice(0, 160),
       elapsedMs: Date.now() - started,
+      authStatus: null,
+      wwwAuthenticate: null,
     };
   } finally {
     clearTimeout(timer);

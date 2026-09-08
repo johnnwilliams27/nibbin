@@ -133,6 +133,24 @@ const workers = Array.from({ length: CONCURRENCY }, async () => {
           writeFileSync(`transcripts/${j.name}.json`, JSON.stringify(t, null, 2));
           recovered += 1;
           saved = true;
+        } else if (r.authStatus !== null) {
+          // The stream open was DECLINED (401/403), not dead. That is an auth
+          // wall — a known, rateable state — so it moves out of "no reading"
+          // into the walled bucket instead of being retried into a fake death.
+          const t: ProbeTranscript = {
+            transcript_version: "1",
+            probe_id: "probe:mcp:v1",
+            endpoint: j.url,
+            probed_at: `${new Date().toISOString().slice(0, 19)}Z`,
+            attempts: [{ attempt: 1, ts: `${new Date().toISOString().slice(0, 19)}Z`, reachable: true, status: r.authStatus, reason: null, elapsedMs: r.elapsedMs }],
+            handshake: { ok: false, protocolVersion: null, serverName: null, serverVersion: null, instructions: null, reason: `authentication required (HTTP ${r.authStatus})` },
+            registry: j.entry.facts,
+            auth: { required: true, status: r.authStatus, scheme: r.wwwAuthenticate, hop: "initialize" },
+            transport: "sse",
+          } as unknown as ProbeTranscript;
+          writeFileSync(`transcripts/${j.name}.json`, JSON.stringify(t, null, 2));
+          walled += 1;
+          saved = true;
         }
       }
       if (!saved) {
