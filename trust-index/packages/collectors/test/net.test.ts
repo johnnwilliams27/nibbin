@@ -664,3 +664,43 @@ describe("the transport does not change what a subject sees", () => {
     expect(requests[0]?.headers["transfer-encoding"]).toBeUndefined();
   });
 });
+
+describe("a refusal's own words survive it", () => {
+  // A 401 used to reach the caller as the string "HTTP 401" and nothing else.
+  // Everything an auth triage needs — the WWW-Authenticate scheme, the RFC 9728
+  // resource_metadata pointer, the operator's signup URL, whether the wall is a
+  // missing account or a spent allowance — is in the parts that were dropped.
+  it("keeps the body and the headers of a non-2xx", async () => {
+    const { port } = await loopbackServer((_req, res) => {
+      res.writeHead(401, {
+        "content-type": "application/json",
+        "www-authenticate": 'Bearer resource_metadata="https://example.invalid/.well-known/oauth-protected-resource", scope="mcp:use"',
+      });
+      res.end('{"error":"authorization_required","error_description":"Get a free API key at https://example.invalid/mcp"}');
+    });
+    const out = await guardedFetch(`http://subject.invalid:${port}/mcp`, {
+      // The guard refuses loopback, so the fixture is reached the way the other
+      // loopback tests reach it: a public answer for the vetting, and the real
+      // transport dialled at the address the fixture is actually on.
+      resolver: publicDns,
+      transport: (url, init) => pinnedFetch(url, { ...init, addresses: ["127.0.0.1"] }),
+    });
+    expect(out.ok).toBe(false);
+    if (out.ok) throw new Error("unreachable");
+    expect(out.reason).toBe("HTTP 401");
+    expect(out.status).toBe(401);
+    expect(out.reason).toBe("HTTP 401");
+    expect(out.body).toContain("Get a free API key");
+    expect(out.headers?.get("www-authenticate")).toContain("resource_metadata");
+  });
+
+  it("leaves them absent when no response was ever read", async () => {
+    // A blocked host, a DNS refusal or a deadline never got a body. Absent must
+    // read as "not recorded", never as "the server said nothing".
+    const out = await guardedFetch("http://127.0.0.1:1/mcp");
+    expect(out.ok).toBe(false);
+    if (out.ok) throw new Error("unreachable");
+    expect(out.body).toBeUndefined();
+    expect(out.headers).toBeUndefined();
+  });
+});

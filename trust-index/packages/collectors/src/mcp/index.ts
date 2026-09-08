@@ -46,7 +46,9 @@ export type {
   ToolInformativeness,
   CapEvent,
 } from "./select.js";
-export { callTool, synthesizeInput, assertCallable, NotCallableError } from "./invoke.js";
+export { callTool, synthesizeInput, assertCallable, diagnoseInvocation, NotCallableError } from "./invoke.js";
+export { classifyToolAuth, handshakeWalled, toolSurfaceWalled, authStanding, wallLocation } from "./auth.js";
+export type { AuthStanding } from "./auth.js";
 export { runBattery, INJECTION_PAYLOAD, INJECTION_TOKEN, NONSENSE_QUERY } from "./battery.js";
 export type { BatteryOutcome, BatteryOptions } from "./battery.js";
 export type { ToolCallResult, SynthesizedInput, CallOptions } from "./invoke.js";
@@ -60,5 +62,6 @@ export type {
   ToolDeclaration,
   RegistryFacts,
   AuthResult,
+  ToolAuthResult,
   RateLimitResult,
 } from "./transcript.js";

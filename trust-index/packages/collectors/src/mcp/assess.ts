@@ -31,6 +31,7 @@
  */
 import type { AssessmentGap, Observation } from "@trust-index/types";
 import { CAPABILITIES } from "../capability.js";
+import { handshakeWalled } from "./auth.js";
 import { classifyTools } from "./shape.js";
 import type { ProbeTranscript, ToolDeclaration } from "./transcript.js";
 
@@ -356,7 +357,12 @@ export function assessTranscript(t: ProbeTranscript, asOfTs: string): Observatio
   // demonstrated either, and the thing that ran out was OURS. Recording
   // handshake=0 there would be the auth error again with a different status
   // code — see RateLimitResult.
-  const authBlocked = t.auth?.required === true;
+  // handshakeWalled, not `auth.required` read loosely: this branch is about
+  // whether the HANDSHAKE was refused, which is exactly what that field
+  // measures and exactly what these four checks depend on. A server open at
+  // `initialize` and walled at every tool has a judgeable handshake and an
+  // unjudgeable tool surface, and the two must not be collapsed. See auth.ts.
+  const authBlocked = handshakeWalled(t);
   const rateLimited = t.rate_limit?.limited === true;
   const cannotJudge = authBlocked || rateLimited;
   if (t.handshake !== null && !cannotJudge) {
@@ -654,7 +660,7 @@ export function assessTranscript(t: ProbeTranscript, asOfTs: string): Observatio
  */
 export function transcriptGaps(t: ProbeTranscript): AssessmentGap[] {
   const gaps: AssessmentGap[] = [];
-  if (t.auth?.required === true) {
+  if (handshakeWalled(t)) {
     for (const [dimension, check] of [
       ["protocol_conformance", "handshake"],
       ["protocol_conformance", "tools_list"],
@@ -666,7 +672,7 @@ export function transcriptGaps(t: ProbeTranscript): AssessmentGap[] {
         check,
         cause: "harness_capability_missing",
         capability: CAPABILITIES.mcp_account,
-        detail: `endpoint requires authentication (HTTP ${t.auth.status ?? "401"}); no account held for ${t.endpoint}`,
+        detail: `endpoint requires authentication at the handshake (HTTP ${t.auth?.status ?? "401"}); no account held for ${t.endpoint}`,
       });
     }
     return gaps;

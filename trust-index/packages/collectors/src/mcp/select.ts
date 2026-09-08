@@ -82,6 +82,7 @@
  * else's server time and is a decision for the account owner, not a default.
  */
 import { isCredentialParam } from "./assess.js";
+import { handshakeWalled } from "./auth.js";
 import { firstStringParameter, parameterKind } from "./battery.js";
 import { synthesizeInput } from "./invoke.js";
 import { orderingKey } from "./probe-identity.js";
@@ -430,7 +431,10 @@ export function selectToolsForAssessment(
       skippedServers.push({ server, endpoint: transcript.endpoint, reason: "tools/list did not succeed" });
       continue;
     }
-    if (transcript.auth?.required === true) {
+    // The handshake wall, specifically. A tool-surface wall leaves a usable
+    // tools/list to select from, and selecting from it is how we learn the
+    // wall is there at all.
+    if (handshakeWalled(transcript)) {
       skippedServers.push({ server, endpoint: transcript.endpoint, reason: "endpoint requires authentication" });
       continue;
     }

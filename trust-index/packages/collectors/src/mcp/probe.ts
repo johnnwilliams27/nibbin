@@ -196,7 +196,11 @@ export async function probeMcpServer(
       // job. Everything downstream of the handshake becomes unassessable, and
       // the rubric turns that into a harness gap rather than a failing score.
       if (res.status === 401 || res.status === 403) {
-        auth = { required: true, status: res.status, scheme: null };
+        // The challenge survives the failure now (see HttpOutcome), so `scheme`
+        // stops being a field we declared and never filled. It carries the
+        // scheme, and on a spec-compliant server the RFC 9728
+        // `resource_metadata` pointer that the OAuth triage starts from.
+        auth = { required: true, status: res.status, scheme: res.headers?.get("www-authenticate") ?? null, hop: "initialize" };
         attempts.push({ attempt: i, ts, reachable: true, status: res.status, reason: null, elapsedMs: res.elapsedMs });
         if (handshake === null) {
           handshake = {
@@ -237,7 +241,14 @@ export async function probeMcpServer(
       continue;
     }
     attempts.push({ attempt: i, ts, reachable: true, status: res.status, reason: null, elapsedMs: res.elapsedMs });
-    if (auth === null) auth = { required: false, status: res.status, scheme: null };
+    // THE HANDSHAKE was not walled. That is all this records, and `hop` says so
+    // in the data. It is not evidence that the tools are callable: `initialize`
+    // is a capability exchange, and on most servers in this population it is
+    // open while every `tools/call` is refused. The transcript's `tool_auth`
+    // answers the tool question and is left ABSENT here, because this prober
+    // does not call tools and an unmeasured surface must not read as an open
+    // one. See src/mcp/auth.ts.
+    if (auth === null) auth = { required: false, status: res.status, scheme: null, hop: "initialize" };
 
     // Only the first successful attempt needs the protocol work; the rest are
     // measuring availability and should not hammer the server further.

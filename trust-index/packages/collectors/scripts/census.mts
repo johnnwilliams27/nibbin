@@ -26,6 +26,7 @@
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { CAPABILITIES, type CapabilityId } from "../src/capability.js";
+import { handshakeWalled } from "../src/mcp/auth.js";
 import { classifyTools, requiredCapabilities, testability } from "../src/mcp/shape.js";
 import { listServers, type RegistryEntry } from "../src/mcp/registry.js";
 import { probeMcpServer } from "../src/mcp/probe.js";
@@ -184,7 +185,7 @@ async function phaseClassify(entries: RegistryEntry[]): Promise<void> {
       // the point of failure. The first run counted these as HTTP 401 failures
       // and they never reached classification, so the largest provisioning
       // need by an order of magnitude was invisible in the provisioning report.
-      if (t.auth?.required === true) {
+      if (handshakeWalled(t)) {
         authRequired += 1;
         authHosts.add(hostOf(endpoint));
         const set = perCapability.get(CAPABILITIES.mcp_account) ?? new Set<string>();

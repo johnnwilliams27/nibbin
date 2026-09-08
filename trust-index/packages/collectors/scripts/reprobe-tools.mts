@@ -9,6 +9,7 @@
  * Usage: npx tsx scripts/reprobe-tools.mts --i-have-approval --tools a,b,c --out x.json
  */
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { handshakeWalled } from "../src/mcp/auth.js";
 import { classifyTool } from "../src/mcp/shape.js";
 import { runBattery, type BatteryOutcome } from "../src/mcp/battery.js";
 import { parseRpcBody } from "../src/mcp/probe.js";
@@ -33,7 +34,7 @@ const out: Array<BatteryOutcome & { server: string; endpoint: string }> = [];
 
 for (const f of readdirSync("transcripts").filter((x) => x.endsWith(".json")).sort()) {
   const t = JSON.parse(readFileSync(`transcripts/${f}`, "utf8")) as ProbeTranscript;
-  if (t.tools?.ok !== true || t.auth?.required === true) continue;
+  if (t.tools?.ok !== true || handshakeWalled(t)) continue;
   for (const d of t.tools.declared) {
     if (!wanted.has(d.name)) continue;
     const c = classifyTool(d);
