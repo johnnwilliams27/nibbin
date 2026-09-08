@@ -108,10 +108,74 @@ export type RegistryFacts = {
  * than an observation.
  */
 export type AuthResult = {
+  /**
+   * THE HANDSHAKE required authentication. Not the tools.
+   *
+   * Read this field for what it measures and nothing else. It is set from the
+   * `initialize` hop, and `initialize` is genuinely open on most MCP servers —
+   * so `required: false` means "we got a handshake", never "this server needs
+   * no credential". Six servers worked by hand in the auth triage
+   * (lumify, chronary, creativescope, klarix, framethrower, drillr) each record
+   * `required: false` here and wall every single `tools/call`. The wall moved
+   * one hop downstream and the field did not follow it.
+   *
+   * `tool_auth` on the transcript is the field that answers the tool question,
+   * and its absence means UNMEASURED rather than open.
+   */
   required: boolean;
   status: number | null;
   /** WWW-Authenticate or equivalent, when the server says how to authenticate. */
   scheme: string | null;
+  /**
+   * Which hop established this. Always `initialize` — named in the data rather
+   * than only in this comment, so a reader of a stored transcript can see the
+   * scope of the claim without reading the prober.
+   *
+   * Optional: transcripts persisted before this field existed do not carry it,
+   * and they were all `initialize` too.
+   */
+  hop?: "initialize";
+};
+
+/**
+ * Whether `tools/call` is walled — decided on the BODY, not the status.
+ *
+ * The separate field exists because the two walls are separate facts and were
+ * being reported as one. A server can be open at `initialize` and closed at
+ * every tool; that is the common case, not the exotic one. And the wall
+ * frequently arrives as a JSON-RPC error inside an HTTP 200 (lumify:
+ * `-32001 Unauthorized: provide a valid Lumify API key as a Bearer token`,
+ * served with a 200), so a classifier watching HTTP status alone sees an open
+ * server answering cheerfully.
+ *
+ * Derived by `classifyToolAuth`, which delegates every per-call judgement to
+ * `diagnoseInvocation` rather than inventing a second vocabulary for the same
+ * distinction. A rate limit is not a wall: an allowance we spent clears by
+ * waiting, and conflating the two is how echoloc got recorded as needing an
+ * account it did not need.
+ *
+ * ABSENT MEANS UNMEASURED. Never read a missing `tool_auth` as an open tool
+ * surface; that is the exact substitution this type exists to prevent.
+ */
+export type ToolAuthResult = {
+  walled: boolean;
+  /** Counts by `diagnoseInvocation` verdict across every call considered. The audit trail for `walled`. */
+  verdicts: Record<string, number>;
+  /** How many calls were considered. Zero is impossible: with no calls there is no ToolAuthResult. */
+  calls: number;
+  /** The tool whose refusal is quoted in `evidence`. */
+  tool: string | null;
+  /** Verbatim, so a reader never has to take the classification on trust. */
+  evidence: string | null;
+  /**
+   * Where the refusal appeared. `http_status` for a 401/403, `in_band` for a
+   * JSON-RPC error or an `isError` payload inside a 2xx. Recorded because the
+   * in-band form is the one that fooled the old classifier, and counting it is
+   * the only way to know how much of the population it hides.
+   */
+  signal: "http_status" | "in_band" | null;
+  /** ISO-8601 UTC of the calls this was derived from. */
+  measured_at: string;
 };
 
 /**
@@ -149,8 +213,13 @@ export type ProbeTranscript = {
   /** null when the handshake never succeeded. */
   tools: ToolsResult | null;
   registry: RegistryFacts | null;
-  /** null when no attempt reached a status that could establish it. */
+  /** Handshake auth only. null when no attempt reached a status that could establish it. See AuthResult. */
   auth: AuthResult | null;
+  /**
+   * Tool-surface auth, from `tools/call`. Absent or null means UNMEASURED —
+   * the probe does not call tools, so only a run that did can fill this.
+   */
+  tool_auth?: ToolAuthResult | null;
   /** Present, and `limited: true`, when the endpoint rate-limited us. See RateLimitResult. */
   rate_limit?: RateLimitResult | null;
 };

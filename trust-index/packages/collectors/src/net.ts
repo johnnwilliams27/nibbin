@@ -193,7 +193,22 @@ export async function vetResolved(
 
 export type HttpOutcome =
   | { ok: true; status: number; headers: Headers; body: string; elapsedMs: number }
-  | { ok: false; reason: string; status: number | null; elapsedMs: number };
+  /**
+   * A failure still carries what the server SAID, when it said anything.
+   *
+   * `headers` and `body` were dropped on every non-2xx, so a caller got the
+   * string "HTTP 401" and nothing else. That threw away the two things an auth
+   * classifier most needs: the `WWW-Authenticate` challenge (the scheme, the
+   * realm, the RFC 9728 resource metadata pointer) and the operator's own error
+   * copy, which is usually where the signup URL and the free-tier terms are
+   * written. The auth triage had to re-fetch six servers by hand to read text
+   * we had already received and discarded.
+   *
+   * Both are optional because the early failures — a blocked host, a DNS
+   * refusal, a deadline, an oversized body — never got a response to read. An
+   * absent `body` means "no response was read", never "the response was empty".
+   */
+  | { ok: false; reason: string; status: number | null; elapsedMs: number; headers?: Headers; body?: string };
 
 /**
  * What the transport is told. `addresses` is the whole point: the vetted answer
@@ -570,7 +585,9 @@ export async function guardedFetch(raw: string, options: GuardedFetchOptions = {
       return { ok: false, reason, status: res.status, elapsedMs: elapsed() };
     }
     if (!res.ok) {
-      return { ok: false, reason: `HTTP ${res.status}`, status: res.status, elapsedMs: elapsed() };
+      // The body was already read, above, and used to be thrown away here. See
+      // HttpOutcome: a 401's own words are evidence, not noise.
+      return { ok: false, reason: `HTTP ${res.status}`, status: res.status, elapsedMs: elapsed(), headers: res.headers, body: text };
     }
     return { ok: true, status: res.status, headers: res.headers, body: text, elapsedMs: elapsed() };
   }

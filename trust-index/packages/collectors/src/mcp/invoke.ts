@@ -223,7 +223,13 @@ const RATE_LIMIT =
 /** Read a completed call and decide whose failure it was. */
 export function diagnoseInvocation(r: ToolCallResult): InvocationDiagnosis {
   if (r.ok && r.isError !== true) return { verdict: "worked" };
-  const blob = `${r.reason ?? ""} ${r.text ?? ""}`.slice(0, 4000);
+  // `errorBody` and `authChallenge` join the blob because a wall states its
+  // terms in the body far more often than in the status line. Reading only
+  // `reason` meant a 401 whose body says "anonymous preview limit reached" was
+  // indistinguishable from one that says "no account exists" — the first is our
+  // spent allowance, the second is a wall, and the ordering below only works if
+  // both sentences are in front of it.
+  const blob = `${r.reason ?? ""} ${r.text ?? ""} ${r.errorBody ?? ""} ${r.authChallenge ?? ""}`.slice(0, 4000);
   const hit = (re: RegExp): string => (blob.match(re)?.[0] ?? "").slice(0, 80);
 
   // Order matters. A 401 whose body also says "not found" is an auth wall.
@@ -308,6 +314,22 @@ export type ToolCallResult = {
   errorInPayload: boolean;
   /** The tool declined rather than answered. Correct behaviour, and not an answer. */
   refused: boolean;
+  /**
+   * What the server said when the transport itself failed.
+   *
+   * Distinct from `text`, which is the tool's own content blocks and feeds the
+   * fingerprint, the substantive test and the judge. This is the raw body of a
+   * non-2xx response — usually the operator's error copy, and usually the only
+   * place the signup URL, the free-tier terms and the vendor's own name for the
+   * wall are written. It used to be discarded in net.ts, so an auth wall
+   * reached the diagnosis as the four characters "401".
+   *
+   * Optional in practice: results stored before this field existed do not carry
+   * it, and every reader must treat absent as "not recorded".
+   */
+  errorBody?: string | null;
+  /** The `WWW-Authenticate` challenge, when the server sent one. The scheme, and often an RFC 9728 pointer. */
+  authChallenge?: string | null;
 };
 
 export class NotCallableError extends Error {}
@@ -384,6 +406,8 @@ export async function callTool(
     substantive: false,
     errorInPayload: false,
     refused: false,
+    errorBody: null,
+    authChallenge: null,
   };
 
   const headers: Record<string, string> = {
@@ -406,7 +430,17 @@ export async function callTool(
     ...(options.resolver === undefined ? {} : { resolver: options.resolver }),
   });
 
-  if (!res.ok) return { ...base, reason: res.reason, elapsedMs: res.elapsedMs };
+  if (!res.ok) {
+    return {
+      ...base,
+      reason: res.reason,
+      elapsedMs: res.elapsedMs,
+      // Capped hard: this is an error page as often as it is JSON, and an
+      // operator's 401 template can be a whole HTML document.
+      errorBody: res.body === undefined ? null : res.body.slice(0, 2_000),
+      authChallenge: res.headers?.get("www-authenticate") ?? null,
+    };
+  }
 
   const parsed = options.parseBody(res.body, res.headers.get("content-type"));
   const common = { elapsedMs: res.elapsedMs, responseBytes: res.body.length };
