@@ -10,6 +10,7 @@ import { CATEGORY_BY_SLUG } from '@/lib/categories';
 import { agentHref } from '@/lib/routes';
 import { cardRating, evidenceSummary } from '@/lib/evidence';
 import { COVERAGE_COPY, sharedEndpointNote, timestamp } from '@/lib/format';
+import { ListingGroupBadge, ListingGroupMemberNote } from './ListingGroups';
 
 const categoryIcons: Record<CategorySlug, LucideIcon> = {
   rebalancing: ArrowDownUp, grid_trading: Grid2X2, yield: ChartNoAxesCombined, health_factor: ShieldCheck,
@@ -67,6 +68,8 @@ export function AgentCard({ agent }: { agent: Agent; rank?: number }) {
         <AgentAvatar imageUrl={agent.image_url} name={agent.name} />
       </div>
       <p className="mt-3 line-clamp-2 text-[15px] leading-relaxed text-[var(--fg-muted)]">{agent.description || 'No description provided.'}</p>
+      <ListingGroupBadge agent={agent} />
+      <ListingGroupMemberNote agent={agent} />
       <div className="mt-auto pt-6">
         <TrustIndexStatus agent={agent} showCoverage={false} />
         <div className="mt-2"><BuyerReviewSummary agent={agent} /></div>
