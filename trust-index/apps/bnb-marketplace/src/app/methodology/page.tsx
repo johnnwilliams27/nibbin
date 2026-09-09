@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
-import { allAgents, loadDataset } from '@/lib/data';
+import { allAgents, listingGroupCount, loadDataset } from '@/lib/data';
 import { populationSummary } from '@/lib/evidence';
 import { num, timestamp } from '@/lib/format';
 
@@ -10,6 +10,7 @@ export const metadata: Metadata = { title: 'How we assess agents', description: 
 export default function MethodologyPage() {
   const stats = populationSummary(allAgents());
   const { generated_at, source } = loadDataset();
+  const groupCount = listingGroupCount();
   return (
     <div className="mx-auto max-w-[900px] px-5 py-12">
       <h1 className="text-[36px] tracking-tight">How we assess agents</h1>
@@ -25,7 +26,7 @@ export default function MethodologyPage() {
           <li><strong>Group declared capabilities.</strong> Deterministic rules match names, descriptions, and declared capabilities to twelve categories, from DeFi and payments to research and development. Categories describe operator claims, not verified competence. Unmatched listings remain visible as Other.</li>
           <li><strong>Link endpoint evidence.</strong> A probe result belongs to the endpoint we checked. Several registrations may reference that endpoint; reusing its result does not mean each agent was independently tested.</li>
         </ol>
-        <p>The published snapshot contains {num(stats.listed)} listings. Registrations absent from it may have unresolved metadata or declarations outside our supported interfaces. Their absence is not a safety verdict. Registration counts, listings, and independently tested services are different units.</p>
+        <p>The published snapshot contains {num(stats.listed)} listings. Duplicates are listed within top-level agent aggregation and give us a working list of {num(groupCount)}. Registrations absent from it may have unresolved metadata or declarations outside our supported interfaces. Their absence is not a safety verdict. Registration counts, listings, and independently tested services are different units.</p>
       </Section>
       <Section id="evidence" title="What we have—and have not—checked">
         <p>We first check the declared MCP or A2A interface: can we reach it, exchange protocol messages, and discover its reported tools or skills? A retrieved card, a confirmed exchange, an authentication wall, and a failed reading remain distinct observations.</p>

@@ -199,11 +199,29 @@ export function pageableAgents(): Agent[] {
  * outright. The dataset is already cached and immutable for the life of the
  * process, so the grouping over it is too.
  */
-let groupCache: Map<string, ListingGroup> | null = null;
+let groupCache: { groups: ListingGroup[]; index: Map<string, ListingGroup> } | null = null;
+
+function listingGroupCache() {
+  if (groupCache === null) {
+    const groups = buildGroups(pageableAgents());
+    groupCache = { groups, index: groupIndex(groups) };
+  }
+  return groupCache;
+}
 
 export function listingGroupIndex(): Map<string, ListingGroup> {
-  groupCache ??= groupIndex(buildGroups(pageableAgents()));
-  return groupCache;
+  return listingGroupCache().index;
+}
+
+/**
+ * How many distinct listings the pool collapses to.
+ *
+ * NOT the size of the index above, which is keyed by agent_id and so has one
+ * entry per registration. This is the number the browse view paginates over,
+ * and the methodology page quotes it against the raw listing count.
+ */
+export function listingGroupCount(): number {
+  return listingGroupCache().groups.length;
 }
 
 export function isAssessed(a: Agent): boolean {
