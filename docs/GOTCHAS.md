@@ -22,6 +22,20 @@
   auth walls and suggested a large misclassification; run against all 1,930, the corrected probe
   still could not reach 1,888 of them — the real wall rate was ~1%. A 5-server sample is a
   hypothesis, not a rate.
+- An uncapped `Retry-After` is a self-inflicted hang. 8004scan answers every 429 with
+  `retry-after: 3600`, so `time.sleep(max(retry_after, backoff))` parks a worker for a full
+  hour on its FIRST throttle; with a 16-thread pool and 8 retries the run goes silent for
+  hours and reads as crashed rather than throttled. Honour Retry-After, but cap it (90s) and
+  let the run END with honest `rate_limited` records — a resumable fetcher that skips cached
+  files loses nothing by exiting early, and everything by looking dead.
+- Recording a gap correctly is only half of rule 1; the CONSUMER has to carry it. `fetch_details`
+  wrote all 1,476 unfetched agents to `detail_failures.json` as `rate_limited` (correct), but
+  `build_dataset.py` loaded that set and used it in a single `print()` — it never reached the
+  agent record, and there is no `detail_status` field. So "we were rate-limited" and "declares no
+  endpoint" both ship as `endpoint: null`, and downstream `len([a for a in agents if not
+  a["endpoint"]])` turned 232 real facts into a published 1,708. Whenever a gap is recorded in a
+  side file, grep for every place the null it produces is COUNTED — the violation appears there,
+  not where the gap was written.
 - The probe observer's own track record (`total_observations`, `distinct_subjects`,
   `max_observations_single_day` in daily.mts) was hardcoded to the 600-subject pilot and is
   covered by `inputs_hash`. Stale values put a false claim about our own coverage into the very

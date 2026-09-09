@@ -21,6 +21,10 @@ DET = os.path.join(RAW, "detail")
 _lock = threading.Lock()
 _done = [0]
 
+# Longest we will ever sleep on a single 429, in seconds, however large the
+# server's Retry-After is. See the 429 branch in fetch_one().
+RETRY_AFTER_CAP = 90
+
 
 def detail_path(chain_id, token_id):
     return os.path.join(DET, f"{chain_id}_{token_id}.json")
@@ -59,7 +63,17 @@ def fetch_one(cand, tries=8):
                     ra = int(e.headers.get("Retry-After", 0))
                 except Exception:
                     ra = 0
-                time.sleep(max(ra, min(5 * (2 ** i), 60)))
+                # Honour Retry-After but CAP it. This API sends
+                # `retry-after: 3600` on every 429, and an uncapped
+                # sleep(3600) parks the worker for a full hour on its first
+                # throttle -- with tries=8 and a 16-thread pool, the whole run
+                # goes silent for hours and looks hung rather than throttled.
+                # That is exactly what happened on the 05:05 run: 8 records
+                # fetched, then every thread slept. Capping means a run ends
+                # promptly with an honest `rate_limited` record instead, and
+                # the caller re-runs on the next quota window -- which is free,
+                # because a cached detail file is never re-fetched.
+                time.sleep(min(max(ra, min(5 * (2 ** i), 60)), RETRY_AFTER_CAP))
                 continue
             time.sleep(min(1.5 * (2 ** i), 20))
     return ("failed", cand["agent_id"], repr(last)[:300])
