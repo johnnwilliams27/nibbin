@@ -9,6 +9,7 @@ import { HirePanel } from '@/components/HirePanel';
 import { CapabilityList } from '@/components/CapabilityList';
 import { evidenceSummary } from '@/lib/evidence';
 import { BackToAgents } from '@/components/BackToAgents';
+import { RelatedRegistrations } from '@/components/RelatedRegistrations';
 
 /**
  * `output: export` refuses to build a dynamic route that produces no paths, and
@@ -264,6 +265,8 @@ export default async function AgentPage({ params }: { params: Promise<{ chain: s
           <ClassificationCard agent={agent} />
         </div>
       </div>
+
+      <RelatedRegistrations agent={agent} pool={pageableAgents()} />
     </div>
   );
 }

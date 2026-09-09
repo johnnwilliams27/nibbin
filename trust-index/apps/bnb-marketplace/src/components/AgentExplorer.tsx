@@ -11,7 +11,6 @@ import { AgentTable } from './AgentTable';
 import { EmptyState } from './EmptyState';
 import { FilterSelect } from './FilterSelect';
 import { BuyerReviewsProvider } from './BuyerReviews';
-import { ListingGroupsProvider } from './ListingGroups';
 import { buildGroups, collapse } from '@/lib/grouping';
 import { FILTERS, SORTS, discoverAgents, readExplorerState, writeExplorerState, type ExplorerState, type FilterKey, type SortKey } from '@/lib/sorting';
 import { pageAfterChange, pageNumbers, paginateGroups, readPage, writePage } from '@/lib/pagination';
@@ -33,7 +32,6 @@ export function AgentExplorer({ agents, reference, showCategoryFilter = false, d
   const activeTransition = useRef<{ skipTransition?: () => void } | null>(null);
   const pathname = usePathname();
   const { query, sort, filters, categories, view } = state;
-  const [expandedGroups, setExpandedGroups] = useState<ReadonlySet<string>>(() => new Set());
   const matches = useMemo(() => discoverAgents(agents, state), [agents, state]);
   /*
     Group AFTER filtering and sorting, never before.
@@ -47,27 +45,29 @@ export function AgentExplorer({ agents, reference, showCategoryFilter = false, d
     Grouping ranked and unranked separately splits a group down the middle: the
     sort puts scored rows in `ranked` and unscored in `unranked`, so
     bubbleaiagent's twelve deployments became a group of the ten that scored and
-    a separate group of the two that did not. The card then read "10
-    deployments... 10 rated, all at 77.5" and the two we never assessed vanished
-    from the summary entirely — our gap deleted by a pagination detail, which is
-    the one thing this index is not allowed to do.
+    a separate group of the two that did not — and the two we never assessed
+    disappeared from the count. So the pool is grouped whole and each lead is
+    returned to the half its own row came from. `buildGroups` preserves input
+    order and ranked rows come first, so a group with any ranked member leads
+    with it.
 
-    So the pool is grouped whole and each lead is returned to the half its own
-    row came from. `buildGroups` preserves input order and ranked rows come
-    first, so a group containing any ranked member leads with it.
+    The browse view only ever shows leads. The registrations behind a group are
+    listed on the lead's detail page, where there is room to say what they are:
+    a card is for choosing between agents, and a paragraph about deployment
+    topology on every card is noise at exactly the moment someone is scanning.
   */
-  const allGroups = useMemo(
+  const listingGroups = useMemo(
     () => buildGroups([...matches.ranked, ...matches.unranked]),
     [matches],
   );
   const groups = useMemo(() => {
-    const rows = collapse([...matches.ranked, ...matches.unranked], allGroups, expandedGroups);
+    const rows = collapse([...matches.ranked, ...matches.unranked], listingGroups, new Set());
     const isRanked = new Set(matches.ranked.map((a) => a.agent_id));
     return {
       ranked: rows.filter((a) => isRanked.has(a.agent_id)),
       unranked: rows.filter((a) => !isRanked.has(a.agent_id)),
     };
-  }, [matches, allGroups, expandedGroups]);
+  }, [matches, listingGroups]);
   const results = paginateGroups(groups.ranked, groups.unranked, requestedPage);
   const activeCount = filters.length + categories.length + (query.trim() ? 1 : 0);
   const secondaryCount = filters.filter((key) => !primaryEvidence.includes(key)).length;
@@ -128,19 +128,6 @@ export function AgentExplorer({ agents, reference, showCategoryFilter = false, d
 
   function clearFilters() { update({ query: '', filters: [], categories: [] }); }
 
-  /*
-    Expanding a group grows the result list, so the current page can end up past
-    the end. paginateGroups already clamps, and the reader stays on the card they
-    opened rather than being scrolled somewhere else.
-  */
-  function toggleGroup(key: string) {
-    setExpandedGroups((open) => {
-      const next = new Set(open);
-      if (next.has(key)) next.delete(key); else next.add(key);
-      return next;
-    });
-  }
-
   function renderAgents(rows: Agent[]) {
     return view === 'grid'
       ? <AgentCardGrid agents={rows} />
@@ -148,7 +135,7 @@ export function AgentExplorer({ agents, reference, showCategoryFilter = false, d
   }
 
   return (
-    <BuyerReviewsProvider agents={[...results.ranked, ...results.unranked, ...reference]}><ListingGroupsProvider groups={allGroups} expanded={expandedGroups} onToggle={toggleGroup}><div id="explorer" className="scroll-mt-28">
+    <BuyerReviewsProvider agents={[...results.ranked, ...results.unranked, ...reference]}><div id="explorer" className="scroll-mt-28">
       <div className="flex flex-wrap items-end gap-3">
         <label className="min-w-0 flex-1 basis-[280px]">
           <span className="sr-only">Search agents</span>
@@ -217,7 +204,7 @@ export function AgentExplorer({ agents, reference, showCategoryFilter = false, d
         <p className="mb-4 text-[14px] text-[var(--fg-muted)]">Our deployments are excluded from independent results and ratings.</p>
         {renderAgents(reference)}
       </details> : null}
-    </div></ListingGroupsProvider></BuyerReviewsProvider>
+    </div></BuyerReviewsProvider>
   );
 }
 

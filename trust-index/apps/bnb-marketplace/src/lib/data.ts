@@ -1,6 +1,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { CATEGORIES } from './categories';
+import { buildGroups, groupIndex, type ListingGroup } from './grouping';
 import type { Agent, CategorySlug, Coverage, Dataset } from './types';
 import { routeTokenId } from './routes';
 import { normaliseDetailStatus, isCallable, isEndpointUnknown, isNotCallable } from './detail-state';
@@ -187,6 +188,22 @@ export function pageableAgents(): Agent[] {
   const listed = listedAgents();
   const seen = new Set(listed.map((a) => a.agent_id));
   return [...listed, ...referenceAgents().filter((a) => !seen.has(a.agent_id))];
+}
+
+/**
+ * Listing groups over the pageable pool, computed ONCE per process.
+ *
+ * The static export renders one page per agent, and each needs the group its
+ * agent belongs to. Calling buildGroups per page is O(n) work n times: with
+ * 5,415 pages it took the export from seconds to minutes and then failed it
+ * outright. The dataset is already cached and immutable for the life of the
+ * process, so the grouping over it is too.
+ */
+let groupCache: Map<string, ListingGroup> | null = null;
+
+export function listingGroupIndex(): Map<string, ListingGroup> {
+  groupCache ??= groupIndex(buildGroups(pageableAgents()));
+  return groupCache;
 }
 
 export function isAssessed(a: Agent): boolean {
