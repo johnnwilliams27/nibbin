@@ -1,6 +1,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { CATEGORIES } from './categories';
+import { buildGroups, groupIndex, type ListingGroup } from './grouping';
 import type { Agent, CategorySlug, Coverage, Dataset } from './types';
 import { routeTokenId } from './routes';
 import { normaliseDetailStatus, isCallable, isEndpointUnknown, isNotCallable } from './detail-state';
@@ -187,6 +188,40 @@ export function pageableAgents(): Agent[] {
   const listed = listedAgents();
   const seen = new Set(listed.map((a) => a.agent_id));
   return [...listed, ...referenceAgents().filter((a) => !seen.has(a.agent_id))];
+}
+
+/**
+ * Listing groups over the pageable pool, computed ONCE per process.
+ *
+ * The static export renders one page per agent, and each needs the group its
+ * agent belongs to. Calling buildGroups per page is O(n) work n times: with
+ * 5,415 pages it took the export from seconds to minutes and then failed it
+ * outright. The dataset is already cached and immutable for the life of the
+ * process, so the grouping over it is too.
+ */
+let groupCache: { groups: ListingGroup[]; index: Map<string, ListingGroup> } | null = null;
+
+function listingGroupCache() {
+  if (groupCache === null) {
+    const groups = buildGroups(pageableAgents());
+    groupCache = { groups, index: groupIndex(groups) };
+  }
+  return groupCache;
+}
+
+export function listingGroupIndex(): Map<string, ListingGroup> {
+  return listingGroupCache().index;
+}
+
+/**
+ * How many distinct listings the pool collapses to.
+ *
+ * NOT the size of the index above, which is keyed by agent_id and so has one
+ * entry per registration. This is the number the browse view paginates over,
+ * and the methodology page quotes it against the raw listing count.
+ */
+export function listingGroupCount(): number {
+  return listingGroupCache().groups.length;
 }
 
 export function isAssessed(a: Agent): boolean {

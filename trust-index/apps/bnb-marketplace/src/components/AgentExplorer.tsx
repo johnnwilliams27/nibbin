@@ -11,6 +11,7 @@ import { AgentTable } from './AgentTable';
 import { EmptyState } from './EmptyState';
 import { FilterSelect } from './FilterSelect';
 import { BuyerReviewsProvider } from './BuyerReviews';
+import { buildGroups, collapse } from '@/lib/grouping';
 import { FILTERS, SORTS, discoverAgents, readExplorerState, writeExplorerState, type ExplorerState, type FilterKey, type SortKey } from '@/lib/sorting';
 import { pageAfterChange, pageNumbers, paginateGroups, readPage, writePage } from '@/lib/pagination';
 
@@ -31,7 +32,42 @@ export function AgentExplorer({ agents, reference, showCategoryFilter = false, d
   const activeTransition = useRef<{ skipTransition?: () => void } | null>(null);
   const pathname = usePathname();
   const { query, sort, filters, categories, view } = state;
-  const groups = useMemo(() => discoverAgents(agents, state), [agents, state]);
+  const matches = useMemo(() => discoverAgents(agents, state), [agents, state]);
+  /*
+    Group AFTER filtering and sorting, never before.
+    Searching for one registration must still find it, and a group's card has to
+    sit where its best-ranked member would have sat — so the pool is filtered and
+    ordered first, and grouping preserves that order (see buildGroups).
+  */
+  /*
+    ONE grouping pass over BOTH halves, then split the result back.
+
+    Grouping ranked and unranked separately splits a group down the middle: the
+    sort puts scored rows in `ranked` and unscored in `unranked`, so
+    bubbleaiagent's twelve deployments became a group of the ten that scored and
+    a separate group of the two that did not — and the two we never assessed
+    disappeared from the count. So the pool is grouped whole and each lead is
+    returned to the half its own row came from. `buildGroups` preserves input
+    order and ranked rows come first, so a group with any ranked member leads
+    with it.
+
+    The browse view only ever shows leads. The registrations behind a group are
+    listed on the lead's detail page, where there is room to say what they are:
+    a card is for choosing between agents, and a paragraph about deployment
+    topology on every card is noise at exactly the moment someone is scanning.
+  */
+  const listingGroups = useMemo(
+    () => buildGroups([...matches.ranked, ...matches.unranked]),
+    [matches],
+  );
+  const groups = useMemo(() => {
+    const rows = collapse([...matches.ranked, ...matches.unranked], listingGroups, new Set());
+    const isRanked = new Set(matches.ranked.map((a) => a.agent_id));
+    return {
+      ranked: rows.filter((a) => isRanked.has(a.agent_id)),
+      unranked: rows.filter((a) => !isRanked.has(a.agent_id)),
+    };
+  }, [matches, listingGroups]);
   const results = paginateGroups(groups.ranked, groups.unranked, requestedPage);
   const activeCount = filters.length + categories.length + (query.trim() ? 1 : 0);
   const secondaryCount = filters.filter((key) => !primaryEvidence.includes(key)).length;

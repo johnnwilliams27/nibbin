@@ -393,10 +393,20 @@ section[aria-label='On-chain hire'] .hire-action-danger { color: var(--critical)
 
 /* Low-contrast orbital geometry: decorative only, behind opaque controls. */
 .market-backdrop { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; contain: strict; }
-.market-orbit { position: absolute; width: 900px; height: 900px; border: 1px solid rgba(127,176,232,.23); border-radius: 32%; background: repeating-radial-gradient(ellipse at center, transparent 0 78px, rgba(127,176,232,.085) 79px 80px, transparent 81px 140px); }
-.market-orbit-one { top: -330px; right: -60px; transform: rotate(-22deg); animation: orbit-unfurl 34s ease-in-out infinite alternate; }
-.market-orbit-two { width: 520px; height: 520px; bottom: -350px; left: -220px; border-color: rgba(90,212,192,.12); animation: orbit-unfurl 60s ease-in-out -18s infinite alternate-reverse; }
-.market-grid { position: absolute; inset: 0; opacity: .16; background-image: radial-gradient(var(--fg-muted) .7px, transparent .7px); background-size: 32px 32px; mask-image: linear-gradient(115deg, transparent 35%, black); }
+.market-orbit { position: absolute; width: 900px; height: 900px; border: 1px solid rgba(127,176,232,.42); border-radius: 32%; background: repeating-radial-gradient(ellipse at center, transparent 0 78px, rgba(127,176,232,.17) 79px 80px, transparent 81px 140px); }
+/* The rings that frame the BNB mark carry its gold. The outer ring is this
+   element's border and the inner rings are its gradient, so they are two
+   separate values that have to be kept equal by hand — inherited from the blue
+   original they were .42 and .17, which read as one bright ring around a set of
+   faint ones rather than as one ring system. Both are .22: gold is more
+   luminous than the blue it replaces, so a single matched value sits lower than
+   either of the originals. The second orbit, bottom-left and far from the mark,
+   keeps its teal as a counterpoint. */
+.market-orbit-one { top: -330px; right: -60px; transform: rotate(-22deg); animation: orbit-unfurl 34s ease-in-out infinite alternate;
+  border-color: rgba(240,185,11,.22);
+  background: repeating-radial-gradient(ellipse at center, transparent 0 78px, rgba(240,185,11,.22) 79px 80px, transparent 81px 140px); }
+.market-orbit-two { width: 520px; height: 520px; bottom: -350px; left: -220px; border-color: rgba(90,212,192,.26); animation: orbit-unfurl 60s ease-in-out -18s infinite alternate-reverse; }
+.market-grid { position: absolute; inset: 0; opacity: .30; background-image: radial-gradient(var(--fg-muted) .7px, transparent .7px); background-size: 32px 32px; mask-image: linear-gradient(115deg, transparent 35%, black); }
 @keyframes orbit-unfurl { from { transform: translate3d(0, 0, 0) rotate(-22deg) scale(.96); } to { transform: translate3d(-38px, 45px, 0) rotate(14deg) scale(1.06); } }
 @keyframes content-settle { from { opacity: .65; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
 .methodology-nav a {
@@ -502,14 +512,29 @@ section[aria-label='On-chain hire'] .hire-action-danger { color: var(--critical)
 }
 
 /* Home-only BNB outline shares the moving orbit's center at every viewport width. */
+/*
+  Backdrop luminance. The first pass sat at .085-.24 alpha over a #0b0e13 page
+  and was effectively invisible on anything but a well-calibrated panel in a
+  dark room — the BNB mark in particular read as a faint smudge. Roughly doubled
+  across the orbits, the ring gradient and the dot grid.
+
+  The mark is BNB brand gold rather than --fg-muted because grey caps out: at
+  #98a3b3 it stays dim at any alpha that is still tasteful, while gold at .42
+  reads clearly as the chain mark and stays plainly decorative. It is a
+  watermark behind the hero, never a rating or endorsement indicator — see the
+  note in MarketBackground.tsx.
+
+  Checked at 1440x900 and 390x844: body copy and headings keep their contrast,
+  and the mark stays hidden below 860px as before.
+*/
 .market-bnb-mark {
   position: absolute;
   top: 50%;
   left: 50%;
   width: 150px;
   height: auto;
-  color: var(--fg-muted);
-  opacity: .24;
+  color: #f0b90b;
+  opacity: .42;
   pointer-events: none;
   transform: translate(-50%, -50%);
 }
