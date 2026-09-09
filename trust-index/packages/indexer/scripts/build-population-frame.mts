@@ -202,8 +202,19 @@ async function main(): Promise<void> {
           topics: l.topics as [`0x${string}`, ...`0x${string}`[]],
           eventName: "Registered",
         });
-        const a = d.args as unknown as { agentId: bigint; tokenURI?: string; tokenUri?: string; owner?: string };
-        const uri = a.tokenURI ?? a.tokenUri ?? "";
+        // The ABI field is `agentURI` (see abi.ts REGISTERED_EVENT). This read
+        // was `tokenURI ?? tokenUri`, neither of which the decoder produces, so
+        // `uri` was ALWAYS "" and the "has tokenURI" stage of the funnel always
+        // reported zero. That is not a harmless mislabel: it published "no agent
+        // declares anywhere to look" as a fact about the population, when in
+        // truth agents do declare — some as an https URL, many as a data: URI
+        // carrying the whole registration document inline. tokenURI/tokenUri are
+        // still accepted so a registry that names the field differently still
+        // decodes rather than silently reading empty.
+        const a = d.args as unknown as {
+          agentId: bigint; agentURI?: string; tokenURI?: string; tokenUri?: string; owner?: string;
+        };
+        const uri = a.agentURI ?? a.tokenURI ?? a.tokenUri ?? "";
         decoded += 1;
         if (uri.length > 0) withUri += 1;
         out.write(
