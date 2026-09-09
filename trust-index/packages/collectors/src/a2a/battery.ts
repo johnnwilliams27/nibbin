@@ -24,8 +24,9 @@
  * published no example. One screen survives, and it is not a coverage
  * restriction:
  *
- *   A skill whose name, description, tags or examples carry a MUTATING VERB is
- *   never invoked.
+ *   A skill whose NAME, ID, TAGS or published EXAMPLES carry a mutating verb is
+ *   never invoked. Its description is not scanned — see `invokable` for why
+ *   scanning prose refused four fifths of the population.
  *
  * That screen exists because of what these subjects are. They are DeFi agents
  * on BSC and 13,715 of them declare `x402Support: true`, which is a live
@@ -46,6 +47,7 @@
  * echo is not obedience, and without the control we cannot tell them apart.
  */
 import { guardedFetch, vetUrl } from "../net.js";
+import { isMutatingName } from "../mcp/assess.js";
 import type { ProbeIdentity } from "../mcp/probe-identity.js";
 import type { AssessmentGap, SkillDeclaration } from "./transcript.js";
 
@@ -100,19 +102,48 @@ export type A2aBatteryResult = {
 /**
  * May this skill be invoked at all?
  *
- * The only bar is the mutating-verb screen, and it is deliberately blunt: a
- * skill is refused when a mutating verb appears anywhere on its surface, even
- * if its examples look harmless, because an example is a sample of intended use
- * and not a bound on the skill's range. A false refusal costs one observation;
- * a false permit can move someone's funds.
+ * WHAT IS SCANNED, AND WHY THE DESCRIPTION IS NOT.
+ *
+ * The first version tested one joined string of name + description + tags +
+ * examples. Measured against four live BSC agents it refused 16 of 20 skills
+ * and silenced two agents entirely, because a DESCRIPTION IS PROSE: `deep_report`
+ * matched on "Pay" inside a sentence, `compare_agents` on "Put", and one
+ * agent's `negotiate` was refused for the word "send" while the identical
+ * skill on another agent was probed successfully. That is a false-refusal rate
+ * high enough to hide the population behind our own filter, which is the same
+ * class of error as recording a gap as a finding.
+ *
+ * So the screen now follows the MCP side exactly:
+ *
+ *   id, name, tags  -> matched by STEM via isMutatingName. These are the
+ *                      skill's contract, chosen by the operator to say what it
+ *                      does, and a stem match on a word boundary is precise.
+ *   examples        -> matched by substring, because these are not prose ABOUT
+ *                      the skill, they are text we would literally SEND.
+ *   description     -> NOT scanned.
+ *
+ * The residual risk is a skill innocuously named whose description reveals it
+ * acts. That risk is accepted: `synthesizeInput` asks the agent to describe the
+ * skill rather than run it, the arms never send an imperative, and a name is a
+ * far better predictor of behaviour than a marketing sentence. A false refusal
+ * costs an observation; a false permit can move someone's funds — but a screen
+ * that refuses four fifths of the population costs the measurement itself.
  */
 export function invokable(s: SkillDeclaration): { ok: boolean; reason: string } {
-  const surface = [s.name ?? "", s.description ?? "", s.id, ...s.tags].join(" ");
-  if (MUTATING.test(surface)) {
-    return { ok: false, reason: `declares a mutating verb (${(surface.match(MUTATING) ?? [""])[0]}); never invoked` };
+  // Identity fields, matched by STEM. isMutatingName splits camelCase and
+  // snake_case into words and tests whole-word membership, so `execute_trade`
+  // is refused and `executive_summary` is not.
+  for (const field of [s.id, s.name ?? "", ...s.tags]) {
+    if (field !== "" && isMutatingName(field)) {
+      return { ok: false, reason: `its name or tags carry a mutating verb (${field}); never invoked` };
+    }
   }
+  // Examples ARE scanned, and by substring rather than stem, because unlike the
+  // description these are not prose about the skill — they are text we would
+  // literally send. "Swap 100 USDC for BNB" as an input is an instruction to
+  // act whatever the skill is called.
   if (s.examples.some((e) => MUTATING.test(e))) {
-    return { ok: false, reason: "its own example reads as an instruction to act" };
+    return { ok: false, reason: "its own published example reads as an instruction to act" };
   }
   return { ok: true, reason: "" };
 }
