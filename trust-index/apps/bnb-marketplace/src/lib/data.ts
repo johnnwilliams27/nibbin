@@ -79,6 +79,13 @@ function normalise(a: Agent): Agent {
     category_evidence: a.category_evidence ?? '',
     protocols: Array.isArray(a.protocols) ? a.protocols : [],
     endpoint: a.endpoint ?? null,
+    // Defaults to `unread_rate_limited`, NOT to `read`. A row from an older
+    // snapshot carries no detail_status, and we genuinely do not know whether
+    // its detail was fetched — so the safe default is the one that says "we
+    // don't know" and keeps the agent out of every "declares no endpoint"
+    // count. Defaulting to `read` would silently restore the bug this field
+    // was added to fix, and it would do so quietly, on old data.
+    detail_status: a.detail_status === 'read' ? 'read' : 'unread_rate_limited',
     x402_supported: a.x402_supported === true,
     scan_total_score: typeof a.scan_total_score === 'number' ? a.scan_total_score : null,
     scan_feedbacks: typeof a.scan_feedbacks === 'number' ? a.scan_feedbacks : 0,
@@ -160,6 +167,21 @@ export function isCallable(a: Agent): boolean {
   return Boolean(a.endpoint) || a.protocols.some((p) => p.toUpperCase() === 'MCP' || p.toUpperCase() === 'A2A');
 }
 
+/**
+ * We never read this agent's detail, so we do not know whether it is callable.
+ * NOT the same as "not callable" — this is our rate-limit gap, and the three-way
+ * split (callable / not callable / unknown) exists so the UI can never state the
+ * second when it means the third.
+ */
+export function isEndpointUnknown(a: Agent): boolean {
+  return a.detail_status === 'unread_rate_limited' && !isCallable(a);
+}
+
+/** Measured as not callable: we read the detail and it declares no way in. */
+export function isNotCallable(a: Agent): boolean {
+  return !isCallable(a) && !isEndpointUnknown(a);
+}
+
 export function isAssessed(a: Agent): boolean {
   return a.assessment !== null;
 }
@@ -178,6 +200,10 @@ export interface HeadlineStats {
   unclassified: number;
   total: number;
   callable: number;
+  /** Read the detail, it declares no way in. A fact. */
+  notCallable: number;
+  /** Never read the detail — our rate-limit gap, not a fact about them. */
+  endpointUnknown: number;
   assessed: number;
   rated: number;
   withheld: number;
@@ -195,6 +221,8 @@ export function headlineStats(): HeadlineStats {
     unclassified: unclassifiedCount(),
     total: agents.length,
     callable: agents.filter(isCallable).length,
+    notCallable: agents.filter(isNotCallable).length,
+    endpointUnknown: agents.filter(isEndpointUnknown).length,
     assessed: agents.filter(isAssessed).length,
     rated: agents.filter(isRated).length,
     withheld: agents.filter((a) => a.assessment !== null && a.assessment.composite === null).length,
@@ -208,6 +236,8 @@ export function headlineStats(): HeadlineStats {
 export interface CategoryStats {
   total: number;
   callable: number;
+  notCallable: number;
+  endpointUnknown: number;
   assessed: number;
   rated: number;
   withheld: number;
@@ -233,6 +263,8 @@ export function categoryStats(slug: CategorySlug): CategoryStats {
   return {
     total: ranked.length,
     callable: ranked.filter(isCallable).length,
+    notCallable: ranked.filter(isNotCallable).length,
+    endpointUnknown: ranked.filter(isEndpointUnknown).length,
     assessed: ranked.filter(isAssessed).length,
     rated: ranked.filter(isRated).length,
     withheld: ranked.filter((a) => a.assessment !== null && a.assessment.composite === null).length,

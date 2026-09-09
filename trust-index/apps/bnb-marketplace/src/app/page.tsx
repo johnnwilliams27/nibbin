@@ -69,7 +69,13 @@ export default function HomePage() {
           <StatTile
             label="Callable interface"
             value={stats.callable}
-            note={`${pct(stats.callable, stats.total)} of the index declares an endpoint or speaks MCP/A2A. The rest cannot be hired at all.`}
+            note={
+              `${pct(stats.callable, stats.total)} of the index declares an endpoint or speaks MCP/A2A. ` +
+              `${num(stats.notCallable)} declare no way in at all` +
+              (stats.endpointUnknown > 0
+                ? `, and for ${num(stats.endpointUnknown)} we could not read the registry detail before hitting its rate limit — those are unknown to us, not uncallable.`
+                : '.')
+            }
             source="self_reported"
           />
           <StatTile

@@ -127,6 +127,20 @@ export function HirePanel({ agent }: { agent: Agent }) {
               </p>
             ) : null}
           </div>
+        ) : agent.endpoint === null && agent.detail_status === 'unread_rate_limited' ? (
+          // We never read this agent's registry detail, so we do not know
+          // whether it declares an endpoint. Saying "cannot be hired" here
+          // would publish our rate-limit gap as a fact about the agent.
+          <div>
+            <p className="text-[13px] font-medium" style={{ color: 'var(--neutral-fg)' }}>
+              We do not know whether this agent can be hired
+            </p>
+            <p className="mt-1.5 text-[13px] text-[var(--fg-muted)]">
+              Only the registry&apos;s detail view carries an endpoint, and we hit its rate limit before reading this
+              one. That is our gap, not a finding about the agent — it may well be callable. It is excluded from our
+              &ldquo;declares no endpoint&rdquo; counts for exactly that reason, and the next successful fetch resolves it.
+            </p>
+          </div>
         ) : agent.endpoint === null ? (
           <div>
             <p className="text-[13px] font-medium" style={{ color: 'var(--neutral-fg)' }}>

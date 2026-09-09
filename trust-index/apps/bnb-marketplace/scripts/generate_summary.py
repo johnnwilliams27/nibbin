@@ -228,17 +228,26 @@ def main():
       f"`fetch_details.py` after the quota resets fills them in; it fetches "
       f"in value order (endpoint-verified, then agents with feedback) so a "
       f"truncated run still keeps the highest-signal agents.")
-    no_ep = len([a for a in agents if not a["endpoint"]])
+    # Count ONLY agents whose detail we actually read. An agent we never
+    # fetched also has `endpoint: null`, and folding those in reported our
+    # rate-limit gap as the agents' own absence of an endpoint -- 232 real
+    # facts published as 1,708. See DATA-CONTRACT.md rule 4.
+    read = [a for a in agents if a.get("detail_status") == "read"]
+    unread = [a for a in agents if a.get("detail_status") == "unread_rate_limited"]
+    no_ep = len([a for a in read if not a["endpoint"]])
     unprobed = len([a for a in agents if a["endpoint"] and not a["assessment"]])
     W(f"- `assessment` is populated for **{len(assessed)} of {n}** agents, from the "
       f"endpoint sweep recorded in `data/probes/endpoint-probes.json`. "
       f"No assessment value was synthesised: every field traces to a stored "
       f"probe transcript.")
-    W(f"- It is `null` for the other {n - len(assessed)} agents, for two "
-      f"different reasons that must not be conflated: **{no_ep}** declare no "
-      f"endpoint (there is nothing to probe), and **{unprobed}** declare an "
-      f"endpoint that this sweep had not reached when it ran. The second group "
-      f"is unmeasured, not unreachable — rerunning the probe closes it.")
+    W(f"- It is `null` for the other {n - len(assessed)} agents, for three "
+      f"different reasons that must not be conflated: **{no_ep}** were read and "
+      f"declare no endpoint (there is nothing to probe — this is a fact about "
+      f"them); **{unprobed}** declare an endpoint that this sweep had not "
+      f"reached when it ran; and **{len(unread)}** we never read at all, "
+      f"because the detail fetch was rate-limited. Only the first group is "
+      f"evidence. The other two are our gaps, and rerunning closes them — "
+      f"`fetch_details.py` for the third, the probe sweep for the second.")
     W(f"- `is_reference_agent` is `false` for all {n} agents.")
     W("")
     W("> **Disclosure.** An earlier draft of `data/agents.json` in this working "

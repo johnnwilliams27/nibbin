@@ -21,6 +21,25 @@ Agent = {
   endpoint: string | null     // the callable endpoint, if declared
   x402_supported: boolean
 
+  // AMENDED 2026-09-09 (detail-fetch gap): `endpoint: null` was ambiguous and
+  // that ambiguity got published. Only the 8004scan DETAIL view carries an
+  // endpoint, and the detail fetch is rate-limited to 1000/hour; when a run is
+  // truncated, the agents it never reached also land with `endpoint: null`.
+  // Counting those as "declares no endpoint" turned 232 measured facts into a
+  // published 1,708, and put 11 agents on the site under "cannot be hired at
+  // all" when the truth was that we ran out of quota. That is rule 1 exactly.
+  //
+  // detail_status says which kind of null this is, and MUST be checked before
+  // any claim about the absence of an endpoint:
+  //   "read"                 -> we hold the detail response. `endpoint: null`
+  //                             is then a FACT: the agent declares none.
+  //   "unread_rate_limited"  -> we never obtained the detail response. The null
+  //                             is OUR gap. It is not evidence of anything and
+  //                             must be excluded from the denominator of any
+  //                             "has no endpoint" / "not callable" statistic,
+  //                             and surfaced as unknown in the UI.
+  detail_status: "read" | "unread_rate_limited"
+
   // 8004scan-sourced (third_party_review provenance, weight 0.60)
   scan_total_score: number | null
   scan_feedbacks: number
@@ -56,3 +75,8 @@ RULES (these are the product, not decoration):
 1. A missing measurement is `null` + a reason. Never a zero, never a guess.
 2. `is_reference_agent: true` => excluded from rankings/sorting/leaderboards. Label visibly.
 3. Never present 8004scan's score as ours. Separate columns, separate provenance.
+4. Recording a gap is only half of rule 1 — every CONSUMER of the null has to carry it.
+   Before counting a null as an absence, check the field that says whether we looked
+   (`detail_status` for `endpoint`, `assessment: null` for a score). A gap recorded
+   faithfully in one file and then counted as a fact in another is still a violation;
+   that is precisely how the 1,708 above happened.
