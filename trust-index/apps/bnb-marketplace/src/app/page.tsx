@@ -69,7 +69,13 @@ export default function HomePage() {
           <StatTile
             label="Callable interface"
             value={stats.callable}
-            note={`${pct(stats.callable, stats.total)} of the index declares an endpoint or speaks MCP/A2A. The rest cannot be hired at all.`}
+            note={
+              `${pct(stats.callable, stats.total)} of listed agents declare an endpoint or MCP/A2A support. ` +
+              `${num(stats.notCallable)} have a detail record with no such declaration` +
+              (stats.endpointUnknown > 0
+                ? `; for ${num(stats.endpointUnknown)}, registry detail is unconfirmed, so whether they declare an interface is unknown.`
+                : '.')
+            }
             source="self_reported"
           />
           <StatTile

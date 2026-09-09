@@ -2,6 +2,11 @@
 
 ## Measuring subjects
 
+- A validation failure must happen before publishing the replacement snapshot.
+  The first detail-status fix returned an error for unexplained gaps only after
+  replacing `agents.json`. It also accepted every fetch failure as evidence of
+  throttling. Check the recorded cause, preserve the prior artifact on rejection,
+  and never give an old snapshot an invented rate-limit reason at presentation.
 - M7 trap: the diagnosis (Opus, ~$0.025/call, ~37x a draft) is an UNMETERED pipeline splurge
   today (once per study, subscription-absorbed). If M7 makes it a user-triggerable metered action
   it must be charged FRONTIER (3 credits) — STANDARD (1 credit) is −147% margin, a guaranteed
@@ -22,6 +27,21 @@
   auth walls and suggested a large misclassification; run against all 1,930, the corrected probe
   still could not reach 1,888 of them — the real wall rate was ~1%. A 5-server sample is a
   hypothesis, not a rate.
+- An uncapped `Retry-After` is a self-inflicted hang. 8004scan answers every 429 with
+  `retry-after: 3600`, so `time.sleep(max(retry_after, backoff))` parks a worker for a full
+  hour on its FIRST throttle; with a 16-thread pool and 8 retries the run goes silent for
+  hours and reads as crashed rather than throttled. A 90s cap still admitted every queued
+  identity and retried too early. Stop admitting requests across the shared pool on the
+  first 429, record queued work as deferred by that quota, and rerun after it resets.
+  Already-running requests can finish and valid cached files are still reused.
+- Recording a gap correctly is only half of rule 1; the CONSUMER has to carry it. `fetch_details`
+  wrote all 1,476 unfetched agents to `detail_failures.json` as `rate_limited` (correct), but
+  `build_dataset.py` loaded that set and used it in a single `print()` — it never reached the
+  agent record, and there is no `detail_status` field. So "we were rate-limited" and "declares no
+  endpoint" both ship as `endpoint: null`, and downstream `len([a for a in agents if not
+  a["endpoint"]])` turned 232 real facts into a published 1,708. Whenever a gap is recorded in a
+  side file, grep for every place the null it produces is COUNTED — the violation appears there,
+  not where the gap was written.
 - The probe observer's own track record (`total_observations`, `distinct_subjects`,
   `max_observations_single_day` in daily.mts) was hardcoded to the 600-subject pilot and is
   covered by `inputs_hash`. Stale values put a false claim about our own coverage into the very
@@ -37,6 +57,14 @@
 - `next build` (15.3) regenerates next-env.d.ts with a routes.d.ts triple-slash reference that
   @typescript-eslint/triple-slash-reference rejects — reverting the file cannot stick because
   every build rewrites it. Add the generated file to the eslint ignore list per app.
+- A REQUIRED status check whose workflow is `paths:`-filtered is a deadlock, not an
+  optimisation. GitHub does not synthesise a result for a workflow that never triggered: the
+  check sits at "expected" forever, the PR stays `blocked`, and there is no run to re-run. Any
+  PR outside the filtered paths becomes permanently unmergeable, and nothing on the PR page
+  explains why — it just shows pending checks that never start. Path filters and required
+  checks are mutually exclusive; if a job is required, it must trigger on every PR. (Cost us
+  #268. `skipped` counts as success for a required check, so job-level `if:` guards are the
+  safe way to make required work conditional — see the `presence` job.)
 - Git worktrees opened with different path casing (C:/Nibbin vs /c/nibbin) make tsc fail with
   TS1149 "differs only in casing" errors that do not reproduce in CI. cd with the canonical
   casing before typechecking on Windows.

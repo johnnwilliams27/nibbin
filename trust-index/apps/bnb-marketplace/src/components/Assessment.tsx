@@ -1,6 +1,7 @@
 import { AlertTriangle, CircleSlash, HelpCircle, ShieldAlert } from 'lucide-react';
 import type { Agent, Coverage } from '@/lib/types';
 import { COVERAGE_COPY, compositeOutOf100, gateCopy } from '@/lib/format';
+import { detailGapReason } from '@/lib/detail-state';
 
 /**
  * Three legitimate states, and only three:
@@ -20,6 +21,12 @@ export function scoreState(agent: Agent): ScoreState {
 export function unassessedReason(agent: Agent): string {
   if (agent.is_reference_agent) {
     return 'We do not score our own agents. An assessor that rates its own deployments has nothing to say about anyone else’s.';
+  }
+  // Before blaming the agent for having no endpoint, check whether we ever
+  // looked. An unread detail produces exactly the same `endpoint: null`, and
+  // this string is the one place that null gets narrated to a reader.
+  if (!agent.endpoint && agent.detail_status !== 'read') {
+    return `${detailGapReason(agent.detail_status)} That is our gap, not a finding about the agent.`;
   }
   if (!agent.endpoint && !agent.protocols.some((p) => /mcp|a2a/i.test(p))) {
     return 'It declares no callable endpoint, so there is nothing for us to call.';

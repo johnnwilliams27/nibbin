@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { AlertTriangle, Check, Copy, ExternalLink } from 'lucide-react';
 import type { Agent } from '@/lib/types';
 import { chainName, isTestnet } from '@/lib/format';
+import { detailGapReason } from '@/lib/detail-state';
 
 /**
  * An endpoint on loopback is real, but it is not reachable by anyone reading
@@ -127,14 +128,27 @@ export function HirePanel({ agent }: { agent: Agent }) {
               </p>
             ) : null}
           </div>
+        ) : agent.endpoint === null && agent.detail_status !== 'read' ? (
+          // We never read this agent's registry detail, so we do not know
+          // whether it declares an endpoint. Saying "cannot be hired" here
+          // would publish our rate-limit gap as a fact about the agent.
+          <div>
+            <p className="text-[13px] font-medium" style={{ color: 'var(--neutral-fg)' }}>
+              We do not know whether this agent can be hired
+            </p>
+            <p className="mt-1.5 text-[13px] text-[var(--fg-muted)]">
+              {detailGapReason(agent.detail_status)} This is a gap in our data. It is excluded from our
+              &ldquo;declares no endpoint&rdquo; counts until we obtain the detail.
+            </p>
+          </div>
         ) : agent.endpoint === null ? (
           <div>
             <p className="text-[13px] font-medium" style={{ color: 'var(--neutral-fg)' }}>
-              This agent cannot be hired
+              No endpoint declared in the registry detail we read
             </p>
             <p className="mt-1.5 text-[13px] text-[var(--fg-muted)]">
-              It declares no endpoint, so there is no address to connect to. It exists in the registry and nowhere else.
-              Nothing is broken — this is the normal state for most of the {'≈'}310,000 agents on BSC.
+              This snapshot gives us no endpoint to connect to. We have not established whether the agent
+              can be reached or hired elsewhere.
             </p>
           </div>
         ) : (

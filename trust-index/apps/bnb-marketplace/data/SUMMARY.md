@@ -1,16 +1,16 @@
 # BSC agent dataset — build summary
 
-Generated: `2026-09-09T04:19:39Z`  
+Generated: `2026-09-09T05:37:50Z`  
 Source: 8004scan public API (`https://api.8004scan.io`), chain_id 56 (BSC).  
 Output: `data/agents.json` — **10041 agents**, conforming to `DATA-CONTRACT.md`.
 
 ## Provenance
 
 - **10041 of 10041 agent records are built from real fetched API responses.** Every field traces to a file under `data/raw/` (`data/raw/candidates.json` for list fields, `data/raw/detail/<chain>_<token>.json` for detail fields).
-- `data/raw/detail/` holds **8558** fetched detail responses.
-- Detail fetches we could not complete: **1483**, recorded in `data/raw/detail_failures.json` with the reason. The API enforces **1000 requests/hour** (`x-ratelimit-limit`), and this run exhausted the quota (HTTP 429, `retry-after: 3600`). Those agents are still in the dataset, built from their real list-view fields, with `endpoint: null` because only the detail view carries an endpoint. That null means *we did not read it*, never *the agent has none*. Rerunning `fetch_details.py` after the quota resets fills them in; it fetches in value order (endpoint-verified, then agents with feedback) so a truncated run still keeps the highest-signal agents.
+- `data/raw/detail/` holds **8570** fetched detail responses.
+- Current detail gaps in this snapshot: **1474** rows recorded as rate-limited and **0** rows with unknown detail status. These are measurement gaps, not evidence that an agent declares no endpoint. The fetch log contains **1483** historical failure records; some may have been resolved by later successful fetches. Current counts come from `detail_status`, not membership in that log.
 - `assessment` is populated for **3204 of 10041** agents, from the endpoint sweep recorded in `data/probes/endpoint-probes.json`. No assessment value was synthesised: every field traces to a stored probe transcript.
-- It is `null` for the other 6837 agents, for two different reasons that must not be conflated: **1708** declare no endpoint (there is nothing to probe), and **5129** declare an endpoint that this sweep had not reached when it ran. The second group is unmeasured, not unreachable — rerunning the probe closes it.
+- It is `null` for the other 6837 agents, for three different reasons that must not be conflated: **228** were read and declare no endpoint (there is nothing to probe — this is a fact about them); **5135** declare an endpoint that this sweep had not reached when it ran; and **1474** we never read at all, because the detail fetch was rate-limited. Only the first group is evidence. The other two are our gaps, and rerunning closes them — `fetch_details.py` for the third, the probe sweep for the second.
 - `is_reference_agent` is `false` for all 10041 agents.
 
 > **Disclosure.** An earlier draft of `data/agents.json` in this working directory contained hand-written placeholder agents (fabricated names, owner addresses, endpoints and a populated `assessment`). It was quarantined and discarded, and the dataset was rebuilt end-to-end from the fetched responses in `data/raw/`. None of that content survives in this dataset. We record our own errors rather than hiding them.
@@ -81,7 +81,7 @@ Four deliberate anti-inflation rules, each one added because it caught a real fa
 
 ## Endpoints and usage signal
 
-- **8333 agents (83.0%) declare a callable endpoint** (MCP > A2A > web, as declared). These are the probe set.
+- **8339 agents (83.0%) declare a callable endpoint** (MCP > A2A > web, as declared). These are the probe set.
 - 509 agents have >=1 feedback on 8004scan.
 - 6 agents are endpoint-verified by 8004scan.
 - 519 agents declare x402 support.

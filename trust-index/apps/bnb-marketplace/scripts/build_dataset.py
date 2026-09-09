@@ -20,6 +20,7 @@ and small rather than large and wrong.
 Usage: python3 scripts/build_dataset.py
 """
 import json, os, re, sys, time, collections
+from detail_response import read_detail
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RAW = os.path.join(HERE, "data", "raw")
@@ -139,15 +140,9 @@ def find_generic(cat, fields):
     return hits, best
 
 
-def detail_for(chain_id, token_id):
-    p = os.path.join(DET, f"{chain_id}_{token_id}.json")
-    if os.path.exists(p) and os.path.getsize(p) > 2:
-        try:
-            with open(p) as f:
-                return json.load(f)
-        except Exception:
-            return None
-    return None
+def detail_for(candidate):
+    p = os.path.join(DET, f"{candidate['chain_id']}_{candidate['token_id']}.json")
+    return read_detail(p, candidate)
 
 
 def text_fields(cand, det):
@@ -343,7 +338,15 @@ def main():
     known_fail = set()
     if os.path.exists(fail_path):
         with open(fail_path) as f:
-            known_fail = {x["agent_id"] for x in json.load(f)["failures"]}
+            # The fetcher also records 404s and timeouts. Membership alone is
+            # not evidence of throttling. Support the legacy HTTPError record
+            # and an explicit structured rate-limit status.
+            known_fail = {
+                x["agent_id"] for x in json.load(f)["failures"]
+                if x.get("status") == "rate_limited"
+                or (x.get("status") == "failed"
+                    and str(x.get("error", "")).startswith("<HTTPError 429:"))
+            }
 
     # A separate probe run writes `assessment` into data/agents.json. Rebuilding
     # must not destroy that work, so carry forward any assessment already
@@ -363,7 +366,12 @@ def main():
 
     agents, no_detail, kept, dropped = [], 0, 0, 0
     for c in cands:
-        det = detail_for(c["chain_id"], c["token_id"])
+        try:
+            det = detail_for(c)
+        except (ValueError, OSError) as error:
+            print(f"ERROR: invalid detail cache for {c['agent_id']}: {error}. "
+                  f"Existing dataset preserved; rerun fetch_details.py to repair the cache.")
+            return 1
         if det is None:
             no_detail += 1
         src = det or c
@@ -404,9 +412,38 @@ def main():
                 det.get("is_endpoint_verified", False) if det
                 else "endpoint_verified" in (c.get("_sources") or [])),
             "assessment": assessment,    # from the separate probe run; else null
+            # Which KIND of `endpoint: null` this is. Only the detail view
+            # carries an endpoint, so an agent whose detail we never fetched
+            # looks identical to one that declares none -- and every consumer
+            # that counts `not endpoint` then reports our rate-limit gap as a
+            # fact about the agent. See DATA-CONTRACT.md rule 4.
+            "detail_status": "read" if det is not None else "unread_rate_limited",
             "is_reference_agent": False,
         })
 
+    cats = collections.Counter(a["category"] for a in agents)
+    print(f"assessments carried forward from probe run: {kept} "
+          f"(dropped because endpoint changed: {dropped})")
+    print(f"agents without a detail file: {no_detail} "
+          f"(recorded fetch failures: {len(known_fail)})")
+
+    # detail_status labels every unread agent "unread_rate_limited", which is
+    # only honest while the rate limit really is the reason. If an agent has no
+    # detail file and no recorded failure, we do not know why we lack it, and
+    # saying "rate limited" would be inventing a reason -- the same class of
+    # error the field exists to prevent. Fail loudly rather than mislabel.
+    unread_ids = {a["agent_id"] for a in agents
+                  if a["detail_status"] == "unread_rate_limited"}
+    unexplained = unread_ids - known_fail
+    if unexplained:
+        print(f"ERROR: {len(unexplained)} agents have no readable detail and no "
+              f"recorded rate-limit failure, so 'unread_rate_limited' would be a "
+              f"guess. Inspect the fetch record. Existing dataset preserved.")
+        print(f"  e.g. {sorted(unexplained)[:5]}")
+        return 1
+
+    # Validate before creating even a temporary output. A failed command must
+    # leave the last publishable snapshot byte-for-byte intact.
     payload = {
         "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "agents": agents,
@@ -415,13 +452,14 @@ def main():
     with open(tmp, "w") as f:
         json.dump(payload, f)
     os.replace(tmp, OUT)
-
-    cats = collections.Counter(a["category"] for a in agents)
     print(f"wrote {len(agents)} agents -> {OUT}")
-    print(f"assessments carried forward from probe run: {kept} "
-          f"(dropped because endpoint changed: {dropped})")
-    print(f"agents without a detail file: {no_detail} "
-          f"(recorded fetch failures: {len(known_fail)})")
+
+    counts = collections.Counter(a["detail_status"] for a in agents)
+    real_no_ep = sum(1 for a in agents
+                     if a["detail_status"] == "read" and not a["endpoint"])
+    print(f"detail_status: {dict(counts)}")
+    print(f"declare no endpoint (detail READ, a fact): {real_no_ep}  "
+          f"-- never report this as {real_no_ep + counts['unread_rate_limited']}")
     for c in CATEGORIES + ["other"]:
         hi = sum(1 for a in agents
                  if a["category"] == c and a["category_confidence"] >= 0.7)

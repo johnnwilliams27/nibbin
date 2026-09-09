@@ -3,8 +3,10 @@ import { resolve } from 'node:path';
 import { CATEGORIES } from './categories';
 import type { Agent, CategorySlug, Coverage, Dataset } from './types';
 import { routeTokenId } from './routes';
+import { normaliseDetailStatus, isCallable, isEndpointUnknown, isNotCallable } from './detail-state';
 
 export { routeTokenId, agentHref } from './routes';
+export { isCallable, isEndpointUnknown, isNotCallable } from './detail-state';
 
 // Read at build time. Static export means the deployed site is a snapshot, so we
 // carry generated_at through to the UI and label it — a stale number that says
@@ -79,6 +81,7 @@ function normalise(a: Agent): Agent {
     category_evidence: a.category_evidence ?? '',
     protocols: Array.isArray(a.protocols) ? a.protocols : [],
     endpoint: a.endpoint ?? null,
+    detail_status: normaliseDetailStatus(a.detail_status),
     x402_supported: a.x402_supported === true,
     scan_total_score: typeof a.scan_total_score === 'number' ? a.scan_total_score : null,
     scan_feedbacks: typeof a.scan_feedbacks === 'number' ? a.scan_feedbacks : 0,
@@ -155,11 +158,6 @@ export function pageableAgents(): Agent[] {
   return [...listed, ...referenceAgents().filter((a) => !seen.has(a.agent_id))];
 }
 
-/** Callable = we can actually reach out and talk to it. A declared endpoint is the floor. */
-export function isCallable(a: Agent): boolean {
-  return Boolean(a.endpoint) || a.protocols.some((p) => p.toUpperCase() === 'MCP' || p.toUpperCase() === 'A2A');
-}
-
 export function isAssessed(a: Agent): boolean {
   return a.assessment !== null;
 }
@@ -178,6 +176,10 @@ export interface HeadlineStats {
   unclassified: number;
   total: number;
   callable: number;
+  /** Read the detail, it declares no way in. A fact. */
+  notCallable: number;
+  /** Never read the detail — our rate-limit gap, not a fact about them. */
+  endpointUnknown: number;
   assessed: number;
   rated: number;
   withheld: number;
@@ -195,6 +197,8 @@ export function headlineStats(): HeadlineStats {
     unclassified: unclassifiedCount(),
     total: agents.length,
     callable: agents.filter(isCallable).length,
+    notCallable: agents.filter(isNotCallable).length,
+    endpointUnknown: agents.filter(isEndpointUnknown).length,
     assessed: agents.filter(isAssessed).length,
     rated: agents.filter(isRated).length,
     withheld: agents.filter((a) => a.assessment !== null && a.assessment.composite === null).length,
@@ -208,6 +212,8 @@ export function headlineStats(): HeadlineStats {
 export interface CategoryStats {
   total: number;
   callable: number;
+  notCallable: number;
+  endpointUnknown: number;
   assessed: number;
   rated: number;
   withheld: number;
@@ -233,6 +239,8 @@ export function categoryStats(slug: CategorySlug): CategoryStats {
   return {
     total: ranked.length,
     callable: ranked.filter(isCallable).length,
+    notCallable: ranked.filter(isNotCallable).length,
+    endpointUnknown: ranked.filter(isEndpointUnknown).length,
     assessed: ranked.filter(isAssessed).length,
     rated: ranked.filter(isRated).length,
     withheld: ranked.filter((a) => a.assessment !== null && a.assessment.composite === null).length,

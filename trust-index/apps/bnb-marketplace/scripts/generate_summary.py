@@ -17,6 +17,18 @@ BULK = [re.compile(r"subagent\d+_", re.I),
         re.compile(r"\d{3,}$")]
 
 
+def detail_fetch_summary(agents, historical_failures):
+    throttled = sum(a.get("detail_status") == "unread_rate_limited" for a in agents)
+    unknown = sum(a.get("detail_status") not in ("read", "unread_rate_limited") for a in agents)
+    return (
+        f"- Current detail gaps in this snapshot: **{throttled}** rows recorded as "
+        f"rate-limited and **{unknown}** rows with unknown detail status. "
+        f"These are measurement gaps, not evidence that an agent declares no endpoint. "
+        f"The fetch log contains **{historical_failures}** historical failure records; "
+        f"some may have been resolved by later successful fetches. "
+        f"Current counts come from `detail_status`, not membership in that log.")
+
+
 def band(c):
     if c >= 0.7:
         return "high(>=0.7)"
@@ -218,27 +230,33 @@ def main():
       f"(`data/raw/candidates.json` for list fields, "
       f"`data/raw/detail/<chain>_<token>.json` for detail fields).")
     W(f"- `data/raw/detail/` holds **{n_detail}** fetched detail responses.")
-    W(f"- Detail fetches we could not complete: **{fails['count']}**, recorded in "
-      f"`data/raw/detail_failures.json` with the reason. The API enforces "
-      f"**1000 requests/hour** (`x-ratelimit-limit`), and this run exhausted "
-      f"the quota (HTTP 429, `retry-after: 3600`). Those agents are still in "
-      f"the dataset, built from their real list-view fields, with `endpoint: "
-      f"null` because only the detail view carries an endpoint. That null "
-      f"means *we did not read it*, never *the agent has none*. Rerunning "
-      f"`fetch_details.py` after the quota resets fills them in; it fetches "
-      f"in value order (endpoint-verified, then agents with feedback) so a "
-      f"truncated run still keeps the highest-signal agents.")
-    no_ep = len([a for a in agents if not a["endpoint"]])
+    W(detail_fetch_summary(agents, len(fails["failures"])))
+    # Count ONLY agents whose detail we actually read. An agent we never
+    # fetched also has `endpoint: null`, and folding those in reported our
+    # rate-limit gap as the agents' own absence of an endpoint -- 232 real
+    # facts published as 1,708. See DATA-CONTRACT.md rule 4.
+    read = [a for a in agents if a.get("detail_status") == "read"]
+    unread = [a for a in agents if a.get("detail_status") == "unread_rate_limited"]
+    unknown = [a for a in agents
+               if a.get("detail_status") not in ("read", "unread_rate_limited")]
+    no_ep = len([a for a in read if not a["endpoint"]])
     unprobed = len([a for a in agents if a["endpoint"] and not a["assessment"]])
     W(f"- `assessment` is populated for **{len(assessed)} of {n}** agents, from the "
       f"endpoint sweep recorded in `data/probes/endpoint-probes.json`. "
       f"No assessment value was synthesised: every field traces to a stored "
       f"probe transcript.")
-    W(f"- It is `null` for the other {n - len(assessed)} agents, for two "
-      f"different reasons that must not be conflated: **{no_ep}** declare no "
-      f"endpoint (there is nothing to probe), and **{unprobed}** declare an "
-      f"endpoint that this sweep had not reached when it ran. The second group "
-      f"is unmeasured, not unreachable — rerunning the probe closes it.")
+    W(f"- It is `null` for the other {n - len(assessed)} agents. "
+      f"The recorded reasons must not be conflated: **{no_ep}** were read and "
+      f"declare no endpoint (there is nothing to probe — this is a fact about "
+      f"them); **{unprobed}** declare an endpoint that this sweep had not "
+      f"reached when it ran; and **{len(unread)}** we never read at all, "
+      f"because the detail fetch was rate-limited. Only the first group is "
+      f"evidence. The other two are our gaps, and rerunning closes them — "
+      f"`fetch_details.py` for the third, the probe sweep for the second.")
+    if unknown:
+        W(f"- **{len(unknown)}** rows have no recognised detail-fetch status. "
+          f"Whether their detail was read and why it is missing are unknown; "
+          f"they are excluded from 'declares no endpoint' counts.")
     W(f"- `is_reference_agent` is `false` for all {n} agents.")
     W("")
     W("> **Disclosure.** An earlier draft of `data/agents.json` in this working "
