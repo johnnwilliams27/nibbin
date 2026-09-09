@@ -1,0 +1,117 @@
+{
+  "manifest_version": "1",
+  "cases": {
+    "placeholder": {
+      "snapshot": "placeholder.json",
+      "golden": "placeholder.json",
+      "covers": "UC-4, SPEC 11.7: reserved identity, nothing behind it",
+      "invariants": [
+        "lifecycle_state = placeholder",
+        "score, score_low, score_high all null",
+        "coverage_tier = none",
+        "suppression_reason references placeholder"
+      ]
+    },
+    "registered-no-history": {
+      "snapshot": "registered-no-history.json",
+      "golden": "registered-no-history.json",
+      "covers": "SPEC 11.7/11.8: cold start with resolvable endpoints",
+      "invariants": [
+        "lifecycle_state = registered",
+        "score null with n_eff = 0",
+        "coverage_tier = none"
+      ]
+    },
+    "thin-same-day-cohort": {
+      "snapshot": "thin-same-day-cohort.json",
+      "golden": "thin-same-day-cohort.json",
+      "covers": "UC-1, SPEC 11.0/11.2: two-wallet same-cohort five-star burst",
+      "invariants": [
+        "coverage_tier = thin",
+        "n_eff well below raw review count of 6",
+        "score strictly between prior*100 and the raw mean",
+        "interval width > 20 points",
+        "signals.reviewer_cohort_same_day = 1.0000"
+      ]
+    },
+    "transferred-identity": {
+      "snapshot": "transferred-identity.json",
+      "golden": "transferred-identity.json",
+      "covers": "UC-2, SPEC 11.6: purchased identity, epoch reset",
+      "invariants": [
+        "ownership_epoch = 1",
+        "signals.pre_transfer_reputation_excluded = true",
+        "effective_history_days = 11",
+        "pre-transfer feedback (40 entries) not counted in any context feedback_count"
+      ]
+    },
+    "custody-migration": {
+      "snapshot": "custody-migration.json",
+      "golden": "custody-migration.json",
+      "covers": "SPEC 11.6 known limitation: benign migration preserved",
+      "invariants": [
+        "ownership_epoch = 0",
+        "signals.custody_migration_detected = true",
+        "all 43 feedback entries eligible"
+      ]
+    },
+    "strong-diverse": {
+      "snapshot": "strong-diverse.json",
+      "golden": "strong-diverse.json",
+      "covers": "SPEC 11.5: strong tier with aged, diverse, corroborated evidence",
+      "invariants": [
+        "coverage_tier = strong",
+        "n_eff >= 25",
+        "narrow interval relative to thin-same-day-cohort",
+        "lifecycle_state = live"
+      ]
+    },
+    "common-funder-ring": {
+      "snapshot": "common-funder-ring.json",
+      "golden": "common-funder-ring.json",
+      "covers": "SPEC 11.2: shared first funder dilutes continuously",
+      "invariants": [
+        "signals.common_funder_share = 1.0000",
+        "n_eff far below 20",
+        "no reviewer weight is 0 (floor 0.01)"
+      ]
+    },
+    "bulk-reviewer": {
+      "snapshot": "bulk-reviewer.json",
+      "golden": "bulk-reviewer.json",
+      "covers": "UC-3, SPEC 11.2: velocity down-weight without disqualification",
+      "invariants": [
+        "bulk wallet weight < every ordinary reviewer weight",
+        "bulk wallet weight >= 0.01"
+      ]
+    },
+    "unparseable-scale": {
+      "snapshot": "unparseable-scale.json",
+      "golden": "unparseable-scale.json",
+      "covers": "SPEC 11.10: uninferable scale excluded, counted as unusable",
+      "invariants": [
+        "score null",
+        "suppression_reason references no usable feedback",
+        "signals.unusable_feedback_count = 3"
+      ]
+    },
+    "dormant": {
+      "snapshot": "dormant.json",
+      "golden": "dormant.json",
+      "covers": "SPEC 11.7: previously live, inactive 180+ days",
+      "invariants": [
+        "lifecycle_state = dormant",
+        "score present (evidence decayed, not erased)"
+      ]
+    },
+    "heavy-decay-flood": {
+      "snapshot": "heavy-decay-flood.json",
+      "golden": "heavy-decay-flood.json",
+      "covers": "SPEC 11.4/11.1: anti-flooding cap must not negate time decay",
+      "invariants": [
+        "the 40-review stale reviewer's capped contribution stays well below 1.0",
+        "the single recent reviewer contributes more n_eff than the 40 stale reviews combined"
+      ]
+    }
+  }
+}

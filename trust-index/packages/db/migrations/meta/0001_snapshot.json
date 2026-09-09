@@ -1,0 +1,1420 @@
+{
+  "id": "2d724e6a-59ea-4b33-b899-50615f93387b",
+  "prevId": "209af963-a50b-4c0c-a661-cfde0c691b63",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.agent_transfers": {
+      "name": "agent_transfers",
+      "schema": "",
+      "columns": {
+        "chain_id": {
+          "name": "chain_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "agent_id": {
+          "name": "agent_id",
+          "type": "numeric(78, 0)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "from_address": {
+          "name": "from_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "to_address": {
+          "name": "to_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "block": {
+          "name": "block",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ts": {
+          "name": "ts",
+          "type": "timestamp (0) with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tx_hash": {
+          "name": "tx_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "log_index": {
+          "name": "log_index",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "same_funder": {
+          "name": "same_funder",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bidirectional_history": {
+          "name": "bidirectional_history",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "agent_transfers_chain_agent_idx": {
+          "name": "agent_transfers_chain_agent_idx",
+          "columns": [
+            {
+              "expression": "chain_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "agent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "agent_transfers_chain_id_tx_hash_log_index_pk": {
+          "name": "agent_transfers_chain_id_tx_hash_log_index_pk",
+          "columns": [
+            "chain_id",
+            "tx_hash",
+            "log_index"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.agents": {
+      "name": "agents",
+      "schema": "",
+      "columns": {
+        "chain_id": {
+          "name": "chain_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "agent_id": {
+          "name": "agent_id",
+          "type": "numeric(78, 0)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "owner_address": {
+          "name": "owner_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "agent_wallet": {
+          "name": "agent_wallet",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "token_uri": {
+          "name": "token_uri",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "registered_block": {
+          "name": "registered_block",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "registered_at": {
+          "name": "registered_at",
+          "type": "timestamp (0) with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_seen_block": {
+          "name": "last_seen_block",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "metadata_cid": {
+          "name": "metadata_cid",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "metadata_resolved_at": {
+          "name": "metadata_resolved_at",
+          "type": "timestamp (0) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "metadata_status": {
+          "name": "metadata_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'absent'"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "services_json": {
+          "name": "services_json",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "supported_trust_json": {
+          "name": "supported_trust_json",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "x402_support": {
+          "name": "x402_support",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "active_flag": {
+          "name": "active_flag",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "lifecycle_state": {
+          "name": "lifecycle_state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'placeholder'"
+        },
+        "agent_wallet_active": {
+          "name": "agent_wallet_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "agents_chain_id_agent_id_pk": {
+          "name": "agents_chain_id_agent_id_pk",
+          "columns": [
+            "chain_id",
+            "agent_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.chains": {
+      "name": "chains",
+      "schema": "",
+      "columns": {
+        "chain_id": {
+          "name": "chain_id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "slug": {
+          "name": "slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rpc_url_env_key": {
+          "name": "rpc_url_env_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "identity_registry": {
+          "name": "identity_registry",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reputation_registry": {
+          "name": "reputation_registry",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "validation_registry": {
+          "name": "validation_registry",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "first_block": {
+          "name": "first_block",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "enabled": {
+          "name": "enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "chains_slug_unique": {
+          "name": "chains_slug_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "slug"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.commerce_events": {
+      "name": "commerce_events",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "chain_id": {
+          "name": "chain_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "agent_id": {
+          "name": "agent_id",
+          "type": "numeric(78, 0)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "counterparty": {
+          "name": "counterparty",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "outcome": {
+          "name": "outcome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "block": {
+          "name": "block",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ts": {
+          "name": "ts",
+          "type": "timestamp (0) with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source": {
+          "name": "source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tx_hash": {
+          "name": "tx_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "job_id": {
+          "name": "job_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "linkage_method": {
+          "name": "linkage_method",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "linkage_strength": {
+          "name": "linkage_strength",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "commerce_events_chain_agent_idx": {
+          "name": "commerce_events_chain_agent_idx",
+          "columns": [
+            {
+              "expression": "chain_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "agent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "commerce_events_source_job_idx": {
+          "name": "commerce_events_source_job_idx",
+          "columns": [
+            {
+              "expression": "source",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "job_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.detected_scales": {
+      "name": "detected_scales",
+      "schema": "",
+      "columns": {
+        "chain_id": {
+          "name": "chain_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "client_address": {
+          "name": "client_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tag1": {
+          "name": "tag1",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "min_raw": {
+          "name": "min_raw",
+          "type": "numeric(39, 0)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "max_raw": {
+          "name": "max_raw",
+          "type": "numeric(39, 0)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "computed_at": {
+          "name": "computed_at",
+          "type": "timestamp (0) with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "detected_scales_chain_id_client_address_tag1_pk": {
+          "name": "detected_scales_chain_id_client_address_tag1_pk",
+          "columns": [
+            "chain_id",
+            "client_address",
+            "tag1"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.feedback": {
+      "name": "feedback",
+      "schema": "",
+      "columns": {
+        "chain_id": {
+          "name": "chain_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "agent_id": {
+          "name": "agent_id",
+          "type": "numeric(78, 0)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "client_address": {
+          "name": "client_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "feedback_index": {
+          "name": "feedback_index",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value_raw": {
+          "name": "value_raw",
+          "type": "numeric(39, 0)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value_decimals": {
+          "name": "value_decimals",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value_normalized": {
+          "name": "value_normalized",
+          "type": "numeric(7, 6)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tag1": {
+          "name": "tag1",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "tag2": {
+          "name": "tag2",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "endpoint": {
+          "name": "endpoint",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "feedback_uri": {
+          "name": "feedback_uri",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "feedback_hash": {
+          "name": "feedback_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "block": {
+          "name": "block",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ts": {
+          "name": "ts",
+          "type": "timestamp (0) with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tx_hash": {
+          "name": "tx_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_revoked": {
+          "name": "is_revoked",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "revoked_block": {
+          "name": "revoked_block",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "feedback_client_address_idx": {
+          "name": "feedback_client_address_idx",
+          "columns": [
+            {
+              "expression": "client_address",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "feedback_chain_agent_idx": {
+          "name": "feedback_chain_agent_idx",
+          "columns": [
+            {
+              "expression": "chain_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "agent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "feedback_chain_id_agent_id_client_address_feedback_index_pk": {
+          "name": "feedback_chain_id_agent_id_client_address_feedback_index_pk",
+          "columns": [
+            "chain_id",
+            "agent_id",
+            "client_address",
+            "feedback_index"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.feedback_responses": {
+      "name": "feedback_responses",
+      "schema": "",
+      "columns": {
+        "chain_id": {
+          "name": "chain_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "agent_id": {
+          "name": "agent_id",
+          "type": "numeric(78, 0)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "client_address": {
+          "name": "client_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "feedback_index": {
+          "name": "feedback_index",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "responder": {
+          "name": "responder",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "response_uri": {
+          "name": "response_uri",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "response_hash": {
+          "name": "response_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "block": {
+          "name": "block",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ts": {
+          "name": "ts",
+          "type": "timestamp (0) with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "feedback_responses_chain_id_agent_id_client_address_feedback_index_responder_block_pk": {
+          "name": "feedback_responses_chain_id_agent_id_client_address_feedback_index_responder_block_pk",
+          "columns": [
+            "chain_id",
+            "agent_id",
+            "client_address",
+            "feedback_index",
+            "responder",
+            "block"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.index_cursors": {
+      "name": "index_cursors",
+      "schema": "",
+      "columns": {
+        "chain_id": {
+          "name": "chain_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "contract": {
+          "name": "contract",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_processed_block": {
+          "name": "last_processed_block",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_processed_hash": {
+          "name": "last_processed_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp (0) with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "index_cursors_chain_id_contract_pk": {
+          "name": "index_cursors_chain_id_contract_pk",
+          "columns": [
+            "chain_id",
+            "contract"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.priors": {
+      "name": "priors",
+      "schema": "",
+      "columns": {
+        "chain_id": {
+          "name": "chain_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "methodology_version": {
+          "name": "methodology_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "context": {
+          "name": "context",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "value": {
+          "name": "value",
+          "type": "numeric(7, 6)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "basis": {
+          "name": "basis",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "n_basis": {
+          "name": "n_basis",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "computed_at": {
+          "name": "computed_at",
+          "type": "timestamp (0) with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "priors_chain_id_methodology_version_context_pk": {
+          "name": "priors_chain_id_methodology_version_context_pk",
+          "columns": [
+            "chain_id",
+            "methodology_version",
+            "context"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.reviewer_agent_commerce": {
+      "name": "reviewer_agent_commerce",
+      "schema": "",
+      "columns": {
+        "chain_id": {
+          "name": "chain_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "address": {
+          "name": "address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "agent_id": {
+          "name": "agent_id",
+          "type": "numeric(78, 0)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "evidence_source": {
+          "name": "evidence_source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "first_block": {
+          "name": "first_block",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tx_hash": {
+          "name": "tx_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "reviewer_agent_commerce_agent_idx": {
+          "name": "reviewer_agent_commerce_agent_idx",
+          "columns": [
+            {
+              "expression": "chain_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "agent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "reviewer_agent_commerce_chain_id_address_agent_id_pk": {
+          "name": "reviewer_agent_commerce_chain_id_address_agent_id_pk",
+          "columns": [
+            "chain_id",
+            "address",
+            "agent_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.reviewer_wallets": {
+      "name": "reviewer_wallets",
+      "schema": "",
+      "columns": {
+        "chain_id": {
+          "name": "chain_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "address": {
+          "name": "address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "first_seen_block": {
+          "name": "first_seen_block",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "first_seen_ts": {
+          "name": "first_seen_ts",
+          "type": "timestamp (0) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "first_seen_source": {
+          "name": "first_seen_source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "total_reviews": {
+          "name": "total_reviews",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "distinct_agents_reviewed": {
+          "name": "distinct_agents_reviewed",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "max_reviews_single_day": {
+          "name": "max_reviews_single_day",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "repeat_review_rate": {
+          "name": "repeat_review_rate",
+          "type": "numeric(5, 4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "funder_address": {
+          "name": "funder_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "funder_cluster_id": {
+          "name": "funder_cluster_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "score_variance": {
+          "name": "score_variance",
+          "type": "numeric(12, 6)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mean_score_given": {
+          "name": "mean_score_given",
+          "type": "numeric(7, 6)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "portfolio_top_funder_share": {
+          "name": "portfolio_top_funder_share",
+          "type": "numeric(5, 4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_computed_at": {
+          "name": "last_computed_at",
+          "type": "timestamp (0) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "reviewer_wallets_address_idx": {
+          "name": "reviewer_wallets_address_idx",
+          "columns": [
+            {
+              "expression": "address",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "reviewer_wallets_chain_id_address_pk": {
+          "name": "reviewer_wallets_chain_id_address_pk",
+          "columns": [
+            "chain_id",
+            "address"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.score_overrides": {
+      "name": "score_overrides",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "chain_id": {
+          "name": "chain_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "agent_id": {
+          "name": "agent_id",
+          "type": "numeric(78, 0)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "suppress": {
+          "name": "suppress",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "author": {
+          "name": "author",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp (0) with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lifted_at": {
+          "name": "lifted_at",
+          "type": "timestamp (0) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "lifted_by": {
+          "name": "lifted_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "lift_reason": {
+          "name": "lift_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "score_overrides_chain_agent_idx": {
+          "name": "score_overrides_chain_agent_idx",
+          "columns": [
+            {
+              "expression": "chain_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "agent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.scores": {
+      "name": "scores",
+      "schema": "",
+      "columns": {
+        "chain_id": {
+          "name": "chain_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "agent_id": {
+          "name": "agent_id",
+          "type": "numeric(78, 0)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "methodology_version": {
+          "name": "methodology_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "computed_at": {
+          "name": "computed_at",
+          "type": "timestamp (0) with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "score": {
+          "name": "score",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "suppression_reason": {
+          "name": "suppression_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "coverage_tier": {
+          "name": "coverage_tier",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "signals_json": {
+          "name": "signals_json",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "score_low": {
+          "name": "score_low",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "score_high": {
+          "name": "score_high",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "confidence": {
+          "name": "confidence",
+          "type": "numeric(5, 4)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "n_eff": {
+          "name": "n_eff",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lifecycle_state": {
+          "name": "lifecycle_state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "inputs_hash": {
+          "name": "inputs_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "result_json": {
+          "name": "result_json",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "scores_chain_agent_computed_idx": {
+          "name": "scores_chain_agent_computed_idx",
+          "columns": [
+            {
+              "expression": "chain_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "agent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "computed_at",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "scores_chain_id_agent_id_methodology_version_computed_at_pk": {
+          "name": "scores_chain_id_agent_id_methodology_version_computed_at_pk",
+          "columns": [
+            "chain_id",
+            "agent_id",
+            "methodology_version",
+            "computed_at"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.validations": {
+      "name": "validations",
+      "schema": "",
+      "columns": {
+        "chain_id": {
+          "name": "chain_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "request_hash": {
+          "name": "request_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "validator_address": {
+          "name": "validator_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "agent_id": {
+          "name": "agent_id",
+          "type": "numeric(78, 0)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "response": {
+          "name": "response",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "response_uri": {
+          "name": "response_uri",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "response_hash": {
+          "name": "response_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "tag": {
+          "name": "tag",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "last_update_block": {
+          "name": "last_update_block",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ts": {
+          "name": "ts",
+          "type": "timestamp (0) with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "validations_chain_id_request_hash_pk": {
+          "name": "validations_chain_id_request_hash_pk",
+          "columns": [
+            "chain_id",
+            "request_hash"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

@@ -1,0 +1,612 @@
+[
+  {
+    "server": "ai.adoraads_beauty",
+    "endpoint": "https://mcp.adoraads.ai/beauty",
+    "tool": "sponsored_search",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 200,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.airshelf_catalog",
+    "endpoint": "https://mcp.airshelf.ai/mcp",
+    "tool": "search_catalog",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 200,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.airshelf_catalog",
+    "endpoint": "https://mcp.airshelf.ai/mcp",
+    "tool": "get_product",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 200,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.aislabs_cve",
+    "endpoint": "https://api.aislabs.ai/cve/mcp",
+    "tool": "kev_fresh",
+    "usd": 0.01,
+    "scheme": "x402-prose",
+    "network": "unknown",
+    "status": 200,
+    "note": null
+  },
+  {
+    "server": "ai.aislabs_cve",
+    "endpoint": "https://api.aislabs.ai/cve/mcp",
+    "tool": "top_cves_today",
+    "usd": 0.02,
+    "scheme": "x402-prose",
+    "network": "unknown",
+    "status": 200,
+    "note": null
+  },
+  {
+    "server": "ai.aivonic_mcp",
+    "endpoint": "https://mcp.aivonic.ai",
+    "tool": "get_pricing",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 400,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.askmiles_catalog",
+    "endpoint": "https://api.askmiles.ai/mcp",
+    "tool": "get_card_facts",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 200,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.askmiles_catalog",
+    "endpoint": "https://api.askmiles.ai/mcp",
+    "tool": "search_card_catalog",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 200,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.autonomad_travel",
+    "endpoint": "https://mcp.autonomad.ai/mcp",
+    "tool": "get_capabilities",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 400,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.autonomad_travel",
+    "endpoint": "https://mcp.autonomad.ai/mcp",
+    "tool": "search_flights",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 400,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.awardcast_federal-contracts",
+    "endpoint": "https://awardcast.ai/mcp",
+    "tool": "open_solicitations",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 200,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.boolsai_scan",
+    "endpoint": "https://boolsai.ai/mcp",
+    "tool": "boolsai_scan_paths",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 200,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.borealhost_mcp",
+    "endpoint": "https://borealhost.ai/mcp/",
+    "tool": "list_compute_types",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 400,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.cabrini_market-data",
+    "endpoint": "https://cabrini.ai/mcp",
+    "tool": "query_range",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 200,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.cabrini_market-data",
+    "endpoint": "https://cabrini.ai/mcp",
+    "tool": "scan_market",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 200,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.cabrini_market-data",
+    "endpoint": "https://cabrini.ai/mcp",
+    "tool": "get_filings",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 200,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.canivibe_status",
+    "endpoint": "https://canivibe.ai/mcp",
+    "tool": "ai_provider_status",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 200,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.ccapi_mcp",
+    "endpoint": "https://api.ccapi.ai/mcp",
+    "tool": "chat_completion",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 401,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.cerebrium_docs",
+    "endpoint": "https://cerebrium.ai/docs/mcp",
+    "tool": "query_docs_filesystem_cerebrium",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 200,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.certscore_mcp-light",
+    "endpoint": "https://mcp.certscore.ai/mcp/light",
+    "tool": "certscore_get_scan_status",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 400,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.chronary_mcp",
+    "endpoint": "https://api.chronary.ai/mcp",
+    "tool": "list_webhook_deliveries",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 401,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.clawfetch_mcp",
+    "endpoint": "https://mcp.clawfetch.ai/mcp",
+    "tool": "research_topic",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 400,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.clawfetch_mcp",
+    "endpoint": "https://mcp.clawfetch.ai/mcp",
+    "tool": "render_page",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 400,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.clawfetch_mcp",
+    "endpoint": "https://mcp.clawfetch.ai/mcp",
+    "tool": "fetch_url",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 400,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.com.mcp_lenny-rachitsky-podcast",
+    "endpoint": "https://lenny-rachitsky.run.mcp.com.ai/mcp",
+    "tool": "getSearch",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 200,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.com.mcp_lenny-rachitsky-podcast",
+    "endpoint": "https://lenny-rachitsky.run.mcp.com.ai/mcp",
+    "tool": "getEpisodesGuestTranscriptformat",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 404,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.demanddiscovery_mcp",
+    "endpoint": "https://mcp.demanddiscovery.ai/api/mcp",
+    "tool": "compare_validation_approaches",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 200,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.dripmetrics_mcp",
+    "endpoint": "https://mcp.dripmetrics.ai/mcp",
+    "tool": "get_metric",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 200,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.filegraph_document-processing",
+    "endpoint": "https://api.filegraph.ai/mcp",
+    "tool": "filegraph_text_extraction_docs",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 200,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.firmbrain_x402-services",
+    "endpoint": "https://x402-services-production.up.railway.app/mcp",
+    "tool": "scout_service",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 200,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.firmbrain_x402-services",
+    "endpoint": "https://x402-services-production.up.railway.app/mcp",
+    "tool": "markdown",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 200,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.foura_mcp",
+    "endpoint": "https://mcp.foura.ai/mcp",
+    "tool": "foura_auto",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 401,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.framethrower_framethrower",
+    "endpoint": "https://framethrower.ai/api/mcp",
+    "tool": "search_frames",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 401,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.getvda_traced-claude-format-guard",
+    "endpoint": "https://traced-llm-proxy-anthropic.getvda.ai/mcp",
+    "tool": "invoke",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 200,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.getvda_traced-llm-mcp-proxy",
+    "endpoint": "https://traced-llm-mcp-proxy.getvda.ai/mcp",
+    "tool": "invoke",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 200,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.getvda_traced-llm-proxy",
+    "endpoint": "https://traced-llm-proxy.getvda.ai/mcp",
+    "tool": "invoke",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 200,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.getvda_traced-multi-llm-proxy",
+    "endpoint": "https://traced-multi-llm-proxy.getvda.ai/mcp",
+    "tool": "invoke",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 200,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.gigaverse_gigaverse",
+    "endpoint": "https://gigaverse.ai/api/mcp",
+    "tool": "get_practicle_info",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 200,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.helixar_mcp",
+    "endpoint": "https://mcp.helixar.ai/mcp",
+    "tool": "helixar_inspect_mcp",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 200,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.imaginode_imaginode",
+    "endpoint": "https://imaginode.ai/api/mcp",
+    "tool": "list_models",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 401,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.infrapulse_infrapulse",
+    "endpoint": "https://infrapulse.ai/mcp",
+    "tool": "quote",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 401,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.intuitek.the-stall_the-stall",
+    "endpoint": "https://the-stall.intuitek.ai/mcp",
+    "tool": "llm-proxy",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 200,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.jawz_jawz",
+    "endpoint": "https://jawz.ai/api/mcp",
+    "tool": "get_financial_conditions",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 200,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.kifly_mcp",
+    "endpoint": "https://kifly.ai/api/mcp",
+    "tool": "list_sellers",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 401,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.kolonie_kolonie",
+    "endpoint": "https://mcp.kolonie.ai/mcp",
+    "tool": "kolonie.citizens.read",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 200,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.llmhosting_pricing",
+    "endpoint": "https://llmhosting.ai/mcp",
+    "tool": "search_models",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 200,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.llmhosting_pricing",
+    "endpoint": "https://llmhosting.ai/mcp",
+    "tool": "get_model_prices",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 200,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.llmhosting_pricing",
+    "endpoint": "https://llmhosting.ai/mcp",
+    "tool": "list_gpus",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 200,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.llmintel_model-lifecycle",
+    "endpoint": "https://llmintel.ai/v1/mcp",
+    "tool": "check_model",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 200,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.llmse_mcp",
+    "endpoint": "https://llmse.ai/mcp",
+    "tool": "select_advertiser",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 400,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.lumify_sports-intelligence",
+    "endpoint": "https://lumify.ai/mcp",
+    "tool": "query_events",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 200,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.lumify_sports-intelligence",
+    "endpoint": "https://lumify.ai/mcp",
+    "tool": "list_forecasts",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 200,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.mainbook_bank-statement-converter",
+    "endpoint": "https://mcp.mainbook.ai/mcp",
+    "tool": "get_balance",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 401,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.mangii_manga",
+    "endpoint": "https://mcp.mangii.ai/mcp",
+    "tool": "manga.buy_credits",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 401,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.marketcrew_market-data",
+    "endpoint": "https://marketcrew.ai/mcp",
+    "tool": "get_intermarket",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 200,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.marketintell_marketintell",
+    "endpoint": "https://api.marketintell.ai/mcp",
+    "tool": "billing_status",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 401,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.meacheal_mrc-data",
+    "endpoint": "https://api.meacheal.ai/mcp",
+    "tool": "estimate_cost",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 401,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.moonlings_moonlings",
+    "endpoint": "https://moonlings.ai/api/mcp",
+    "tool": "review_gap",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 200,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.moonlings_moonlings",
+    "endpoint": "https://moonlings.ai/api/mcp",
+    "tool": "check_facts",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 200,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.name_nameai-mcp",
+    "endpoint": "https://nameai-mcp.h.namekart.com/mcp",
+    "tool": "search_domain",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 400,
+    "note": "not priced on this path"
+  },
+  {
+    "server": "ai.namewhisper_ens-tools",
+    "endpoint": "https://namewhisper.ai/mcp",
+    "tool": "get_valuation",
+    "usd": null,
+    "scheme": null,
+    "network": null,
+    "status": 400,
+    "note": "not priced on this path"
+  }
+]

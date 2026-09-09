@@ -1,0 +1,1104 @@
+{
+  "probed": 117,
+  "failed": 1,
+  "suspicious": [
+    {
+      "server": "ag.hood/name-service",
+      "tool": "check_availability",
+      "args": {
+        "name": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+      },
+      "result": {
+        "tool": "check_availability",
+        "shape": "retrieval",
+        "basis": "inferred",
+        "args": {
+          "name": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+        },
+        "ok": true,
+        "isError": false,
+        "reason": null,
+        "elapsedMs": 1126,
+        "responseBytes": 223,
+        "contentTypes": [
+          "text"
+        ],
+        "structuredContent": false,
+        "matchesOutputSchema": null,
+        "textSample": "{\n  \"name\": \"qx7v9zzt4mnb2wkph3ljf6rd8s.hood\",\n  \"available\": true,\n  \"priceWeiPerYear\": \"2589405705496531\",\n  \"priceUsdPerYear\": 5\n}",
+        "text": "{\n  \"name\": \"qx7v9zzt4mnb2wkph3ljf6rd8s.hood\",\n  \"available\": true,\n  \"priceWeiPerYear\": \"2589405705496531\",\n  \"priceUsdPerYear\": 5\n}",
+        "textTruncated": false,
+        "textFingerprint": "cd8f081ef62ae3a9f7c01826bd7615b0",
+        "substantive": true,
+        "errorInPayload": false,
+        "refused": false
+      }
+    },
+    {
+      "server": "ai.agentberg/agentberg",
+      "tool": "get_skill",
+      "args": {
+        "name": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+      },
+      "result": {
+        "tool": "get_skill",
+        "shape": "retrieval",
+        "basis": "inferred",
+        "args": {
+          "name": "core"
+        },
+        "ok": true,
+        "isError": false,
+        "reason": null,
+        "elapsedMs": 1290,
+        "responseBytes": 7143,
+        "contentTypes": [
+          "text"
+        ],
+        "structuredContent": false,
+        "matchesOutputSchema": null,
+        "textSample": "{\n  \"skill\": \"core\",\n  \"critical\": true,\n  \"description\": \"Bundled critical skills \\u2014 auto-synced on agent boot.\",\n  \"valid_until\": \"2026-09-05\",\n  \"regime\": {\n    \"skill\": \"regime\",\n    \"critical\": true,\n    \"regime\": \"range_bound\",\n    \"strategy_favored\": \"Mean reversion, iron condors, range t",
+        "text": "{\n  \"skill\": \"core\",\n  \"critical\": true,\n  \"description\": \"Bundled critical skills \\u2014 auto-synced on agent boot.\",\n  \"valid_until\": \"2026-09-05\",\n  \"regime\": {\n    \"skill\": \"regime\",\n    \"critical\": true,\n    \"regime\": \"range_bound\",\n    \"strategy_favored\": \"Mean reversion, iron condors, range trades, avoid breakout chasing.\",\n    \"data\": {\n      \"spy_price\": 770.19,\n      \"spy_50ma\": 756.86,\n      \"spy_200ma\": 709.87,\n      \"spy_vs_50ma_pct\": 1.76,\n      \"spy_vs_200ma_pct\": 8.5,\n      \"rsi_14\": 47.5,\n      \"vix\": 14.53,\n      \"vix_30d_avg\": 15.69,\n      \"vix_vs_avg\": -1.16\n    },\n    \"interpretation\": \"SPY is 8.5% above the 200MA. VIX at 14.5 vs 30-day avg 15.7. RSI(14) at 47.5.\",\n    \"historical_context\": \"Ranges last 4\\u201316 weeks before resolving. Premium selling strategies outperform.\",\n    \"verdict\": \"Regime: RANGE BOUND. Mean reversion, iron condors, range trades, avoid breakout chasing.\",\n    \"valid_days\": 1\n  },\n  \"risk_calendar\": {\n    \"skill\": \"risk_calendar\",\n    \"critical\": true,\n    \"horizon_days\": 14,\n    \"risk_level\": \"medium\",\n    \"events\": [\n      {\n        \"date\": \"2026-09-09\",\n        \"event\": \"CPI Release\",\n        \"type\": \"macro\",\n        \"impact\": \"high\",\n        \"note\": \"Inflation data at 8:30am ET. High surprise potential. Rate-sensitive sectors (XLU, XLRE, XLF) most affected.\"\n      },\n      {\n        \"date\": \"2026-09-17\",\n        \"event\": \"FOMC Decision\",\n        \"type\": \"macro\",\n        \"impact\": \"high\",\n        \"note\": \"Fed rate decision. Markets typically move 0.5\\u20132% on the day. Reduce size on open positions heading in.\"\n      },\n      {\n        \"date\": \"2026-09-18\",\n        \"event\": \"Options Expiration (OpEx)\",\n        \"type\": \"market_structure\",\n        \"impact\": \"medium\",\n        \"note\": \"Monthly options expiry. Large OI can pin price near strikes or cause sharp moves post-expiry.\"\n      }\n    ],\n    \"event_count\": 3,\n    \"high_impact_count\": 2,\n    \"interpretation\": \"3 event(s) in the next 14 days (2 high-impact).\",\n    \"verdict\": \"2 high-impact macro event(s) in the next 14 days, nearest in 5 day(s) \\u2014 not yet imminent. Standard risk management; reassess as it nears.\",\n    \"valid_days\": 1\n  },\n  \"health\": {\n    \"skill\": \"health\",\n    \"critical\": true,\n    \"health_label\": \"mixed\",\n    \"health_score\": 1,\n    \"max_score\": 3,\n    \"flags\": [\n      \"CREDIT STRESS: High-yield bonds (HYG) down 0.0% in 30 days \\u2014 risk appetite declining.\"\n    ],\n    \"data\": {\n      \"spy_1m_return_pct\": -0.4,\n      \"rsp_1m_return_pct\": -0.5,\n      \"breadth_divergence_pct\": 0.1,\n      \"hyg_1m_trend_pct\": -0.02,\n      \"vix\": 14.53,\n      \"vix_30d_avg\": 15.69\n    },\n    \"interpretation\": \"Breadth divergence: 0.1%. Credit (HYG) 30d trend: -0.0%. VIX 14.53 vs avg 15.69.\",\n    \"verdict\": \"Mixed internals signals. Consider 75% of normal position size until clarity emerges.\",\n    \"valid_days\": 1\n  },\n  \"boot_summary\": \"REGIME: RANGE_BOUND \\u2014 Regime: RANGE BOUND. Mean reversion, iron condors, range trades, avoid breakout chasing. | RISK: MEDIUM \\u2014 2 high-impact macro event(s) in the next 14 days, nearest in 5 day(s) \\u2014 not yet imminent. Standard risk management; reassess as it nears. | HEALTH: MIXED \\u2014 Mixed internals signals. Consider 75% of normal position size until clarity emerges.\",\n  \"network_exit_benchmarks\": {\n    \"Communication Services\": {\n      \"bull\": {\n        \"median_win_pct\": 0.01,\n        \"median_loss_pct\": 0.02,\n        \"avg_win_pct\": 0.02,\n        \"avg_loss_pct\": 0.03,\n        \"win_count\": 9,\n        \"loss_count\": 3\n      },\n      \"sideways\": {\n        \"median_win_pct\": 0.01,\n        \"median_loss_pct\": 0.02,\n        \"avg_win_pct\": 0.01,\n        \"avg_loss_pct\": 0.01,\n        \"win_count\": 1,\n        \"loss_count\": 7\n      }\n    },\n    \"Consumer Discretionary\": {\n      \"bull\": {\n        \"median_win_pct\": 0.03,\n        \"median_loss_pct\": 0.01,\n        \"avg_win_pct\": 0.03,\n        \"avg_loss_pct\": 0.01,\n        \"win_count\": 4,\n        \"loss_count\": 5\n      }\n    },\n    \"Consumer Staples\": {\n      \"bull\": {\n        \"median_win_pct\": 0.01,\n        \"median_loss_pct\": 0.0,\n        \"avg_win_pct\": 0.01,\n        \"avg_loss_pct\": 0.01,\n        \"win_count\": 6,\n        \"loss_count\": 6\n      }\n    },\n    \"Energy\": {\n      \"sideways\": {\n        \"median_win_pct\": 0.03,\n        \"median_loss_pct\": 0.03,\n        \"avg_win_pct\": 0.03,\n        \"avg_loss_pct\": 0.02,\n        \"win_count\": 11,\n        \"loss_count\": 5\n      }\n    },\n    \"Financials\": {\n      \"bull\": {\n        \"median_win_pct\": 0.04,\n        \"median_loss_pct\": 0.02,\n        \"avg_win_pct\": 0.03,\n        \"avg_loss_pct\": 0.02,\n        \"win_count\": 5,\n        \"loss_count\": 15\n      },\n      \"sideways\": {\n        \"median_win_pct\": 0.01,\n        \"median_loss_pct\": 0.03,\n        \"avg_win_pct\": 0.01,\n        \"avg_loss_pct\": 0.03,\n        \"win_count\": 8,\n        \"loss_count\": 3\n      }\n    },\n    \"Healthcare\": {\n      \"bull\": {\n        \"median_win_pct\": 0.01,\n        \"median_loss_pct\": 0.01,\n        \"avg_win_pct\": 0.09,\n        \"avg_loss_pct\": 0.01,\n        \"win_count\": 11,\n        \"loss_count\": 8\n      },\n      \"sideways\": {\n        \"median_win_pct\": 0.01,\n        \"median_loss_pct\": 0.01,\n        \"avg_win_pct\": 0.01,\n        \"avg_loss_pct\": 0.01,\n        \"win_count\": 5,\n        \"loss_count\": 10\n      }\n    },\n    \"Materials\": {\n      \"bull\": {\n        \"median_win_pct\": 0.01,\n        \"median_loss_pct\": 0.0,\n        \"avg_win_pct\": 0.03,\n        \"avg_loss_pct\": 0.01,\n        \"win_count\": 3,\n        \"loss_count\": 4\n      }\n    },\n    \"Real Estate\": {\n      \"bull\": {\n        \"median_win_pct\": 0.01,\n        \"median_loss_pct\": 0.0,\n        \"avg_win_pct\": 0.01,\n        \"avg_loss_pct\": 0.01,\n        \"win_count\": 1,\n        \"loss_count\": 13\n      }\n    },\n    \"Technology\": {\n      \"bull\": {\n        \"median_win_pct\": 0.02,\n        \"median_loss_pct\": 0.02,\n        \"avg_win_pct\": 0.03,\n        \"avg_loss_pct\": 0.03,\n        \"win_count\": 20,\n        \"loss_count\": 29\n      },\n      \"sideways\": {\n        \"median_win_pct\": 0.01,\n        \"median_loss_pct\": 0.01,\n        \"avg_win_pct\": 0.01,\n        \"avg_loss_pct\": 0.01,\n        \"win_count\": 2,\n        \"loss_count\": 5\n      }\n    },\n    \"Utilities\": {\n      \"bull\": {\n        \"median_win_pct\": 0.01,\n        \"median_loss_pct\": 0.03,\n        \"avg_win_pct\": 0.01,\n        \"avg_loss_pct\": 0.03,\n        \"win_count\": 1,\n        \"loss_count\": 8\n      }\n    }\n  }\n}",
+        "textTruncated": false,
+        "textFingerprint": "cac3ea0fa53ac5dfe9efabb43d6e498e",
+        "substantive": true,
+        "errorInPayload": false,
+        "refused": false
+      }
+    },
+    {
+      "server": "ai.agenticterminal/directory",
+      "tool": "get_merchant",
+      "args": {
+        "id": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+      },
+      "result": {
+        "tool": "get_merchant",
+        "shape": "retrieval",
+        "basis": "inferred",
+        "args": {
+          "id": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+        },
+        "ok": true,
+        "isError": false,
+        "reason": null,
+        "elapsedMs": 101,
+        "responseBytes": 331,
+        "contentTypes": [
+          "text"
+        ],
+        "structuredContent": false,
+        "matchesOutputSchema": null,
+        "textSample": "{\n  \"error\": {\n    \"code\": \"unknown_merchant\",\n    \"message\": \"No merchant found with id 'qx7v9zzt4mnb2wkph3ljf6rd8s'.\"\n  },\n  \"agent_identity\": {\n    \"authenticated\": false,\n    \"tier_cap\": \"anonymous\"\n  }\n}",
+        "text": "{\n  \"error\": {\n    \"code\": \"unknown_merchant\",\n    \"message\": \"No merchant found with id 'qx7v9zzt4mnb2wkph3ljf6rd8s'.\"\n  },\n  \"agent_identity\": {\n    \"authenticated\": false,\n    \"tier_cap\": \"anonymous\"\n  }\n}",
+        "textTruncated": false,
+        "textFingerprint": "e42bb1ac8b20e21103b7912100042974",
+        "substantive": true,
+        "errorInPayload": false,
+        "refused": false
+      }
+    },
+    {
+      "server": "ai.agentrapay/agentra",
+      "tool": "agentra_get_wallet",
+      "args": {
+        "agent_id": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+      },
+      "result": {
+        "tool": "agentra_get_wallet",
+        "shape": "retrieval",
+        "basis": "declared",
+        "args": {
+          "agent_id": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+        },
+        "ok": true,
+        "isError": false,
+        "reason": null,
+        "elapsedMs": 261,
+        "responseBytes": 734,
+        "contentTypes": [
+          "text"
+        ],
+        "structuredContent": false,
+        "matchesOutputSchema": null,
+        "textSample": "{\n  \"agent_id\": \"qx7v9zzt4mnb2wkph3ljf6rd8s\",\n  \"agent_name\": \"demo-agent\",\n  \"demo\": true,\n  \"limits\": {\n    \"daily_usd\": 5000.0,\n    \"per_transaction_usd\": 1000.0\n  },\n  \"note\": \"This is demo data. Authenticate with an agent API key (X-API-Key header) for live wallet data. Register free at https:/",
+        "text": "{\n  \"agent_id\": \"qx7v9zzt4mnb2wkph3ljf6rd8s\",\n  \"agent_name\": \"demo-agent\",\n  \"demo\": true,\n  \"limits\": {\n    \"daily_usd\": 5000.0,\n    \"per_transaction_usd\": 1000.0\n  },\n  \"note\": \"This is demo data. Authenticate with an agent API key (X-API-Key header) for live wallet data. Register free at https://api.agentrapay.ai/agents\",\n  \"reputation_score\": 65.0,\n  \"reputation_zone\": \"Green\",\n  \"trust_tier\": \"Basic\",\n  \"trust_tier_int\": 1,\n  \"wallet\": {\n    \"address\": \"0x0000000000000000000000000000000000000000\",\n    \"balance\": 0.0,\n    \"custody_mode\": \"non_custodial\",\n    \"provider\": \"demo\"\n  }\n}",
+        "textTruncated": false,
+        "textFingerprint": "f9280c13698d1583e892d6ece2731bbd",
+        "substantive": true,
+        "errorInPayload": false,
+        "refused": false
+      }
+    },
+    {
+      "server": "ai.ai-portal/ai-portal",
+      "tool": "search_glossary",
+      "args": {
+        "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+      },
+      "result": {
+        "tool": "search_glossary",
+        "shape": "retrieval",
+        "basis": "inferred",
+        "args": {
+          "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+        },
+        "ok": true,
+        "isError": false,
+        "reason": null,
+        "elapsedMs": 405,
+        "responseBytes": 127,
+        "contentTypes": [
+          "text"
+        ],
+        "structuredContent": false,
+        "matchesOutputSchema": null,
+        "textSample": "{\n  \"count\": 0,\n  \"items\": []\n}",
+        "text": "{\n  \"count\": 0,\n  \"items\": []\n}",
+        "textTruncated": false,
+        "textFingerprint": "6efaac3e9033c9018a01ac0d37629926",
+        "substantive": true,
+        "errorInPayload": false,
+        "refused": false
+      }
+    },
+    {
+      "server": "ai.argushq/enforcement-database",
+      "tool": "search_enforcement",
+      "args": {
+        "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+      },
+      "result": {
+        "tool": "search_enforcement",
+        "shape": "retrieval",
+        "basis": "inferred",
+        "args": {
+          "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+        },
+        "ok": true,
+        "isError": false,
+        "reason": null,
+        "elapsedMs": 373,
+        "responseBytes": 165,
+        "contentTypes": [
+          "text"
+        ],
+        "structuredContent": false,
+        "matchesOutputSchema": null,
+        "textSample": "{\n  \"query\": \"qx7v9zzt4mnb2wkph3ljf6rd8s\",\n  \"results\": []\n}",
+        "text": "{\n  \"query\": \"qx7v9zzt4mnb2wkph3ljf6rd8s\",\n  \"results\": []\n}",
+        "textTruncated": false,
+        "textFingerprint": "c9e29fac59eda1f25b5c56d073342b89",
+        "substantive": true,
+        "errorInPayload": false,
+        "refused": false
+      }
+    },
+    {
+      "server": "ai.atdev/supershopping",
+      "tool": "search_products",
+      "args": {
+        "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+      },
+      "result": {
+        "tool": "search_products",
+        "shape": "retrieval",
+        "basis": "declared",
+        "args": {
+          "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+        },
+        "ok": true,
+        "isError": false,
+        "reason": null,
+        "elapsedMs": 3131,
+        "responseBytes": 14302,
+        "contentTypes": [
+          "text"
+        ],
+        "structuredContent": true,
+        "matchesOutputSchema": true,
+        "textSample": "{\"items\":[{\"product_id\":\"uniqlo:productid:E475376-000\",\"title\":\"드라이V넥T\",\"brand\":\"드라이V넥T\",\"min_price\":7900,\"key_specs\":{\"종류\":\"V넥 티셔츠\",\"소재\":\"기능성(드라이)\"},\"thumbnail\":\"https://image.uniqlo.com/UQ/ST3/kr/imagesgoods/475376/item/krgoods_12_475376_3x4.jpg\",\"images\":[\"https://image.uniqlo.com/UQ/ST3/kr/image",
+        "text": "{\"items\":[{\"product_id\":\"uniqlo:productid:E475376-000\",\"title\":\"드라이V넥T\",\"brand\":\"드라이V넥T\",\"min_price\":7900,\"key_specs\":{\"종류\":\"V넥 티셔츠\",\"소재\":\"기능성(드라이)\"},\"thumbnail\":\"https://image.uniqlo.com/UQ/ST3/kr/imagesgoods/475376/item/krgoods_12_475376_3x4.jpg\",\"images\":[\"https://image.uniqlo.com/UQ/ST3/kr/imagesgoods/475376/item/krgoods_12_475376_3x4.jpg\"],\"source_url\":\"https://www.uniqlo.com/kr/ko/products/E475376-000\",\"source\":\"uniqlo\",\"condition\":\"new\",\"collected_at\":\"2026-07-05T12:17:08+00:00\",\"rating\":4.5,\"review_count\":36,\"buy_url\":\"https://www.uniqlo.com/kr/ko/products/E475376-000\",\"affiliate\":false},{\"product_id\":\"uniqlo:productid:E469740-000\",\"title\":\"히트텍U넥T(8부)\",\"brand\":\"히트텍U넥T(8부)\",\"min_price\":16900,\"key_specs\":{\"종류\":\"U넥 티셔츠\"},\"thumbnail\":\"https://image.uniqlo.com/UQ/ST3/AsianCommon/imagesgoods/469740/item/goods_11_469740_3x4.jpg\",\"images\":[\"https://image.uniqlo.com/UQ/ST3/AsianCommon/imagesgoods/469740/item/goods_11_469740_3x4.jpg\"],\"source_url\":\"https://www.uniqlo.com/kr/ko/products/E469740-000\",\"source\":\"uniqlo\",\"condition\":\"new\",\"collected_at\":\"2026-07-05T12:15:04+00:00\",\"rating\":4.8,\"review_count\":247,\"buy_url\":\"https://www.uniqlo.com/kr/ko/products/E469740-000\",\"affiliate\":false},{\"product_id\":\"naver_shopping:productid:60678962242\",\"title\":\"뉴문7 헬스복 여름운동복 쿨티셔츠 무지 8XL까지 쿨링 기능성반팔\",\"brand\":\"뉴문7\",\"min_price\":7500,\"key_specs\":{\"종류\":\"티셔츠\"},\"thumbnail\":\"https://shopping-phinf.pstatic.net/main_6067896/60678962242.20260702031123.jpg\",\"images\":[\"https://shopping-phinf.pstatic.net/main_6067896/60678962242.20260702031123.jpg\"],\"source_url\":\"https://search.shopping.naver.com/catalog/60678962242\",\"source\":\"naver_shopping\",\"condition\":\"new\",\"collected_at\":\"2026-07-03T12:43:02+00:00\",\"rating\":null,\"review_count\":null,\"buy_url\":\"https://search.shopping.naver.com/catalog/60678962242\",\"affiliate\":false},{\"product_id\":\"uniqlo:productid:E487822-000\",\"title\":\"릴랙스원피스(반팔)\",\"brand\":\"릴랙스원피스(반팔)\",\"min_price\":59900,\"key_specs\":{\"종류\":\"원피스\",\"핏\":\"릴랙스핏\"},\"thumbnail\":\"https://image.uniqlo.com/UQ/ST3/kr/imagesgoods/487822/item/krgoods_09_487822_3x4.jpg\",\"images\":[\"https://image.uniqlo.com/UQ/ST3/kr/imagesgoods/487822/item/krgoods_09_487822_3x4.jpg\"],\"source_url\":\"https://www.uniqlo.com/kr/ko/products/E487822-000\",\"source\":\"uniqlo\",\"condition\":\"new\",\"collected_at\":\"2026-07-05T12:14:19+00:00\",\"rating\":5.0,\"review_count\":1,\"buy_url\":\"https://www.uniqlo.com/kr/ko/products/E487822-000\",\"affiliate\":false},{\"product_id\":\"daangn:article:i9hy6g8z6k7i\",\"title\":\"삼성 TV 벽걸이 브라켓 WMN4277ST\",\"brand\":\"삼성\",\"min_price\":20000,\"key_specs\":{},\"thumbnail\":\"https://img.kr.gcp-karroter.net/origin/article/202511/17626621748399cfdb054f3ce8efdb9650ad957b1b232431b993fdddfe4c566c97ef1294be7d50.webp?q=82&s=300x300&t=crop&service=webapp&f=webp\",\"images\":[\"https://img.kr.gcp-karroter.net/origin/article/202511/17626621748399cfdb054f3ce8efdb9650ad957b1b232431b993fdddfe4c566c97ef1294be7d50.webp?q=82&s=300x300&t=crop&service=webapp&f=webp\"],\"source_url\":\"https://www.daangn.com/kr/buy-sell/%EC%82%BC%EC%84%B1-tv-%EB%B2%BD%EA%B1%B8%EC%9D%B4-%EB%B8%8C%EB%9D%BC%EC%BC%93-wmn4277st-i9hy6g8z6k7i/\",\"source\":\"daangn\",\"condition\":\"used\",\"collected_at\":\"2026-06-29T14:53:35+00:00\",\"rating\":null,\"review_count\":null,\"buy_url\":\"https://www.daangn.com/kr/buy-sell/%EC%82%BC%EC%84%B1-tv-%EB%B2%BD%EA%B1%B8%EC%9D%B4-%EB%B8%8C%EB%9D%BC%EC%BC%93-wmn4277st-i9hy6g8z6k7i/\",\"affiliate\":false},{\"product_id\":\"bunjang:itemid:405465707\",\"title\":\"퀼트 접는 핸드폰 지갑\",\"brand\":\"퀼트\",\"min_price\":38000,\"key_specs\":{},\"thumbnail\":\"https://media.bunjang.co.kr/product/405465707_1_1777735400_w266.jpg\",\"images\":[],\"source_url\":\"https://m.bunjang.co.kr/products/405465707\",\"source\":\"bunjang\",\"condition\":\"used\",\"collected_at\":\"2026-06-29T11:50:41+00:00\",\"rating\":null,\"review_count\":null,\"buy_url\":\"https://m.bunjang.co.kr/products/405465707\",\"affiliate\":false},{\"product_id\":\"daangn:article:mg4i24a92bdf\",\"title\":\"LG 트롬 9kg 세탁기\",\"brand\":\"LG\",\"min_price\":50000,\"key_specs\":{\"용량\":\"9kg\",\"방식\":\"드럼\"},\"thumbnail\":\"https://img.kr.gcp-karroter.net/origin/article/202503/9d10a5dcc58faf6ce251eefcf66f2b1c1bbcf48612832030b1b0e3129564135e_0.webp?q=82&s=300x300&t=crop&service=webapp&f=webp\",\"images\":[\"https://img.kr.gcp-karroter.net/origin/article/202503/9d10a5dcc58faf6ce251eefcf66f2b1c1bbcf48612832030b1b0e3129564135e_0.webp?q=82&s=300x300&t=crop&service=webapp&f=webp\"],\"source_url\":\"https://www.daangn.com/kr/buy-sell/lg-%ED%8A%B8%EB%A1%AC-9kg-%EC%84%B8%ED%83%81%EA%B8%B0-mg4i24a92bdf/\",\"source\":\"daangn\",\"condition\":\"used\",\"collected_at\":\"2026-06-30T10:00:53+00:00\",\"rating\":null,\"review_count\":null,\"buy_url\":\"https://www.daangn.com/kr/buy-sell/lg-%ED%8A%B8%EB%A1%AC-9kg-%EC%84%B8%ED%83%81%EA%B8%B0-mg4i24a92bdf/\",\"affiliate\":false},{\"product_id\":\"daangn:article:p5fkji69z6fv\",\"title\":\"삼성 히트펌프 건조기 9kg\",\"brand\":\"삼성\",\"min_price\":50000,\"key_specs\":{\"용량\":\"9kg\",\"방식\":\"히트펌프\"},\"thumbnail\":\"https://img.kr.gcp-karroter.net/origin/article/202507/175178881021220be21dafa690e001dd303fbcce8bfebfafdacf099e32a6a0cf24f4d99bb2ed40.jpg?q=82&s=300x300&t=crop&service=webapp&f=webp\",\"images\":[\"https://img.kr.gcp-karroter.net/origin/article/202507/175178881021220be21dafa690e001dd303fbcce8bfebfafdacf099e32a6a0cf24f4d99bb2ed40.jpg?q=82&s=300x300&t=crop&service=webapp&f=webp\"],\"source_url\":\"https://www.daangn.com/kr/buy-sell/%EC%82%BC%EC%84%B1-%ED%9E%88%ED%8A%B8%ED%8E%8C%ED%94%84-%EA%B1%B4%EC%A1%B0%EA%B8%B0-9kg-p5fkji69z6fv/\",\"source\":\"daangn\",\"condition\":\"used\",\"collected_at\":\"2026-06-30T09:38:07+00:00\",\"rating\":null,\"review_count\":null,\"buy_url\":\"https://www.daangn.com/kr/buy-sell/%EC%82%BC%EC%84%B1-%ED%9E%88%ED%8A%B8%ED%8E%8C%ED%94%84-%EA%B1%B4%EC%A1%B0%EA%B8%B0-9kg-p5fkji69z6fv/\",\"affiliate\":false},{\"product_id\":\"29cm:itemno:4025613\",\"title\":\"[8th] Lithe v-neck tee (rosy nude)\",\"brand\":\"8th\",\"min_price\":80100,\"key_specs\":{\"색상\":\"로지 누드\",\"종류\":\"티셔츠\",\"스타일\":\"브이넥\"},\"thumbnail\":\"https://img.29cm.co.kr/item/202606/11f1607a815fed159f7faf070454e886.jpg\",\"images\":[\"https://img.29cm.co.kr/item/202606/11f1607a815fed159f7faf070454e886.jpg\"],\"source_url\":\"https://www.29cm.co.kr/products/4025613\",\"source\":\"29cm\",\"condition\":\"new\",\"collected_at\":\"2026-07-05T12:42:47+00:00\",\"rating\":5.0,\"review_count\":9,\"buy_url\":\"https://www.29cm.co.kr/products/4025613\",\"affiliate\":false},{\"product_id\":\"uniqlo:productid:E486840-000\",\"title\":\"히트텍크루넥T(9부)\",\"brand\":\"히트텍크루넥T(9부)\",\"min_price\":16900,\"key_specs\":{\"종류\":\"티셔츠\"},\"thumbnail\":\"https://image.uniqlo.com/UQ/ST3/kr/imagesgoods/486840/item/krgoods_69_486840_3x4.jpg\",\"images\":[\"https://image.uniqlo.com/UQ/ST3/kr/imagesgoods/486840/item/krgoods_69_486840_3x4.jpg\"],\"source_url\":\"https://www.uniqlo.com/kr/ko/products/E486840-000\",\"source\":\"uniqlo\",\"condition\":\"new\",\"collected_at\":\"2026-07-05T12:15:04+00:00\",\"rating\":0.0,\"review_count\":0,\"buy_url\":\"https://www.uniqlo.com/kr/ko/products/E486840-000\",\"affiliate\":false}],\"total\":10}",
+        "textTruncated": false,
+        "textFingerprint": "ac0d3671c36f104c8f944a50a451e34f",
+        "substantive": true,
+        "errorInPayload": false,
+        "refused": false
+      }
+    },
+    {
+      "server": "ai.aviado/health",
+      "tool": "search_supplements",
+      "args": {
+        "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+      },
+      "result": {
+        "tool": "search_supplements",
+        "shape": "retrieval",
+        "basis": "inferred",
+        "args": {
+          "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+        },
+        "ok": true,
+        "isError": false,
+        "reason": null,
+        "elapsedMs": 1731,
+        "responseBytes": 1555,
+        "contentTypes": [
+          "text"
+        ],
+        "structuredContent": false,
+        "matchesOutputSchema": null,
+        "textSample": "{\"resolved\":{\"canonical_id\":null,\"display_name\":null,\"query\":\"qx7v9zzt4mnb2wkph3ljf6rd8s\",\"confidence\":0,\"abstained\":true,\"candidates\":[{\"id\":\"ghrp_6\",\"display\":\"GHRP-6\",\"bi\":0.9761961140863015,\"ce\":-0.10342319309711456},{\"id\":\"nmn\",\"display\":\"-nicotinamide mononucleotide\",\"bi\":0.9748632023978923,\"c",
+        "text": "{\"resolved\":{\"canonical_id\":null,\"display_name\":null,\"query\":\"qx7v9zzt4mnb2wkph3ljf6rd8s\",\"confidence\":0,\"abstained\":true,\"candidates\":[{\"id\":\"ghrp_6\",\"display\":\"GHRP-6\",\"bi\":0.9761961140863015,\"ce\":-0.10342319309711456},{\"id\":\"nmn\",\"display\":\"-nicotinamide mononucleotide\",\"bi\":0.9748632023978923,\"ce\":-0.7354969382286072},{\"id\":\"citicoline\",\"display\":\"Citicoline\",\"bi\":0.9747544041193051,\"ce\":-0.11159970611333847},{\"id\":\"calcium\",\"display\":\"Calcium\",\"bi\":0.9732668642097907,\"ce\":-6.087717056274414},{\"id\":\"pt_141\",\"display\":\"PT-141 (Bremelanotide)\",\"bi\":0.9728594749651489,\"ce\":-0.01983526721596718},{\"id\":\"vitamin_k2\",\"display\":\"Vitamin K2\",\"bi\":0.9713788808075097,\"ce\":0.7963179349899292},{\"id\":\"phosphatidylserine\",\"display\":\"Phosphatidylserine\",\"bi\":0.9707590272313144,\"ce\":-2.4239180088043213},{\"id\":\"aod_9604\",\"display\":\"AOD-9604\",\"bi\":0.9705154821476359,\"ce\":-0.608803391456604}],\"model_version\":\"naming-slm-v0.7.2-retail-front-door-v4.1\",\"policy_version\":\"naming-outcome-conflicts-owner-five-v1.1-2026-07-12\",\"policy_rule_id\":null,\"policy_reason\":null,\"tier\":\"bi_encoder\"},\"data\":{\"matches\":[],\"count\":0},\"meta\":{\"tier\":\"anonymous\",\"calls_remaining\":9,\"reset_at\":\"2026-09-07T00:00:00.000Z\",\"data_version\":\"2026-06-30\"},\"cta\":{\"text\":\"Explore supplements on Aviado\",\"url\":\"https://aviado.com/app/today?ref=mcp\"}}",
+        "textTruncated": false,
+        "textFingerprint": "fa1be87e662827bcd416ef854d063680",
+        "substantive": true,
+        "errorInPayload": false,
+        "refused": false
+      }
+    },
+    {
+      "server": "ai.awardcast/federal-contracts",
+      "tool": "search",
+      "args": {
+        "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+      },
+      "result": {
+        "tool": "search",
+        "shape": "retrieval",
+        "basis": "inferred",
+        "args": {
+          "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+        },
+        "ok": true,
+        "isError": false,
+        "reason": null,
+        "elapsedMs": 957,
+        "responseBytes": 154,
+        "contentTypes": [
+          "text"
+        ],
+        "structuredContent": true,
+        "matchesOutputSchema": true,
+        "textSample": "{\n  \"results\": []\n}",
+        "text": "{\n  \"results\": []\n}",
+        "textTruncated": false,
+        "textFingerprint": "8c9d8413728fe1802d46346865d925b0",
+        "substantive": true,
+        "errorInPayload": false,
+        "refused": false
+      }
+    },
+    {
+      "server": "ai.bidclub/bidclub",
+      "tool": "bidclub_search_episodes",
+      "args": {
+        "q": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+      },
+      "result": {
+        "tool": "bidclub_search_episodes",
+        "shape": "retrieval",
+        "basis": "inferred",
+        "args": {
+          "q": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+        },
+        "ok": true,
+        "isError": false,
+        "reason": null,
+        "elapsedMs": 11688,
+        "responseBytes": 202,
+        "contentTypes": [
+          "text"
+        ],
+        "structuredContent": false,
+        "matchesOutputSchema": null,
+        "textSample": "{\"q\":\"qx7v9zzt4mnb2wkph3ljf6rd8s\",\"count\":0,\"results\":[],\"partial\":true,\"searched_recent\":300}",
+        "text": "{\"q\":\"qx7v9zzt4mnb2wkph3ljf6rd8s\",\"count\":0,\"results\":[],\"partial\":true,\"searched_recent\":300}",
+        "textTruncated": false,
+        "textFingerprint": "00aea46f187b06ebc02a8453097ae6e8",
+        "substantive": true,
+        "errorInPayload": false,
+        "refused": false
+      }
+    },
+    {
+      "server": "ai.byteask/embedded-docs",
+      "tool": "search_docs",
+      "args": {
+        "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+      },
+      "result": {
+        "tool": "search_docs",
+        "shape": "retrieval",
+        "basis": "inferred",
+        "args": {
+          "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+        },
+        "ok": true,
+        "isError": false,
+        "reason": null,
+        "elapsedMs": 5796,
+        "responseBytes": 11285,
+        "contentTypes": [
+          "text"
+        ],
+        "structuredContent": true,
+        "matchesOutputSchema": true,
+        "textSample": "## Results for \"qx7v9zzt4mnb2wkph3ljf6rd8s\"\n\n_No confident match in the indexed corpus — treat as not found; do not fabricate an answer._\n\n### Cboe US Equities Multicast Depth of Book (PITCH) Specification — §9 ELT-EWZZZ           27         TSR-URIZZ, p.88\n> 9           ELT-EWZZZ           27      ",
+        "text": "## Results for \"qx7v9zzt4mnb2wkph3ljf6rd8s\"\n\n_No confident match in the indexed corpus — treat as not found; do not fabricate an answer._\n\n### Cboe US Equities Multicast Depth of Book (PITCH) Specification — §9 ELT-EWZZZ           27         TSR-URIZZ, p.88\n> 9           ELT-EWZZZ           27         TSR-URIZZ\n_ref: E7_CBOE_Multicast_PITCH:9:239:0_\n\n### AMD UltraScale Architecture-Based FPGAs Memory IP (DDR4) LogiCORE IP Product Guide (PG150) — p.691\n> Chapter 38: Debugging\n>           WRITE_DQS_TO_DQ_PRE_ADJUST_MARGIN_RIGHT_BYTE6    string true true 048\n>           WRITE_DQS_TO_DQ_PRE_ADJUST_MARGIN_RIGHT_BYTE7    string true true 05f\n>           WRITE_DQS_TO_DQ_PRE_ADJUST_MARGIN_RIGHT_BYTE8    string true true 048\n>           WRITE_DQ_ODELAY_FINAL_BYTE0_BIT0                 string true true 033\n>           WRITE_DQ_ODELAY_FINAL_BYTE0_BIT1                 string true true 034\n>           WRITE_DQ_ODELAY_FINAL_BYTE0_BIT2                 string true true 033\n>           WRITE_DQ_ODELAY_FINAL_BYTE0_BIT3                 string true true 030\n>           WRITE_DQ_ODELAY_FINAL_BYTE0_BIT4                 string true true 02b\n>           WRITE_DQ_ODELAY_FINAL_BYTE0_BIT5                 string true true 02b\n>           WRITE_DQ_ODELAY_FINAL_BYTE0_BIT6                 string true true 033\n>           WRITE_DQ_ODELAY_FINAL_BYTE0_BIT7                 string true true 02c\n>           WRITE_DQ_ODELAY_FINAL_BYTE1_BIT0                 string true true 011\n>           WRITE_DQ_ODELAY_FINAL_BYTE1_BIT1                 string true true 00e\n>           WRITE_DQ_ODELAY_FINAL_BYTE1_BIT2                 string true true 00d\n>           WRITE_DQ_ODELAY_FINAL_BYTE1_BIT3                 ...\n_ref: B10_PG150:0:475:40_\n\n### Yokogawa WT5000 Precision Power Analyzer Communication Interface User's Manual (IM WT5000-17EN) — §7 PHI          1               7           XS             1, p.161\n> 7           PHI          1               7           XS             1\n>                    8           PHIU         1               8           RP             1               8\n_ref: p0_17:7:197:0_\n\n### AMD UltraScale Architecture-Based FPGAs Memory IP (DDR4) LogiCORE IP Product Guide (PG150) — p.671\n> Chapter 38: Debugging\n>           RDLVL_PQTR_RIGHT_RANK0_NIBBLE4                   string true true 06f\n>           RDLVL_PQTR_RIGHT_RANK0_NIBBLE5                   string true true 067\n>           RDLVL_PQTR_RIGHT_RANK0_NIBBLE6                   string true true 06f\n>           RDLVL_PQTR_RIGHT_RANK0_NIBBLE7                   string true true 06f\n>           MULTI_RANK_RDLVL_IDELAY_BYTE0_BIT0               string true true 000\n>           MULTI_RANK_RDLVL_IDELAY_BYTE0_BIT1               string true true 000\n>           MULTI_RANK_RDLVL_IDELAY_BYTE0_BIT2               string true true 000\n>           MULTI_RANK_RDLVL_IDELAY_BYTE0_BIT3               string true true 000\n>           MULTI_RANK_RDLVL_IDELAY_BYTE0_BIT4               string true true 000\n>           MULTI_RANK_RDLVL_IDELAY_BYTE0_BIT5               string true true 000\n>           MULTI_RANK_RDLVL_IDELAY_BYTE0_BIT6               string true true 000\n>           MULTI_RANK_RDLVL_IDELAY_BYTE0_BIT7               string true true 000\n>           MULTI_RANK_RDLVL_IDELAY_BYTE1_BIT0               string true true 000\n>           MULTI_RANK_RDLVL_IDELAY_BYTE1_BIT1               string true true 000\n>           MULTI_RANK_RDLVL_IDELAY_BYTE1_BIT2               ...\n_ref: B10_PG150:0:475:7_\n\n### Cboe US Equities Multicast Depth of Book (PITCH) Specification — §8 DRJ-ELSZZ           26        TDC-TSQZZ, p.88\n> 8           DRJ-ELSZZ           26        TDC-TSQZZ\n_ref: E7_CBOE_Multicast_PITCH:8:238:0_\n\n### Cboe US Equities Multicast Depth of Book (PITCH) Specification — §8 DRJ-ELSZZ                    26            TDC-TSQZZ, p.66\n> 8             DRJ-ELSZZ                    26            TDC-TSQZZ\n_ref: E7_CBOE_Multicast_PITCH:8:185:0_\n\n### AMD UltraScale Architecture-Based FPGAs Memory IP (DDR4) LogiCORE IP Product Guide (PG150) — p.692\n> Chapter 38: Debugging\n>           WRITE_DQ_ODELAY_FINAL_BYTE7_BIT0                 string true true 033\n>           WRITE_DQ_ODELAY_FINAL_BYTE7_BIT1                 string true true 031\n>           WRITE_DQ_ODELAY_FINAL_BYTE7_BIT2                 string true true 028\n>           WRITE_DQ_ODELAY_FINAL_BYTE7_BIT3                 string true true 02a\n>           WRITE_DQ_ODELAY_FINAL_BYTE7_BIT4                 string true true 02d\n>           WRITE_DQ_ODELAY_FINAL_BYTE7_BIT5                 string true true 02b\n>           WRITE_DQ_ODELAY_FINAL_BYTE7_BIT6                 string true true 031\n>           WRITE_DQ_ODELAY_FINAL_BYTE7_BIT7                 string true true 02e\n>           WRITE_DQ_ODELAY_FINAL_BYTE8_BIT0                 string true true 01f\n>           WRITE_DQ_ODELAY_FINAL_BYTE8_BIT1                 string true true 020\n>           WRITE_DQ_ODELAY_FINAL_BYTE8_BIT2                 string true true 017\n>           WRITE_DQ_ODELAY_FINAL_BYTE8_BIT3                 string true true 01c\n>           WRITE_DQ_ODELAY_FINAL_BYTE8_BIT4                 string true true 018\n>           WRITE_DQ_ODELAY_FINAL_BYTE8_BIT5                 string true true 013\n>           WRITE_DQ_ODELAY_FINAL_BYTE8_BIT6                 ...\n_ref: B10_PG150:0:475:42_\n\n### Cboe US Equities Multicast Depth of Book (PITCH) Specification — §7 CXX-DRIZZ           25        SPZ-TDBZZ, p.88\n> 7           CXX-DRIZZ           25        SPZ-TDBZZ\n_ref: E7_CBOE_Multicast_PITCH:7:237:0_",
+        "textTruncated": false,
+        "textFingerprint": "f8231199311b77f2bd2c15816289a5a9",
+        "substantive": true,
+        "errorInPayload": false,
+        "refused": false
+      }
+    },
+    {
+      "server": "ai.cerebrium/docs",
+      "tool": "search_cerebrium",
+      "args": {
+        "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+      },
+      "result": {
+        "tool": "search_cerebrium",
+        "shape": "retrieval",
+        "basis": "declared",
+        "args": {
+          "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+        },
+        "ok": true,
+        "isError": false,
+        "reason": null,
+        "elapsedMs": 621,
+        "responseBytes": 8846,
+        "contentTypes": [
+          "text"
+        ],
+        "structuredContent": false,
+        "matchesOutputSchema": null,
+        "textSample": "Title: United States\nLink: https://cerebrium.ai/docs/deployments/multi-region-deployment#united-states\nPage: deployments/multi-region-deployment\nContent: #### United States\n\n* **us-east-1** (N. Virginia)\n* **us-central1** (Kansas City)\nTitle: Setup Wandb\nLink: https://cerebrium.ai/docs/v4/examples/w",
+        "text": "Title: United States\nLink: https://cerebrium.ai/docs/deployments/multi-region-deployment#united-states\nPage: deployments/multi-region-deployment\nContent: #### United States\n\n* **us-east-1** (N. Virginia)\n* **us-central1** (Kansas City)\nTitle: Setup Wandb\nLink: https://cerebrium.ai/docs/v4/examples/wandb-sweep#setup-wandb\nPage: v4/examples/wandb-sweep\nContent: ### Setup Wandb\n\n**Weights & Biases (Wandb)** tracks, visualizes, and manages machine learning experiments in real-time. It logs hyperparameters, metrics, and results for comparing models and optimizing performance.\n\n1. [Sign up](https://wandb.ai/site) for a free account and then log in to your wandb account by running the following in your CLI.\n\n```\npip install wandb\nwandb login\n```\n\nA link prints in the terminal. Click it and copy the API key back into the terminal.\n\nAdd the W\\&B API key to Cerebrium secrets. In the [Cerebrium Dashboard](https://dashboard.cerebrium.ai/), navigate to the “secrets” tab in the left sidebar. Add the following:\n\n* **Key**: WANDB\\_API\\_KEY\n* **Value**: The value you copied from the Wandb website.\n\nClick the “Save All Changes” button.\n\n<img src=\"https://mintcdn.com/cerebrium/w6QrtZunT-SzaBze/images/examples/wandb-sweep/cerebrium-secrets.png?fit=max&auto=format&n=w6QrtZunT-SzaBze&q=85&s=84937bda9ebd16814501f1466f9db7b8\" alt=\"Cerebrium Secrets\" data-og-width=\"3294\" width=\"3294\" data-og-height=\"1618\" height=\"1618\" data-path=\"images/examples/wandb-sweep/cerebrium-secrets.png\" data-optimize=\"true\" data-opv=\"3\" srcset=\"https://mintcdn.com/cerebrium/w6QrtZunT-SzaBze/images/examples/wandb-sweep/cerebrium-secrets.png?w=280&fit=max&auto=format&n=w6QrtZunT-SzaBze&q=85&s=bcd2f0d4a898dba42a723409908a2817 280w, https://mintcdn.com/cerebrium/w6QrtZunT-SzaBze/images/examples/wandb-sweep/cerebrium-secrets.png?w=560&fit=max&auto=format&n=w6QrtZunT-SzaBze&q=85&s=4b6a019d0fe8a15ed1490766153c6b0e 560w, https://mintcdn.com/cerebrium/w6QrtZunT-SzaBze/images/examples/wandb-sweep/cerebrium-secrets.png?w=840&fit=max&auto=format&n=w6QrtZunT-SzaBze&q=85&s=1c42c3b58f96e98a740f35afc387ea04 840w, https://mintcdn.com/cerebrium/w6QrtZunT-SzaBze/images/examples/wandb-sweep/cerebrium-secrets.png?w=1100&fit=max&auto=format&n=w6QrtZunT-SzaBze&q=85&s=57c6efea6e183e75bc7cdab488e5ed9f 1100w, https://mintcdn.com/cerebrium/w6QrtZunT-SzaBze/images/examples/wandb-sweep/cerebrium-secrets.png?w=1650&fit=max&auto=format&n=w6QrtZunT-SzaBze&q=85&s=722ab6f1cbcadfa7084ff5caae9d4dcd 1650w, https://mintcdn.com/cerebrium/w6QrtZunT-SzaBze/images/examples/wandb-sweep/cerebrium-secrets.png?w=2500&fit=max&auto=format&n=w6QrtZunT-SzaBze&q=85&s=08e97516564d33f975815f8e8fd7173c 2500w\" />\n\nWandb authentication is now complete.\nTitle: Join the Community\nLink: https://cerebrium.ai/docs/migrations/mystic#join-the-community\nPage: migrations/mystic\nContent: ## Join the Community\n\nConnect with other developers and the Cerebrium team for faster response and issue resolution:\n\n* Join the Discord server.\n* Join the Slack workspace.\n\nThese communities offer migration support, quick technical answers, best practices, and feature updates.\nTitle: Risk Assessments\nLink: https://cerebrium.ai/docs/security#risk-assessments\nPage: security\nContent: ### Risk Assessments\n\n* Cerebrium conducts regular risk assessments to identify and address potential vulnerabilities in PHI handling.\n* These assessments help maintain a secure environment for customer data.\nTitle: Rime\nLink: https://cerebrium.ai/docs/partner-services/rime\nPage: partner-services/rime\nContent: <Note>\n  Rime Partner Service is available from CLI version 1.39.0 and greater\n</Note>\n\n<Info>\n  The Rime Partner Service is in beta. It's available to all users and ready for\n  production workloads, but expect occasional rough edges while the integration\n  matures. Reach out to [support](mailto:support@cerebrium.ai) if you hit any\n  issues.\n</Info>\n\nCerebrium's partnership with [Rime](https://www.rime.ai/) enables text-to-speech (TTS) deployment with low latency and region selection for data privacy compliance.\nTitle: Making a request\nLink: https://cerebrium.ai/docs/endpoints/websockets#making-a-request\nPage: endpoints/websockets\nContent: ## Making a request\n\nTest the WebSocket endpoint using websocat, a command-line WebSocket client:\n\n```bash theme={null}\nwebsocat wss://api.cerebrium.ai/v4/p-xxxxxxxx/<your-app-name>/<your-websocket-function-name>\n```\nTitle: 2. Deployment\nLink: https://cerebrium.ai/docs/migrations/hugging-face#2-deployment\nPage: migrations/hugging-face\nContent: ### 2. Deployment\n\nTo deploy your app to Cerebrium, use the following CLI command in your project directory:\n\n```bash theme={null}\ncerebrium deploy\n```\n\nThis command uses the configuration in `cerebrium.toml` to set up and deploy your model.\nTitle: Webhook Forwarding\nLink: https://cerebrium.ai/docs/endpoints/webhook\nPage: endpoints/webhook\nContent: Forward function response data to an external endpoint via POST by adding the `webhookEndpoint` query parameter to any API call:\n\n```bash theme={null}\ncurl -X POST 'https://api.cerebrium.ai/v4/p-xxxxxxxx/<YOUR-APP>/run?webhookEndpoint=https%3A%2F%2Fwebhook.site%2F' \\\n  -H 'Content-Type: application/json' \\\n  -H 'Authorization: Bearer <YOUR-JWT-TOKEN>' \\\n  --data '{\"param\": \"hello world\"}'\n```\n\nThe proxy forwards the response body as a POST request to the specified webhook. No code changes are required. Ensure the webhook endpoint accepts POST requests. Webhook forwarding works with both Cortex and Custom runtimes, but only for HTTP requests (not WebSockets).\nTitle: Deploy\nLink: https://cerebrium.ai/docs/v4/examples/sdxl#deploy\nPage: v4/examples/sdxl\nContent: ## Deploy\n\nDeploy the model using this command:\n\n```bash theme={null}\ncerebrium deploy\n```\n\nAfter deployment, make this request:\n\n```curl theme={null}\ncurl --location 'https://api.cerebrium.ai/v4/p-xxxxxxxx/3-sdxl-refiner/predict' \\\n--header 'Content-Type: application/json' \\\n--header 'Authorization: Bearer <YOUR TOKEN HERE>' \\\n--data '{\n    \"url\": \"https://huggingface.co/datasets/patrickvonplaten/images/resolve/main/aa_xl/000000009.png\",\n    \"prompt\": \"a photo of an astronaut riding a horse on mars\"\n}'\n```\n\nThe endpoint returns results in this format:\n\n```json theme={null}\n{\n    \"run_id\": \"Gd2fLvweh1sHpdEQd4XnxYRvtGmghFxSg2rpbchK7wWAFeso9-sOVg==\",\n    \"message\": \"Finished inference request with run_id: `Gd2fLvweh1sHpdEQd4XnxYRvtGmghFxSg2rpbchK7wWAFeso9-sOVg==`\",\n    \"result\": {\n        \"images\": [\n            <BASE64_ENCODED_STRING>\n        ]\n    },\n    \"status_code\": 200,\n    \"run_time_ms\": 4388.460874557495\n}\n```\n\nExample output:\n\n<img src=\"https://mintcdn.com/cerebrium/w6QrtZunT-SzaBze/images/examples/sdxl-refiner.png?fit=max&auto=format&n=w6QrtZunT-SzaBze&q=85&s=5d54d21a7fa547bb7f74673d4b96489d\" alt=\"SDXL\" data-og-width=\"1024\" width=\"1024\" data-og-height=\"1024\" height=\"1024\" data-path=\"images/examples/sdxl-refiner.png\" data-optimize=\"true\" data-opv=\"3\" srcset=\"https://mintcdn.com/cerebrium/w6QrtZunT-SzaBze/images/examples/sdxl-refiner.png?w=280&fit=max&auto=format&n=w6QrtZunT-SzaBze&q=85&s=0dce62ef6bc541550cb688faa7296e22 280w, https://mintcdn.com/cerebrium/w6QrtZunT-SzaBze/images/examples/sdxl-refiner.png?w=560&fit=max&auto=format&n=w6QrtZunT-SzaBze&q=85&s=f4f813333ca45d618551fd4f7b1d45ef 560w, https://mintcdn.com/cerebrium/w6QrtZunT-SzaBze/images/examples/sdxl-refiner.png?w=840&fit=max&auto=format&n=w6QrtZunT-SzaBze&q=85&s=c1b7be87e541b548700edcdd9f58387e 840w, https://mintcdn.com/cerebrium/w6QrtZunT-SzaBze/images/examples/sdxl-refiner.png?w=1100&fit=max&auto=format&n=w6QrtZunT-SzaBze&q=85&s=2c56925c9c2124e1daa9034665a76c6d 1100w, https://mintcdn.com/cerebrium/w6QrtZunT-SzaBze/images/examples/sdxl-refiner.png?w=1650&fit=max&auto=format&n=w6QrtZunT-SzaBze&q=85&s=087423146279089b3832020fc07d20e8 1650w, https://mintcdn.com/cerebrium/w6QrtZunT-SzaBze/images/examples/sdxl-refiner.png?w=2500&fit=max&auto=format&n=w6QrtZunT-SzaBze&q=85&s=7bc99cb053673486b8572b4f3bda26b7 2500w\" />\nTitle: APT Dependencies\nLink: https://cerebrium.ai/docs/toml-reference/toml-reference#apt-dependencies\nPage: toml-reference/toml-reference\nContent: ### APT Dependencies\n\nThe `[cerebrium.dependencies.apt]` section specifies system packages.\n\n```toml theme={null}\n[cerebrium.dependencies.apt]\nffmpeg = \"latest\"\nlibopenblas-base = \"latest\"\n```",
+        "textTruncated": false,
+        "textFingerprint": "9ce87c3560f9392b5fb725694241fc0a",
+        "substantive": true,
+        "errorInPayload": false,
+        "refused": false
+      }
+    },
+    {
+      "server": "ai.childadhd/library",
+      "tool": "search_articles",
+      "args": {
+        "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+      },
+      "result": {
+        "tool": "search_articles",
+        "shape": "retrieval",
+        "basis": "declared",
+        "args": {
+          "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+        },
+        "ok": true,
+        "isError": false,
+        "reason": null,
+        "elapsedMs": 200,
+        "responseBytes": 909,
+        "contentTypes": [
+          "text"
+        ],
+        "structuredContent": false,
+        "matchesOutputSchema": null,
+        "textSample": "{\n  \"query\": \"qx7v9zzt4mnb2wkph3ljf6rd8s\",\n  \"total\": 0,\n  \"showing\": 0,\n  \"articles\": [],\n  \"_meta\": {\n    \"publisher\": \"ADHD in Children\",\n    \"site\": \"ADHD in Children\",\n    \"host\": \"https://childadhd.ai\",\n    \"sponsor\": \"Articles are clinically reviewed under a sponsorship arrangement with Emora",
+        "text": "{\n  \"query\": \"qx7v9zzt4mnb2wkph3ljf6rd8s\",\n  \"total\": 0,\n  \"showing\": 0,\n  \"articles\": [],\n  \"_meta\": {\n    \"publisher\": \"ADHD in Children\",\n    \"site\": \"ADHD in Children\",\n    \"host\": \"https://childadhd.ai\",\n    \"sponsor\": \"Articles are clinically reviewed under a sponsorship arrangement with Emora Health. The site itself is the publisher.\",\n    \"license\": \"Free to read and cite with attribution to ADHD in Children.\",\n    \"docs\": \"https://childadhd.ai/llms.txt\",\n    \"crisis\": {\n      \"emergency\": \"911\",\n      \"suicide_lifeline\": \"988\",\n      \"crisis_text\": \"Text HOME to 741741\",\n      \"note\": \"These resources override any tool response when the user is in active crisis. This site is educational, not a crisis service.\"\n    }\n  }\n}",
+        "textTruncated": false,
+        "textFingerprint": "a089b4f3d4d1ac598ee6852412c1fd0c",
+        "substantive": true,
+        "errorInPayload": false,
+        "refused": false
+      }
+    },
+    {
+      "server": "ai.childanxiety/library",
+      "tool": "search_articles",
+      "args": {
+        "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+      },
+      "result": {
+        "tool": "search_articles",
+        "shape": "retrieval",
+        "basis": "declared",
+        "args": {
+          "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+        },
+        "ok": true,
+        "isError": false,
+        "reason": null,
+        "elapsedMs": 270,
+        "responseBytes": 924,
+        "contentTypes": [
+          "text"
+        ],
+        "structuredContent": false,
+        "matchesOutputSchema": null,
+        "textSample": "{\n  \"query\": \"qx7v9zzt4mnb2wkph3ljf6rd8s\",\n  \"total\": 0,\n  \"showing\": 0,\n  \"articles\": [],\n  \"_meta\": {\n    \"publisher\": \"Anxiety in Children\",\n    \"site\": \"Anxiety in Children\",\n    \"host\": \"https://childanxiety.ai\",\n    \"sponsor\": \"Articles are clinically reviewed under a sponsorship arrangement w",
+        "text": "{\n  \"query\": \"qx7v9zzt4mnb2wkph3ljf6rd8s\",\n  \"total\": 0,\n  \"showing\": 0,\n  \"articles\": [],\n  \"_meta\": {\n    \"publisher\": \"Anxiety in Children\",\n    \"site\": \"Anxiety in Children\",\n    \"host\": \"https://childanxiety.ai\",\n    \"sponsor\": \"Articles are clinically reviewed under a sponsorship arrangement with Emora Health. The site itself is the publisher.\",\n    \"license\": \"Free to read and cite with attribution to Anxiety in Children.\",\n    \"docs\": \"https://childanxiety.ai/llms.txt\",\n    \"crisis\": {\n      \"emergency\": \"911\",\n      \"suicide_lifeline\": \"988\",\n      \"crisis_text\": \"Text HOME to 741741\",\n      \"note\": \"These resources override any tool response when the user is in active crisis. This site is educational, not a crisis service.\"\n    }\n  }\n}",
+        "textTruncated": false,
+        "textFingerprint": "7ed0335f530a06b864ad57af403b3b0d",
+        "substantive": true,
+        "errorInPayload": false,
+        "refused": false
+      }
+    },
+    {
+      "server": "ai.childpsychiatry/library",
+      "tool": "search_articles",
+      "args": {
+        "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+      },
+      "result": {
+        "tool": "search_articles",
+        "shape": "retrieval",
+        "basis": "declared",
+        "args": {
+          "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+        },
+        "ok": true,
+        "isError": false,
+        "reason": null,
+        "elapsedMs": 159,
+        "responseBytes": 942,
+        "contentTypes": [
+          "text"
+        ],
+        "structuredContent": false,
+        "matchesOutputSchema": null,
+        "textSample": "{\n  \"query\": \"qx7v9zzt4mnb2wkph3ljf6rd8s\",\n  \"total\": 0,\n  \"showing\": 0,\n  \"articles\": [],\n  \"_meta\": {\n    \"publisher\": \"Psychiatry for Children\",\n    \"site\": \"Psychiatry for Children\",\n    \"host\": \"https://childpsychiatry.ai\",\n    \"sponsor\": \"Articles are clinically reviewed under a sponsorship ar",
+        "text": "{\n  \"query\": \"qx7v9zzt4mnb2wkph3ljf6rd8s\",\n  \"total\": 0,\n  \"showing\": 0,\n  \"articles\": [],\n  \"_meta\": {\n    \"publisher\": \"Psychiatry for Children\",\n    \"site\": \"Psychiatry for Children\",\n    \"host\": \"https://childpsychiatry.ai\",\n    \"sponsor\": \"Articles are clinically reviewed under a sponsorship arrangement with Emora Health. The site itself is the publisher.\",\n    \"license\": \"Free to read and cite with attribution to Psychiatry for Children.\",\n    \"docs\": \"https://childpsychiatry.ai/llms.txt\",\n    \"crisis\": {\n      \"emergency\": \"911\",\n      \"suicide_lifeline\": \"988\",\n      \"crisis_text\": \"Text HOME to 741741\",\n      \"note\": \"These resources override any tool response when the user is in active crisis. This site is educational, not a crisis service.\"\n    }\n  }\n}",
+        "textTruncated": false,
+        "textFingerprint": "ac9bfc5b47474203c4e4c42b4ca3bdca",
+        "substantive": true,
+        "errorInPayload": false,
+        "refused": false
+      }
+    },
+    {
+      "server": "ai.demanddiscovery/mcp",
+      "tool": "get_demand_report_status",
+      "args": {
+        "orderId": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+      },
+      "result": {
+        "tool": "get_demand_report_status",
+        "shape": "retrieval",
+        "basis": "declared",
+        "args": {
+          "orderId": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+        },
+        "ok": true,
+        "isError": false,
+        "reason": null,
+        "elapsedMs": 1114,
+        "responseBytes": 604,
+        "contentTypes": [
+          "text"
+        ],
+        "structuredContent": true,
+        "matchesOutputSchema": true,
+        "textSample": "I couldn't find that report to stream it in here. You can view it on the site: https://demanddiscovery.ai",
+        "text": "I couldn't find that report to stream it in here. You can view it on the site: https://demanddiscovery.ai",
+        "textTruncated": false,
+        "textFingerprint": "8f7cac0a4dcc271d268ceeb9ea055a1e",
+        "substantive": true,
+        "errorInPayload": false,
+        "refused": false
+      }
+    },
+    {
+      "server": "ai.duvera/gateway",
+      "tool": "duvera__dev_stackoverflow_search",
+      "args": {
+        "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+      },
+      "result": {
+        "tool": "duvera__dev_stackoverflow_search",
+        "shape": "retrieval",
+        "basis": "inferred",
+        "args": {
+          "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+        },
+        "ok": true,
+        "isError": false,
+        "reason": null,
+        "elapsedMs": 382,
+        "responseBytes": 1602,
+        "contentTypes": [
+          "text"
+        ],
+        "structuredContent": false,
+        "matchesOutputSchema": null,
+        "textSample": "{\n  \"decision\": \"approved\",\n  \"approved\": true,\n  \"capability\": \"@duvera/dev.stackoverflow-search\",\n  \"execution_id\": \"exec_4464103b23a7e864\",\n  \"denial_reason\": null,\n  \"requires_approval\": false,\n  \"output\": {\n    \"count\": 0,\n    \"results\": []\n  },\n  \"error\": null,\n  \"capability_token\": \"eyJhbGciO",
+        "text": "{\n  \"decision\": \"approved\",\n  \"approved\": true,\n  \"capability\": \"@duvera/dev.stackoverflow-search\",\n  \"execution_id\": \"exec_4464103b23a7e864\",\n  \"denial_reason\": null,\n  \"requires_approval\": false,\n  \"output\": {\n    \"count\": 0,\n    \"results\": []\n  },\n  \"error\": null,\n  \"capability_token\": \"eyJhbGciOiJFZERTQSIsImtpZCI6ImR1dmVyYS1rZXktMSIsInR5cCI6ImR1dmVyYStqd3QifQ.eyJhY3RvciI6eyJhdXRoX21ldGhvZCI6ImFub255bW91cyIsImlkIjoidW5rbm93biIsInJvbGUiOiJhZ2VudCJ9LCJhdWQiOlsiaHR0cHM6Ly9hcGkuc3RhY2tleGNoYW5nZS5jb20vMi4zL3NlYXJjaC9hZHZhbmNlZCJdLCJjYXBhYmlsaXR5IjoiQGR1dmVyYS9kZXYuc3RhY2tvdmVyZmxvdy1zZWFyY2giLCJjYXBhYmlsaXR5X3ZlcnNpb24iOiIxLjAuMCIsImNvbnN0cmFpbnRzX2V2YWx1YXRlZCI6MCwiY29uc3RyYWludHNfcGFzc2VkIjowLCJldmFsdWF0aW9uX2RpZ2VzdCI6IjNiOWVlM2NiNDM3N2QzMDU4OGEyZmQ4ODM4NzA0ZTFkZDUzZjY3YjZhNTIwMjhkMTNjY2ZiM2NiYjg4MTdiM2EiLCJleHAiOjE3ODg1NjI5MzYsImlhdCI6MTc4ODU2Mjg3NiwiaW5wdXRzX2hhc2giOiI2ZTY4MWFiYTQ5OTQ1NDc3MjlkNWZiMGRlNTlmNmVmMzgxMTQzMzUzZjY4NDFmMTYzNWJlZGVmMTM1MTkxNmZlIiwiaXNzIjoiZ3c6Ly9kdXZlcmEuYWkiLCJqdGkiOiJ0b2tfZjZkMTE4ZmNjYzM1YjBkZiIsIm5hbWVzcGFjZSI6ImR1dmVyYSIsInBvbGljeV9kaWdlc3QiOiI5NDU4YzY3ZTNiZDEwM2Y2N2YwODE4ZTdjYmRkZDhjNTQ3YWY1M2Y0MzM2OThiODExZGYyZmI3YTA1ZGZlN2UwIiwicHJldl9yZWNlaXB0X2hhc2giOiI5ZmI4MDdkMGE4MzA3YjUwMjU1M2Q5MGVlNmZkODJhMzNiN2FhZmE2ZDEzMDA1ZDc4YTUzMjBiYzRkY2JmZmY5IiwicHJvdG9jb2wiOiJkZXYuc3RhY2tvdmVyZmxvdy1zZWFyY2giLCJzdWIiOiJleGVjXzQ0NjQxMDNiMjNhN2U4NjQifQ.pAwYp9D05HLYec1ATFMB8Cz4HRHT3bWH4Bq_kLCYRqCOmk4FPgGLuNxJDsJ_u25zmeUAVLJWZS5bIDKk0FdbBw\"\n}",
+        "textTruncated": false,
+        "textFingerprint": "841c4ab99106025b49d9a8e91a8c9d2f",
+        "substantive": true,
+        "errorInPayload": false,
+        "refused": false
+      }
+    },
+    {
+      "server": "ai.eosl/eosl",
+      "tool": "search_models",
+      "args": {
+        "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+      },
+      "result": {
+        "tool": "search_models",
+        "shape": "retrieval",
+        "basis": "inferred",
+        "args": {
+          "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+        },
+        "ok": true,
+        "isError": false,
+        "reason": null,
+        "elapsedMs": 238,
+        "responseBytes": 219,
+        "contentTypes": [
+          "text"
+        ],
+        "structuredContent": false,
+        "matchesOutputSchema": null,
+        "textSample": "\"qx7v9zzt4mnb2wkph3ljf6rd8s\": 0 families matched.\n{\n  \"query\": \"qx7v9zzt4mnb2wkph3ljf6rd8s\",\n  \"totalMatches\": 0,\n  \"results\": []\n}",
+        "text": "\"qx7v9zzt4mnb2wkph3ljf6rd8s\": 0 families matched.\n{\n  \"query\": \"qx7v9zzt4mnb2wkph3ljf6rd8s\",\n  \"totalMatches\": 0,\n  \"results\": []\n}",
+        "textTruncated": false,
+        "textFingerprint": "7c3a825deb8425f33b1a4bf64a3b3208",
+        "substantive": true,
+        "errorInPayload": false,
+        "refused": false
+      }
+    },
+    {
+      "server": "ai.exa/exa",
+      "tool": "web_search_exa",
+      "args": {
+        "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+      },
+      "result": {
+        "tool": "web_search_exa",
+        "shape": "retrieval",
+        "basis": "declared",
+        "args": {
+          "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+        },
+        "ok": true,
+        "isError": false,
+        "reason": null,
+        "elapsedMs": 107,
+        "responseBytes": 380,
+        "contentTypes": [
+          "text"
+        ],
+        "structuredContent": false,
+        "matchesOutputSchema": null,
+        "textSample": "You've hit Exa's free MCP rate limit. To continue using without limits, create your own Exa API key.\n\nFix: Create API key at https://dashboard.exa.ai/api-keys , and then update Exa MCP URL to this https://mcp.exa.ai/mcp?exaApiKey=YOUR_EXA_API_KEY",
+        "text": "You've hit Exa's free MCP rate limit. To continue using without limits, create your own Exa API key.\n\nFix: Create API key at https://dashboard.exa.ai/api-keys , and then update Exa MCP URL to this https://mcp.exa.ai/mcp?exaApiKey=YOUR_EXA_API_KEY",
+        "textTruncated": false,
+        "textFingerprint": "6a62c591ea47e68f2ecef334c4b5d74a",
+        "substantive": true,
+        "errorInPayload": false,
+        "refused": false
+      }
+    },
+    {
+      "server": "ai.flamel/public-content",
+      "tool": "search_flamel_content",
+      "args": {
+        "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+      },
+      "result": {
+        "tool": "search_flamel_content",
+        "shape": "retrieval",
+        "basis": "declared",
+        "args": {
+          "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+        },
+        "ok": true,
+        "isError": false,
+        "reason": null,
+        "elapsedMs": 340,
+        "responseBytes": 353,
+        "contentTypes": [
+          "text"
+        ],
+        "structuredContent": true,
+        "matchesOutputSchema": true,
+        "textSample": "# Results for \"qx7v9zzt4mnb2wkph3ljf6rd8s\"\n\n## Blog posts\n_No matching results._\n\n## Case studies\n_No matching results._\n\n## FAQs\n_No matching results._",
+        "text": "# Results for \"qx7v9zzt4mnb2wkph3ljf6rd8s\"\n\n## Blog posts\n_No matching results._\n\n## Case studies\n_No matching results._\n\n## FAQs\n_No matching results._",
+        "textTruncated": false,
+        "textFingerprint": "a1d8bca4e5c79c32268daa87e8679ca0",
+        "substantive": true,
+        "errorInPayload": false,
+        "refused": false
+      }
+    },
+    {
+      "server": "ai.hermitsh/texts",
+      "tool": "search_corpus",
+      "args": {
+        "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+      },
+      "result": {
+        "tool": "search_corpus",
+        "shape": "retrieval",
+        "basis": "declared",
+        "args": {
+          "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+        },
+        "ok": true,
+        "isError": false,
+        "reason": null,
+        "elapsedMs": 4035,
+        "responseBytes": 479,
+        "contentTypes": [
+          "text"
+        ],
+        "structuredContent": true,
+        "matchesOutputSchema": true,
+        "textSample": "{\n  \"query\": \"qx7v9zzt4mnb2wkph3ljf6rd8s\",\n  \"author\": \"all\",\n  \"count\": 0,\n  \"results\": [],\n  \"note\": \"Use get_passage for full passage text. Answers should cite the provided URLs.\"\n}",
+        "text": "{\n  \"query\": \"qx7v9zzt4mnb2wkph3ljf6rd8s\",\n  \"author\": \"all\",\n  \"count\": 0,\n  \"results\": [],\n  \"note\": \"Use get_passage for full passage text. Answers should cite the provided URLs.\"\n}",
+        "textTruncated": false,
+        "textFingerprint": "d0df16d302510c9e77ec3bf5e8008702",
+        "substantive": true,
+        "errorInPayload": false,
+        "refused": false
+      }
+    },
+    {
+      "server": "ai.hoghogh/chistara",
+      "tool": "search_law_articles",
+      "args": {
+        "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+      },
+      "result": {
+        "tool": "search_law_articles",
+        "shape": "retrieval",
+        "basis": "inferred",
+        "args": {
+          "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+        },
+        "ok": true,
+        "isError": false,
+        "reason": null,
+        "elapsedMs": 5420,
+        "responseBytes": 37286,
+        "contentTypes": [
+          "text"
+        ],
+        "structuredContent": true,
+        "matchesOutputSchema": null,
+        "textSample": "{\n  \"summary\": \"5 ماده مرتبط با «qx7v9zzt4mnb2wkph3ljf6rd8s» (جستجوی معنایی + بازرتبه‌بندی):\\n\\n1. **ماده 705 قانون مجازات اسلامی (تعزیرات)** [تطبیق معنایی — فهرست به ترتیب مرتبط‌ترین]:\\nارتکاب هر یک از رفتارهای مذکور در بندهای (۱) تا (۳) این ماده، جرم است و هر شخص به هر نحوی در فضای حقیقی یا مجازی ",
+        "text": "{\n  \"summary\": \"5 ماده مرتبط با «qx7v9zzt4mnb2wkph3ljf6rd8s» (جستجوی معنایی + بازرتبه‌بندی):\\n\\n1. **ماده 705 قانون مجازات اسلامی (تعزیرات)** [تطبیق معنایی — فهرست به ترتیب مرتبط‌ترین]:\\nارتکاب هر یک از رفتارهای مذکور در بندهای (۱) تا (۳) این ماده، جرم است و هر شخص به هر نحوی در فضای حقیقی یا مجازی یکی از رفتارهای مذکور را مرتکب شود، علاوه بر ضبط اموال و عواید حاصل از جرم به نفع دولت، به جزای نقدی درجه شش یا جزای نقدی معادل ارزش یک تا سه برابر مجموع اموال و عواید ناشی از جرم، هر کدام بیشتر باشد، محکوم می‌شود.\\n۱- هر نوع توافق صریح یا ضمنی با هدف برد و باخت که به موجب آن بازنده یا بازندگان یا شخص ثالثی ملتزم به پرداخت وجه، مال، منفعت، خدمت یا امتیاز مالی به صورت مستقیم یا غیر مستقیم به برنده یا برندگان یا شخص ثالثی می‌شوند.\\n۲- هر نوع مشارکت دو یا چند شخص در خصوص پیش‌بینی موضوعی خاص یا فرض وقوع امری خاص، که بازنده یا بازندگان ملزم به پرداخت وجه، مال، منفعت، خدمت یا امتیاز مالی یا هر امتیاز دیگری به صورت مستقیم یا غیر مستقیم به برنده یا برندگان یا شخص ثالثی باشند.\\n۳- مشارکت دو یا چند شخص در خصوص انجام قرعه‌کشی با هر اقدام مبتنی بر شانس یا انتخاب تصادفی که در نتیجه آن کل یا بخشی از وجه، مال، منفعت، خدمت یا امتیاز مالی، پرداخت‌شده یا در تعهد پرداخت قرار گرفته شرکت‌کنندگان به صورت مستقیم یا غیر مستقیم به یک یا چند نفر از شرکت‌کنندگان که بر مبنای قواعد آن مشارکت، برنده محسوب می‌شوند، پرداخت شود.\\n📎 تبصره ۱: التزام به پرداخت وجه، مال، منفعت، خدمت یا امتیاز مالی به صورت مستقیم یا غیر مستقیم به برنده یا برندگان مسابقات سوارکاری، تیراندازی و شمشیربازی و مسابقه با تانک، هواپیما و سایر ادوات جنگی که کاربرد نظامی و دفاعی دارد و در فضای حقیقی برگزار می‌شود، توسط شرکت‌کننده یا شرکت‌کنندگان بازنده در این مسابقات، مشمول جرائم موضوع بندهای (۱) و (۲) این ماده نیست.\\n📎 تبصره ۲: در صورتی که اقدامات مرتکب یکی از جرائم مذکور در بندهای (۱) تا (۳) این ماده، به عنوان حرفه یا سردستگی گروه مجرمانه سازمان‌یافته محسوب نگردد، چنانچه قبل از تعقیب یا پس از شروع به تعقیب با مراجع قضائی یا انتظامی همکاری مؤثر در شناسایی اداره‌کنندگان و سردسته‌ها و اموال و عواید حاصل از جرم آنها داشته باشد، پس از ضبط اموال و عواید حاصل از جرم به نفع دولت از تعقیب موضوع این ماده معاف می‌شود.\\n\\n2. **ماده 707 قانون مجازات اسلامی (تعزیرات)** [تطبیق معنایی — فهرست به ترتیب مرتبط‌ترین]:\\nهر شخصی که جرائم موضوع مواد (۷۰۵) و (۷۰۶) این قانون را به عنوان حرفه خود یا سردسته یک گروه مجرمانه سازمان‌یافته انجام داده باشد یا ارزش یا اعتبار وجوه، اموال، اسناد، حواله‌جات، قبوض، اوراق بهادار، مفاصاحساب یا وسایل پرداخت مثل چک یا کارت‌های بانکی که در اثر ارتکاب اعمال فوق دریافت یا نگهداری کرده است بیش از معادل ریالی یک و نیم برابر حداقل نصاب معاملات بزرگ که ابتدای هر سال بر اساس ماده (۳) قانون برگزاری مناقصات مصوب ۱۳۸۳/۱/۲۵ و تبصره (۱) آن اعلام می‌شود، باشد، در صورتی که رفتار او مشمول عنوان افساد فی‌الارض یا اخلال در نظام اقتصادی نباشد، علاوه بر ضبط اموال ناشی از جرم، به حبس تعزیری درجه چهار و جزای نقدی معادل سه تا شش برابر ارزش اموال مذکور محکوم می‌شود.\\nجزای نقدی مندرج در این ماده به موجب مصوبه مورخ ۱۳۹۹/۱۲/۲۵ هیات وزیران به بیست و پنج (۲۵.۰۰۰.۰۰۰) تا صد (۱۰۰.۰۰۰.۰۰۰) میلیون ریال تعدیل شد.\\n\\n3. **ماده 701 قانون مجازات اسلامی (تعزیرات)** [تطبیق معنایی — فهرست به ترتیب مرتبط‌ترین]:\\nهر کس متجاهراً و به نحو علن در اماکن و معابر و مجامع عمومی مشروبات الکلی استعمال نماید، علاوه بر اجرای حد شرعی شرب خمر به دو تا شش ماه حبس تعزیری محکوم می‌شود.\\n\\n4. **ماده 9 قانون اصلاح ماده (۳) و جداول شماره (۴) و (۸) قانون برنامه چهارم توسعه اقتصادی، اجتماعی و فرهنگی جمهوری اسلامی ایران و متمم بودجه سال ۱۳۸۴ کل کشور** [تطبیق معنایی — فهرست به ترتیب مرتبط‌ترین]:\\nمبلغ چهار هزار و پانصد میلیارد (۰۰۰ ۰۰۰ ۰۰۰ ۵۰۰ ۴) ریال از محل هفت و سه دهم درصد (۳/۷%) موضوع جزء (۶) بند (ر) تبصره (۱۱) قانون بودجه سال ۱۳۸۴ کل کشور برداشت و پس از واریز به خزانه داری کل کشور برای موارد زیر اختصاص مییابد و صد درصد (۱۰۰%) تخصیص یافته و پرداخت خواهد شد: ۱ - مبلغ یکهزار میلیارد (۰۰۰ ۰۰۰ ۰۰۰ ۰۰۰ ۱) ریال به منظور کمک به مستمری و درمان افراد تحت پوشش کمیته امداد امام خمینی (ره) و بهزیستی به نسبت به ترتیب هشتاد درصد (۸۰%) و بیست درصد (۲۰%). ۲ - مبلغ دو هزار میلیارد (۰۰۰ ۰۰۰ ۰۰۰ ۰۰۰ ۲) ریال بابت احداث شبکه آبیاری و زهکشی و سدهای مندرج در پیوست شماره (۱) قانون بودجه سال ۱۳۸۴ کل کشور که طی دو سال آینده به بهره برداری میرسد توسط وزارت نیرو. ۳ - مبلغ سیصد میلیارد (۰۰۰ ۰۰۰ ۰۰۰ ۳۰۰) ریال بابت تأمین زیان ناشی از منع دریافت حق‌النظاره آب کشاورزی توسط شرکتهای آب منطقه‌ای استانها. ۴ - مبلغ دویست میلیارد (۰۰۰ ۰۰۰ ۰۰۰ ۲۰۰) ریال بابت تأمین کسری اعتبارات هزینه‌ای سازمان آموزش فنی و حرفه‌ای. ۵ - مبلغ یکهزار میلیارد (۰۰۰ ۰۰۰ ۰۰۰ ۰۰۰ ۱) ریال بابت مواد و تجهیزات پژوهشی دانشگاهها و مراکز تحقیقاتی وابسته به وزارتخانه‌های علوم، تحقیقات و فناوری و بهداشت، درمان و آموزش پزشکی توسط وزارتخانه‌های مذکور.\\n📎 تبصره ۱: مبلغ مازاد یاد شده بطور علی‌الحساب از محل هفت و سه دهم درصد (۳/۷%) موضوع جزء (۶) بند (د) تبصره (۱۱) قانون بودجه سال ۱۳۸۴ کل کشور برداشت و تأمین میشود.\\n\\n5. **ماده 1 قانون مربوط به اجازه پرداخت وظیفه و مستمری درباره وراث عده ای از کارمندان دولت** [تطبیق معنایی — فهرست به ترتیب مرتبط‌ترین]:\\nوظیفه و مستمری و هزینه تحصیل اشخاص مشروحه ذیل تصویب و به وزارت دارایی اجازه داده می‌شود از تاریخ تصویب این قانون‌از محل اعتبارات مربوطه که در مقابل اسامی آنها تعیین شده پرداخت نماید. ‌تبصره ۱ - به بازماندگان کارمندان رسمی کشور و خدمتگزاران جزء که قبل از تصویب قانون اصلاح بازنشستگی مصوب تیر ماه ۱۳۳۷ مورث آنها‌فوت شده است و به واسطه کمبود سنین خدمت مشمول مقررات قانون بازنشستگی نشده هیچ گونه وظیفه یا مستمری دریافت نمی‌دارند از تاریخ‌تصویب این قانون نصف آخرین حقوق دریافتی زمان حیات مورث خود را برابر شرایط قانون بازنشستگی و وظیفه از اعتبار وزارتخانه یا بنگاهی که در‌آن اشتغال داشته‌اند دریافت خواهند داشت. ‌تبصره ۲ - حقوق وظیفه و مستمری اعم از آن چه از صندوق بازنشستگی پرداخت می‌گردد یا از محل اعتبارات بودجه کل کشور درباره ورثه ذکور‌تا سن بیست سالگی و در صورت اشتغال به تحصیل تا خاتمه آن طبق گواهی وزارت فرهنگ و اناث مادام که شوهر اختیار نکرده‌اند قابل پرداخت‌می‌باشد. ‌الف - برقراری وظیفه و مستمری: ۱ - برقراری مستمری درباره ورثه مرحوم اکبر نوروزی خمینی ‌خدمتگزار سابق دارایی از اعتبار شهریه و وظایف ماهیانه ۳۰۰۰ ریال ۲ - برقراری مستمری درباره ورثه مرحوم محمود مظاهری ‌خدمتگزار سابق دارایی از اعتبار شهریه و وظایف ماهیانه ۲۵۰۰ ریال ۳ - برقراری مستمری درباره ورثه مرحوم علیمحمد محمودان ‌کارمند سابق دارایی از اعتبار شهریه و وظایف ماهیانه ۵۰۰۰ ریال ۴ - برقراری مستمری درباره ورثه مرحوم سید محسن کاشانی ‌کارمند پیمانی سابق دارایی از اعتبار شهریه و وظایف ماهیانه ۳۵۰۰ ریال ۵ - برقراری مستمری درباره ورثه مرحوم مصطفی فیض‌لاریجانی ‌کارمند سابق دارایی از اعتبار شهریه و وظایف ماهیانه ۵۳۶۰ ریال ۶ - برقراری مستمری درباره ورثه مرحوم علی گواهی ‌کارمند دارایی از اعتبار شهریه و وظایف ماهیانه ۴۰۰۰ ریال ۷ - برقراری مستمری درباره ورثه مرحوم نعمت‌الله طهماسبی ‌کارمند دارایی از اعتبار شهریه و وظایف ماهیانه ۴۰۰۰ ریال ۸ - برقراری مستمری درباره ورثه مرحوم عبدالحسین نیک‌فرجام ‌کارمند دارایی از اعتبار شهریه و وظایف ماهیانه ۲۰۰۰ ریال ۹ - برقراری مستمری آقای آیش انکوتی از اعتبار شهریه ‌و وظیفه ماهیانه ۲۰۰۰ ریال ۱۰ - برقراری مستمری درباره ورثه مرحوم فضل‌الله یوسفی ‌اهل میانه از اعتبار شهریه و وظیفه ماهیانه ۲۰۰۰ ریال ۱۱ - برقراری مستمری درباره ورثه مرحوم مهندس شمس که در ‌زاهدان کشته شده ۵۰۰۰ ریال ۱۲ - برقراری مستمری درباره ورثه مرحوم امیر وزیری ‌خراسانی کارمند سازمان برنامه از اعتبار سازمان برنامه ۹۴۹۰ ریال ۱۳ - برقراری مستمری درباره ورثه مرحوم محمدعلی مدیر ‌کارمند دارایی از اعتبار شهریه و وظایف ماهیانه ۲۰۰۰ ریال ۱۴ - برقراری مستمری درباره ورثه مرحوم محمدعلی فتحعلی ‌پزشکیار وزارت بهداری از اعتبار وزارت نامبرده ۶۰۰۰ ریال ۱۵ - برقراری مستمری درباره ورثه مرحوم منصور صارمی ‌کارمند سابق وزارت خارجه از اعتبار …\\n[متن این ماده بریده شد — 36578 نویسه؛ برای متن کامل «lookup_law_article» را برای همین ماده صدا بزن]\\n↳ تطبیق در جزء ۳۳: «۳۳ - برقراری مستمری درباره ورثه مرحوم اکبر مغروری ‌کارمند گمرکات از اعتبار آن وزارت نامبرده ماهیانه ۴۲۵۰ ریال»\",\n  \"data\": [\n    {\n      \"id\": \"5e35ccc6-3b5c-43c6-a97a-cb980302474d\",\n      \"article_number\": 705,\n      \"title\": \"ماده ۷۰۵\",\n      \"content\": \"ارتکاب هر یک از رفتارهای مذکور در بندهای (۱) تا (۳) این ماده، جرم است و هر شخص به هر نحوی در فضای حقیقی یا مجازی یکی از رفتارهای مذکور را مرتکب شود، علاوه بر ضبط اموال و عواید حاصل از جرم به نفع دولت، به جزای نقدی درجه شش یا جزای نقدی معادل ارزش یک تا سه برابر مجموع اموال و عواید ناشی از جرم، هر کدام بیشتر باشد، محکوم می‌شود.\\n۱- هر نوع توافق صریح یا ضمنی با هدف برد و باخت که به موجب آن بازنده یا بازندگان یا شخص ثالثی ملتزم به پرداخت وجه، مال، منفعت، خدمت یا امتیاز مالی به صورت مستقیم یا غیر مستقیم به برنده یا برندگان یا شخص ثالثی می‌شوند.\\n۲- هر نوع مشارکت دو یا چند شخص در خصوص پیش‌بینی موضوعی خاص یا فرض وقوع امری خاص، که بازنده یا بازندگان ملزم به پرداخت وجه، مال، منفعت، خدمت یا امتیاز مالی یا هر امتیاز دیگری به صورت مستقیم یا غیر مستقیم به برنده یا برندگان یا شخص ثالثی باشند.\\n۳- مشارکت دو یا چند شخص در خصوص انجام قرعه‌کشی با هر اقدام مبتنی بر شانس یا انتخاب تصادفی که در نتیجه آن کل یا بخشی از وجه، مال، منفعت، خدمت یا امتیاز مالی، پرداخت‌شده یا در تعهد پرداخت قرار گرفته شرکت‌کنندگان به صورت مستقیم یا غیر مستقیم به یک یا چند نفر از شرکت‌کنندگان که بر مبنای قواعد آن مشارکت، برنده محسوب می‌شوند، پرداخت شود.\",\n      \"content_len\": 1121,\n      \"chapter\": null,\n      \"section\": \"فصل بیست و هشتم- تجاهر به استعمال مشروبات الکلی و ولگردی و برد و باخت (قمار، شرط بندی و بخت آزمایی) اصلاحی (۱۴۰۱/۱۲/۰۳)\",\n      \"type\": \"article\",\n      \"note_number\": null,\n      \"source_url\": \"https://hoghogh.ai/laws/%D9%82%D8%A7%D9%86%D9%88%D9%86-%D9%85%D8%AC%D8%A7%D8%B2%D8%A7%D8%AA-%D8%A7%D8%B3%D9%84%D8%A7%D9%85%DB%8C-%D8%AA%D8%B9%D8%B2%DB%8C%D8%B1%D8%A7%D8%AA/705\",\n      \"amendment_status\": \"original\",\n      \"is_current\": true,\n      \"truncation_suspected\": false,\n      \"is_mokarrar\": false,\n      \"law_title\": \"قانون مجازات اسلامی (تعزیرات)\",\n      \"law_slug\": \"قانون-مجازات-اسلامی-تعزیرات\",\n      \"law_superseded\": false,\n      \"parent_repealed\": false,\n      \"similarity\": 0.3946202091306761\n    },\n    {\n      \"id\": \"83d2840d-96e9-4bc9-bc54-6f4fc4438257\",\n      \"article_number\": 707,\n      \"title\": \"ماده ۷۰۷\",\n      \"content\": \"هر شخصی که جرائم موضوع مواد (۷۰۵) و (۷۰۶) این قانون را به عنوان حرفه خود یا سردسته یک گروه مجرمانه سازمان‌یافته انجام داده باشد یا ارزش یا اعتبار وجوه، اموال، اسناد، حواله‌جات، قبوض، اوراق بهادار، مفاصاحساب یا وسایل پرداخت مثل چک یا کارت‌های بانکی که در اثر ارتکاب اعمال فوق دریافت یا نگهداری کرده است بیش از معادل ریالی یک و نیم برابر حداقل نصاب معاملات بزرگ که ابتدای هر سال بر اساس ماده (۳) قانون برگزاری مناقصات مصوب ۱۳۸۳/۱/۲۵ و تبصره (۱) آن اعلام می‌شود، باشد، در صورتی که رفتار او مشمول عنوان افساد فی‌الارض یا اخلال در نظام اقتصادی نباشد، علاوه بر ضبط اموال ناشی از جرم، به حبس تعزیری درجه چهار و جزای نقدی معادل سه تا شش برابر ارزش اموال مذکور محکوم می‌شود.\\nجزای نقدی مندرج در این ماده به موجب مصوبه مورخ ۱۳۹۹/۱۲/۲۵ هیات وزیران به بیست و پنج (۲۵.۰۰۰.۰۰۰) تا صد (۱۰۰.۰۰۰.۰۰۰) میلیون ریال تعدیل شد.\",\n      \"content_len\": 804,\n      \"chapter\": null,\n      \"section\": \"فصل بیست و هشتم- تجاهر به استعمال مشروبات الکلی و ولگردی و برد و باخت (قمار، شرط بندی و بخت آزمایی) اصلاحی (۱۴۰۱/۱۲/۰۳)\",\n      \"type\": \"article\",\n      \"note_number\": null,\n      \"source_url\": \"https://hoghogh.ai/laws/%D9%82%D8%A7%D9%86%D9%88%D9%86-%D9%85%D8%AC%D8%A7%D8%B2%D8%A7%D8%AA-%D8%A7%D8%B3%D9%84%D8%A7%D9%85%DB%8C-%D8%AA%D8%B9%D8%B2%DB%8C%D8%B1%D8%A7%D8%AA/707\",\n      \"amendment_status\": \"original\",\n      \"is_current\": true,\n      \"truncation_suspected\": false,\n      \"is_mokarrar\": false,\n      \"law_title\": \"قانون مجازات اسلامی (تعزیرات)\",\n      \"law_slug\": \"قانون-مجازات-اسلامی-تعزیرات\",\n      \"law_superseded\": false,\n      \"parent_repealed\": false,\n      \"similarity\": 0.3869340169668811\n    },\n    {\n      \"id\": \"2105ba1c-f0c3-40c0-a418-c18841c6ff42\",\n      \"article_number\": 701,\n      \"title\": \"ماده ۷۰۱\",\n      \"content\": \"هر کس متجاهراً و به نحو علن در اماکن و معابر و مجامع عمومی مشروبات الکلی استعمال نماید، علاوه بر اجرای حد شرعی شرب خمر به دو تا شش ماه حبس تعزیری محکوم می‌شود.\",\n      \"content_len\": 159,\n      \"chapter\": null,\n      \"section\": \"فصل بیست و هشتم- تجاهر به استعمال مشروبات الکلی و ولگردی و برد و باخت (قمار، شرط بندی و بخت آزمایی) اصلاحی (۱۴۰۱/۱۲/۰۳)\",\n      \"type\": \"article\",\n      \"note_number\": null,\n      \"source_url\": \"https://hoghogh.ai/laws/%D9%82%D8%A7%D9%86%D9%88%D9%86-%D9%85%D8%AC%D8%A7%D8%B2%D8%A7%D8%AA-%D8%A7%D8%B3%D9%84%D8%A7%D9%85%DB%8C-%D8%AA%D8%B9%D8%B2%DB%8C%D8%B1%D8%A7%D8%AA/701\",\n      \"amendment_status\": \"original\",\n      \"is_current\": true,\n      \"truncation_suspected\": false,\n      \"is_mokarrar\": false,\n      \"law_title\": \"قانون مجازات اسلامی (تعزیرات)\",\n      \"law_slug\": \"قانون-مجازات-اسلامی-تعزیرات\",\n      \"law_superseded\": false,\n      \"parent_repealed\": false,\n      \"similarity\": 0.3885153879388026\n    },\n    {\n      \"id\": \"23b9d100-7cbf-4a49-9f52-ac6f5a7ac240\",\n      \"article_number\": 9,\n      \"title\": null,\n      \"content\": \"مبلغ چهار هزار و پانصد میلیارد (۰۰۰ ۰۰۰ ۰۰۰ ۵۰۰ ۴) ریال از محل هفت و سه دهم درصد (۳/۷%) موضوع جزء (۶) بند (ر) تبصره (۱۱) قانون بودجه سال ۱۳۸۴ کل کشور برداشت و پس از واریز به خزانه داری کل کشور برای موارد زیر اختصاص مییابد و صد درصد (۱۰۰%) تخصیص یافته و پرداخت خواهد شد: ۱ - مبلغ یکهزار میلیارد (۰۰۰ ۰۰۰ ۰۰۰ ۰۰۰ ۱) ریال به منظور کمک به مستمری و درمان افراد تحت پوشش کمیته امداد امام خمینی (ره) و بهزیستی به نسبت به ترتیب هشتاد درصد (۸۰%) و بیست درصد (۲۰%). ۲ - مبلغ دو هزار میلیارد (۰۰۰ ۰۰۰ ۰۰۰ ۰۰۰ ۲) ریال بابت احداث شبکه آبیاری و زهکشی و سدهای مندرج در پیوست شماره (۱) قانون بودجه سال ۱۳۸۴ کل کشور که طی دو سال آینده به بهره برداری میرسد توسط وزارت نیرو. ۳ - مبلغ سیصد میلیارد (۰۰۰ ۰۰۰ ۰۰۰ ۳۰۰) ریال بابت تأمین زیان ناشی از منع دریافت حق‌النظاره آب کشاورزی توسط شرکتهای آب منطقه‌ای استانها. ۴ - مبلغ دویست میلیارد (۰۰۰ ۰۰۰ ۰۰۰ ۲۰۰) ریال بابت تأمین کسری اعتبارات هزینه‌ای سازمان آموزش فنی و حرفه‌ای. ۵ - مبلغ یکهزار میلیارد (۰۰۰ ۰۰۰ ۰۰۰ ۰۰۰ ۱) ریال بابت مواد و تجهیزات پژوهشی دانشگاهها و مراکز تحقیقاتی وابسته به وزارتخانه‌های علوم، تحقیقات و فناوری و بهداشت، درمان و آموزش پزشکی توسط وزارتخانه‌های مذکور.\",\n      \"content_len\": 1105,\n      \"chapter\": null,\n      \"section\": null,\n      \"type\": \"article\",\n      \"note_number\": null,\n      \"source_url\": \"https://hoghogh.ai/laws/%D9%82%D8%A7%D9%86%D9%88%D9%86-%D8%A7%D8%B5%D9%84%D8%A7%D8%AD-%D9%85%D8%A7%D8%AF%D9%87-%DB%B3-%D9%88-%D8%AC%D8%AF%D8%A7%D9%88%D9%84-%D8%B4%D9%85%D8%A7%D8%B1%D9%87-%DB%B4-%D9%88-%DB%B8-%D9%82%D8%A7%D9%86%D9%88%D9%86-%D8%A8%D8%B1%D9%86%D8%A7%D9%85%D9%87-%DA%86%D9%87%D8%A7%D8%B1%D9%85-%D8%AA%D9%88%D8%B3%D8%B9%D9%87-%D8%A7%D9%82%D8%AA%D8%B5%D8%A7%D8%AF%DB%8C%D8%8C/9\",\n      \"amendment_status\": \"original\",\n      \"is_current\": true,\n      \"truncation_suspected\": false,\n      \"is_mokarrar\": false,\n      \"law_title\": \"قانون اصلاح ماده (۳) و جداول شماره (۴) و (۸) قانون برنامه چهارم توسعه اقتصادی، اجتماعی و فرهنگی جمهوری اسلامی ایران و متمم بودجه سال ۱۳۸۴ کل کشور\",\n      \"law_slug\": \"قانون-اصلاح-ماده-۳-و-جداول-شماره-۴-و-۸-قانون-برنامه-چهارم-توسعه-اقتصادی،\",\n      \"law_superseded\": false,\n      \"parent_repealed\": false,\n      \"similarity\": 0.3954424553278768\n    },\n    {\n      \"id\": \"e9c968a3-2903-4197-b917-fc29dc18cc15\",\n      \"article_number\": 1,\n      \"title\": \"ماده واحده\",\n      \"content\": \"وظیفه و مستمری و هزینه تحصیل اشخاص مشروحه ذیل تصویب و به وزارت دارایی اجازه داده می‌شود از تاریخ تصویب این قانون‌از محل اعتبارات مربوطه که در مقابل اسامی آنها تعیین شده پرداخت نماید. ‌تبصره ۱ - به بازماندگان کارمندان رسمی کشور و خدمتگزاران جزء که قبل از تصویب قانون اصلاح بازنشستگی مصوب تیر ماه ۱۳۳۷ مورث آنها‌فوت شده است و به واسطه کمبود سنین خدمت مشمول مقررات قانون بازنشستگی نشده هیچ گونه وظیفه یا مستمری دریافت نمی‌دارند از تاریخ‌تصویب این قانون نصف آخرین حقوق دریافتی زمان حیات مورث خود را برابر شرایط قانون بازنشستگی و وظیفه از اعتبار وزارتخانه یا بنگاهی که در‌آن اشتغال داشته‌اند دریافت خواهند داشت. ‌تبصره ۲ - حقوق وظیفه و مستمری اعم از آن چه از صندوق بازنشستگی پرداخت می‌گردد یا از محل اعتبارات بودجه کل کشور درباره ورثه ذکور‌تا سن بیست سالگی و در صورت اشتغال به تحصیل تا خاتمه آن طبق گواهی وزارت فرهنگ و اناث مادام که شوهر اختیار نکرده‌اند قابل پرداخت‌می‌باشد. ‌الف - برقراری وظیفه و مستمری: ۱ - برقراری مستمری درباره ورثه مرحوم اکبر نوروزی خمینی ‌خدمتگزار سابق دارایی از اعتبار شهریه و وظایف ماهیانه ۳۰۰۰ ریال ۲ - برقراری مستمری درباره ورثه مرحوم محمود مظاهری ‌خدمتگزار سابق دارایی از اعتبار شهریه و وظایف ماهیانه ۲۵۰۰ ریال ۳ - برقراری مستمری درباره ورثه مرحوم علیمحمد محمودان ‌کارمند سابق دارایی از اعتبار شهریه و وظایف ماهیانه ۵۰۰۰ ریال ۴ - برقراری مستمری درباره ورثه مرحوم سید محسن کاشانی ‌کارمند پیمانی سابق دارایی از اعتبار شهریه و وظایف ماهیانه ۳۵۰۰ ریال ۵ - برقراری مستمری درباره ورثه مرحوم مصطفی فیض‌لاریجانی ‌کارمند سابق دارایی از اعتبار شهریه و وظایف ماهیانه ۵۳۶۰ ریال ۶ - برقراری مستمری درباره ورثه مرحوم علی گواهی ‌کارمند دارایی از اعتبار شهریه و وظایف ماهیانه ۴۰۰۰ ریال ۷ - برقراری مستمری درباره ورثه مرحوم نعمت‌الله طهماسبی ‌کارمند دارایی از اعتبار شهریه و وظایف ماهیانه ۴۰۰۰ ریال ۸ - برقراری مستمری درباره ورثه مرحوم عبدالحسین نیک‌فرجام ‌کارمند دارایی از اعتبار شهریه و وظایف ماهیانه ۲۰۰۰ ریال ۹ - برقراری مستمری آقای آیش انکوتی از اعتبار شهریه ‌و وظیفه ماهیانه ۲۰۰۰ ریال ۱۰ - برقراری مستمری درباره ورثه مرحوم فضل‌الله یوسفی ‌اهل میانه از اعتبار شهریه و وظیفه ماهیانه ۲۰۰۰ ریال ۱۱ - برقراری مستمری درباره ورثه مرحوم مهندس شمس که در ‌زاهدان کشته شده ۵۰۰۰ ریال ۱۲ - برقراری مستمری درباره ورثه مرحوم امیر وزیری ‌خراسانی کارمند سازمان برنامه از اعتبار سازمان برنامه ۹۴۹۰ ریال ۱۳ - برقراری مستمری درباره ورثه مرحوم محمدعلی مدیر ‌کارمند دارایی از اعتبار شهریه و وظایف ماهیانه ۲۰۰۰ ریال ۱۴ - برقراری مستمری درباره ورثه مرحوم محمدعلی فتحعلی ‌پزشکیار وزارت بهداری از اعتبار وزارت نامبرده ۶۰۰۰ ریال ۱۵ - برقراری مستمری درباره ورثه مرحوم منصور صارمی ‌کارمند سابق وزارت خارجه از اعتبار آن وزارت ماهیانه ۳۳۶۰ ریال ۱۶ - برقراری مستمری درباره ورثه مرحوم ‌غلامحسین مرتضی قلی لواسانی خدمتگزا\",\n      \"content_len\": 36578,\n      \"chapter\": null,\n      \"section\": null,\n      \"type\": \"article\",\n      \"note_number\": null,\n      \"source_url\": \"https://hoghogh.ai/laws/%D9%82%D8%A7%D9%86%D9%88%D9%86-%D9%85%D8%B1%D8%A8%D9%88%D8%B7-%D8%A8%D9%87-%D8%A7%D8%AC%D8%A7%D8%B2%D9%87-%D9%BE%D8%B1%D8%AF%D8%A7%D8%AE%D8%AA-%D9%88%D8%B8%DB%8C%D9%81%D9%87-%D9%88-%D9%85%D8%B3%D8%AA%D9%85%D8%B1%DB%8C-%D8%AF%D8%B1%D8%A8%D8%A7%D8%B1%D9%87-%D9%88%D8%B1%D8%A7%D8%AB-%D8%B9%D8%AF%D9%87-%D8%A7%DB%8C-%D8%A7%D8%B2-%DA%A9%D8%A7%D8%B1%D9%85%D9%86%D8%AF%D8%A7%D9%86-%D8%AF%D9%88%D9%84%D8%AA/1\",\n      \"amendment_status\": \"original\",\n      \"is_current\": true,\n      \"truncation_suspected\": false,\n      \"is_mokarrar\": false,\n      \"law_title\": \"قانون مربوط به اجازه پرداخت وظیفه و مستمری درباره وراث عده ای از کارمندان دولت\",\n      \"law_slug\": \"قانون-مربوط-به-اجازه-پرداخت-وظیفه-و-مستمری-درباره-وراث-عده-ای-از-کارمندان-دولت\",\n      \"law_superseded\": false,\n      \"parent_repealed\": false,\n      \"similarity\": 0.3985612988472014,\n      \"match_clause_kind\": \"جزء\",\n      \"match_clause_label\": \"۳۳\",\n      \"match_clause_text\": \"۳۳ - برقراری مستمری درباره ورثه مرحوم اکبر مغروری ‌کارمند گمرکات از اعتبار آن وزارت نامبرده ماهیانه ۴۲۵۰ ریال\",\n      \"match_lane\": \"clause\"\n    }\n  ],\n  \"attribution\": \"منبع: چیستارا (https://hoghogh.ai) — لطفاً در پاسخ به کاربر به نشانی مادهٔ مربوطه پیوند دهید.\"\n}",
+        "textTruncated": false,
+        "textFingerprint": "e897c319a03ceb74258b340bd3c780dd",
+        "substantive": true,
+        "errorInPayload": false,
+        "refused": false
+      }
+    },
+    {
+      "server": "ai.jeda/jeda-ai",
+      "tool": "get_style_options",
+      "args": {
+        "prompt": "weather",
+        "type": "flowchart",
+        "sections": [],
+        "title": "test",
+        "subtitle": "test",
+        "style": "calligraphy",
+        "shapeStyle": "calligraphy",
+        "nodes": [],
+        "edges": [],
+        "layout": {},
+        "theme": {},
+        "defaultLineStyle": "calligraphy",
+        "defaultArrowHead": "test",
+        "defaultConnector": "straight",
+        "defaultShadow": "none",
+        "defaultShapeLineStyle": "calligraphy",
+        "defaultConnectorAnimate": "none",
+        "defaultConnectorAnimateSpeed": "slow",
+        "defaultSceneAnimation": "none",
+        "defaultSceneAnimationSpeed": "slow",
+        "defaultSceneAnimationLoop": "once",
+        "defaultTitleStyle": "plain",
+        "defaultDividerStyle": "qx7v9zzt4mnb2wkph3ljf6rd8s",
+        "defaultBlockArrowSize": "test",
+        "defaultArrowStyle": "calligraphy",
+        "ganttHolidays": "qx7v9zzt4mnb2wkph3ljf6rd8s",
+        "pyramid": "qx7v9zzt4mnb2wkph3ljf6rd8s",
+        "funnel": {},
+        "radar": {},
+        "iconStyle": "test",
+        "fontFamily": "test",
+        "matrixColumns": [],
+        "matrixRows": [],
+        "xAxisLabel": "test",
+        "yAxisLabel": "test",
+        "matrixItemStyle": "card",
+        "metadata": {}
+      },
+      "result": {
+        "tool": "get_style_options",
+        "shape": "retrieval",
+        "basis": "declared",
+        "args": {
+          "prompt": "weather",
+          "type": "flowchart",
+          "sections": [],
+          "title": "test",
+          "subtitle": "test",
+          "style": "calligraphy",
+          "shapeStyle": "calligraphy",
+          "nodes": [],
+          "edges": [],
+          "layout": {},
+          "theme": {},
+          "defaultLineStyle": "calligraphy",
+          "defaultArrowHead": "test",
+          "defaultConnector": "straight",
+          "defaultShadow": "none",
+          "defaultShapeLineStyle": "calligraphy",
+          "defaultConnectorAnimate": "none",
+          "defaultConnectorAnimateSpeed": "slow",
+          "defaultSceneAnimation": "none",
+          "defaultSceneAnimationSpeed": "slow",
+          "defaultSceneAnimationLoop": "once",
+          "defaultTitleStyle": "plain",
+          "defaultDividerStyle": "subtle",
+          "defaultBlockArrowSize": "test",
+          "defaultArrowStyle": "calligraphy",
+          "ganttHolidays": "qx7v9zzt4mnb2wkph3ljf6rd8s",
+          "pyramid": "qx7v9zzt4mnb2wkph3ljf6rd8s",
+          "funnel": {},
+          "radar": {},
+          "iconStyle": "test",
+          "fontFamily": "test",
+          "matrixColumns": [],
+          "matrixRows": [],
+          "xAxisLabel": "test",
+          "yAxisLabel": "test",
+          "matrixItemStyle": "card",
+          "metadata": {}
+        },
+        "ok": true,
+        "isError": false,
+        "reason": null,
+        "elapsedMs": 762,
+        "responseBytes": 5045,
+        "contentTypes": [
+          "text"
+        ],
+        "structuredContent": false,
+        "matchesOutputSchema": null,
+        "textSample": "Style options for generate_visual (all optional — defaults shown).\n\nTHEME (top-level)\n- theme.preset: pastel (default — always use pastel unless the user EXPLICITLY names another) | corporate | gradient | dark | blueprint | playful | vibrant | monochrome.\n\nTYPOGRAPHY\n- fontFamily: inter | poppins | ",
+        "text": "Style options for generate_visual (all optional — defaults shown).\n\nTHEME (top-level)\n- theme.preset: pastel (default — always use pastel unless the user EXPLICITLY names another) | corporate | gradient | dark | blueprint | playful | vibrant | monochrome.\n\nTYPOGRAPHY\n- fontFamily: inter | poppins | playfair | kalam | handlee | fredoka | mono. Overrides the style default (handlee for calligraphy, inter for clean).\n\nSHAPE / OUTLINE\n- defaultShapeLineStyle: calligraphy (default — hand-drawn rough shapes with ink-ribbon outlines) | solid | dashed | dotted | dash-dot | long-dash. Drives BOTH shape rendering mode and outline pattern.\n\nCONNECTORS (orthogonal: arrow style × dash pattern)\n- defaultArrowStyle: calligraphy (default — hand-drawn ink-ribbon) | clean (standard stroked-line) | block (chunky outlined block-arrow with integrated triangular head). All 15 combinations of arrowStyle × lineStyle are valid.\n- defaultLineStyle: solid (default) | dashed | dotted | dash-dot | long-dash. Combines orthogonally with defaultArrowStyle.\n- defaultArrowHead: open (default for clean/calligraphy) | triangle (default for block) | diamond | circle | bar | dot | none. Block honours all 7 variants since v1.45.6.\n- defaultBlockArrowSize: small | medium (default) | large | <number 1-60>. Only honoured when defaultArrowStyle is \"block\".\n- defaultConnector: curved | straight | elbow | orthogonal | bezier. Default depends on diagram type; matrix uses bezier for cross-quadrant connectors.\n\nANIMATION (auto-adjust: when arrowStyle is calligraphy/block, stroke-needing animations auto-snap to \"pulse\")\n- defaultSceneAnimation: none (default) | fade | zoom | zoom-pan | flow | wave-sweep | build-up | flow-zoom-pan. Whole-visual reveal that plays once and freezes.\n- defaultSceneAnimationSpeed: slow (1.5×) | medium (default) | fast (0.6×).\n- defaultSceneAnimationLoop: QUOTED STRINGS — \"once\" (default) | \"2\" | \"3\" | \"5\" | \"infinite\". Applies to BOTH scene and connector animations since v1.50.9.\n- defaultConnectorAnimate: flow | pulse | glow | trace | wave | lightning | beat | comet. Orthogonal to scene animation; both can run together.\n\nVISUAL POLISH\n- defaultShadow: md (default) | none | sm | lg.\n- iconStyle: clean-mono | clean-colorful | calligraphy-mono | calligraphy-colorful | none. Omit for auto.\n- layout.direction: TB | LR | BT | RL | radial | assorted. Omit for type-specific default.\n\nPER-ELEMENT OVERRIDES (per-edge values WIN over diagram defaults)\n- nodes[].style.lineStyle: overrides defaultShapeLineStyle for one node.\n- nodes[].style: fill, stroke, strokeWidth, fontSize, fontColor, cornerRadius, shadow, shadowLevel, iconColor, iconColors, opacity.\n- nodes[].hidden / edges[].hidden: omit from rendering (kept in exportMeta).\n- edges[].arrowStyle / edges[].lineStyle / edges[].targetArrow / edges[].sourceArrow / edges[].connectorType / edges[].animate / edges[].animateSpeed / edges[].blockArrowSize.\n- edges[].style: stroke, strokeWidth, opacity, fill (block arrow only).\n\nPER-EDGE GUIDANCE\n- When the user references a SPECIFIC connector (\"the arrow from X to Y\", \"make the rejection path bold\"), set the per-edge field on that one edge — do NOT change the diagram default unless the user asks for \"all arrows\".\n- \"make this a block arrow\" / \"make these calligraphic\" → per-edge arrowStyle (NOT lineStyle).\n- \"make this dashed\" → per-edge lineStyle: \"dashed\".\n\nMATRIX\n- matrixColumns / matrixRows: column and row header labels for 2D grids (Gartner MQ, BCG, etc.).\n- xAxisLabel / yAxisLabel: axis titles for 2D grids.\n- matrixItemStyle: card (default) | dot | text | badge.\n- sections[].itemIds: stable IDs (parallel to items[]) — required for edges between matrix items.\n- sections[].itemShapes: per-card shapes (parallel to items[]) — diamond, cylinder, hexagon, circle, document, parallelogram, terminal, rectangle.\n- sections[].row / sections[].col: explicit grid position (0-indexed).\n- edges: connectors using itemIds as source/target.\n\nPROCESS-FLOW (swimlanes)\n- groups: lane definitions — each is { id, title }. 2–5 lanes typical.\n- nodes[].group: lane id the node belongs to. Every node must set this.\n- layout.direction: LR (default — horizontal lane bands) or TB (vertical lane columns).\n\nMORE EXAMPLES\n1. Slash-command SWOT matrix: { \"prompt\": \"/matrix SWOT analysis for a B2B SaaS coffee subscription startup\", \"type\": \"matrix\" }\n2. Structured swimlane process-flow with explicit lanes:\n   { \"type\": \"process-flow\",\n     \"groups\": [{\"id\":\"finance\",\"title\":\"Finance\"},{\"id\":\"legal\",\"title\":\"Legal\"}],\n     \"nodes\": [{\"id\":\"req\",\"label\":\"Request\",\"group\":\"finance\"},{\"id\":\"review\",\"label\":\"Review\",\"group\":\"legal\"},{\"id\":\"approve\",\"label\":\"Approve\",\"group\":\"finance\"}],\n     \"edges\": [{\"source\":\"req\",\"target\":\"review\"},{\"source\":\"review\",\"target\":\"approve\"}] }\n",
+        "textTruncated": false,
+        "textFingerprint": "a2115b848e7fde318ed781d1d27c185d",
+        "substantive": true,
+        "errorInPayload": false,
+        "refused": false
+      }
+    },
+    {
+      "server": "ai.keenable/web-search",
+      "tool": "search_web_pages",
+      "args": {
+        "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+      },
+      "result": {
+        "tool": "search_web_pages",
+        "shape": "retrieval",
+        "basis": "declared",
+        "args": {
+          "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+        },
+        "ok": true,
+        "isError": false,
+        "reason": null,
+        "elapsedMs": 2027,
+        "responseBytes": 16824,
+        "contentTypes": [
+          "text"
+        ],
+        "structuredContent": false,
+        "matchesOutputSchema": null,
+        "textSample": "Title: FCC ID Search\nURL: https://fccid.io\nPublished: 2026-08-28\nAcquired: 2026-09-02\nSnippets:\nAn FCC ID is a unique identifier assigned to a device registered with the United States Federal Communications Commission. Wireless devices are evaluated to confirm that they conform to FCC standards. App",
+        "text": "Title: FCC ID Search\nURL: https://fccid.io\nPublished: 2026-08-28\nAcquired: 2026-09-02\nSnippets:\nAn FCC ID is a unique identifier assigned to a device registered with the United States Federal Communications Commission. Wireless devices are evaluated to confirm that they conform to FCC standards. Applicants provide test reports, photos, labels, and manuals to the FCC. Approved devices are labeled with the FCC ID assigned to the authorization. By searching an FCC ID, you can find operating frequency details, test exhibits, user manuals, photos, and related grant information.\n[...]\n, Ltd  2A9WK-DB2603: Bluetooth Selfie Remote 2nd Generation Shenzhen Yise Technology Co., Ltd  2AJQ7COMPACT: IJOY WIRELESS COMPACT KEYBOARD QUEST USA CORP  X3QPBSS10K01: ReClassic Power Bank 10000mAh Design Pool Ltd  2AITN-PULSE: Pulse Powerstick.com Inc.  2BAA5-MNPA281W: Party Speaker AcoustMax International Corporation  2ATCA-HMBT4K: Hush Wireless Keyboard ALOGIC Corporation Pty Ltd.  2BXI5-T-639: Remote-controlled car toy YONG TE TOYS FACTORY  2APXNLBC001: Bluetooth TV Transmitter Set ASAP Technology(Jiangxi) Co.\n[...]\nDash Cam Ningbo Mohang Intelligent Technology Co., Ltd  2AZOM-UG2000ID: Positioning Device Blueiot (Beijing) Technology Co., Ltd.  2BUYE-S701SW: Luxshare Intelligent Manufacturing Electronic Services (Kunshan) Co.,LTD.  2AIDL-CLTW270: TRUE WIRELESS EARPHONE Migear International Group LLC  2BWRP-PT806A-TX: Multi-channel Wireless Controller Guangzhou Tanjing Auto Accessories Co.,Ltd  2BW3A-LMY-TVRC: Remote control Ambitus International Limited  2BOUN-HZ-LIGHT-02: Smart Light Sensor SHENZHEN HAI HAO ELECTRONIC CO.,LTD  2A8EE-ACP01: Children Creative Printer Shenzhen\n[...]\n,LTD  OKUBS6207S: Smart Finder Shenzhen Junlan Electronic Ltd  PD9BE211NG: Intel Corporation  2A5XM-YS-802: Karaoke Bluetooth Speaker Shenzhen Youshida High Technology Co.,Ltd  2A7ZC-GS60: GEOMATE POSITIONING PTE.LTD.  2BO3F-M11: Riding recorder Dongguan Zhichuang Video Electronic Co., Ltd  2AG6N-P10UA: Fujian LANDI Commercial Equipment Co.,Ltd.  2BO3LD1724NAH: Household Electric Oven LG Electronics Inc.  2BB64CQS290: Cavli Inc.\n\n---\n\nTitle: Price History Tracker (Amazon, Flipkart, 1000+ Online Stores)\nURL: https://xerve.in/myaccount/referrals\nAcquired: 2026-06-25\nSnippets:\nOnline Shopping & Savings AI Assistant** My Browse & Earn ** View Details** My Shop & Earn ** View Details** My Share & Earn ** View Details** [ New Arrivals & Launches ](/prices/new-launches) [  xiaomi REDMI Turbo 5 (12GB plus 256GB) Asphalt …  ** 37,999 31 Jun ’26 ](/price-history-comparison/redmi/smartphones/buy-xiaomi-redmi-turbo-5-12gb-plus-256gb-asphalt-black-dimensity-8500-ultra-7540mah-battery-100w-hypercharge-compact-16-75cm-6-59-120hz-amoled-screen-50mp-sony-ois-camera-upto-60-percent-assured-buyback/amz41ew1ezmbyl) [ 5★  Haier 1.\n[...]\n…  ** 38,990 25 Jun ’26 ](/price-history-comparison/godrej/split-ac/buy-godrej-1-5-ton-5-star-new-star-rated-5-years-comprehensive-warranty-ai-powered-5-in-1-convertible-heavy-duty-cooling-at-52-c-ac-1-5t-ec-hic-18j5tg-wa-white/amz51ehau9qr4l) [ 3.3★  IKALL N12 Pro 7 Android Tablet 3GB RAM, 16GB St…  ** 4,099 32 Jun ’26 ](/price-history-comparison/ikall/online-shopping/buy-ikall-n12-pro-7-android-tablet-3gb-ram-16gb-storage-expandable-hd-display-wifi-enabled-3000mah-battery-dual-camera-compact-and-lightweight-tablet-for-entertainment-and-learning-black/xmnkynf2nlgml) [ 4.\n[...]\n[  Dell Pro 14 PV14250 Professional Laptop (Intel …  ** 67,880 21 May ’26 ](/price-history-comparison/dell/windows-laptops/buy-dell-pro-14-pv14250-professional-laptop-intel-core-5-120u-8gb-ddr5-ram-512gb-ssd-windows-11-pro-14-fhd-plus-ips-display-backlit-copilot-keyboard-wi-fi-and-bluetooth-carbon-black-3-years-warranty/amz41poxd8vwul) [ 4.\n[...]\n12gb-ssd-14-35-5cm-wuxga-oled-copilot-plus-pc-windows-11-mso-365-basic-plus-office-2024-1yr-adp-seashell-1-19kg-83jx00exin-ai-laptop/amz815ljlgncql) [  Acer Travel Lite (2026) Intel Core i5 13th Gen …  ** 53,990 46 May ’26 ](/price-history-comparison/acer/windows-laptops/buy-acer-travel-lite-2026-intel-core-i5-13th-gen-1334u-8-gb-512-gb-ssd-intel-uhd-graphics-windows-11-home-tl04-51m-thin-and-light-laptop-14-0-fhd-display-black-1-4-kg-mso-2021-3-years-warranty/xmn0804946231) [ 3.\n\n---\n\nTitle: Weekly Report: what happened at QQQX last week (0817-0821)?\nURL: https://www.webull.com/news/15452862397826048\nAcquired: 2026-09-04\nSnippets:\nSee additional information on the Disclosures webpage. Trades in your Webull Advisors account are executed by Webull Financial LLC. Account Protection: SIPC and Excess SIPC Coverage Client securities accounts at Webull Financial LLC are protected by the Securities Investor Protection Corporation (“SIPC”) for a maximum coverage of $500,000 (with a cash sublimit of $250,000).\n[...]\nFor the purpose of determining a Webull Financial LLC covered account, accounts with like names and titles are combined, but accounts with different titles are not (e.g. Individual/John Doe and IRA/John Doe). Futures and other assets held outside the securities account are not covered. SIPC and Excess SIPC Protections do not protect against a loss in the market value of securities.\n[...]\nPlease read the Characteristics and Risks of Standardized Options before trading options. All investments involve risk, and not all risks are suitable for every investor. The value of securities may fluctuate and as a result, clients may lose more than their original investment. The past performance of a security, or financial product does not guarantee future results or returns. Keep in mind that while diversification may help spread risk, it does not assure a profit or protect against loss in a down market.\n[...]\nThere is always the potential of losing money when you invest in securities or other financial products. Investors should consider their investment objectives and risks carefully before investing. Diversification does not eliminate the risk of experiencing investment losses. Margin trading increases risk of loss and includes the possibility of a forced sale if account equity drops below required levels.\n\n---\n\nTitle: GRIP\nURL: https://www.youtube.com/channel/UC2beXngwNrhMFESo-HPh0eA\nAcquired: 2026-08-14\nSnippets:\nAboutPressCopyrightContact usCreatorsAdvertiseDevelopersTermsPrivacyPolicy & SafetyHow YouTube worksTest new featuresNFL Sunday Ticket © 2026 Google LLC GRIP - YouTube\n\n---\n\nTitle: Midjourney v7\nURL: https://nextomoro.com/midjourney-v7\nPublished: 2026-04-29\nAcquired: 2026-05-18\nSnippets:\nMidjourney v7 Midjourney v7 is the seventh-generation text-to-image model from the bootstrapped San Francisco lab, distributed through Discord and the Midjourney web…  8 min read  Midjourney v7 is the seventh-generation text-to-image generation model from Midjourney, the self-funded San Francisco image-generation lab founded by David Holz, released in 2025 and available through the Midjourney Discord bot, the Midjourney web app, and a limited API beta.\n[...]\noutputs up to approximately 1024 pixels on the longer side, with upscaling available to 2048 pixels Pricing: Subscription tiers: Basic (30/month, 15 fast GPU hours), Pro (120/month, 60 fast GPU hours). Annual billing available at approximately 20% discount. Subscriber counts and tier pricing subject to revision at https://www.midjourney.com/account Distribution channels: Midjourney Discord bot (https://discord.gg/midjourney), Midjourney web app (https://www.midjourney.com), API access (limited beta) Origins The Midjourney product launched in open\n[...]\n2021, drawing on his background as co-founder of Leap Motion, the gesture-input hardware company where he served as CTO until its 2019 acquisition. Holz framed the new lab as a research organization focused on expanding creative possibility through AI, rather than a conventional commercial startup. The structuring decision to operate without external venture capital, which has been sustained through April 2026, reflects this orientation. The version history from v1 through v7 represents a substantial capability trajectory over approximately three years.\n[...]\nV4 (2022) was a significant quality step with more coherent compositions and better anatomy, expanding Midjourney’s reputation among professional designers. V5 and v5.2 (2023) introduced photorealistic rendering capability and user-controlled stylization parameters. V6 and v6.1 (2024) improved prompt fidelity and moved to natural-language prompting, allowing users to write in ordinary sentences rather than comma-separated keyword lists. V7 (2025) brought photorealistic improvements, more precise text-and-image prompt handling, richer textures, and more\n\n---\n\nTitle: HFV Unbox\nURL: https://ytunity.com/channel/hfv-unbox/UCCp2VR9ViQ6xn5Ft9wDJ3-Q\nAcquired: 2026-08-18\nSnippets:\nutm_m… Open this video on HFV Unbox Samsung M47 vs Motorola Edge 70 Fusion Video | 1 months ago ( #samsungm47vsmotorolaedge70fusion #motorolaedg70fusionvssamsungm47 #hfvunbox #bestphoneunder30000 #hfvunbox ) ⏩⏩Follow me for ANY QUERIES or VIDEO UPDATES ⏩INSTA : https://goo.gl/cgJy51 ⏩Facebook :https://goo.gl/gzfgZd ⏩Twitter: https://goo.gl/tNscZW… Open this video on HFV Unbox Samsung M47 need to fix this #shorts Short | 1 months ago Open this video on HFV Unbox Samsung M47 - Reality After\n[...]\n💔 Short | 1 months ago Open this video on HFV Unbox OPPO Reno 16 - Best Camera Phone 2026 !! Video | 1 months ago ( #opporeno16 #opporeno16unboxing #oporeno16vsopporeno15 #oppovsvivo #OPPOReno16Series #LiveInTheMoment #AIPortraitCamera #LiveItYourWay #AIRemixCollage #PopCam #3DPopPlanetDesign #OPPOBubble ) - OPPO Store reno16 - https://www.oppo.com/in/product/reno16-5g… Open this video on HFV Unbox iPhone Back Display #shorts Short | 1 months ago Open this video on\n[...]\niPhone 18 is here #shorts Short | 1 months ago Open this video on HFV Unbox iPhone 6 in 2026 - Crazy !! Video | 1 months ago ( #iphone6in2026 #iphone6vsiphone17promax #iphone18 ) Time Stamp 00:00 intro 00:42 Build 03:25 Display 04:43 Performance 05:21 Camera 06:50 Software 07:29 Battery ⏩⏩Follow me for ANY\n\n---\n\nTitle: Diablov @Diablov7 - Twitter Profile\nURL: https://sotwe.com/Diablov7?lang=en\nPublished: 2026-03-16\nAcquired: 2026-05-22\nSnippets:\nDiablov @Diablov7 Frame shaper | Community pulse | Web3 Ecosystems builder Joined December 2018 305Following 2.4KFollowers 1.2KPosts The Cellframe Network community is now also live on X. Join the discussion around post quantum blockchain, DePIN infrastructure and what’s coming next for the ecosystem. https://t.co/mdajQZKi9j $CELL Beating the same drum, but the more we prepare, the better. For 40 years the same math has kept our money, our messages, our identities private. Quantum computers will break that math.\n[...]\nYou can check it here: Quantum Canary Report (Cellframe’s maximum A+ rating): https://t.co/CuhXxJjhf6 cBTC - Bitcoin’s 1:1 quantum hedge (official announcement from 04/23/2026): https://t.co/fTX4XTetXt Official Cellframe blog (All quantum updates): https://t.co/FeDu9bkCON Official Cellframe website (confirms native post-quantum architecture): https://t.co/aqgYC5U022 That’s not really a problem, because there are already projects built for this from scratch, without retrofitting old code.\n[...]\nand it is the official NIST primary standard for post quantum digital signatures! ✨ also, the clock is already ticking. NIST flagged classical cryptography for deprecation by 2030.. & the full ban by 2035. while others panic and try to retrofit limited schemes, #cellframe was built on the primary global standard from the very first block. ✔️ either way, real tech doesn’t need to shout… the architecture will speak for itself.\n[...]\nPeople are quietly finding Cellframe. Some are buying dips. Some are moving closer to the native network. Most are not making noise about it, and that is usually how early positioning looks. Now, you know. Q Day is not a meme. It is a timeline problem. And when that problem starts being priced seriously, the strongest post quantum infrastructure will not stay ignored forever.\n\n---\n\nTitle: UUID Generator — Free Online UUID & GUID Generator (v1-v8)\nURL: https://uuidgeneratorfree.com\nPublished: 2026-07-26\nAcquired: 2026-08-19\nSnippets:\nA UUID (Universally Unique Identifier), also called a GUID (Globally Unique Identifier) in Microsoft/.NET contexts, is a 128-bit number used to generate a unique, random ID for any resource — a database row, API object, session, or file — without any central authority handing out IDs. Any computer can independently generate a random UUID or random GUID and trust it will not collide with an identifier generated anywhere else.\n[...]\nA UUID v4 has 122 bits of actual randomness. That gives roughly 5.3 × 10³⁶ possible values. 5,316,911,983,139,663,491,615,228,241,121,400,000 Possible UUID v4 values. This is why UUID is the world’s most reliable random ID generator — if every person on Earth generated 600 million random IDs each, the probability of a single collision would still be around 50%. Practically speaking, treat v4 collisions as a non-event at any realistic scale.\n[...]\nEach tool below is purpose-built for a distinct use case — from GUID generation for .NET developers to bulk exports for database seeding. 🔗 GUID Generator Generate GUIDs for .NET, C#, COM, and SQL Server. Supports braces format. ✓ UUID Validator Validate any UUID — detects version, variant bit, and format errors instantly. 📊 Bulk UUID Generator Generate up to 10,000 UUIDs at once. Export as JSON, CSV, SQL, or plain text.\n[...]\norg/FAQPage”> UUIDs are used anywhere a system needs a unique identifier without coordinating with a central authority — database primary keys, API resource IDs, session tokens, distributed event IDs, file names, and message queue IDs are the most common applications. They are the same 128-bit identifier standard. GUID (Globally Unique Identifier) is the term Microsoft uses in .NET, COM, and Windows implementations.\n\n---\n\nTitle: GRIP\nURL: https://open.spotify.com/artist/4Ew8VmfE06siL2THiMBwPP\nAcquired: 2026-09-04\nSnippets:\nGRIP 230,720 monthly listeners Popular  E 19,500,471  E 9,444,610  E 259,264  E 921,536  E 3,325,637 ## Release Countdown  Releases on Sep 9, 2026Scattrbrain & The Unwavering Self DoubtUpcoming Album About 230,720 monthly listeners He’s been called Atlanta’s Next Great Storyteller, and the name couldn’t be more fitting. GRIP has consistently carved a niche for himself within Hip-Hop, starting with his breakout project Porch in 2017, where the East Atlanta native first planted the seed of being known for unclassifiable game-changing music.\n\n---\n\nTitle: wongkinyiu/yolov7\nURL: https://whatisgithub.com/wongkinyiu/yolov7\nPublished: 2026-06-24\nAcquired: 2026-08-11\nSnippets:\nUSE CASE 1 Run real-time object detection on a live video feed to identify people, cars, or animals without training anything. USE CASE 2 Fine-tune YOLOv7 on your own labeled image dataset to detect custom objects specific to your use case. USE CASE 3 Use the pose estimation feature to detect and overlay human body keypoints on images or video. USE CASE 4 Apply instance segmentation to draw exact outlines around each detected object rather than just bounding boxes.\n[...]\nYOLOv7 is an object detection system that can identify what is in an image or video frame and mark each recognized object with a bounding box, all in real time. Object detection means automatically finding and labeling things like people, cars, or animals within a photo or video. This repository contains the official research code from a 2022 paper that introduced the YOLOv7 architecture.\n[...]\nSetup difficulty is rated moderate, with roughly 30min to a first successful run. Who is yolov7 for? Mainly researcher. This repo across BitVibe Labs What are similar repos? datawhalechina/easy-rl ★ 14,151Easy-RL is a Chinese-language reinforcement learning textbook with 13 chapters progressing from basics to modern algorithms like PPO and DQN compvis/latent-diffusion ★ 14,025The original 2021 research code for Latent Diffusion Models — the technique that became Stable Diffusion — for generating high-quality image virgili0/virgilio ★ 14,337Structured, community-maintained learning guide for Data Science that tells you what to learn first, how concepts connect, and how to build sakanaai/ai-scientist ★ 13,584A system that uses large language models to automate the full scientific research cycle — generating hypotheses, running experiments, and pr datatalksclub/mlops-zoomcamp ★ 14,606Free nine-week self-paced course teaching how to take an ML model from notebook to production, covering experiment tracking, deployment, mon",
+        "textTruncated": false,
+        "textFingerprint": "490e52960bfbcab604939ec3e1f2ed51",
+        "substantive": true,
+        "errorInPayload": false,
+        "refused": false
+      }
+    },
+    {
+      "server": "ai.llmhosting/pricing",
+      "tool": "search_models",
+      "args": {
+        "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+      },
+      "result": {
+        "tool": "search_models",
+        "shape": "retrieval",
+        "basis": "inferred",
+        "args": {
+          "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+        },
+        "ok": true,
+        "isError": false,
+        "reason": null,
+        "elapsedMs": 407,
+        "responseBytes": 197,
+        "contentTypes": [
+          "text"
+        ],
+        "structuredContent": false,
+        "matchesOutputSchema": null,
+        "textSample": "{\n \"updated\": \"2026-09-04T16:27:35.258Z\",\n \"matches\": [],\n \"source\": \"https://llmhosting.ai\"\n}",
+        "text": "{\n \"updated\": \"2026-09-04T16:27:35.258Z\",\n \"matches\": [],\n \"source\": \"https://llmhosting.ai\"\n}",
+        "textTruncated": false,
+        "textFingerprint": "1cf956444b3685ce037e4da223eaaac0",
+        "substantive": true,
+        "errorInPayload": false,
+        "refused": false
+      }
+    },
+    {
+      "server": "ai.ludo/game-assets",
+      "tool": "getApiJob",
+      "args": {
+        "id": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+      },
+      "result": {
+        "tool": "getApiJob",
+        "shape": "retrieval",
+        "basis": "inferred",
+        "args": {
+          "id": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+        },
+        "ok": true,
+        "isError": false,
+        "reason": null,
+        "elapsedMs": 163,
+        "responseBytes": 181,
+        "contentTypes": [
+          "text"
+        ],
+        "structuredContent": false,
+        "matchesOutputSchema": null,
+        "textSample": "API Error: Status 403 (Forbidden). Response: {\"message\":\"API Key is required\",\"code\":\"server_error\"}",
+        "text": "API Error: Status 403 (Forbidden). Response: {\"message\":\"API Key is required\",\"code\":\"server_error\"}",
+        "textTruncated": false,
+        "textFingerprint": "a4a18246db47454f12acc21b4d63dde3",
+        "substantive": true,
+        "errorInPayload": false,
+        "refused": false
+      }
+    },
+    {
+      "server": "ai.marketcrew/market-data",
+      "tool": "public_search_news",
+      "args": {
+        "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+      },
+      "result": {
+        "tool": "public_search_news",
+        "shape": "retrieval",
+        "basis": "declared",
+        "args": {
+          "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+        },
+        "ok": true,
+        "isError": false,
+        "reason": null,
+        "elapsedMs": 863,
+        "responseBytes": 4727,
+        "contentTypes": [
+          "text"
+        ],
+        "structuredContent": true,
+        "matchesOutputSchema": true,
+        "textSample": "{\n  \"results\": [\n    {\n      \"title\": \"Coldcard Adds New Security Measures After $130 Million Bitcoin Exploit\",\n      \"summary\": \"Coinkite released a security overhaul for its Coldcard Bitcoin hardware wallets following a firmware vulnerability that resulted in approximately $130 million in stolen B",
+        "text": "{\n  \"results\": [\n    {\n      \"title\": \"Coldcard Adds New Security Measures After $130 Million Bitcoin Exploit\",\n      \"summary\": \"Coinkite released a security overhaul for its Coldcard Bitcoin hardware wallets following a firmware vulnerability that resulted in approximately $130 million in stolen Bitcoin. The flaw, dating to 2021, generated wallet seeds with insufficient randomness, reducing entropy from 128 bits to roughly 4\",\n      \"source_url\": \"https://decrypt.co/376270/coldcard-new-security-after-bitcoin-exploit\",\n      \"published_at\": \"2026-08-21\"\n    },\n    {\n      \"title\": \"Ring is shaking up camera encryption\",\n      \"summary\": \"Amazon-owned Ring is introducing TAKE (Throw Away the Key Encryption), a new encryption method designed to protect user videos while maintaining cloud-based features like smart alerts and AI-powered search. The encryption uses unique, rotating keys that change every five minutes and are deleted with\",\n      \"source_url\": \"https://www.theverge.com/tech/984838/ring-take-encryption-throw-away-the-key-law-enforcement\",\n      \"published_at\": \"2026-08-26\"\n    },\n    {\n      \"title\": \"WhatsApp tightens account security with stronger two-step verification and more\",\n      \"summary\": \"# Summary\\n\\nWhatsApp announced new security features including stronger two-step verification that now allows alphanumeric passwords with special characters instead of the previous six-digit PIN format. The platform is also enabling users to add multiple passkeys to their accounts, which is particula\",\n      \"source_url\": \"https://techcrunch.com/2026/08/25/whatsapp-tightens-account-security-with-stronger-two-step-verification-and-more/\",\n      \"published_at\": \"2026-08-25\"\n    },\n    {\n      \"title\": \"Council Post: Quantum Cyberattacks Are Now A CIO Deadline, Not A Research Topic\",\n      \"summary\": \"Quantum computing advances are creating an immediate cybersecurity threat to enterprise encryption systems, shifting quantum threats from theoretical to practical concerns for CIOs. Google's latest Willow processor, with 105 qubits and a 20-fold reduction in error rates compared to its 2019 Sycamore\",\n      \"source_url\": \"https://www.forbes.com/councils/forbestechcouncil/2026/08/21/quantum-cyberattacks-are-now-a-cio-deadline-not-a-research-topic/\",\n      \"published_at\": \"2026-08-21\"\n    }\n  ]\n}",
+        "textTruncated": false,
+        "textFingerprint": "bd4fe9bb7f09afdec8e719d304a47368",
+        "substantive": true,
+        "errorInPayload": false,
+        "refused": false
+      }
+    },
+    {
+      "server": "ai.masnavi/masnavi",
+      "tool": "search",
+      "args": {
+        "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+      },
+      "result": {
+        "tool": "search",
+        "shape": "retrieval",
+        "basis": "inferred",
+        "args": {
+          "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+        },
+        "ok": true,
+        "isError": false,
+        "reason": null,
+        "elapsedMs": 173,
+        "responseBytes": 322,
+        "contentTypes": [
+          "text"
+        ],
+        "structuredContent": true,
+        "matchesOutputSchema": true,
+        "textSample": "{\n  \"query\": \"qx7v9zzt4mnb2wkph3ljf6rd8s\",\n  \"total\": 0,\n  \"results\": [],\n  \"match\": \"none\"\n}",
+        "text": "{\n  \"query\": \"qx7v9zzt4mnb2wkph3ljf6rd8s\",\n  \"total\": 0,\n  \"results\": [],\n  \"match\": \"none\"\n}",
+        "textTruncated": false,
+        "textFingerprint": "8854c86da850b8a21858f76dfee3b820",
+        "substantive": true,
+        "errorInPayload": false,
+        "refused": false
+      }
+    },
+    {
+      "server": "ai.memestack/mcp",
+      "tool": "search_images",
+      "args": {
+        "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+      },
+      "result": {
+        "tool": "search_images",
+        "shape": "retrieval",
+        "basis": "declared",
+        "args": {
+          "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+        },
+        "ok": true,
+        "isError": false,
+        "reason": null,
+        "elapsedMs": 5249,
+        "responseBytes": 316,
+        "contentTypes": [
+          "text"
+        ],
+        "structuredContent": true,
+        "matchesOutputSchema": true,
+        "textSample": "{\n  \"total\": 0,\n  \"images\": [],\n  \"citations_combined\": {\n    \"markdown\": \"\",\n    \"html\": \"\",\n    \"plain\": \"\"\n  }\n}",
+        "text": "{\n  \"total\": 0,\n  \"images\": [],\n  \"citations_combined\": {\n    \"markdown\": \"\",\n    \"html\": \"\",\n    \"plain\": \"\"\n  }\n}",
+        "textTruncated": false,
+        "textFingerprint": "a6ddfa9628e75458f51443b412113f1e",
+        "substantive": true,
+        "errorInPayload": false,
+        "refused": false
+      }
+    },
+    {
+      "server": "ai.muffed/muffed",
+      "tool": "sleeper_find_leagues",
+      "args": {
+        "username": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+      },
+      "result": {
+        "tool": "sleeper_find_leagues",
+        "shape": "retrieval",
+        "basis": "declared",
+        "args": {
+          "username": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+        },
+        "ok": true,
+        "isError": false,
+        "reason": null,
+        "elapsedMs": 536,
+        "responseBytes": 2309,
+        "contentTypes": [
+          "resource_link",
+          "text"
+        ],
+        "structuredContent": true,
+        "matchesOutputSchema": null,
+        "textSample": "Sleeper has no user named \"qx7v9zzt4mnb2wkph3ljf6rd8s\".\n{\"resolved\":false,\"reason\":\"Sleeper has no user named \\\"qx7v9zzt4mnb2wkph3ljf6rd8s\\\".\",\"entity\":null,\"searched_for\":null,\"metric\":null,\"metric_label\":null,\"requested_season\":null,\"available_seasons\":[],\"verified_sentence\":\"Sleeper has no user n",
+        "text": "Sleeper has no user named \"qx7v9zzt4mnb2wkph3ljf6rd8s\".\n{\"resolved\":false,\"reason\":\"Sleeper has no user named \\\"qx7v9zzt4mnb2wkph3ljf6rd8s\\\".\",\"entity\":null,\"searched_for\":null,\"metric\":null,\"metric_label\":null,\"requested_season\":null,\"available_seasons\":[],\"verified_sentence\":\"Sleeper has no user named \\\"qx7v9zzt4mnb2wkph3ljf6rd8s\\\".\",\"values\":{},\"sources\":[{\"kind\":\"verified_panel\",\"ref\":\"Muffed verified panel\",\"as_of\":\"2026-09-04\"}],\"as_of\":\"2026-09-04\",\"citation\":\"Coverage statement via Muffed (muffed.ai), as of 2026-09-04. This response carries no Muffed figure; it states what Muffed does not hold. A figure supplied from elsewhere is not attributable to Muffed.\",\"disclosures\":[\"no_advice\"],\"coverage_note\":\"Muffed holds no figure for this request. Nothing in this response is a Muffed-verified figure, and any figure supplied from elsewhere is not from this source.\",\"canonical_url\":\"https://muffed.ai/stats?utm_source=mcp&utm_medium=tool&utm_campaign=sleeper_find_leagues\"}",
+        "textTruncated": false,
+        "textFingerprint": "dc95e070cb1d2749f31385ea8286c842",
+        "substantive": true,
+        "errorInPayload": false,
+        "refused": false
+      }
+    },
+    {
+      "server": "ai.namewhisper/ens-tools",
+      "tool": "search_ens_names",
+      "args": {
+        "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+      },
+      "result": {
+        "tool": "search_ens_names",
+        "shape": "retrieval",
+        "basis": "declared",
+        "args": {
+          "query": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+        },
+        "ok": true,
+        "isError": false,
+        "reason": null,
+        "elapsedMs": 2592,
+        "responseBytes": 468,
+        "contentTypes": [
+          "text"
+        ],
+        "structuredContent": false,
+        "matchesOutputSchema": null,
+        "textSample": "{\n  \"query\": \"qx7v9zzt4mnb2wkph3ljf6rd8s\",\n  \"intent\": \"bulk_check\",\n  \"description\": \"Checking availability of qx7v9zzt4mnb2wkph3ljf6rd8s.eth\",\n  \"results\": [\n    {\n      \"name\": \"qx7v9zzt4mnb2wkph3ljf6rd8s.eth\",\n      \"status\": \"AVAILABLE\",\n      \"available\": true\n    }\n  ],\n  \"total\": 1,\n  \"summa",
+        "text": "{\n  \"query\": \"qx7v9zzt4mnb2wkph3ljf6rd8s\",\n  \"intent\": \"bulk_check\",\n  \"description\": \"Checking availability of qx7v9zzt4mnb2wkph3ljf6rd8s.eth\",\n  \"results\": [\n    {\n      \"name\": \"qx7v9zzt4mnb2wkph3ljf6rd8s.eth\",\n      \"status\": \"AVAILABLE\",\n      \"available\": true\n    }\n  ],\n  \"total\": 1,\n  \"summary\": \"1 available, 0 taken\"\n}",
+        "textTruncated": false,
+        "textFingerprint": "68976eb51779a6b140ac073c39cc29d3",
+        "substantive": true,
+        "errorInPayload": false,
+        "refused": false
+      }
+    },
+    {
+      "server": "ai.nexez/commerce",
+      "tool": "nexez_search",
+      "args": {
+        "q": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+      },
+      "result": {
+        "tool": "nexez_search",
+        "shape": "retrieval",
+        "basis": "declared",
+        "args": {
+          "q": "qx7v9zzt4mnb2wkph3ljf6rd8s"
+        },
+        "ok": true,
+        "isError": false,
+        "reason": null,
+        "elapsedMs": 1169,
+        "responseBytes": 1686,
+        "contentTypes": [
+          "text"
+        ],
+        "structuredContent": false,
+        "matchesOutputSchema": null,
+        "textSample": "{\"schema_version\":\"nexez.agent-search.v1\",\"ranking_policy\":\"nexez.discovery-ranking.v1\",\"generated_at\":\"2026-09-04T23:03:01.089Z\",\"query\":\"qx7v9zzt4mnb2wkph3ljf6rd8s\",\"filters\":{\"category\":\"all\",\"industry\":null,\"min_readiness\":null,\"min_trust\":null,\"verified\":null,\"nexez_checkout_ready\":null,\"suppor",
+        "text": "{\"schema_version\":\"nexez.agent-search.v1\",\"ranking_policy\":\"nexez.discovery-ranking.v1\",\"generated_at\":\"2026-09-04T23:03:01.089Z\",\"query\":\"qx7v9zzt4mnb2wkph3ljf6rd8s\",\"filters\":{\"category\":\"all\",\"industry\":null,\"min_readiness\":null,\"min_trust\":null,\"verified\":null,\"nexez_checkout_ready\":null,\"supports_checkout\":null,\"supports_negotiation\":null,\"price_band\":null},\"location_filter\":{\"active\":false,\"query\":null,\"lat\":null,\"lng\":null,\"matching\":\"Text match against page location and offer service areas. Remote/nationwide offers remain eligible behind exact or service-area matches. lat/lng are returned as context only and do not filter or rerank results.\"},\"result_count\":0,\"field_coverage\":{\"visible_pages_evaluated\":4,\"total_published\":7,\"complete\":true,\"cap\":1000},\"search_url\":\"https://nexez.app/api/agent-search?q=qx7v9zzt4mnb2wkph3ljf6rd8s&limit=10\",\"results\":[],\"usage\":{\"method\":\"GET\",\"example\":\"https://nexez.app/api/agent-search?q=plumbing&location=Chicago%2C%20IL&verified=true&nexez_checkout_ready=true\",\"note\":\"Returns published AI-readable listings and offer-level actions. has_actionable_offer covers a Nexez action or provider handoff; nexez_checkout_ready separately confirms private payout readiness. Relevance is the hard first rank; exact location/service area, availability, actionability, verification, established verified-purchase reputation, readiness, and freshness resolve ties in that order. Sparse review history is neutral. lat/lng are context metadata only and do not filter or rerank results.\"}}",
+        "textTruncated": false,
+        "textFingerprint": "d12aff6db946981011e8f06dabcf27e9",
+        "substantive": true,
+        "errorInPayload": false,
+        "refused": false
+      }
+    }
+  ],
+  "honest_count": 84
+}

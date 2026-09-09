@@ -1,0 +1,32 @@
+{
+  "name": "@trust-index/web",
+  "version": "0.1.0",
+  "description": "Agent Trust Index surface: REST API, MCP endpoint, and frontend (SPEC 13, 14).",
+  "license": "Apache-2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@trust-index/db": "workspace:*",
+    "@trust-index/types": "workspace:*",
+    "next": "15.5.24",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "optionalDependencies": {
+    "@trust-index/scoring": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.1",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.5",
+    "typescript": "5.7.3",
+    "vitest": "3.2.4"
+  }
+}

@@ -1,0 +1,10 @@
+packages:
+  - "packages/*"
+  - "apps/*"
+  # The BNB marketplace is deliberately NOT a pnpm workspace member. It ships to
+  # Vercel as a self-contained Next.js app with its own package-lock.json and no
+  # workspace:* dependencies, so it can be built from its own directory without
+  # the surrounding workspace. Letting the apps/* glob adopt it put a second,
+  # npm-managed package under a pnpm lockfile and broke every CI job with
+  # ERR_PNPM_OUTDATED_LOCKFILE.
+  - "!apps/bnb-marketplace"

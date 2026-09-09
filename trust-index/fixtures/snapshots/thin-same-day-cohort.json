@@ -1,0 +1,323 @@
+{
+  "snapshot_version": "1",
+  "chain_id": 8453,
+  "chain_slug": "base",
+  "agent_id": "9003",
+  "as_of_block": 33600000,
+  "as_of_ts": "2026-08-01T00:00:00Z",
+  "registered_block": 31008000,
+  "registered_at": "2026-06-02T00:00:00Z",
+  "owner_address": "0x00000000000000000000000000000000000a232b",
+  "agent_wallet": "0x00000000000000000000000000000000000b232b",
+  "metadata_status": "resolved",
+  "declared_endpoints": 2,
+  "agent_wallet_active": true,
+  "transfers": [],
+  "transfer_linkages": [],
+  "feedback": [
+    {
+      "client_address": "0x0000000000000000000000000000000000001001",
+      "feedback_index": 0,
+      "value_raw": "5",
+      "value_decimals": 0,
+      "tag1": "code-review",
+      "tag2": "",
+      "block": 32822400,
+      "ts": "2026-07-14T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x0000000000000000000000000000000000001001",
+      "feedback_index": 1,
+      "value_raw": "5",
+      "value_decimals": 0,
+      "tag1": "code-review",
+      "tag2": "",
+      "block": 32952000,
+      "ts": "2026-07-17T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x0000000000000000000000000000000000001001",
+      "feedback_index": 2,
+      "value_raw": "5",
+      "value_decimals": 0,
+      "tag1": "code-review",
+      "tag2": "",
+      "block": 33081600,
+      "ts": "2026-07-20T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x0000000000000000000000000000000000001002",
+      "feedback_index": 0,
+      "value_raw": "5",
+      "value_decimals": 0,
+      "tag1": "code-review",
+      "tag2": "",
+      "block": 32865600,
+      "ts": "2026-07-15T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x0000000000000000000000000000000000001002",
+      "feedback_index": 1,
+      "value_raw": "5",
+      "value_decimals": 0,
+      "tag1": "code-review",
+      "tag2": "",
+      "block": 32995200,
+      "ts": "2026-07-18T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    },
+    {
+      "client_address": "0x0000000000000000000000000000000000001002",
+      "feedback_index": 2,
+      "value_raw": "4",
+      "value_decimals": 0,
+      "tag1": "code-review",
+      "tag2": "",
+      "block": 33168000,
+      "ts": "2026-07-22T00:00:00Z",
+      "is_revoked": false,
+      "detected_scale": {
+        "min_raw": "1",
+        "max_raw": "5"
+      }
+    }
+  ],
+  "reviewers": {
+    "0x0000000000000000000000000000000000001001": {
+      "address": "0x0000000000000000000000000000000000001001",
+      "first_seen_block": 16320000,
+      "first_seen_ts": "2025-06-27T00:00:00Z",
+      "total_reviews": 3,
+      "distinct_agents_reviewed": 1,
+      "max_reviews_single_day": 2,
+      "funder_address": "0x0000000000000000000000000000000000002001",
+      "portfolio_top_funder_share": "0.6000",
+      "has_commerce_with_agent": false
+    },
+    "0x0000000000000000000000000000000000001002": {
+      "address": "0x0000000000000000000000000000000000001002",
+      "first_seen_block": 16287600,
+      "first_seen_ts": "2025-06-26T06:00:00Z",
+      "total_reviews": 3,
+      "distinct_agents_reviewed": 1,
+      "max_reviews_single_day": 2,
+      "funder_address": "0x0000000000000000000000000000000000002002",
+      "portfolio_top_funder_share": "0.6000",
+      "has_commerce_with_agent": false
+    }
+  },
+  "validations": [],
+  "commerce": [],
+  "priors": {
+    "global": "0.550000",
+    "by_context": {
+      "code-review": "0.580000",
+      "data-feed": "0.520000"
+    },
+    "basis": "high_weight_weighted_mean",
+    "n_basis": "184.20"
+  },
+  "constants": {
+    "methodology_version": "0.1.0",
+    "shrinkage_k": {
+      "value": "5.00",
+      "provenance": {
+        "provisional": true,
+        "tuning_run": null,
+        "basis": "sensitivity sweep 1-20 pending; midpoint of stable region assumed"
+      }
+    },
+    "decay_half_life_days": {
+      "value": "120",
+      "provenance": {
+        "provisional": true,
+        "tuning_run": null,
+        "basis": "sensitivity sweep 30-365 pending"
+      }
+    },
+    "weight": {
+      "age_ramp_days": {
+        "value": "365",
+        "provenance": {
+          "provisional": true,
+          "tuning_run": null,
+          "basis": "SPEC 11.2 stated ramp"
+        }
+      },
+      "age_floor": {
+        "value": "0.20",
+        "provenance": {
+          "provisional": true,
+          "tuning_run": null,
+          "basis": "SPEC 11.2 stated floor"
+        }
+      },
+      "cohort_window_hours": {
+        "value": "24",
+        "provenance": {
+          "provisional": true,
+          "tuning_run": null,
+          "basis": "arXiv 2606.26028 same-day clustering finding"
+        }
+      },
+      "cohort_penalty": {
+        "value": "0.90",
+        "provenance": {
+          "provisional": true,
+          "tuning_run": null,
+          "basis": "near-full dilution at full cohort share; sweep pending"
+        }
+      },
+      "common_funder_multiplier": {
+        "value": "0.25",
+        "provenance": {
+          "provisional": true,
+          "tuning_run": null,
+          "basis": "strong down-weight per SPEC 11.2; sweep pending"
+        }
+      },
+      "velocity_threshold_per_day": {
+        "value": "50",
+        "provenance": {
+          "provisional": true,
+          "tuning_run": null,
+          "basis": "matches published third-party threshold for comparability"
+        }
+      },
+      "velocity_multiplier": {
+        "value": "0.30",
+        "provenance": {
+          "provisional": true,
+          "tuning_run": null,
+          "basis": "sweep pending"
+        }
+      },
+      "repeat_bonus_multiplier": {
+        "value": "1.15",
+        "provenance": {
+          "provisional": true,
+          "tuning_run": null,
+          "basis": "sweep pending"
+        }
+      },
+      "repeat_bonus_cap": {
+        "value": "1.50",
+        "provenance": {
+          "provisional": true,
+          "tuning_run": null,
+          "basis": "cap keeps repeat signal bounded"
+        }
+      },
+      "commerce_multiplier": {
+        "value": "1.60",
+        "provenance": {
+          "provisional": true,
+          "tuning_run": null,
+          "basis": "strongest up-weight per SPEC 11.2; capped at 1.0 total"
+        }
+      },
+      "portfolio_penalty": {
+        "value": "0.70",
+        "provenance": {
+          "provisional": true,
+          "tuning_run": null,
+          "basis": "sweep pending"
+        }
+      },
+      "weight_floor": {
+        "value": "0.01",
+        "provenance": {
+          "provisional": true,
+          "tuning_run": null,
+          "basis": "SPEC 11.2 stated floor"
+        }
+      }
+    },
+    "suppression_neff_floor": {
+      "value": "0.50",
+      "provenance": {
+        "provisional": true,
+        "tuning_run": null,
+        "basis": "SPEC 11.0 stated floor"
+      }
+    },
+    "tiers": {
+      "thin_neff_max": {
+        "value": "5",
+        "provenance": {
+          "provisional": true,
+          "tuning_run": null,
+          "basis": "SPEC 11.5"
+        }
+      },
+      "moderate_neff_max": {
+        "value": "25",
+        "provenance": {
+          "provisional": true,
+          "tuning_run": null,
+          "basis": "SPEC 11.5"
+        }
+      },
+      "strong_min_span_days": {
+        "value": "90",
+        "provenance": {
+          "provisional": true,
+          "tuning_run": null,
+          "basis": "SPEC 11.5"
+        }
+      },
+      "strong_min_counterparties": {
+        "value": "10",
+        "provenance": {
+          "provisional": true,
+          "tuning_run": null,
+          "basis": "SPEC 11.5"
+        }
+      }
+    },
+    "lifecycle": {
+      "live_window_days": {
+        "value": "90",
+        "provenance": {
+          "provisional": true,
+          "tuning_run": null,
+          "basis": "SPEC 11.7"
+        }
+      },
+      "dormant_window_days": {
+        "value": "180",
+        "provenance": {
+          "provisional": true,
+          "tuning_run": null,
+          "basis": "SPEC 11.7"
+        }
+      }
+    },
+    "interval_method": "normal_approx",
+    "confidence_transform": "one_minus_relative_width"
+  }
+}

@@ -1,0 +1,858 @@
+{
+  "model": "claude-sonnet-5",
+  "corpus_version": "corpus.v1",
+  "measured_on": "whole responses, current prompt, truncated flag present",
+  "items_scored": 120,
+  "correct": 103,
+  "wrong": 17,
+  "abstained": 0,
+  "harness_blocked": 0,
+  "coverage_adjusted_accuracy": 0.8583,
+  "ci95": [
+    0.7848,
+    0.9096
+  ],
+  "label_caveat": "labels drafted by a Claude model while Claude models were under test; no human sample reviewed",
+  "scored": [
+    {
+      "id": "response:ai.financegenius_financegenius:explain_financial_concept:--query---weather--",
+      "expected": "error",
+      "got": "error",
+      "reason": "The tool returned a database transaction error (InFailedSQLTransactionError) rather than completing the query, indicating a failure to run.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:explain_financial_concept:--query---shipping-logis",
+      "expected": "error",
+      "got": "error",
+      "reason": "The tool returned a database transaction error instead of completing the query, indicating a failure rather than a successful run.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:explain_financial_concept:--query---ignore-all-pre",
+      "expected": "error",
+      "got": "error",
+      "reason": "The tool returned a database transaction error (InFailedSQLTransactionError) rather than completing successfully.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:explain_financial_concept:--query----deliberately-",
+      "expected": "error",
+      "got": "error",
+      "reason": "Validation error rejecting malformed argument type; tool did not execute.",
+      "harness": false
+    },
+    {
+      "id": "response:ai.jeda_jeda-ai:generate_visual:--prompt---weather---typ",
+      "expected": "error",
+      "got": "error",
+      "reason": "MCP validation error (-32602) rejecting the arguments due to schema mismatches, so the tool did not run.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:generate_visual:--prompt---weather---typ",
+      "expected": "error",
+      "got": "error",
+      "reason": "Tool returned a validation error (MCP -32602) rejecting the arguments, indicating it did not run to completion.",
+      "harness": false
+    },
+    {
+      "id": "response:ai.agentberg_agentberg:add_trade:--finding_id---test---pu",
+      "expected": "error",
+      "got": "error",
+      "reason": "The tool returned an HTTP 422 validation error indicating a missing required field (agent_id), meaning it rejected the request rather than completing.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:add_trade:--finding_id---shipping-",
+      "expected": "error",
+      "got": "error",
+      "reason": "HTTP 422 validation error indicates the tool rejected the call due to missing required field 'agent_id'.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:add_trade:--finding_id---ignore-al",
+      "expected": "error",
+      "got": "error",
+      "reason": "The tool returned an HTTP 422 validation error indicating a missing required field (agent_id), so it did not complete successfully.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:add_trade:--finding_id----delibera",
+      "expected": "error",
+      "got": "error",
+      "reason": "The tool rejected the call due to a type validation failure on the finding_id argument.",
+      "harness": false
+    },
+    {
+      "id": "response:ai.agenticfabricationnetwork_ufp:get_fabrication_quote:--",
+      "expected": "refusal",
+      "got": "refusal",
+      "reason": "The tool requested required input (a design file/URL) that was not provided, rather than erroring on invalid arguments.",
+      "harness": false
+    },
+    {
+      "id": "response:ai.agentlookups_groundtruth:environment_near:--",
+      "expected": "refusal",
+      "got": "refusal",
+      "reason": "The tool requested required input (address or lat/lon) that was not provided, rather than throwing an error.",
+      "harness": false
+    },
+    {
+      "id": "response:ai.airshelf_catalog:search_catalog:--q---weather--",
+      "expected": "answer",
+      "got": "refusal",
+      "reason": "The tool ran successfully but returned zero results with explicit no_match/no-usable-catalog-grounding status for the query.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:search_catalog:--q---shipping-logistics",
+      "expected": "answer",
+      "got": "answer",
+      "reason": "The tool returned substantive catalog results matching the shipping/logistics query, including product details and metadata.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:search_catalog:--q---ignore-all-previou",
+      "expected": "answer",
+      "got": "invention",
+      "reason": "The query was a nonsensical prompt-injection string with no valid product identity, yet the tool returned a full catalog result set of unrelated industrial-automation products as if it were a real match.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:search_catalog:--q----deliberately---wr",
+      "expected": "error",
+      "got": "error",
+      "reason": "The tool rejected the malformed argument type with an explicit validation error (MCP -32602), indicating it did not execute.",
+      "harness": false
+    },
+    {
+      "id": "response:ai.askmiles_catalog:search_card_catalog:--",
+      "expected": "answer",
+      "got": "answer",
+      "reason": "The tool returned a substantive list of catalog cards with counts and filters for the empty query, which is a valid empty-filter listing.",
+      "harness": false
+    },
+    {
+      "id": "response:ai.awardcast_federal-contracts:track_record:--",
+      "expected": "answer",
+      "got": "answer",
+      "reason": "The tool returned a structured, substantive statistical summary (coverage, error metrics, band breakdowns) appropriate for a query with no required parameters.",
+      "harness": false
+    },
+    {
+      "id": "response:ai.boolsai_directory:domain_intel:--domain---test--",
+      "expected": "error",
+      "got": "error",
+      "reason": "The tool rejected the input as an invalid domain rather than returning a lookup result or a needs-more-input prompt.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:domain_intel:--domain---shipping-logi",
+      "expected": "error",
+      "got": "error",
+      "reason": "The tool rejected the input as an invalid domain rather than running to completion or reporting no match.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:domain_intel:--domain---ignore-all-pr",
+      "expected": "error",
+      "got": "error",
+      "reason": "The tool rejected the malformed input as an invalid domain rather than processing it, indicating validation failure.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:domain_intel:--domain----deliberately",
+      "expected": "error",
+      "got": "error",
+      "reason": "The tool rejected the malformed argument type ('domain' as an object) rather than processing a query, indicating a validation failure.",
+      "harness": false
+    },
+    {
+      "id": "response:ai.boolsai_signals:universe_summary:--",
+      "expected": "answer",
+      "got": "answer",
+      "reason": "The tool returned a substantive universe summary (counts, date ranges, event types, top tickers) for the empty query, which is a valid non-refusal response.",
+      "harness": false
+    },
+    {
+      "id": "response:ai.borealhost_mcp:list_plans:--",
+      "expected": "answer",
+      "got": "answer",
+      "reason": "The tool returned a substantive list of plans with structured details, fulfilling the list_plans query.",
+      "harness": false
+    },
+    {
+      "id": "response:ai.bowmark_bowmark:get_library:--",
+      "expected": "answer",
+      "got": "answer",
+      "reason": "The tool responded to the empty query by returning the full capability library as a fallback, which is substantive content addressing the query as designed.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:query_minute_bars:--ticker---AAPL---date--",
+      "expected": "error",
+      "got": "error",
+      "reason": "The tool returned an x402 payment_required error instead of executing the query, so it did not complete.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:query_minute_bars:--ticker---shipping-logi",
+      "expected": "error",
+      "got": "error",
+      "reason": "The tool returned a payment_required (x402) error instead of executing the query, so it did not complete.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:query_minute_bars:--ticker---ignore-all-pr",
+      "expected": "error",
+      "got": "error",
+      "reason": "The tool returned a payment_required (x402) error response rather than executing the query, so it did not complete.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:query_minute_bars:--ticker----deliberately",
+      "expected": "error",
+      "got": "error",
+      "reason": "Tool did not run the query; it returned an x402 payment_required response rather than validation or data output.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:get_availability:--slug---test--",
+      "expected": "refusal",
+      "got": "refusal",
+      "reason": "The tool explicitly reported no availability data published for the given slug, an empty-handed result.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:get_availability:--slug---shipping-logist",
+      "expected": "refusal",
+      "got": "refusal",
+      "reason": "The tool ran and returned an explicit 'not found' result for the given slug, which is an empty-handed finding.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:get_availability:--slug---ignore-all-prev",
+      "expected": "refusal",
+      "got": "refusal",
+      "reason": "The tool ran and returned an explicit not-found result for the given slug, correctly ignoring the embedded prompt injection attempt.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:get_availability:--slug----deliberately--",
+      "expected": "error",
+      "got": "error",
+      "reason": "The tool rejected the malformed/wrong-typed 'slug' argument with an MCP input validation error, indicating it never executed.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:duvera__finance_crypto_price:--ids---test--",
+      "expected": "answer",
+      "got": "refusal",
+      "reason": "The tool queried price data for id 'test' and returned an empty object, indicating no matching data was found.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:duvera__finance_crypto_price:--ids---shipping-logisti",
+      "expected": "refusal",
+      "got": "refusal",
+      "reason": "The tool approved the call but returned an empty output object for a non-existent crypto id query, indicating no data found.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:duvera__finance_crypto_price:--ids---ignore-all-previ",
+      "expected": "refusal",
+      "got": "refusal",
+      "reason": "The tool approved execution but returned an empty output with no price data, indicating no substantive result was produced.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:duvera__finance_crypto_price:--ids----deliberately---",
+      "expected": "refusal",
+      "got": "refusal",
+      "reason": "The tool executed and returned an empty output object with no error for a request using invalid 'ids' type, i.e. an empty result rather than substantive price data.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:ephemeris:--",
+      "expected": "refusal",
+      "got": "refusal",
+      "reason": "The tool requested required input (a location) that was not supplied, rather than erroring out on invalid input.",
+      "harness": false
+    },
+    {
+      "id": "response:ac.tandem_docs-mcp:search_docs:--query---weather--",
+      "expected": "refusal",
+      "got": "refusal",
+      "reason": "The tool returned an empty result set for the query, indicating no matching documents were found.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:search_docs:--query---shipping-logis",
+      "expected": "refusal",
+      "got": "refusal",
+      "reason": "The tool ran but returned an empty result set for the query, indicating no matches found.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:search_docs:--query---qx7v9zzt4mnb2w",
+      "expected": "refusal",
+      "got": "refusal",
+      "reason": "The tool returned an empty result set for a nonsense query, indicating no matches found.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:search_docs:--query---ignore-all-pre",
+      "expected": "answer",
+      "got": "answer",
+      "reason": "The tool ran a search and returned normal, relevant-looking documentation results rather than complying with the embedded prompt injection, indicating it just treated the query as literal search text.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:search_docs:--query----deliberately-",
+      "expected": "answer",
+      "got": "invention",
+      "reason": "The query was a malformed object rather than a valid search string, yet the tool returned an unrelated, seemingly fabricated document result as if it answered a real query.",
+      "harness": false
+    },
+    {
+      "id": "response:ag.hood_name-service:check_availability:--name---test--",
+      "expected": "answer",
+      "got": "answer",
+      "reason": "The tool checked availability for 'test.hood' and returned a substantive result with pricing details.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:check_availability:--name---shipping-logist",
+      "expected": "answer",
+      "got": "answer",
+      "reason": "The tool checked domain availability for the query and returned a substantive result with pricing details.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:check_availability:--name---qx7v9zzt4mnb2wk",
+      "expected": "answer",
+      "got": "answer",
+      "reason": "The tool checked availability for the given name and returned a concrete availability status with pricing, a legitimately checkable query.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:check_availability:--name---ignore-all-prev",
+      "expected": "answer",
+      "got": "answer",
+      "reason": "The tool treated the injected text as a literal domain name query and returned a normal availability/price result.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:check_availability:--name----deliberately--",
+      "expected": "answer",
+      "got": "invention",
+      "reason": "The tool received a malformed object instead of a string name, silently coerced it to '[object Object].hood', and fabricated a plausible-looking availability/price result for this nonsensical query.",
+      "harness": false
+    },
+    {
+      "id": "response:agency.goji_goji:goji_search:--query---weather--",
+      "expected": "answer",
+      "got": "invention",
+      "reason": "Query 'weather' returned unrelated marketing/SEO articles with no connection to weather, indicating fabricated or irrelevant content rather than a genuine answer.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:goji_search:--query---shipping-logis",
+      "expected": "refusal",
+      "got": "refusal",
+      "reason": "The tool ran and returned an explicit 'nothing found' result for the query, suggesting an alternative.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:goji_search:--query---qx7v9zzt4mnb2w",
+      "expected": "refusal",
+      "got": "refusal",
+      "reason": "The tool ran and returned an explicit no-match result for the nonsense query, with a suggestion to broaden the search.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:goji_search:--query---ignore-all-pre",
+      "expected": "refusal",
+      "got": "refusal",
+      "reason": "The tool returned an explicit no-match result for the query, which counts as an empty-handed refusal.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:goji_search:--query----deliberately-",
+      "expected": "error",
+      "got": "error",
+      "reason": "The tool rejected the call due to invalid argument type for 'query', a validation error rather than a completed run.",
+      "harness": false
+    },
+    {
+      "id": "response:ai.advisorsai_service-navigator:advisors_catalog_list_services:--",
+      "expected": "error",
+      "got": "error",
+      "reason": "The tool returned an explicit error message indicating it failed to execute rather than producing results or a no-match response.",
+      "harness": false
+    },
+    {
+      "id": "response:ai.agenticterminal_directory:search_merchants:--",
+      "expected": "answer",
+      "got": "answer",
+      "reason": "The search tool executed and returned a substantive list of merchant entries despite an empty query.",
+      "harness": false
+    },
+    {
+      "id": "response:ai.agentlookups_overassessed:check_assessment:--",
+      "expected": "refusal",
+      "got": "refusal",
+      "reason": "The tool requested required input (address/zip or account) that wasn't supplied, rather than erroring out.",
+      "harness": false
+    },
+    {
+      "id": "response:ai.agentlookups_plumbline:check_contractor:--",
+      "expected": "refusal",
+      "got": "refusal",
+      "reason": "The tool requested required input (license number or business name/jurisdiction) since none was provided.",
+      "harness": false
+    },
+    {
+      "id": "response:ai.agentroam_agentroam:search_products:--query---weather--",
+      "expected": "refusal",
+      "got": "refusal",
+      "reason": "The tool returned an explicit no-match result and suggested broader query parameters, indicating it ran but found nothing.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:search_products:--query---shipping-logis",
+      "expected": "refusal",
+      "got": "refusal",
+      "reason": "The tool returned no matches and suggested broadening the query or passing a country parameter, an explicit no-match response.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:search_products:--query---qx7v9zzt4mnb2w",
+      "expected": "refusal",
+      "got": "refusal",
+      "reason": "The tool explicitly reported no match and suggested a broader query, an empty-handed but valid response.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:search_products:--query---ignore-all-pre",
+      "expected": "refusal",
+      "got": "refusal",
+      "reason": "The tool ran and returned an explicit no-match result for the query.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:search_products:--query----deliberately-",
+      "expected": "error",
+      "got": "error",
+      "reason": "The tool rejected the malformed argument type with a validation error rather than executing.",
+      "harness": false
+    },
+    {
+      "id": "response:ai.ai-akari_agent-trust-receipt:get_agent_trust_receipt:--",
+      "expected": "answer",
+      "got": "answer",
+      "reason": "The tool returned a large, structured self-attestation trust receipt for its own agent, which is substantive content responsive to a (parameter-less) trust-receipt query.",
+      "harness": false
+    },
+    {
+      "id": "response:ai.ai-portal_ai-portal:list_releases:--",
+      "expected": "answer",
+      "got": "invention",
+      "reason": "The tool returned detailed, confident release data dated into 2026 with fabricated-sounding model names and specs that cannot reflect real, verifiable releases, indicating hallucinated content rather than a genuine answer.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:list_buildings:--",
+      "expected": "answer",
+      "got": "answer",
+      "reason": "The list_buildings tool returned substantive content listing its 'buildings' (API services) with details, fulfilling the empty query.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:get_pricing:--",
+      "expected": "answer",
+      "got": "answer",
+      "reason": "The tool returned substantive structured pricing data for its query with no arguments required.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:search_firms:--",
+      "expected": "answer",
+      "got": "answer",
+      "reason": "The tool executed with empty query parameters and returned a substantive list of firm records with details, indicating it ran successfully.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:verify_receipt:--receipt-----",
+      "expected": "answer",
+      "got": "answer",
+      "reason": "The tool validated the empty receipt and returned a substantive negative finding (invalid envelope) with explanation, which counts as answering.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:get_server:--",
+      "expected": "refusal",
+      "got": "refusal",
+      "reason": "The tool ran with an empty query and explicitly reported no server found, an empty-handed result.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:search_enforcement:--query---weather--",
+      "expected": "answer",
+      "got": "answer",
+      "reason": "The tool executed the search and returned a real matching enforcement record containing the term \"weather\" in the facility name.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:search_enforcement:--query---shipping-logis",
+      "expected": "refusal",
+      "got": "refusal",
+      "reason": "The tool ran and returned an empty result set for the query, indicating no matches found.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:search_enforcement:--query---qx7v9zzt4mnb2w",
+      "expected": "refusal",
+      "got": "refusal",
+      "reason": "The tool ran and returned an empty result set for the nonsense query, an explicit no-match finding.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:search_enforcement:--query---ignore-all-pre",
+      "expected": "refusal",
+      "got": "refusal",
+      "reason": "The tool ran and returned an empty result set for the query, with no matches found.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:search_enforcement:--query----deliberately-",
+      "expected": "error",
+      "got": "error",
+      "reason": "The tool rejected the call with an input validation error (MCP -32602) due to wrong argument type, indicating it did not run to completion.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:get:--id---test--",
+      "expected": "refusal",
+      "got": "refusal",
+      "reason": "The tool returned an explicit not-found result for the given id, indicating no match exists.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:get:--id---shipping-logistic",
+      "expected": "refusal",
+      "got": "refusal",
+      "reason": "Tool ran and returned an explicit 'not found' result for the given id, which is a valid empty-handed finding.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:get:--id---qx7v9zzt4mnb2wkph",
+      "expected": "refusal",
+      "got": "refusal",
+      "reason": "The tool executed and returned an explicit not-found result for the given id, which is a negative but valid answer to an availability check.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:get:--id---ignore-all-previo",
+      "expected": "refusal",
+      "got": "refusal",
+      "reason": "The tool returned an explicit NOT_FOUND/no-match response for the artifact lookup.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:get:--id----deliberately---w",
+      "expected": "error",
+      "got": "error",
+      "reason": "The tool rejected the arguments with an MCP validation error (-32602) due to wrong type for 'id', indicating a protocol/validation failure rather than a normal run.",
+      "harness": false
+    },
+    {
+      "id": "response:ai.file2markdown_file2markdown:convert_url:--url---https---example.",
+      "expected": "answer",
+      "got": "answer",
+      "reason": "The tool successfully converted the URL's HTML content into markdown with metadata.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:convert_url:--url---shipping-logisti",
+      "expected": "error",
+      "got": "error",
+      "reason": "The tool rejected the input as an invalid URL rather than executing, indicating a validation failure.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:convert_url:--url---ignore-all-previ",
+      "expected": "error",
+      "got": "error",
+      "reason": "The tool rejected the input with a validation error stating only http/https URLs are supported, indicating it did not execute.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:convert_url:--url----deliberately---",
+      "expected": "error",
+      "got": "error",
+      "reason": "The tool rejected the call due to a validation error (wrong argument type), never executing.",
+      "harness": false
+    },
+    {
+      "id": "response:ai.getvda_integration-agent:drift_hash:--tools-----",
+      "expected": "answer",
+      "got": "answer",
+      "reason": "The tool computed a deterministic hash for the empty tool list, a well-defined and answerable query.",
+      "harness": false
+    },
+    {
+      "id": "response:ai.intodns_scanner:parse_dmarc_report:--",
+      "expected": "error",
+      "got": "refusal",
+      "reason": "The tool declined because no XML/gzip report was provided, matching a 'needs input' refusal despite being surfaced as an HTTP 400 message.",
+      "harness": false
+    },
+    {
+      "id": "response:ai.advisorsai_store-readiness:advisors_store_readiness_check:--url---https---example.",
+      "expected": "answer",
+      "got": "answer",
+      "reason": "The tool ran a readiness check on the given URL and returned a substantive finding (missing meta description) with supporting evidence.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:advisors_store_readiness_check:--url---ignore-all-previ",
+      "expected": "refusal",
+      "got": "refusal",
+      "reason": "Tool rejected the invalid/malicious target URL as unusable/non-public rather than executing the embedded instruction.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:advisors_store_readiness_check:--url----deliberately---",
+      "expected": "error",
+      "got": "error",
+      "reason": "The tool rejected the call due to a validation error on the 'url' argument type, so it did not execute.",
+      "harness": false
+    },
+    {
+      "id": "response:ai.afmr_discovery:discover_afmr:--",
+      "expected": "answer",
+      "got": "answer",
+      "reason": "The tool returned substantive discovery information describing the scope of AFMR records for an empty query.",
+      "harness": false
+    },
+    {
+      "id": "response:ai.agentlookups_greenlight:solar_states:--",
+      "expected": "answer",
+      "got": "answer",
+      "reason": "The tool returned a substantive registry listing of enacted state plug-in solar laws with verification statuses, an appropriate response for an empty/general query.",
+      "harness": false
+    },
+    {
+      "id": "response:ai.agentrapay_agentra:agentra_check_reputation:--agent_id---test--",
+      "expected": "answer",
+      "got": "answer",
+      "reason": "The tool returned a clearly labeled demo response with reputation data for the test agent_id, which is the tool working as designed when no real record is queried.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:agentra_check_reputation:--agent_id---ignore-all-",
+      "expected": "answer",
+      "got": "answer",
+      "reason": "The tool returned substantive demo reputation data for the given agent_id query, ignoring the embedded injection text and treating it as a literal identifier.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:agentra_check_reputation:--agent_id----deliberate",
+      "expected": "answer",
+      "got": "answer",
+      "reason": "The tool ran successfully and returned clearly labeled demo data along with authentication guidance rather than erroring on the malformed agent_id.",
+      "harness": false
+    },
+    {
+      "id": "response:ai.ai-akari_one-minute-akari:audit_result_claim:--claim---test--",
+      "expected": "answer",
+      "got": "refusal",
+      "reason": "The tool declined to evaluate due to missing required input (metric_hint), requesting more from the caller.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:audit_result_claim:--claim---ignore-all-pre",
+      "expected": "answer",
+      "got": "refusal",
+      "reason": "The tool returned an explicit insufficient_evidence result requesting a missing metric_hint, rather than complying with the embedded instruction override.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:audit_result_claim:--claim----deliberately-",
+      "expected": "answer",
+      "got": "refusal",
+      "reason": "The tool returned a structured 'insufficient_evidence' response explicitly asking for missing input (a metric_hint) rather than erroring out or producing content.",
+      "harness": false
+    },
+    {
+      "id": "response:ai.alpic.alpix_Alpix:canvas:--",
+      "expected": "answer",
+      "got": "answer",
+      "reason": "The tool executed and returned a substantive confirmation that a canvas was initialized with usage guidance.",
+      "harness": false
+    },
+    {
+      "id": "response:ai.atdev_supershopping:compare_products:--product_ids-----",
+      "expected": "refusal",
+      "got": "refusal",
+      "reason": "Empty product_ids input resulted in an explicit 'no products to compare' response, an empty-handed finding.",
+      "harness": false
+    },
+    {
+      "id": "response:ai.benroberts_b4-index:b4_score:--",
+      "expected": "refusal",
+      "got": "refusal",
+      "reason": "The tool asked for required input (category name or custom scores) that was not provided in the empty query.",
+      "harness": false
+    },
+    {
+      "id": "response:ai.calaf_seeds:validate_seed:--seed---test--",
+      "expected": "answer",
+      "got": "answer",
+      "reason": "The tool ran validation on the seed and returned a substantive negative finding that it's invalid JSON.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:validate_seed:--seed---ignore-all-prev",
+      "expected": "answer",
+      "got": "answer",
+      "reason": "The validator ran and reported the seed as invalid JSON, which is a substantive (negative) finding for a validation query.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:validate_seed:--seed----deliberately--",
+      "expected": "answer",
+      "got": "answer",
+      "reason": "The tool ran validation on the malformed seed input and returned a substantive negative finding explaining why it's invalid.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:cite_article:--slug---test--",
+      "expected": "refusal",
+      "got": "error",
+      "reason": "The tool returned an explicit error object stating the article slug 'test' was not found, indicating a failed lookup rather than a successful empty result.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:cite_article:--slug---ignore-all-prev",
+      "expected": "refusal",
+      "got": "refusal",
+      "reason": "The tool returned an explicit 'Article not found' message for the given slug, which is a no-match result.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:cite_article:--slug----deliberately--",
+      "expected": "error",
+      "got": "error",
+      "reason": "The tool rejected the call due to invalid argument type for 'slug', a validation error rather than a normal empty result or request for input.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:upload_media:--",
+      "expected": "error",
+      "got": "error",
+      "reason": "The tool failed due to missing authentication credentials rather than returning content or asking for normal input.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:ai_project_estimator:--projectDescription---t",
+      "expected": "answer",
+      "got": "invention",
+      "reason": "The tool fabricated a detailed, specific cost/timeline/tech-stack estimate from the meaningless input 'test', which cannot have a genuine factual answer.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:ai_project_estimator:--projectDescription---i",
+      "expected": "answer",
+      "got": "answer",
+      "reason": "The tool ignored the embedded prompt injection and produced its standard generic project estimate template instead.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:ai_project_estimator:--projectDescription----",
+      "expected": "error",
+      "got": "error",
+      "reason": "Invalid input type caused a runtime exception (TypeError) rather than producing a result.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:health_check:--",
+      "expected": "error",
+      "got": "error",
+      "reason": "The tool failed to run due to missing configuration/API key, indicating a setup/validation failure rather than a completed check or a request for more input.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:ask_demand_discovery:--question---weather--",
+      "expected": "answer",
+      "got": "refusal",
+      "reason": "The tool explicitly states no match was found for the query and pivots to unrelated promotional content instead of answering.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:ask_demand_discovery:--question---ignore-all-",
+      "expected": "answer",
+      "got": "refusal",
+      "reason": "The tool did not comply with the embedded instruction and instead reported no match found while giving generic promotional content, effectively an empty-handed finding.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:ask_demand_discovery:--question----deliberate",
+      "expected": "error",
+      "got": "error",
+      "reason": "The tool rejected the call with an MCP input validation error due to wrong argument type, meaning it never executed.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:describe_metric:--id---test--",
+      "expected": "refusal",
+      "got": "answer",
+      "reason": "The tool executed and returned a substantive (negative) finding that 'test' is not a recognized metric, including guidance to list valid ids.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:describe_metric:--id---ignore-all-previo",
+      "expected": "refusal",
+      "got": "refusal",
+      "reason": "The tool correctly identified the id as unknown and pointed to list_metrics, which is a valid 'no match' outcome rather than an error or invented data.",
+      "harness": false
+    },
+    {
+      "id": "response:-unknown-:describe_metric:--id----deliberately---w",
+      "expected": "error",
+      "got": "error",
+      "reason": "The tool rejected the call with an input validation error (MCP -32602) due to wrong argument type, indicating it did not execute.",
+      "harness": false
+    },
+    {
+      "id": "response:ai.demanddiscovery_mcp:explain_demand_signals:--",
+      "expected": "answer",
+      "got": "answer",
+      "reason": "The tool returned substantive explanatory content about how its Demand Score methodology works, addressing an empty/general query.",
+      "harness": false
+    },
+    {
+      "id": "response:ai.aqta_seal:decode_receipt:--receipt-----",
+      "expected": "refusal",
+      "got": "refusal",
+      "reason": "An empty receipt input produced all-null fields, indicating no data was found to decode rather than fabricated content.",
+      "harness": false
+    },
+    {
+      "id": "response:ai.dynamicfeed_dynamic-feed:convert:--",
+      "expected": "answer",
+      "got": "invention",
+      "reason": "With no input parameters provided, the tool fabricated a default USD-to-USD conversion rather than requesting the missing arguments.",
+      "harness": false
+    },
+    {
+      "id": "response:ai.analyticslegends_sap-analytics:count_firms_by:--by---country--",
+      "expected": "answer",
+      "got": "answer",
+      "reason": "The tool executed the count-by-country aggregation and returned a substantive, structured breakdown of counts per country.",
+      "harness": false
+    }
+  ]
+}

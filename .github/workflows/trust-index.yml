@@ -1,0 +1,219 @@
+# CI for the trust-index workspace only. The host repo has its own CI
+# (ci.yml); this workflow is path-filtered so the two never overlap.
+# Branch protection (marking these jobs required) is a repo-settings step
+# for the author; see trust-index/docs/RUNBOOK.md.
+name: trust-index
+
+on:
+  pull_request:
+    paths:
+      - "trust-index/**"
+      - ".github/workflows/trust-index.yml"
+  push:
+    branches:
+      - "trust-index/**"
+      - "feat/trust-index**"
+    paths:
+      - "trust-index/**"
+      - ".github/workflows/trust-index.yml"
+
+concurrency:
+  group: trust-index-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: trust-index
+
+jobs:
+  # hashFiles() in a job-level "if" evaluates before checkout and always
+  # returns empty, so presence checks run here after checkout and are
+  # exported as outputs. Downstream jobs skip cleanly (skipped counts as
+  # success for required checks) until Track A / Track C land their files.
+  presence:
+    runs-on: ubuntu-latest
+    outputs:
+      db: ${{ steps.detect.outputs.db }}
+      contracts: ${{ steps.detect.outputs.contracts }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: detect
+        run: |
+          echo "db=${{ hashFiles('trust-index/packages/db/package.json') != '' }}" >> "$GITHUB_OUTPUT"
+          echo "contracts=${{ hashFiles('trust-index/contracts/foundry.toml') != '' }}" >> "$GITHUB_OUTPUT"
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: trust-index/.nvmrc
+          cache: pnpm
+          cache-dependency-path: trust-index/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run typecheck
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: trust-index/.nvmrc
+          cache: pnpm
+          cache-dependency-path: trust-index/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      # scripts/ is standalone (not a workspace member), so it installs with
+      # its own lockfile. It carries the eslint toolchain for the whole
+      # trust-index tree, including the SPEC 22 determinism rules for
+      # packages/scoring.
+      - run: pnpm install --ignore-workspace --frozen-lockfile --dir scripts
+      - name: per-package lint
+        run: pnpm run lint
+      - name: workspace-wide eslint (SPEC 22 rules)
+        run: pnpm --dir scripts run lint
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: trust-index/.nvmrc
+          cache: pnpm
+          cache-dependency-path: trust-index/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      # Recursive with --if-present: half-built packages without a test
+      # script do not fail the build. Golden score tests in packages/scoring
+      # run here once Track B lands them.
+      - run: pnpm run test
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: trust-index/.nvmrc
+          cache: pnpm
+          cache-dependency-path: trust-index/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
+
+  # SPEC 22 golden tests: regenerate the committed fixtures and fail on any
+  # drift. The scoring-side golden tests rerun in the test job; this job
+  # guards the fixture files themselves.
+  golden-diff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: trust-index/.nvmrc
+          cache: pnpm
+          cache-dependency-path: trust-index/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run fixtures:generate
+      - name: fail on fixture drift
+        working-directory: .
+        run: |
+          git diff --exit-code -- trust-index/fixtures/
+          untracked="$(git status --porcelain -- trust-index/fixtures/)"
+          if [ -n "$untracked" ]; then
+            echo "fixtures directory has uncommitted changes:"
+            echo "$untracked"
+            exit 1
+          fi
+
+  migrate-dry-run:
+    runs-on: ubuntu-latest
+    needs: presence
+    if: needs.presence.outputs.db == 'true'
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: trust_index
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trust_index
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: trust-index/.nvmrc
+          cache: pnpm
+          cache-dependency-path: trust-index/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run migrate
+
+  contracts:
+    runs-on: ubuntu-latest
+    needs: presence
+    if: needs.presence.outputs.contracts == 'true'
+    defaults:
+      run:
+        working-directory: trust-index/contracts
+    steps:
+      - uses: actions/checkout@v4
+      # Pinned to the same forge version installed in the dev environment.
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.2.3
+      - run: forge build
+      - run: forge test -vvv
+
+  # SPEC 24: secret scanning over the whole repo, not just trust-index.
+  # Organization-owned repos need a GITLEAKS_LICENSE secret; personal repos
+  # do not.
+  secret-scan:
+    runs-on: ubuntu-latest
+    # gitleaks lists the PR's commits to decide what to scan, and the workflow's
+    # top-level grant is contents: read only — so on every pull request it got
+    # 403 "Resource not accessible by integration" from
+    # GET /repos/{owner}/{repo}/pulls/{n}/commits and crashed. That read as a
+    # failing secret scan on a PR with no secret in it, which is the worst way
+    # for this particular check to be wrong: a scanner that cries wolf gets
+    # ignored, and then it is not a scanner. Scoped to this job rather than
+    # widened at the top level.
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
