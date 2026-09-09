@@ -45,9 +45,17 @@ function file(name: string, results: unknown[]): string {
   return p;
 }
 
+/**
+ * `tsx` directly rather than through `pnpm exec`, which would fork an extra
+ * node process per case — nine of them across this file, on a two-core runner
+ * shared with a package that races a postgres container into readiness. The
+ * binary is resolved from node_modules rather than assumed to be on PATH.
+ */
+const TSX = resolve(dirname(fileURLToPath(import.meta.url)), "../../../node_modules/.bin/tsx");
+
 function run(args: string[]): { code: number; out: string } {
   try {
-    const out = execFileSync("pnpm", ["exec", "tsx", SCRIPT, ...args], {
+    const out = execFileSync(TSX, [SCRIPT, ...args], {
       cwd: resolve(dirname(fileURLToPath(import.meta.url)), ".."),
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],

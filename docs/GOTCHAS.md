@@ -131,3 +131,15 @@
 - `main` is protected, so a scheduled job cannot `git push` to it — the push is rejected every
   run. A bot that needs to change committed data opens a PR and requests auto-merge; never
   weaken the protection to let the bot through.
+- Drizzle migrations are idempotent SEQUENTIALLY, not CONCURRENTLY. Two callers against a fresh
+  database both read an empty journal, both decide every migration is outstanding, and both run
+  `CREATE TABLE` — the loser dies with `duplicate key value violates unique constraint
+  "pg_type_typname_nsp_index"`. `test/roundtrip.test.ts` and `src/ratings.test.ts` each migrate
+  in their own `beforeAll` and vitest runs test FILES in parallel, so which file won the race
+  decided whether CI was green; it passed for weeks, then failed twice in a row when unrelated
+  work shifted the scheduling. `applyMigrations` now takes a session-level advisory lock. The
+  same race applies to two overlapping `pnpm migrate` runs against one database.
+- A green local `pnpm -r test` does not mean the db suite passed: `test/globalSetup.ts` provides
+  `dbUrl: ""` when there is no Docker daemon and all 17 database-backed tests SKIP, silently and
+  by design. CI has Docker, so it runs them. Never conclude "tests pass" from a machine without
+  a container runtime — check the skip count.
