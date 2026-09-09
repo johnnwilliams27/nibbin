@@ -19,4 +19,36 @@ for (const row of agents) {
 }
 const homepage = readFileSync(resolve('out/index.html'), 'utf8');
 assert.ok(!homepage.includes('The rest cannot be hired at all'), 'Old homepage absence claim remains');
+
+// A check that inspects nothing must not SAY it inspected something.
+//
+// This loop only examines rows with a NULL endpoint — the ones whose pages must
+// say "we do not know whether this agent can be hired" rather than assert an
+// absence we never measured. It verified 653 pages, then a dataset rebuild left
+// every row with a non-null endpoint, so it verified 0 and still printed a pass.
+// Nothing was broken; the guard had stopped guarding and reported that in a
+// sentence which reads like it had checked something.
+//
+// The fix is not a fixed floor — zero is a legitimate count for a snapshot in
+// which every registration declares an interface. It is to state the
+// denominator and check against it: the export must cover exactly the rows that
+// need the copy, and when no row needs it, the output has to say so plainly
+// instead of implying a verification that did not happen.
+const needing = agents.filter(
+  (row) => row.category !== 'other' && !row.is_reference_agent && row.endpoint === null,
+).length;
+assert.equal(
+  checked,
+  needing,
+  `check-export inspected ${checked} pages but ${needing} rows require the null-endpoint copy.`,
+);
+if (needing === 0) {
+  console.log(
+    'check-export: 0 of ' +
+      `${agents.length} rows declare no endpoint, so no page needs the "we do not know whether ` +
+      'this agent can be hired" copy. Nothing was verified — this is not a pass for that check. ' +
+      'Homepage absence-claim check passed.',
+  );
+  process.exit(0);
+}
 console.log(`Verified evidence-limited hire copy on ${checked} exported agent pages and homepage.`);
