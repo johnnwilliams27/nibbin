@@ -120,7 +120,16 @@ def assessment_section(agents, probes):
     W(f"**{answered} of {len(by_ep)} endpoints answered us.** "
       f"{ep_counts.get('unmeasured',0)} produced no reading at all and are recorded "
       f"as `reachable: null` with a reason — those are our gaps, and writing them "
-      f"down as \"down\" would be publishing our blind spot as somebody's downtime.")
+      f"down as \"down\" would be publishing our blind spot as somebody's downtime. "
+      f"Each was retried at a 30-second timeout before being written off as "
+      f"unmeasured.")
+    nx = [e for e, x in by_ep.items() if "NXDOMAIN" in (x.get("withheld_reason") or "")]
+    if nx:
+        W("")
+        W(f"{len(nx)} of those {ep_counts.get('unmeasured',0)} declare a hostname that "
+          f"does not resolve at all — unedited deployment templates shipped to a "
+          f"public registry: " +
+          ", ".join(f"`{e}`" for e in sorted(nx)[:6]) + ".")
     W("")
     W("### Capability enumerated")
     W("")

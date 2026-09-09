@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-09-09T03:52:40.523Z",
+ "generated_at": "2026-09-09T04:01:27.797Z",
  "results": [
   {
    "endpoint": "https://api.bortagent.xyz/.well-known/agent-card.json",
@@ -14657,6 +14657,444 @@
     "gaps": []
    },
    "probed_at": "2026-09-09T03:51:46Z"
+  },
+  {
+   "endpoint": "https://clawnews.io",
+   "host": "clawnews.io",
+   "protocols": [
+    "OASF",
+    "Web",
+    "Email"
+   ],
+   "priority": 1,
+   "agent_count": 1,
+   "mcp": null,
+   "a2a": {
+    "transcript_version": "1",
+    "probe_id": "probe:a2a:v1",
+    "subject_url": "https://clawnews.io",
+    "probed_at": "2026-09-09T03:59:10Z",
+    "discovery": {
+     "ok": false,
+     "url": null,
+     "path": null,
+     "outcome": "unmeasured",
+     "attempts": [
+      {
+       "url": "https://clawnews.io/.well-known/agent-card.json",
+       "path": "/.well-known/agent-card.json",
+       "kind": "well-known",
+       "outcome": "unmeasured",
+       "status": 503,
+       "contentType": "text/plain",
+       "reason": "server error (HTTP 503) — could not measure",
+       "elapsedMs": 350
+      },
+      {
+       "url": "https://clawnews.io/.well-known/agent.json",
+       "path": "/.well-known/agent.json",
+       "kind": "well-known",
+       "outcome": "unmeasured",
+       "status": 503,
+       "contentType": "text/plain",
+       "reason": "server error (HTTP 503) — could not measure",
+       "elapsedMs": 208
+      }
+     ],
+     "reason": "server error (HTTP 503) — could not measure",
+     "elapsedMs": 558
+    },
+    "declaration": null,
+    "reachability": null,
+    "registry": {
+     "name": "ClawNews",
+     "description": null,
+     "declared_endpoint": "https://clawnews.io",
+     "declared_version": null
+    },
+    "gaps": [
+     {
+      "tier": "discovery",
+      "reason": "server error (HTTP 503) — could not measure"
+     }
+    ]
+   },
+   "probed_at": "2026-09-09T03:59:11Z"
+  },
+  {
+   "endpoint": "https://api.fengshuibnb.com/master-xuan/reading/by-nft",
+   "host": "api.fengshuibnb.com",
+   "protocols": [
+    "Web"
+   ],
+   "priority": 2,
+   "agent_count": 4,
+   "mcp": null,
+   "a2a": {
+    "transcript_version": "1",
+    "probe_id": "probe:a2a:v1",
+    "subject_url": "https://api.fengshuibnb.com/master-xuan/reading/by-nft",
+    "probed_at": "2026-09-09T03:59:10Z",
+    "discovery": {
+     "ok": false,
+     "url": null,
+     "path": null,
+     "outcome": "unmeasured",
+     "attempts": [
+      {
+       "url": "https://api.fengshuibnb.com/master-xuan/reading/by-nft",
+       "path": "/master-xuan/reading/by-nft",
+       "kind": "declared",
+       "outcome": "unmeasured",
+       "status": 526,
+       "contentType": "text/plain; charset=UTF-8",
+       "reason": "server error (HTTP 526) — could not measure",
+       "elapsedMs": 741
+      },
+      {
+       "url": "https://api.fengshuibnb.com/.well-known/agent-card.json",
+       "path": "/.well-known/agent-card.json",
+       "kind": "well-known",
+       "outcome": "unmeasured",
+       "status": 526,
+       "contentType": "text/plain; charset=UTF-8",
+       "reason": "server error (HTTP 526) — could not measure",
+       "elapsedMs": 582
+      },
+      {
+       "url": "https://api.fengshuibnb.com/.well-known/agent.json",
+       "path": "/.well-known/agent.json",
+       "kind": "well-known",
+       "outcome": "unmeasured",
+       "status": 526,
+       "contentType": "text/plain; charset=UTF-8",
+       "reason": "server error (HTTP 526) — could not measure",
+       "elapsedMs": 574
+      },
+      {
+       "url": "https://api.fengshuibnb.com/master-xuan/reading/by-nft/.well-known/agent-card.json",
+       "path": "/master-xuan/reading/by-nft/.well-known/agent-card.json",
+       "kind": "guess",
+       "outcome": "unmeasured",
+       "status": 526,
+       "contentType": "text/plain; charset=UTF-8",
+       "reason": "server error (HTTP 526) — could not measure",
+       "elapsedMs": 432
+      },
+      {
+       "url": "https://api.fengshuibnb.com/master-xuan/reading/by-nft/.well-known/agent.json",
+       "path": "/master-xuan/reading/by-nft/.well-known/agent.json",
+       "kind": "guess",
+       "outcome": "unmeasured",
+       "status": 526,
+       "contentType": "text/plain; charset=UTF-8",
+       "reason": "server error (HTTP 526) — could not measure",
+       "elapsedMs": 561
+      }
+     ],
+     "reason": "server error (HTTP 526) — could not measure",
+     "elapsedMs": 2890
+    },
+    "declaration": null,
+    "reachability": null,
+    "registry": {
+     "name": "Diviner Xuan (玄) — Yin Yang",
+     "description": null,
+     "declared_endpoint": "https://api.fengshuibnb.com/master-xuan/reading/by-nft",
+     "declared_version": null
+    },
+    "gaps": [
+     {
+      "tier": "discovery",
+      "reason": "server error (HTTP 526) — could not measure"
+     }
+    ]
+   },
+   "probed_at": "2026-09-09T03:59:13Z"
+  },
+  {
+   "endpoint": "https://0xtao.cn/sse",
+   "host": "0xtao.cn",
+   "protocols": [
+    "MCP"
+   ],
+   "priority": 2,
+   "agent_count": 2,
+   "mcp": {
+    "transcript_version": "1",
+    "probe_id": "probe:mcp:v1",
+    "endpoint": "https://0xtao.cn/sse",
+    "probed_at": "2026-09-09T03:59:10Z",
+    "attempts": [
+     {
+      "attempt": 1,
+      "ts": "2026-09-09T03:59:10Z",
+      "reachable": false,
+      "status": 503,
+      "reason": "HTTP 503",
+      "elapsedMs": 1998
+     },
+     {
+      "attempt": 2,
+      "ts": "2026-09-09T03:59:13Z",
+      "reachable": false,
+      "status": 503,
+      "reason": "HTTP 503",
+      "elapsedMs": 1947
+     }
+    ],
+    "handshake": null,
+    "tools": null,
+    "registry": {
+     "name": "小风",
+     "description": null,
+     "version": null,
+     "published_at": null,
+     "first_published_at": null,
+     "repository_url": null
+    },
+    "auth": null,
+    "rate_limit": null
+   },
+   "a2a": null,
+   "probed_at": "2026-09-09T03:59:15Z"
+  },
+  {
+   "endpoint": "https://agent.hodlai.fun/.well-known/agent-card.json",
+   "host": "agent.hodlai.fun",
+   "protocols": [
+    "A2A"
+   ],
+   "priority": 1,
+   "agent_count": 1,
+   "mcp": null,
+   "a2a": {
+    "transcript_version": "1",
+    "probe_id": "probe:a2a:v1",
+    "subject_url": "https://agent.hodlai.fun/.well-known/agent-card.json",
+    "probed_at": "2026-09-09T03:59:10Z",
+    "discovery": {
+     "ok": false,
+     "url": null,
+     "path": null,
+     "outcome": "unmeasured",
+     "attempts": [
+      {
+       "url": "https://agent.hodlai.fun/.well-known/agent-card.json",
+       "path": "/.well-known/agent-card.json",
+       "kind": "declared",
+       "outcome": "unmeasured",
+       "status": 522,
+       "contentType": "text/plain; charset=UTF-8",
+       "reason": "server error (HTTP 522) — could not measure",
+       "elapsedMs": 19578
+      },
+      {
+       "url": "https://agent.hodlai.fun/.well-known/agent.json",
+       "path": "/.well-known/agent.json",
+       "kind": "well-known",
+       "outcome": "unmeasured",
+       "status": 522,
+       "contentType": "text/plain; charset=UTF-8",
+       "reason": "server error (HTTP 522) — could not measure",
+       "elapsedMs": 19776
+      }
+     ],
+     "reason": "server error (HTTP 522) — could not measure",
+     "elapsedMs": 39354
+    },
+    "declaration": null,
+    "reachability": null,
+    "registry": {
+     "name": "HodlAI Protocol",
+     "description": null,
+     "declared_endpoint": "https://agent.hodlai.fun/.well-known/agent-card.json",
+     "declared_version": null
+    },
+    "gaps": [
+     {
+      "tier": "discovery",
+      "reason": "server error (HTTP 522) — could not measure"
+     }
+    ]
+   },
+   "probed_at": "2026-09-09T03:59:49Z"
+  },
+  {
+   "endpoint": "http://43.160.214.54:8000/mcp",
+   "host": "43.160.214.54",
+   "protocols": [
+    "MCP"
+   ],
+   "priority": 2,
+   "agent_count": 1,
+   "mcp": {
+    "transcript_version": "1",
+    "probe_id": "probe:mcp:v1",
+    "endpoint": "http://43.160.214.54:8000/mcp",
+    "probed_at": "2026-09-09T03:59:10Z",
+    "attempts": [
+     {
+      "attempt": 1,
+      "ts": "2026-09-09T03:59:10Z",
+      "reachable": false,
+      "status": null,
+      "reason": "the request exceeded its deadline",
+      "elapsedMs": 30007
+     },
+     {
+      "attempt": 2,
+      "ts": "2026-09-09T03:59:41Z",
+      "reachable": false,
+      "status": null,
+      "reason": "the request exceeded its deadline",
+      "elapsedMs": 30002
+     }
+    ],
+    "handshake": null,
+    "tools": null,
+    "registry": {
+     "name": "WalletArchaeology",
+     "description": null,
+     "version": null,
+     "published_at": null,
+     "first_published_at": null,
+     "repository_url": null
+    },
+    "auth": null,
+    "rate_limit": null
+   },
+   "a2a": null,
+   "probed_at": "2026-09-09T04:00:11Z"
+  },
+  {
+   "endpoint": "https://api.openrite.app/mcp",
+   "host": "api.openrite.app",
+   "protocols": [
+    "MCP",
+    "A2A",
+    "OASF",
+    "Web"
+   ],
+   "priority": 1,
+   "agent_count": 2,
+   "mcp": {
+    "transcript_version": "1",
+    "probe_id": "probe:mcp:v1",
+    "endpoint": "https://api.openrite.app/mcp",
+    "probed_at": "2026-09-09T03:59:10Z",
+    "attempts": [
+     {
+      "attempt": 1,
+      "ts": "2026-09-09T03:59:10Z",
+      "reachable": false,
+      "status": 522,
+      "reason": "HTTP 522",
+      "elapsedMs": 19482
+     },
+     {
+      "attempt": 2,
+      "ts": "2026-09-09T03:59:30Z",
+      "reachable": false,
+      "status": 522,
+      "reason": "HTTP 522",
+      "elapsedMs": 19886
+     }
+    ],
+    "handshake": null,
+    "tools": null,
+    "registry": {
+     "name": "buyback&burn",
+     "description": null,
+     "version": null,
+     "published_at": null,
+     "first_published_at": null,
+     "repository_url": null
+    },
+    "auth": null,
+    "rate_limit": null
+   },
+   "a2a": {
+    "transcript_version": "1",
+    "probe_id": "probe:a2a:v1",
+    "subject_url": "https://api.openrite.app/mcp",
+    "probed_at": "2026-09-09T03:59:50Z",
+    "discovery": {
+     "ok": false,
+     "url": null,
+     "path": null,
+     "outcome": "unmeasured",
+     "attempts": [
+      {
+       "url": "https://api.openrite.app/mcp",
+       "path": "/mcp",
+       "kind": "declared",
+       "outcome": "unmeasured",
+       "status": 522,
+       "contentType": "text/plain; charset=UTF-8",
+       "reason": "server error (HTTP 522) — could not measure",
+       "elapsedMs": 19462
+      },
+      {
+       "url": "https://api.openrite.app/.well-known/agent-card.json",
+       "path": "/.well-known/agent-card.json",
+       "kind": "well-known",
+       "outcome": "unmeasured",
+       "status": 522,
+       "contentType": "text/plain; charset=UTF-8",
+       "reason": "server error (HTTP 522) — could not measure",
+       "elapsedMs": 19341
+      },
+      {
+       "url": "https://api.openrite.app/.well-known/agent.json",
+       "path": "/.well-known/agent.json",
+       "kind": "well-known",
+       "outcome": "unmeasured",
+       "status": 522,
+       "contentType": "text/plain; charset=UTF-8",
+       "reason": "server error (HTTP 522) — could not measure",
+       "elapsedMs": 19572
+      },
+      {
+       "url": "https://api.openrite.app/mcp/.well-known/agent-card.json",
+       "path": "/mcp/.well-known/agent-card.json",
+       "kind": "guess",
+       "outcome": "unmeasured",
+       "status": 522,
+       "contentType": "text/plain; charset=UTF-8",
+       "reason": "server error (HTTP 522) — could not measure",
+       "elapsedMs": 19341
+      },
+      {
+       "url": "https://api.openrite.app/mcp/.well-known/agent.json",
+       "path": "/mcp/.well-known/agent.json",
+       "kind": "guess",
+       "outcome": "unmeasured",
+       "status": 522,
+       "contentType": "text/plain; charset=UTF-8",
+       "reason": "server error (HTTP 522) — could not measure",
+       "elapsedMs": 19454
+      }
+     ],
+     "reason": "server error (HTTP 522) — could not measure",
+     "elapsedMs": 97171
+    },
+    "declaration": null,
+    "reachability": null,
+    "registry": {
+     "name": "buyback&burn",
+     "description": null,
+     "declared_endpoint": "https://api.openrite.app/mcp",
+     "declared_version": null
+    },
+    "gaps": [
+     {
+      "tier": "discovery",
+      "reason": "server error (HTTP 522) — could not measure"
+     }
+    ]
+   },
+   "probed_at": "2026-09-09T04:01:27Z"
   }
  ]
 }

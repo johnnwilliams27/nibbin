@@ -1,13 +1,13 @@
 # BSC agent dataset — build summary
 
-Generated: `2026-09-09T03:54:52.762Z`  
+Generated: `2026-09-09T04:01:43.509Z`  
 Source: 8004scan public API (`https://api.8004scan.io`), chain_id 56 (BSC).  
 Output: `data/agents.json` — **10041 agents**, conforming to `DATA-CONTRACT.md`.
 
 ## Provenance
 
 - **10041 of 10041 agent records are built from real fetched API responses.** Every field traces to a file under `data/raw/` (`data/raw/candidates.json` for list fields, `data/raw/detail/<chain>_<token>.json` for detail fields).
-- `data/raw/detail/` holds **6694** fetched detail responses.
+- `data/raw/detail/` holds **7807** fetched detail responses.
 - Detail fetches that failed after retries: **0**, recorded in `data/raw/detail_failures.json`. A failed fetch is recorded as *our* failure to measure — never as a fact about the agent.
 - `assessment` is populated for **3204 of 10041** agents, from the endpoint sweep recorded in `data/probes/endpoint-probes.json`. It is `null` for the 6837 agents that declare no endpoint. No assessment value was synthesised: every field traces to a stored probe transcript.
 - `is_reference_agent` is `false` for all 10041 agents.
@@ -92,7 +92,9 @@ Run against every distinct endpoint in the dataset. **3204 agents declare 111 di
 | Not dialable at all | 2 | 15 | a non-HTTP scheme or a private/loopback host; there is nothing anyone could call |
 | No reading obtained | 12 | 18 | timeout, 5xx or a hostname that does not resolve — OUR gap, recorded as unknown, never as downtime |
 
-**97 of 111 endpoints answered us.** 12 produced no reading at all and are recorded as `reachable: null` with a reason — those are our gaps, and writing them down as "down" would be publishing our blind spot as somebody's downtime.
+**97 of 111 endpoints answered us.** 12 produced no reading at all and are recorded as `reachable: null` with a reason — those are our gaps, and writing them down as "down" would be publishing our blind spot as somebody's downtime. Each was retried at a 30-second timeout before being written off as unmeasured.
+
+6 of those 12 declare a hostname that does not resolve at all — unedited deployment templates shipped to a public registry: `https://YOUR_DOMAIN/agent/proof`, `https://api.dataanalystpro.xyz/mcp`, `https://api.example.com/mcp`, `https://boomerang.deegalabs.ai/erc8183/status`, `https://mcp.example.com`, `https://your-deploy.example.com/api/agent`.
 
 ### Capability enumerated
 

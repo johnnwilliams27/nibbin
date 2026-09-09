@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-09-09T03:54:52.762Z",
+ "generated_at": "2026-09-09T04:01:43.509Z",
  "agents": [
   {
    "agent_id": "56:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:1",
@@ -32,7 +32,7 @@
     "composite": null,
     "withheld_reason": "no reading obtained: server error (HTTP 503) — could not measure. This is our failure to measure, not a finding about the agent",
     "gates_fired": [],
-    "checked_at": "2026-09-09T03:51:15Z"
+    "checked_at": "2026-09-09T03:59:10Z"
    },
    "is_reference_agent": false
   },
@@ -214,9 +214,9 @@
     "latency_ms": null,
     "coverage": "thin",
     "composite": null,
-    "withheld_reason": "no reading obtained: the endpoint did not answer within our timeout. This is our failure to measure, not a finding about the agent",
+    "withheld_reason": "no reading obtained: server error (HTTP 522) — could not measure. This is our failure to measure, not a finding about the agent",
     "gates_fired": [],
-    "checked_at": "2026-09-09T03:51:15Z"
+    "checked_at": "2026-09-09T03:59:10Z"
    },
    "is_reference_agent": false
   },
@@ -1356,7 +1356,7 @@
     "composite": null,
     "withheld_reason": "no reading obtained: server error (HTTP 526) — could not measure. This is our failure to measure, not a finding about the agent",
     "gates_fired": [],
-    "checked_at": "2026-09-09T03:51:15Z"
+    "checked_at": "2026-09-09T03:59:10Z"
    },
    "is_reference_agent": false
   },
@@ -1389,7 +1389,7 @@
     "composite": null,
     "withheld_reason": "no reading obtained: server error (HTTP 526) — could not measure. This is our failure to measure, not a finding about the agent",
     "gates_fired": [],
-    "checked_at": "2026-09-09T03:51:15Z"
+    "checked_at": "2026-09-09T03:59:10Z"
    },
    "is_reference_agent": false
   },
@@ -1422,7 +1422,7 @@
     "composite": null,
     "withheld_reason": "no reading obtained: server error (HTTP 526) — could not measure. This is our failure to measure, not a finding about the agent",
     "gates_fired": [],
-    "checked_at": "2026-09-09T03:51:15Z"
+    "checked_at": "2026-09-09T03:59:10Z"
    },
    "is_reference_agent": false
   },
@@ -1455,7 +1455,7 @@
     "composite": null,
     "withheld_reason": "no reading obtained: server error (HTTP 526) — could not measure. This is our failure to measure, not a finding about the agent",
     "gates_fired": [],
-    "checked_at": "2026-09-09T03:51:15Z"
+    "checked_at": "2026-09-09T03:59:10Z"
    },
    "is_reference_agent": false
   },
@@ -3327,7 +3327,7 @@
     "composite": null,
     "withheld_reason": "no reading obtained: the endpoint returned HTTP 503. A server error tells us nothing about the agent's capability",
     "gates_fired": [],
-    "checked_at": "2026-09-09T03:51:15Z"
+    "checked_at": "2026-09-09T03:59:10Z"
    },
    "is_reference_agent": false
   },
@@ -3360,7 +3360,7 @@
     "composite": null,
     "withheld_reason": "no reading obtained: the endpoint returned HTTP 503. A server error tells us nothing about the agent's capability",
     "gates_fired": [],
-    "checked_at": "2026-09-09T03:51:15Z"
+    "checked_at": "2026-09-09T03:59:10Z"
    },
    "is_reference_agent": false
   },
@@ -18863,7 +18863,7 @@
     "composite": null,
     "withheld_reason": "no reading obtained: the endpoint did not answer within our timeout. This is our failure to measure, not a finding about the agent",
     "gates_fired": [],
-    "checked_at": "2026-09-09T03:51:17Z"
+    "checked_at": "2026-09-09T03:59:10Z"
    },
    "is_reference_agent": false
   },
@@ -18897,9 +18897,9 @@
     "latency_ms": null,
     "coverage": "thin",
     "composite": null,
-    "withheld_reason": "no reading obtained: the endpoint did not answer within our timeout. This is our failure to measure, not a finding about the agent",
+    "withheld_reason": "no reading obtained: server error (HTTP 522) — could not measure. This is our failure to measure, not a finding about the agent",
     "gates_fired": [],
-    "checked_at": "2026-09-09T03:51:40Z"
+    "checked_at": "2026-09-09T03:59:50Z"
    },
    "is_reference_agent": false
   },
@@ -18933,9 +18933,9 @@
     "latency_ms": null,
     "coverage": "thin",
     "composite": null,
-    "withheld_reason": "no reading obtained: the endpoint did not answer within our timeout. This is our failure to measure, not a finding about the agent",
+    "withheld_reason": "no reading obtained: server error (HTTP 522) — could not measure. This is our failure to measure, not a finding about the agent",
     "gates_fired": [],
-    "checked_at": "2026-09-09T03:51:40Z"
+    "checked_at": "2026-09-09T03:59:50Z"
    },
    "is_reference_agent": false
   },
