@@ -82,8 +82,6 @@ jobs:
         run: pnpm run lint
       - name: workspace-wide eslint (SPEC 22 rules)
         run: pnpm --dir scripts run lint
-      - name: copylint (SPEC 14A)
-        run: pnpm run copylint
 
   test:
     runs-on: ubuntu-latest

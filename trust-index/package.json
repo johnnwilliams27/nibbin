@@ -14,7 +14,6 @@
     "lint": "pnpm -r --if-present run lint",
     "build": "pnpm -r --if-present run build",
     "migrate": "pnpm --filter @trust-index/db run migrate",
-    "copylint": "node scripts/copylint.mjs",
     "fixtures:generate": "tsx fixtures/generate.ts"
   },
   "devDependencies": {

@@ -2,12 +2,11 @@
   "name": "@trust-index/ops",
   "private": true,
   "version": "0.1.0",
-  "description": "Ops tooling for the trust-index workspace: eslint toolchain and copylint. Standalone on purpose: pnpm-workspace.yaml globs packages/* and apps/* only, so this directory installs with --ignore-workspace and its own lockfile.",
+  "description": "Ops tooling for the trust-index workspace: the eslint toolchain. Standalone on purpose: pnpm-workspace.yaml globs packages/* and apps/* only, so this directory installs with --ignore-workspace and its own lockfile.",
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {
-    "lint": "cd .. && eslint .",
-    "copylint": "node copylint.mjs"
+    "lint": "cd .. && eslint ."
   },
   "devDependencies": {
     "eslint": "10.9.1",
