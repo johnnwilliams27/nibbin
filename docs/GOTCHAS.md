@@ -37,6 +37,14 @@
 - `next build` (15.3) regenerates next-env.d.ts with a routes.d.ts triple-slash reference that
   @typescript-eslint/triple-slash-reference rejects — reverting the file cannot stick because
   every build rewrites it. Add the generated file to the eslint ignore list per app.
+- A REQUIRED status check whose workflow is `paths:`-filtered is a deadlock, not an
+  optimisation. GitHub does not synthesise a result for a workflow that never triggered: the
+  check sits at "expected" forever, the PR stays `blocked`, and there is no run to re-run. Any
+  PR outside the filtered paths becomes permanently unmergeable, and nothing on the PR page
+  explains why — it just shows pending checks that never start. Path filters and required
+  checks are mutually exclusive; if a job is required, it must trigger on every PR. (Cost us
+  #268. `skipped` counts as success for a required check, so job-level `if:` guards are the
+  safe way to make required work conditional — see the `presence` job.)
 - Git worktrees opened with different path casing (C:/Nibbin vs /c/nibbin) make tsc fail with
   TS1149 "differs only in casing" errors that do not reproduce in CI. cd with the canonical
   casing before typechecking on Windows.
