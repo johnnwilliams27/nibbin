@@ -53,4 +53,10 @@ export interface Agent {
 export interface Dataset {
   generated_at: string | null;
   agents: Agent[];
+  /**
+   * Optional free-text state from the producer (e.g. "REBUILDING — ..."). Not
+   * part of the frozen contract; the UI surfaces it if present and ignores it
+   * otherwise. Never parsed, never used to derive a number.
+   */
+  status?: string | null;
 }

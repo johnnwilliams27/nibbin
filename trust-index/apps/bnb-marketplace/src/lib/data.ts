@@ -18,7 +18,7 @@ let cached: Dataset | null = null;
 export function loadDataset(): Dataset {
   if (cached) return cached;
 
-  let dataset: Dataset = { generated_at: null, agents: [] };
+  let dataset: Dataset = { generated_at: null, agents: [], status: null };
 
   if (existsSync(DATA_PATH)) {
     try {
@@ -29,12 +29,13 @@ export function loadDataset(): Dataset {
           dataset = {
             generated_at: typeof parsed.generated_at === 'string' ? parsed.generated_at : null,
             agents: parsed.agents.filter(isUsableAgent).map(normalise),
+            status: typeof parsed.status === 'string' && parsed.status.trim() ? parsed.status.trim() : null,
           };
         }
       }
     } catch {
       // Half-written file mid-run. Fall through to the empty dataset.
-      dataset = { generated_at: null, agents: [] };
+      dataset = { generated_at: null, agents: [], status: null };
     }
   }
 

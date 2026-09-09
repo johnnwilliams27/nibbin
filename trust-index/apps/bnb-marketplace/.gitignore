@@ -1,6 +1,10 @@
 node_modules/
 .next/
 out/
+next-env.d.ts
+*.tsbuildinfo
 .vercel/
-# Raw API responses, cached so a rerun refetches nothing. Regenerable, large.
-data/raw/
+
+# public/data/agents.json is deliberately NOT ignored. It is regenerated from
+# data/agents.json on every build, and keeping it tracked means the deployed
+# site can always serve the exact snapshot it was rendered from.

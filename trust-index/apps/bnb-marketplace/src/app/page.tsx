@@ -11,6 +11,10 @@ export default function HomePage() {
   const stats = headlineStats();
   const categories = allCategoryStats();
   const { generated_at } = loadDataset();
+  // An empty index is a legitimate state. Rather than printing two rows of
+  // zeroes that read as a broken page, we swap the measured-stats block for the
+  // status panel and keep every section that is still true.
+  const empty = stats.total === 0 && stats.referenceCount === 0;
 
   return (
     <div className="mx-auto max-w-[1240px] px-5 py-10">
@@ -42,6 +46,12 @@ export default function HomePage() {
           reference agents.
         </p>
 
+        {empty ? (
+          <div className="mt-4">
+            <DataStatusBanner />
+          </div>
+        ) : (
+        <>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatTile
             label="Agents indexed"
@@ -101,11 +111,9 @@ export default function HomePage() {
             tone="var(--reference)"
           />
         </div>
+        </>
+        )}
       </section>
-
-      <div className="mt-8">
-        <DataStatusBanner />
-      </div>
 
       {/* Four categories, one layout, identical depth. */}
       <section className="mt-12">
@@ -129,12 +137,20 @@ export default function HomePage() {
                   <p className="mono text-[10px] uppercase tracking-[0.09em]" style={{ color: meta.accent }}>
                     {meta.name}
                   </p>
-                  <p className="mono mt-1.5 text-[24px] font-semibold leading-none">{num(s.total)}</p>
-                  <p className="eyebrow mt-1">agents indexed</p>
+                  <p className="mono mt-1.5 text-[24px] font-semibold leading-none">
+                    {empty ? <span className="text-[var(--fg-faint)]">—</span> : num(s.total)}
+                  </p>
+                  <p className="eyebrow mt-1">{empty ? 'not yet indexed' : 'agents indexed'}</p>
                 </div>
 
                 <p className="text-[13px] leading-snug text-[var(--fg-muted)]">{meta.blurb}</p>
 
+                {empty ? (
+                  <p className="mt-auto border-t border-[var(--border)] pt-3 text-[12px] text-[var(--fg-faint)]">
+                    No agents indexed in this snapshot. The category, its risk profile and the questions to ask are
+                    unchanged.
+                  </p>
+                ) : (
                 <dl className="mt-auto space-y-1 border-t border-[var(--border)] pt-3 text-[12px]">
                   <Row label="We assessed" value={`${s.assessed}`} tone="var(--measured)" />
                   <Row
@@ -152,6 +168,7 @@ export default function HomePage() {
                   <Row label="Gates fired" value={`${s.gatesFired}`} tone={s.gatesFired > 0 ? 'var(--critical)' : undefined} />
                   <Row label="Ecosystem verified" value={`${s.ecosystemVerified}`} tone="var(--thirdparty)" />
                 </dl>
+                )}
 
                 <p className="flex items-center gap-1.5 text-[13px]" style={{ color: meta.accent }}>
                   Browse {meta.name.toLowerCase()} <ArrowRight size={13} strokeWidth={1.5} aria-hidden />
