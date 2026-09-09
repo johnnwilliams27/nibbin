@@ -13,6 +13,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, inject, it } from "vitest";
 import type { DimensionScore, SubjectScoreResult } from "@trust-index/types";
 import { createDb, type DbHandle } from "./client.js";
+import { applyMigrations } from "./migrations.js";
 import {
   compositeCoverageTier,
   pruneExpiredSnapshots,
@@ -167,6 +168,16 @@ withDb("daily snapshot store (needs a database)", () => {
 
   beforeAll(async () => {
     h = createDb(url);
+    // Apply migrations HERE rather than assuming someone else did.
+    //
+    // This suite used to connect and scrub straight away, which only worked
+    // because roundtrip.test.ts happened to run first and migrate the database
+    // in its own beforeAll. Vitest runs test FILES in parallel, so that was a
+    // race the whole time: against a fresh postgres this suite lost it and died
+    // with `relation "rating_dimension_scores" does not exist`. Migrations are
+    // idempotent, so paying for them twice costs nothing and buys a suite that
+    // does not depend on the order its siblings happen to run in.
+    await applyMigrations(h.db);
     await scrub();
   });
   afterAll(async () => {
