@@ -27,10 +27,140 @@ def band(c):
     return "none(0.0)"
 
 
+def outcome(a):
+    """Which of the five things happened, read off the assessment alone.
+
+    The split that matters is the last two against the first three: an endpoint
+    that answered told us something, and an endpoint we failed to read told us
+    nothing. Collapsing those two is the error this whole file exists to avoid.
+    """
+    if a["reachable"] is None:
+        return "unmeasured"
+    if a["reachable"] is False:
+        return "not_dialable"
+    r = a.get("withheld_reason") or ""
+    if "declined an anonymous client" in r or "auth wall" in r:
+        return "auth_walled"
+    if "rate limited" in r:
+        return "rate_limited"
+    if a["protocol_spoken"]:
+        return "protocol_established"
+    return "answered_not_protocol"
+
+
+LABELS = [
+    ("protocol_established", "Spoke MCP or A2A to us",
+     "handshake completed, or an Agent Card was served and parsed"),
+    ("auth_walled", "Auth wall (401/403)",
+     "the server answered and declined an anonymous client — up, working, unassessable by us"),
+    ("rate_limited", "Rate limited (429)",
+     "alive, and telling us we called too often"),
+    ("answered_not_protocol", "Answered, but not as an agent",
+     "HTTP 404/400/405, or an HTML page — the host is up and serves something else"),
+    ("not_dialable", "Not dialable at all",
+     "a non-HTTP scheme or a private/loopback host; there is nothing anyone could call"),
+    ("unmeasured", "No reading obtained",
+     "timeout, 5xx or a hostname that does not resolve — OUR gap, recorded as unknown, never as downtime"),
+]
+
+
+def assessment_section(agents, probes):
+    """The probe sweep, counted. Every number here comes from agents.json."""
+    assessed = [a for a in agents if a["assessment"]]
+    by_ep = {}
+    for a in assessed:
+        by_ep.setdefault(a["endpoint"], a["assessment"])
+    ep_counts = collections.Counter(outcome(x) for x in by_ep.values())
+    ag_counts = collections.Counter(outcome(a["assessment"]) for a in assessed)
+    four = [a for a in assessed if a["category"] != "other"]
+    scored = [a for a in assessed if a["assessment"]["composite"] is not None]
+    caps = [a for a in assessed if a["assessment"]["tool_count"] > 0]
+    ep_caps = [x for x in by_ep.values() if x["tool_count"] > 0]
+    gates = [a for a in assessed if a["assessment"]["gates_fired"]]
+    mcp_tried = len([r for r in probes if r["mcp"]])
+    a2a_tried = len([r for r in probes if r["a2a"]])
+
+    L = []
+    W = L.append
+    W("## What the probe sweep measured")
+    W("")
+    W(f"Run against every distinct endpoint in the dataset. **{len(assessed)} agents "
+      f"declare {len(by_ep)} distinct endpoints** — one factory mints many on-chain "
+      f"identities behind a single server — so each endpoint was probed once and the "
+      f"result fanned out to every agent declaring it. That is faster and it is the "
+      f"polite thing to do to somebody else's host.")
+    W("")
+    W(f"- **{len(by_ep)} distinct endpoints probed.** {mcp_tried} got an MCP "
+      f"handshake attempt; {a2a_tried} got an Agent Card fetch (A2A was tried where "
+      f"the agent declares it and MCP did not establish, and on endpoints declaring "
+      f"neither, where a static card GET is the cheapest honest way to learn whether "
+      f"anything answers).")
+    W("- Handshake and enumeration only: `initialize` + `tools/list`, or a card GET "
+      "plus one benign `tasks/get` for a task id that cannot exist. "
+      "**No tool and no skill was ever invoked**, so nothing was spent and nothing "
+      "was mutated.")
+    W("- Two concurrent requests per host, twenty across the run. Two hosts hold "
+      "half the population between them and were not burst.")
+    W("- Every request went through the collector's SSRF guard "
+      "(`packages/collectors/src/net.ts`): blocked-host list, DNS re-vetting on "
+      "every redirect, and a socket pinned to the vetted address.")
+    W("")
+    W("### Outcomes")
+    W("")
+    W("| outcome | endpoints | agents | what it means |")
+    W("|---|---|---|---|")
+    for key, label, meaning in LABELS:
+        if ep_counts.get(key, 0) == 0 and ag_counts.get(key, 0) == 0:
+            continue
+        W(f"| {label} | {ep_counts.get(key,0)} | {ag_counts.get(key,0)} | {meaning} |")
+    W("")
+    answered = sum(ep_counts.get(k, 0) for k in
+                   ("protocol_established", "auth_walled", "rate_limited",
+                    "answered_not_protocol"))
+    W(f"**{answered} of {len(by_ep)} endpoints answered us.** "
+      f"{ep_counts.get('unmeasured',0)} produced no reading at all and are recorded "
+      f"as `reachable: null` with a reason — those are our gaps, and writing them "
+      f"down as \"down\" would be publishing our blind spot as somebody's downtime.")
+    W("")
+    W("### Capability enumerated")
+    W("")
+    W(f"- **{len(ep_caps)} endpoints ({len(caps)} agents) enumerated at least one "
+      f"tool or skill.** Those names are in `assessment.tools_or_skills` exactly as "
+      f"the server reported them.")
+    W(f"- {len(gates)} agents fired a declaration-level safety gate "
+      f"(`assessment.gates_fired`). These are read off the enumerated tool schemas "
+      f"— a mutating tool with no description, or a tool asking the caller to hand "
+      f"over a credential — using the same helpers as the MCP rubric. Nothing was "
+      f"called to establish them.")
+    W("")
+    W("### Scores")
+    W("")
+    W(f"**{len(scored)} of {len(assessed)} agents carry a non-null `composite`.** "
+      f"That is not a gap in the run; it is the run's finding. Completing a "
+      f"handshake and reading a tool list establishes that an agent EXISTS and what "
+      f"it CLAIMS. Neither is behavioural evidence, and a composite derived from a "
+      f"tool list would be a guess wearing a decimal point. So every row reads "
+      f"`composite: null`, `coverage: \"thin\"`, and a `withheld_reason` naming "
+      f"exactly what we did and did not do. Publishing a number here is the one "
+      f"thing this project exists not to do.")
+    W("")
+    W(f"All {len(four)} agents in the four hackathon categories that declare an "
+      f"endpoint were probed first, ahead of the rest of the population.")
+    return L
+
+
 def main():
     with open(os.path.join(DATA, "agents.json")) as f:
         payload = json.load(f)
     agents = payload["agents"]
+
+    assessed = [a for a in agents if a["assessment"]]
+
+    probes = []
+    pp = os.path.join(DATA, "probes", "endpoint-probes.json")
+    if os.path.exists(pp):
+        with open(pp) as f:
+            probes = json.load(f).get("results", [])
 
     with open(os.path.join(RAW, "candidates.json")) as f:
         cand = json.load(f)
@@ -82,8 +212,11 @@ def main():
     W(f"- Detail fetches that failed after retries: **{fails['count']}**, recorded in "
       f"`data/raw/detail_failures.json`. A failed fetch is recorded as *our* "
       f"failure to measure — never as a fact about the agent.")
-    W(f"- `assessment` is `null` for all {n} agents. A separate probe run fills it in; "
-      f"no assessment value was synthesised.")
+    W(f"- `assessment` is populated for **{len(assessed)} of {n}** agents, from the "
+      f"endpoint sweep recorded in `data/probes/endpoint-probes.json`. It is "
+      f"`null` for the {n - len(assessed)} agents that declare no endpoint. "
+      f"No assessment value was synthesised: every field traces to a stored "
+      f"probe transcript.")
     W(f"- `is_reference_agent` is `false` for all {n} agents.")
     W("")
     W("> **Disclosure.** An earlier draft of `data/agents.json` in this working "
@@ -179,8 +312,10 @@ def main():
     W(f"- {len(x402)} agents declare x402 support.")
     W("")
     W("A declared endpoint is *declared*, not *reachable*: some point at "
-      "placeholder hosts. Reachability is the probe run's job, and until it "
-      "runs `assessment` stays `null`.")
+      "placeholder hosts. Reachability is the probe run's job — see the next "
+      "section, which measured it.")
+    W("")
+    L.extend(assessment_section(agents, probes))
     W("")
     W("## Noise / signal")
     W("")

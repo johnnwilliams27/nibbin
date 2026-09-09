@@ -28,7 +28,13 @@ Agent = {
 
   // OUR assessment. null = not assessed; NEVER invent a value.
   assessment: null | {
-    reachable: boolean
+    // AMENDED 2026-09-09 (probe sweep): widened from `boolean` to
+    // `boolean | null`. null = WE COULD NOT MEASURE — a timeout, a 5xx or a
+    // hostname that does not resolve. Writing that as `false` would publish our
+    // blind spot as the agent's downtime, which rule 1 forbids. `false` is now
+    // reserved for an endpoint that settles it: a non-HTTP scheme, or a private
+    // or loopback host nobody could call.
+    reachable: boolean | null
     protocol_spoken: "mcp" | "a2a" | null
     tools_or_skills: string[]      // enumerated capability names
     tool_count: number
