@@ -144,8 +144,19 @@ export default async function AgentPage({ params }: { params: Promise<{ chain: s
                   />
                   <Figure
                     label="Reachable when we called"
-                    value={a.reachable ? 'Yes' : 'No'}
-                    tone={a.reachable ? 'var(--measured)' : 'var(--critical)'}
+                    value={a.reachable === null ? 'Unknown' : a.reachable ? 'Yes' : 'No'}
+                    note={
+                      a.reachable === null
+                        ? 'We failed to get a reading. That is our gap, not a finding that the agent is down.'
+                        : undefined
+                    }
+                    tone={
+                      a.reachable === null
+                        ? 'var(--withheld)'
+                        : a.reachable
+                          ? 'var(--measured)'
+                          : 'var(--critical)'
+                    }
                   />
                   <Figure label="Protocol it actually spoke" value={a.protocol_spoken ?? 'None established'} />
                   <Figure

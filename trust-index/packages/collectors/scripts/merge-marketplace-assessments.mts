@@ -107,9 +107,11 @@ function fromMcp(t: ProbeTranscript, declaresA2a: boolean): Assessment | null {
       tools_or_skills: names,
       tool_count: names.length,
       gates_fired: declarationGates(declared),
-      withheld_reason: enumerated
-        ? NO_BATTERY
-        : `handshake completed but tools/list did not: ${t.tools?.reason ?? "no tool list returned"}; no behavioural battery run`,
+      withheld_reason: !enumerated
+        ? `handshake completed but tools/list did not: ${t.tools?.reason ?? "no tool list returned"}; no behavioural battery run`
+        : names.length === 0
+          ? "the server completed an MCP handshake and declared no tools at all; there is nothing here to call, and no behavioural battery was run"
+          : NO_BATTERY,
     };
   }
 
@@ -181,11 +183,30 @@ function fromMcp(t: ProbeTranscript, declaresA2a: boolean): Assessment | null {
     tool_count: 0,
     gates_fired: [],
     latency_ms: null,
-    withheld_reason:
-      status5xx === null
-        ? `no reading obtained: ${reason}. This is our failure to measure, not a finding about the agent`
-        : `no reading obtained: the endpoint returned HTTP ${status5xx}. A server error tells us nothing about the agent's capability`,
+    withheld_reason: unmeasuredReason(reason, status5xx),
   };
+}
+
+/**
+ * Why we have no reading, said precisely.
+ *
+ * A name that does not resolve is worth stating as such — several endpoints in
+ * this population are unedited templates (`mcp.example.com`, `your_domain`) —
+ * but it is still recorded as an absent measurement rather than as the agent
+ * being down, because a resolution failure is something that happened to us.
+ */
+function unmeasuredReason(reason: string, status5xx: number | null): string {
+  if (status5xx !== null) {
+    return `no reading obtained: the endpoint returned HTTP ${status5xx}. A server error tells us nothing about the agent's capability`;
+  }
+  const nx = /ENOTFOUND ([^\s]+)/.exec(reason);
+  if (nx !== null) {
+    return `no reading obtained: the declared hostname ${nx[1]} does not resolve (DNS NXDOMAIN), so there was nothing to dial`;
+  }
+  if (/deadline|timed? ?out/i.test(reason)) {
+    return "no reading obtained: the endpoint did not answer within our timeout. This is our failure to measure, not a finding about the agent";
+  }
+  return `no reading obtained: ${reason}. This is our failure to measure, not a finding about the agent`;
 }
 
 function fromA2a(t: A2aTranscript, declaresA2a: boolean): Assessment {
@@ -199,6 +220,20 @@ function fromA2a(t: A2aTranscript, declaresA2a: boolean): Assessment {
   if (d.ok) {
     const skills = (t.declaration?.skills ?? []).map((s) => s.name ?? s.id).filter((s) => s.length > 0);
     const reach = t.reachability;
+    // WHICH DOOR ANSWERED. Many agents in this population declare a per-agent
+    // URL that 404s while the host serves one shared card at the well-known
+    // path. That card is evidence about the HOST, not about this identity, and
+    // saying so is the difference between a measurement and a flattering one.
+    const winner = d.attempts.find((a) => a.outcome === "card");
+    const declaredMissed = d.attempts.some((a) => a.kind === "declared" && a.outcome !== "card");
+    const cardNote =
+      winner !== undefined && winner.kind !== "declared" && declaredMissed
+        ? ` The card was served at the host's ${winner.path} — the endpoint this identity declares answered ${winner.status === null ? "nothing" : `HTTP ${d.attempts.find((a) => a.kind === "declared")?.status}`}, so this describes the host, not necessarily this agent.`
+        : "";
+    const skillNote =
+      skills.length === 0 && (t.declaration?.skillCount ?? 0) === 0
+        ? " The card declares no skills, so there is nothing enumerated to hire."
+        : "";
     const reachNote =
       reach === null || reach.verdict === "not_declared"
         ? ""
@@ -216,7 +251,7 @@ function fromA2a(t: A2aTranscript, declaresA2a: boolean): Assessment {
       tools_or_skills: skills,
       tool_count: t.declaration?.skillCount ?? skills.length,
       latency_ms: latency,
-      withheld_reason: `${NO_BATTERY}.${reachNote}`.trim(),
+      withheld_reason: `${NO_BATTERY}.${skillNote}${cardNote}${reachNote}`.trim(),
     };
   }
 
@@ -277,7 +312,7 @@ function fromA2a(t: A2aTranscript, declaresA2a: boolean): Assessment {
     tools_or_skills: [],
     tool_count: 0,
     latency_ms: null,
-    withheld_reason: `no reading obtained: ${d.reason ?? "the endpoint did not answer"}. This is our failure to measure, not a finding about the agent`,
+    withheld_reason: unmeasuredReason(d.reason ?? "the endpoint did not answer", null),
   };
 }
 
@@ -338,7 +373,20 @@ for (const a of dataset.agents) {
     unprobed += 1;
     continue;
   }
-  a.assessment = { ...found };
+  // Written in contract order, so a human diffing the file reads the fields in
+  // the order DATA-CONTRACT.md lists them.
+  a.assessment = {
+    reachable: found.reachable,
+    protocol_spoken: found.protocol_spoken,
+    tools_or_skills: found.tools_or_skills,
+    tool_count: found.tool_count,
+    latency_ms: found.latency_ms,
+    coverage: found.coverage,
+    composite: found.composite,
+    withheld_reason: found.withheld_reason,
+    gates_fired: found.gates_fired,
+    checked_at: found.checked_at,
+  } satisfies Assessment;
   written += 1;
 }
 

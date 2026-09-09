@@ -25,12 +25,16 @@ export function CapabilityList({ agent }: { agent: Agent }) {
       ) : a.tools_or_skills.length === 0 ? (
         <div className="mt-3">
           <p className="text-[13px]" style={{ color: 'var(--withheld)' }}>
-            It answered, but exposed no callable tools.
+            {a.reachable === true ? 'It answered, but exposed no callable tools.' : 'Nothing was enumerated.'}
           </p>
           <p className="mt-1.5 text-[13px] text-[var(--fg-muted)]">
-            {a.reachable
-              ? 'The endpoint is live and speaks a protocol, but the tool listing came back empty. There is nothing here to hire.'
-              : 'We could not establish a session, so nothing could be enumerated.'}
+            {a.withheld_reason
+              ? a.withheld_reason
+              : a.reachable === true
+                ? 'The endpoint is live and speaks a protocol, but the tool listing came back empty. There is nothing here to hire.'
+                : a.reachable === null
+                  ? 'We could not obtain a reading from this endpoint, so nothing could be enumerated. That is our gap, not a finding about the agent.'
+                  : 'We could not establish a session, so nothing could be enumerated.'}
           </p>
         </div>
       ) : (

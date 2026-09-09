@@ -6,7 +6,13 @@ export type CategorySlug = 'rebalancing' | 'grid_trading' | 'yield' | 'health_fa
 export type Coverage = 'thin' | 'moderate' | 'strong';
 
 export interface Assessment {
-  reachable: boolean;
+  /**
+   * null = WE COULD NOT MEASURE. A timeout, a 5xx or a DNS failure is our
+   * failure to obtain a reading, and recording it as `false` would publish our
+   * blind spot as the agent's downtime. `false` is reserved for an answer that
+   * settles it — an endpoint that is not publicly dialable at all.
+   */
+  reachable: boolean | null;
   protocol_spoken: 'mcp' | 'a2a' | null;
   /** Enumerated capability names, as the agent itself reported them. */
   tools_or_skills: string[];
