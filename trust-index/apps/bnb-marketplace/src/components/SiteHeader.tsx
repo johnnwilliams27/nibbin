@@ -1,10 +1,11 @@
 import Link from 'next/link';
 import { CATEGORIES } from '@/lib/categories';
-import { loadDataset } from '@/lib/data';
+import { listedAgents, loadDataset } from '@/lib/data';
 import { timestamp } from '@/lib/format';
 
 export function SiteHeader() {
   const { generated_at, agents } = loadDataset();
+  const listed = listedAgents().length;
 
   return (
     <header className="sticky top-0 z-40 border-b border-[var(--border)] bg-[rgba(11,14,19,0.94)] backdrop-blur">
@@ -37,7 +38,9 @@ export function SiteHeader() {
             className="mono hidden text-[10px] uppercase tracking-[0.09em] text-[var(--fg-faint)] lg:inline"
             title={generated_at ? `Snapshot generated ${timestamp(generated_at)}` : 'No snapshot available at build time'}
           >
-            {generated_at ? `snapshot ${timestamp(generated_at)} · ${agents.length} agents` : 'no snapshot'}
+            {generated_at
+              ? `snapshot ${timestamp(generated_at)} · ${agents.length.toLocaleString('en-US')} indexed · ${listed.toLocaleString('en-US')} listed`
+              : 'no snapshot'}
           </span>
         </div>
       </div>

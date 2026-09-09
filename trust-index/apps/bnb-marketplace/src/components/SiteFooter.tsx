@@ -1,10 +1,11 @@
 import Link from 'next/link';
-import { loadDataset } from '@/lib/data';
+import { listedAgents, loadDataset } from '@/lib/data';
 import { timestamp, relativeAge } from '@/lib/format';
 import { CENSUS_SOURCE } from '@/lib/census';
 
 export function SiteFooter() {
   const { generated_at, agents } = loadDataset();
+  const listed = listedAgents().length;
   const age = relativeAge(generated_at);
 
   return (
@@ -18,9 +19,11 @@ export function SiteFooter() {
                 <>
                   Index generated <span className="mono text-[var(--fg)]">{timestamp(generated_at)}</span>
                   {age ? ` (${age})` : ''}, covering{' '}
-                  <span className="mono text-[var(--fg)]">{agents.length.toLocaleString('en-US')}</span> agent
-                  {agents.length === 1 ? '' : 's'}. This site is a static render of that snapshot. Every figure was true
-                  at that timestamp and is not re-queried on page load.
+                  <span className="mono text-[var(--fg)]">{agents.length.toLocaleString('en-US')}</span> registry row
+                  {agents.length === 1 ? '' : 's'}, of which{' '}
+                  <span className="mono text-[var(--fg)]">{listed.toLocaleString('en-US')}</span> classify into one of
+                  the four categories and are listed here. This site is a static render of that snapshot. Every figure
+                  was true at that timestamp and is not re-queried on page load.
                 </>
               ) : (
                 <>
