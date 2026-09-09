@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { LayoutGrid, Rows3, Search, SlidersHorizontal, X } from 'lucide-react';
 import type { Agent, CategorySlug } from '@/lib/types';
 import { CATEGORIES, CATEGORY_BY_SLUG } from '@/lib/categories';
-import { AgentCard } from './AgentCard';
+import { AgentCardGrid } from './AgentCardGrid';
 import { AgentTable } from './AgentTable';
 import { EmptyState } from './EmptyState';
 import { FilterSelect } from './FilterSelect';
@@ -94,7 +94,7 @@ export function AgentExplorer({ agents, reference, showCategoryFilter = false, d
 
   function renderAgents(rows: Agent[]) {
     return view === 'grid'
-      ? <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{rows.map((agent) => <AgentCard key={agent.agent_id} agent={agent} />)}</div>
+      ? <AgentCardGrid agents={rows} />
       : <AgentTable agents={rows} />;
   }
 

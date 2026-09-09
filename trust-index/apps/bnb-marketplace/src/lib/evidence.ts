@@ -34,15 +34,19 @@ export function evidenceSummary(agent: Pick<Agent, 'assessment'>) {
 /** The unit changes explicitly at each step; one shared URL is never N tests. */
 export function populationSummary(agents: Agent[]) {
   const rows = agents.filter((agent) => !agent.is_reference_agent);
-  const listed = rows.filter((agent) => agent.category !== 'other');
+  const rated = rows.filter((agent) => typeof agent.assessment?.composite === 'number' && Number.isFinite(agent.assessment.composite));
+  const listed = rows.filter((agent) => agent.category !== 'other' || rated.includes(agent) || (agent.metadata_source && agent.endpoint));
   const endpoints = (pool: Agent[]) => new Set(pool.map((agent) => agent.endpoint).filter(Boolean)).size;
+  const measuredEndpoints = (pool: Agent[]) => new Set(pool.map((agent) => agent.assessment?.evidence_endpoint ?? agent.endpoint).filter(Boolean)).size;
   return {
     registrations: rows.length,
     listed: listed.length,
     outsideCategories: rows.length - listed.length,
     endpoints: endpoints(rows),
     listedEndpoints: endpoints(listed),
-    checkedEndpoints: endpoints(rows.filter((agent) => agent.assessment !== null)),
-    confirmedEndpoints: endpoints(rows.filter((agent) => evidenceSummary(agent).confirmed)),
+    checkedEndpoints: measuredEndpoints(rows.filter((agent) => agent.assessment !== null)),
+    confirmedEndpoints: measuredEndpoints(rows.filter((agent) => evidenceSummary(agent).confirmed)),
+    ratedRegistrations: rated.length,
+    ratedEndpoints: measuredEndpoints(rated),
   };
 }

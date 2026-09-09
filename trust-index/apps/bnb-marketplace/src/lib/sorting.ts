@@ -1,5 +1,6 @@
 import type { Agent, CategorySlug } from './types';
 import { evidenceSummary } from './evidence.ts';
+import { CATEGORIES } from './categories.ts';
 
 export const COVERAGE_RANK = { thin: 1, moderate: 2, strong: 3 } as const;
 
@@ -9,8 +10,6 @@ export type SortKey =
   | 'coverage'
   | 'tools'
   | 'latency'
-  | 'feedback'
-  | 'scan_score'
   | 'name';
 
 export const SORTS: Array<{ key: SortKey; label: string; hint: string }> = [
@@ -19,8 +18,6 @@ export const SORTS: Array<{ key: SortKey; label: string; hint: string }> = [
   { key: 'coverage', label: 'How much we looked', hint: 'Strong coverage first — most evidence behind the verdict.' },
   { key: 'tools', label: 'Declared capabilities', hint: 'Most tool or skill names retrieved first. A declaration is not proof that a capability works.' },
   { key: 'latency', label: 'Response time', hint: 'Fastest measured response first.' },
-  { key: 'feedback', label: 'Feedback count (8004scan)', hint: 'Third-party feedback volume. Not our number.' },
-  { key: 'scan_score', label: 'Score (8004scan)', hint: "8004scan's own total score. Shown for contrast, not endorsement." },
   { key: 'name', label: 'Name A–Z', hint: 'Alphabetical, not a quality ranking. Open a profile to compare declarations with our evidence.' },
 ];
 
@@ -55,10 +52,6 @@ export function isSortable(agent: Agent, key: SortKey): boolean {
       return agent.assessment != null;
     case 'latency':
       return agent.assessment?.latency_ms != null;
-    case 'feedback':
-      return agent.scan_feedbacks > 0;
-    case 'scan_score':
-      return agent.scan_total_score != null;
     case 'name':
       return true;
   }
@@ -78,16 +71,12 @@ export function compareAgents(a: Agent, b: Agent, key: SortKey): number {
       return (b.assessment?.tool_count ?? 0) - (a.assessment?.tool_count ?? 0);
     case 'latency':
       return (a.assessment?.latency_ms ?? 0) - (b.assessment?.latency_ms ?? 0);
-    case 'feedback':
-      return b.scan_feedbacks - a.scan_feedbacks;
-    case 'scan_score':
-      return (b.scan_total_score ?? 0) - (a.scan_total_score ?? 0);
     case 'name':
       return a.name.localeCompare(b.name);
   }
 }
 
-export type FilterKey = 'callable' | 'assessed' | 'rated' | 'verified' | 'feedback' | 'gates' | 'clean' | 'protocol_confirmed' | 'auth_walled' | 'mcp' | 'a2a' | 'x402';
+export type FilterKey = 'callable' | 'assessed' | 'rated' | 'gates' | 'clean' | 'protocol_confirmed' | 'auth_walled' | 'mcp' | 'a2a' | 'x402';
 
 export const FILTERS: Array<{ key: FilterKey; label: string; hint: string }> = [
   { key: 'callable', label: 'Endpoint declared', hint: 'A connection URL is present. We have not necessarily connected to it.' },
@@ -98,8 +87,6 @@ export const FILTERS: Array<{ key: FilterKey; label: string; hint: string }> = [
   { key: 'a2a', label: 'A2A declared', hint: 'The registration declares A2A support.' },
   { key: 'x402', label: 'x402 declared', hint: 'The registration declares machine payments. Not a payment test or endorsement.' },
   { key: 'rated', label: 'We published a score', hint: 'Assessed with enough evidence to rate.' },
-  { key: 'verified', label: 'Ecosystem verified', hint: "8004scan verified the endpoint. Their check, not ours." },
-  { key: 'feedback', label: 'Has any feedback', hint: 'At least one third-party feedback record exists.' },
   { key: 'gates', label: 'Safety gates fired', hint: 'Show only agents that tripped a hard safety cap.' },
   { key: 'clean', label: 'No recorded gates', hint: 'No safety gate recorded in an existing assessment. This is not a safety clearance.' },
 ];
@@ -122,10 +109,6 @@ export function passesFilter(agent: Agent, key: FilterKey): boolean {
       return agent.assessment !== null;
     case 'rated':
       return agent.assessment?.composite != null;
-    case 'verified':
-      return agent.scan_endpoint_verified;
-    case 'feedback':
-      return agent.scan_feedbacks > 0;
     case 'gates':
       return (agent.assessment?.gates_fired.length ?? 0) > 0;
     case 'clean':
@@ -141,7 +124,7 @@ export interface ExplorerState {
   view: 'grid' | 'table';
 }
 
-const DISCOVERY_CATEGORIES: CategorySlug[] = ['rebalancing', 'grid_trading', 'yield', 'health_factor'];
+const DISCOVERY_CATEGORIES: CategorySlug[] = CATEGORIES.map(category => category.slug);
 
 /** URL parameters are untrusted input. Unknown values cannot create invisible filters. */
 export function readExplorerState(search: string, defaultView: 'grid' | 'table' = 'grid', allowCategories = true): ExplorerState {
@@ -150,7 +133,7 @@ export function readExplorerState(search: string, defaultView: 'grid' | 'table' 
     .filter((key): key is FilterKey => FILTERS.some((f) => f.key === key));
   const categories = allowCategories ? [...new Set((params.get('category') ?? '').split(','))]
     .filter((key): key is CategorySlug => DISCOVERY_CATEGORIES.includes(key as CategorySlug)) : [];
-  const sort = SORTS.find((s) => s.key === params.get('sort'))?.key ?? 'evidence';
+  const sort = SORTS.find((s) => s.key === params.get('sort'))?.key ?? 'assessment';
   const view = params.get('view');
   return { query: params.get('q') ?? '', filters, categories, sort, view: view === 'grid' || view === 'table' ? view : defaultView };
 }

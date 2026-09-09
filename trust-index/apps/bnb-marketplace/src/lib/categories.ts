@@ -7,7 +7,7 @@ export interface CategoryMeta {
   name: string;
   /** One line, plain language, no jargon. Shown on the landing cards. */
   blurb: string;
-  /** What this kind of agent is actually allowed to touch. Sets the risk frame. */
+  /** The category's typical declared scope, not a verified permission boundary. */
   handles: string;
   /** The question a buyer should ask before hiring one of these. */
   buyerQuestion: string;
@@ -84,7 +84,7 @@ export const CATEGORIES: CategoryMeta[] = [
     path: 'research',
     name: 'Research',
     blurb: 'Reads markets, protocols and on-chain data, and reports what it found.',
-    handles: 'Public data and its own conclusions. Touches no funds.',
+    handles: 'Public data and reported conclusions. Check the actual interface before granting access.',
     buyerQuestion: 'When it does not know, does it say so \u2014 or fabricate a number?',
     accent: 'var(--color-cat-research)',
     accentTint: 'var(--color-cat-research-bg)',

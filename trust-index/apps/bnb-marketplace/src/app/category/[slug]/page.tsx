@@ -32,6 +32,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
         <div>
           <h1 className="text-[clamp(30px,4vw,46px)] leading-tight">{meta.name} agents</h1>
           <p className="mt-4 max-w-2xl text-[16px] leading-relaxed text-[var(--fg-muted)]">{meta.blurb}</p>
+          <p className="mt-2 max-w-2xl text-[13px] text-[var(--fg-muted)]">Grouped by operator descriptions. A category match does not establish that an agent can complete the task.</p>
         </div>
       </header>
       <nav aria-label="Agent categories" className="my-8 flex gap-2 overflow-x-auto pb-2">

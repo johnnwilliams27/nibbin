@@ -39,6 +39,8 @@ export function loadDataset(): Dataset {
           dataset = {
             generated_at: typeof parsed.generated_at === 'string' ? parsed.generated_at : null,
             agents: parsed.agents.filter(isUsableAgent).map(normalise),
+            ...(parsed.source?.kind === 'erc8004_registered_events' && Number.isSafeInteger(parsed.source.enumerated_records)
+              ? { source: parsed.source } : {}),
             status: typeof parsed.status === 'string' && parsed.status.trim() ? parsed.status.trim() : null,
           };
         }
@@ -92,9 +94,6 @@ function normalise(a: Agent): Agent {
     endpoint: a.endpoint ?? null,
     detail_status: normaliseDetailStatus(a.detail_status),
     x402_supported: a.x402_supported === true,
-    scan_total_score: typeof a.scan_total_score === 'number' ? a.scan_total_score : null,
-    scan_feedbacks: typeof a.scan_feedbacks === 'number' ? a.scan_feedbacks : 0,
-    scan_endpoint_verified: a.scan_endpoint_verified === true,
     is_reference_agent: a.is_reference_agent === true,
     assessment: a.assessment
       ? {
@@ -151,6 +150,7 @@ const MARKETPLACE: CategorySlug[] = [
  * pad the listings.
  */
 export function listedAgents(): Agent[] {
+  if (loadDataset().source?.kind === 'erc8004_registered_events') return allAgents();
   return allAgents().filter(
     (a) => MARKETPLACE.includes(a.category) || (a.assessment?.composite ?? null) !== null,
   );
@@ -216,8 +216,6 @@ export interface HeadlineStats {
   /** Distinct endpoints behind `rated`. Lower when registrations share a service. */
   ratedEndpoints: number;
   withheld: number;
-  ecosystemVerified: number;
-  withFeedback: number;
   gatesFired: number;
   referenceCount: number;
 }
@@ -240,8 +238,6 @@ export function headlineStats(): HeadlineStats {
     // headline states both.
     ratedEndpoints: new Set(agents.filter(isRated).map((a) => a.endpoint).filter(Boolean)).size,
     withheld: agents.filter((a) => a.assessment !== null && a.assessment.composite === null).length,
-    ecosystemVerified: agents.filter((a) => a.scan_endpoint_verified).length,
-    withFeedback: agents.filter((a) => a.scan_feedbacks > 0).length,
     gatesFired: agents.filter(hasGates).length,
     referenceCount: referenceAgents().length,
   };
@@ -255,7 +251,6 @@ export interface CategoryStats {
   assessed: number;
   rated: number;
   withheld: number;
-  ecosystemVerified: number;
   gatesFired: number;
   strongCoverage: number;
   medianComposite: number | null;
@@ -282,7 +277,6 @@ export function categoryStats(slug: CategorySlug): CategoryStats {
     assessed: ranked.filter(isAssessed).length,
     rated: ranked.filter(isRated).length,
     withheld: ranked.filter((a) => a.assessment !== null && a.assessment.composite === null).length,
-    ecosystemVerified: ranked.filter((a) => a.scan_endpoint_verified).length,
     gatesFired: ranked.filter(hasGates).length,
     strongCoverage: ranked.filter((a) => a.assessment?.coverage === 'strong').length,
     medianComposite: median(composites),

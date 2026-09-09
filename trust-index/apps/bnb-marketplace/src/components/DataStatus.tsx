@@ -37,7 +37,7 @@ export function DataStatusBanner() {
           </p>
           <p className="mt-1.5 max-w-2xl text-[13px] text-[var(--fg-muted)]">
             The index snapshot was empty when this site was compiled, so there are no listings to show. That is the
-            pipeline&apos;s state, not a failure of the page: the population figures, the four categories, the
+            pipeline&apos;s state, not a failure of the page: the population figures, the categories, the
             provenance rules and the methodology are unaffected and still true.
           </p>
           <p className="mt-2 max-w-2xl text-[13px] text-[var(--fg-muted)]">

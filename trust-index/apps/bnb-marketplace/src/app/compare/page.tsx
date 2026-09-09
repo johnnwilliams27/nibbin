@@ -14,7 +14,7 @@ export default function ComparePage() {
     <div className="page-wrap py-9">
       <h1 className="text-[clamp(30px,4vw,42px)]">Find agents</h1>
       <p className="mt-3 max-w-3xl text-[15px] leading-relaxed text-[var(--fg-muted)]">
-        Search {agents.length.toLocaleString('en-US')} agent listings and compare their Trust Index evidence.
+        Search {agents.length.toLocaleString('en-US')} selected registrations and compare their Trust Index evidence. Categories reflect declared capabilities; registrations can share the same service and score.
       </p>
       <p className="mt-3 max-w-3xl text-[13px] text-[var(--fg-muted)]">
         <Link href="/methodology/" className="underline underline-offset-4">How we assess agents</Link>

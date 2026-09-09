@@ -10,3 +10,5 @@ packages:
   - "!apps/bnb-marketplace"
   # Independently deployed serverless seller also owns an npm lockfile.
   - "!apps/reference-seller"
+  # Public review service has its own npm lockfile and Node 24 CI step.
+  - "!apps/buyer-reviews"

@@ -1,6 +1,6 @@
 import { AlertTriangle, CircleSlash, HelpCircle, ShieldAlert } from 'lucide-react';
 import type { Agent, Coverage } from '@/lib/types';
-import { COVERAGE_COPY, compositeOutOf100, gateCopy, num } from '@/lib/format';
+import { COVERAGE_COPY, compositeOutOf100, gateCopy, sharedEndpointNote } from '@/lib/format';
 import { detailGapReason } from '@/lib/detail-state';
 
 /**
@@ -40,7 +40,7 @@ export function unassessedReason(agent: Agent): string {
 export function ScoreBlock({ agent, size = 'md' }: { agent: Agent; size?: 'sm' | 'md' | 'lg' }) {
   const state = scoreState(agent);
   const big = size === 'lg';
-  const numberClass = big ? 'text-[44px]' : size === 'md' ? 'text-[28px]' : 'text-[20px]';
+  const numberClass = big ? 'text-[20px]' : size === 'md' ? 'text-[14px]' : 'text-[12px]';
 
   if (size === 'sm' && state !== 'rated') {
     return <p className="text-[12px] text-[var(--fg-muted)]">No behavioral rating published.</p>;
@@ -53,16 +53,13 @@ export function ScoreBlock({ agent, size = 'md' }: { agent: Agent; size?: 'sm' |
         <p className="eyebrow">Our assessment</p>
         <p className={`mono ${numberClass} font-semibold leading-none`} style={{ color: 'var(--measured)' }}>
           {score}
-          <span className="text-[0.45em] font-normal text-[var(--fg-muted)]"> / 100</span>
+          <span className="font-normal text-[var(--fg-muted)]"> / 100</span>
         </p>
         <p className="mt-1.5 text-[12px] text-[var(--fg-muted)]">
           Composite of our probe results. Read alongside coverage, never instead of it.
         </p>
-        {agent.assessment.endpoint_shared_with > 1 ? (
-          <p className="mt-1.5 text-[12px]" style={{ color: 'var(--withheld)' }}>
-            Measured once, at an endpoint {num(agent.assessment.endpoint_shared_with)} registrations share. This
-            number describes that service, not this registration on its own.
-          </p>
+        {sharedEndpointNote(agent.assessment) ? (
+          <span tabIndex={0} title={sharedEndpointNote(agent.assessment)} className="mt-1.5 inline-block text-[12px]" style={{ color: 'var(--withheld)' }}>Shared service</span>
         ) : null}
       </div>
     );

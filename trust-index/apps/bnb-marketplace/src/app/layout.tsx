@@ -10,7 +10,7 @@ export const metadata: Metadata = {
     template: '%s · Nibbin BNB Agent Marketplace',
   },
   description:
-    'Discover BNB Chain agents for rebalancing, grid trading, yield optimisation, and health factor monitoring. Compare declared capabilities with transparent endpoint evidence.',
+    'Discover BNB Chain agents across twelve categories. Compare behavioral ratings, evidence coverage, and declared capabilities, then try a wallet-based hire on testnet.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

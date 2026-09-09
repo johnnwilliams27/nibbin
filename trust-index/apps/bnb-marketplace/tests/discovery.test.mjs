@@ -2,6 +2,13 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as discovery from '../src/lib/sorting.ts';
 
+test('chain-only discovery accepts expanded categories and drops retired provider filters', () => {
+  const state = discovery.readExplorerState('?category=payments,research&sort=scan_score&filter=verified,feedback');
+  assert.deepEqual(state.categories, ['payments', 'research']);
+  assert.equal(state.sort, 'assessment');
+  assert.deepEqual(state.filters, []);
+});
+
 function agent(overrides = {}) {
   return {
     agent_id: '56:1', chain_id: 56, token_id: '1', name: 'Liquidity Keeper',
@@ -31,7 +38,7 @@ test('search finds endpoint and capability terms together, ignoring case and ext
 test('URL state validates options, deduplicates filters and ignores category filters on a category page', () => {
   assert.equal(typeof discovery.readExplorerState, 'function');
   const state = discovery.readExplorerState('?q=venus&filter=callable,callable,bogus&category=yield,other&sort=bogus&view=table', 'grid', true);
-  assert.deepEqual(state, { query: 'venus', filters: ['callable'], categories: ['yield'], sort: 'evidence', view: 'table' });
+  assert.deepEqual(state, { query: 'venus', filters: ['callable'], categories: ['yield'], sort: 'assessment', view: 'table' });
   assert.deepEqual(discovery.readExplorerState('?category=yield', 'table', false).categories, []);
   assert.equal(discovery.readExplorerState('?view=invalid', 'table', true).view, 'table');
 });
@@ -56,7 +63,7 @@ test('discovery keeps missing measurements and reference agents out of the ranke
   assert.deepEqual(result.unranked.map(a => a.agent_id), ['56:1']);
 });
 
-test('default evidence order prefers observed exchanges, then declarations, then response records', () => {
+test('explicit evidence order prefers observed exchanges, then declarations, then response records', () => {
   const row = (id, name, evidence_state, extra = {}) => agent({ agent_id: id, name, assessment: { composite: null, evidence_state, ...extra } });
   const rows = [
     row('response', 'C response', 'response_received'), row('card', 'B card', 'card_retrieved'),
@@ -68,7 +75,7 @@ test('default evidence order prefers observed exchanges, then declarations, then
   ];
   rows[rows.length - 1].is_reference_agent = true;
   const snapshot = JSON.stringify(rows);
-  const state = discovery.readExplorerState('');
+  const state = discovery.readExplorerState('?sort=evidence');
   assert.equal(state.sort, 'evidence');
   const result = discovery.discoverAgents(rows, state);
   assert.deepEqual(result.ranked.map(a => a.agent_id), ['protocol-a', 'protocol-z', 'descriptor', 'card', 'auth', 'rate', 'response']);
@@ -85,4 +92,17 @@ test('explicit alphabetical and score sorts survive default changes and preserve
   assert.deepEqual(scored.ranked.map(a => a.assessment.composite), [70, 0]);
   assert.deepEqual(scored.unranked.map(a => a.agent_id), ['a']);
   assert.equal(discovery.readExplorerState(discovery.writeExplorerState(discovery.readExplorerState('?sort=evidence'))).sort, 'evidence');
+});
+
+test('default assessment sorts highest first, keeps zero, separates unrated and excludes references', () => {
+  const rows = [agent({agent_id:'unrated'}),agent({agent_id:'zero',assessment:{composite:0}}),agent({agent_id:'high',assessment:{composite:90}}),agent({agent_id:'middle',assessment:{composite:40}}),agent({agent_id:'reference',is_reference_agent:true,assessment:{composite:100}})];
+  const before=JSON.stringify(rows);
+  for(const search of ['', '?sort=invalid']) {
+    const state=discovery.readExplorerState(search);
+    assert.equal(state.sort,'assessment');
+    const result=discovery.discoverAgents(rows,state);
+    assert.deepEqual(result.ranked.map(a=>a.agent_id),['high','middle','zero']);
+    assert.deepEqual(result.unranked.map(a=>a.agent_id),['unrated']);
+  }
+  assert.equal(JSON.stringify(rows),before);
 });

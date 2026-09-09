@@ -6,6 +6,21 @@ and the `old-nibbin` repository.
 
 ## Current
 
+- **Release integration, 2026-09-09 (supersedes older counts below).** Direct
+  registration-frame import now publishes 5,415 registrations with 557 declared
+  interfaces from the 342,016-event frame, without directory-provider metadata.
+  The recovered immutable scorer artifacts preserve all 42 original published
+  subjects. Exact protocol/service matches and recorded A2A card links attach
+  268 ratings across 37 tested service URLs in this candidate population.
+  Scores are unchanged; the original 02:00 scoring parameter is not the actual
+  observation time. Historical owners/metadata remain labelled historical.
+  Marketplace defaults to Our assessment; compact cards retain expandable coverage.
+  Verification: 27 pipeline tests, 22 chain-import tests, 105 marketplace tests,
+  workspace typecheck passed. Collector suite had one stale fixed-count test;
+  corrected to a fixed scope fixture and its two tests pass. Production build
+  and remote required checks remain release gates, not presumed successes.
+
+
 - **Hackathon experience and public hire path, 2026-09-09 (in progress).**
   `codex/hackathon-experience` adds search/filter/navigation/copy improvements,
   endpoint-level evidence, and user-confirmed browser ERC-8183 hiring. The four

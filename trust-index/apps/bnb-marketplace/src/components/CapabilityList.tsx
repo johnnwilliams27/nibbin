@@ -1,6 +1,7 @@
 import { Terminal } from 'lucide-react';
 import type { Agent } from '@/lib/types';
 import { ProvenanceChip } from './Provenance';
+import { capabilityEvidenceNote } from '@/lib/format';
 
 export function CapabilityList({ agent }: { agent: Agent }) {
   const assessment = agent.assessment;
@@ -18,7 +19,7 @@ export function CapabilityList({ agent }: { agent: Agent }) {
       ) : (
         <>
           <p className="mt-3 text-[13px] leading-relaxed text-[var(--fg-muted)]">
-            {names.length} named {names.length === 1 ? 'capability' : 'capabilities'} from {sourceLabel}. {fromSession ? 'The server offered these tools; we have not established that each tool works.' : 'These are declarations, not completed skill executions.'}
+            {names.length} named {names.length === 1 ? 'capability' : 'capabilities'} from {sourceLabel}. {capabilityEvidenceNote(!agent.is_reference_agent && typeof assessment?.composite === 'number' && Number.isFinite(assessment.composite))}
           </p>
           <ul className="mt-4 grid gap-1.5 sm:grid-cols-2">
             {names.map((name) => (

@@ -1,4 +1,4 @@
-import type { Coverage } from './types';
+import type { Assessment, Coverage } from './types';
 
 const CHAIN_NAMES: Record<number, string> = {
   56: 'BNB Smart Chain',
@@ -28,6 +28,20 @@ export function pct(part: number, whole: number): string {
 /** Composites are 0..1 in the contract; some producers emit 0..100. Show both safely. */
 export function compositeOutOf100(composite: number): number {
   return composite <= 1 ? Math.round(composite * 100) : Math.round(composite);
+}
+
+/** A shared endpoint's rating is not an independent test of each registration. */
+export function sharedEndpointNote(assessment: Assessment | null | undefined): string | undefined {
+  const count = assessment?.endpoint_shared_with ?? assessment?.shared_registration_count;
+  return typeof count === 'number' && Number.isSafeInteger(count) && count > 1
+    ? `${num(count)} registrations share this endpoint. The score describes shared service evidence, not independent tests of each registration.`
+    : undefined;
+}
+
+export function capabilityEvidenceNote(rated: boolean): string {
+  return rated
+    ? 'The published score includes sampled behavioral checks. This list does not show which capabilities were exercised or establish that every capability works.'
+    : 'Capability names alone are declarations, not completed skill executions.';
 }
 
 export function latency(ms: number | null): string {
@@ -70,7 +84,7 @@ export const COVERAGE_COPY: Record<Coverage, { label: string; meaning: string; s
   // words, so the badge and the rubric cannot drift apart.
   thin: {
     label: 'Thin',
-    meaning: 'One day of probing. We exercised its behaviour, but a single sample cannot tell a good agent from a lucky one.',
+    meaning: 'Limited evidence from a short observation window. This label alone does not establish that behavioral checks ran or that results will remain consistent.',
     steps: 1,
   },
   moderate: {

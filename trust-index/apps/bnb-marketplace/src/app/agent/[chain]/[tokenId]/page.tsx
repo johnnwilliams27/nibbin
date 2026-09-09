@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { CATEGORIES, CATEGORY_BY_SLUG } from '@/lib/categories';
 import { findAgent, pageableAgents, routeTokenId } from '@/lib/data';
-import { chainName, compositeOutOf100, isTestnet, latency, shortAddress, timestamp } from '@/lib/format';
+import { capabilityEvidenceNote, chainName, compositeOutOf100, isTestnet, latency, sharedEndpointNote, shortAddress, timestamp } from '@/lib/format';
 import { CoverageAxis, GateBanner, ReferenceBadge, ScoreBlock, scoreState, unassessedReason } from '@/components/Assessment';
 import { Figure, ProvenanceChip, ProvenanceSplit } from '@/components/Provenance';
 import { HirePanel } from '@/components/HirePanel';
@@ -94,7 +94,7 @@ export default async function AgentPage({ params }: { params: Promise<{ chain: s
           <div className="mt-5 border-t border-[var(--border)] pt-4">
             <p className="text-[14px] font-medium" style={{ color: evidence.tone }}>{evidence.label}</p>
             <p className="mt-1 text-[13px] text-[var(--fg-muted)]">{evidence.detail}</p>
-            {a?.shared_registration_count && a.shared_registration_count > 1 ? <p className="mt-2 text-[12px] text-[var(--fg-muted)]">{a.shared_registration_count.toLocaleString('en-US')} registrations share this endpoint. This is shared interface evidence, not independent tests of each registration.</p> : null}
+            {sharedEndpointNote(a) ? <span tabIndex={0} title={sharedEndpointNote(a)} className="mt-2 inline-block text-[12px] text-[var(--fg-muted)]">Shared service</span> : null}
           </div>
         </div>
 
@@ -111,7 +111,7 @@ export default async function AgentPage({ params }: { params: Promise<{ chain: s
               ? 'Score and coverage are two different axes. A high score on thin coverage means we liked what we saw, and we did not see much.'
               : state === 'withheld'
                 ? 'We assessed this agent and chose not to publish a number. That is a deliberate outcome, not a missing field.'
-                : 'No number is shown because no measurement exists. We do not substitute a zero.'}
+                : 'No usable measurement is attached in this snapshot. We do not substitute a zero.'}
           </p></div>
         </section>
       </header>
@@ -144,7 +144,8 @@ export default async function AgentPage({ params }: { params: Promise<{ chain: s
                         `${compositeOutOf100(a.composite)} / 100`
                       )
                     }
-                    note={a.composite === null ? (a.withheld_reason ?? 'Insufficient evidence to publish a number.') : undefined}
+                    note={a.composite === null ? (a.withheld_reason ?? 'Insufficient evidence to publish a number.') : sharedEndpointNote(a) ? 'Shared service' : undefined}
+                    noteTitle={a.composite === null ? undefined : sharedEndpointNote(a)}
                     tone={a.composite === null ? 'var(--withheld)' : 'var(--measured)'}
                   />
                   <Figure
@@ -173,7 +174,7 @@ export default async function AgentPage({ params }: { params: Promise<{ chain: s
                   <Figure
                     label="Capability names reported"
                     value={a.tool_count}
-                    note={a.tool_count === 0 ? 'No capability names were recorded by this check.' : 'From a tool list, agent card, or descriptor. These capabilities have not been executed by this check.'}
+                    note={a.tool_count === 0 ? 'No capability names were recorded by this check.' : capabilityEvidenceNote(state === 'rated')}
                   />
                   <Figure
                     label="Response time"
@@ -182,11 +183,13 @@ export default async function AgentPage({ params }: { params: Promise<{ chain: s
                   />
                   <Figure
                     label="Safety battery"
-                    value={gates.length === 0 ? 'Not established' : `${gates.length} gates fired`}
+                    value={gates.length > 0 ? `${gates.length} gates fired` : state === 'rated' ? 'Behavioral evidence recorded' : 'Not established'}
                     tone={gates.length > 0 ? 'var(--critical)' : undefined}
-                    note={gates.length > 0 ? gates.join(', ') : 'This endpoint record does not establish that behavioral safety checks ran. An empty gate list is not a clearance.'}
+                    note={gates.length > 0 ? gates.join(', ') : state === 'rated' ? 'The score includes sampled behavioral checks. No recorded gate is a guarantee of safety or investment performance.' : 'This endpoint record does not establish that behavioral safety checks ran. An empty gate list is not a clearance.'}
                   />
                   <Figure label="Endpoint checked at" value={timestamp(a.checked_at)} />
+                  {a.evidence_endpoint ? <Figure label="Tested service" value={<span className="break-all text-[12px]">{a.evidence_endpoint}</span>} note={a.evidence_declared_endpoint ? 'Linked through the service interface in the retrieved A2A card. The score belongs to this tested service.' : undefined} /> : null}
+                  {a.provenance?.score_as_of ? <Figure label="Scoring reference time" value={timestamp(a.provenance.score_as_of)} note="The original engine parameter, not the time the service was tested. The published score has not been recalculated." /> : null}
                 </>
               ) : (
                 <div className="py-2">
@@ -195,40 +198,13 @@ export default async function AgentPage({ params }: { params: Promise<{ chain: s
                   </p>
                   <p className="mt-1.5 text-[13px] text-[var(--fg-muted)]">{unassessedReason(agent)}</p>
                   <p className="mt-3 text-[13px] text-[var(--fg-muted)]">
-                    There is nothing in this column because we have not measured anything. We would rather show you an
-                    empty column than fill it.
+                    No usable measurement is attached to this registration in the current snapshot.
                   </p>
                 </div>
               )
             }
             theirs={
               <>
-                <Figure
-                  label="8004scan total score"
-                  value={agent.scan_total_score === null ? 'None published' : String(agent.scan_total_score)}
-                  note="Their scoring model, their weighting. We do not reproduce or endorse it."
-                  tone={agent.scan_total_score === null ? undefined : 'var(--thirdparty)'}
-                />
-                <Figure
-                  label="Feedback records"
-                  value={agent.scan_feedbacks}
-                  note={
-                    agent.scan_feedbacks === 0
-                      ? 'No feedback is recorded in this source snapshot.'
-                      : 'Volume of third-party feedback. Volume is not quality, and we do not weight it.'
-                  }
-                  tone="var(--thirdparty)"
-                />
-                <Figure
-                  label="Endpoint verified"
-                  value={agent.scan_endpoint_verified ? 'Yes' : 'No'}
-                  note={
-                    agent.scan_endpoint_verified
-                      ? 'Verified according to the registry data provider, not independently by us.'
-                      : 'No provider verification is recorded in this snapshot.'
-                  }
-                  tone="var(--thirdparty)"
-                />
                 <Figure
                   label="Declared protocols"
                   value={agent.protocols.length > 0 ? agent.protocols.join(', ') : 'None declared'}
@@ -241,7 +217,7 @@ export default async function AgentPage({ params }: { params: Promise<{ chain: s
                     agent.endpoint ? (
                       <span className="break-all text-[12px]">{agent.endpoint}</span>
                     ) : (
-                      agent.detail_status === 'read' ? 'No endpoint in the detail we read' : 'Registry detail not confirmed'
+                      agent.detail_status === 'read' ? 'No endpoint in the registration metadata we read' : 'Registration metadata not confirmed'
                     )
                   }
                   source="self_reported"
@@ -257,7 +233,7 @@ export default async function AgentPage({ params }: { params: Promise<{ chain: s
                   source="self_reported"
                   tone={agent.x402_supported ? 'var(--withheld)' : undefined}
                 />
-                <Figure label="Owner" value={<span className="text-[12px]">{shortAddress(agent.owner_address)}</span>} source="onchain" />
+                <Figure label={agent.owner_source === 'current_rpc' ? 'Owner at recorded block' : agent.owner_source === 'registration_event' ? 'Original registration owner' : 'Recorded owner'} value={<span className="text-[12px]">{shortAddress(agent.owner_address)}</span>} note={agent.owner_source === 'current_rpc' ? `Read at block ${agent.owner_checked_at_block}. Not a live ownership check.` : agent.owner_source === 'registration_event' ? `Recorded by the registration event at block ${agent.registered_at_block}; later transfers are not reflected.` : 'Current ownership has not been confirmed.'} source="onchain" />
                 <Figure
                   label="Token id"
                   value={agent.token_id ?? 'None'}
@@ -272,7 +248,7 @@ export default async function AgentPage({ params }: { params: Promise<{ chain: s
                 <Figure
                   label="Chain"
                   value={`${agent.chain_id} · ${chainName(agent.chain_id)}`}
-                  note={isTestnet(agent.chain_id) ? 'Testnet. Nothing here moves real funds.' : undefined}
+                  note={isTestnet(agent.chain_id) ? 'BNB testnet registration.' : undefined}
                   source="onchain"
                   tone={isTestnet(agent.chain_id) ? 'var(--withheld)' : undefined}
                 />
