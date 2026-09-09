@@ -203,12 +203,17 @@ Measured, not assumed. `wallet_paid_wei: 0` on every commerce write:
 |---|---|---|
 | `createJob`, `registerJob`, `setBudget`, `fund` | commerceProxy | ✅ **Yes** (`effective_gas_price_wei: 0`) |
 | `submit` (seller) | commerceProxy | ✅ **Yes** (gas_used ~199k, paid 0) |
-| `dispute` | **policy** | ❌ **No** — `insufficient funds ... have 0 want 180322000000000` |
+| `settle --action approve` | **router** | ✅ **Yes** (gas_used 85657, paid 0) |
+| `settle --action dispute` | **policy** | ❌ **No** — `insufficient funds ... have 0 want 180322000000000` |
 | `erc8004 register` | ERC-8004 registry | ❌ **No** — CLI pre-checks and needs ~0.002 tBNB |
 
-**Rule of thumb: writes to commerceProxy are sponsored; everything else is not.**
-Mainnet is **never** sponsored. A custom stack selected via `ERC8183_*_ADDRESS` overrides
-is not sponsored either.
+**The whole happy path — hire → deliver → approve → COMPLETED — is fully sponsored and
+costs the user nothing.** Only `dispute` (policy contract) and ERC-8004 identity
+registration require real tBNB. Mainnet is **never** sponsored, and a custom stack selected
+via `ERC8183_*_ADDRESS` overrides is not sponsored either.
+
+This matters for the UI: the unhappy path (dispute) is the one that needs a funded wallet.
+Budget for that, or the dispute button will fail for an unfunded user.
 
 ---
 

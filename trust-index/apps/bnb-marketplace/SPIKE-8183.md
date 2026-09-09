@@ -243,6 +243,13 @@ seller are all CLI-driven and gas-sponsored on testnet. A *hosted* runtime
 | `settle --action dispute` | ✅ immediate, real on-chain tx |
 | `settle --action approve` → `COMPLETED` | ❌ **chain-enforced 24h wait. Impossible.** |
 
+> **⚠️ SUPERSEDED BY PHASE 2 — read the corrections below before acting on this table.**
+> The 24 h figure came from the bundled docs and is **wrong**: the deployed policy contract
+> returns `disputeWindow() = 900` (15 min). Both jobs reached `COMPLETED` the same hour.
+> Also inverted: `dispute` turned out to be the path that is **not** gas-sponsored, while
+> `approve` is. The Phase 1 rows above are left intact as a record of what we believed
+> before measuring the chain.
+
 **Recommendation: GO.** The Functionality criterion ("activating an agent end-to-end")
 is satisfiable: a user clicks hire → 4 real BSC transactions → escrow funded → agent
 delivers → buyer fetches the deliverable. Demo the settle as `dispute` (immediate) and
@@ -332,12 +339,44 @@ Phase 1 and it was **wrong in our favour** — a genuinely `COMPLETED` job is re
 | Operation | Contract | Sponsored? |
 |---|---|---|
 | createJob / registerJob / setBudget / fund / submit | commerceProxy | ✅ yes, gas paid 0 |
-| `dispute` | policy | ❌ **no** — `insufficient funds ... have 0 want 180322000000000` |
+| `settle --action approve` | router | ✅ **yes**, gas paid 0 |
+| `settle --action dispute` | policy | ❌ **no** — `insufficient funds ... have 0 want 180322000000000` |
 | `erc8004 register` | ERC-8004 registry | ❌ **no** — needs ~0.002 tBNB |
 
-So **the hire + deliver loop is free, but settlement and identity registration are not.**
-Both need tBNB from the Telegram faucet (a human). `settle` routes via the **router**
-contract, so whether approve is sponsored is a separate question from `dispute`.
+**The entire happy path is free.** Only `dispute` and ERC-8004 registration need tBNB
+from the Telegram faucet (a human).
+
+### ❌ No dispute tx hash — we could not produce one honestly
+We attempted `settle 1162 --action dispute` and it failed on gas, not on logic: the call
+targets the **policy** contract, which the paymaster does not sponsor, and our wallet holds
+0 tBNB. There is **no dispute transaction to show**. It needs ~0.00018 tBNB from the
+faucet. We are not going to present the approve hashes as if one of them were a dispute.
+
+## ✅ BOTH JOBS REACHED `COMPLETED` — full lifecycle, $0
+
+```
+settle(approve) 1162  0x75610bd3b7a91e67a400d546197ec3d1741e8421104b9c188a365ad03bab6403
+settle(approve) 1163  0xd2b007720816f4ac0f1df4fe32d69b5837b34ef1bef51c13c8688bb508e0e073
+                      both: gas_used 85657, effective_gas_price_wei 0, wallet_paid_wei 0
+```
+
+`bag erc8183 status 1162` → **COMPLETED**. `status 1163` → **COMPLETED**.
+
+Phase 1 called a completed job impossible before noon. That was based on the docs' 24 h
+figure; the chain says 900 s, and both jobs closed inside 20 minutes.
+
+Final wallet balances, after the whole exercise: **0 tBNB, 0 U on both BSC chains.**
+The $5 USDC on Base was never touched. **Total spend: $0.00.**
+
+The autonomous agent's actual deliverable for job 1163 (checkable by hand):
+```
+health_factor: 1.6633
+risk: HEALTHY
+formula: (collateral 12500 * threshold 0.825) / debt 6200
+max_debt_before_liquidation: 10312.50
+headroom: 4112.50
+method: deterministic arithmetic; no model, no external data source.
+```
 
 ## Reference agents — one real one, deliberately
 
