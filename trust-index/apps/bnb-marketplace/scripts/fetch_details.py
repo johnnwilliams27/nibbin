@@ -26,7 +26,7 @@ def detail_path(chain_id, token_id):
     return os.path.join(DET, f"{chain_id}_{token_id}.json")
 
 
-def fetch_one(cand, tries=5):
+def fetch_one(cand, tries=8):
     chain_id, token_id = cand["chain_id"], cand["token_id"]
     p = detail_path(chain_id, token_id)
     if os.path.exists(p) and os.path.getsize(p) > 2:
@@ -47,8 +47,20 @@ def fetch_one(cand, tries=5):
             return ("ok", cand["agent_id"], None)
         except Exception as e:  # noqa: BLE001 - retry timeouts too
             last = e
-            if getattr(e, "code", None) == 404:
+            code = getattr(e, "code", None)
+            if code == 404:
                 return ("missing", cand["agent_id"], "404 from detail endpoint")
+            if code == 429:
+                # Rate limited. Back off hard and honour Retry-After when the
+                # server sends one: being throttled is not the agent's problem,
+                # and giving up here would misrecord it as missing data.
+                ra = 0
+                try:
+                    ra = int(e.headers.get("Retry-After", 0))
+                except Exception:
+                    ra = 0
+                time.sleep(max(ra, min(5 * (2 ** i), 60)))
+                continue
             time.sleep(min(1.5 * (2 ** i), 20))
     return ("failed", cand["agent_id"], repr(last)[:300])
 
