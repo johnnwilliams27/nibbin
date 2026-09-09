@@ -343,7 +343,15 @@ def main():
     known_fail = set()
     if os.path.exists(fail_path):
         with open(fail_path) as f:
-            known_fail = {x["agent_id"] for x in json.load(f)["failures"]}
+            # The fetcher also records 404s and timeouts. Membership alone is
+            # not evidence of throttling. Support the legacy HTTPError record
+            # and an explicit structured rate-limit status.
+            known_fail = {
+                x["agent_id"] for x in json.load(f)["failures"]
+                if x.get("status") == "rate_limited"
+                or (x.get("status") == "failed"
+                    and str(x.get("error", "")).startswith("<HTTPError 429:"))
+            }
 
     # A separate probe run writes `assessment` into data/agents.json. Rebuilding
     # must not destroy that work, so carry forward any assessment already
@@ -413,17 +421,7 @@ def main():
             "is_reference_agent": False,
         })
 
-    payload = {
-        "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "agents": agents,
-    }
-    tmp = OUT + ".tmp"
-    with open(tmp, "w") as f:
-        json.dump(payload, f)
-    os.replace(tmp, OUT)
-
     cats = collections.Counter(a["category"] for a in agents)
-    print(f"wrote {len(agents)} agents -> {OUT}")
     print(f"assessments carried forward from probe run: {kept} "
           f"(dropped because endpoint changed: {dropped})")
     print(f"agents without a detail file: {no_detail} "
@@ -438,11 +436,23 @@ def main():
                   if a["detail_status"] == "unread_rate_limited"}
     unexplained = unread_ids - known_fail
     if unexplained:
-        print(f"ERROR: {len(unexplained)} agents have no detail file and no "
-              f"recorded fetch failure, so 'unread_rate_limited' would be a "
-              f"guess. Re-run fetch_details.py so the reason is recorded.")
+        print(f"ERROR: {len(unexplained)} agents have no readable detail and no "
+              f"recorded rate-limit failure, so 'unread_rate_limited' would be a "
+              f"guess. Inspect the fetch record. Existing dataset preserved.")
         print(f"  e.g. {sorted(unexplained)[:5]}")
         return 1
+
+    # Validate before creating even a temporary output. A failed command must
+    # leave the last publishable snapshot byte-for-byte intact.
+    payload = {
+        "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "agents": agents,
+    }
+    tmp = OUT + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(payload, f)
+    os.replace(tmp, OUT)
+    print(f"wrote {len(agents)} agents -> {OUT}")
 
     counts = collections.Counter(a["detail_status"] for a in agents)
     real_no_ep = sum(1 for a in agents

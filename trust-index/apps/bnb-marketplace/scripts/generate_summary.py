@@ -234,20 +234,26 @@ def main():
     # facts published as 1,708. See DATA-CONTRACT.md rule 4.
     read = [a for a in agents if a.get("detail_status") == "read"]
     unread = [a for a in agents if a.get("detail_status") == "unread_rate_limited"]
+    unknown = [a for a in agents
+               if a.get("detail_status") not in ("read", "unread_rate_limited")]
     no_ep = len([a for a in read if not a["endpoint"]])
     unprobed = len([a for a in agents if a["endpoint"] and not a["assessment"]])
     W(f"- `assessment` is populated for **{len(assessed)} of {n}** agents, from the "
       f"endpoint sweep recorded in `data/probes/endpoint-probes.json`. "
       f"No assessment value was synthesised: every field traces to a stored "
       f"probe transcript.")
-    W(f"- It is `null` for the other {n - len(assessed)} agents, for three "
-      f"different reasons that must not be conflated: **{no_ep}** were read and "
+    W(f"- It is `null` for the other {n - len(assessed)} agents. "
+      f"The recorded reasons must not be conflated: **{no_ep}** were read and "
       f"declare no endpoint (there is nothing to probe — this is a fact about "
       f"them); **{unprobed}** declare an endpoint that this sweep had not "
       f"reached when it ran; and **{len(unread)}** we never read at all, "
       f"because the detail fetch was rate-limited. Only the first group is "
       f"evidence. The other two are our gaps, and rerunning closes them — "
       f"`fetch_details.py` for the third, the probe sweep for the second.")
+    if unknown:
+        W(f"- **{len(unknown)}** rows have no recognised detail-fetch status. "
+          f"Whether their detail was read and why it is missing are unknown; "
+          f"they are excluded from 'declares no endpoint' counts.")
     W(f"- `is_reference_agent` is `false` for all {n} agents.")
     W("")
     W("> **Disclosure.** An earlier draft of `data/agents.json` in this working "

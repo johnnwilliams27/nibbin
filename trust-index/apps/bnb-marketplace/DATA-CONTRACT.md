@@ -38,7 +38,11 @@ Agent = {
   //                             must be excluded from the denominator of any
   //                             "has no endpoint" / "not callable" statistic,
   //                             and surfaced as unknown in the UI.
-  detail_status: "read" | "unread_rate_limited"
+  // AMENDED 2026-09-09 (handoff review): old or invalid snapshots cannot be
+  // assumed to have hit a rate limit. The presentation fallback is
+  // "unread_unknown"; it never counts as a confirmed absence of an endpoint.
+  // The builder still refuses to publish unexplained or non-throttle gaps.
+  detail_status: "read" | "unread_rate_limited" | "unread_unknown"
 
   // 8004scan-sourced (third_party_review provenance, weight 0.60)
   scan_total_score: number | null

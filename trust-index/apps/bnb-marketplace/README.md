@@ -63,6 +63,8 @@ or estimated records.
 ```bash
 npm run build          # static export to ./out
 npm run typecheck
+npm test               # detail-state regressions; Node 22.6+ required
+npm run test:pipeline  # offline dataset regressions; Python 3
 npx serve out          # preview the exported site
 ```
 

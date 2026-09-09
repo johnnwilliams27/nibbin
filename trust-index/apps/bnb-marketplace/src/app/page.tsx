@@ -70,10 +70,10 @@ export default function HomePage() {
             label="Callable interface"
             value={stats.callable}
             note={
-              `${pct(stats.callable, stats.total)} of the index declares an endpoint or speaks MCP/A2A. ` +
-              `${num(stats.notCallable)} declare no way in at all` +
+              `${pct(stats.callable, stats.total)} of listed agents declare an endpoint or MCP/A2A support. ` +
+              `${num(stats.notCallable)} have a detail record with no such declaration` +
               (stats.endpointUnknown > 0
-                ? `, and for ${num(stats.endpointUnknown)} we could not read the registry detail before hitting its rate limit — those are unknown to us, not uncallable.`
+                ? `; for ${num(stats.endpointUnknown)}, registry detail is unconfirmed, so whether they declare an interface is unknown.`
                 : '.')
             }
             source="self_reported"

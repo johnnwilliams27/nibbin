@@ -6,6 +6,11 @@ and the `old-nibbin` repository.
 
 ## Current
 
+- **Handoff review, 2026-09-09 — LOCAL, NOT MERGED.** The pending detail-fetch
+  fix was reviewed in `codex/trust-index-handoff`. Additional corrections prevent
+  rejected rebuilds from replacing the snapshot and missing-status rows from
+  acquiring an invented rate-limit reason. Initial artifact audit and validation:
+  `HANDOFF-REVIEW-2026-09-09.md`. No production refresh or threshold change.
 - **ERC-8004 population frame, 2026-09-09.** Censused all twelve EVM chains carrying the
   Identity Registry: **496,976 agents**, independently reproduced (within ~1.5%) of
   8004scan's 504,235+ without using their API. BSC holds 341,769 (69%) with ZERO feedback
@@ -73,4 +78,3 @@ and the `old-nibbin` repository.
     resolve-then-pin it describes and does not implement. gpt-5.5 answered 97 of 120 items under our
     rate limit, so the benchmark's vendor ordering means nothing (its structural findings survive).
     No human has reviewed a sample of the Claude-drafted ground-truth labels.
-

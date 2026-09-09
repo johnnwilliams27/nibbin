@@ -3,8 +3,10 @@ import { resolve } from 'node:path';
 import { CATEGORIES } from './categories';
 import type { Agent, CategorySlug, Coverage, Dataset } from './types';
 import { routeTokenId } from './routes';
+import { normaliseDetailStatus, isCallable, isEndpointUnknown, isNotCallable } from './detail-state';
 
 export { routeTokenId, agentHref } from './routes';
+export { isCallable, isEndpointUnknown, isNotCallable } from './detail-state';
 
 // Read at build time. Static export means the deployed site is a snapshot, so we
 // carry generated_at through to the UI and label it — a stale number that says
@@ -79,13 +81,7 @@ function normalise(a: Agent): Agent {
     category_evidence: a.category_evidence ?? '',
     protocols: Array.isArray(a.protocols) ? a.protocols : [],
     endpoint: a.endpoint ?? null,
-    // Defaults to `unread_rate_limited`, NOT to `read`. A row from an older
-    // snapshot carries no detail_status, and we genuinely do not know whether
-    // its detail was fetched — so the safe default is the one that says "we
-    // don't know" and keeps the agent out of every "declares no endpoint"
-    // count. Defaulting to `read` would silently restore the bug this field
-    // was added to fix, and it would do so quietly, on old data.
-    detail_status: a.detail_status === 'read' ? 'read' : 'unread_rate_limited',
+    detail_status: normaliseDetailStatus(a.detail_status),
     x402_supported: a.x402_supported === true,
     scan_total_score: typeof a.scan_total_score === 'number' ? a.scan_total_score : null,
     scan_feedbacks: typeof a.scan_feedbacks === 'number' ? a.scan_feedbacks : 0,
@@ -160,26 +156,6 @@ export function pageableAgents(): Agent[] {
   const listed = listedAgents();
   const seen = new Set(listed.map((a) => a.agent_id));
   return [...listed, ...referenceAgents().filter((a) => !seen.has(a.agent_id))];
-}
-
-/** Callable = we can actually reach out and talk to it. A declared endpoint is the floor. */
-export function isCallable(a: Agent): boolean {
-  return Boolean(a.endpoint) || a.protocols.some((p) => p.toUpperCase() === 'MCP' || p.toUpperCase() === 'A2A');
-}
-
-/**
- * We never read this agent's detail, so we do not know whether it is callable.
- * NOT the same as "not callable" — this is our rate-limit gap, and the three-way
- * split (callable / not callable / unknown) exists so the UI can never state the
- * second when it means the third.
- */
-export function isEndpointUnknown(a: Agent): boolean {
-  return a.detail_status === 'unread_rate_limited' && !isCallable(a);
-}
-
-/** Measured as not callable: we read the detail and it declares no way in. */
-export function isNotCallable(a: Agent): boolean {
-  return !isCallable(a) && !isEndpointUnknown(a);
 }
 
 export function isAssessed(a: Agent): boolean {

@@ -2,6 +2,11 @@
 
 ## Measuring subjects
 
+- A validation failure must happen before publishing the replacement snapshot.
+  The first detail-status fix returned an error for unexplained gaps only after
+  replacing `agents.json`. It also accepted every fetch failure as evidence of
+  throttling. Check the recorded cause, preserve the prior artifact on rejection,
+  and never give an old snapshot an invented rate-limit reason at presentation.
 - M7 trap: the diagnosis (Opus, ~$0.025/call, ~37x a draft) is an UNMETERED pipeline splurge
   today (once per study, subscription-absorbed). If M7 makes it a user-triggerable metered action
   it must be charged FRONTIER (3 credits) — STANDARD (1 credit) is −147% margin, a guaranteed
