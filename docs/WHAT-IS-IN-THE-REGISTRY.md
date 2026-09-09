@@ -22,9 +22,19 @@ answer is the question the probe exists to settle, and it is not settled here.
 | Registration doc readable now (inline `data:`) | 158,868 | 46.5% |
 | Registration doc behind an `http(s)` link (unread) | 165,517 | 48.4% |
 | Empty or other scheme | 17,631 | 5.2% |
-| **Of the 158,868 readable: declare any callable URL** | **1,990** | **1.25% of readable** |
-| Distinct callable URLs among them | 2,299 | — |
-| **Distinct protocol endpoints, placeholders removed** | **481** | — |
+| Of the 158,868 readable: declare **any** URL | 1,990 | 1.25% of readable |
+| — of those, a **machine interface** (mcp/a2a/oasf/x402/api) | **695** | 0.44% of readable |
+| — of those, only **web/social** links | 1,255 | — |
+| declare nothing at all | 156,918 | 98.8% of readable |
+| **Distinct machine endpoints** | **496** | — |
+
+> **Corrected 2026-09-09.** An earlier version of this table reported "1,990 declare a
+> callable URL" and 481 protocol endpoints. That counted a `web` profile page as callable.
+> The distinction is not pedantic: `metadata.evoevo.ai` hosts 120,187 registrations, each
+> declaring a *unique* endpoint that is `https://evoevo.ai/agent/detail?id=<n>` — a profile
+> page on one website, with `x402Support: false` and no machine interface. Counted loosely
+> that reads as 120,187 callable agents; counted correctly it is one website. Machine
+> interface and web link are now separate rows.
 
 ## The 40.9% that share a document
 
@@ -92,6 +102,28 @@ them, so the flag is overwhelmingly set without a corresponding endpoint.
 specification's own example, registered verbatim by 103 separate agents. Any pipeline that
 treats a declared endpoint as a real one will dial it 103 times and draw conclusions.
 
+## How this compares to the 10,041 the marketplace was built on
+
+They are not the same measurement, and the older number was inflated in exactly the way
+corrected above.
+
+| | old pipeline | this sweep |
+|---|---|---|
+| what it is | a candidate list from 8004scan, filtered by their flags plus 13 search terms | the entire chain |
+| size | 10,041 — **3.2% of BSC** | **342,016 — 100%** |
+| "has an endpoint" | 8,339 | — |
+| **spoke a protocol when actually dialled** | **358** | not yet dialled |
+
+That 8,339 counted any URL as an endpoint — among them `https://www.8004scan.io/create`
+(a signup page) and a `pbs.twimg.com/...jpg` (a profile image). When the marketplace dialled
+them, 358 spoke MCP or A2A.
+
+So: **358 protocol-speaking agents found by the old pipeline, against ~496 distinct machine
+endpoints declared in just the readable 46.5% of this sweep**, with 165,517 documents still
+unfetched. Same order of magnitude, from half the data, with no vendor dependency. Nothing
+was lost by switching frames; the count of genuinely usable things was always in the
+hundreds, and 10,041 was a candidate count that was never a claim about usability.
+
 ## So how many are real?
 
 **Unknown, and deliberately so.** What can be said from shape alone:
@@ -99,13 +131,12 @@ treats a declared endpoint as a real one will dial it 103 times and draw conclus
 - **342,016** registrations exist.
 - **~200,000** are plausibly distinct *identities* once byte-identical platform documents are
   collapsed — though "distinct document" is a weak proxy for "distinct agent".
-- **481** distinct endpoints are declared with a protocol we could speak, from the readable
-  half of the population.
+- **496** distinct machine endpoints are declared, from the readable half of the population.
 - **0** have been shown to work by this document. Shape is a claim, not evidence.
 
-The gap between 342,016 and 481 is the single most useful fact we have measured about this
-ecosystem, and it is a finding worth publishing on its own — provided every stage of it is
-labelled as a declaration rather than a verdict.
+The gap between 342,016 and a few hundred is the single most useful fact we have measured
+about this ecosystem, and it is a finding worth publishing on its own — provided every stage
+of it is labelled as a declaration rather than a verdict.
 
 ## The caveat that bounds all of the above
 
