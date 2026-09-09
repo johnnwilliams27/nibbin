@@ -16,7 +16,7 @@ export interface CategoryMeta {
   accentTint: string;
 }
 
-// Four categories, one shape, equal depth. If one of these ever gets a longer
+// Twelve categories, one shape, equal depth. If one of these ever gets a longer
 // entry than the others, that is a bug in the product, not a nicety.
 export const CATEGORIES: CategoryMeta[] = [
   {
@@ -58,6 +58,86 @@ export const CATEGORIES: CategoryMeta[] = [
     buyerQuestion: 'How fast does it answer? A slow monitor is not a monitor.',
     accent: 'var(--color-cat-health)',
     accentTint: 'var(--color-cat-health-bg)',
+  },
+  {
+    slug: 'payments',
+    path: 'payments',
+    name: 'Payments',
+    blurb: 'Moves stablecoins on your behalf, usually without you paying gas.',
+    handles: 'Stablecoin balances, transfer authority and settlement.',
+    buyerQuestion: 'What stops it sending twice, or sending to the wrong address?',
+    accent: 'var(--color-cat-payments)',
+    accentTint: 'var(--color-cat-payments-bg)',
+  },
+  {
+    slug: 'security',
+    path: 'security',
+    name: 'Security',
+    blurb: 'Reviews contracts and flags vulnerabilities before you deploy or deposit.',
+    handles: 'Source code and audit findings. Usually reads, rarely writes.',
+    buyerQuestion: 'Does it show its evidence, or just assert that something is safe?',
+    accent: 'var(--color-cat-security)',
+    accentTint: 'var(--color-cat-security-bg)',
+  },
+  {
+    slug: 'research',
+    path: 'research',
+    name: 'Research',
+    blurb: 'Reads markets, protocols and on-chain data, and reports what it found.',
+    handles: 'Public data and its own conclusions. Touches no funds.',
+    buyerQuestion: 'When it does not know, does it say so \u2014 or fabricate a number?',
+    accent: 'var(--color-cat-research)',
+    accentTint: 'var(--color-cat-research-bg)',
+  },
+  {
+    slug: 'content',
+    path: 'content',
+    name: 'Content',
+    blurb: 'Writes copy, posts and long-form text on a topic you give it.',
+    handles: 'Text it produces, and any account you let it post from.',
+    buyerQuestion: 'Will it invent a fact to finish a sentence?',
+    accent: 'var(--color-cat-content)',
+    accentTint: 'var(--color-cat-content-bg)',
+  },
+  {
+    slug: 'development',
+    path: 'development',
+    name: 'Development',
+    blurb: 'Writes and reviews code, including smart contracts.',
+    handles: 'Source it generates. What you do with that is on you.',
+    buyerQuestion: 'Has anything it wrote been audited, or is it shipping unreviewed?',
+    accent: 'var(--color-cat-development)',
+    accentTint: 'var(--color-cat-development-bg)',
+  },
+  {
+    slug: 'automation',
+    path: 'automation',
+    name: 'Automation',
+    blurb: 'Runs workflows and operational tasks on a schedule or a trigger.',
+    handles: 'Whatever the workflow it runs is allowed to touch.',
+    buyerQuestion: 'What happens on a step that fails halfway through?',
+    accent: 'var(--color-cat-automation)',
+    accentTint: 'var(--color-cat-automation-bg)',
+  },
+  {
+    slug: 'trading',
+    path: 'trading',
+    name: 'Trading',
+    blurb: 'Takes and manages positions autonomously, rather than to a fixed allocation.',
+    handles: 'Order flow, position size and exits.',
+    buyerQuestion: 'Can you see the strategy, or only the trades after the fact?',
+    accent: 'var(--color-cat-trading)',
+    accentTint: 'var(--color-cat-trading-bg)',
+  },
+  {
+    slug: 'staking',
+    path: 'staking',
+    name: 'Staking',
+    blurb: 'Stakes and restakes, and picks where the stake goes.',
+    handles: 'Staked principal and the validator or protocol chosen.',
+    buyerQuestion: 'What is the unbonding period, and who bears a slashing event?',
+    accent: 'var(--color-cat-staking)',
+    accentTint: 'var(--color-cat-staking-bg)',
   },
 ];
 

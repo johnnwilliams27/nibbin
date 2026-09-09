@@ -35,6 +35,16 @@ const AGENTS = `${MARKET}/data/agents.json`;
 const RESULTS = `${MARKET}/data/probes/endpoint-probes.json`;
 
 type Assessment = {
+  /**
+   * Agents in the snapshot sharing this endpoint, this one included.
+   *
+   * Optional here on purpose: the functions below build an assessment from a
+   * transcript and have no view of the dataset, so the fan-out is not knowable
+   * until the write site. Requiring it here would force a placeholder at six
+   * construction sites, and a placeholder is the thing this field exists to
+   * prevent.
+   */
+  endpoint_shared_with?: number;
   reachable: boolean | null;
   protocol_spoken: "mcp" | "a2a" | null;
   tools_or_skills: string[];
@@ -345,6 +355,9 @@ const dataset = JSON.parse(readFileSync(AGENTS, "utf8")) as {
 };
 const probed = JSON.parse(readFileSync(RESULTS, "utf8")) as { results: EndpointResult[] };
 
+/** endpoint -> how many agents in the dataset declare it. */
+const endpointFanout = new Map<string, number>();
+
 const byEndpoint = new Map<string, Assessment>();
 for (const r of probed.results) byEndpoint.set(r.endpoint, assessmentFor(r));
 
@@ -417,6 +430,11 @@ let skippedReference = 0;
 let noEndpoint = 0;
 let unprobed = 0;
 for (const a of dataset.agents) {
+  const ep = a.endpoint;
+  if (typeof ep === "string" && ep !== "") endpointFanout.set(ep, (endpointFanout.get(ep) ?? 0) + 1);
+}
+
+for (const a of dataset.agents) {
   if (a.is_reference_agent === true) {
     a.assessment = null; // we do not rate our own
     skippedReference += 1;
@@ -440,6 +458,13 @@ for (const a of dataset.agents) {
   // Written in contract order, so a human diffing the file reads the fields in
   // the order DATA-CONTRACT.md lists them.
   a.assessment = {
+    // How many agents in this dataset declare the SAME endpoint, this one
+    // included. One endpoint's behaviour is one measurement, and writing it
+    // onto 229 rows without saying so turns 11 measured services into "239
+    // rated agents" -- the same one-thing-counted-many-times inflation the
+    // registry itself is full of, reproduced by us. The UI renders this
+    // wherever a score appears.
+    endpoint_shared_with: a.endpoint == null ? 1 : (endpointFanout.get(a.endpoint as string) ?? 1),
     reachable: found.reachable,
     protocol_spoken: found.protocol_spoken,
     tools_or_skills: found.tools_or_skills,

@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-09-09T09:32:45.786Z",
+ "generated_at": "2026-09-09T09:41:21.107Z",
  "results": [
   {
    "endpoint": "https://q402.quackai.ai/api/mcp/info",
@@ -48,6 +48,171 @@
    },
    "a2a": null,
    "probed_at": "2026-09-09T09:27:06Z"
+  },
+  {
+   "endpoint": "https://app.singularry.org/api/mcp",
+   "host": "app.singularry.org",
+   "protocols": [
+    "MCP"
+   ],
+   "priority": 0,
+   "agent_count": 227,
+   "mcp": {
+    "transcript_version": "1",
+    "probe_id": "probe:mcp:v1",
+    "endpoint": "https://app.singularry.org/api/mcp",
+    "probed_at": "2026-09-09T09:40:23Z",
+    "attempts": [
+     {
+      "attempt": 1,
+      "ts": "2026-09-09T09:40:23Z",
+      "reachable": true,
+      "status": 200,
+      "reason": null,
+      "elapsedMs": 427
+     },
+     {
+      "attempt": 2,
+      "ts": "2026-09-09T09:40:24Z",
+      "reachable": true,
+      "status": 200,
+      "reason": null,
+      "elapsedMs": 433
+     },
+     {
+      "attempt": 3,
+      "ts": "2026-09-09T09:40:25Z",
+      "reachable": true,
+      "status": 200,
+      "reason": null,
+      "elapsedMs": 418
+     }
+    ],
+    "handshake": {
+     "ok": true,
+     "protocolVersion": "2025-06-18",
+     "serverName": "Singularry Agent Platform",
+     "serverVersion": "1.0.0",
+     "instructions": null,
+     "reason": null
+    },
+    "tools": {
+     "ok": true,
+     "declared": [
+      {
+       "name": "list_active_agents",
+       "description": "List Singularry agents currently marked active on the platform (max 100). Returns nfaTokenId, erc8004AgentId, slyWalletAddress, riskProfile and persona name for each. Public — no authentication required.",
+       "inputSchema": {
+        "type": "object",
+        "properties": {}
+       },
+       "outputSchema": null,
+       "annotations": null
+      },
+      {
+       "name": "get_agent_portfolio",
+       "description": "Get an agent's currently-open strategy positions as the Singularry runtime reports them: per-position strategy, cost basis, mark-to-market value and unrealised PnL. This is the runtime position book, NOT a raw on-chain token scan. Requires `Authorization: Bearer <privy access token>` of the agent OWNER. A public ratios-only tier exists but is DISABLED during beta; other callers get an authentication error.",
+       "inputSchema": {
+        "type": "object",
+        "properties": {
+         "nfaTokenId": {
+          "type": "string",
+          "description": "NFA token ID (e.g. \"1\" for SLY)"
+         }
+        },
+        "required": [
+         "nfaTokenId"
+        ]
+       },
+       "outputSchema": null,
+       "annotations": null
+      },
+      {
+       "name": "get_agent_strategies",
+       "description": "Get an agent's active strategy commitments and allocation capacity (per-strategy allocated capital, portfolio mode, free capital, risk budget). Additionally requires the account to have AI-Agent access, mirroring the dashboard route this proxies. Requires `Authorization: Bearer <privy access token>` of the agent OWNER. A public ratios-only tier exists but is DISABLED during beta; other callers get an authentication error.",
+       "inputSchema": {
+        "type": "object",
+        "properties": {
+         "nfaTokenId": {
+          "type": "string",
+          "description": "NFA token ID"
+         }
+        },
+        "required": [
+         "nfaTokenId"
+        ]
+       },
+       "outputSchema": null,
+       "annotations": null
+      },
+      {
+       "name": "get_agent_pnl",
+       "description": "Get an agent's PnL summary for one window: realised PnL, unrealised PnL, total return %, and open/closed position counts. Some fields are null when the runtime suppresses an untrustworthy number — null is never zero. Requires `Authorization: Bearer <privy access token>` of the agent OWNER. A public ratios-only tier exists but is DISABLED during beta; other callers get an authentication error.",
+       "inputSchema": {
+        "type": "object",
+        "properties": {
+         "nfaTokenId": {
+          "type": "string",
+          "description": "NFA token ID"
+         },
+         "window": {
+          "type": "string",
+          "description": "PnL window",
+          "enum": [
+           "24h",
+           "7d",
+           "30d",
+           "90d",
+           "all"
+          ],
+          "default": "30d"
+         }
+        },
+        "required": [
+         "nfaTokenId"
+        ]
+       },
+       "outputSchema": null,
+       "annotations": null
+      },
+      {
+       "name": "get_recent_decisions",
+       "description": "Get an agent's recent autonomous-loop allocation decisions from the runtime feed (cycle number, strategy, action, reason, timestamp). This is the RUNTIME feed only — narrower than the dashboard activity feed, which additionally merges chatbot-side exit and maintenance rows. Requires `Authorization: Bearer <privy access token>` of the agent OWNER. A public ratios-only tier exists but is DISABLED during beta; other callers get an authentication error.",
+       "inputSchema": {
+        "type": "object",
+        "properties": {
+         "nfaTokenId": {
+          "type": "string",
+          "description": "NFA token ID"
+         },
+         "limit": {
+          "type": "number",
+          "description": "Max rows (default 10, clamped to 200)",
+          "minimum": 1,
+          "maximum": 200
+         }
+        },
+        "required": [
+         "nfaTokenId"
+        ]
+       },
+       "outputSchema": null,
+       "annotations": null
+      }
+     ],
+     "reason": null
+    },
+    "registry": null,
+    "auth": {
+     "required": false,
+     "status": 200,
+     "scheme": null,
+     "hop": "initialize"
+    },
+    "rate_limit": null
+   },
+   "a2a": null,
+   "probed_at": "2026-09-09T09:40:23Z"
   },
   {
    "endpoint": "https://4lpha.tech/mcp",
@@ -321,47 +486,6 @@
    },
    "a2a": null,
    "probed_at": "2026-09-09T09:27:06Z"
-  },
-  {
-   "endpoint": "https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A562333538205%3Aruntime%2Fssgridtrader_ssgridtrader-3Xa9LeCsj5/invocations/.well-known/agent-card.json",
-   "host": "bedrock-agentcore.us-east-1.amazonaws.com",
-   "protocols": [
-    "A2A"
-   ],
-   "priority": 0,
-   "agent_count": 2,
-   "mcp": null,
-   "a2a": {
-    "transcript_version": "1",
-    "probe_id": "probe:a2a:v1",
-    "subject_url": "https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A562333538205%3Aruntime%2Fssgridtrader_ssgridtrader-3Xa9LeCsj5/invocations/.well-known/agent-card.json",
-    "probed_at": "2026-09-09T09:27:51Z",
-    "discovery": {
-     "ok": false,
-     "url": null,
-     "path": null,
-     "outcome": "auth_walled",
-     "attempts": [
-      {
-       "url": "https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A562333538205%3Aruntime%2Fssgridtrader_ssgridtrader-3Xa9LeCsj5/invocations/.well-known/agent-card.json",
-       "path": "/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A562333538205%3Aruntime%2Fssgridtrader_ssgridtrader-3Xa9LeCsj5/invocations/.well-known/agent-card.json",
-       "kind": "declared",
-       "outcome": "auth_walled",
-       "status": 401,
-       "contentType": "application/json",
-       "reason": "the agent declined an anonymous client (HTTP 401)",
-       "elapsedMs": 214
-      }
-     ],
-     "reason": "the agent declined an anonymous client (HTTP 401)",
-     "elapsedMs": 214
-    },
-    "declaration": null,
-    "reachability": null,
-    "registry": null,
-    "gaps": []
-   },
-   "probed_at": "2026-09-09T09:27:51Z"
   },
   {
    "endpoint": "https://cm-4216438b6456d2fc-site-2d12e7a74de1.bubbleupdappos.workers.dev/.well-known/agent-card.json",
@@ -1480,7 +1604,7 @@
     "transcript_version": "1",
     "probe_id": "probe:a2a:v1",
     "subject_url": "https://agent.brainonbnb.com/a2a",
-    "probed_at": "2026-09-09T09:27:51Z",
+    "probed_at": "2026-09-09T09:40:27Z",
     "discovery": {
      "ok": true,
      "url": "https://agent.brainonbnb.com/.well-known/agent-card.json",
@@ -1495,7 +1619,7 @@
        "status": 200,
        "contentType": "application/json",
        "reason": "HTTP 200 with JSON that is not an Agent Card",
-       "elapsedMs": 349
+       "elapsedMs": 323
       },
       {
        "url": "https://agent.brainonbnb.com/.well-known/agent-card.json",
@@ -1505,11 +1629,11 @@
        "status": 200,
        "contentType": "application/json",
        "reason": null,
-       "elapsedMs": 1000
+       "elapsedMs": 217
       }
      ],
      "reason": null,
-     "elapsedMs": 1350
+     "elapsedMs": 540
     },
     "declaration": {
      "ok": true,
@@ -1659,12 +1783,248 @@
      "rpcErrorCode": -32601,
      "rpcErrorMessage": "this agent speaks message/send; \"GetTask\" is not implemented",
      "reason": "GetTask is not implemented (-32601)",
-     "elapsedMs": 3189
+     "elapsedMs": 330
     },
     "registry": null,
     "gaps": []
    },
-   "probed_at": "2026-09-09T09:27:51Z"
+   "probed_at": "2026-09-09T09:40:27Z"
+  },
+  {
+   "endpoint": "https://agents.chainhelix.io/healthmon/.well-known/agent-card.json",
+   "host": "agents.chainhelix.io",
+   "protocols": [
+    "A2A"
+   ],
+   "priority": 0,
+   "agent_count": 1,
+   "mcp": null,
+   "a2a": {
+    "transcript_version": "1",
+    "probe_id": "probe:a2a:v1",
+    "subject_url": "https://agents.chainhelix.io/healthmon/.well-known/agent-card.json",
+    "probed_at": "2026-09-09T09:40:27Z",
+    "discovery": {
+     "ok": true,
+     "url": "https://agents.chainhelix.io/healthmon/.well-known/agent-card.json",
+     "path": "/healthmon/.well-known/agent-card.json",
+     "outcome": "card",
+     "attempts": [
+      {
+       "url": "https://agents.chainhelix.io/healthmon/.well-known/agent-card.json",
+       "path": "/healthmon/.well-known/agent-card.json",
+       "kind": "declared",
+       "outcome": "card",
+       "status": 200,
+       "contentType": "application/json; charset=utf-8",
+       "reason": null,
+       "elapsedMs": 921
+      }
+     ],
+     "reason": null,
+     "elapsedMs": 921
+    },
+    "declaration": {
+     "ok": true,
+     "name": "healthmon-agent",
+     "description": "healthmon-agent: deterministic on-chain work, sold per job through ERC-8183 escrow (negotiate + notify_funded over A2A) and per call on the B402 rail (/x402). The work skill on this card states exactly what a job must contain.",
+     "version": "1.0.0",
+     "protocolVersion": "0.3.0",
+     "provider": null,
+     "documentationUrl": null,
+     "capabilities": {
+      "streaming": false,
+      "pushNotifications": null,
+      "stateTransitionHistory": null,
+      "extensions": 1,
+      "raw": {
+       "streaming": false,
+       "extensions": [
+        {
+         "uri": "https://agents.chainhelix.io/ext/skill-input-schema/v1",
+         "description": "JSON Schema (draft 2020-12) of the task_description each work skill accepts, keyed by skill id",
+         "required": false,
+         "params": {
+          "health": {
+           "$schema": "https://json-schema.org/draft/2020-12/schema",
+           "title": "health task_description",
+           "description": "One question per job: lending health (collateral, debt, prices) or LP range health (position).",
+           "type": "object",
+           "properties": {
+            "collateral": {
+             "type": "object",
+             "additionalProperties": {
+              "type": "object",
+              "properties": {
+               "amount": {
+                "type": "number"
+               },
+               "liqThreshold": {
+                "type": "number"
+               }
+              },
+              "required": [
+               "amount",
+               "liqThreshold"
+              ]
+             },
+             "description": "liqThreshold in (0, 1]; required unless `position` is sent (also accepted as: collaterals, supplied, deposits)"
+            },
+            "debt": {
+             "type": "object",
+             "additionalProperties": {
+              "type": "number"
+             },
+             "description": "outstanding debt per symbol; required unless `position` is sent (also accepted as: debts, borrowed, borrows, loans)"
+            },
+            "prices": {
+             "type": "object",
+             "additionalProperties": {
+              "type": "number"
+             },
+             "description": "a mark for every collateral and debt symbol (also accepted as: marks, quotes, pricesUsd)"
+            },
+            "alertHF": {
+             "type": "number",
+             "description": "warning level, default 1.5"
+            },
+            "criticalHF": {
+             "type": "number",
+             "description": "critical level, must be below alertHF, default 1.1"
+            },
+            "position": {
+             "type": "object",
+             "properties": {
+              "price": {
+               "type": "number"
+              },
+              "lowerPrice": {
+               "type": "number"
+              },
+              "upperPrice": {
+               "type": "number"
+              }
+             },
+             "required": [
+              "price",
+              "lowerPrice",
+              "upperPrice"
+             ],
+             "description": "PancakeSwap v3 LP range health instead of lending health (do not send with collateral or debt); optional nearEdgePct, feesEarnedUsd, positionValueUsd, ageDays; returns range status, distance to each edge, position inside the band and the fee run-rate (also accepted as: lpPosition, range)"
+            },
+            "walls": {
+             "type": "object",
+             "additionalProperties": {
+              "type": "number"
+             },
+             "description": "with position only: strong levels keyed by price, each range edge is annotated with the nearest one"
+            }
+           },
+           "required": [],
+           "anyOf": [
+            {
+             "required": [
+              "collateral",
+              "debt",
+              "prices"
+             ]
+            },
+            {
+             "required": [
+              "position"
+             ]
+            }
+           ],
+           "additionalProperties": true
+          }
+         }
+        }
+       ]
+      }
+     },
+     "skills": [
+      {
+       "id": "health",
+       "name": "Position health report",
+       "description": "Lending health: given collateral rows with liquidation thresholds, debt and prices, returns the health factor, its status (healthy, warning, critical, liquidatable) and per-asset liquidation prices with drop distances. LP range health: send `position` {price, lowerPrice, upperPrice} instead of collateral and debt. One question per job. Deterministic arithmetic, no custody, no execution. The job input is a flat JSON object sent as task_description when negotiating. It is anchored on chain as the job task and answered as sent. Parameters: collateral ({SYMBOL: {amount, liqThreshold}}, required): liqThreshold in (0, 1]; required unless `position` is sent; also accepted as collaterals, supplied, deposits; debt ({SYMBOL: amount}, required): outstanding debt per symbol; required unless `position` is sent; also accepted as debts, borrowed, borrows, loans; prices ({SYMBOL: usd}, required): a mark for every collateral and debt symbol; also accepted as marks, quotes, pricesUsd; alertHF (number, optional): warning level, default 1.5; criticalHF (number, optional): critical level, must be below alertHF, default 1.1; position ({price, lowerPrice, upperPrice}, optional): PancakeSwap v3 LP range health instead of lending health (do not send with collateral or debt); optional nearEdgePct, feesEarnedUsd, positionValueUsd, ageDays; returns range status, distance to each edge, position inside the band and the fee run-rate; also accepted as lpPosition, range; walls ({price: touches}, optional): with position only: strong levels keyed by price, each range edge is annotated with the nearest one. A request missing a required parameter is refused with these names in the refusal.",
+       "tags": [
+        "health",
+        "liquidation",
+        "deterministic"
+       ],
+       "examples": [
+        "{\"collateral\":{\"ETH\":{\"amount\":10,\"liqThreshold\":0.8}},\"debt\":{\"USDT\":10000},\"prices\":{\"ETH\":2000,\"USDT\":1}}"
+       ],
+       "inputModes": [
+        "application/json"
+       ],
+       "outputModes": [
+        "application/json"
+       ]
+      },
+      {
+       "id": "negotiate",
+       "name": "Negotiate an ERC-8183 job",
+       "description": "Send a data part {\"skill\": \"negotiate\", \"task_description\": \"<the job spec as the flat JSON object shown in the work skill's examples>\", \"terms\": {\"deliverables\": \"...\", \"quality_standards\": \"...\"}} (both terms keys are REQUIRED) and receive a wallet-signed price quote (price, currency, negotiation_hash, provider_sig). Anchor the returned envelope on-chain via createJob + fund, then send the `notify_funded` skill with the job_id to request delivery.",
+       "tags": [
+        "erc8183",
+        "negotiation",
+        "bnb-chain"
+       ],
+       "examples": [],
+       "inputModes": [
+        "application/json"
+       ],
+       "outputModes": [
+        "application/json"
+       ]
+      },
+      {
+       "id": "notify_funded",
+       "name": "Notify the seller a job is funded (request delivery)",
+       "description": "After you fund the job on-chain, send {\"skill\": \"notify_funded\", \"job_id\": <int>} to tell the seller \"I funded job X, please deliver\". The seller verifies the funded job carries its signed quote and replies AT ONCE with {\"status\": \"accepted\"|\"rejected\", \"job_id\"}; delivery then runs in the background (work takes time). Do NOT wait on this call for the result; read the deliverable back from the CHAIN once the job reaches SUBMITTED (the `submit` tx carries the deliverable_url; ERC-8183 `get_deliverable_url`). The agent serves no job-query endpoint.",
+       "tags": [
+        "erc8183",
+        "delivery",
+        "bnb-chain"
+       ],
+       "examples": [],
+       "inputModes": [
+        "application/json"
+       ],
+       "outputModes": [
+        "application/json"
+       ]
+      }
+     ],
+     "skillCount": 3,
+     "interfaces": [
+      {
+       "url": "https://agents.chainhelix.io/healthmon/",
+       "transport": "JSONRPC",
+       "protocolVersion": "0.3.0",
+       "source": "url"
+      }
+     ],
+     "securitySchemes": [],
+     "missingRequired": [],
+     "reason": null
+    },
+    "reachability": {
+     "ok": true,
+     "url": "https://agents.chainhelix.io/healthmon/",
+     "verdict": "speaks_a2a",
+     "status": 200,
+     "method": "tasks/get",
+     "rpcErrorCode": -32001,
+     "rpcErrorMessage": "Task not found: 00000000-0000-4000-8000-000000000000",
+     "reason": null,
+     "elapsedMs": 570
+    },
+    "registry": null,
+    "gaps": []
+   },
+   "probed_at": "2026-09-09T09:40:27Z"
   },
   {
    "endpoint": "https://agents.chainhelix.io/rebalancer/.well-known/agent-card.json",
@@ -2443,6 +2803,203 @@
    "probed_at": "2026-09-09T09:27:51Z"
   },
   {
+   "endpoint": "https://api.bortagent.xyz/.well-known/agent-card.json",
+   "host": "api.bortagent.xyz",
+   "protocols": [
+    "A2A"
+   ],
+   "priority": 0,
+   "agent_count": 1,
+   "mcp": null,
+   "a2a": {
+    "transcript_version": "1",
+    "probe_id": "probe:a2a:v1",
+    "subject_url": "https://api.bortagent.xyz/.well-known/agent-card.json",
+    "probed_at": "2026-09-09T09:40:27Z",
+    "discovery": {
+     "ok": true,
+     "url": "https://api.bortagent.xyz/.well-known/agent-card.json",
+     "path": "/.well-known/agent-card.json",
+     "outcome": "card",
+     "attempts": [
+      {
+       "url": "https://api.bortagent.xyz/.well-known/agent-card.json",
+       "path": "/.well-known/agent-card.json",
+       "kind": "declared",
+       "outcome": "card",
+       "status": 200,
+       "contentType": "application/json; charset=utf-8",
+       "reason": null,
+       "elapsedMs": 424
+      }
+     ],
+     "reason": null,
+     "elapsedMs": 424
+    },
+    "declaration": {
+     "ok": true,
+     "name": "BORT Agent",
+     "description": "Autonomous on-chain agents on BNB Smart Chain (BAP-578). Each agent reads live token data, trades on PancakeSwap and FourMeme, and acts from its own ERC-6551 wallet under an owner-revocable on-chain spend guard.",
+     "version": "1.0.0",
+     "protocolVersion": "0.3.0",
+     "provider": "BORT",
+     "documentationUrl": "https://bortagent.xyz",
+     "capabilities": {
+      "streaming": false,
+      "pushNotifications": false,
+      "stateTransitionHistory": false,
+      "extensions": 0,
+      "raw": {
+       "streaming": false,
+       "pushNotifications": false,
+       "stateTransitionHistory": false,
+       "x402": true
+      }
+     },
+     "skills": [
+      {
+       "id": "trade",
+       "name": "On-chain trading",
+       "description": "Buy and sell tokens on PancakeSwap and FourMeme from the agent's own wallet, with stop-loss and take-profit.",
+       "tags": [
+        "trading",
+        "defi",
+        "bnb-chain",
+        "pancakeswap",
+        "fourmeme"
+       ],
+       "examples": [],
+       "inputModes": [],
+       "outputModes": []
+      },
+      {
+       "id": "market-data",
+       "name": "Live market data",
+       "description": "Read token prices, liquidity, market cap, and swap quotes on BNB Chain.",
+       "tags": [
+        "market-data",
+        "analytics",
+        "dexscreener"
+       ],
+       "examples": [],
+       "inputModes": [],
+       "outputModes": []
+      },
+      {
+       "id": "holdings",
+       "name": "Portfolio",
+       "description": "Report the agent's BNB and token holdings from its ERC-6551 wallet.",
+       "tags": [
+        "portfolio",
+        "wallet",
+        "erc-6551"
+       ],
+       "examples": [],
+       "inputModes": [],
+       "outputModes": []
+      },
+      {
+       "id": "signals",
+       "name": "Social signal trading",
+       "description": "Monitor Telegram groups and X for alpha, verify tokens on-chain, and act on signals.",
+       "tags": [
+        "signals",
+        "social",
+        "alpha"
+       ],
+       "examples": [],
+       "inputModes": [],
+       "outputModes": []
+      },
+      {
+       "id": "chat",
+       "name": "Conversational control",
+       "description": "Natural-language chat to query the agent's holdings and direct its actions.",
+       "tags": [
+        "chat",
+        "nlp",
+        "llm"
+       ],
+       "examples": [],
+       "inputModes": [],
+       "outputModes": []
+      },
+      {
+       "id": "paid-inference",
+       "name": "Pay-per-call LLM inference",
+       "description": "Buy one OpenAI-compatible chat completion per request, paid in $U (EIP-3009) over x402 on BNB Chain. No account, no API key. GET /api/inference/v1/models for models and per-call prices.",
+       "tags": [
+        "inference",
+        "llm",
+        "x402",
+        "pay-per-call",
+        "openai-compatible",
+        "bnb-chain"
+       ],
+       "examples": [],
+       "inputModes": [],
+       "outputModes": []
+      },
+      {
+       "id": "prepaid-credits",
+       "name": "Prepaid LLM credit packs",
+       "description": "Buy a pack of OpenAI-compatible chat completions up front, paid in $U (EIP-3009) over x402 on BNB Chain, then spend it with an API key: one on-chain settle per pack instead of one per call. GET /api/credits/config for packs, POST /api/credits/key (EIP-191 signature) for a key, then POST /api/credits/v1/chat/completions with Authorization: Bearer. The same balance also powers a BORT agent premium brain.",
+       "tags": [
+        "inference",
+        "llm",
+        "x402",
+        "prepaid",
+        "credits",
+        "openai-compatible",
+        "bnb-chain"
+       ],
+       "examples": [],
+       "inputModes": [],
+       "outputModes": []
+      }
+     ],
+     "skillCount": 7,
+     "interfaces": [
+      {
+       "url": "https://api.bortagent.xyz/api/a2a",
+       "transport": "JSONRPC",
+       "protocolVersion": "0.3.0",
+       "source": "url"
+      },
+      {
+       "url": "https://api.bortagent.xyz/api/inference/v1",
+       "transport": "HTTP+JSON",
+       "protocolVersion": "0.3.0",
+       "source": "additionalInterfaces"
+      },
+      {
+       "url": "https://api.bortagent.xyz/api/credits/v1",
+       "transport": "HTTP+JSON",
+       "protocolVersion": "0.3.0",
+       "source": "additionalInterfaces"
+      }
+     ],
+     "securitySchemes": [],
+     "missingRequired": [],
+     "reason": null
+    },
+    "reachability": {
+     "ok": true,
+     "url": "https://api.bortagent.xyz/api/a2a",
+     "verdict": "jsonrpc_no_a2a_method",
+     "status": 200,
+     "method": "GetTask",
+     "rpcErrorCode": -32601,
+     "rpcErrorMessage": "unsupported method: GetTask",
+     "reason": "GetTask is not implemented (-32601)",
+     "elapsedMs": 853
+    },
+    "registry": null,
+    "gaps": []
+   },
+   "probed_at": "2026-09-09T09:40:27Z"
+  },
+  {
    "endpoint": "https://api.orbit-agents.com/a2a/pix",
    "host": "api.orbit-agents.com",
    "protocols": [
@@ -2526,6 +3083,171 @@
    "probed_at": "2026-09-09T09:27:51Z"
   },
   {
+   "endpoint": "https://app.singularry.org/.well-known/agent-card.json",
+   "host": "app.singularry.org",
+   "protocols": [
+    "A2A"
+   ],
+   "priority": 0,
+   "agent_count": 1,
+   "mcp": null,
+   "a2a": {
+    "transcript_version": "1",
+    "probe_id": "probe:a2a:v1",
+    "subject_url": "https://app.singularry.org/api/mcp",
+    "probed_at": "2026-09-09T09:40:27Z",
+    "discovery": {
+     "ok": true,
+     "url": "https://app.singularry.org/.well-known/agent-card.json",
+     "path": "/.well-known/agent-card.json",
+     "outcome": "card",
+     "attempts": [
+      {
+       "url": "https://app.singularry.org/api/mcp",
+       "path": "/api/mcp",
+       "kind": "declared",
+       "outcome": "not_a_card",
+       "status": 200,
+       "contentType": "application/json",
+       "reason": "HTTP 200 with JSON that is not an Agent Card",
+       "elapsedMs": 93
+      },
+      {
+       "url": "https://app.singularry.org/.well-known/agent-card.json",
+       "path": "/.well-known/agent-card.json",
+       "kind": "well-known",
+       "outcome": "card",
+       "status": 200,
+       "contentType": "application/json",
+       "reason": null,
+       "elapsedMs": 406
+      }
+     ],
+     "reason": null,
+     "elapsedMs": 499
+    },
+    "declaration": {
+     "ok": true,
+     "name": "Singularry",
+     "description": "AI agent platform for autonomous DeFi trading on BNB Chain. Runs 17+ strategies (DCA, momentum, funding-rate arbitrage, concentrated-liquidity LP, yield loops) across user-owned Diamond wallets with on-chain capability gating.",
+     "version": "1.0.0",
+     "protocolVersion": "0.3.0",
+     "provider": "Singularry",
+     "documentationUrl": "https://docs.singularry.org",
+     "capabilities": {
+      "streaming": false,
+      "pushNotifications": false,
+      "stateTransitionHistory": false,
+      "extensions": 0,
+      "raw": {
+       "streaming": false,
+       "pushNotifications": false,
+       "stateTransitionHistory": false
+      }
+     },
+     "skills": [
+      {
+       "id": "autonomous-portfolio-management",
+       "name": "Autonomous Portfolio Management",
+       "description": "Multi-strategy DeFi portfolio allocation + 4-hour rebalancing within user-defined risk tiers (conservative / balanced / aggressive).",
+       "tags": [
+        "defi",
+        "portfolio",
+        "rebalancing",
+        "autonomous"
+       ],
+       "examples": [],
+       "inputModes": [],
+       "outputModes": []
+      },
+      {
+       "id": "yield-optimization",
+       "name": "Yield Optimization",
+       "description": "Discover and rotate into highest-APY opportunities across Venus, USDD vault, Lista, Pendle, and BNB-Chain DEX pools.",
+       "tags": [
+        "yield",
+        "lending",
+        "lp",
+        "apy"
+       ],
+       "examples": [],
+       "inputModes": [],
+       "outputModes": []
+      },
+      {
+       "id": "funding-rate-arbitrage",
+       "name": "Funding Rate Arbitrage",
+       "description": "Delta-neutral spot + perp positions capturing funding-rate spread across Binance CEX, Aster, and on-chain perp venues.",
+       "tags": [
+        "arbitrage",
+        "perps",
+        "delta-neutral",
+        "funding-rate"
+       ],
+       "examples": [],
+       "inputModes": [],
+       "outputModes": []
+      },
+      {
+       "id": "concentrated-liquidity-lp",
+       "name": "Concentrated Liquidity LP",
+       "description": "Manage Uniswap V3 / Pancake V3 / Thena positions with perp-hedged delta neutrality + auto-rebalance on range exits.",
+       "tags": [
+        "uniswap-v3",
+        "lp",
+        "hedging",
+        "thena",
+        "pancake"
+       ],
+       "examples": [],
+       "inputModes": [],
+       "outputModes": []
+      },
+      {
+       "id": "dca-execution",
+       "name": "Dollar-Cost Averaging",
+       "description": "Scheduled buy-the-dip DCA into top-cap assets via on-chain DCA facet executions.",
+       "tags": [
+        "dca",
+        "accumulation",
+        "btc",
+        "eth"
+       ],
+       "examples": [],
+       "inputModes": [],
+       "outputModes": []
+      }
+     ],
+     "skillCount": 5,
+     "interfaces": [
+      {
+       "url": "https://app.singularry.org/api/a2a",
+       "transport": "JSONRPC",
+       "protocolVersion": "0.3.0",
+       "source": "url"
+      }
+     ],
+     "securitySchemes": [],
+     "missingRequired": [],
+     "reason": null
+    },
+    "reachability": {
+     "ok": true,
+     "url": "https://app.singularry.org/api/a2a",
+     "verdict": "speaks_a2a",
+     "status": 200,
+     "method": "tasks/get",
+     "rpcErrorCode": -32001,
+     "rpcErrorMessage": "Task not found: this endpoint is stateless and creates no tasks",
+     "reason": null,
+     "elapsedMs": 177
+    },
+    "registry": null,
+    "gaps": []
+   },
+   "probed_at": "2026-09-09T09:40:27Z"
+  },
+  {
    "endpoint": "https://assay-ten-iota.vercel.app/api/agents/range",
    "host": "assay-ten-iota.vercel.app",
    "protocols": [
@@ -2605,6 +3327,47 @@
     "gaps": []
    },
    "probed_at": "2026-09-09T09:27:51Z"
+  },
+  {
+   "endpoint": "https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A562333538205%3Aruntime%2Fsslprebalancer_sslprebalancer-H04NynHcX4/invocations/.well-known/agent-card.json",
+   "host": "bedrock-agentcore.us-east-1.amazonaws.com",
+   "protocols": [
+    "A2A"
+   ],
+   "priority": 0,
+   "agent_count": 1,
+   "mcp": null,
+   "a2a": {
+    "transcript_version": "1",
+    "probe_id": "probe:a2a:v1",
+    "subject_url": "https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A562333538205%3Aruntime%2Fsslprebalancer_sslprebalancer-H04NynHcX4/invocations/.well-known/agent-card.json",
+    "probed_at": "2026-09-09T09:40:27Z",
+    "discovery": {
+     "ok": false,
+     "url": null,
+     "path": null,
+     "outcome": "auth_walled",
+     "attempts": [
+      {
+       "url": "https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A562333538205%3Aruntime%2Fsslprebalancer_sslprebalancer-H04NynHcX4/invocations/.well-known/agent-card.json",
+       "path": "/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A562333538205%3Aruntime%2Fsslprebalancer_sslprebalancer-H04NynHcX4/invocations/.well-known/agent-card.json",
+       "kind": "declared",
+       "outcome": "auth_walled",
+       "status": 401,
+       "contentType": "application/json",
+       "reason": "the agent declined an anonymous client (HTTP 401)",
+       "elapsedMs": 536
+      }
+     ],
+     "reason": "the agent declined an anonymous client (HTTP 401)",
+     "elapsedMs": 536
+    },
+    "declaration": null,
+    "reachability": null,
+    "registry": null,
+    "gaps": []
+   },
+   "probed_at": "2026-09-09T09:40:27Z"
   },
   {
    "endpoint": "https://bitagent.s3.ap-southeast-1.amazonaws.com/0x2FCdAc49E7a6C1914b570Eb4d84120Dde2Fd5841/.well-known/agent-card.json",
@@ -3236,6 +3999,254 @@
    "probed_at": "2026-09-09T09:27:51Z"
   },
   {
+   "endpoint": "https://bnb-lp.172-104-171-139.nip.io/.well-known/agent-card.json",
+   "host": "bnb-lp.172-104-171-139.nip.io",
+   "protocols": [
+    "A2A"
+   ],
+   "priority": 0,
+   "agent_count": 1,
+   "mcp": null,
+   "a2a": {
+    "transcript_version": "1",
+    "probe_id": "probe:a2a:v1",
+    "subject_url": "https://bnb-lp.172-104-171-139.nip.io/.well-known/agent-card.json",
+    "probed_at": "2026-09-09T09:40:27Z",
+    "discovery": {
+     "ok": true,
+     "url": "https://bnb-lp.172-104-171-139.nip.io/.well-known/agent-card.json",
+     "path": "/.well-known/agent-card.json",
+     "outcome": "card",
+     "attempts": [
+      {
+       "url": "https://bnb-lp.172-104-171-139.nip.io/.well-known/agent-card.json",
+       "path": "/.well-known/agent-card.json",
+       "kind": "declared",
+       "outcome": "card",
+       "status": 200,
+       "contentType": "application/json",
+       "reason": null,
+       "elapsedMs": 978
+      }
+     ],
+     "reason": null,
+     "elapsedMs": 978
+    },
+    "declaration": {
+     "ok": true,
+     "name": "bnbLpRangeRebalancer-agent",
+     "description": "ERC-8183 seller agent (bnbLpRangeRebalancer-agent) — negotiate + notify_funded over A2A.",
+     "version": "1.0.0",
+     "protocolVersion": "0.3.0",
+     "provider": null,
+     "documentationUrl": null,
+     "capabilities": {
+      "streaming": false,
+      "pushNotifications": null,
+      "stateTransitionHistory": null,
+      "extensions": 0,
+      "raw": {
+       "streaming": false
+      }
+     },
+     "skills": [
+      {
+       "id": "negotiate",
+       "name": "Negotiate an ERC-8183 job",
+       "description": "Send a data part {\"skill\": \"negotiate\", \"task_description\": \"...\", \"terms\": {\"deliverables\": \"...\", \"quality_standards\": \"...\"}} (both terms keys are REQUIRED) and receive a wallet-signed price quote (price, currency, negotiation_hash, provider_sig). Anchor the returned envelope on-chain via createJob + fund, then send the `notify_funded` skill with the job_id to request delivery.",
+       "tags": [
+        "erc8183",
+        "negotiation",
+        "bnb-chain"
+       ],
+       "examples": [],
+       "inputModes": [
+        "application/json"
+       ],
+       "outputModes": [
+        "application/json"
+       ]
+      },
+      {
+       "id": "notify_funded",
+       "name": "Notify the seller a job is funded (request delivery)",
+       "description": "After you fund the job on-chain, send {\"skill\": \"notify_funded\", \"job_id\": <int>} to tell the seller \"I funded job X — please deliver\". The seller verifies the funded job carries its signed quote and replies AT ONCE with {\"status\": \"accepted\"|\"rejected\", \"job_id\"}; delivery then runs in the background (work takes time). Do NOT wait on this call for the result — read the deliverable back from the CHAIN once the job reaches SUBMITTED (the `submit` tx carries the deliverable_url; ERC-8183 `get_deliverable_url`). The agent serves no job-query endpoint.",
+       "tags": [
+        "erc8183",
+        "delivery",
+        "bnb-chain"
+       ],
+       "examples": [],
+       "inputModes": [
+        "application/json"
+       ],
+       "outputModes": [
+        "application/json"
+       ]
+      }
+     ],
+     "skillCount": 2,
+     "interfaces": [
+      {
+       "url": "https://bnb-lp.172-104-171-139.nip.io/",
+       "transport": "JSONRPC",
+       "protocolVersion": "0.3.0",
+       "source": "url"
+      }
+     ],
+     "securitySchemes": [],
+     "missingRequired": [],
+     "reason": null
+    },
+    "reachability": {
+     "ok": true,
+     "url": "https://bnb-lp.172-104-171-139.nip.io/",
+     "verdict": "speaks_a2a",
+     "status": 200,
+     "method": "tasks/get",
+     "rpcErrorCode": -32001,
+     "rpcErrorMessage": "Task not found",
+     "reason": null,
+     "elapsedMs": 924
+    },
+    "registry": null,
+    "gaps": []
+   },
+   "probed_at": "2026-09-09T09:40:27Z"
+  },
+  {
+   "endpoint": "https://bnb-yield.172-104-171-139.nip.io/.well-known/agent-card.json",
+   "host": "bnb-yield.172-104-171-139.nip.io",
+   "protocols": [
+    "A2A"
+   ],
+   "priority": 0,
+   "agent_count": 1,
+   "mcp": null,
+   "a2a": {
+    "transcript_version": "1",
+    "probe_id": "probe:a2a:v1",
+    "subject_url": "https://bnb-yield.172-104-171-139.nip.io/mcp/",
+    "probed_at": "2026-09-09T09:40:27Z",
+    "discovery": {
+     "ok": true,
+     "url": "https://bnb-yield.172-104-171-139.nip.io/.well-known/agent-card.json",
+     "path": "/.well-known/agent-card.json",
+     "outcome": "card",
+     "attempts": [
+      {
+       "url": "https://bnb-yield.172-104-171-139.nip.io/mcp/",
+       "path": "/mcp/",
+       "kind": "declared",
+       "outcome": "not_a_card",
+       "status": 406,
+       "contentType": "application/json",
+       "reason": "HTTP 406",
+       "elapsedMs": 1198
+      },
+      {
+       "url": "https://bnb-yield.172-104-171-139.nip.io/.well-known/agent-card.json",
+       "path": "/.well-known/agent-card.json",
+       "kind": "well-known",
+       "outcome": "card",
+       "status": 200,
+       "contentType": "application/json",
+       "reason": null,
+       "elapsedMs": 945
+      }
+     ],
+     "reason": null,
+     "elapsedMs": 2143
+    },
+    "declaration": {
+     "ok": true,
+     "name": "BNB Yield Optimizer",
+     "description": "Scans BSC lending and liquidity protocols, calculates risk-adjusted yield, and migrates capital when the improvement is economically meaningful.",
+     "version": "0.1.0",
+     "protocolVersion": null,
+     "provider": "BNB Yield Optimizer",
+     "documentationUrl": null,
+     "capabilities": {
+      "streaming": false,
+      "pushNotifications": false,
+      "stateTransitionHistory": null,
+      "extensions": 0,
+      "raw": {
+       "streaming": false,
+       "pushNotifications": false
+      }
+     },
+     "skills": [
+      {
+       "id": "negotiate",
+       "name": "negotiate",
+       "description": "Quote a price for a risk-adjusted BSC yield analysis. Returns the provider address to assign an ERC-8183 job to, and the budget it must be funded with. Rule-based: the price is a fixed list price, never model-derived.",
+       "tags": [
+        "erc8183",
+        "commerce",
+        "defi",
+        "yield"
+       ],
+       "examples": [
+        "{\"skill\": \"negotiate\", \"description\": \"scan BSC yields\"}"
+       ],
+       "inputModes": [
+        "application/json"
+       ],
+       "outputModes": [
+        "application/json"
+       ]
+      },
+      {
+       "id": "notify_funded",
+       "name": "notify_funded",
+       "description": "Tell the agent an ERC-8183 job has been funded on-chain. The job is re-verified against the chain before any work begins; the deliverable is then produced, pinned to IPFS, and its hash submitted on-chain.",
+       "tags": [
+        "erc8183",
+        "commerce",
+        "delivery"
+       ],
+       "examples": [
+        "{\"skill\": \"notify_funded\", \"job_id\": 42}"
+       ],
+       "inputModes": [
+        "application/json"
+       ],
+       "outputModes": [
+        "application/json"
+       ]
+      }
+     ],
+     "skillCount": 2,
+     "interfaces": [
+      {
+       "url": "http://bnb-yield.172-104-171-139.nip.io/a2a",
+       "transport": "jsonrpc",
+       "protocolVersion": "0.3.0",
+       "source": "supportedInterfaces"
+      }
+     ],
+     "securitySchemes": [],
+     "missingRequired": [],
+     "reason": null
+    },
+    "reachability": {
+     "ok": true,
+     "url": "http://bnb-yield.172-104-171-139.nip.io/a2a",
+     "verdict": "speaks_a2a",
+     "status": 200,
+     "method": "tasks/get",
+     "rpcErrorCode": -32602,
+     "rpcErrorMessage": "unknown task: 00000000-0000-4000-8000-000000000000",
+     "reason": null,
+     "elapsedMs": 1146
+    },
+    "registry": null,
+    "gaps": []
+   },
+   "probed_at": "2026-09-09T09:40:27Z"
+  },
+  {
    "endpoint": "https://bnbagent-api.bnbchain.world/v1/rt/01M1DJT1ZJT359DNCKEBSDMZ33/.well-known/agent-card.json",
    "host": "bnbagent-api.bnbchain.world",
    "protocols": [
@@ -3295,6 +4306,467 @@
     "gaps": []
    },
    "probed_at": "2026-09-09T09:27:51Z"
+  },
+  {
+   "endpoint": "https://clawdmint-api.vercel.app/mcp",
+   "host": "clawdmint-api.vercel.app",
+   "protocols": [
+    "A2A"
+   ],
+   "priority": 0,
+   "agent_count": 1,
+   "mcp": {
+    "transcript_version": "1",
+    "probe_id": "probe:mcp:v1",
+    "endpoint": "https://clawdmint-api.vercel.app/mcp",
+    "probed_at": "2026-09-09T09:40:23Z",
+    "attempts": [
+     {
+      "attempt": 1,
+      "ts": "2026-09-09T09:40:23Z",
+      "reachable": true,
+      "status": 200,
+      "reason": null,
+      "elapsedMs": 505
+     },
+     {
+      "attempt": 2,
+      "ts": "2026-09-09T09:40:24Z",
+      "reachable": true,
+      "status": 200,
+      "reason": null,
+      "elapsedMs": 294
+     },
+     {
+      "attempt": 3,
+      "ts": "2026-09-09T09:40:25Z",
+      "reachable": true,
+      "status": 200,
+      "reason": null,
+      "elapsedMs": 323
+     }
+    ],
+    "handshake": {
+     "ok": true,
+     "protocolVersion": "2025-06-18",
+     "serverName": "clawdmint-mcp",
+     "serverVersion": "1.0.0",
+     "instructions": null,
+     "reason": null
+    },
+    "tools": {
+     "ok": true,
+     "declared": [
+      {
+       "name": "chat",
+       "description": "Have a natural conversation with ClawdMint AI agent.",
+       "inputSchema": {
+        "type": "object",
+        "properties": {
+         "message": {
+          "type": "string",
+          "description": "Your message or question"
+         }
+        },
+        "required": [
+         "message"
+        ]
+       },
+       "outputSchema": null,
+       "annotations": null
+      },
+      {
+       "name": "echo",
+       "description": "Echo back the input message (for testing and debugging)",
+       "inputSchema": {
+        "type": "object",
+        "properties": {
+         "message": {
+          "type": "string",
+          "description": "The message to echo"
+         }
+        },
+        "required": [
+         "message"
+        ]
+       },
+       "outputSchema": null,
+       "annotations": null
+      },
+      {
+       "name": "get_time",
+       "description": "Get the current UTC time and date",
+       "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+       },
+       "outputSchema": null,
+       "annotations": null
+      },
+      {
+       "name": "get_balance",
+       "description": "Get the native token or ERC20 token balance of a wallet address on a specified chain.",
+       "inputSchema": {
+        "type": "object",
+        "properties": {
+         "address": {
+          "type": "string",
+          "description": "Wallet address (0x...)"
+         },
+         "chain": {
+          "type": "string",
+          "description": "Chain: ethereum, base, arbitrum, optimism, polygon, bsc, gnosis, avalanche, celo, linea, metis, scroll, mantle, taiko, sei, peaq",
+          "default": "ethereum"
+         },
+         "token_address": {
+          "type": "string",
+          "description": "Optional ERC20 token contract address"
+         }
+        },
+        "required": [
+         "address"
+        ]
+       },
+       "outputSchema": null,
+       "annotations": null
+      },
+      {
+       "name": "get_multichain_balance",
+       "description": "Get native token balances across multiple chains for a single wallet address.",
+       "inputSchema": {
+        "type": "object",
+        "properties": {
+         "address": {
+          "type": "string",
+          "description": "Wallet address (0x...)"
+         },
+         "chains": {
+          "type": "string",
+          "description": "Comma-separated chain names",
+          "default": "ethereum,base,arbitrum,optimism,polygon,bsc"
+         }
+        },
+        "required": [
+         "address"
+        ]
+       },
+       "outputSchema": null,
+       "annotations": null
+      },
+      {
+       "name": "get_token_price",
+       "description": "Get the current USD price, 24h change, and market cap of any cryptocurrency token.",
+       "inputSchema": {
+        "type": "object",
+        "properties": {
+         "token": {
+          "type": "string",
+          "description": "Token symbol (ETH, BTC, SOL, SEI, PEAQ...) or CoinGecko ID"
+         }
+        },
+        "required": [
+         "token"
+        ]
+       },
+       "outputSchema": null,
+       "annotations": null
+      },
+      {
+       "name": "get_market_overview",
+       "description": "Get a real-time market overview of the top cryptocurrencies.",
+       "inputSchema": {
+        "type": "object",
+        "properties": {
+         "tokens": {
+          "type": "string",
+          "description": "Comma-separated token symbols",
+          "default": "ETH,BTC,SOL,BNB,MATIC,AVAX"
+         }
+        },
+        "required": []
+       },
+       "outputSchema": null,
+       "annotations": null
+      },
+      {
+       "name": "get_tx",
+       "description": "Get full details of a blockchain transaction by hash.",
+       "inputSchema": {
+        "type": "object",
+        "properties": {
+         "tx_hash": {
+          "type": "string",
+          "description": "Transaction hash (0x...)"
+         },
+         "chain": {
+          "type": "string",
+          "description": "Chain name",
+          "default": "ethereum"
+         }
+        },
+        "required": [
+         "tx_hash"
+        ]
+       },
+       "outputSchema": null,
+       "annotations": null
+      },
+      {
+       "name": "get_gas_prices",
+       "description": "Get current gas prices across multiple chains for cost comparison.",
+       "inputSchema": {
+        "type": "object",
+        "properties": {
+         "chains": {
+          "type": "string",
+          "default": "ethereum,base,arbitrum,optimism,polygon,avalanche,bsc,linea,scroll,mantle,metis,taiko,zksync,abstract,monad,megaeth,sei,peaq"
+         }
+        },
+        "required": []
+       },
+       "outputSchema": null,
+       "annotations": null
+      },
+      {
+       "name": "get_token_info",
+       "description": "Get detailed information about an ERC20 token contract.",
+       "inputSchema": {
+        "type": "object",
+        "properties": {
+         "token_address": {
+          "type": "string",
+          "description": "ERC20 token contract address (0x...)"
+         },
+         "chain": {
+          "type": "string",
+          "description": "Chain name",
+          "default": "ethereum"
+         }
+        },
+        "required": [
+         "token_address"
+        ]
+       },
+       "outputSchema": null,
+       "annotations": null
+      },
+      {
+       "name": "resolve_ens",
+       "description": "Resolve an ENS name to an Ethereum address, or reverse-lookup an address to its ENS name.",
+       "inputSchema": {
+        "type": "object",
+        "properties": {
+         "name": {
+          "type": "string",
+          "description": "ENS name (e.g. vitalik.eth) or Ethereum address"
+         }
+        },
+        "required": [
+         "name"
+        ]
+       },
+       "outputSchema": null,
+       "annotations": null
+      },
+      {
+       "name": "get_yield_opportunities",
+       "description": "Find the best yield opportunities for USDC, USDT, ETH, WETH, USDe across Morpho, Aave v3, Fluid, Spark.",
+       "inputSchema": {
+        "type": "object",
+        "properties": {
+         "asset": {
+          "type": "string",
+          "description": "Asset symbol: USDC, USDT, USDT0, ETH, WETH, USDe",
+          "default": "USDC"
+         },
+         "min_tvl_usd": {
+          "type": "number",
+          "default": 5000000
+         },
+         "top_n": {
+          "type": "number",
+          "default": 5
+         }
+        },
+        "required": []
+       },
+       "outputSchema": null,
+       "annotations": null
+      },
+      {
+       "name": "get_bridge_route",
+       "description": "Find the best bridge route to transfer tokens between chains using LiFi/Jumper.",
+       "inputSchema": {
+        "type": "object",
+        "properties": {
+         "from_chain": {
+          "type": "string",
+          "description": "Source chain"
+         },
+         "to_chain": {
+          "type": "string",
+          "description": "Destination chain"
+         },
+         "from_token": {
+          "type": "string",
+          "default": "USDC"
+         },
+         "to_token": {
+          "type": "string"
+         },
+         "amount": {
+          "type": "string"
+         },
+         "from_address": {
+          "type": "string"
+         }
+        },
+        "required": [
+         "from_chain",
+         "to_chain",
+         "amount"
+        ]
+       },
+       "outputSchema": null,
+       "annotations": null
+      },
+      {
+       "name": "get_block",
+       "description": "Get information about a specific block.",
+       "inputSchema": {
+        "type": "object",
+        "properties": {
+         "block": {
+          "type": "string",
+          "default": "latest"
+         },
+         "chain": {
+          "type": "string",
+          "default": "ethereum"
+         }
+        },
+        "required": []
+       },
+       "outputSchema": null,
+       "annotations": null
+      }
+     ],
+     "reason": null
+    },
+    "registry": null,
+    "auth": {
+     "required": false,
+     "status": 200,
+     "scheme": null,
+     "hop": "initialize"
+    },
+    "rate_limit": null
+   },
+   "a2a": {
+    "transcript_version": "1",
+    "probe_id": "probe:a2a:v1",
+    "subject_url": "https://clawdmint-api.vercel.app/mcp",
+    "probed_at": "2026-09-09T09:40:27Z",
+    "discovery": {
+     "ok": true,
+     "url": "https://clawdmint-api.vercel.app/mcp",
+     "path": "/mcp",
+     "outcome": "card",
+     "attempts": [
+      {
+       "url": "https://clawdmint-api.vercel.app/mcp",
+       "path": "/mcp",
+       "kind": "declared",
+       "outcome": "card",
+       "status": 200,
+       "contentType": "application/json; charset=utf-8",
+       "reason": null,
+       "elapsedMs": 396
+      }
+     ],
+     "reason": null,
+     "elapsedMs": 397
+    },
+    "declaration": {
+     "ok": true,
+     "name": "clawdmint-mcp",
+     "description": null,
+     "version": "1.0.0",
+     "protocolVersion": null,
+     "provider": null,
+     "documentationUrl": null,
+     "capabilities": {
+      "streaming": null,
+      "pushNotifications": null,
+      "stateTransitionHistory": null,
+      "extensions": 0,
+      "raw": {
+       "tools": {
+        "list": [
+         "chat",
+         "echo",
+         "get_time",
+         "get_balance",
+         "get_multichain_balance",
+         "get_token_price",
+         "get_market_overview",
+         "get_tx",
+         "get_gas_prices",
+         "get_token_info",
+         "resolve_ens",
+         "get_yield_opportunities",
+         "get_bridge_route",
+         "get_block"
+        ]
+       },
+       "resources": {
+        "list": [
+         "clawdmint://chains",
+         "clawdmint://market",
+         "clawdmint://agent-info"
+        ]
+       },
+       "prompts": {
+        "list": [
+         "analyze_wallet",
+         "price_check",
+         "cross_chain_summary",
+         "tx_explain",
+         "greeting",
+         "help"
+        ]
+       }
+      }
+     },
+     "skills": [],
+     "skillCount": 0,
+     "interfaces": [],
+     "securitySchemes": [],
+     "missingRequired": [
+      "description",
+      "defaultInputModes",
+      "defaultOutputModes",
+      "skills",
+      "url"
+     ],
+     "reason": null
+    },
+    "reachability": {
+     "ok": false,
+     "url": null,
+     "verdict": "not_declared",
+     "status": null,
+     "method": null,
+     "rpcErrorCode": null,
+     "rpcErrorMessage": null,
+     "reason": "the card declares no interface URL",
+     "elapsedMs": 0
+    },
+    "registry": null,
+    "gaps": []
+   },
+   "probed_at": "2026-09-09T09:40:27Z"
   },
   {
    "endpoint": "https://cm-3c862a61841d384e-site-36e24663f69d.bubbleupdappos.workers.dev/.well-known/agent-card.json",
@@ -5562,6 +7034,141 @@
    "probed_at": "2026-09-09T09:27:51Z"
   },
   {
+   "endpoint": "https://genesis-marketplace-one.vercel.app/api/apex/gridwright/.well-known/agent-card.json",
+   "host": "genesis-marketplace-one.vercel.app",
+   "protocols": [
+    "A2A"
+   ],
+   "priority": 0,
+   "agent_count": 1,
+   "mcp": null,
+   "a2a": {
+    "transcript_version": "1",
+    "probe_id": "probe:a2a:v1",
+    "subject_url": "https://genesis-marketplace-one.vercel.app/api/apex/gridwright/.well-known/agent-card.json",
+    "probed_at": "2026-09-09T09:40:27Z",
+    "discovery": {
+     "ok": true,
+     "url": "https://genesis-marketplace-one.vercel.app/api/apex/gridwright/.well-known/agent-card.json",
+     "path": "/api/apex/gridwright/.well-known/agent-card.json",
+     "outcome": "card",
+     "attempts": [
+      {
+       "url": "https://genesis-marketplace-one.vercel.app/api/apex/gridwright/.well-known/agent-card.json",
+       "path": "/api/apex/gridwright/.well-known/agent-card.json",
+       "kind": "declared",
+       "outcome": "card",
+       "status": 200,
+       "contentType": "application/json",
+       "reason": null,
+       "elapsedMs": 663
+      }
+     ],
+     "reason": null,
+     "elapsedMs": 663
+    },
+    "declaration": {
+     "ok": true,
+     "name": "Gridwright",
+     "description": "Marketplace specialist for grid trading (built by Genesis). Designs multi-level grids between user bounds, sizes notional per level, and returns pause rules for drawdown. You keep execution — Gridwright delivers the strategy brief.",
+     "version": "gridwright@specialist-plan-v1",
+     "protocolVersion": "0.2.9",
+     "provider": "Genesis Marketplace",
+     "documentationUrl": "https://genesis-marketplace-one.vercel.app/genesis/gridwright",
+     "capabilities": {
+      "streaming": false,
+      "pushNotifications": false,
+      "stateTransitionHistory": null,
+      "extensions": 0,
+      "raw": {
+       "streaming": false,
+       "pushNotifications": false
+      }
+     },
+     "skills": [
+      {
+       "id": "gridwright-skill-1",
+       "name": "Grid layout (N levels)",
+       "description": "Automated grid plans on BSC pairs",
+       "tags": [
+        "grid-trading",
+        "erc-8004",
+        "plan-only"
+       ],
+       "examples": [],
+       "inputModes": [],
+       "outputModes": []
+      },
+      {
+       "id": "gridwright-skill-2",
+       "name": "Drawdown pause rules",
+       "description": "Automated grid plans on BSC pairs",
+       "tags": [
+        "grid-trading",
+        "erc-8004",
+        "plan-only"
+       ],
+       "examples": [],
+       "inputModes": [],
+       "outputModes": []
+      },
+      {
+       "id": "gridwright-skill-3",
+       "name": "24h fill simulation",
+       "description": "Automated grid plans on BSC pairs",
+       "tags": [
+        "grid-trading",
+        "erc-8004",
+        "plan-only"
+       ],
+       "examples": [],
+       "inputModes": [],
+       "outputModes": []
+      },
+      {
+       "id": "gridwright-skill-4",
+       "name": "Pair volatility bands",
+       "description": "Automated grid plans on BSC pairs",
+       "tags": [
+        "grid-trading",
+        "erc-8004",
+        "plan-only"
+       ],
+       "examples": [],
+       "inputModes": [],
+       "outputModes": []
+      }
+     ],
+     "skillCount": 4,
+     "interfaces": [
+      {
+       "url": "https://genesis-marketplace-one.vercel.app/api/apex/gridwright",
+       "transport": null,
+       "protocolVersion": "0.2.9",
+       "source": "url"
+      }
+     ],
+     "securitySchemes": [],
+     "missingRequired": [],
+     "reason": null
+    },
+    "reachability": {
+     "ok": false,
+     "url": "https://genesis-marketplace-one.vercel.app/api/apex/gridwright",
+     "verdict": "answered_not_a2a",
+     "status": 405,
+     "method": "tasks/get",
+     "rpcErrorCode": null,
+     "rpcErrorMessage": null,
+     "reason": "HTTP 405 at the declared endpoint",
+     "elapsedMs": 290
+    },
+    "registry": null,
+    "gaps": []
+   },
+   "probed_at": "2026-09-09T09:40:27Z"
+  },
+  {
    "endpoint": "https://genesis-marketplace-one.vercel.app/api/apex/range-keeper/.well-known/agent-card.json",
    "host": "genesis-marketplace-one.vercel.app",
    "protocols": [
@@ -7288,6 +8895,227 @@
    "probed_at": "2026-09-09T09:27:51Z"
   },
   {
+   "endpoint": "https://mcp.ezcto.fun/",
+   "host": "mcp.ezcto.fun",
+   "protocols": [
+    "A2A"
+   ],
+   "priority": 0,
+   "agent_count": 1,
+   "mcp": {
+    "transcript_version": "1",
+    "probe_id": "probe:mcp:v1",
+    "endpoint": "https://mcp.ezcto.fun/",
+    "probed_at": "2026-09-09T09:40:23Z",
+    "attempts": [
+     {
+      "attempt": 1,
+      "ts": "2026-09-09T09:40:23Z",
+      "reachable": true,
+      "status": 200,
+      "reason": null,
+      "elapsedMs": 382
+     },
+     {
+      "attempt": 2,
+      "ts": "2026-09-09T09:40:24Z",
+      "reachable": true,
+      "status": 200,
+      "reason": null,
+      "elapsedMs": 131
+     },
+     {
+      "attempt": 3,
+      "ts": "2026-09-09T09:40:25Z",
+      "reachable": true,
+      "status": 200,
+      "reason": null,
+      "elapsedMs": 160
+     }
+    ],
+    "handshake": {
+     "ok": true,
+     "protocolVersion": null,
+     "serverName": null,
+     "serverVersion": null,
+     "instructions": null,
+     "reason": null
+    },
+    "tools": {
+     "ok": true,
+     "declared": [],
+     "reason": null
+    },
+    "registry": null,
+    "auth": {
+     "required": false,
+     "status": 200,
+     "scheme": null,
+     "hop": "initialize"
+    },
+    "rate_limit": null
+   },
+   "a2a": {
+    "transcript_version": "1",
+    "probe_id": "probe:a2a:v1",
+    "subject_url": "https://mcp.ezcto.fun/",
+    "probed_at": "2026-09-09T09:40:27Z",
+    "discovery": {
+     "ok": false,
+     "url": null,
+     "path": null,
+     "outcome": "absent",
+     "attempts": [
+      {
+       "url": "https://mcp.ezcto.fun/.well-known/agent-card.json",
+       "path": "/.well-known/agent-card.json",
+       "kind": "well-known",
+       "outcome": "absent",
+       "status": 404,
+       "contentType": "application/json",
+       "reason": "no card at this path (HTTP 404)",
+       "elapsedMs": 190
+      },
+      {
+       "url": "https://mcp.ezcto.fun/.well-known/agent.json",
+       "path": "/.well-known/agent.json",
+       "kind": "well-known",
+       "outcome": "absent",
+       "status": 404,
+       "contentType": "application/json",
+       "reason": "no card at this path (HTTP 404)",
+       "elapsedMs": 230
+      }
+     ],
+     "reason": "no card at this path (HTTP 404)",
+     "elapsedMs": 420
+    },
+    "declaration": null,
+    "reachability": null,
+    "registry": null,
+    "gaps": []
+   },
+   "probed_at": "2026-09-09T09:40:27Z"
+  },
+  {
+   "endpoint": "https://mpp.hyreagent.fun/.well-known/agent-card.json",
+   "host": "mpp.hyreagent.fun",
+   "protocols": [
+    "A2A"
+   ],
+   "priority": 0,
+   "agent_count": 1,
+   "mcp": null,
+   "a2a": {
+    "transcript_version": "1",
+    "probe_id": "probe:a2a:v1",
+    "subject_url": "https://mpp.hyreagent.fun/agents/bobo",
+    "probed_at": "2026-09-09T09:40:27Z",
+    "discovery": {
+     "ok": true,
+     "url": "https://mpp.hyreagent.fun/.well-known/agent-card.json",
+     "path": "/.well-known/agent-card.json",
+     "outcome": "card",
+     "attempts": [
+      {
+       "url": "https://mpp.hyreagent.fun/agents/bobo",
+       "path": "/agents/bobo",
+       "kind": "declared",
+       "outcome": "absent",
+       "status": 404,
+       "contentType": "application/json",
+       "reason": "no card at this path (HTTP 404)",
+       "elapsedMs": 409
+      },
+      {
+       "url": "https://mpp.hyreagent.fun/.well-known/agent-card.json",
+       "path": "/.well-known/agent-card.json",
+       "kind": "well-known",
+       "outcome": "card",
+       "status": 200,
+       "contentType": "application/json",
+       "reason": null,
+       "elapsedMs": 62
+      }
+     ],
+     "reason": null,
+     "elapsedMs": 471
+    },
+    "declaration": {
+     "ok": true,
+     "name": "HYRE Agent",
+     "description": "AI-enhanced DeFi intelligence API. 22 endpoints across Trenches, Traders, LPs, DeFi, and cross-chain (deBridge). Pay-per-call via x402 on Solana, Base, and SKALE. Returns LLM-interpreted insights with confidence-scored signals. No API keys — payment is the only gate.",
+     "version": null,
+     "protocolVersion": null,
+     "provider": null,
+     "documentationUrl": null,
+     "capabilities": {
+      "streaming": null,
+      "pushNotifications": null,
+      "stateTransitionHistory": null,
+      "extensions": 0,
+      "raw": {
+       "x402": {
+        "routing": {
+         "solana": {
+          "prefix": "/",
+          "facilitator": "https://facilitator.payai.network",
+          "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+          "payTo": "7G73PLhKvAPBGTzG5ESAE4coE7QrVeTTKfhTxQZbyGgC"
+         },
+         "base": {
+          "prefix": "/base/",
+          "facilitator": "https://facilitator.payai.network",
+          "network": "eip155:8453",
+          "payTo": "0xb5998e11E666Fd1e7f3B8e8d9122A755eec1E9b7"
+         },
+         "skale": {
+          "prefix": "/skale/",
+          "facilitator": "https://facilitator.payai.network",
+          "network": "eip155:1187947933",
+          "payTo": "0xb5998e11E666Fd1e7f3B8e8d9122A755eec1E9b7"
+         },
+         "bsc": {
+          "prefix": "/bsc/",
+          "facilitator": "https://b402-proxy.hyreagent.fun",
+          "network": "eip155:56",
+          "payTo": "0xb5998e11e666fd1e7f3b8e8d9122a755eec1e9b7"
+         }
+        },
+        "note": "Each chain has its own endpoint prefix. Root paths accept Solana only. Use /base/* for Base, /skale/* for SKALE, /bsc/* for BSC (USD1 via b402)."
+       }
+      }
+     },
+     "skills": [],
+     "skillCount": 0,
+     "interfaces": [],
+     "securitySchemes": [],
+     "missingRequired": [
+      "version",
+      "defaultInputModes",
+      "defaultOutputModes",
+      "skills",
+      "url"
+     ],
+     "reason": null
+    },
+    "reachability": {
+     "ok": false,
+     "url": null,
+     "verdict": "not_declared",
+     "status": null,
+     "method": null,
+     "rpcErrorCode": null,
+     "rpcErrorMessage": null,
+     "reason": "the card declares no interface URL",
+     "elapsedMs": 0
+    },
+    "registry": null,
+    "gaps": []
+   },
+   "probed_at": "2026-09-09T09:40:27Z"
+  },
+  {
    "endpoint": "https://platform-backend-base.prod.termix.live/api/v1/a2a/agents/319395/card",
    "host": "platform-backend-base.prod.termix.live",
    "protocols": [
@@ -7438,6 +9266,158 @@
     "gaps": []
    },
    "probed_at": "2026-09-09T09:27:51Z"
+  },
+  {
+   "endpoint": "https://platform-backend-bnb8183.prod.termix.live/api/v1/a2a/agents/{agentId}/card",
+   "host": "platform-backend-bnb8183.prod.termix.live",
+   "protocols": [
+    "A2A"
+   ],
+   "priority": 0,
+   "agent_count": 1,
+   "mcp": null,
+   "a2a": {
+    "transcript_version": "1",
+    "probe_id": "probe:a2a:v1",
+    "subject_url": "https://platform-backend-bnb8183.prod.termix.live/api/v1/a2a/agents/{agentId}/card",
+    "probed_at": "2026-09-09T09:40:27Z",
+    "discovery": {
+     "ok": false,
+     "url": null,
+     "path": null,
+     "outcome": "absent",
+     "attempts": [
+      {
+       "url": "https://platform-backend-bnb8183.prod.termix.live/api/v1/a2a/agents/%7BagentId%7D/card",
+       "path": "/api/v1/a2a/agents/%7BagentId%7D/card",
+       "kind": "declared",
+       "outcome": "absent",
+       "status": 404,
+       "contentType": "text/plain; charset=utf-8",
+       "reason": "no card at this path (HTTP 404)",
+       "elapsedMs": 946
+      },
+      {
+       "url": "https://platform-backend-bnb8183.prod.termix.live/.well-known/agent-card.json",
+       "path": "/.well-known/agent-card.json",
+       "kind": "well-known",
+       "outcome": "absent",
+       "status": 404,
+       "contentType": "text/plain; charset=utf-8",
+       "reason": "no card at this path (HTTP 404)",
+       "elapsedMs": 671
+      },
+      {
+       "url": "https://platform-backend-bnb8183.prod.termix.live/.well-known/agent.json",
+       "path": "/.well-known/agent.json",
+       "kind": "well-known",
+       "outcome": "absent",
+       "status": 404,
+       "contentType": "text/plain; charset=utf-8",
+       "reason": "no card at this path (HTTP 404)",
+       "elapsedMs": 235
+      },
+      {
+       "url": "https://platform-backend-bnb8183.prod.termix.live/api/v1/a2a/agents/%7BagentId%7D/card/.well-known/agent-card.json",
+       "path": "/api/v1/a2a/agents/%7BagentId%7D/card/.well-known/agent-card.json",
+       "kind": "guess",
+       "outcome": "absent",
+       "status": 404,
+       "contentType": "text/plain; charset=utf-8",
+       "reason": "no card at this path (HTTP 404)",
+       "elapsedMs": 240
+      },
+      {
+       "url": "https://platform-backend-bnb8183.prod.termix.live/api/v1/a2a/agents/%7BagentId%7D/card/.well-known/agent.json",
+       "path": "/api/v1/a2a/agents/%7BagentId%7D/card/.well-known/agent.json",
+       "kind": "guess",
+       "outcome": "absent",
+       "status": 404,
+       "contentType": "text/plain; charset=utf-8",
+       "reason": "no card at this path (HTTP 404)",
+       "elapsedMs": 713
+      }
+     ],
+     "reason": "no card at this path (HTTP 404)",
+     "elapsedMs": 2806
+    },
+    "declaration": null,
+    "reachability": null,
+    "registry": null,
+    "gaps": []
+   },
+   "probed_at": "2026-09-09T09:40:27Z"
+  },
+  {
+   "endpoint": "https://platform-backend.prod.termix.live/api/v1/a2a/agents/{agentId}/card",
+   "host": "platform-backend.prod.termix.live",
+   "protocols": [
+    "A2A"
+   ],
+   "priority": 0,
+   "agent_count": 1,
+   "mcp": null,
+   "a2a": {
+    "transcript_version": "1",
+    "probe_id": "probe:a2a:v1",
+    "subject_url": "https://platform-backend.prod.termix.live/api/v1/a2a/agents/{agentId}/card",
+    "probed_at": "2026-09-09T09:40:27Z",
+    "discovery": {
+     "ok": false,
+     "url": null,
+     "path": null,
+     "outcome": "absent",
+     "attempts": [
+      {
+       "url": "https://platform-backend.prod.termix.live/api/v1/a2a/agents/%7BagentId%7D/card",
+       "path": "/api/v1/a2a/agents/%7BagentId%7D/card",
+       "kind": "declared",
+       "outcome": "absent",
+       "status": 404,
+       "contentType": "application/json",
+       "reason": "no card at this path (HTTP 404)",
+       "elapsedMs": 820
+      },
+      {
+       "url": "https://platform-backend.prod.termix.live/.well-known/agent-card.json",
+       "path": "/.well-known/agent-card.json",
+       "kind": "well-known",
+       "outcome": "absent",
+       "status": 404,
+       "contentType": "text/plain; charset=UTF-8",
+       "reason": "no card at this path (HTTP 404)",
+       "elapsedMs": 233
+      },
+      {
+       "url": "https://platform-backend.prod.termix.live/.well-known/agent.json",
+       "path": "/.well-known/agent.json",
+       "kind": "well-known",
+       "outcome": "absent",
+       "status": 404,
+       "contentType": "text/plain; charset=UTF-8",
+       "reason": "no card at this path (HTTP 404)",
+       "elapsedMs": 234
+      },
+      {
+       "url": "https://platform-backend.prod.termix.live/api/v1/a2a/agents/%7BagentId%7D/card/.well-known/agent-card.json",
+       "path": "/api/v1/a2a/agents/%7BagentId%7D/card/.well-known/agent-card.json",
+       "kind": "guess",
+       "outcome": "auth_walled",
+       "status": 401,
+       "contentType": "application/json",
+       "reason": "the agent declined an anonymous client (HTTP 401)",
+       "elapsedMs": 256
+      }
+     ],
+     "reason": "no card at this path (HTTP 404)",
+     "elapsedMs": 1544
+    },
+    "declaration": null,
+    "reachability": null,
+    "registry": null,
+    "gaps": []
+   },
+   "probed_at": "2026-09-09T09:40:27Z"
   },
   {
    "endpoint": "https://smeai-dev.vercel.app/api/a2a",
@@ -8188,6 +10168,54 @@
    },
    "a2a": null,
    "probed_at": "2026-09-09T09:27:06Z"
+  },
+  {
+   "endpoint": "https://4lpha.tech",
+   "host": "4lpha.tech",
+   "protocols": [
+    "MCP"
+   ],
+   "priority": 0,
+   "agent_count": 1,
+   "mcp": {
+    "transcript_version": "1",
+    "probe_id": "probe:mcp:v1",
+    "endpoint": "https://4lpha.tech",
+    "probed_at": "2026-09-09T09:40:23Z",
+    "attempts": [
+     {
+      "attempt": 1,
+      "ts": "2026-09-09T09:40:23Z",
+      "reachable": false,
+      "status": 405,
+      "reason": "HTTP 405",
+      "elapsedMs": 718
+     },
+     {
+      "attempt": 2,
+      "ts": "2026-09-09T09:40:24Z",
+      "reachable": false,
+      "status": 405,
+      "reason": "HTTP 405",
+      "elapsedMs": 385
+     },
+     {
+      "attempt": 3,
+      "ts": "2026-09-09T09:40:25Z",
+      "reachable": false,
+      "status": 405,
+      "reason": "HTTP 405",
+      "elapsedMs": 417
+     }
+    ],
+    "handshake": null,
+    "tools": null,
+    "registry": null,
+    "auth": null,
+    "rate_limit": null
+   },
+   "a2a": null,
+   "probed_at": "2026-09-09T09:40:23Z"
   },
   {
    "endpoint": "https://agentlisa.ai/mcp",
@@ -12962,6 +14990,242 @@
    "probed_at": "2026-09-09T09:27:06Z"
   },
   {
+   "endpoint": "https://bnb-yield.172-104-171-139.nip.io/mcp/",
+   "host": "bnb-yield.172-104-171-139.nip.io",
+   "protocols": [
+    "MCP"
+   ],
+   "priority": 0,
+   "agent_count": 1,
+   "mcp": {
+    "transcript_version": "1",
+    "probe_id": "probe:mcp:v1",
+    "endpoint": "https://bnb-yield.172-104-171-139.nip.io/mcp/",
+    "probed_at": "2026-09-09T09:40:23Z",
+    "attempts": [
+     {
+      "attempt": 1,
+      "ts": "2026-09-09T09:40:23Z",
+      "reachable": true,
+      "status": 200,
+      "reason": null,
+      "elapsedMs": 1101
+     },
+     {
+      "attempt": 2,
+      "ts": "2026-09-09T09:40:26Z",
+      "reachable": true,
+      "status": 200,
+      "reason": null,
+      "elapsedMs": 817
+     },
+     {
+      "attempt": 3,
+      "ts": "2026-09-09T09:40:27Z",
+      "reachable": true,
+      "status": 200,
+      "reason": null,
+      "elapsedMs": 270
+     }
+    ],
+    "handshake": {
+     "ok": true,
+     "protocolVersion": "2025-06-18",
+     "serverName": "BNB Yield Optimizer",
+     "serverVersion": "0.1.0",
+     "instructions": "This agent scans BSC lending and liquidity protocols (Venus,\nPancakeSwap), scores each opportunity by risk-adjusted yield rather than raw\nAPR, and migrates capital when the improvement exceeds gas, swap, slippage and a\nsafety margin.\n\nEvery tool here is read-only, except `pause`, which is an emergency stop. You\nCANNOT execute a migration through this interface — `simulate_rebalance` shows\nwhat the agent would do, and only a human can make it do it.\n\nThe capital under management is the AGENT'S OWN. It custodies nothing on anyone\nelse's behalf, so a position reported here belongs to the agent's wallet.\n\nUseful order: `get_status` for the current picture, `scan_protocols` for fresh\ndata (~20s), `simulate_rebalance` to see the decision and its reasoning.\n",
+     "reason": null
+    },
+    "tools": {
+     "ok": true,
+     "declared": [
+      {
+       "name": "get_status",
+       "description": "Current state: capital, held position, best opportunity, last scan.",
+       "inputSchema": {
+        "properties": {},
+        "type": "object",
+        "title": "get_statusArguments"
+       },
+       "outputSchema": {
+        "type": "object",
+        "additionalProperties": true,
+        "title": "get_statusDictOutput"
+       },
+       "annotations": null
+      },
+      {
+       "name": "get_metadata",
+       "description": "What this agent is, which protocols it supports, and its on-chain identity.",
+       "inputSchema": {
+        "properties": {},
+        "type": "object",
+        "title": "get_metadataArguments"
+       },
+       "outputSchema": {
+        "type": "object",
+        "additionalProperties": true,
+        "title": "get_metadataDictOutput"
+       },
+       "annotations": null
+      },
+      {
+       "name": "get_strategy",
+       "description": "The declared strategy and the risk controls currently in force.",
+       "inputSchema": {
+        "properties": {},
+        "type": "object",
+        "title": "get_strategyArguments"
+       },
+       "outputSchema": {
+        "type": "object",
+        "additionalProperties": true,
+        "title": "get_strategyDictOutput"
+       },
+       "annotations": null
+      },
+      {
+       "name": "get_opportunities",
+       "description": "Opportunities from the LAST scan, with risk scores. Does not re-scan —\n    use ``scan_protocols`` for fresh data.",
+       "inputSchema": {
+        "properties": {},
+        "type": "object",
+        "title": "get_opportunitiesArguments"
+       },
+       "outputSchema": {
+        "type": "object",
+        "additionalProperties": true,
+        "title": "get_opportunitiesDictOutput"
+       },
+       "annotations": null
+      },
+      {
+       "name": "get_positions",
+       "description": "What the agent currently holds. This is the AGENT'S OWN capital — it\n    custodies nothing on anyone else's behalf.",
+       "inputSchema": {
+        "properties": {},
+        "type": "object",
+        "title": "get_positionsArguments"
+       },
+       "outputSchema": {
+        "type": "object",
+        "additionalProperties": true,
+        "title": "get_positionsDictOutput"
+       },
+       "annotations": null
+      },
+      {
+       "name": "get_performance",
+       "description": "Migration counts and cumulative gas, derived from the audit log.",
+       "inputSchema": {
+        "properties": {},
+        "type": "object",
+        "title": "get_performanceArguments"
+       },
+       "outputSchema": {
+        "type": "object",
+        "additionalProperties": true,
+        "title": "get_performanceDictOutput"
+       },
+       "annotations": null
+      },
+      {
+       "name": "get_transactions",
+       "description": "The audit trail (spec section 13), newest first.",
+       "inputSchema": {
+        "properties": {
+         "limit": {
+          "default": 20,
+          "title": "Limit",
+          "type": "integer"
+         }
+        },
+        "type": "object",
+        "title": "get_transactionsArguments"
+       },
+       "outputSchema": {
+        "type": "object",
+        "additionalProperties": true,
+        "title": "get_transactionsDictOutput"
+       },
+       "annotations": null
+      },
+      {
+       "name": "get_chain_info",
+       "description": "Network, block height, gas price and the native token price.",
+       "inputSchema": {
+        "properties": {},
+        "type": "object",
+        "title": "get_chain_infoArguments"
+       },
+       "outputSchema": {
+        "type": "object",
+        "additionalProperties": true,
+        "title": "get_chain_infoDictOutput"
+       },
+       "annotations": null
+      },
+      {
+       "name": "scan_protocols",
+       "description": "Read Venus and PancakeSwap live and re-score every opportunity.\n\n    Reads chain and subgraph state; changes no position and signs nothing.\n    Takes roughly 20 seconds.\n\n    REQUIRES AN API KEY — twenty seconds of RPC per call is a denial-of-service\n    vector if left open, and the results are readable afterwards through the\n    unauthenticated `get_opportunities`.",
+       "inputSchema": {
+        "properties": {},
+        "type": "object",
+        "title": "scan_protocolsArguments"
+       },
+       "outputSchema": {
+        "type": "object",
+        "additionalProperties": true,
+        "title": "scan_protocolsDictOutput"
+       },
+       "annotations": null
+      },
+      {
+       "name": "simulate_rebalance",
+       "description": "Evaluate the migration rule and return the decision WITHOUT executing.\n\n    Equivalent to ``POST /rebalance?dry_run=true``. This is the closest a model\n    can get to migrating: it can ask what the agent WOULD do, never make it do\n    it.\n\n    REQUIRES AN API KEY — it scans if the data is stale and then makes an LLM\n    call, so it costs both time and money per invocation.",
+       "inputSchema": {
+        "properties": {},
+        "type": "object",
+        "title": "simulate_rebalanceArguments"
+       },
+       "outputSchema": {
+        "type": "object",
+        "additionalProperties": true,
+        "title": "simulate_rebalanceDictOutput"
+       },
+       "annotations": null
+      },
+      {
+       "name": "pause",
+       "description": "Emergency stop. Refuses all further migrations; scanning continues.\n\n    The only state-changing tool exposed, because it fails SAFE — the worst a\n    hostile prompt achieves is halting an agent that was about to trade. There\n    is deliberately no matching ``activate`` tool: resuming trading is a\n    decision for a human, not for a model reading untrusted text.\n\n    REQUIRES AN API KEY. Failing safe is a reason to expose it at all, not a\n    reason to leave it open to anyone who finds the URL.",
+       "inputSchema": {
+        "properties": {},
+        "type": "object",
+        "title": "pauseArguments"
+       },
+       "outputSchema": {
+        "type": "object",
+        "additionalProperties": true,
+        "title": "pauseDictOutput"
+       },
+       "annotations": null
+      }
+     ],
+     "reason": null
+    },
+    "registry": null,
+    "auth": {
+     "required": false,
+     "status": 200,
+     "scheme": null,
+     "hop": "initialize"
+    },
+    "rate_limit": null
+   },
+   "a2a": null,
+   "probed_at": "2026-09-09T09:40:23Z"
+  },
+  {
    "endpoint": "https://bnbagent-api.bnbchain.world/v1/rt/01M1DJT1ZJT359DNCKEBSDMZ33/mcp",
    "host": "bnbagent-api.bnbchain.world",
    "protocols": [
@@ -14182,6 +16446,2248 @@
    },
    "a2a": null,
    "probed_at": "2026-09-09T09:27:06Z"
+  },
+  {
+   "endpoint": "https://erc8004.heyanon.ai/mcp/venus",
+   "host": "erc8004.heyanon.ai",
+   "protocols": [
+    "MCP"
+   ],
+   "priority": 0,
+   "agent_count": 1,
+   "mcp": {
+    "transcript_version": "1",
+    "probe_id": "probe:mcp:v1",
+    "endpoint": "https://erc8004.heyanon.ai/mcp/venus",
+    "probed_at": "2026-09-09T09:40:23Z",
+    "attempts": [
+     {
+      "attempt": 1,
+      "ts": "2026-09-09T09:40:23Z",
+      "reachable": true,
+      "status": 201,
+      "reason": null,
+      "elapsedMs": 698
+     },
+     {
+      "attempt": 2,
+      "ts": "2026-09-09T09:40:25Z",
+      "reachable": true,
+      "status": 201,
+      "reason": null,
+      "elapsedMs": 480
+     },
+     {
+      "attempt": 3,
+      "ts": "2026-09-09T09:40:26Z",
+      "reachable": true,
+      "status": 201,
+      "reason": null,
+      "elapsedMs": 395
+     }
+    ],
+    "handshake": {
+     "ok": true,
+     "protocolVersion": "2025-06-18",
+     "serverName": "heyanon-erc8004-venus",
+     "serverVersion": "1.0.0",
+     "instructions": null,
+     "reason": null
+    },
+    "tools": {
+     "ok": true,
+     "declared": [
+      {
+       "name": "borrow",
+       "description": "Borrow a token from venus lending protocol on a particular chain.",
+       "inputSchema": {
+        "type": "object",
+        "properties": {
+         "chainName": {
+          "type": "string",
+          "enum": [
+           "bsc",
+           "ethereum",
+           "base"
+          ],
+          "description": "Chain name where to execute the transaction"
+         },
+         "tokenSymbol": {
+          "type": "string",
+          "description": "The token symbol that is involved in the transaction."
+         },
+         "pool": {
+          "type": "string",
+          "enum": [
+           "CORE",
+           "DEFI"
+          ],
+          "description": "The Pool in which the transaction will be executed."
+         },
+         "amount": {
+          "type": "string",
+          "description": "Amount of tokens in human-readable decimal format (e.g. '1.5')"
+         },
+         "userAddress": {
+          "type": "string",
+          "description": "The wallet address of the user"
+         }
+        },
+        "required": [
+         "chainName",
+         "tokenSymbol",
+         "pool",
+         "amount",
+         "userAddress"
+        ],
+        "additionalProperties": false
+       },
+       "outputSchema": {
+        "type": "object",
+        "anyOf": [
+         {
+          "type": "object",
+          "properties": {
+           "project": {
+            "type": "string",
+            "description": "Protocol identifier"
+           },
+           "operation": {
+            "type": "string",
+            "description": "Operation that produced this response"
+           },
+           "note": {
+            "type": "string",
+            "description": "Human-readable summary of the action"
+           },
+           "transactions": {
+            "type": "array",
+            "items": {
+             "type": "object",
+             "properties": {
+              "chainId": {
+               "type": "number",
+               "description": "EVM chain ID"
+              },
+              "transaction": {
+               "type": "object",
+               "properties": {
+                "target": {
+                 "type": "string",
+                 "description": "Target contract address"
+                },
+                "data": {
+                 "type": "string",
+                 "description": "ABI-encoded calldata"
+                },
+                "value": {
+                 "description": "Native token value in wei",
+                 "type": "string"
+                }
+               },
+               "required": [
+                "target",
+                "data"
+               ],
+               "additionalProperties": false,
+               "description": "EVM transaction parameters"
+              }
+             },
+             "required": [
+              "chainId",
+              "transaction"
+             ],
+             "additionalProperties": false
+            },
+            "description": "EVM transactions to sign and broadcast"
+           }
+          },
+          "required": [
+           "project",
+           "operation",
+           "transactions"
+          ],
+          "additionalProperties": false
+         },
+         {
+          "type": "object",
+          "properties": {
+           "project": {
+            "type": "string",
+            "description": "Protocol identifier"
+           },
+           "operation": {
+            "type": "string",
+            "description": "Operation that produced this response"
+           },
+           "error": {
+            "type": "string",
+            "description": "Error message"
+           }
+          },
+          "required": [
+           "project",
+           "operation",
+           "error"
+          ],
+          "additionalProperties": false
+         }
+        ]
+       },
+       "annotations": null
+      },
+      {
+       "name": "repay",
+       "description": "Repay Token the token that was borrowed from venus lending protocol on a particular chain.",
+       "inputSchema": {
+        "type": "object",
+        "properties": {
+         "chainName": {
+          "type": "string",
+          "enum": [
+           "bsc",
+           "ethereum",
+           "base"
+          ],
+          "description": "Chain name where to execute the transaction"
+         },
+         "tokenSymbol": {
+          "type": "string",
+          "description": "The token symbol that is involved in the transaction."
+         },
+         "pool": {
+          "type": "string",
+          "enum": [
+           "CORE",
+           "DEFI"
+          ],
+          "description": "The Pool in which the transaction will be executed."
+         },
+         "amount": {
+          "description": "Amount of tokens in human-readable decimal format (e.g. '1.5'). Mutually exclusive with isFull",
+          "type": "string"
+         },
+         "userAddress": {
+          "type": "string",
+          "description": "The wallet address of the user"
+         },
+         "isFull": {
+          "description": "Set to true to repay the full borrowed amount. Mutually exclusive with amount",
+          "type": "boolean"
+         }
+        },
+        "required": [
+         "chainName",
+         "tokenSymbol",
+         "pool",
+         "userAddress"
+        ],
+        "additionalProperties": false
+       },
+       "outputSchema": {
+        "type": "object",
+        "anyOf": [
+         {
+          "type": "object",
+          "properties": {
+           "project": {
+            "type": "string",
+            "description": "Protocol identifier"
+           },
+           "operation": {
+            "type": "string",
+            "description": "Operation that produced this response"
+           },
+           "note": {
+            "type": "string",
+            "description": "Human-readable summary of the action"
+           },
+           "transactions": {
+            "type": "array",
+            "items": {
+             "type": "object",
+             "properties": {
+              "chainId": {
+               "type": "number",
+               "description": "EVM chain ID"
+              },
+              "transaction": {
+               "type": "object",
+               "properties": {
+                "target": {
+                 "type": "string",
+                 "description": "Target contract address"
+                },
+                "data": {
+                 "type": "string",
+                 "description": "ABI-encoded calldata"
+                },
+                "value": {
+                 "description": "Native token value in wei",
+                 "type": "string"
+                }
+               },
+               "required": [
+                "target",
+                "data"
+               ],
+               "additionalProperties": false,
+               "description": "EVM transaction parameters"
+              }
+             },
+             "required": [
+              "chainId",
+              "transaction"
+             ],
+             "additionalProperties": false
+            },
+            "description": "EVM transactions to sign and broadcast"
+           }
+          },
+          "required": [
+           "project",
+           "operation",
+           "transactions"
+          ],
+          "additionalProperties": false
+         },
+         {
+          "type": "object",
+          "properties": {
+           "project": {
+            "type": "string",
+            "description": "Protocol identifier"
+           },
+           "operation": {
+            "type": "string",
+            "description": "Operation that produced this response"
+           },
+           "error": {
+            "type": "string",
+            "description": "Error message"
+           }
+          },
+          "required": [
+           "project",
+           "operation",
+           "error"
+          ],
+          "additionalProperties": false
+         }
+        ]
+       },
+       "annotations": null
+      },
+      {
+       "name": "mintToken",
+       "description": "Mint or supply token to venus lending protocol.",
+       "inputSchema": {
+        "type": "object",
+        "properties": {
+         "chainName": {
+          "type": "string",
+          "enum": [
+           "bsc",
+           "ethereum",
+           "base"
+          ],
+          "description": "Chain name where to execute the transaction"
+         },
+         "tokenSymbol": {
+          "type": "string",
+          "description": "The token symbol that is involved in the transaction."
+         },
+         "pool": {
+          "type": "string",
+          "enum": [
+           "CORE",
+           "DEFI"
+          ],
+          "description": "The Pool in which the transaction will be executed."
+         },
+         "amount": {
+          "type": "string",
+          "description": "Amount of tokens in human-readable decimal format (e.g. '1.5')"
+         },
+         "userAddress": {
+          "type": "string",
+          "description": "The wallet address of the user"
+         }
+        },
+        "required": [
+         "chainName",
+         "tokenSymbol",
+         "pool",
+         "amount",
+         "userAddress"
+        ],
+        "additionalProperties": false
+       },
+       "outputSchema": {
+        "type": "object",
+        "anyOf": [
+         {
+          "type": "object",
+          "properties": {
+           "project": {
+            "type": "string",
+            "description": "Protocol identifier"
+           },
+           "operation": {
+            "type": "string",
+            "description": "Operation that produced this response"
+           },
+           "note": {
+            "type": "string",
+            "description": "Human-readable summary of the action"
+           },
+           "transactions": {
+            "type": "array",
+            "items": {
+             "type": "object",
+             "properties": {
+              "chainId": {
+               "type": "number",
+               "description": "EVM chain ID"
+              },
+              "transaction": {
+               "type": "object",
+               "properties": {
+                "target": {
+                 "type": "string",
+                 "description": "Target contract address"
+                },
+                "data": {
+                 "type": "string",
+                 "description": "ABI-encoded calldata"
+                },
+                "value": {
+                 "description": "Native token value in wei",
+                 "type": "string"
+                }
+               },
+               "required": [
+                "target",
+                "data"
+               ],
+               "additionalProperties": false,
+               "description": "EVM transaction parameters"
+              }
+             },
+             "required": [
+              "chainId",
+              "transaction"
+             ],
+             "additionalProperties": false
+            },
+            "description": "EVM transactions to sign and broadcast"
+           }
+          },
+          "required": [
+           "project",
+           "operation",
+           "transactions"
+          ],
+          "additionalProperties": false
+         },
+         {
+          "type": "object",
+          "properties": {
+           "project": {
+            "type": "string",
+            "description": "Protocol identifier"
+           },
+           "operation": {
+            "type": "string",
+            "description": "Operation that produced this response"
+           },
+           "error": {
+            "type": "string",
+            "description": "Error message"
+           }
+          },
+          "required": [
+           "project",
+           "operation",
+           "error"
+          ],
+          "additionalProperties": false
+         }
+        ]
+       },
+       "annotations": null
+      },
+      {
+       "name": "getVenusBalance",
+       "description": "Return balance in tokens in venus lending protocol.",
+       "inputSchema": {
+        "type": "object",
+        "properties": {
+         "chainName": {
+          "type": "string",
+          "enum": [
+           "bsc",
+           "ethereum",
+           "base"
+          ],
+          "description": "Chain name where to execute the transaction"
+         },
+         "tokenSymbols": {
+          "type": "array",
+          "items": {
+           "type": "string"
+          },
+          "description": "Array of token symbols"
+         },
+         "pool": {
+          "type": "string",
+          "enum": [
+           "CORE",
+           "DEFI"
+          ],
+          "description": "The Pool in which the transaction will be executed."
+         },
+         "userAddress": {
+          "type": "string",
+          "description": "The wallet address of the user"
+         }
+        },
+        "required": [
+         "chainName",
+         "tokenSymbols",
+         "pool",
+         "userAddress"
+        ],
+        "additionalProperties": false
+       },
+       "outputSchema": {
+        "type": "object",
+        "anyOf": [
+         {
+          "type": "object",
+          "properties": {
+           "project": {
+            "type": "string",
+            "description": "Protocol identifier"
+           },
+           "operation": {
+            "type": "string",
+            "description": "Operation that produced this response"
+           },
+           "note": {
+            "type": "string",
+            "description": "Human-readable summary of the action"
+           },
+           "data": {
+            "type": "object",
+            "properties": {
+             "chainName": {
+              "type": "string",
+              "description": "Chain name"
+             },
+             "pool": {
+              "type": "string",
+              "description": "Pool name"
+             },
+             "balances": {
+              "type": "array",
+              "items": {
+               "type": "object",
+               "properties": {
+                "tokenSymbol": {
+                 "type": "string",
+                 "description": "Token symbol"
+                },
+                "balance": {
+                 "type": "string",
+                 "description": "Token balance in a human-readable decimal format (e.g. '1.5')"
+                }
+               },
+               "required": [
+                "tokenSymbol",
+                "balance"
+               ],
+               "additionalProperties": false
+              }
+             }
+            },
+            "required": [
+             "chainName",
+             "pool",
+             "balances"
+            ],
+            "additionalProperties": false
+           }
+          },
+          "required": [
+           "project",
+           "operation",
+           "data"
+          ],
+          "additionalProperties": false
+         },
+         {
+          "type": "object",
+          "properties": {
+           "project": {
+            "type": "string",
+            "description": "Protocol identifier"
+           },
+           "operation": {
+            "type": "string",
+            "description": "Operation that produced this response"
+           },
+           "error": {
+            "type": "string",
+            "description": "Error message"
+           }
+          },
+          "required": [
+           "project",
+           "operation",
+           "error"
+          ],
+          "additionalProperties": false
+         }
+        ]
+       },
+       "annotations": null
+      },
+      {
+       "name": "redeemUnderlying",
+       "description": "redeem the supplied amount of underlying tokens.",
+       "inputSchema": {
+        "type": "object",
+        "properties": {
+         "chainName": {
+          "type": "string",
+          "enum": [
+           "bsc",
+           "ethereum",
+           "base"
+          ],
+          "description": "Chain name where to execute the transaction"
+         },
+         "tokenSymbol": {
+          "type": "string",
+          "description": "The token symbol that is involved in the transaction."
+         },
+         "pool": {
+          "type": "string",
+          "enum": [
+           "CORE",
+           "DEFI"
+          ],
+          "description": "The Pool in which the transaction will be executed."
+         },
+         "amount": {
+          "type": "string",
+          "description": "Amount of tokens in human-readable decimal format. Use \"-1\" to redeem all supplied balance."
+         },
+         "userAddress": {
+          "type": "string",
+          "description": "The wallet address of the user"
+         }
+        },
+        "required": [
+         "chainName",
+         "tokenSymbol",
+         "pool",
+         "amount",
+         "userAddress"
+        ],
+        "additionalProperties": false
+       },
+       "outputSchema": {
+        "type": "object",
+        "anyOf": [
+         {
+          "type": "object",
+          "properties": {
+           "project": {
+            "type": "string",
+            "description": "Protocol identifier"
+           },
+           "operation": {
+            "type": "string",
+            "description": "Operation that produced this response"
+           },
+           "note": {
+            "type": "string",
+            "description": "Human-readable summary of the action"
+           },
+           "transactions": {
+            "type": "array",
+            "items": {
+             "type": "object",
+             "properties": {
+              "chainId": {
+               "type": "number",
+               "description": "EVM chain ID"
+              },
+              "transaction": {
+               "type": "object",
+               "properties": {
+                "target": {
+                 "type": "string",
+                 "description": "Target contract address"
+                },
+                "data": {
+                 "type": "string",
+                 "description": "ABI-encoded calldata"
+                },
+                "value": {
+                 "description": "Native token value in wei",
+                 "type": "string"
+                }
+               },
+               "required": [
+                "target",
+                "data"
+               ],
+               "additionalProperties": false,
+               "description": "EVM transaction parameters"
+              }
+             },
+             "required": [
+              "chainId",
+              "transaction"
+             ],
+             "additionalProperties": false
+            },
+            "description": "EVM transactions to sign and broadcast"
+           }
+          },
+          "required": [
+           "project",
+           "operation",
+           "transactions"
+          ],
+          "additionalProperties": false
+         },
+         {
+          "type": "object",
+          "properties": {
+           "project": {
+            "type": "string",
+            "description": "Protocol identifier"
+           },
+           "operation": {
+            "type": "string",
+            "description": "Operation that produced this response"
+           },
+           "error": {
+            "type": "string",
+            "description": "Error message"
+           }
+          },
+          "required": [
+           "project",
+           "operation",
+           "error"
+          ],
+          "additionalProperties": false
+         }
+        ]
+       },
+       "annotations": null
+      },
+      {
+       "name": "enterMarkets",
+       "description": "Enable tokens as collateral in venus lending protocol for a particular pool.",
+       "inputSchema": {
+        "type": "object",
+        "properties": {
+         "chainName": {
+          "type": "string",
+          "enum": [
+           "bsc",
+           "ethereum",
+           "base"
+          ],
+          "description": "Chain name where to execute the transaction"
+         },
+         "tokenSymbols": {
+          "type": "array",
+          "items": {
+           "type": "string"
+          },
+          "description": "Array of token symbols"
+         },
+         "pool": {
+          "type": "string",
+          "enum": [
+           "CORE",
+           "DEFI"
+          ],
+          "description": "The Pool in which the transaction will be executed."
+         },
+         "userAddress": {
+          "type": "string",
+          "description": "The wallet address of the user"
+         }
+        },
+        "required": [
+         "chainName",
+         "tokenSymbols",
+         "pool",
+         "userAddress"
+        ],
+        "additionalProperties": false
+       },
+       "outputSchema": {
+        "type": "object",
+        "anyOf": [
+         {
+          "type": "object",
+          "properties": {
+           "project": {
+            "type": "string",
+            "description": "Protocol identifier"
+           },
+           "operation": {
+            "type": "string",
+            "description": "Operation that produced this response"
+           },
+           "note": {
+            "type": "string",
+            "description": "Human-readable summary of the action"
+           },
+           "transactions": {
+            "type": "array",
+            "items": {
+             "type": "object",
+             "properties": {
+              "chainId": {
+               "type": "number",
+               "description": "EVM chain ID"
+              },
+              "transaction": {
+               "type": "object",
+               "properties": {
+                "target": {
+                 "type": "string",
+                 "description": "Target contract address"
+                },
+                "data": {
+                 "type": "string",
+                 "description": "ABI-encoded calldata"
+                },
+                "value": {
+                 "description": "Native token value in wei",
+                 "type": "string"
+                }
+               },
+               "required": [
+                "target",
+                "data"
+               ],
+               "additionalProperties": false,
+               "description": "EVM transaction parameters"
+              }
+             },
+             "required": [
+              "chainId",
+              "transaction"
+             ],
+             "additionalProperties": false
+            },
+            "description": "EVM transactions to sign and broadcast"
+           }
+          },
+          "required": [
+           "project",
+           "operation",
+           "transactions"
+          ],
+          "additionalProperties": false
+         },
+         {
+          "type": "object",
+          "properties": {
+           "project": {
+            "type": "string",
+            "description": "Protocol identifier"
+           },
+           "operation": {
+            "type": "string",
+            "description": "Operation that produced this response"
+           },
+           "error": {
+            "type": "string",
+            "description": "Error message"
+           }
+          },
+          "required": [
+           "project",
+           "operation",
+           "error"
+          ],
+          "additionalProperties": false
+         }
+        ]
+       },
+       "annotations": null
+      },
+      {
+       "name": "exitMarket",
+       "description": "Disable tokens as collateral in venus lending protocol for a particular pool.",
+       "inputSchema": {
+        "type": "object",
+        "properties": {
+         "chainName": {
+          "type": "string",
+          "enum": [
+           "bsc",
+           "ethereum",
+           "base"
+          ],
+          "description": "Chain name where to execute the transaction"
+         },
+         "tokenSymbols": {
+          "type": "array",
+          "items": {
+           "type": "string"
+          },
+          "description": "Array of token symbols"
+         },
+         "pool": {
+          "type": "string",
+          "enum": [
+           "CORE",
+           "DEFI"
+          ],
+          "description": "The Pool in which the transaction will be executed."
+         },
+         "userAddress": {
+          "type": "string",
+          "description": "The wallet address of the user"
+         }
+        },
+        "required": [
+         "chainName",
+         "tokenSymbols",
+         "pool",
+         "userAddress"
+        ],
+        "additionalProperties": false
+       },
+       "outputSchema": {
+        "type": "object",
+        "anyOf": [
+         {
+          "type": "object",
+          "properties": {
+           "project": {
+            "type": "string",
+            "description": "Protocol identifier"
+           },
+           "operation": {
+            "type": "string",
+            "description": "Operation that produced this response"
+           },
+           "note": {
+            "type": "string",
+            "description": "Human-readable summary of the action"
+           },
+           "transactions": {
+            "type": "array",
+            "items": {
+             "type": "object",
+             "properties": {
+              "chainId": {
+               "type": "number",
+               "description": "EVM chain ID"
+              },
+              "transaction": {
+               "type": "object",
+               "properties": {
+                "target": {
+                 "type": "string",
+                 "description": "Target contract address"
+                },
+                "data": {
+                 "type": "string",
+                 "description": "ABI-encoded calldata"
+                },
+                "value": {
+                 "description": "Native token value in wei",
+                 "type": "string"
+                }
+               },
+               "required": [
+                "target",
+                "data"
+               ],
+               "additionalProperties": false,
+               "description": "EVM transaction parameters"
+              }
+             },
+             "required": [
+              "chainId",
+              "transaction"
+             ],
+             "additionalProperties": false
+            },
+            "description": "EVM transactions to sign and broadcast"
+           }
+          },
+          "required": [
+           "project",
+           "operation",
+           "transactions"
+          ],
+          "additionalProperties": false
+         },
+         {
+          "type": "object",
+          "properties": {
+           "project": {
+            "type": "string",
+            "description": "Protocol identifier"
+           },
+           "operation": {
+            "type": "string",
+            "description": "Operation that produced this response"
+           },
+           "error": {
+            "type": "string",
+            "description": "Error message"
+           }
+          },
+          "required": [
+           "project",
+           "operation",
+           "error"
+          ],
+          "additionalProperties": false
+         }
+        ]
+       },
+       "annotations": null
+      },
+      {
+       "name": "getBorrowBalance",
+       "description": "Get borrow balance (debt) of tokens from Venus protocol.",
+       "inputSchema": {
+        "type": "object",
+        "properties": {
+         "chainName": {
+          "type": "string",
+          "enum": [
+           "bsc",
+           "ethereum",
+           "base"
+          ],
+          "description": "Chain name where to execute the transaction"
+         },
+         "tokenSymbols": {
+          "type": "array",
+          "items": {
+           "type": "string"
+          },
+          "description": "Array of token symbols"
+         },
+         "pool": {
+          "type": "string",
+          "enum": [
+           "CORE",
+           "DEFI"
+          ],
+          "description": "The Pool in which the transaction will be executed."
+         },
+         "userAddress": {
+          "type": "string",
+          "description": "The wallet address of the user"
+         }
+        },
+        "required": [
+         "chainName",
+         "tokenSymbols",
+         "pool",
+         "userAddress"
+        ],
+        "additionalProperties": false
+       },
+       "outputSchema": {
+        "type": "object",
+        "anyOf": [
+         {
+          "type": "object",
+          "properties": {
+           "project": {
+            "type": "string",
+            "description": "Protocol identifier"
+           },
+           "operation": {
+            "type": "string",
+            "description": "Operation that produced this response"
+           },
+           "note": {
+            "type": "string",
+            "description": "Human-readable summary of the action"
+           },
+           "data": {
+            "type": "object",
+            "properties": {
+             "chainName": {
+              "type": "string",
+              "description": "Chain name"
+             },
+             "pool": {
+              "type": "string",
+              "description": "Pool name"
+             },
+             "balances": {
+              "type": "array",
+              "items": {
+               "type": "object",
+               "properties": {
+                "tokenSymbol": {
+                 "type": "string",
+                 "description": "Token symbol"
+                },
+                "balance": {
+                 "type": "string",
+                 "description": "Token balance in a human-readable decimal format (e.g. '1.5')"
+                }
+               },
+               "required": [
+                "tokenSymbol",
+                "balance"
+               ],
+               "additionalProperties": false
+              }
+             }
+            },
+            "required": [
+             "chainName",
+             "pool",
+             "balances"
+            ],
+            "additionalProperties": false
+           }
+          },
+          "required": [
+           "project",
+           "operation",
+           "data"
+          ],
+          "additionalProperties": false
+         },
+         {
+          "type": "object",
+          "properties": {
+           "project": {
+            "type": "string",
+            "description": "Protocol identifier"
+           },
+           "operation": {
+            "type": "string",
+            "description": "Operation that produced this response"
+           },
+           "error": {
+            "type": "string",
+            "description": "Error message"
+           }
+          },
+          "required": [
+           "project",
+           "operation",
+           "error"
+          ],
+          "additionalProperties": false
+         }
+        ]
+       },
+       "annotations": null
+      },
+      {
+       "name": "getBorrowAPR",
+       "description": "Get Current Borrow APR for tokens across multiple chains in specific pools.",
+       "inputSchema": {
+        "type": "object",
+        "properties": {
+         "aprRequests": {
+          "type": "array",
+          "items": {
+           "type": "object",
+           "properties": {
+            "chainName": {
+             "type": "string",
+             "enum": [
+              "bsc",
+              "ethereum",
+              "base"
+             ]
+            },
+            "aprRequestDetails": {
+             "type": "array",
+             "items": {
+              "type": "object",
+              "properties": {
+               "tokenSymbols": {
+                "type": "array",
+                "items": {
+                 "type": "string"
+                },
+                "description": "Array of token symbols"
+               },
+               "pool": {
+                "type": "string",
+                "enum": [
+                 "CORE",
+                 "DEFI"
+                ],
+                "description": "The Pool in which the transaction will be executed."
+               }
+              },
+              "required": [
+               "tokenSymbols",
+               "pool"
+              ],
+              "additionalProperties": false
+             }
+            }
+           },
+           "required": [
+            "chainName",
+            "aprRequestDetails"
+           ],
+           "additionalProperties": false
+          }
+         }
+        },
+        "required": [
+         "aprRequests"
+        ],
+        "additionalProperties": false
+       },
+       "outputSchema": {
+        "type": "object",
+        "anyOf": [
+         {
+          "type": "object",
+          "properties": {
+           "project": {
+            "type": "string",
+            "description": "Protocol identifier"
+           },
+           "operation": {
+            "type": "string",
+            "description": "Operation that produced this response"
+           },
+           "note": {
+            "type": "string",
+            "description": "Human-readable summary of the action"
+           },
+           "data": {
+            "type": "array",
+            "items": {
+             "anyOf": [
+              {
+               "type": "object",
+               "properties": {
+                "chain": {
+                 "type": "string",
+                 "description": "Chain name"
+                },
+                "pool": {
+                 "type": "string",
+                 "description": "Pool name"
+                },
+                "tokenAPRs": {
+                 "type": "string",
+                 "description": "Comma-separated token APR values"
+                },
+                "errors": {
+                 "description": "Comma-separated error messages for failed tokens",
+                 "type": "string"
+                }
+               },
+               "required": [
+                "chain",
+                "pool",
+                "tokenAPRs"
+               ],
+               "additionalProperties": false
+              },
+              {
+               "type": "object",
+               "properties": {
+                "chain": {
+                 "description": "Chain name",
+                 "type": "string"
+                },
+                "pool": {
+                 "description": "Pool name",
+                 "type": "string"
+                },
+                "error": {
+                 "type": "string",
+                 "description": "Error message"
+                }
+               },
+               "required": [
+                "error"
+               ],
+               "additionalProperties": false
+              }
+             ]
+            }
+           }
+          },
+          "required": [
+           "project",
+           "operation",
+           "data"
+          ],
+          "additionalProperties": false
+         },
+         {
+          "type": "object",
+          "properties": {
+           "project": {
+            "type": "string",
+            "description": "Protocol identifier"
+           },
+           "operation": {
+            "type": "string",
+            "description": "Operation that produced this response"
+           },
+           "error": {
+            "type": "string",
+            "description": "Error message"
+           }
+          },
+          "required": [
+           "project",
+           "operation",
+           "error"
+          ],
+          "additionalProperties": false
+         }
+        ]
+       },
+       "annotations": null
+      },
+      {
+       "name": "getSupplyAPR",
+       "description": "Get Current Supply APR for tokens across multiple chains in specific pools.",
+       "inputSchema": {
+        "type": "object",
+        "properties": {
+         "aprRequests": {
+          "type": "array",
+          "items": {
+           "type": "object",
+           "properties": {
+            "chainName": {
+             "type": "string",
+             "enum": [
+              "bsc",
+              "ethereum",
+              "base"
+             ]
+            },
+            "aprRequestDetails": {
+             "type": "array",
+             "items": {
+              "type": "object",
+              "properties": {
+               "tokenSymbols": {
+                "type": "array",
+                "items": {
+                 "type": "string"
+                },
+                "description": "Array of token symbols"
+               },
+               "pool": {
+                "type": "string",
+                "enum": [
+                 "CORE",
+                 "DEFI"
+                ],
+                "description": "The Pool in which the transaction will be executed."
+               }
+              },
+              "required": [
+               "tokenSymbols",
+               "pool"
+              ],
+              "additionalProperties": false
+             }
+            }
+           },
+           "required": [
+            "chainName",
+            "aprRequestDetails"
+           ],
+           "additionalProperties": false
+          }
+         }
+        },
+        "required": [
+         "aprRequests"
+        ],
+        "additionalProperties": false
+       },
+       "outputSchema": {
+        "type": "object",
+        "anyOf": [
+         {
+          "type": "object",
+          "properties": {
+           "project": {
+            "type": "string",
+            "description": "Protocol identifier"
+           },
+           "operation": {
+            "type": "string",
+            "description": "Operation that produced this response"
+           },
+           "note": {
+            "type": "string",
+            "description": "Human-readable summary of the action"
+           },
+           "data": {
+            "type": "array",
+            "items": {
+             "anyOf": [
+              {
+               "type": "object",
+               "properties": {
+                "chain": {
+                 "type": "string",
+                 "description": "Chain name"
+                },
+                "pool": {
+                 "type": "string",
+                 "description": "Pool name"
+                },
+                "tokenAPRs": {
+                 "type": "string",
+                 "description": "Comma-separated token APR values"
+                },
+                "errors": {
+                 "description": "Comma-separated error messages for failed tokens",
+                 "type": "string"
+                }
+               },
+               "required": [
+                "chain",
+                "pool",
+                "tokenAPRs"
+               ],
+               "additionalProperties": false
+              },
+              {
+               "type": "object",
+               "properties": {
+                "chain": {
+                 "description": "Chain name",
+                 "type": "string"
+                },
+                "pool": {
+                 "description": "Pool name",
+                 "type": "string"
+                },
+                "error": {
+                 "type": "string",
+                 "description": "Error message"
+                }
+               },
+               "required": [
+                "error"
+               ],
+               "additionalProperties": false
+              }
+             ]
+            }
+           }
+          },
+          "required": [
+           "project",
+           "operation",
+           "data"
+          ],
+          "additionalProperties": false
+         },
+         {
+          "type": "object",
+          "properties": {
+           "project": {
+            "type": "string",
+            "description": "Protocol identifier"
+           },
+           "operation": {
+            "type": "string",
+            "description": "Operation that produced this response"
+           },
+           "error": {
+            "type": "string",
+            "description": "Error message"
+           }
+          },
+          "required": [
+           "project",
+           "operation",
+           "error"
+          ],
+          "additionalProperties": false
+         }
+        ]
+       },
+       "annotations": null
+      },
+      {
+       "name": "getAccountLiquidity",
+       "description": "Get user borrow limit and shortfall for multiple chains in a specific pool.",
+       "inputSchema": {
+        "type": "object",
+        "properties": {
+         "chainNames": {
+          "type": "array",
+          "items": {
+           "type": "string",
+           "enum": [
+            "bsc",
+            "ethereum",
+            "base"
+           ]
+          },
+          "description": "Array of chain names"
+         },
+         "pool": {
+          "type": "string",
+          "enum": [
+           "CORE",
+           "DEFI"
+          ],
+          "description": "The Pool in which the transaction will be executed."
+         },
+         "userAddress": {
+          "type": "string",
+          "description": "The wallet address of the user"
+         }
+        },
+        "required": [
+         "chainNames",
+         "pool",
+         "userAddress"
+        ],
+        "additionalProperties": false
+       },
+       "outputSchema": {
+        "type": "object",
+        "anyOf": [
+         {
+          "type": "object",
+          "properties": {
+           "project": {
+            "type": "string",
+            "description": "Protocol identifier"
+           },
+           "operation": {
+            "type": "string",
+            "description": "Operation that produced this response"
+           },
+           "note": {
+            "type": "string",
+            "description": "Human-readable summary of the action"
+           },
+           "data": {
+            "type": "array",
+            "items": {
+             "anyOf": [
+              {
+               "type": "object",
+               "properties": {
+                "chain": {
+                 "type": "string",
+                 "description": "Chain name"
+                },
+                "pool": {
+                 "type": "string",
+                 "description": "Pool name"
+                },
+                "borrowLimit": {
+                 "type": "string",
+                 "description": "Available borrow limit in USD"
+                },
+                "shortfall": {
+                 "type": "string",
+                 "description": "Shortfall amount in USD (non-zero means liquidation risk)"
+                }
+               },
+               "required": [
+                "chain",
+                "pool",
+                "borrowLimit",
+                "shortfall"
+               ],
+               "additionalProperties": false
+              },
+              {
+               "type": "object",
+               "properties": {
+                "chain": {
+                 "type": "string",
+                 "description": "Chain name"
+                },
+                "pool": {
+                 "description": "Pool name",
+                 "type": "string"
+                },
+                "error": {
+                 "type": "string",
+                 "description": "Error message"
+                }
+               },
+               "required": [
+                "chain",
+                "error"
+               ],
+               "additionalProperties": false
+              }
+             ]
+            }
+           }
+          },
+          "required": [
+           "project",
+           "operation",
+           "data"
+          ],
+          "additionalProperties": false
+         },
+         {
+          "type": "object",
+          "properties": {
+           "project": {
+            "type": "string",
+            "description": "Protocol identifier"
+           },
+           "operation": {
+            "type": "string",
+            "description": "Operation that produced this response"
+           },
+           "error": {
+            "type": "string",
+            "description": "Error message"
+           }
+          },
+          "required": [
+           "project",
+           "operation",
+           "error"
+          ],
+          "additionalProperties": false
+         }
+        ]
+       },
+       "annotations": null
+      },
+      {
+       "name": "getEnabledCollateral",
+       "description": "Get all enabled collateral assets and their symbols in Venus protocol.",
+       "inputSchema": {
+        "type": "object",
+        "properties": {
+         "chainName": {
+          "type": "string",
+          "enum": [
+           "bsc",
+           "ethereum",
+           "base"
+          ],
+          "description": "Chain name where to execute the transaction"
+         },
+         "pool": {
+          "type": "string",
+          "enum": [
+           "CORE",
+           "DEFI"
+          ],
+          "description": "The Pool in which the transaction will be executed."
+         },
+         "userAddress": {
+          "type": "string",
+          "description": "The wallet address of the user"
+         }
+        },
+        "required": [
+         "chainName",
+         "pool",
+         "userAddress"
+        ],
+        "additionalProperties": false
+       },
+       "outputSchema": {
+        "type": "object",
+        "anyOf": [
+         {
+          "type": "object",
+          "properties": {
+           "project": {
+            "type": "string",
+            "description": "Protocol identifier"
+           },
+           "operation": {
+            "type": "string",
+            "description": "Operation that produced this response"
+           },
+           "note": {
+            "type": "string",
+            "description": "Human-readable summary of the action"
+           },
+           "data": {
+            "type": "object",
+            "properties": {
+             "enabledAssets": {
+              "type": "array",
+              "items": {
+               "type": "object",
+               "properties": {
+                "symbol": {
+                 "type": "string",
+                 "description": "vToken symbol"
+                },
+                "address": {
+                 "type": "string",
+                 "description": "vToken contract address"
+                }
+               },
+               "required": [
+                "symbol",
+                "address"
+               ],
+               "additionalProperties": false
+              }
+             }
+            },
+            "required": [
+             "enabledAssets"
+            ],
+            "additionalProperties": false
+           }
+          },
+          "required": [
+           "project",
+           "operation",
+           "data"
+          ],
+          "additionalProperties": false
+         },
+         {
+          "type": "object",
+          "properties": {
+           "project": {
+            "type": "string",
+            "description": "Protocol identifier"
+           },
+           "operation": {
+            "type": "string",
+            "description": "Operation that produced this response"
+           },
+           "error": {
+            "type": "string",
+            "description": "Error message"
+           }
+          },
+          "required": [
+           "project",
+           "operation",
+           "error"
+          ],
+          "additionalProperties": false
+         }
+        ]
+       },
+       "annotations": null
+      },
+      {
+       "name": "getDescriptionVenus",
+       "description": "Get detailed information about Venus Protocol features and how to use them.",
+       "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+       },
+       "outputSchema": {
+        "type": "object",
+        "anyOf": [
+         {
+          "type": "object",
+          "properties": {
+           "project": {
+            "type": "string",
+            "description": "Protocol identifier"
+           },
+           "operation": {
+            "type": "string",
+            "description": "Operation that produced this response"
+           },
+           "note": {
+            "type": "string",
+            "description": "Human-readable summary of the action"
+           },
+           "data": {
+            "type": "object",
+            "properties": {
+             "description": {
+              "type": "string",
+              "description": "Detailed protocol features and usage instructions"
+             }
+            },
+            "required": [
+             "description"
+            ],
+            "additionalProperties": false
+           }
+          },
+          "required": [
+           "project",
+           "operation",
+           "data"
+          ],
+          "additionalProperties": false
+         },
+         {
+          "type": "object",
+          "properties": {
+           "project": {
+            "type": "string",
+            "description": "Protocol identifier"
+           },
+           "operation": {
+            "type": "string",
+            "description": "Operation that produced this response"
+           },
+           "error": {
+            "type": "string",
+            "description": "Error message"
+           }
+          },
+          "required": [
+           "project",
+           "operation",
+           "error"
+          ],
+          "additionalProperties": false
+         }
+        ]
+       },
+       "annotations": null
+      },
+      {
+       "name": "getSupportedTokens",
+       "description": "Get list of supported tokens for a specific pool across multiple chains.",
+       "inputSchema": {
+        "type": "object",
+        "properties": {
+         "chainNames": {
+          "type": "array",
+          "items": {
+           "type": "string",
+           "enum": [
+            "bsc",
+            "ethereum",
+            "base"
+           ]
+          },
+          "description": "Array of chain names"
+         },
+         "pool": {
+          "type": "string",
+          "enum": [
+           "CORE",
+           "DEFI"
+          ],
+          "description": "The Pool in which the transaction will be executed."
+         }
+        },
+        "required": [
+         "chainNames",
+         "pool"
+        ],
+        "additionalProperties": false
+       },
+       "outputSchema": {
+        "type": "object",
+        "anyOf": [
+         {
+          "type": "object",
+          "properties": {
+           "project": {
+            "type": "string",
+            "description": "Protocol identifier"
+           },
+           "operation": {
+            "type": "string",
+            "description": "Operation that produced this response"
+           },
+           "note": {
+            "type": "string",
+            "description": "Human-readable summary of the action"
+           },
+           "data": {
+            "type": "array",
+            "items": {
+             "anyOf": [
+              {
+               "type": "object",
+               "properties": {
+                "chain": {
+                 "type": "string",
+                 "description": "Chain name"
+                },
+                "tokens": {
+                 "type": "array",
+                 "items": {
+                  "type": "string"
+                 },
+                 "description": "Supported token symbols"
+                }
+               },
+               "required": [
+                "chain",
+                "tokens"
+               ],
+               "additionalProperties": false
+              },
+              {
+               "type": "object",
+               "properties": {
+                "chain": {
+                 "type": "string",
+                 "description": "Chain name"
+                },
+                "error": {
+                 "type": "string",
+                 "description": "Error message"
+                }
+               },
+               "required": [
+                "chain",
+                "error"
+               ],
+               "additionalProperties": false
+              }
+             ]
+            }
+           }
+          },
+          "required": [
+           "project",
+           "operation",
+           "data"
+          ],
+          "additionalProperties": false
+         },
+         {
+          "type": "object",
+          "properties": {
+           "project": {
+            "type": "string",
+            "description": "Protocol identifier"
+           },
+           "operation": {
+            "type": "string",
+            "description": "Operation that produced this response"
+           },
+           "error": {
+            "type": "string",
+            "description": "Error message"
+           }
+          },
+          "required": [
+           "project",
+           "operation",
+           "error"
+          ],
+          "additionalProperties": false
+         }
+        ]
+       },
+       "annotations": null
+      },
+      {
+       "name": "updateToken",
+       "description": "Update the exchange rate, borrow balance (debt) and borrow limit for tokens in Venus protocol.",
+       "inputSchema": {
+        "type": "object",
+        "properties": {
+         "chainName": {
+          "type": "string",
+          "enum": [
+           "bsc",
+           "ethereum",
+           "base"
+          ],
+          "description": "Chain name where to execute the transaction"
+         },
+         "tokenSymbols": {
+          "type": "array",
+          "items": {
+           "type": "string"
+          },
+          "description": "Array of token symbols"
+         },
+         "pool": {
+          "type": "string",
+          "enum": [
+           "CORE",
+           "DEFI"
+          ],
+          "description": "The Pool in which the transaction will be executed."
+         },
+         "userAddress": {
+          "type": "string",
+          "description": "The wallet address of the user"
+         }
+        },
+        "required": [
+         "chainName",
+         "tokenSymbols",
+         "pool",
+         "userAddress"
+        ],
+        "additionalProperties": false
+       },
+       "outputSchema": {
+        "type": "object",
+        "anyOf": [
+         {
+          "type": "object",
+          "properties": {
+           "project": {
+            "type": "string",
+            "description": "Protocol identifier"
+           },
+           "operation": {
+            "type": "string",
+            "description": "Operation that produced this response"
+           },
+           "note": {
+            "type": "string",
+            "description": "Human-readable summary of the action"
+           },
+           "transactions": {
+            "type": "array",
+            "items": {
+             "type": "object",
+             "properties": {
+              "chainId": {
+               "type": "number",
+               "description": "EVM chain ID"
+              },
+              "transaction": {
+               "type": "object",
+               "properties": {
+                "target": {
+                 "type": "string",
+                 "description": "Target contract address"
+                },
+                "data": {
+                 "type": "string",
+                 "description": "ABI-encoded calldata"
+                },
+                "value": {
+                 "description": "Native token value in wei",
+                 "type": "string"
+                }
+               },
+               "required": [
+                "target",
+                "data"
+               ],
+               "additionalProperties": false,
+               "description": "EVM transaction parameters"
+              }
+             },
+             "required": [
+              "chainId",
+              "transaction"
+             ],
+             "additionalProperties": false
+            },
+            "description": "EVM transactions to sign and broadcast"
+           }
+          },
+          "required": [
+           "project",
+           "operation",
+           "transactions"
+          ],
+          "additionalProperties": false
+         },
+         {
+          "type": "object",
+          "properties": {
+           "project": {
+            "type": "string",
+            "description": "Protocol identifier"
+           },
+           "operation": {
+            "type": "string",
+            "description": "Operation that produced this response"
+           },
+           "error": {
+            "type": "string",
+            "description": "Error message"
+           }
+          },
+          "required": [
+           "project",
+           "operation",
+           "error"
+          ],
+          "additionalProperties": false
+         }
+        ]
+       },
+       "annotations": null
+      },
+      {
+       "name": "getSupportedChains",
+       "description": "Get a list of blockchain networks supported by the Venus",
+       "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+       },
+       "outputSchema": {
+        "type": "object",
+        "anyOf": [
+         {
+          "type": "object",
+          "properties": {
+           "project": {
+            "type": "string",
+            "description": "Protocol identifier"
+           },
+           "operation": {
+            "type": "string",
+            "description": "Operation that produced this response"
+           },
+           "note": {
+            "type": "string",
+            "description": "Human-readable summary of the action"
+           },
+           "data": {
+            "type": "object",
+            "properties": {
+             "supportedChains": {
+              "type": "array",
+              "items": {
+               "type": "string"
+              },
+              "description": "List of supported chain names"
+             }
+            },
+            "required": [
+             "supportedChains"
+            ],
+            "additionalProperties": false
+           }
+          },
+          "required": [
+           "project",
+           "operation",
+           "data"
+          ],
+          "additionalProperties": false
+         },
+         {
+          "type": "object",
+          "properties": {
+           "project": {
+            "type": "string",
+            "description": "Protocol identifier"
+           },
+           "operation": {
+            "type": "string",
+            "description": "Operation that produced this response"
+           },
+           "error": {
+            "type": "string",
+            "description": "Error message"
+           }
+          },
+          "required": [
+           "project",
+           "operation",
+           "error"
+          ],
+          "additionalProperties": false
+         }
+        ]
+       },
+       "annotations": null
+      }
+     ],
+     "reason": null
+    },
+    "registry": null,
+    "auth": {
+     "required": false,
+     "status": 201,
+     "scheme": null,
+     "hop": "initialize"
+    },
+    "rate_limit": null
+   },
+   "a2a": null,
+   "probed_at": "2026-09-09T09:40:23Z"
+  },
+  {
+   "endpoint": "https://evoevo.ai/agent/detail?id=860129",
+   "host": "evoevo.ai",
+   "protocols": [
+    "MCP"
+   ],
+   "priority": 0,
+   "agent_count": 1,
+   "mcp": {
+    "transcript_version": "1",
+    "probe_id": "probe:mcp:v1",
+    "endpoint": "https://evoevo.ai/agent/detail?id=860129",
+    "probed_at": "2026-09-09T09:40:23Z",
+    "attempts": [
+     {
+      "attempt": 1,
+      "ts": "2026-09-09T09:40:23Z",
+      "reachable": false,
+      "status": 405,
+      "reason": "HTTP 405",
+      "elapsedMs": 1143
+     },
+     {
+      "attempt": 2,
+      "ts": "2026-09-09T09:40:25Z",
+      "reachable": false,
+      "status": 405,
+      "reason": "HTTP 405",
+      "elapsedMs": 1098
+     },
+     {
+      "attempt": 3,
+      "ts": "2026-09-09T09:40:26Z",
+      "reachable": false,
+      "status": 405,
+      "reason": "HTTP 405",
+      "elapsedMs": 397
+     }
+    ],
+    "handshake": null,
+    "tools": null,
+    "registry": null,
+    "auth": null,
+    "rate_limit": null
+   },
+   "a2a": null,
+   "probed_at": "2026-09-09T09:40:23Z"
   },
   {
    "endpoint": "https://facebook.com",
@@ -23024,6 +27530,54 @@
    "probed_at": "2026-09-09T09:27:06Z"
   },
   {
+   "endpoint": "https://mpp.hyreagent.fun/agents/bobo",
+   "host": "mpp.hyreagent.fun",
+   "protocols": [
+    "MCP"
+   ],
+   "priority": 0,
+   "agent_count": 1,
+   "mcp": {
+    "transcript_version": "1",
+    "probe_id": "probe:mcp:v1",
+    "endpoint": "https://mpp.hyreagent.fun/agents/bobo",
+    "probed_at": "2026-09-09T09:40:23Z",
+    "attempts": [
+     {
+      "attempt": 1,
+      "ts": "2026-09-09T09:40:23Z",
+      "reachable": false,
+      "status": 404,
+      "reason": "HTTP 404",
+      "elapsedMs": 911
+     },
+     {
+      "attempt": 2,
+      "ts": "2026-09-09T09:40:24Z",
+      "reachable": false,
+      "status": 404,
+      "reason": "HTTP 404",
+      "elapsedMs": 397
+     },
+     {
+      "attempt": 3,
+      "ts": "2026-09-09T09:40:25Z",
+      "reachable": false,
+      "status": 404,
+      "reason": "HTTP 404",
+      "elapsedMs": 523
+     }
+    ],
+    "handshake": null,
+    "tools": null,
+    "registry": null,
+    "auth": null,
+    "rate_limit": null
+   },
+   "a2a": null,
+   "probed_at": "2026-09-09T09:40:23Z"
+  },
+  {
    "endpoint": "https://nanonode753.agent/mcp",
    "host": "nanonode753.agent",
    "protocols": [
@@ -23742,6 +28296,54 @@
    },
    "a2a": null,
    "probed_at": "2026-09-09T09:27:06Z"
+  },
+  {
+   "endpoint": "https://range-pilot-watch.onrender.com/docs/agents/venus-borrow-buffer.html",
+   "host": "range-pilot-watch.onrender.com",
+   "protocols": [
+    "MCP"
+   ],
+   "priority": 0,
+   "agent_count": 1,
+   "mcp": {
+    "transcript_version": "1",
+    "probe_id": "probe:mcp:v1",
+    "endpoint": "https://range-pilot-watch.onrender.com/docs/agents/venus-borrow-buffer.html",
+    "probed_at": "2026-09-09T09:40:23Z",
+    "attempts": [
+     {
+      "attempt": 1,
+      "ts": "2026-09-09T09:40:23Z",
+      "reachable": false,
+      "status": 404,
+      "reason": "HTTP 404",
+      "elapsedMs": 494
+     },
+     {
+      "attempt": 2,
+      "ts": "2026-09-09T09:40:24Z",
+      "reachable": false,
+      "status": 404,
+      "reason": "HTTP 404",
+      "elapsedMs": 309
+     },
+     {
+      "attempt": 3,
+      "ts": "2026-09-09T09:40:25Z",
+      "reachable": false,
+      "status": 404,
+      "reason": "HTTP 404",
+      "elapsedMs": 430
+     }
+    ],
+    "handshake": null,
+    "tools": null,
+    "registry": null,
+    "auth": null,
+    "rate_limit": null
+   },
+   "a2a": null,
+   "probed_at": "2026-09-09T09:40:23Z"
   },
   {
    "endpoint": "https://rapidagent.agent/mcp",
@@ -26071,6 +30673,54 @@
    "probed_at": "2026-09-09T09:27:06Z"
   },
   {
+   "endpoint": "https://your-deploy.example.com/api/agent",
+   "host": "your-deploy.example.com",
+   "protocols": [
+    "MCP"
+   ],
+   "priority": 0,
+   "agent_count": 1,
+   "mcp": {
+    "transcript_version": "1",
+    "probe_id": "probe:mcp:v1",
+    "endpoint": "https://your-deploy.example.com/api/agent",
+    "probed_at": "2026-09-09T09:40:23Z",
+    "attempts": [
+     {
+      "attempt": 1,
+      "ts": "2026-09-09T09:40:23Z",
+      "reachable": false,
+      "status": null,
+      "reason": "dns lookup failed: getaddrinfo ENOTFOUND your-deploy.example.com",
+      "elapsedMs": 98
+     },
+     {
+      "attempt": 2,
+      "ts": "2026-09-09T09:40:23Z",
+      "reachable": false,
+      "status": null,
+      "reason": "dns lookup failed: getaddrinfo ENOTFOUND your-deploy.example.com",
+      "elapsedMs": 24
+     },
+     {
+      "attempt": 3,
+      "ts": "2026-09-09T09:40:24Z",
+      "reachable": false,
+      "status": null,
+      "reason": "dns lookup failed: getaddrinfo ENOTFOUND your-deploy.example.com",
+      "elapsedMs": 25
+     }
+    ],
+    "handshake": null,
+    "tools": null,
+    "registry": null,
+    "auth": null,
+    "rate_limit": null
+   },
+   "a2a": null,
+   "probed_at": "2026-09-09T09:40:23Z"
+  },
+  {
    "endpoint": "https://z.agent/mcp",
    "host": "z.agent",
    "protocols": [
@@ -26117,6 +30767,37 @@
    },
    "a2a": null,
    "probed_at": "2026-09-09T09:27:06Z"
+  },
+  {
+   "endpoint": "npm://@quackai/q402-mcp",
+   "host": "quackai",
+   "protocols": [
+    "MCP"
+   ],
+   "priority": 0,
+   "agent_count": 1,
+   "mcp": {
+    "transcript_version": "1",
+    "probe_id": "probe:mcp:v1",
+    "endpoint": "npm://@quackai/q402-mcp",
+    "probed_at": "2026-09-09T09:40:23Z",
+    "attempts": [
+     {
+      "attempt": 1,
+      "ts": "2026-09-09T09:40:23Z",
+      "reachable": false,
+      "status": null,
+      "reason": "refused: unsupported scheme npm:",
+      "elapsedMs": 0
+     }
+    ],
+    "handshake": null,
+    "tools": null,
+    "registry": null,
+    "auth": null
+   },
+   "a2a": null,
+   "probed_at": "2026-09-09T09:40:23Z"
   }
  ]
 }

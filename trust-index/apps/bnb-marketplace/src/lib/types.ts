@@ -1,11 +1,37 @@
 // Mirrors DATA-CONTRACT.md exactly. The contract is frozen; if a producer adds a
 // field, add it here first and only then read it in the UI.
 
-export type CategorySlug = 'rebalancing' | 'grid_trading' | 'yield' | 'health_factor' | 'other';
+/**
+ * The four DeFi-position categories, plus eight derived from the corpus.
+ *
+ * The second group exists because 9,811 agents sat in `other` while their own
+ * descriptions said plainly what they were — 5,170 of them "Gasless stablecoin
+ * payment agent". Calling those unclassifiable described our taxonomy, not
+ * them. Adding the eight moved 75% of the pile into a named category.
+ *
+ * Every one is still SELF-REPORTED (weight 0.15). A category says what an agent
+ * claims to be; only an assessment says how it behaves.
+ */
+export type CategorySlug =
+  | 'rebalancing' | 'grid_trading' | 'yield' | 'health_factor'
+  | 'payments' | 'security' | 'research' | 'content'
+  | 'development' | 'automation' | 'trading' | 'staking'
+  | 'other';
 
 export type Coverage = 'thin' | 'moderate' | 'strong';
 
 export interface Assessment {
+  /**
+   * How many agents in the snapshot declare this same endpoint, this one
+   * included. 1 means the measurement is this agent's alone.
+   *
+   * A score is a measurement of a SERVICE. When 229 registrations share one
+   * endpoint, writing its score onto all 229 rows without saying so turns
+   * eleven measured services into "239 rated agents" — the same
+   * one-thing-counted-many-times inflation that fills the registry, reproduced
+   * by us. Render this anywhere a shared score appears.
+   */
+  endpoint_shared_with: number;
   /**
    * null = WE COULD NOT MEASURE. A timeout, a 5xx or a DNS failure is our
    * failure to obtain a reading, and recording it as `false` would publish our

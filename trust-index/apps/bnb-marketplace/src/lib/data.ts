@@ -64,7 +64,16 @@ function isUsableAgent(a: unknown): a is Agent {
   return typeof candidate.agent_id === 'string' && candidate.agent_id.length > 0;
 }
 
-const KNOWN: CategorySlug[] = ['rebalancing', 'grid_trading', 'yield', 'health_factor', 'other'];
+/**
+ * Derived from CATEGORIES rather than listed again.
+ *
+ * This was a hand-written copy of the four original slugs, and normalise()
+ * coerces anything not in it to `other`. Adding eight categories upstream while
+ * this list stayed at four would have silently reverted all 7,362 newly
+ * classified agents to `other` — the data would have been right, the site
+ * would have shown the old answer, and nothing would have errored.
+ */
+const KNOWN: CategorySlug[] = [...CATEGORIES.map((c) => c.slug), 'other'];
 
 /** Defensive defaults only for presentation-safety. No score is ever invented here. */
 function normalise(a: Agent): Agent {
@@ -100,6 +109,12 @@ function normalise(a: Agent): Agent {
               ? a.assessment.tool_count
               : (a.assessment.tools_or_skills?.length ?? 0),
           gates_fired: Array.isArray(a.assessment.gates_fired) ? a.assessment.gates_fired : [],
+          // Defaults to 1 = "this agent alone". An older snapshot carries no
+          // fan-out, and claiming a shared measurement is exclusive would be
+          // the inflation this field exists to expose, so 1 is the value that
+          // makes the UI say the least.
+          endpoint_shared_with:
+            typeof a.assessment.endpoint_shared_with === 'number' ? a.assessment.endpoint_shared_with : 1,
           composite: typeof a.assessment.composite === 'number' ? a.assessment.composite : null,
           withheld_reason: a.assessment.withheld_reason ?? null,
         }
@@ -117,13 +132,21 @@ export function allAgents(): Agent[] {
 }
 
 /**
- * The four categories this marketplace lists. Everything else in the registry is
- * indexed and counted, but not listed: an agent we cannot even place in a
- * category is not something we can help anyone hire, and padding the listings
- * with 9,800 unclassifiable rows would be the exact behaviour this site exists
- * to criticise. The count is reported on the landing page as a finding.
+ * The categories this marketplace lists. Everything else in the registry is
+ * indexed and counted, but not listed: an agent we cannot place in a category
+ * is not something we can help anyone hire, and padding the listings with
+ * unclassifiable rows would be the exact behaviour this site exists to
+ * criticise. The remainder is reported on the landing page as a finding.
+ *
+ * Eight of these twelve were derived from the corpus after 9,811 agents sat in
+ * `other` while their own descriptions said plainly what they were. That count
+ * is now 2,449.
  */
-const MARKETPLACE: CategorySlug[] = ['rebalancing', 'grid_trading', 'yield', 'health_factor'];
+const MARKETPLACE: CategorySlug[] = [
+  'rebalancing', 'grid_trading', 'yield', 'health_factor',
+  'payments', 'security', 'research', 'content',
+  'development', 'automation', 'trading', 'staking',
+];
 
 /**
  * ...OR an agent we actually called and assessed, whatever its category.
@@ -148,7 +171,7 @@ export function listedAgents(): Agent[] {
   );
 }
 
-/** Indexed but not placed in any of the four categories. Never silently dropped. */
+/** Indexed but not placed in any listed category. Never silently dropped. */
 export function unclassifiedCount(): number {
   return allAgents().length - listedAgents().length;
 }
