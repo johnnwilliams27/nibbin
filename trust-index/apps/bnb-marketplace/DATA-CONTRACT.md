@@ -42,6 +42,10 @@ Agent = {
   // assumed to have hit a rate limit. The presentation fallback is
   // "unread_unknown"; it never counts as a confirmed absence of an endpoint.
   // The builder still refuses to publish unexplained or non-throttle gaps.
+  // A detail is "read" only after its identity and interface fields validate.
+  // Invalid cached bodies reject publication, even with a historical 429.
+  // Rate-limited includes queued fetches deferred after this run observed a
+  // shared-quota 429; the fetch log distinguishes those from requested rows.
   detail_status: "read" | "unread_rate_limited" | "unread_unknown"
 
   // 8004scan-sourced (third_party_review provenance, weight 0.60)

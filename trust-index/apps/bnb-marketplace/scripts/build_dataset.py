@@ -20,6 +20,7 @@ and small rather than large and wrong.
 Usage: python3 scripts/build_dataset.py
 """
 import json, os, re, sys, time, collections
+from detail_response import read_detail
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RAW = os.path.join(HERE, "data", "raw")
@@ -139,15 +140,9 @@ def find_generic(cat, fields):
     return hits, best
 
 
-def detail_for(chain_id, token_id):
-    p = os.path.join(DET, f"{chain_id}_{token_id}.json")
-    if os.path.exists(p) and os.path.getsize(p) > 2:
-        try:
-            with open(p) as f:
-                return json.load(f)
-        except Exception:
-            return None
-    return None
+def detail_for(candidate):
+    p = os.path.join(DET, f"{candidate['chain_id']}_{candidate['token_id']}.json")
+    return read_detail(p, candidate)
 
 
 def text_fields(cand, det):
@@ -371,7 +366,12 @@ def main():
 
     agents, no_detail, kept, dropped = [], 0, 0, 0
     for c in cands:
-        det = detail_for(c["chain_id"], c["token_id"])
+        try:
+            det = detail_for(c)
+        except (ValueError, OSError) as error:
+            print(f"ERROR: invalid detail cache for {c['agent_id']}: {error}. "
+                  f"Existing dataset preserved; rerun fetch_details.py to repair the cache.")
+            return 1
         if det is None:
             no_detail += 1
         src = det or c

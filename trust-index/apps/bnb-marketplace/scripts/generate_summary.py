@@ -17,6 +17,18 @@ BULK = [re.compile(r"subagent\d+_", re.I),
         re.compile(r"\d{3,}$")]
 
 
+def detail_fetch_summary(agents, historical_failures):
+    throttled = sum(a.get("detail_status") == "unread_rate_limited" for a in agents)
+    unknown = sum(a.get("detail_status") not in ("read", "unread_rate_limited") for a in agents)
+    return (
+        f"- Current detail gaps in this snapshot: **{throttled}** rows recorded as "
+        f"rate-limited and **{unknown}** rows with unknown detail status. "
+        f"These are measurement gaps, not evidence that an agent declares no endpoint. "
+        f"The fetch log contains **{historical_failures}** historical failure records; "
+        f"some may have been resolved by later successful fetches. "
+        f"Current counts come from `detail_status`, not membership in that log.")
+
+
 def band(c):
     if c >= 0.7:
         return "high(>=0.7)"
@@ -218,16 +230,7 @@ def main():
       f"(`data/raw/candidates.json` for list fields, "
       f"`data/raw/detail/<chain>_<token>.json` for detail fields).")
     W(f"- `data/raw/detail/` holds **{n_detail}** fetched detail responses.")
-    W(f"- Detail fetches we could not complete: **{fails['count']}**, recorded in "
-      f"`data/raw/detail_failures.json` with the reason. The API enforces "
-      f"**1000 requests/hour** (`x-ratelimit-limit`), and this run exhausted "
-      f"the quota (HTTP 429, `retry-after: 3600`). Those agents are still in "
-      f"the dataset, built from their real list-view fields, with `endpoint: "
-      f"null` because only the detail view carries an endpoint. That null "
-      f"means *we did not read it*, never *the agent has none*. Rerunning "
-      f"`fetch_details.py` after the quota resets fills them in; it fetches "
-      f"in value order (endpoint-verified, then agents with feedback) so a "
-      f"truncated run still keeps the highest-signal agents.")
+    W(detail_fetch_summary(agents, len(fails["failures"])))
     # Count ONLY agents whose detail we actually read. An agent we never
     # fetched also has `endpoint: null`, and folding those in reported our
     # rate-limit gap as the agents' own absence of an endpoint -- 232 real

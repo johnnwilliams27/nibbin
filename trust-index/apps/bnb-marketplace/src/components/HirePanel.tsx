@@ -144,11 +144,11 @@ export function HirePanel({ agent }: { agent: Agent }) {
         ) : agent.endpoint === null ? (
           <div>
             <p className="text-[13px] font-medium" style={{ color: 'var(--neutral-fg)' }}>
-              This agent cannot be hired
+              No endpoint declared in the registry detail we read
             </p>
             <p className="mt-1.5 text-[13px] text-[var(--fg-muted)]">
-              It declares no endpoint, so there is no address to connect to. It exists in the registry and nowhere else.
-              Nothing is broken — this is the normal state for most of the {'≈'}310,000 agents on BSC.
+              This snapshot gives us no endpoint to connect to. We have not established whether the agent
+              can be reached or hired elsewhere.
             </p>
           </div>
         ) : (
