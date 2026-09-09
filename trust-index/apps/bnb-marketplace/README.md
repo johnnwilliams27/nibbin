@@ -23,6 +23,14 @@ These are product requirements, not styling preferences. Breaking one is a bug.
 | `is_reference_agent: true` | Labelled as ours everywhere, and excluded from every ranking, sort, median and headline count. |
 | `scan_*` fields | Marked as 8004scan's, in a separate column, weighted at zero in our composite. |
 
+### Listing scope
+
+The snapshot indexes the whole registry (currently 10,041 rows), but the marketplace **lists** only
+what classifies into one of the four categories (currently 240). The rest are counted and reported on
+the landing page as a finding — ~98% of registered BSC agents carry no signal that places them in any
+category at all — rather than padded into the listings. Our reference agents always get a page,
+whatever their category, so they can never be quietly hidden.
+
 Provenance is marked on every figure: **we measured** / **8004scan** / **on-chain** / **agent claims**.
 
 ## Pages
@@ -63,6 +71,8 @@ npx serve out          # preview the exported site
 The frozen shape is in [`DATA-CONTRACT.md`](./DATA-CONTRACT.md). The front end reads only that shape.
 
 - Source of truth: `data/agents.json`, written by the indexing pipeline.
+- `public/data/agents.json` is a generated copy (prebuild) and is not committed — the build always
+  recreates it, and it is what `/data/agents.json` serves.
 - Read at **build time** by `src/lib/data.ts`. The deployed site is a static render of one snapshot;
   `generated_at` is shown in the header and footer so a stale number always says when it was taken.
 - Unknown top-level keys (such as `status`) are tolerated and never used to derive a figure.

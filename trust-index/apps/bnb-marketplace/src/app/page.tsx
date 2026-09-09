@@ -42,8 +42,9 @@ export default function HomePage() {
           </p>
         </div>
         <p className="mt-1 max-w-3xl text-[14px] text-[var(--fg-muted)]">
-          A working subset of the BSC population, drawn from the callable end of it. These counts exclude our own
-          reference agents.
+          We index the registry in bulk and then list only what we can actually place in one of the four categories. The
+          gap between those two numbers is itself a finding: most of what is registered on BSC does not describe a job
+          anyone could hire it to do. Listing counts exclude our own reference agents.
         </p>
 
         {empty ? (
@@ -54,10 +55,16 @@ export default function HomePage() {
         <>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatTile
-            label="Agents indexed"
-            value={stats.total}
-            note="Records in this snapshot, across all four categories."
+            label="Registry rows indexed"
+            value={stats.indexed}
+            note={`Every row we pulled in this snapshot. ${num(stats.unclassified)} of them (${pct(stats.unclassified, stats.indexed)}) carry no signal that places them in any category — indexed and counted, but not listed.`}
             source="onchain"
+          />
+          <StatTile
+            label="Listed in a category"
+            value={stats.total}
+            note="Rows we could place in rebalancing, grid trading, yield or health factor. These are the only agents this marketplace lists."
+            source="measured"
           />
           <StatTile
             label="Callable interface"
@@ -72,6 +79,9 @@ export default function HomePage() {
             source="measured"
             tone="var(--measured)"
           />
+        </div>
+
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatTile
             label="Ecosystem verified"
             value={stats.ecosystemVerified}
@@ -79,9 +89,6 @@ export default function HomePage() {
             source="third_party"
             tone="var(--thirdparty)"
           />
-        </div>
-
-        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatTile
             label="Scores withheld"
             value={stats.withheld}
@@ -95,13 +102,6 @@ export default function HomePage() {
             note="Hard caps tripped during assessment. A gate is a reason not to hand an agent money."
             source="measured"
             tone="var(--critical)"
-          />
-          <StatTile
-            label="Any third-party feedback"
-            value={stats.withFeedback}
-            note="Agents with at least one 8004scan feedback record. Feedback volume is not a quality measure."
-            source="third_party"
-            tone="var(--thirdparty)"
           />
           <StatTile
             label="Our reference agents"

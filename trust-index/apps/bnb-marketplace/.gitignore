@@ -5,9 +5,11 @@ next-env.d.ts
 *.tsbuildinfo
 .vercel/
 
-# public/data/agents.json is deliberately NOT ignored. It is regenerated from
-# data/agents.json on every build, and keeping it tracked means the deployed
-# site can always serve the exact snapshot it was rendered from.
+# Byte-for-byte copy of data/agents.json, written by scripts/prepare-data.mjs on
+# every build (prebuild/predev) so the deployed site can serve the exact snapshot
+# it was rendered from. It is ~7MB and fully derived, so it is generated at
+# deploy time rather than duplicated in history.
+public/data/agents.json
 
 # Raw 8004scan API responses, cached so a rerun refetches nothing. 2,600+ files
 # and ~43MB of regenerable data — the pipeline reproduces it from the documented

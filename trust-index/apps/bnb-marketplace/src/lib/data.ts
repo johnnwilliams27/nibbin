@@ -104,8 +104,27 @@ function normalise(a: Agent): Agent {
 // Derived views
 // ---------------------------------------------------------------------------
 
+/** Every row in the snapshot, including rows that did not classify. */
 export function allAgents(): Agent[] {
   return loadDataset().agents;
+}
+
+/**
+ * The four categories this marketplace lists. Everything else in the registry is
+ * indexed and counted, but not listed: an agent we cannot even place in a
+ * category is not something we can help anyone hire, and padding the listings
+ * with 9,800 unclassifiable rows would be the exact behaviour this site exists
+ * to criticise. The count is reported on the landing page as a finding.
+ */
+const MARKETPLACE: CategorySlug[] = ['rebalancing', 'grid_trading', 'yield', 'health_factor'];
+
+export function listedAgents(): Agent[] {
+  return allAgents().filter((a) => MARKETPLACE.includes(a.category));
+}
+
+/** Indexed but not placed in any of the four categories. Never silently dropped. */
+export function unclassifiedCount(): number {
+  return allAgents().length - listedAgents().length;
 }
 
 /**
@@ -114,7 +133,7 @@ export function allAgents(): Agent[] {
  * would make every number on the site suspect. Contract rule 2.
  */
 export function rankableAgents(): Agent[] {
-  return allAgents().filter((a) => !a.is_reference_agent);
+  return listedAgents().filter((a) => !a.is_reference_agent);
 }
 
 export function referenceAgents(): Agent[] {
@@ -122,11 +141,18 @@ export function referenceAgents(): Agent[] {
 }
 
 export function agentsInCategory(slug: CategorySlug): Agent[] {
-  return allAgents().filter((a) => a.category === slug);
+  return pageableAgents().filter((a) => a.category === slug);
 }
 
 export function findAgent(chainId: string, tokenId: string): Agent | undefined {
-  return allAgents().find((a) => String(a.chain_id) === String(chainId) && routeTokenId(a) === tokenId);
+  return pageableAgents().find((a) => String(a.chain_id) === String(chainId) && routeTokenId(a) === tokenId);
+}
+
+/** Agents that get their own page: the four categories, plus our reference agents. */
+export function pageableAgents(): Agent[] {
+  const listed = listedAgents();
+  const seen = new Set(listed.map((a) => a.agent_id));
+  return [...listed, ...referenceAgents().filter((a) => !seen.has(a.agent_id))];
 }
 
 /** Callable = we can actually reach out and talk to it. A declared endpoint is the floor. */
@@ -147,6 +173,9 @@ export function hasGates(a: Agent): boolean {
 }
 
 export interface HeadlineStats {
+  /** Every row in the snapshot, classified or not. */
+  indexed: number;
+  unclassified: number;
   total: number;
   callable: number;
   assessed: number;
@@ -162,6 +191,8 @@ export interface HeadlineStats {
 export function headlineStats(): HeadlineStats {
   const agents = rankableAgents();
   return {
+    indexed: allAgents().length,
+    unclassified: unclassifiedCount(),
     total: agents.length,
     callable: agents.filter(isCallable).length,
     assessed: agents.filter(isAssessed).length,
@@ -190,7 +221,7 @@ export interface CategoryStats {
 
 /** Same computation for all four categories. No category gets a richer summary. */
 export function categoryStats(slug: CategorySlug): CategoryStats {
-  const inCategory = allAgents().filter((a) => a.category === slug);
+  const inCategory = pageableAgents().filter((a) => a.category === slug);
   const ranked = inCategory.filter((a) => !a.is_reference_agent);
   const composites = ranked
     .map((a) => a.assessment?.composite)

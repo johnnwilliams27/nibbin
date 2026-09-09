@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { CATEGORIES, CATEGORY_BY_SLUG } from '@/lib/categories';
-import { allAgents, findAgent, routeTokenId } from '@/lib/data';
+import { findAgent, pageableAgents, routeTokenId } from '@/lib/data';
 import { chainName, compositeOutOf100, isTestnet, latency, shortAddress, timestamp } from '@/lib/format';
 import { CoverageAxis, GateBanner, ReferenceBadge, ScoreBlock, scoreState, unassessedReason } from '@/components/Assessment';
 import { Figure, ProvenanceChip, ProvenanceSplit } from '@/components/Provenance';
@@ -17,7 +17,7 @@ import { CapabilityList } from '@/components/CapabilityList';
 const PLACEHOLDER = { chain: 'none', tokenId: 'none' };
 
 export function generateStaticParams() {
-  const params = allAgents().map((a) => ({ chain: String(a.chain_id), tokenId: routeTokenId(a) }));
+  const params = pageableAgents().map((a) => ({ chain: String(a.chain_id), tokenId: routeTokenId(a) }));
   return params.length > 0 ? params : [PLACEHOLDER];
 }
 
