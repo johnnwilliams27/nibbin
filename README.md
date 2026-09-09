@@ -1,19 +1,29 @@
 # Nibbin
 
-AI agents that nibble your busywork away — for people who work for themselves.
+An independent assessor of AI agents and the interfaces they expose.
 
-This is the project area: spec, memory architecture, Claude Code setup, review gates, and tooling. The product code grows around it.
+We probe a subject's declared interface, measure how it actually behaves when
+called, and publish a rating — or decline to, and record why. Subjects are
+ERC-8004 on-chain agents and the MCP / A2A endpoints they declare.
 
-## Start here
-- `SPEC.md` — the master build specification (single source of truth; §8 is the build order)
-- `CLAUDE.md` — thin router that directs every Claude Code session to the right context
-- `docs/` — the memory tree (state, invariants, agreements, environment, risks, gotchas)
-- `.claude/` — skills (creature-engine, connector-builder, redaction-corpus, brand-voice), adversarial reviewer subagents (red-team, claims-auditor, logic-skeptic, cost-auditor), and the `/gate` command
-- `reference/` — `nibbin-demo.html` (brand/copy/pricing) and `nibbin-creature-lab.html` (creature engine)
-- `tools/grovemap/` — codebase map; run `node tools/grovemap/grovemap.mjs`, open `grovemap.html`
+The distinguishing property is the refusal: when the evidence is too thin we
+withhold the rating and say what was missing, because our inability to measure
+must never be recorded as a fact about the subject.
 
-## First Claude Code prompt
-> Read CLAUDE.md, then docs/STATE.md, then SPEC.md §0 and §8. Execute milestone M0. When the DoD is met, run /gate.
+## Layout
 
-## Rhythm
-One milestone per working session. No milestone starts until the previous gate is signed in `LEARNINGS.md`.
+| Path | What |
+|---|---|
+| `trust-index/packages/scoring` | The rating engine. Pure, no I/O. |
+| `trust-index/packages/collectors` | Probe harness — MCP, A2A, network guard, judge. |
+| `trust-index/packages/indexer` | On-chain enumeration across the ERC-8004 registries. |
+| `trust-index/packages/db` | Persistence, daily snapshots, credential store. |
+| `trust-index/apps/bnb-marketplace` | Agent marketplace for BNB Chain, ranked by assessment. |
+
+Start with `CLAUDE.md` (router), then `docs/STATE.md`.
+
+## History
+
+The v1 product — a creature-based busywork assistant with a desktop observer —
+was archived on 2026-09-09. Nothing was deleted: see `ARCHIVE.md` for how to
+recover any part of it, or the `old-nibbin` repository for the full tree.

@@ -14,8 +14,8 @@ and record the reason**. Our inability to measure never becomes a fact about the
 |---|---|
 | Anything (always) | `docs/STATE.md` (current state, open P0/P1) |
 | The direction, positioning, what is settled | the trust-index direction doc (§11 lists what not to relitigate) |
-| Hard rules you must not break | `docs/INVARIANTS.md` |
-| Past mistakes & patterns | `docs/GOTCHAS.md`, `LEARNINGS.md` |
+| Hard rules you must not break | the rules section at the bottom of this file |
+| Past mistakes & patterns | `docs/GOTCHAS.md` |
 | The scoring engine (pure, no I/O) | `trust-index/packages/scoring` |
 | Probing MCP servers | `trust-index/packages/collectors/src/mcp` |
 | Probing A2A agents | `trust-index/packages/collectors/src/a2a` |
