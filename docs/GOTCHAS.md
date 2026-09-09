@@ -90,3 +90,26 @@
 - When a model call is routed then comes back empty/failed, the user-facing decision degrades to
   the scripted floor (tier t0) but a real T1/T2 call may already be billed — record COGS on the
   DISPATCHED tier (keeperChat returns dispatchedTier/dispatchedModel), never the user-facing
+- The rating engine strips an OBSERVATION key at its first colon (`observationCheck`) but takes
+  a GAP's `check` field verbatim. Scoping both per item therefore counts one unscoped attempt
+  against N scoped blocks, and probing MORE of a subject reports it LESS completely assessed —
+  measured on a2a_agent.v1: three skills gave completeness 0.825 where one gave 0.9125. Scope
+  observation keys (identity is observer+dimension+key+ts, so unscoped keys collide and results
+  vanish); do NOT scope gap check names — put the item id in `detail`.
+- A gate's `observation_key` is matched literally, so a gate observation must be emitted
+  UNSCOPED even in a collector whose other keys are scoped. A per-item gate key never matches
+  and the cap becomes dead code with no error.
+- `probeSeed()` returns `{ seed, reproducible }` and never null. `score-marketplace.mts` guarded
+  it with `if (seed === null) process.exit(1)`, which is unreachable — every run without a
+  configured seed passed silently and produced ratings nobody can replay. Check `.reproducible`.
+- Comparing two agent replies with `JSON.stringify` measures the protocol, not the agent. A2A
+  mandates a fresh `messageId` per message and servers mint `taskId`/`contextId` per exchange;
+  raw comparison called 57 of 76 live skills non-deterministic when every sampled pair was
+  otherwise byte-identical. Strip envelope ids and normalise UUIDs/timestamps before comparing.
+- An empty string is a LEGAL A2A text part, so sending one is not a malformed-input test — 57 of
+  76 agents accepted it and the robustness arm decided nothing. Send params the spec forbids
+  (`params` without `message`) if you want a -32602.
+- `isMutatingName` (mcp/assess.ts) carries the document-editing vocabulary only: create, delete,
+  transfer, pay. It has NO swap, buy, sell, trade, mint, burn, stake, withdraw or approve. Any
+  safety screen for on-chain subjects that delegates to it is not checking the verbs that move
+  money — a live run invoked `swap-quote`, `swap-build` and `trade` through exactly this gap.

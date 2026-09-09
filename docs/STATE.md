@@ -30,15 +30,44 @@ and the `old-nibbin` repository.
   descriptions (provenance 0.15, the weakest tier) with median confidence 0.6 and 16 of 230 below
   0.4; and the 230 resolve to 134 distinct descriptions and 40 distinct endpoints. The sampling
   frame and the taxonomy were fitted to each other. `HANDOFF.md` §4.4 has the full audit.
-- **P1: why no agent scores is unresolved between two hypotheses.**
-  `merge-marketplace-assessments.mts` hardcodes `COVERAGE = "thin"` and `composite: null` at every
-  construction site, and all 3,204 assessments are thin — so the zero is a pipeline fact, not a
-  threshold verdict. But the v2→v3 rubric note records that under v2's defaults *125 of 161
-  eligible servers were never probed*, so "no rating" meant "not selected". Settle it by running
-  the battery against known-good servers before changing any threshold. `HANDOFF.md` §5.
+- ~~**P1: why no agent scores is unresolved between two hypotheses.**~~ **Settled 2026-09-09: it
+  was the pipeline, not the thresholds.** No threshold was changed. `score-marketplace.mts` now
+  joins transcripts to battery outcomes and calls `scoreSubject` for both protocols; on 273 live
+  transcripts that gives **42 published composites** (MCP 13/173, A2A 29/100). The A2A half had
+  been structurally unrateable — no profile, no assembler, nothing running the battery — so 100
+  probed agents produced 0 scores from a rubric that was never consulted.
+- **P1: 23 of the 29 published A2A subjects sit at exactly 77.5**, the ceiling for a subject whose
+  every check passes on a single day (shrinkage toward the 0.55 prior, `thin` tier, wide
+  interval). Twelve of them are subdomains of ONE `bubbleupdappos.workers.dev` account and four
+  are one `fly.dev` operator. `endpoint_shared_with` counts registrations per endpoint and does
+  not catch one deployment behind many hostnames. Before these go on the site, either group them
+  or say plainly that they are one operator — twelve identical rows read as twelve agents.
+  Repeated daily sampling is what separates them; one day cannot.
 - **P1: 8004scan supplies the sampling frame**, which `DIRECTION.md` §11's Glama ruling
   (third-party metadata enriches at 0.60; behavioural evidence stays ours) does not permit.
   `packages/indexer` already enumerates 496,976 agents from chain independently — use it.
+
+### A2A rating landed 2026-09-09
+
+`a2a_agent.v1` (`packages/types/src/profiles.ts`), its assembler
+(`collectors/src/a2a/subject.ts`), and `scripts/run-a2a-battery.mts`. Weights mirror
+`mcp_server.v2`'s 0.80/0.20 behaviour/declaration split so an A2A 70 means roughly what an MCP 70
+means; v2's 0.20 on `tool_safety` has no A2A equivalent (an AgentSkill has no schema and no
+`readOnlyHint`) and goes to injection resistance 0.25, functional correctness 0.35, robustness
+0.20. The three behavioural dimensions are shared specs now, because a shared dimension id has to
+mean one thing across the compendium.
+
+Running it against 48 live agents found four defects, all of them ours written as facts about the
+subject, all four caught by reading the pass/fail/undecided tallies rather than the scores:
+the safety screen delegated to the MCP verb list and so never checked `swap`/`stake`/`withdraw`
+(three financially-named skills were invoked); determinism compared whole JSON envelopes and
+called 57 of 76 skills inconsistent over protocol-mandated UUIDs; 14 injection verdicts were read
+off calls that only errored, every one recorded as a pass; and the malformed arm sent a legal
+empty text part, leaving robustness undecided 57 times in 76. See `LEARNINGS.md` and `GOTCHAS.md`.
+
+Engine: `dimension_coverage` could exceed 1 (measured 1.21) once a dimension could be partly
+assessable — the case `rating/index.ts` predicted would arrive with the first per-check collector.
+Composite untouched.
 
 ### Fixed 2026-09-09
 
