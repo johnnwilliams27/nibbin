@@ -62,19 +62,25 @@ export function relativeAge(iso: string | null | undefined): string | null {
 }
 
 export const COVERAGE_COPY: Record<Coverage, { label: string; meaning: string; steps: number }> = {
+  // Coverage is DEPTH — how much sampling stands behind the number — not breadth
+  // of what we tried. A single run touches every arm of the battery, so breadth
+  // alone would call a subject we looked at once "strong", and this axis would
+  // stop meaning anything. The engine already refuses to award its top tier
+  // inside one day (strong_min_span_days); this copy now says the same thing in
+  // words, so the badge and the rubric cannot drift apart.
   thin: {
     label: 'Thin',
-    meaning: 'We got one look. Enough to confirm it answers, not enough to judge behaviour.',
+    meaning: 'One day of probing. We exercised its behaviour, but a single sample cannot tell a good agent from a lucky one.',
     steps: 1,
   },
   moderate: {
     label: 'Moderate',
-    meaning: 'We ran the standard probe set. Gaps remain in the long tail of its tools.',
+    meaning: 'Sampled repeatedly over time. Enough to see whether it behaves consistently, not yet a long record.',
     steps: 2,
   },
   strong: {
     label: 'Strong',
-    meaning: 'We exercised the full probe set including adversarial prompts. Few blind spots.',
+    meaning: 'Sampled deeply across many days. One instrument, watching for a long time — not corroborated by independent observers.',
     steps: 3,
   },
 };

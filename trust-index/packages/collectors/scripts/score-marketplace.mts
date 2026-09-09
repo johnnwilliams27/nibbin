@@ -118,6 +118,23 @@ type Scored = {
   /** Both axes, kept separate. Coverage is how much we looked; it is never merged into the score. */
   dimension_coverage: number | null;
   assessment_completeness: number | null;
+  /**
+   * The engine's own coverage tier — DEPTH — as the weakest tier across the
+   * dimensions that published.
+   *
+   * `dimension_coverage` is BREADTH: how much of the profile produced a score.
+   * A subject probed once can have breadth 1.0, because one run touches every
+   * arm. It cannot have depth: `strong_min_span_days` exists so that tier is
+   * unreachable in a day, and the engine duly returns `thin` for every
+   * dimension of a single-day subject.
+   *
+   * Both are needed downstream. The marketplace shows one three-step "Coverage"
+   * axis whose `strong` copy reads "we exercised the full probe set... few
+   * blind spots", and mapping breadth alone onto it labels a subject we looked
+   * at exactly once as strongly covered. The weakest tier is the honest bound,
+   * and the consumer takes the lower of the two.
+   */
+  evidence_tier: "none" | "thin" | "moderate" | "strong" | null;
   /** The engine's own words for why no number published. Never blank. */
   withheld_reason: string | null;
   gates_fired: unknown[];
@@ -125,6 +142,30 @@ type Scored = {
   harness_gaps: unknown[];
   battery_outcomes: number;
 };
+
+
+/**
+ * The weakest coverage tier among the dimensions that actually published.
+ *
+ * Weakest, not average and not the heaviest dimension's: this value bounds a
+ * claim about how well we looked, and a chain of evidence is no stronger than
+ * its thinnest link. A subject with five strong dimensions and one thin one has
+ * a thin spot, and saying so costs us nothing we are entitled to.
+ */
+function evidenceTier(
+  dimensions: ReadonlyArray<{ score: number | null; coverage_tier: string }>,
+): Scored["evidence_tier"] {
+  const ORDER = ["none", "thin", "moderate", "strong"] as const;
+  let worst = ORDER.length - 1;
+  let seen = false;
+  for (const d of dimensions) {
+    if (d.score === null) continue;
+    seen = true;
+    const i = ORDER.indexOf(d.coverage_tier as (typeof ORDER)[number]);
+    if (i >= 0 && i < worst) worst = i;
+  }
+  return seen ? ORDER[worst]! : null;
+}
 
 /**
  * The observer's own track record, MEASURED from this run rather than asserted.
@@ -195,6 +236,7 @@ for (const t of loaded) {
       composite_high: result.composite_high ?? null,
       dimension_coverage: result.dimension_coverage ?? null,
       assessment_completeness: result.assessment_completeness ?? null,
+      evidence_tier: evidenceTier(result.dimensions ?? []),
       withheld_reason: result.composite_suppression_reason ?? null,
       gates_fired: result.gates_fired ?? [],
       harness_gaps: result.harness_gaps ?? [],
@@ -212,6 +254,7 @@ for (const t of loaded) {
       composite_high: null,
       dimension_coverage: null,
       assessment_completeness: null,
+      evidence_tier: null,
       withheld_reason: `could not be scored: ${String((e as Error).message).slice(0, 160)}`,
       gates_fired: [],
       harness_gaps: [],
@@ -256,6 +299,7 @@ for (const t of loadedA2a) {
       composite_high: result.composite_high ?? null,
       dimension_coverage: result.dimension_coverage ?? null,
       assessment_completeness: result.assessment_completeness ?? null,
+      evidence_tier: evidenceTier(result.dimensions ?? []),
       withheld_reason: result.composite_suppression_reason ?? null,
       gates_fired: result.gates_fired ?? [],
       harness_gaps: result.harness_gaps ?? [],
@@ -271,6 +315,7 @@ for (const t of loadedA2a) {
       composite_high: null,
       dimension_coverage: null,
       assessment_completeness: null,
+      evidence_tier: null,
       withheld_reason: `could not be scored: ${String((e as Error).message).slice(0, 160)}`,
       gates_fired: [],
       harness_gaps: [],

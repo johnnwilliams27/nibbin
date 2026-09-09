@@ -381,41 +381,126 @@ const SCORED = process.argv.includes("--scored")
   : "";
 let overlaid = 0;
 let overlaidWithheld = 0;
+let unjoinable = 0;
+
+/**
+ * Every URL by which a probed endpoint can be named, mapped back to its key.
+ *
+ * A STRAIGHT `byEndpoint.get(sc.endpoint)` LOSES MOST OF THE A2A HALF, silently.
+ * A registration declares where the Agent Card lives
+ * (`…/.well-known/agent-card.json`); the battery dials what that card declares
+ * as its interface (`…/rebalancer/`, or `https://agent.brainonbnb.com/a2a`).
+ * Both files are right about their own subject and the two keys differ, so the
+ * join misses: measured on the first run, 28 of 29 published A2A composites
+ * failed to land and the site would have shown the same "no behavioural battery
+ * run" as before, from a run that had just battered them.
+ *
+ * That failure mode is the dangerous kind — no error, no count, just the old
+ * text — so the misses are counted and reported below rather than trusted to
+ * be zero.
+ */
+/**
+ * TWO PASSES, and the order is the whole correctness of it. A result's OWN
+ * endpoint always wins; another result's declared alias may only claim a URL
+ * nobody owns.
+ *
+ * One pass with first-wins loses scores. Measured: the A2A card result for
+ * `bnb-yield…/.well-known/agent-card.json` declares an interface at
+ * `bnb-yield…/mcp/`, which is ANOTHER probed endpoint's own key. Scanned in
+ * file order, the card claimed it, the MCP composite for that endpoint landed
+ * on the card's row instead of its own, and `bnb-yield` and `kawal` — both
+ * published by the engine at 76.93 and 75.14 — showed no score at all. A join
+ * that moves a rating onto the wrong subject is worse than one that drops it.
+ */
+/**
+ * The weaker of the contract's three tiers, treating a missing depth reading as
+ * "says nothing" rather than as "strong". `none` from the engine means no
+ * dimension published, which cannot coexist with a composite; it floors at
+ * `thin` so a published row never claims less than one look.
+ */
+function weakest(
+  breadth: "thin" | "moderate" | "strong",
+  depth: "none" | "thin" | "moderate" | "strong" | null | undefined,
+): "thin" | "moderate" | "strong" {
+  if (depth === null || depth === undefined) return breadth;
+  const ORDER = ["thin", "moderate", "strong"] as const;
+  const d = depth === "none" ? "thin" : depth;
+  return ORDER.indexOf(d) < ORDER.indexOf(breadth) ? d : breadth;
+}
+
+const aliasToKey = new Map<string, string>();
+for (const r of probed.results) aliasToKey.set(r.endpoint, r.endpoint);
+for (const r of probed.results) {
+  const alias = (u: unknown): void => {
+    if (typeof u === "string" && u !== "" && !aliasToKey.has(u)) aliasToKey.set(u, r.endpoint);
+  };
+  alias(r.mcp?.endpoint);
+  alias(r.a2a?.subject_url);
+  alias(r.a2a?.reachability?.url);
+  alias(r.a2a?.discovery?.url);
+  for (const i of r.a2a?.declaration?.interfaces ?? []) alias(i.url);
+}
+
 if (SCORED !== "" && existsSync(SCORED)) {
   const scored = JSON.parse(readFileSync(SCORED, "utf8")) as {
     results: Array<{
       endpoint: string;
       composite: number | null;
       dimension_coverage: number | null;
+      evidence_tier: "none" | "thin" | "moderate" | "strong" | null;
       withheld_reason: string | null;
       gates_fired: unknown[];
     }>;
   };
   for (const sc of scored.results) {
-    const base = byEndpoint.get(sc.endpoint);
-    if (base === undefined) continue;
+    const key = aliasToKey.get(sc.endpoint);
+    const base = key === undefined ? undefined : byEndpoint.get(key);
+    if (base === undefined || key === undefined) {
+      if (sc.composite !== null) unjoinable += 1;
+      continue;
+    }
+
     if (sc.composite !== null) {
-      byEndpoint.set(sc.endpoint, {
+      byEndpoint.set(key, {
         ...base,
         composite: sc.composite,
-        // Coverage is the engine's dimension_coverage, mapped onto the
-        // contract's three tiers. It stays a separate axis from the score and
-        // is never folded into it.
-        coverage:
+        // Coverage stays a separate axis from the score and is never folded
+        // into it — and it is the LOWER of two different questions.
+        //
+        // `dimension_coverage` is breadth: how much of the profile produced a
+        // score. `evidence_tier` is the engine's own depth: how much sampling
+        // stands behind it. A subject probed once has breadth 1.0, because one
+        // run touches every arm, and depth `thin`, because the engine's
+        // strong_min_span_days makes anything more unreachable in a day.
+        //
+        // Breadth alone would print "Strong — we exercised the full probe set,
+        // few blind spots" over a subject we looked at exactly once. Six of the
+        // first seven A2A rows would have said that. The site shows one axis,
+        // so it gets the weaker of the two.
+        coverage: weakest(
           sc.dimension_coverage === null ? base.coverage
           : sc.dimension_coverage >= 0.85 ? "strong"
           : sc.dimension_coverage >= 0.6 ? "moderate"
           : "thin",
+          sc.evidence_tier,
+        ),
         withheld_reason: null,
         gates_fired: (sc.gates_fired as Array<{ gate_id?: string }>).map(
           (g) => g.gate_id ?? String(g),
         ),
       });
       overlaid += 1;
-    } else if (sc.withheld_reason !== null) {
+    } else if (sc.withheld_reason !== null && base.composite === null) {
       // Withheld by the engine after a real battery run. That is a stronger and
       // more specific statement than "no battery was run", so it replaces it.
-      byEndpoint.set(sc.endpoint, { ...base, withheld_reason: sc.withheld_reason });
+      //
+      // `base.composite === null` guards a real collision: one endpoint can be
+      // reached by two subjects, an MCP server and an A2A agent on the same
+      // host. When the MCP half publishes and the A2A half is withheld, writing
+      // the A2A reason here would leave the row carrying BOTH a score and an
+      // explanation of why there is no score. A withholding never annotates a
+      // published rating.
+      byEndpoint.set(key, { ...base, withheld_reason: sc.withheld_reason });
       overlaidWithheld += 1;
     }
   }
@@ -423,6 +508,15 @@ if (SCORED !== "" && existsSync(SCORED)) {
     `scored overlay: ${overlaid} endpoints now carry a composite, ` +
       `${overlaidWithheld} carry an engine withholding reason`,
   );
+  if (unjoinable > 0) {
+    // Loud, because the failure is invisible in the output: a score that does
+    // not join leaves the row reading "no behavioural battery run" from a run
+    // that battered it. Never let this number be discovered by a reader.
+    console.error(
+      `WARNING: ${unjoinable} PUBLISHED composites could not be matched to a probed endpoint ` +
+        `and were dropped. They are real ratings that will not appear on the site.`,
+    );
+  }
 }
 
 let written = 0;
