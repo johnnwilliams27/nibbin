@@ -272,6 +272,14 @@ negotiated, funded, activated, delivered, submitted on-chain, gas paid 0).
   never both.
 - **`expired_at = now + deadline_minutes·60 + disputeWindow`**, and submission must land
   before `expired_at − disputeWindow`.
+- **The front end MUST send `notify_funded`; the seller will not notice on its own.**
+  The docs claim the seller also sweeps other funded jobs in the background. On our run
+  that sweep is **broken**: right after job 1163 submitted successfully, the runtime logged
+  `[ERC8183JobOps] get_pending_jobs failed: Failed to connect to RPC:
+  data-seed-prebsc-2-s2.binance.org:8545 (timed out)` — the same dead default RPC as below,
+  and we found no env override that fixes that code path. Consequence: **a UI that funds a
+  job and then waits passively will hang forever.** Buyer-push (`notify_funded`) is the only
+  delivery trigger that actually works today. Treat it as a required step, not an optimisation.
 - **The default SDK RPC is dead.** `ERC8183Client.create` defaults to
   `data-seed-prebsc-2-s2.binance.org:8545` (times out) and `ERC8183ClientCreateOpts` has no
   `rpcUrl` field — pass a full `NetworkConfig` to override. The `bag` CLI resolves a working

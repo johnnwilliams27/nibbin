@@ -56,8 +56,25 @@ const manifest = JSON.parse(
 
 let handle: DbHandle;
 
+/**
+ * No database, no suite — and no failure either.
+ *
+ * globalSetup provides `dbUrl: ""` when it finds neither TRUST_INDEX_TEST_DB_URL
+ * nor a Docker daemon, and says in its own comment that the database-backed
+ * tests then skip. Nothing here implemented that: `beforeAll` connected
+ * unconditionally, so with no database it threw on the first migration and
+ * vitest reported a FAILED SUITE whose tests were all "skipped". CI read that as
+ * a broken build on a machine that simply has no postgres.
+ *
+ * A missing harness is not a failing test. Guarding the hooks and the suites on
+ * the same condition globalSetup already decides makes the skip real.
+ */
+const DB_URL = inject("dbUrl");
+const describeDb = DB_URL === "" ? describe.skip : describe;
+
 beforeAll(async () => {
-  handle = createDb(inject("dbUrl"));
+  if (DB_URL === "") return;
+  handle = createDb(DB_URL);
   // Applying twice checks idempotency: `pnpm migrate` must run clean on an
   // already migrated database.
   await applyMigrations(handle.db);
@@ -67,10 +84,11 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  if (DB_URL === "") return;
   await handle.close();
 });
 
-describe("chain seed", () => {
+describeDb("chain seed", () => {
   it("inserts the Base row from KNOWN_CHAINS", async () => {
     const base = KNOWN_CHAINS[0];
     if (base === undefined) throw new Error("KNOWN_CHAINS is empty");
@@ -85,7 +103,7 @@ describe("chain seed", () => {
   });
 });
 
-describe("snapshot round-trip", () => {
+describeDb("snapshot round-trip", () => {
   for (const [name, fixtureCase] of Object.entries(manifest.cases)) {
     it(`materializes ${name} from rows`, async () => {
       const fix = loadFixture(fixtureCase.snapshot);
@@ -160,7 +178,7 @@ describe("snapshot round-trip", () => {
   });
 });
 
-describe("pg stores", () => {
+describeDb("pg stores", () => {
   it("round-trips index cursors", async () => {
     await truncateAgentData(handle.db);
     const store = createPgCursorStore(handle.db);

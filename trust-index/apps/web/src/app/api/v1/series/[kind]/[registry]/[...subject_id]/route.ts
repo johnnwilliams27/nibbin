@@ -1,7 +1,7 @@
 import { checkRateLimit, errorResponse, jsonResponse } from "@/lib/api-handler";
 import { getRatingsSource } from "@/lib/get-ratings-source";
 import { buildRatingsEnvelope, buildRatingsMeta } from "@/lib/ratings-envelope";
-import { DEFAULT_PROFILE_ID, SERIES_DAYS, todayUtc } from "@/lib/ratings-source";
+import { DEFAULT_PROFILE_ID, SERIES_DAYS } from "@/lib/ratings-source";
 import { parseSubjectRoute } from "@/lib/subject-route";
 
 /**

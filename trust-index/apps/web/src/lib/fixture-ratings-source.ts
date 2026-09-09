@@ -67,6 +67,8 @@ function sameRef(a: SubjectRef, b: SubjectRef): boolean {
 
 /** The listing row of a detail row: the detail minus the parts only a detail serves. */
 function toSnapshot(d: SubjectDetail): SubjectSnapshot {
+  // Destructure-to-omit: the four names exist only to be dropped from `rest`.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { source: _source, dimensions: _dimensions, gates_fired: _gates, harness_gaps: _gaps, ...rest } = d;
   return rest;
 }
