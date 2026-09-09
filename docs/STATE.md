@@ -6,11 +6,13 @@ and the `old-nibbin` repository.
 
 ## Current
 
-- **Handoff review, 2026-09-09 — LOCAL, NOT MERGED.** The pending detail-fetch
-  fix was reviewed in `codex/trust-index-handoff`. Additional corrections prevent
-  rejected rebuilds from replacing the snapshot and missing-status rows from
-  acquiring an invented rate-limit reason. Initial artifact audit and validation:
-  `HANDOFF-REVIEW-2026-09-09.md`. No production refresh or threshold change.
+- **Detail-evidence correctness review, 2026-09-09.** Implemented and reviewed
+  on `codex/trust-index-handoff` through `461be71a`. Invalid or mismatched detail
+  cache cannot establish a reading; failed rebuilds preserve the snapshot;
+  missing-status rows stay unknown; shared quota exhaustion defers queued work.
+  Marketplace tests/build now participate in required CI. Four-reviewer report:
+  `gates/2026-09-09-detail-evidence.md`. Initial audit:
+  `HANDOFF-REVIEW-2026-09-09.md`. No new production measurements or threshold changes.
 - **ERC-8004 population frame, 2026-09-09.** Censused all twelve EVM chains carrying the
   Identity Registry: **496,976 agents**, independently reproduced (within ~1.5%) of
   8004scan's 504,235+ without using their API. BSC holds 341,769 (69%) with ZERO feedback

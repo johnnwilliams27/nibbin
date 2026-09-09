@@ -1,5 +1,8 @@
 # Trust Index handoff: first review
 
+Historical first-pass record. The subsequent pre-merge review, additional fixes,
+CI wiring and validation are in [the detail-evidence review](gates/2026-09-09-detail-evidence.md).
+
 Reviewed against main `f46af9b2`, pending handoff branch `99343154`, and the
 committed marketplace snapshot dated `2026-09-09T05:37:50Z`. These are local
 artifact findings, not a new live population measurement.
