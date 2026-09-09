@@ -16,26 +16,17 @@
  * desktopBridge.onStudyStateChange.
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { isShell, desktopBridge, type StudyStatus } from '../../lib/desktop/bridge';
+import { formatRemaining, extrapolateRemaining } from '../../lib/study/countdown';
 import { Card, Badge } from '../ui';
 import dash from '../../app/app/dashboard.module.css';
 import styles from './desktopOrStudyCard.module.css';
 
 // ---------------------------------------------------------------------------
-// Helpers (mirrored from the full Study page so they stay co-located here)
+// Helpers
 // ---------------------------------------------------------------------------
-
-function formatCountdown(ms: number): string {
-  if (ms <= 0) return '0:00';
-  const totalSec = Math.floor(ms / 1000);
-  const h = Math.floor(totalSec / 3600);
-  const m = Math.floor((totalSec % 3600) / 60);
-  const s = totalSec % 60;
-  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-  return `${m}:${String(s).padStart(2, '0')}`;
-}
 
 type BadgeTone = 'moss' | 'honey' | 'neutral';
 
@@ -117,18 +108,29 @@ function StudyCard() {
   const [status, setStatus] = useState<StudyStatus>(INITIAL_STATUS);
   const [busy, setBusy] = useState(false);
 
-  // One-shot fetch on mount.
-  useEffect(() => {
-    void desktopBridge.studyStatus().then(setStatus);
+  // Countdown anchor + live extrapolated value (see /app/study/page.tsx for the
+  // rationale — kept in sync here so the dashboard mini-card also ticks).
+  const baseRef = useRef<{ ms: number | null; at: number }>({ ms: null, at: Date.now() });
+  const [displayMs, setDisplayMs] = useState<number | null>(null);
+
+  const applyStatus = useCallback((s: StudyStatus) => {
+    baseRef.current = { ms: s.remaining_ms, at: Date.now() };
+    setDisplayMs(s.remaining_ms);
+    setStatus(s);
   }, []);
 
-  // Event-driven live updates — no polling.
+  // One-shot fetch on mount.
+  useEffect(() => {
+    void desktopBridge.studyStatus().then(applyStatus);
+  }, [applyStatus]);
+
+  // Live status pushes from the daemon (`study:status`, ~1×/sec).
   // Async-cleanup guard: if the component unmounts during the subscribe await,
   // immediately call the returned unsubscribe function to prevent a listener leak.
   useEffect(() => {
     let unsub: (() => void) | null = null;
     let cancelled = false;
-    void desktopBridge.onStudyStateChange((s) => setStatus(s)).then((fn) => {
+    void desktopBridge.onStudyStateChange((s) => applyStatus(s)).then((fn) => {
       if (cancelled) {
         fn();
         return;
@@ -139,7 +141,17 @@ function StudyCard() {
       cancelled = true;
       unsub?.();
     };
-  }, []);
+  }, [applyStatus]);
+
+  // Display-only countdown tick — runs only while ACTIVE (paused must not tick).
+  useEffect(() => {
+    if (status.state !== 'ACTIVE') return;
+    const id = setInterval(() => {
+      const { ms, at } = baseRef.current;
+      setDisplayMs(extrapolateRemaining(ms, at, Date.now()));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [status.state]);
 
   const handlePause = useCallback(async () => {
     setBusy(true);
@@ -190,9 +202,9 @@ function StudyCard() {
         <Badge tone={tone}>{stateLabel(status.state)}</Badge>
       </div>
 
-      {status.remaining_ms !== null && status.remaining_ms > 0 && (
+      {displayMs !== null && displayMs > 0 && (
         <p className={styles.studyCountdown}>
-          {formatCountdown(status.remaining_ms)}{' '}
+          {formatRemaining(displayMs)}{' '}
           <span className={styles.studyCountdownUnit}>remaining</span>
         </p>
       )}

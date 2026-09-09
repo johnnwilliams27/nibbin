@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { desktopBridge, type StudyStatus } from '../../../lib/desktop/bridge';
+import { formatRemaining, extrapolateRemaining } from '../../../lib/study/countdown';
 import { ShellGate } from '../../../components/study/ShellGate';
 import { StudyStart } from '../../../components/study/StudyStart';
 import { Card, Badge, Button } from '../../../components/ui';
@@ -16,16 +17,6 @@ const INITIAL_STATUS: StudyStatus = {
   capture_blocked: null,
   study: null,
 };
-
-function formatCountdown(ms: number): string {
-  if (ms <= 0) return '0:00';
-  const totalSec = Math.floor(ms / 1000);
-  const h = Math.floor(totalSec / 3600);
-  const m = Math.floor((totalSec % 3600) / 60);
-  const s = totalSec % 60;
-  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-  return `${m}:${String(s).padStart(2, '0')}`;
-}
 
 type BadgeTone = 'moss' | 'honey' | 'coral' | 'neutral';
 
@@ -77,21 +68,35 @@ function InProgressContent() {
   // where NOT_STARTED placeholder shows for a frame before the fetch resolves).
   const [loaded, setLoaded] = useState(false);
 
+  // Countdown anchor: the daemon's last-reported remaining_ms plus the wall-clock
+  // instant it arrived. A local 1s tick extrapolates from this so the number
+  // counts down smoothly even between daemon pushes (and re-anchors on every
+  // fresh status). `displayMs` is the live, extrapolated value shown to the user.
+  const baseRef = useRef<{ ms: number | null; at: number }>({ ms: null, at: Date.now() });
+  const [displayMs, setDisplayMs] = useState<number | null>(null);
+
+  // Re-anchor whenever a new status (mount fetch or daemon push) arrives.
+  const applyStatus = useCallback((s: StudyStatus) => {
+    baseRef.current = { ms: s.remaining_ms, at: Date.now() };
+    setDisplayMs(s.remaining_ms);
+    setStatus(s);
+  }, []);
+
   useEffect(() => {
     setMounted(true);
     void desktopBridge.studyStatus().then((s) => {
-      setStatus(s);
+      applyStatus(s);
       setLoaded(true);
     });
-  }, []);
+  }, [applyStatus]);
 
-  // Event-driven live updates — no polling (avoids the per-second shutter bug).
+  // Live status pushes from the daemon (emitted ~1×/sec as `study:status`).
   // Async-cleanup guard: if the component unmounts during the subscribe await,
   // immediately call the returned unsubscribe function to prevent a listener leak.
   useEffect(() => {
     let unsub: (() => void) | null = null;
     let cancelled = false;
-    void desktopBridge.onStudyStateChange((s) => setStatus(s)).then((fn) => {
+    void desktopBridge.onStudyStateChange((s) => applyStatus(s)).then((fn) => {
       if (cancelled) {
         fn();
         return;
@@ -102,12 +107,25 @@ function InProgressContent() {
       cancelled = true;
       unsub?.();
     };
-  }, []);
+  }, [applyStatus]);
+
+  // Client-side countdown tick. Only runs while the study is actively watching:
+  // a paused / review / synthesizing study must NOT visibly tick down. The tick
+  // is display-only — it never re-invokes a native command (the daemon remains
+  // the source of truth and re-anchors us on its next push).
+  useEffect(() => {
+    if (status.state !== 'ACTIVE') return;
+    const id = setInterval(() => {
+      const { ms, at } = baseRef.current;
+      setDisplayMs(extrapolateRemaining(ms, at, Date.now()));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [status.state]);
 
   // Called by StudyStart after a successful start to re-read status and switch view
   const handleStarted = useCallback(() => {
-    void desktopBridge.studyStatus().then(setStatus);
-  }, []);
+    void desktopBridge.studyStatus().then(applyStatus);
+  }, [applyStatus]);
 
   const handlePause = useCallback(async () => {
     setBusy(true);
@@ -175,9 +193,9 @@ function InProgressContent() {
           <Badge tone={tone}>{stateLabel(status.state)}</Badge>
         </div>
 
-        {status.remaining_ms !== null && status.remaining_ms > 0 && (
+        {displayMs !== null && displayMs > 0 && (
           <div>
-            <p className={styles.countdown}>{formatCountdown(status.remaining_ms)}</p>
+            <p className={styles.countdown}>{formatRemaining(displayMs)}</p>
             <p className={styles.countdownLabel}>remaining</p>
           </div>
         )}
