@@ -31,6 +31,10 @@ export {
 } from "./probe.js";
 export type { A2aProbeOptions } from "./probe.js";
 export { isSubjectFact } from "./transcript.js";
+export { runA2aBattery, invokable, responseText } from "./battery.js";
+export type { A2aArm, A2aCall, A2aSkillOutcome, A2aBatteryResult } from "./battery.js";
+export { a2aToSubject, endpointHost, A2A_RUBRIC_VERSION } from "./subject.js";
+export type { A2aProbeIdentity, BuildA2aSubjectOptions } from "./subject.js";
 export type {
   A2aTranscript,
   A2aRegistryFacts,
