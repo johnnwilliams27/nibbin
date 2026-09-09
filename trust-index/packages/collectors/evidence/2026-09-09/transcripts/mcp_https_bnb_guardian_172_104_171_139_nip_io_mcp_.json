@@ -1,0 +1,346 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:mcp:v1",
+ "endpoint": "https://bnb-guardian.172-104-171-139.nip.io/mcp/",
+ "probed_at": "2026-09-09T09:27:06Z",
+ "attempts": [
+  {
+   "attempt": 1,
+   "ts": "2026-09-09T09:27:06Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 6474
+  },
+  {
+   "attempt": 2,
+   "ts": "2026-09-09T09:27:23Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 772
+  },
+  {
+   "attempt": 3,
+   "ts": "2026-09-09T09:27:24Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 859
+  }
+ ],
+ "handshake": {
+  "ok": true,
+  "protocolVersion": "2025-06-18",
+  "serverName": "BNB Lending Guardian",
+  "serverVersion": "0.1.0",
+  "instructions": "This agent monitors a Venus lending position on BNB Chain,\nstress-tests it against collateral price falls, and repays the minimum amount\nneeded to restore a safe health factor before liquidation.\n\nHealth factor = (collateral value x each market's liquidation threshold) / debt\nvalue. Liquidation becomes possible at 1.0. Bands: SAFE above 1.50, WARNING 1.20\nto 1.50, CRITICAL at or below 1.20.\n\nAn account can hold positions in several Venus pools — Core and the Isolated\nPools — and they are SEPARATE RISK SILOS. Collateral in one does not back a borrow\nin another, so health factors are per pool and never blended; `get_pools` shows\nthem all. Only the Core pool is actionable by this agent.\n\nTwo risk levels are reported and they mean different things. `risk` is the band\nof the CURRENT health factor. `effective_risk` also accounts for the stress test,\nso a position that is WARNING now but CRITICAL after a routine 15% fall reports\nCRITICAL there. Only `risk` can trigger automatic action.\n\nEvery tool here is read-only, except `pause`. You CANNOT execute a protection\nthrough this interface — `simulate_protection` shows what the agent would do, and\nonly a human can make it do it.\n\nYou can read ANY address with the `account` argument. The agent can only PROTECT\nthe position it holds the keys for; `get_status` reports that as `protectable`.\n\nUseful order: `get_status` for the current picture, `get_stress_test` for what a\nprice fall would do, `simulate_protection` for the repayment that would be needed\nand where it would come from.\n",
+  "reason": null
+ },
+ "tools": {
+  "ok": true,
+  "declared": [
+   {
+    "name": "get_status",
+    "description": "Current picture: health factor, risk band, stress curve and whether the\n    agent can protect this position. Reads any address.",
+    "inputSchema": {
+     "properties": {
+      "account": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Account"
+      }
+     },
+     "type": "object",
+     "title": "get_statusArguments"
+    },
+    "outputSchema": {
+     "type": "object",
+     "additionalProperties": true,
+     "title": "get_statusDictOutput"
+    },
+    "annotations": null
+   },
+   {
+    "name": "get_metadata",
+    "description": "What this agent is, which protocols it supports, and its on-chain identity.",
+    "inputSchema": {
+     "properties": {},
+     "type": "object",
+     "title": "get_metadataArguments"
+    },
+    "outputSchema": {
+     "type": "object",
+     "additionalProperties": true,
+     "title": "get_metadataDictOutput"
+    },
+    "annotations": null
+   },
+   {
+    "name": "get_strategy",
+    "description": "The declared strategy, the health-factor thresholds, the funding order and\n    the risk controls currently in force.",
+    "inputSchema": {
+     "properties": {},
+     "type": "object",
+     "title": "get_strategyArguments"
+    },
+    "outputSchema": {
+     "type": "object",
+     "additionalProperties": true,
+     "title": "get_strategyDictOutput"
+    },
+    "annotations": null
+   },
+   {
+    "name": "get_position",
+    "description": "Every Venus market the account touches, priced and weighted.\n\n    Includes markets outside this agent's registry: they count toward the health\n    factor and are reported with ``actionable: false``, meaning the agent can see\n    them but cannot redeem or repay them.",
+    "inputSchema": {
+     "properties": {
+      "account": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Account"
+      }
+     },
+     "type": "object",
+     "title": "get_positionArguments"
+    },
+    "outputSchema": {
+     "type": "object",
+     "additionalProperties": true,
+     "title": "get_positionDictOutput"
+    },
+    "annotations": null
+   },
+   {
+    "name": "get_pools",
+    "description": "Every Venus pool the account touches, assessed SEPARATELY.\n\n    Venus Core and each Isolated Pool are separate risk silos: collateral in one\n    does not back a borrow in another, so an account can be comfortably safe in one\n    pool and be liquidated in another. There is deliberately no blended health\n    factor — an average would hide exactly the pool that matters.\n\n    Only the Core pool is actionable by this agent; each row says so.",
+    "inputSchema": {
+     "properties": {
+      "account": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Account"
+      }
+     },
+     "type": "object",
+     "title": "get_poolsArguments"
+    },
+    "outputSchema": {
+     "type": "object",
+     "additionalProperties": true,
+     "title": "get_poolsDictOutput"
+    },
+    "annotations": null
+   },
+   {
+    "name": "get_risk",
+    "description": "Health factor, liquidation price, distance to liquidation, and the\n    repayment that would restore a safe level.",
+    "inputSchema": {
+     "properties": {
+      "account": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Account"
+      }
+     },
+     "type": "object",
+     "title": "get_riskArguments"
+    },
+    "outputSchema": {
+     "type": "object",
+     "additionalProperties": true,
+     "title": "get_riskDictOutput"
+    },
+    "annotations": null
+   },
+   {
+    "name": "get_stress_test",
+    "description": "What a collateral price fall would do to the health factor.\n\n    The forward-looking half of the agent: at which simulated drop the position\n    becomes CRITICAL, and at which it becomes liquidatable.",
+    "inputSchema": {
+     "properties": {
+      "account": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Account"
+      }
+     },
+     "type": "object",
+     "title": "get_stress_testArguments"
+    },
+    "outputSchema": {
+     "type": "object",
+     "additionalProperties": true,
+     "title": "get_stress_testDictOutput"
+    },
+    "annotations": null
+   },
+   {
+    "name": "get_performance",
+    "description": "Protection counts, gas spent, and the rolling 24-hour realised cost.",
+    "inputSchema": {
+     "properties": {},
+     "type": "object",
+     "title": "get_performanceArguments"
+    },
+    "outputSchema": {
+     "type": "object",
+     "additionalProperties": true,
+     "title": "get_performanceDictOutput"
+    },
+    "annotations": null
+   },
+   {
+    "name": "get_transactions",
+    "description": "The audit trail (spec section 19), newest first.",
+    "inputSchema": {
+     "properties": {
+      "limit": {
+       "default": 20,
+       "title": "Limit",
+       "type": "integer"
+      }
+     },
+     "type": "object",
+     "title": "get_transactionsArguments"
+    },
+    "outputSchema": {
+     "type": "object",
+     "additionalProperties": true,
+     "title": "get_transactionsDictOutput"
+    },
+    "annotations": null
+   },
+   {
+    "name": "get_chain_info",
+    "description": "Network, block height, gas price, BNB price, and how far the Venus oracle\n    and PancakeSwap spot disagree.",
+    "inputSchema": {
+     "properties": {},
+     "type": "object",
+     "title": "get_chain_infoArguments"
+    },
+    "outputSchema": {
+     "type": "object",
+     "additionalProperties": true,
+     "title": "get_chain_infoDictOutput"
+    },
+    "annotations": null
+   },
+   {
+    "name": "monitor_now",
+    "description": "Re-read the position from chain and re-assess it right now.\n\n    Changes no position and signs nothing.\n\n    REQUIRES AN API KEY — it is a dozen chain reads per call, and the result is\n    readable afterwards through the unauthenticated read tools.",
+    "inputSchema": {
+     "properties": {
+      "account": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Account"
+      }
+     },
+     "type": "object",
+     "title": "monitor_nowArguments"
+    },
+    "outputSchema": {
+     "type": "object",
+     "additionalProperties": true,
+     "title": "monitor_nowDictOutput"
+    },
+    "annotations": null
+   },
+   {
+    "name": "simulate_protection",
+    "description": "Show what protecting this position WOULD do, without executing.\n\n    Equivalent to ``POST /protect?dry_run=true``. This is the closest a model can\n    get to protecting: it can ask what the agent WOULD do, never make it do it.\n\n    REQUIRES AN API KEY — it prices swap routes against live pools, which costs\n    both time and RPC.",
+    "inputSchema": {
+     "properties": {
+      "account": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Account"
+      }
+     },
+     "type": "object",
+     "title": "simulate_protectionArguments"
+    },
+    "outputSchema": {
+     "type": "object",
+     "additionalProperties": true,
+     "title": "simulate_protectionDictOutput"
+    },
+    "annotations": null
+   },
+   {
+    "name": "pause",
+    "description": "Emergency stop. Refuses all further swaps and repayments; monitoring\n    continues.\n\n    The only state-changing tool exposed, and exposed with a caveat worth stating\n    plainly. In a TRADING agent, pausing is unambiguously fail-safe: the worst a\n    hostile prompt achieves is a trade that does not happen. In a GUARDIAN it is\n    not — pausing stops a liquidation rescue, so a prompt-injected pause has a\n    real cost.\n\n    It is exposed because an operator driving the agent from an LLM host needs a\n    stop button, and it is the direction a human can always reverse. There is\n    deliberately no matching ``activate``: resuming is a decision for a person,\n    not for a model reading untrusted text.\n\n    REQUIRES AN API KEY.",
+    "inputSchema": {
+     "properties": {},
+     "type": "object",
+     "title": "pauseArguments"
+    },
+    "outputSchema": {
+     "type": "object",
+     "additionalProperties": true,
+     "title": "pauseDictOutput"
+    },
+    "annotations": null
+   }
+  ],
+  "reason": null
+ },
+ "registry": null,
+ "auth": {
+  "required": false,
+  "status": 200,
+  "scheme": null,
+  "hop": "initialize"
+ },
+ "rate_limit": null
+}

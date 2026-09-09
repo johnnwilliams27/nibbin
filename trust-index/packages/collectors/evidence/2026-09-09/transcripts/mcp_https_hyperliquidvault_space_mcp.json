@@ -1,0 +1,115 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:mcp:v1",
+ "endpoint": "https://hyperliquidvault.space/mcp",
+ "probed_at": "2026-09-09T09:27:06Z",
+ "attempts": [
+  {
+   "attempt": 1,
+   "ts": "2026-09-09T09:27:06Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 6931
+  },
+  {
+   "attempt": 2,
+   "ts": "2026-09-09T09:27:24Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 885
+  },
+  {
+   "attempt": 3,
+   "ts": "2026-09-09T09:27:25Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 348
+  }
+ ],
+ "handshake": {
+  "ok": true,
+  "protocolVersion": "2025-06-18",
+  "serverName": "HyperliquidVault",
+  "serverVersion": "1.0.0",
+  "instructions": "Hyperliquid Vault Strategy Intelligence: discover Hyperliquid vaults and review a vault's key strategy metrics (TVL, APR, leader, followers, capacity, withdrawal availability, commission terms, deposit status) from the public Hyperliquid API.\n\nPaid tools (x402, U on BSC, pay to 0xA06Db692d7e28356f80199Ff77E22a0Ef02A3518): list_vaults = 0.01 U, vault_overview = 0.01 U. A tools/call without a PAYMENT-SIGNATURE header returns HTTP 402 with the x402 requirements.",
+  "reason": null
+ },
+ "tools": {
+  "ok": true,
+  "declared": [
+   {
+    "name": "list_vaults",
+    "description": "Discover Hyperliquid vaults: filter by open/closed and relationship (normal / parent / child), sort by TVL, APR or creation time, and cap the count. Each row has vault address, name, leader, TVL, APR, closed flag, relationship and creation time.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "limit": {
+       "type": "integer",
+       "description": "Max rows to return, 1-999. Default 20."
+      },
+      "sort_by": {
+       "type": "string",
+       "description": "Sort order: tvl (default), apr, or created (newest first)."
+      },
+      "include_closed": {
+       "type": "boolean",
+       "description": "Include closed vaults. Default false."
+      },
+      "relationship": {
+       "type": "string",
+       "description": "Filter: any (default), normal, parent, or child."
+      }
+     },
+     "additionalProperties": false
+    },
+    "outputSchema": {
+     "type": "object",
+     "additionalProperties": true
+    },
+    "annotations": {
+     "idempotentHint": false,
+     "openWorldHint": true,
+     "readOnlyHint": true
+    }
+   },
+   {
+    "name": "vault_overview",
+    "description": "Review one Hyperliquid vault by address: leader, strategy description, APR, TVL, follower count, distributable and withdrawable capacity, leader commission and fraction, closed flag and deposit availability.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "vault_address": {
+       "type": "string",
+       "description": "0x-prefixed Hyperliquid vault address (40 hex chars)"
+      }
+     },
+     "required": [
+      "vault_address"
+     ],
+     "additionalProperties": false
+    },
+    "outputSchema": {
+     "type": "object",
+     "additionalProperties": true
+    },
+    "annotations": {
+     "idempotentHint": false,
+     "openWorldHint": true,
+     "readOnlyHint": true
+    }
+   }
+  ],
+  "reason": null
+ },
+ "registry": null,
+ "auth": {
+  "required": false,
+  "status": 200,
+  "scheme": null,
+  "hop": "initialize"
+ },
+ "rate_limit": null
+}

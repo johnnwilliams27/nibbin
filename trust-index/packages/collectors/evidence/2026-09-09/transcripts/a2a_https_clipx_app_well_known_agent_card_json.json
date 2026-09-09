@@ -1,0 +1,88 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:a2a:v1",
+ "subject_url": "https://clipx.app/.well-known/agent-card.json",
+ "probed_at": "2026-09-09T09:27:51Z",
+ "discovery": {
+  "ok": true,
+  "url": "https://clipx.app/.well-known/agent-card.json",
+  "path": "/.well-known/agent-card.json",
+  "outcome": "card",
+  "attempts": [
+   {
+    "url": "https://clipx.app/.well-known/agent-card.json",
+    "path": "/.well-known/agent-card.json",
+    "kind": "declared",
+    "outcome": "card",
+    "status": 200,
+    "contentType": "application/json; charset=utf-8",
+    "reason": null,
+    "elapsedMs": 1037
+   }
+  ],
+  "reason": null,
+  "elapsedMs": 1037
+ },
+ "declaration": {
+  "ok": true,
+  "name": "ClipX Agents",
+  "description": "ClipX is a platform for AI agents on BNB Chain: create, deploy, and interact with ERC-8004 registered agents.",
+  "version": "1.0.0",
+  "protocolVersion": null,
+  "provider": "ClipX",
+  "documentationUrl": "https://clipx.app/docs",
+  "capabilities": {
+   "streaming": false,
+   "pushNotifications": false,
+   "stateTransitionHistory": null,
+   "extensions": 0,
+   "raw": {
+    "streaming": false,
+    "pushNotifications": false
+   }
+  },
+  "skills": [
+   {
+    "id": "clipx-agent-platform",
+    "name": "ClipX Agent Platform",
+    "description": "Browse, create, and manage on-chain AI agents with wallet and social integrations.",
+    "tags": [
+     "clipx",
+     "bnb-chain",
+     "erc-8004"
+    ],
+    "examples": [
+     "Show my agents",
+     "Deploy a new agent"
+    ],
+    "inputModes": [],
+    "outputModes": []
+   }
+  ],
+  "skillCount": 1,
+  "interfaces": [
+   {
+    "url": "https://clipx.app/api/public/a2a",
+    "transport": "HTTP+JSON",
+    "protocolVersion": "0.3",
+    "source": "supportedInterfaces"
+   }
+  ],
+  "securitySchemes": [],
+  "missingRequired": [],
+  "reason": null
+ },
+ "reachability": {
+  "ok": false,
+  "url": "https://clipx.app/api/public/a2a",
+  "verdict": "answered_not_a2a",
+  "status": 200,
+  "method": "tasks/get",
+  "rpcErrorCode": null,
+  "rpcErrorMessage": null,
+  "reason": "HTTP 200 with a body that is not JSON",
+  "elapsedMs": 3408
+ },
+ "registry": null,
+ "gaps": []
+}

@@ -1,0 +1,37 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:mcp:v1",
+ "endpoint": "https://pbs.twimg.com/profile_images/2020763909817569280/u6Lop3Qd_400x400.png",
+ "probed_at": "2026-09-09T09:27:06Z",
+ "attempts": [
+  {
+   "attempt": 1,
+   "ts": "2026-09-09T09:27:06Z",
+   "reachable": false,
+   "status": 405,
+   "reason": "HTTP 405",
+   "elapsedMs": 3251
+  },
+  {
+   "attempt": 2,
+   "ts": "2026-09-09T09:27:09Z",
+   "reachable": false,
+   "status": 405,
+   "reason": "HTTP 405",
+   "elapsedMs": 5441
+  },
+  {
+   "attempt": 3,
+   "ts": "2026-09-09T09:27:15Z",
+   "reachable": false,
+   "status": 405,
+   "reason": "HTTP 405",
+   "elapsedMs": 6522
+  }
+ ],
+ "handshake": null,
+ "tools": null,
+ "registry": null,
+ "auth": null,
+ "rate_limit": null
+}

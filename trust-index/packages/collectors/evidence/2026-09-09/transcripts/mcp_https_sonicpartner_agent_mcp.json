@@ -1,0 +1,37 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:mcp:v1",
+ "endpoint": "https://sonicpartner.agent/mcp",
+ "probed_at": "2026-09-09T09:27:06Z",
+ "attempts": [
+  {
+   "attempt": 1,
+   "ts": "2026-09-09T09:27:06Z",
+   "reachable": false,
+   "status": null,
+   "reason": "dns lookup failed: getaddrinfo ENOTFOUND sonicpartner.agent",
+   "elapsedMs": 782
+  },
+  {
+   "attempt": 2,
+   "ts": "2026-09-09T09:27:07Z",
+   "reachable": false,
+   "status": null,
+   "reason": "dns lookup failed: getaddrinfo ENOTFOUND sonicpartner.agent",
+   "elapsedMs": 5259
+  },
+  {
+   "attempt": 3,
+   "ts": "2026-09-09T09:27:12Z",
+   "reachable": false,
+   "status": null,
+   "reason": "dns lookup failed: getaddrinfo ENOTFOUND sonicpartner.agent",
+   "elapsedMs": 6005
+  }
+ ],
+ "handshake": null,
+ "tools": null,
+ "registry": null,
+ "auth": null,
+ "rate_limit": null
+}

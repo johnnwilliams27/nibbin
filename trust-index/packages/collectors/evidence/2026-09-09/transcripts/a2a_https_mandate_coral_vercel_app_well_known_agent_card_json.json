@@ -1,0 +1,151 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:a2a:v1",
+ "subject_url": "https://mandate-coral.vercel.app/.well-known/agent-card.json",
+ "probed_at": "2026-09-09T09:27:51Z",
+ "discovery": {
+  "ok": true,
+  "url": "https://mandate-coral.vercel.app/.well-known/agent-card.json",
+  "path": "/.well-known/agent-card.json",
+  "outcome": "card",
+  "attempts": [
+   {
+    "url": "https://mandate-coral.vercel.app/.well-known/agent-card.json",
+    "path": "/.well-known/agent-card.json",
+    "kind": "declared",
+    "outcome": "card",
+    "status": 200,
+    "contentType": "application/json",
+    "reason": null,
+    "elapsedMs": 1333
+   }
+  ],
+  "reason": null,
+  "elapsedMs": 1333
+ },
+ "declaration": {
+  "ok": true,
+  "name": "MANDATE Assay Office",
+  "description": "Tests ERC-8004 agents against BNB Smart Chain and publishes the evidence. Six checks, identity, custody, activity, capability, reputation, performance, producing a millesimal fineness. Below 375 no hallmark is struck. Every finding carries the command that re-derives it.",
+  "version": "1.0.0",
+  "protocolVersion": "0.3.0",
+  "provider": "MANDATE",
+  "documentationUrl": "https://mandate-coral.vercel.app/api",
+  "capabilities": {
+   "streaming": false,
+   "pushNotifications": false,
+   "stateTransitionHistory": false,
+   "extensions": 0,
+   "raw": {
+    "streaming": false,
+    "pushNotifications": false,
+    "stateTransitionHistory": false
+   }
+  },
+  "skills": [
+   {
+    "id": "assay",
+    "name": "Assay an agent",
+    "description": "Runs six tests against BNB Smart Chain for any ERC-8004 token id and returns a millesimal fineness with every finding and its evidence.",
+    "tags": [
+     "erc-8004",
+     "reputation",
+     "verification",
+     "bsc"
+    ],
+    "examples": [
+     "GET https://mandate-coral.vercel.app/api/v1/assay/56/2410"
+    ],
+    "inputModes": [
+     "application/json"
+    ],
+    "outputModes": [
+     "application/json"
+    ]
+   },
+   {
+    "id": "ladder",
+    "name": "Read the trust ladder",
+    "description": "Returns every rung of the registry funnel with the test that settles it and its population. A rung that cannot be measured returns null rather than a guess.",
+    "tags": [
+     "erc-8004",
+     "registry",
+     "bsc"
+    ],
+    "examples": [
+     "GET https://mandate-coral.vercel.app/api/v1/registry/funnel"
+    ],
+    "inputModes": [
+     "application/json"
+    ],
+    "outputModes": [
+     "application/json"
+    ]
+   },
+   {
+    "id": "register",
+    "name": "Browse the register",
+    "description": "Returns agents filtered by rung and category, with coverage attached so a small answer can be told apart from a small registry.",
+    "tags": [
+     "erc-8004",
+     "registry",
+     "bsc"
+    ],
+    "examples": [
+     "GET https://mandate-coral.vercel.app/api/v1/agents?rung=2&limit=20"
+    ],
+    "inputModes": [
+     "application/json"
+    ],
+    "outputModes": [
+     "application/json"
+    ]
+   },
+   {
+    "id": "mcp",
+    "name": "Serve the office over MCP",
+    "description": "The same reads as tools an MCP client can call: assay_agent, read_ladder, search_register, check_duplication and list_offices. Three further tools, open_mandate, hire_over_x402, revoke_session, prepare those actions and return the transaction, payment challenge or command rather than performing them, because this server holds no keys.",
+    "tags": [
+     "mcp",
+     "erc-8004",
+     "bsc",
+     "tools"
+    ],
+    "examples": [
+     "claude mcp add --transport http mandate https://mandate-coral.vercel.app/api/mcp"
+    ],
+    "inputModes": [
+     "application/json"
+    ],
+    "outputModes": [
+     "application/json"
+    ]
+   }
+  ],
+  "skillCount": 4,
+  "interfaces": [
+   {
+    "url": "https://mandate-coral.vercel.app/api/v1",
+    "transport": null,
+    "protocolVersion": "0.3.0",
+    "source": "url"
+   }
+  ],
+  "securitySchemes": [],
+  "missingRequired": [],
+  "reason": null
+ },
+ "reachability": {
+  "ok": false,
+  "url": "https://mandate-coral.vercel.app/api/v1",
+  "verdict": "answered_not_a2a",
+  "status": 404,
+  "method": "tasks/get",
+  "rpcErrorCode": null,
+  "rpcErrorMessage": null,
+  "reason": "HTTP 404 at the declared endpoint",
+  "elapsedMs": 2462
+ },
+ "registry": null,
+ "gaps": []
+}

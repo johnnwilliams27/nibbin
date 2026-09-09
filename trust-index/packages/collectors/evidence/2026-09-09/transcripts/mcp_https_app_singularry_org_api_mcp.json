@@ -1,0 +1,154 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:mcp:v1",
+ "endpoint": "https://app.singularry.org/api/mcp",
+ "probed_at": "2026-09-09T09:40:23Z",
+ "attempts": [
+  {
+   "attempt": 1,
+   "ts": "2026-09-09T09:40:23Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 427
+  },
+  {
+   "attempt": 2,
+   "ts": "2026-09-09T09:40:24Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 433
+  },
+  {
+   "attempt": 3,
+   "ts": "2026-09-09T09:40:25Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 418
+  }
+ ],
+ "handshake": {
+  "ok": true,
+  "protocolVersion": "2025-06-18",
+  "serverName": "Singularry Agent Platform",
+  "serverVersion": "1.0.0",
+  "instructions": null,
+  "reason": null
+ },
+ "tools": {
+  "ok": true,
+  "declared": [
+   {
+    "name": "list_active_agents",
+    "description": "List Singularry agents currently marked active on the platform (max 100). Returns nfaTokenId, erc8004AgentId, slyWalletAddress, riskProfile and persona name for each. Public — no authentication required.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {}
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "get_agent_portfolio",
+    "description": "Get an agent's currently-open strategy positions as the Singularry runtime reports them: per-position strategy, cost basis, mark-to-market value and unrealised PnL. This is the runtime position book, NOT a raw on-chain token scan. Requires `Authorization: Bearer <privy access token>` of the agent OWNER. A public ratios-only tier exists but is DISABLED during beta; other callers get an authentication error.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "nfaTokenId": {
+       "type": "string",
+       "description": "NFA token ID (e.g. \"1\" for SLY)"
+      }
+     },
+     "required": [
+      "nfaTokenId"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "get_agent_strategies",
+    "description": "Get an agent's active strategy commitments and allocation capacity (per-strategy allocated capital, portfolio mode, free capital, risk budget). Additionally requires the account to have AI-Agent access, mirroring the dashboard route this proxies. Requires `Authorization: Bearer <privy access token>` of the agent OWNER. A public ratios-only tier exists but is DISABLED during beta; other callers get an authentication error.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "nfaTokenId": {
+       "type": "string",
+       "description": "NFA token ID"
+      }
+     },
+     "required": [
+      "nfaTokenId"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "get_agent_pnl",
+    "description": "Get an agent's PnL summary for one window: realised PnL, unrealised PnL, total return %, and open/closed position counts. Some fields are null when the runtime suppresses an untrustworthy number — null is never zero. Requires `Authorization: Bearer <privy access token>` of the agent OWNER. A public ratios-only tier exists but is DISABLED during beta; other callers get an authentication error.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "nfaTokenId": {
+       "type": "string",
+       "description": "NFA token ID"
+      },
+      "window": {
+       "type": "string",
+       "description": "PnL window",
+       "enum": [
+        "24h",
+        "7d",
+        "30d",
+        "90d",
+        "all"
+       ],
+       "default": "30d"
+      }
+     },
+     "required": [
+      "nfaTokenId"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "get_recent_decisions",
+    "description": "Get an agent's recent autonomous-loop allocation decisions from the runtime feed (cycle number, strategy, action, reason, timestamp). This is the RUNTIME feed only — narrower than the dashboard activity feed, which additionally merges chatbot-side exit and maintenance rows. Requires `Authorization: Bearer <privy access token>` of the agent OWNER. A public ratios-only tier exists but is DISABLED during beta; other callers get an authentication error.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "nfaTokenId": {
+       "type": "string",
+       "description": "NFA token ID"
+      },
+      "limit": {
+       "type": "number",
+       "description": "Max rows (default 10, clamped to 200)",
+       "minimum": 1,
+       "maximum": 200
+      }
+     },
+     "required": [
+      "nfaTokenId"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": null
+   }
+  ],
+  "reason": null
+ },
+ "registry": null,
+ "auth": {
+  "required": false,
+  "status": 200,
+  "scheme": null,
+  "hop": "initialize"
+ },
+ "rate_limit": null
+}

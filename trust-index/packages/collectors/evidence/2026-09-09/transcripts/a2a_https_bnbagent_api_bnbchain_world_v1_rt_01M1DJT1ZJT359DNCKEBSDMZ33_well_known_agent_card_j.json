@@ -1,0 +1,50 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:a2a:v1",
+ "subject_url": "https://bnbagent-api.bnbchain.world/v1/rt/01M1DJT1ZJT359DNCKEBSDMZ33/.well-known/agent-card.json",
+ "probed_at": "2026-09-09T09:27:51Z",
+ "discovery": {
+  "ok": false,
+  "url": null,
+  "path": null,
+  "outcome": "absent",
+  "attempts": [
+   {
+    "url": "https://bnbagent-api.bnbchain.world/v1/rt/01M1DJT1ZJT359DNCKEBSDMZ33/.well-known/agent-card.json",
+    "path": "/v1/rt/01M1DJT1ZJT359DNCKEBSDMZ33/.well-known/agent-card.json",
+    "kind": "declared",
+    "outcome": "absent",
+    "status": 410,
+    "contentType": "application/json",
+    "reason": "no card at this path (HTTP 410)",
+    "elapsedMs": 1194
+   },
+   {
+    "url": "https://bnbagent-api.bnbchain.world/.well-known/agent-card.json",
+    "path": "/.well-known/agent-card.json",
+    "kind": "well-known",
+    "outcome": "absent",
+    "status": 404,
+    "contentType": "text/plain; charset=UTF-8",
+    "reason": "no card at this path (HTTP 404)",
+    "elapsedMs": 3256
+   },
+   {
+    "url": "https://bnbagent-api.bnbchain.world/.well-known/agent.json",
+    "path": "/.well-known/agent.json",
+    "kind": "well-known",
+    "outcome": "absent",
+    "status": 404,
+    "contentType": "text/plain; charset=UTF-8",
+    "reason": "no card at this path (HTTP 404)",
+    "elapsedMs": 644
+   }
+  ],
+  "reason": "no card at this path (HTTP 410)",
+  "elapsedMs": 5095
+ },
+ "declaration": null,
+ "reachability": null,
+ "registry": null,
+ "gaps": []
+}

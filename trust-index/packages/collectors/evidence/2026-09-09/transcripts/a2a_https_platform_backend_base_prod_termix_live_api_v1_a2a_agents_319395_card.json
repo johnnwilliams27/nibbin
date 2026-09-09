@@ -1,0 +1,60 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:a2a:v1",
+ "subject_url": "https://platform-backend-base.prod.termix.live/api/v1/a2a/agents/319395/card",
+ "probed_at": "2026-09-09T09:27:51Z",
+ "discovery": {
+  "ok": false,
+  "url": null,
+  "path": null,
+  "outcome": "absent",
+  "attempts": [
+   {
+    "url": "https://platform-backend-base.prod.termix.live/api/v1/a2a/agents/319395/card",
+    "path": "/api/v1/a2a/agents/319395/card",
+    "kind": "declared",
+    "outcome": "absent",
+    "status": 404,
+    "contentType": "application/json",
+    "reason": "no card at this path (HTTP 404)",
+    "elapsedMs": 1053
+   },
+   {
+    "url": "https://platform-backend-base.prod.termix.live/.well-known/agent-card.json",
+    "path": "/.well-known/agent-card.json",
+    "kind": "well-known",
+    "outcome": "absent",
+    "status": 404,
+    "contentType": "text/plain; charset=UTF-8",
+    "reason": "no card at this path (HTTP 404)",
+    "elapsedMs": 3212
+   },
+   {
+    "url": "https://platform-backend-base.prod.termix.live/.well-known/agent.json",
+    "path": "/.well-known/agent.json",
+    "kind": "well-known",
+    "outcome": "absent",
+    "status": 404,
+    "contentType": "text/plain; charset=UTF-8",
+    "reason": "no card at this path (HTTP 404)",
+    "elapsedMs": 839
+   },
+   {
+    "url": "https://platform-backend-base.prod.termix.live/api/v1/a2a/agents/319395/card/.well-known/agent-card.json",
+    "path": "/api/v1/a2a/agents/319395/card/.well-known/agent-card.json",
+    "kind": "guess",
+    "outcome": "auth_walled",
+    "status": 401,
+    "contentType": "application/json",
+    "reason": "the agent declined an anonymous client (HTTP 401)",
+    "elapsedMs": 688
+   }
+  ],
+  "reason": "no card at this path (HTTP 404)",
+  "elapsedMs": 5792
+ },
+ "declaration": null,
+ "reachability": null,
+ "registry": null,
+ "gaps": []
+}

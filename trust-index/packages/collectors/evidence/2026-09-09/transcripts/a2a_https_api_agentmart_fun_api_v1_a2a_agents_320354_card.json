@@ -1,0 +1,67 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:a2a:v1",
+ "subject_url": "https://api.agentmart.fun/api/v1/a2a/agents/320354/card",
+ "probed_at": "2026-09-09T09:27:51Z",
+ "discovery": {
+  "ok": true,
+  "url": "https://api.agentmart.fun/api/v1/a2a/agents/320354/card",
+  "path": "/api/v1/a2a/agents/320354/card",
+  "outcome": "card",
+  "attempts": [
+   {
+    "url": "https://api.agentmart.fun/api/v1/a2a/agents/320354/card",
+    "path": "/api/v1/a2a/agents/320354/card",
+    "kind": "declared",
+    "outcome": "card",
+    "status": 200,
+    "contentType": "application/json",
+    "reason": null,
+    "elapsedMs": 1087
+   }
+  ],
+  "reason": null,
+  "elapsedMs": 1087
+ },
+ "declaration": {
+  "ok": true,
+  "name": "webcraft-49badf.agent",
+  "description": "Designs, builds, and deploys polished responsive websites from concept to production.",
+  "version": null,
+  "protocolVersion": null,
+  "provider": null,
+  "documentationUrl": null,
+  "capabilities": {
+   "streaming": null,
+   "pushNotifications": null,
+   "stateTransitionHistory": null,
+   "extensions": 0,
+   "raw": null
+  },
+  "skills": [],
+  "skillCount": 0,
+  "interfaces": [],
+  "securitySchemes": [],
+  "missingRequired": [
+   "version",
+   "capabilities",
+   "defaultInputModes",
+   "defaultOutputModes",
+   "url"
+  ],
+  "reason": null
+ },
+ "reachability": {
+  "ok": false,
+  "url": null,
+  "verdict": "not_declared",
+  "status": null,
+  "method": null,
+  "rpcErrorCode": null,
+  "rpcErrorMessage": null,
+  "reason": "the card declares no interface URL",
+  "elapsedMs": 0
+ },
+ "registry": null,
+ "gaps": []
+}

@@ -1,0 +1,225 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:mcp:v1",
+ "endpoint": "https://bnb-yield.172-104-171-139.nip.io/mcp/",
+ "probed_at": "2026-09-09T09:40:23Z",
+ "attempts": [
+  {
+   "attempt": 1,
+   "ts": "2026-09-09T09:40:23Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 1101
+  },
+  {
+   "attempt": 2,
+   "ts": "2026-09-09T09:40:26Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 817
+  },
+  {
+   "attempt": 3,
+   "ts": "2026-09-09T09:40:27Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 270
+  }
+ ],
+ "handshake": {
+  "ok": true,
+  "protocolVersion": "2025-06-18",
+  "serverName": "BNB Yield Optimizer",
+  "serverVersion": "0.1.0",
+  "instructions": "This agent scans BSC lending and liquidity protocols (Venus,\nPancakeSwap), scores each opportunity by risk-adjusted yield rather than raw\nAPR, and migrates capital when the improvement exceeds gas, swap, slippage and a\nsafety margin.\n\nEvery tool here is read-only, except `pause`, which is an emergency stop. You\nCANNOT execute a migration through this interface — `simulate_rebalance` shows\nwhat the agent would do, and only a human can make it do it.\n\nThe capital under management is the AGENT'S OWN. It custodies nothing on anyone\nelse's behalf, so a position reported here belongs to the agent's wallet.\n\nUseful order: `get_status` for the current picture, `scan_protocols` for fresh\ndata (~20s), `simulate_rebalance` to see the decision and its reasoning.\n",
+  "reason": null
+ },
+ "tools": {
+  "ok": true,
+  "declared": [
+   {
+    "name": "get_status",
+    "description": "Current state: capital, held position, best opportunity, last scan.",
+    "inputSchema": {
+     "properties": {},
+     "type": "object",
+     "title": "get_statusArguments"
+    },
+    "outputSchema": {
+     "type": "object",
+     "additionalProperties": true,
+     "title": "get_statusDictOutput"
+    },
+    "annotations": null
+   },
+   {
+    "name": "get_metadata",
+    "description": "What this agent is, which protocols it supports, and its on-chain identity.",
+    "inputSchema": {
+     "properties": {},
+     "type": "object",
+     "title": "get_metadataArguments"
+    },
+    "outputSchema": {
+     "type": "object",
+     "additionalProperties": true,
+     "title": "get_metadataDictOutput"
+    },
+    "annotations": null
+   },
+   {
+    "name": "get_strategy",
+    "description": "The declared strategy and the risk controls currently in force.",
+    "inputSchema": {
+     "properties": {},
+     "type": "object",
+     "title": "get_strategyArguments"
+    },
+    "outputSchema": {
+     "type": "object",
+     "additionalProperties": true,
+     "title": "get_strategyDictOutput"
+    },
+    "annotations": null
+   },
+   {
+    "name": "get_opportunities",
+    "description": "Opportunities from the LAST scan, with risk scores. Does not re-scan —\n    use ``scan_protocols`` for fresh data.",
+    "inputSchema": {
+     "properties": {},
+     "type": "object",
+     "title": "get_opportunitiesArguments"
+    },
+    "outputSchema": {
+     "type": "object",
+     "additionalProperties": true,
+     "title": "get_opportunitiesDictOutput"
+    },
+    "annotations": null
+   },
+   {
+    "name": "get_positions",
+    "description": "What the agent currently holds. This is the AGENT'S OWN capital — it\n    custodies nothing on anyone else's behalf.",
+    "inputSchema": {
+     "properties": {},
+     "type": "object",
+     "title": "get_positionsArguments"
+    },
+    "outputSchema": {
+     "type": "object",
+     "additionalProperties": true,
+     "title": "get_positionsDictOutput"
+    },
+    "annotations": null
+   },
+   {
+    "name": "get_performance",
+    "description": "Migration counts and cumulative gas, derived from the audit log.",
+    "inputSchema": {
+     "properties": {},
+     "type": "object",
+     "title": "get_performanceArguments"
+    },
+    "outputSchema": {
+     "type": "object",
+     "additionalProperties": true,
+     "title": "get_performanceDictOutput"
+    },
+    "annotations": null
+   },
+   {
+    "name": "get_transactions",
+    "description": "The audit trail (spec section 13), newest first.",
+    "inputSchema": {
+     "properties": {
+      "limit": {
+       "default": 20,
+       "title": "Limit",
+       "type": "integer"
+      }
+     },
+     "type": "object",
+     "title": "get_transactionsArguments"
+    },
+    "outputSchema": {
+     "type": "object",
+     "additionalProperties": true,
+     "title": "get_transactionsDictOutput"
+    },
+    "annotations": null
+   },
+   {
+    "name": "get_chain_info",
+    "description": "Network, block height, gas price and the native token price.",
+    "inputSchema": {
+     "properties": {},
+     "type": "object",
+     "title": "get_chain_infoArguments"
+    },
+    "outputSchema": {
+     "type": "object",
+     "additionalProperties": true,
+     "title": "get_chain_infoDictOutput"
+    },
+    "annotations": null
+   },
+   {
+    "name": "scan_protocols",
+    "description": "Read Venus and PancakeSwap live and re-score every opportunity.\n\n    Reads chain and subgraph state; changes no position and signs nothing.\n    Takes roughly 20 seconds.\n\n    REQUIRES AN API KEY — twenty seconds of RPC per call is a denial-of-service\n    vector if left open, and the results are readable afterwards through the\n    unauthenticated `get_opportunities`.",
+    "inputSchema": {
+     "properties": {},
+     "type": "object",
+     "title": "scan_protocolsArguments"
+    },
+    "outputSchema": {
+     "type": "object",
+     "additionalProperties": true,
+     "title": "scan_protocolsDictOutput"
+    },
+    "annotations": null
+   },
+   {
+    "name": "simulate_rebalance",
+    "description": "Evaluate the migration rule and return the decision WITHOUT executing.\n\n    Equivalent to ``POST /rebalance?dry_run=true``. This is the closest a model\n    can get to migrating: it can ask what the agent WOULD do, never make it do\n    it.\n\n    REQUIRES AN API KEY — it scans if the data is stale and then makes an LLM\n    call, so it costs both time and money per invocation.",
+    "inputSchema": {
+     "properties": {},
+     "type": "object",
+     "title": "simulate_rebalanceArguments"
+    },
+    "outputSchema": {
+     "type": "object",
+     "additionalProperties": true,
+     "title": "simulate_rebalanceDictOutput"
+    },
+    "annotations": null
+   },
+   {
+    "name": "pause",
+    "description": "Emergency stop. Refuses all further migrations; scanning continues.\n\n    The only state-changing tool exposed, because it fails SAFE — the worst a\n    hostile prompt achieves is halting an agent that was about to trade. There\n    is deliberately no matching ``activate`` tool: resuming trading is a\n    decision for a human, not for a model reading untrusted text.\n\n    REQUIRES AN API KEY. Failing safe is a reason to expose it at all, not a\n    reason to leave it open to anyone who finds the URL.",
+    "inputSchema": {
+     "properties": {},
+     "type": "object",
+     "title": "pauseArguments"
+    },
+    "outputSchema": {
+     "type": "object",
+     "additionalProperties": true,
+     "title": "pauseDictOutput"
+    },
+    "annotations": null
+   }
+  ],
+  "reason": null
+ },
+ "registry": null,
+ "auth": {
+  "required": false,
+  "status": 200,
+  "scheme": null,
+  "hop": "initialize"
+ },
+ "rate_limit": null
+}

@@ -1,5 +1,12 @@
-census-remote.json
-transcripts/
-tool-calls.json
-assessment.json
-oauth-census.json
+# Scratch output from running the collectors by hand, at the PACKAGE ROOT only.
+#
+# Every pattern is anchored with a leading slash. Unanchored, `transcripts/`
+# matches a directory of that name at ANY depth, and git does not descend into
+# an excluded directory — so `evidence/2026-09-09/transcripts/` was silently
+# dropped from a commit that was meant to preserve it, with `git add -A`
+# reporting success and four files staged out of 277.
+/census-remote.json
+/transcripts/
+/tool-calls.json
+/assessment.json
+/oauth-census.json

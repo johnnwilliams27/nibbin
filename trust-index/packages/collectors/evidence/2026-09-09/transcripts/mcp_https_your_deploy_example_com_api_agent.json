@@ -1,0 +1,37 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:mcp:v1",
+ "endpoint": "https://your-deploy.example.com/api/agent",
+ "probed_at": "2026-09-09T09:40:23Z",
+ "attempts": [
+  {
+   "attempt": 1,
+   "ts": "2026-09-09T09:40:23Z",
+   "reachable": false,
+   "status": null,
+   "reason": "dns lookup failed: getaddrinfo ENOTFOUND your-deploy.example.com",
+   "elapsedMs": 98
+  },
+  {
+   "attempt": 2,
+   "ts": "2026-09-09T09:40:23Z",
+   "reachable": false,
+   "status": null,
+   "reason": "dns lookup failed: getaddrinfo ENOTFOUND your-deploy.example.com",
+   "elapsedMs": 24
+  },
+  {
+   "attempt": 3,
+   "ts": "2026-09-09T09:40:24Z",
+   "reachable": false,
+   "status": null,
+   "reason": "dns lookup failed: getaddrinfo ENOTFOUND your-deploy.example.com",
+   "elapsedMs": 25
+  }
+ ],
+ "handshake": null,
+ "tools": null,
+ "registry": null,
+ "auth": null,
+ "rate_limit": null
+}

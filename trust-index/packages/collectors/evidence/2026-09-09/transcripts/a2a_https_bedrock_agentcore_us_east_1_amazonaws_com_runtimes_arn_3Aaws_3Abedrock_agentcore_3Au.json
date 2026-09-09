@@ -1,0 +1,30 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:a2a:v1",
+ "subject_url": "https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A562333538205%3Aruntime%2Fsslprebalancer_sslprebalancer-H04NynHcX4/invocations/.well-known/agent-card.json",
+ "probed_at": "2026-09-09T09:40:27Z",
+ "discovery": {
+  "ok": false,
+  "url": null,
+  "path": null,
+  "outcome": "auth_walled",
+  "attempts": [
+   {
+    "url": "https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A562333538205%3Aruntime%2Fsslprebalancer_sslprebalancer-H04NynHcX4/invocations/.well-known/agent-card.json",
+    "path": "/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A562333538205%3Aruntime%2Fsslprebalancer_sslprebalancer-H04NynHcX4/invocations/.well-known/agent-card.json",
+    "kind": "declared",
+    "outcome": "auth_walled",
+    "status": 401,
+    "contentType": "application/json",
+    "reason": "the agent declined an anonymous client (HTTP 401)",
+    "elapsedMs": 536
+   }
+  ],
+  "reason": "the agent declined an anonymous client (HTTP 401)",
+  "elapsedMs": 536
+ },
+ "declaration": null,
+ "reachability": null,
+ "registry": null,
+ "gaps": []
+}

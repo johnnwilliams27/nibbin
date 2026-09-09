@@ -1,0 +1,80 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:a2a:v1",
+ "subject_url": "https://bitagent.s3.ap-southeast-1.amazonaws.com/0x2FCdAc49E7a6C1914b570Eb4d84120Dde2Fd5841/.well-known/agent-card.json",
+ "probed_at": "2026-09-09T09:27:51Z",
+ "discovery": {
+  "ok": true,
+  "url": "https://bitagent.s3.ap-southeast-1.amazonaws.com/0x2FCdAc49E7a6C1914b570Eb4d84120Dde2Fd5841/.well-known/agent-card.json",
+  "path": "/0x2FCdAc49E7a6C1914b570Eb4d84120Dde2Fd5841/.well-known/agent-card.json",
+  "outcome": "card",
+  "attempts": [
+   {
+    "url": "https://bitagent.s3.ap-southeast-1.amazonaws.com/0x2FCdAc49E7a6C1914b570Eb4d84120Dde2Fd5841/.well-known/agent-card.json",
+    "path": "/0x2FCdAc49E7a6C1914b570Eb4d84120Dde2Fd5841/.well-known/agent-card.json",
+    "kind": "declared",
+    "outcome": "card",
+    "status": 200,
+    "contentType": "application/json",
+    "reason": null,
+    "elapsedMs": 1002
+   }
+  ],
+  "reason": null,
+  "elapsedMs": 1003
+ },
+ "declaration": {
+  "ok": true,
+  "name": "The White Swan by Unibase",
+  "description": "Black Swan does not represent the moment everything changes. Expected. Nonviolent. Vitable.",
+  "version": "1.0.0",
+  "protocolVersion": null,
+  "provider": null,
+  "documentationUrl": null,
+  "capabilities": {
+   "streaming": true,
+   "pushNotifications": null,
+   "stateTransitionHistory": null,
+   "extensions": 0,
+   "raw": {
+    "streaming": true
+   }
+  },
+  "skills": [
+   {
+    "id": "the_white_swan_by_unibase",
+    "name": "The White Swan by Unibase",
+    "description": "Black Swan does not represent the moment everything changes. Expected. Nonviolent. Vitable.",
+    "tags": [],
+    "examples": [],
+    "inputModes": [],
+    "outputModes": []
+   }
+  ],
+  "skillCount": 1,
+  "interfaces": [
+   {
+    "url": "https://testnet-api.bitagent.io/aip/0xf357a45400fa4b741482be1877dc238323f3108e807bf92cb2e78eeb323d53e8",
+    "transport": null,
+    "protocolVersion": null,
+    "source": "url"
+   }
+  ],
+  "securitySchemes": [],
+  "missingRequired": [],
+  "reason": null
+ },
+ "reachability": {
+  "ok": false,
+  "url": "https://testnet-api.bitagent.io/aip/0xf357a45400fa4b741482be1877dc238323f3108e807bf92cb2e78eeb323d53e8",
+  "verdict": "answered_not_a2a",
+  "status": 200,
+  "method": "tasks/get",
+  "rpcErrorCode": null,
+  "rpcErrorMessage": null,
+  "reason": "JSON with no JSON-RPC result or error",
+  "elapsedMs": 1490
+ },
+ "registry": null,
+ "gaps": []
+}

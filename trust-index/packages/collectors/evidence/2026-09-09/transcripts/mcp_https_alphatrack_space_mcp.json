@@ -1,0 +1,156 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:mcp:v1",
+ "endpoint": "https://alphatrack.space/mcp",
+ "probed_at": "2026-09-09T09:27:06Z",
+ "attempts": [
+  {
+   "attempt": 1,
+   "ts": "2026-09-09T09:27:06Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 6936
+  },
+  {
+   "attempt": 2,
+   "ts": "2026-09-09T09:27:23Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 828
+  },
+  {
+   "attempt": 3,
+   "ts": "2026-09-09T09:27:25Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 1087
+  }
+ ],
+ "handshake": {
+  "ok": true,
+  "protocolVersion": "2025-06-18",
+  "serverName": "AlphaTrack",
+  "serverVersion": "1.0.0",
+  "instructions": "AlphaTrack: Binance smart-money intelligence. Ranks the top Binance Futures copy-trading leaders by 3-day realised PnL, with ROI, assets under management and subscriber counts, straight from Binance's public smart-money leaderboard.\n\nPaid tools (x402, U on BSC, pay to 0x8a1960AC9EBcb0B0F88926728F10d94962695Db2): top_traders = 0.01 U. A tools/call without a PAYMENT-SIGNATURE header returns HTTP 402 with the x402 requirements.",
+  "reason": null
+ },
+ "tools": {
+  "ok": true,
+  "declared": [
+   {
+    "name": "top_traders",
+    "description": "Top Binance Futures copy-trading leaders ranked by 3-day PnL (descending). Returns up to 10 traders with account name, subscribers, assets under management, 3-day PnL and ROI, plus a one-line human summary per trader.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "limit": {
+       "type": "integer",
+       "description": "Number of traders to return, 1-10. Default 10."
+      }
+     },
+     "additionalProperties": false
+    },
+    "outputSchema": {
+     "type": "object",
+     "properties": {
+      "source": {
+       "type": "string"
+      },
+      "time_range": {
+       "type": "string"
+      },
+      "ranking_type": {
+       "type": "string"
+      },
+      "fetched_at": {
+       "type": "string"
+      },
+      "count": {
+       "type": "integer"
+      },
+      "traders": {
+       "type": [
+        "null",
+        "array"
+       ],
+       "items": {
+        "type": "object",
+        "properties": {
+         "rank": {
+          "type": "integer"
+         },
+         "trader_name": {
+          "type": "string"
+         },
+         "account_name": {
+          "type": "string"
+         },
+         "subscribers": {
+          "type": "integer"
+         },
+         "assets_usd": {
+          "type": "number",
+          "description": "Assets under management in USD"
+         },
+         "pnl_usd": {
+          "type": "number",
+          "description": "3-day realised PnL in USD (negative = loss)"
+         },
+         "roi_pct": {
+          "type": "number",
+          "description": "3-day ROI in percent"
+         },
+         "summary": {
+          "type": "string"
+         }
+        },
+        "required": [
+         "rank",
+         "trader_name",
+         "account_name",
+         "subscribers",
+         "assets_usd",
+         "pnl_usd",
+         "roi_pct",
+         "summary"
+        ],
+        "additionalProperties": false
+       }
+      },
+      "text": {
+       "type": "string",
+       "description": "The same ranking as numbered human-readable lines"
+      }
+     },
+     "required": [
+      "source",
+      "time_range",
+      "ranking_type",
+      "fetched_at",
+      "count",
+      "traders",
+      "text"
+     ],
+     "additionalProperties": false
+    },
+    "annotations": {
+     "idempotentHint": false,
+     "openWorldHint": true,
+     "readOnlyHint": true
+    }
+   }
+  ],
+  "reason": null
+ },
+ "registry": null,
+ "auth": {
+  "required": false,
+  "status": 200,
+  "scheme": null,
+  "hop": "initialize"
+ },
+ "rate_limit": null
+}

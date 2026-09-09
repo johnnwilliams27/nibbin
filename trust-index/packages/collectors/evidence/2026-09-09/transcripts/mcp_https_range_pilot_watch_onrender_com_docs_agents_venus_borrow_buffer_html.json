@@ -1,0 +1,37 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:mcp:v1",
+ "endpoint": "https://range-pilot-watch.onrender.com/docs/agents/venus-borrow-buffer.html",
+ "probed_at": "2026-09-09T09:40:23Z",
+ "attempts": [
+  {
+   "attempt": 1,
+   "ts": "2026-09-09T09:40:23Z",
+   "reachable": false,
+   "status": 404,
+   "reason": "HTTP 404",
+   "elapsedMs": 494
+  },
+  {
+   "attempt": 2,
+   "ts": "2026-09-09T09:40:24Z",
+   "reachable": false,
+   "status": 404,
+   "reason": "HTTP 404",
+   "elapsedMs": 309
+  },
+  {
+   "attempt": 3,
+   "ts": "2026-09-09T09:40:25Z",
+   "reachable": false,
+   "status": 404,
+   "reason": "HTTP 404",
+   "elapsedMs": 430
+  }
+ ],
+ "handshake": null,
+ "tools": null,
+ "registry": null,
+ "auth": null,
+ "rate_limit": null
+}

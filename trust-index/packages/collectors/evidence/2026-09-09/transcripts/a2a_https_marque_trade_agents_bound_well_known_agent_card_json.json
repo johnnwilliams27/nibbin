@@ -1,0 +1,108 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:a2a:v1",
+ "subject_url": "https://marque.trade/agents/bound/.well-known/agent-card.json",
+ "probed_at": "2026-09-09T09:27:51Z",
+ "discovery": {
+  "ok": true,
+  "url": "https://marque.trade/agents/bound/.well-known/agent-card.json",
+  "path": "/agents/bound/.well-known/agent-card.json",
+  "outcome": "card",
+  "attempts": [
+   {
+    "url": "https://marque.trade/agents/bound/.well-known/agent-card.json",
+    "path": "/agents/bound/.well-known/agent-card.json",
+    "kind": "declared",
+    "outcome": "card",
+    "status": 200,
+    "contentType": "application/json; charset=utf-8",
+    "reason": null,
+    "elapsedMs": 1805
+   }
+  ],
+  "reason": null,
+  "elapsedMs": 1805
+ },
+ "declaration": {
+  "ok": true,
+  "name": "Bound",
+  "description": "Reads a PancakeSwap V3 position on BNB Smart Chain, reports range health and drift, and proposes a re-centred range snapped to the pool’s own tick spacing with the amounts the V3 liquidity formula requires. Non-custodial: it computes, it never signs.",
+  "version": "1.0.0",
+  "protocolVersion": "0.3.0",
+  "provider": "Marque",
+  "documentationUrl": null,
+  "capabilities": {
+   "streaming": false,
+   "pushNotifications": false,
+   "stateTransitionHistory": null,
+   "extensions": 0,
+   "raw": {
+    "streaming": false,
+    "pushNotifications": false
+   }
+  },
+  "skills": [
+   {
+    "id": "range-health",
+    "name": "Read a V3 range",
+    "description": "Current tick, in-range boolean, and the percentage price move to the nearer bound.",
+    "tags": [
+     "pancakeswap",
+     "v3",
+     "liquidity",
+     "range"
+    ],
+    "examples": [],
+    "inputModes": [
+     "text/plain"
+    ],
+    "outputModes": [
+     "application/json"
+    ]
+   },
+   {
+    "id": "re-centre-plan",
+    "name": "Propose a legal re-centre",
+    "description": "A symmetric range around spot, snapped to the pool tick spacing, with the amounts required to mint it.",
+    "tags": [
+     "pancakeswap",
+     "v3",
+     "rebalance",
+     "tick spacing"
+    ],
+    "examples": [],
+    "inputModes": [
+     "text/plain"
+    ],
+    "outputModes": [
+     "application/json"
+    ]
+   }
+  ],
+  "skillCount": 2,
+  "interfaces": [
+   {
+    "url": "https://marque.trade/agents/bound/a2a",
+    "transport": "JSONRPC",
+    "protocolVersion": "0.3.0",
+    "source": "url"
+   }
+  ],
+  "securitySchemes": [],
+  "missingRequired": [],
+  "reason": null
+ },
+ "reachability": {
+  "ok": true,
+  "url": "https://marque.trade/agents/bound/a2a",
+  "verdict": "speaks_a2a",
+  "status": 200,
+  "method": "tasks/get",
+  "rpcErrorCode": -32000,
+  "rpcErrorMessage": "no task text found in the message parts",
+  "reason": null,
+  "elapsedMs": 2801
+ },
+ "registry": null,
+ "gaps": []
+}

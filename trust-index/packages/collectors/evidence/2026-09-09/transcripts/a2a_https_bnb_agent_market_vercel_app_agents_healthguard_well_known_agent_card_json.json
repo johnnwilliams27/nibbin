@@ -1,0 +1,87 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:a2a:v1",
+ "subject_url": "https://bnb-agent-market.vercel.app/agents/healthguard/.well-known/agent-card.json",
+ "probed_at": "2026-09-09T09:27:51Z",
+ "discovery": {
+  "ok": true,
+  "url": "https://bnb-agent-market.vercel.app/agents/healthguard/.well-known/agent-card.json",
+  "path": "/agents/healthguard/.well-known/agent-card.json",
+  "outcome": "card",
+  "attempts": [
+   {
+    "url": "https://bnb-agent-market.vercel.app/agents/healthguard/.well-known/agent-card.json",
+    "path": "/agents/healthguard/.well-known/agent-card.json",
+    "kind": "declared",
+    "outcome": "card",
+    "status": 200,
+    "contentType": "application/json",
+    "reason": null,
+    "elapsedMs": 1026
+   }
+  ],
+  "reason": null,
+  "elapsedMs": 1026
+ },
+ "declaration": {
+  "ok": true,
+  "name": "HealthGuard",
+  "description": "Watches your loan and repays before it can be liquidated",
+  "version": "0.1.0",
+  "protocolVersion": "0.3.0",
+  "provider": "BNB Agent Market",
+  "documentationUrl": "https://bnb-agent-market.vercel.app/a/healthguard",
+  "capabilities": {
+   "streaming": false,
+   "pushNotifications": false,
+   "stateTransitionHistory": null,
+   "extensions": 0,
+   "raw": {
+    "streaming": false,
+    "pushNotifications": false
+   }
+  },
+  "skills": [
+   {
+    "id": "protect",
+    "name": "Don't let me get liquidated",
+    "description": "Watches your loan and repays before it can be liquidated. Repay your Venus loan, up to the limit you set.",
+    "tags": [
+     "health-factor-monitoring",
+     "protect",
+     "venus",
+     "defi",
+     "bsc"
+    ],
+    "examples": [],
+    "inputModes": [],
+    "outputModes": []
+   }
+  ],
+  "skillCount": 1,
+  "interfaces": [
+   {
+    "url": "https://bnb-agent-market.vercel.app/agents/healthguard",
+    "transport": null,
+    "protocolVersion": "0.3.0",
+    "source": "url"
+   }
+  ],
+  "securitySchemes": [],
+  "missingRequired": [],
+  "reason": null
+ },
+ "reachability": {
+  "ok": false,
+  "url": "https://bnb-agent-market.vercel.app/agents/healthguard",
+  "verdict": "answered_not_a2a",
+  "status": 404,
+  "method": "tasks/get",
+  "rpcErrorCode": null,
+  "rpcErrorMessage": null,
+  "reason": "HTTP 404 at the declared endpoint",
+  "elapsedMs": 2747
+ },
+ "registry": null,
+ "gaps": []
+}

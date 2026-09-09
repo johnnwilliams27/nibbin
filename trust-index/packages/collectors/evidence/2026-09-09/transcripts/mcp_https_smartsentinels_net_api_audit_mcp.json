@@ -1,0 +1,93 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:mcp:v1",
+ "endpoint": "https://smartsentinels.net/api/audit-mcp",
+ "probed_at": "2026-09-09T09:27:06Z",
+ "attempts": [
+  {
+   "attempt": 1,
+   "ts": "2026-09-09T09:27:06Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 5889
+  },
+  {
+   "attempt": 2,
+   "ts": "2026-09-09T09:27:22Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 258
+  },
+  {
+   "attempt": 3,
+   "ts": "2026-09-09T09:27:23Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 238
+  }
+ ],
+ "handshake": {
+  "ok": true,
+  "protocolVersion": "2024-11-05",
+  "serverName": "sentinels-ai-audit",
+  "serverVersion": "1.1.0",
+  "instructions": null,
+  "reason": null
+ },
+ "tools": {
+  "ok": true,
+  "declared": [
+   {
+    "name": "sentinels_ai_audit_info",
+    "description": "Free. Returns Sentinels AI Audit pricing, BSC payment recipient, chainId, branding, and how HTML report URLs are returned after a paid sentinels_ai_audit_contract call.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {},
+     "additionalProperties": false
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "sentinels_ai_audit_contract",
+    "description": "Paid (0.2 BNB on BSC). Run SmartSentinels Sentinels AI smart-contract security audit on Solidity source. Requires paymentTxHash of a native BNB transfer to the treasury wallet. Each paymentTxHash is redeemable once. Returns JSON (score, findings, SWC-style issues, branding) plus report.htmlUrl / report.viewUrl (pinned HTML; Print → Save as PDF).",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "solidityCode": {
+       "type": "string",
+       "description": "Full Solidity smart contract source code to audit"
+      },
+      "contractName": {
+       "type": "string",
+       "description": "Optional contract name (e.g. 'MyToken')"
+      },
+      "paymentTxHash": {
+       "type": "string",
+       "description": "BSC tx hash of native 0.2 BNB (or more) transfer to 0x4E21F74143660ee576F4D2aC26BD30729a849f55"
+      }
+     },
+     "required": [
+      "solidityCode",
+      "paymentTxHash"
+     ],
+     "additionalProperties": false
+    },
+    "outputSchema": null,
+    "annotations": null
+   }
+  ],
+  "reason": null
+ },
+ "registry": null,
+ "auth": {
+  "required": false,
+  "status": 200,
+  "scheme": null,
+  "hop": "initialize"
+ },
+ "rate_limit": null
+}

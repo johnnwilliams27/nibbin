@@ -1,0 +1,96 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:a2a:v1",
+ "subject_url": "https://swapgod.space/.well-known/agent-card.json",
+ "probed_at": "2026-09-09T09:27:51Z",
+ "discovery": {
+  "ok": true,
+  "url": "https://swapgod.space/.well-known/agent-card.json",
+  "path": "/.well-known/agent-card.json",
+  "outcome": "card",
+  "attempts": [
+   {
+    "url": "https://swapgod.space/.well-known/agent-card.json",
+    "path": "/.well-known/agent-card.json",
+    "kind": "declared",
+    "outcome": "card",
+    "status": 200,
+    "contentType": "application/json",
+    "reason": null,
+    "elapsedMs": 2050
+   }
+  ],
+  "reason": null,
+  "elapsedMs": 2050
+ },
+ "declaration": {
+  "ok": true,
+  "name": "SwapGod",
+  "description": "SwapGod: DEX swap quotes on BNB Smart Chain. Compares PancakeSwap v2 (direct and via WBNB) and PancakeSwap v3 (all fee tiers) for an exact-input swap and returns the best route, expected output, minimum output after slippage and the implied price. Quote only: nothing is executed. Paid via x402 (U on BNB Smart Chain, pay to 0x442b37739E704094337C68977843E5DBE2a5d298): swap_quote = 0.01 U. A message/send without a PAYMENT-SIGNATURE header returns HTTP 402 with the x402 requirements.",
+  "version": "1.0.0",
+  "protocolVersion": "0.3.0",
+  "provider": null,
+  "documentationUrl": "https://swapgod.space/",
+  "capabilities": {
+   "streaming": false,
+   "pushNotifications": false,
+   "stateTransitionHistory": false,
+   "extensions": 0,
+   "raw": {
+    "streaming": false,
+    "pushNotifications": false,
+    "stateTransitionHistory": false
+   }
+  },
+  "skills": [
+   {
+    "id": "swap_quote",
+    "name": "PancakeSwap swap quote (BSC)",
+    "description": "Best exact-input swap quote on BNB Smart Chain across PancakeSwap v2 (direct + via WBNB) and PancakeSwap v3 (100/500/2500/10000 fee tiers). Tokens are BEP-20 contract addresses or the symbols BNB, WBNB, USDT, USDC, USD1, U, BTCB, ETH, CAKE. Returns the best route, expected and minimum output (after slippage), implied price, and every candidate route. Quote only; nothing is executed. Send a data part {\"skill\": \"swap_quote\", ...input fields}. Input: amount_in (string, required): Amount of token_in to sell, in human units (e.g. \"1.5\"), not wei; slippage_bps (integer): Slippage tolerance in basis points for amount_out_min (100 = 1%). Default 100, max 5000; token_in (string, required): Token to sell: BEP-20 contract address on BSC, or a symbol (BNB, WBNB, USDT, USDC, USD1, U, BTCB, ETH, CAKE). BNB is quoted as WBNB; token_out (string, required): Token to buy: BEP-20 contract address on BSC, or one of the symbols above. Price: 0.01 U per call (x402).",
+    "tags": [
+     "pancakeswap",
+     "dex",
+     "swap-quote",
+     "bnb-chain",
+     "defi",
+     "swap_quote"
+    ],
+    "examples": [
+     "{\"skill\":\"swap_quote\",\"token_in\":\"...\",\"token_out\":\"...\",\"amount_in\":\"...\"}"
+    ],
+    "inputModes": [
+     "application/json"
+    ],
+    "outputModes": [
+     "application/json",
+     "text/plain"
+    ]
+   }
+  ],
+  "skillCount": 1,
+  "interfaces": [
+   {
+    "url": "https://swapgod.space/a2a",
+    "transport": "JSONRPC",
+    "protocolVersion": "0.3.0",
+    "source": "url"
+   }
+  ],
+  "securitySchemes": [],
+  "missingRequired": [],
+  "reason": null
+ },
+ "reachability": {
+  "ok": true,
+  "url": "https://swapgod.space/a2a",
+  "verdict": "speaks_a2a",
+  "status": 200,
+  "method": "tasks/get",
+  "rpcErrorCode": -32001,
+  "rpcErrorMessage": "tasks are not stored: message/send returns the completed task inline",
+  "reason": null,
+  "elapsedMs": 3197
+ },
+ "registry": null,
+ "gaps": []
+}

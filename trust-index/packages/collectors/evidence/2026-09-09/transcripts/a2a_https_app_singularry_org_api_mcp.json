@@ -1,0 +1,154 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:a2a:v1",
+ "subject_url": "https://app.singularry.org/api/mcp",
+ "probed_at": "2026-09-09T09:40:27Z",
+ "discovery": {
+  "ok": true,
+  "url": "https://app.singularry.org/.well-known/agent-card.json",
+  "path": "/.well-known/agent-card.json",
+  "outcome": "card",
+  "attempts": [
+   {
+    "url": "https://app.singularry.org/api/mcp",
+    "path": "/api/mcp",
+    "kind": "declared",
+    "outcome": "not_a_card",
+    "status": 200,
+    "contentType": "application/json",
+    "reason": "HTTP 200 with JSON that is not an Agent Card",
+    "elapsedMs": 93
+   },
+   {
+    "url": "https://app.singularry.org/.well-known/agent-card.json",
+    "path": "/.well-known/agent-card.json",
+    "kind": "well-known",
+    "outcome": "card",
+    "status": 200,
+    "contentType": "application/json",
+    "reason": null,
+    "elapsedMs": 406
+   }
+  ],
+  "reason": null,
+  "elapsedMs": 499
+ },
+ "declaration": {
+  "ok": true,
+  "name": "Singularry",
+  "description": "AI agent platform for autonomous DeFi trading on BNB Chain. Runs 17+ strategies (DCA, momentum, funding-rate arbitrage, concentrated-liquidity LP, yield loops) across user-owned Diamond wallets with on-chain capability gating.",
+  "version": "1.0.0",
+  "protocolVersion": "0.3.0",
+  "provider": "Singularry",
+  "documentationUrl": "https://docs.singularry.org",
+  "capabilities": {
+   "streaming": false,
+   "pushNotifications": false,
+   "stateTransitionHistory": false,
+   "extensions": 0,
+   "raw": {
+    "streaming": false,
+    "pushNotifications": false,
+    "stateTransitionHistory": false
+   }
+  },
+  "skills": [
+   {
+    "id": "autonomous-portfolio-management",
+    "name": "Autonomous Portfolio Management",
+    "description": "Multi-strategy DeFi portfolio allocation + 4-hour rebalancing within user-defined risk tiers (conservative / balanced / aggressive).",
+    "tags": [
+     "defi",
+     "portfolio",
+     "rebalancing",
+     "autonomous"
+    ],
+    "examples": [],
+    "inputModes": [],
+    "outputModes": []
+   },
+   {
+    "id": "yield-optimization",
+    "name": "Yield Optimization",
+    "description": "Discover and rotate into highest-APY opportunities across Venus, USDD vault, Lista, Pendle, and BNB-Chain DEX pools.",
+    "tags": [
+     "yield",
+     "lending",
+     "lp",
+     "apy"
+    ],
+    "examples": [],
+    "inputModes": [],
+    "outputModes": []
+   },
+   {
+    "id": "funding-rate-arbitrage",
+    "name": "Funding Rate Arbitrage",
+    "description": "Delta-neutral spot + perp positions capturing funding-rate spread across Binance CEX, Aster, and on-chain perp venues.",
+    "tags": [
+     "arbitrage",
+     "perps",
+     "delta-neutral",
+     "funding-rate"
+    ],
+    "examples": [],
+    "inputModes": [],
+    "outputModes": []
+   },
+   {
+    "id": "concentrated-liquidity-lp",
+    "name": "Concentrated Liquidity LP",
+    "description": "Manage Uniswap V3 / Pancake V3 / Thena positions with perp-hedged delta neutrality + auto-rebalance on range exits.",
+    "tags": [
+     "uniswap-v3",
+     "lp",
+     "hedging",
+     "thena",
+     "pancake"
+    ],
+    "examples": [],
+    "inputModes": [],
+    "outputModes": []
+   },
+   {
+    "id": "dca-execution",
+    "name": "Dollar-Cost Averaging",
+    "description": "Scheduled buy-the-dip DCA into top-cap assets via on-chain DCA facet executions.",
+    "tags": [
+     "dca",
+     "accumulation",
+     "btc",
+     "eth"
+    ],
+    "examples": [],
+    "inputModes": [],
+    "outputModes": []
+   }
+  ],
+  "skillCount": 5,
+  "interfaces": [
+   {
+    "url": "https://app.singularry.org/api/a2a",
+    "transport": "JSONRPC",
+    "protocolVersion": "0.3.0",
+    "source": "url"
+   }
+  ],
+  "securitySchemes": [],
+  "missingRequired": [],
+  "reason": null
+ },
+ "reachability": {
+  "ok": true,
+  "url": "https://app.singularry.org/api/a2a",
+  "verdict": "speaks_a2a",
+  "status": 200,
+  "method": "tasks/get",
+  "rpcErrorCode": -32001,
+  "rpcErrorMessage": "Task not found: this endpoint is stateless and creates no tasks",
+  "reason": null,
+  "elapsedMs": 177
+ },
+ "registry": null,
+ "gaps": []
+}

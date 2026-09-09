@@ -1,0 +1,243 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:mcp:v1",
+ "endpoint": "https://hallmark-agents.vercel.app/mcp/rebalancer",
+ "probed_at": "2026-09-09T09:27:06Z",
+ "attempts": [
+  {
+   "attempt": 1,
+   "ts": "2026-09-09T09:27:06Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 8251
+  },
+  {
+   "attempt": 2,
+   "ts": "2026-09-09T09:27:23Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 292
+  },
+  {
+   "attempt": 3,
+   "ts": "2026-09-09T09:27:23Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 313
+  }
+ ],
+ "handshake": {
+  "ok": true,
+  "protocolVersion": "2025-06-18",
+  "serverName": "hallmark-rebalancer",
+  "serverVersion": "0.1.0",
+  "instructions": "Watches a PancakeSwap v3 liquidity position, decides whether its range still earns, and resets it when it does not. There is no atomic rebalance on v3: closing and reopening a position is decreaseLiquidity → collect → burn → mint, plus a swap when the token ratio has to move. This agent prices that whole sequence before proposing it, and executes it only inside an Altana session key scoped to the position manager and the swap router.\n\nRead-only tools answer with a decision, the data behind it, its sources and a timestamp. Write tools act only inside a user-granted Altana session key and report a refusal as data.",
+  "reason": null
+ },
+ "tools": {
+  "ok": true,
+  "declared": [
+   {
+    "name": "analyse",
+    "description": "Reads a PancakeSwap v3 position and its pool, decides whether the range still earns, and proposes a recentred range with the reasoning and the gas budget behind it. Read-only.\n\nRead-only. Performs no transaction.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "tokenId": {
+       "type": "string",
+       "description": "PancakeSwap v3 position NFT id, as reported by the position manager. (decimal integer string)",
+       "pattern": "^(0|[1-9][0-9]*)$"
+      },
+      "chainId": {
+       "type": "integer",
+       "description": "BNB Chain id: 56 (mainnet) or 97 (testnet). Defaults to the service default.",
+       "minimum": 56,
+       "maximum": 97
+      },
+      "widthBps": {
+       "type": "integer",
+       "description": "Half-width of the proposed range in basis points. Omit to keep the position's current width.",
+       "minimum": 1,
+       "maximum": 100000
+      },
+      "driftToleranceBps": {
+       "type": "integer",
+       "description": "Rebalance proactively once the price comes within this many bps of a range edge. 0 means only act once out of range.",
+       "minimum": 0,
+       "maximum": 10000
+      },
+      "wallet": {
+       "type": "string",
+       "description": "Wallet whose approvals to check. Defaults to the position owner.",
+       "pattern": "^0x[0-9a-fA-F]{40}$"
+      }
+     },
+     "required": [
+      "tokenId"
+     ],
+     "additionalProperties": false
+    },
+    "outputSchema": null,
+    "annotations": {
+     "readOnlyHint": true,
+     "destructiveHint": false,
+     "idempotentHint": true,
+     "openWorldHint": true
+    }
+   },
+   {
+    "name": "report",
+    "description": "Everything `analyse` returns, plus the parts that cost real work: a live QuoterV2 simulation of the exact ratio swap with its price impact, and the pool's trailing 24h APR turned into a payback period for the move. Sold over x402.\n\nRead-only. Performs no transaction.\n\nPaid: 0.25 USDT per call over x402 at https://hallmark-agents.vercel.app/x402/rebalancer/report.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "tokenId": {
+       "type": "string",
+       "description": "PancakeSwap v3 position NFT id, as reported by the position manager. (decimal integer string)",
+       "pattern": "^(0|[1-9][0-9]*)$"
+      },
+      "chainId": {
+       "type": "integer",
+       "description": "BNB Chain id: 56 (mainnet) or 97 (testnet). Defaults to the service default.",
+       "minimum": 56,
+       "maximum": 97
+      },
+      "widthBps": {
+       "type": "integer",
+       "description": "Half-width of the proposed range in basis points. Omit to keep the position's current width.",
+       "minimum": 1,
+       "maximum": 100000
+      },
+      "driftToleranceBps": {
+       "type": "integer",
+       "description": "Rebalance proactively once the price comes within this many bps of a range edge. 0 means only act once out of range.",
+       "minimum": 0,
+       "maximum": 10000
+      },
+      "wallet": {
+       "type": "string",
+       "description": "Wallet whose approvals to check. Defaults to the position owner.",
+       "pattern": "^0x[0-9a-fA-F]{40}$"
+      }
+     },
+     "required": [
+      "tokenId"
+     ],
+     "additionalProperties": false
+    },
+    "outputSchema": null,
+    "annotations": {
+     "readOnlyHint": true,
+     "destructiveHint": false,
+     "idempotentHint": true,
+     "openWorldHint": true
+    }
+   },
+   {
+    "name": "act",
+    "description": "Executes decreaseLiquidity → collect → burn → [swap] → mint under an Altana session key scoped to the PancakeSwap v3 position manager and swap router. Re-running with the same intentId never executes twice. A call outside the key's scope comes back as a structured refusal naming the rule that blocked it.\n\nSends an on-chain transaction through an Altana session key. The key carries a contract allowlist, a spend cap and an expiry; a call outside them comes back as a structured refusal, not an error, and nothing is sent.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "tokenId": {
+       "type": "string",
+       "description": "PancakeSwap v3 position NFT id, as reported by the position manager. (decimal integer string)",
+       "pattern": "^(0|[1-9][0-9]*)$"
+      },
+      "intentId": {
+       "type": "string",
+       "description": "Idempotency key. The same id never executes twice; a repeat replays the recorded outcome.",
+       "minLength": 4,
+       "maxLength": 128
+      },
+      "chainId": {
+       "type": "integer",
+       "description": "BNB Chain id: 56 (mainnet) or 97 (testnet). Defaults to the service default.",
+       "minimum": 56,
+       "maximum": 97
+      },
+      "widthBps": {
+       "type": "integer",
+       "description": "Half-width of the proposed range in basis points. Omit to keep the position's current width.",
+       "minimum": 1,
+       "maximum": 100000
+      },
+      "driftToleranceBps": {
+       "type": "integer",
+       "description": "Rebalance proactively once the price comes within this many bps of a range edge. 0 means only act once out of range.",
+       "minimum": 0,
+       "maximum": 10000
+      },
+      "slippageBps": {
+       "type": "integer",
+       "description": "Slippage bound applied to every leg, in basis points.",
+       "minimum": 1,
+       "maximum": 1000
+      },
+      "deadlineSeconds": {
+       "type": "integer",
+       "description": "Seconds from now before the periphery calls expire.",
+       "minimum": 30,
+       "maximum": 3600
+      }
+     },
+     "required": [
+      "tokenId",
+      "intentId"
+     ],
+     "additionalProperties": false
+    },
+    "outputSchema": null,
+    "annotations": {
+     "readOnlyHint": false,
+     "destructiveHint": false,
+     "idempotentHint": true,
+     "openWorldHint": true
+    }
+   },
+   {
+    "name": "cycles",
+    "description": "Every rebalance cycle this agent has run for a position: what moved, when, the outcome, and the transaction. Repeated autonomous action is the point, so it is recorded.\n\nRead-only. Performs no transaction.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "tokenId": {
+       "type": "string",
+       "description": "PancakeSwap v3 position NFT id, as reported by the position manager. (decimal integer string)",
+       "pattern": "^(0|[1-9][0-9]*)$"
+      },
+      "chainId": {
+       "type": "integer",
+       "description": "BNB Chain id: 56 (mainnet) or 97 (testnet). Defaults to the service default.",
+       "minimum": 56,
+       "maximum": 97
+      }
+     },
+     "required": [
+      "tokenId"
+     ],
+     "additionalProperties": false
+    },
+    "outputSchema": null,
+    "annotations": {
+     "readOnlyHint": true,
+     "destructiveHint": false,
+     "idempotentHint": true,
+     "openWorldHint": true
+    }
+   }
+  ],
+  "reason": null
+ },
+ "registry": null,
+ "auth": {
+  "required": false,
+  "status": 200,
+  "scheme": null,
+  "hop": "initialize"
+ },
+ "rate_limit": null
+}

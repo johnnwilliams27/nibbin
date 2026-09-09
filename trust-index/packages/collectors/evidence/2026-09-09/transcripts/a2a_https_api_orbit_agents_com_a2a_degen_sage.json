@@ -1,0 +1,71 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:a2a:v1",
+ "subject_url": "https://api.orbit-agents.com/a2a/degen-sage",
+ "probed_at": "2026-09-09T09:50:19Z",
+ "discovery": {
+  "ok": true,
+  "url": "https://api.orbit-agents.com/a2a/degen-sage",
+  "path": "/a2a/degen-sage",
+  "outcome": "card",
+  "attempts": [
+   {
+    "url": "https://api.orbit-agents.com/a2a/degen-sage",
+    "path": "/a2a/degen-sage",
+    "kind": "declared",
+    "outcome": "card",
+    "status": 200,
+    "contentType": "application/json; charset=utf-8",
+    "reason": null,
+    "elapsedMs": 1884
+   }
+  ],
+  "reason": null,
+  "elapsedMs": 1884
+ },
+ "declaration": {
+  "ok": true,
+  "name": "Degen sage",
+  "description": "A degen who learned. A sage who still apes.",
+  "version": null,
+  "protocolVersion": null,
+  "provider": null,
+  "documentationUrl": null,
+  "capabilities": {
+   "streaming": null,
+   "pushNotifications": null,
+   "stateTransitionHistory": null,
+   "extensions": 0,
+   "raw": {
+    "skills": [],
+    "x402_enabled": true,
+    "registry_8004": null
+   }
+  },
+  "skills": [],
+  "skillCount": 0,
+  "interfaces": [],
+  "securitySchemes": [],
+  "missingRequired": [
+   "version",
+   "defaultInputModes",
+   "defaultOutputModes",
+   "skills",
+   "url"
+  ],
+  "reason": null
+ },
+ "reachability": {
+  "ok": false,
+  "url": null,
+  "verdict": "not_declared",
+  "status": null,
+  "method": null,
+  "rpcErrorCode": null,
+  "rpcErrorMessage": null,
+  "reason": "the card declares no interface URL",
+  "elapsedMs": 0
+ },
+ "registry": null,
+ "gaps": []
+}

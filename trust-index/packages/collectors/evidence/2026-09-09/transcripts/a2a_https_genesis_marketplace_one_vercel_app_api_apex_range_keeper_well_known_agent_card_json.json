@@ -1,0 +1,124 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:a2a:v1",
+ "subject_url": "https://genesis-marketplace-one.vercel.app/api/apex/range-keeper/.well-known/agent-card.json",
+ "probed_at": "2026-09-09T09:27:51Z",
+ "discovery": {
+  "ok": true,
+  "url": "https://genesis-marketplace-one.vercel.app/api/apex/range-keeper/.well-known/agent-card.json",
+  "path": "/api/apex/range-keeper/.well-known/agent-card.json",
+  "outcome": "card",
+  "attempts": [
+   {
+    "url": "https://genesis-marketplace-one.vercel.app/api/apex/range-keeper/.well-known/agent-card.json",
+    "path": "/api/apex/range-keeper/.well-known/agent-card.json",
+    "kind": "declared",
+    "outcome": "card",
+    "status": 200,
+    "contentType": "application/json",
+    "reason": null,
+    "elapsedMs": 1355
+   }
+  ],
+  "reason": null,
+  "elapsedMs": 1355
+ },
+ "declaration": {
+  "ok": true,
+  "name": "RangeKeeper",
+  "description": "Marketplace specialist for concentrated liquidity (built by Genesis). Monitors PancakeSwap V3 positions, flags out-of-range liquidity, and proposes rebalance bands with fee APR vs IL context. Does not custody user funds — delivers actionable plans.",
+  "version": "range-keeper@specialist-plan-v1",
+  "protocolVersion": "0.2.9",
+  "provider": "Genesis Marketplace",
+  "documentationUrl": "https://genesis-marketplace-one.vercel.app/genesis/range-keeper",
+  "capabilities": {
+   "streaming": false,
+   "pushNotifications": false,
+   "stateTransitionHistory": null,
+   "extensions": 0,
+   "raw": {
+    "streaming": false,
+    "pushNotifications": false
+   }
+  },
+  "skills": [
+   {
+    "id": "range-keeper-skill-1",
+    "name": "PCS V3 range monitor",
+    "description": "PCS V3 LP ranges that stay in the money",
+    "tags": [
+     "rebalancing",
+     "erc-8004",
+     "plan-only"
+    ],
+    "examples": [],
+    "inputModes": [],
+    "outputModes": []
+   },
+   {
+    "id": "range-keeper-skill-2",
+    "name": "Rebalance band proposal",
+    "description": "PCS V3 LP ranges that stay in the money",
+    "tags": [
+     "rebalancing",
+     "erc-8004",
+     "plan-only"
+    ],
+    "examples": [],
+    "inputModes": [],
+    "outputModes": []
+   },
+   {
+    "id": "range-keeper-skill-3",
+    "name": "Fee APR vs IL snapshot",
+    "description": "PCS V3 LP ranges that stay in the money",
+    "tags": [
+     "rebalancing",
+     "erc-8004",
+     "plan-only"
+    ],
+    "examples": [],
+    "inputModes": [],
+    "outputModes": []
+   },
+   {
+    "id": "range-keeper-skill-4",
+    "name": "Gas-aware reset plan",
+    "description": "PCS V3 LP ranges that stay in the money",
+    "tags": [
+     "rebalancing",
+     "erc-8004",
+     "plan-only"
+    ],
+    "examples": [],
+    "inputModes": [],
+    "outputModes": []
+   }
+  ],
+  "skillCount": 4,
+  "interfaces": [
+   {
+    "url": "https://genesis-marketplace-one.vercel.app/api/apex/range-keeper",
+    "transport": null,
+    "protocolVersion": "0.2.9",
+    "source": "url"
+   }
+  ],
+  "securitySchemes": [],
+  "missingRequired": [],
+  "reason": null
+ },
+ "reachability": {
+  "ok": false,
+  "url": "https://genesis-marketplace-one.vercel.app/api/apex/range-keeper",
+  "verdict": "answered_not_a2a",
+  "status": 405,
+  "method": "tasks/get",
+  "rpcErrorCode": null,
+  "rpcErrorMessage": null,
+  "reason": "HTTP 405 at the declared endpoint",
+  "elapsedMs": 2713
+ },
+ "registry": null,
+ "gaps": []
+}

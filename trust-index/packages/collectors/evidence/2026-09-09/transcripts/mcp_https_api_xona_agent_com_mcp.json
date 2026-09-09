@@ -1,0 +1,2067 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:mcp:v1",
+ "endpoint": "https://api.xona-agent.com/mcp",
+ "probed_at": "2026-09-09T09:27:06Z",
+ "attempts": [
+  {
+   "attempt": 1,
+   "ts": "2026-09-09T09:27:06Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 1247
+  },
+  {
+   "attempt": 2,
+   "ts": "2026-09-09T09:27:20Z",
+   "reachable": false,
+   "status": 400,
+   "reason": "HTTP 400",
+   "elapsedMs": 2440
+  },
+  {
+   "attempt": 3,
+   "ts": "2026-09-09T09:27:23Z",
+   "reachable": false,
+   "status": 400,
+   "reason": "HTTP 400",
+   "elapsedMs": 886
+  }
+ ],
+ "handshake": {
+  "ok": true,
+  "protocolVersion": "2025-06-18",
+  "serverName": "xona-agent",
+  "serverVersion": "2.0.0",
+  "instructions": null,
+  "reason": null
+ },
+ "tools": {
+  "ok": true,
+  "declared": [
+   {
+    "name": "list-resources",
+    "description": "Returns all available Xona x402 resources with pricing, descriptions, and input/output schemas. Use this to discover what capabilities are available before calling a specific tool.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "category": {
+       "type": "string",
+       "enum": [
+        "all",
+        "image",
+        "video",
+        "token",
+        "ai",
+        "prediction-market"
+       ],
+       "default": "all",
+       "description": "Filter resources by category"
+      }
+     },
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+     "type": "object",
+     "properties": {
+      "success": {
+       "type": "boolean"
+      },
+      "resources": {
+       "type": "array"
+      },
+      "count": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "success",
+      "resources",
+      "count"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": null
+   },
+   {
+    "name": "image-creative-director",
+    "description": "AI-powered creative research and prompt refinement using X and Google. Analyzes trends and transforms your idea into an optimized generation plan.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "idea": {
+       "type": "string",
+       "minLength": 3,
+       "description": "User's prompt/idea for image generation"
+      },
+      "reference_images": {
+       "type": "array",
+       "items": {
+        "type": "string",
+        "format": "uri"
+       },
+       "description": "Array of existing image URLs to use as references"
+      }
+     },
+     "required": [
+      "idea"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+     "type": "object",
+     "properties": {
+      "success": {
+       "type": "boolean"
+      },
+      "intent": {
+       "type": "object",
+       "additionalProperties": {},
+       "description": "Analyzed user intent"
+      },
+      "research": {
+       "type": "array",
+       "description": "Research results from X and Google"
+      },
+      "direction": {
+       "type": "array",
+       "description": "Generation plan with refined prompt"
+      }
+     },
+     "required": [
+      "success"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": null
+   },
+   {
+    "name": "image-designer",
+    "description": "AI image generation with intelligent style blending. Takes your prompt and style keywords, refines them together, and generates a high-quality image.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "prompt": {
+       "type": "string",
+       "minLength": 3,
+       "description": "The detailed prompt description for image generation"
+      },
+      "style": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       },
+       "description": "Style keywords to blend into the prompt"
+      },
+      "aspect_ratio": {
+       "type": "string",
+       "description": "Aspect ratio for the generated image (default: 1:1)"
+      },
+      "referenceImage": {
+       "type": "array",
+       "items": {
+        "type": "string",
+        "format": "uri"
+       },
+       "description": "Array of reference image URLs for style guidance"
+      }
+     },
+     "required": [
+      "prompt"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+     "type": "object",
+     "properties": {
+      "success": {
+       "type": "boolean"
+      },
+      "image_url": {
+       "type": "string",
+       "description": "The generated image URL (CDN)"
+      },
+      "image_description": {
+       "type": "string",
+       "description": "The refined prompt used for generation"
+      },
+      "metadata": {
+       "type": "object",
+       "additionalProperties": {},
+       "description": "Generation metadata"
+      }
+     },
+     "required": [
+      "success"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": null
+   },
+   {
+    "name": "image-nano-banana-pro",
+    "description": "AI image generation using nano-banana-pro model. Takes your prompt and generates a high-quality image directly without style blending.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "prompt": {
+       "type": "string",
+       "minLength": 3,
+       "description": "The detailed prompt description for image generation"
+      },
+      "aspect_ratio": {
+       "type": "string",
+       "description": "Aspect ratio (default: 1:1)"
+      },
+      "referenceImage": {
+       "type": "array",
+       "items": {
+        "type": "string",
+        "format": "uri"
+       },
+       "description": "Array of reference image URLs for style guidance"
+      }
+     },
+     "required": [
+      "prompt"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+     "type": "object",
+     "properties": {
+      "success": {
+       "type": "boolean"
+      },
+      "image_url": {
+       "type": "string",
+       "description": "The generated image URL (CDN)"
+      },
+      "image_description": {
+       "type": "string",
+       "description": "The prompt used for generation"
+      },
+      "metadata": {
+       "type": "object",
+       "additionalProperties": {},
+       "description": "Generation metadata"
+      }
+     },
+     "required": [
+      "success"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": null
+   },
+   {
+    "name": "image-nano-banana",
+    "description": "AI image generation using nano-banana model. Takes your prompt and generates a high-quality image directly without style blending.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "prompt": {
+       "type": "string",
+       "minLength": 3,
+       "description": "The detailed prompt description for image generation"
+      },
+      "aspect_ratio": {
+       "type": "string",
+       "description": "Aspect ratio (default: 1:1)"
+      },
+      "referenceImage": {
+       "type": "array",
+       "items": {
+        "type": "string",
+        "format": "uri"
+       },
+       "description": "Array of reference image URLs for style guidance"
+      }
+     },
+     "required": [
+      "prompt"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+     "type": "object",
+     "properties": {
+      "success": {
+       "type": "boolean"
+      },
+      "image_url": {
+       "type": "string",
+       "description": "The generated image URL (CDN)"
+      },
+      "image_description": {
+       "type": "string",
+       "description": "The prompt used for generation"
+      },
+      "metadata": {
+       "type": "object",
+       "additionalProperties": {},
+       "description": "Generation metadata"
+      }
+     },
+     "required": [
+      "success"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": null
+   },
+   {
+    "name": "image-grok-imagine",
+    "description": "AI image generation using xAI's Grok Imagine model. Takes your prompt and generates a high-quality image.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "prompt": {
+       "type": "string",
+       "minLength": 3,
+       "description": "The detailed prompt description for image generation"
+      },
+      "referenceImage": {
+       "type": "string",
+       "format": "uri",
+       "description": "Single reference image URL for style guidance (Grok supports one image)"
+      }
+     },
+     "required": [
+      "prompt"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+     "type": "object",
+     "properties": {
+      "success": {
+       "type": "boolean"
+      },
+      "image_url": {
+       "type": "string",
+       "description": "The generated image URL (CDN)"
+      },
+      "image_description": {
+       "type": "string",
+       "description": "The prompt used for generation"
+      },
+      "metadata": {
+       "type": "object",
+       "additionalProperties": {},
+       "description": "Generation metadata"
+      }
+     },
+     "required": [
+      "success"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": null
+   },
+   {
+    "name": "image-model-qwen-image",
+    "description": "AI image generation using qwen/qwen-image model. Generate high-quality images with advanced AI capabilities.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "prompt": {
+       "type": "string",
+       "minLength": 3,
+       "description": "The detailed prompt description for image generation"
+      },
+      "aspect_ratio": {
+       "type": "string",
+       "description": "Aspect ratio (default: 1:1)"
+      },
+      "referenceImage": {
+       "type": "array",
+       "items": {
+        "type": "string",
+        "format": "uri"
+       },
+       "description": "Array of reference image URLs (uses first image)"
+      }
+     },
+     "required": [
+      "prompt"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+     "type": "object",
+     "properties": {
+      "success": {
+       "type": "boolean"
+      },
+      "image_url": {
+       "type": "string",
+       "description": "The generated image URL (CDN)"
+      },
+      "image_description": {
+       "type": "string",
+       "description": "The prompt used for generation"
+      },
+      "metadata": {
+       "type": "object",
+       "additionalProperties": {},
+       "description": "Generation metadata"
+      }
+     },
+     "required": [
+      "success"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": null
+   },
+   {
+    "name": "image-model-seedream-4.5",
+    "description": "AI image generation using ByteDance Seedream-4.5 model. Generate high-quality images with advanced AI capabilities.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "prompt": {
+       "type": "string",
+       "minLength": 3,
+       "description": "The detailed prompt description for image generation"
+      },
+      "aspect_ratio": {
+       "type": "string",
+       "description": "Aspect ratio (default: 1:1)"
+      },
+      "referenceImage": {
+       "type": "array",
+       "items": {
+        "type": "string",
+        "format": "uri"
+       },
+       "description": "Array of reference image URLs for style guidance"
+      }
+     },
+     "required": [
+      "prompt"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+     "type": "object",
+     "properties": {
+      "success": {
+       "type": "boolean"
+      },
+      "image_url": {
+       "type": "string",
+       "description": "The generated image URL (CDN)"
+      },
+      "image_description": {
+       "type": "string",
+       "description": "The prompt used for generation"
+      },
+      "metadata": {
+       "type": "object",
+       "additionalProperties": {},
+       "description": "Generation metadata"
+      }
+     },
+     "required": [
+      "success"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": null
+   },
+   {
+    "name": "image-flux-2-pro",
+    "description": "High-quality image generation and editing with support for eight reference images.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "prompt": {
+       "type": "string",
+       "minLength": 1,
+       "description": "Text prompt"
+      },
+      "resolution": {
+       "type": "string",
+       "description": "e.g. \"1 MP\""
+      },
+      "aspect_ratio": {
+       "type": "string",
+       "description": "e.g. \"1:1\" or \"custom\" with width/height"
+      },
+      "input_images": {
+       "type": "array",
+       "items": {
+        "type": "string",
+        "format": "uri"
+       },
+       "maxItems": 8,
+       "description": "HTTPS input image URLs"
+      },
+      "output_format": {
+       "type": "string",
+       "enum": [
+        "webp",
+        "png",
+        "jpg",
+        "jpeg"
+       ]
+      },
+      "output_quality": {
+       "type": "number",
+       "minimum": 0,
+       "maximum": 100
+      },
+      "safety_tolerance": {
+       "type": "number",
+       "minimum": 0,
+       "maximum": 10
+      },
+      "seed": {
+       "type": "number"
+      },
+      "width": {
+       "type": "number"
+      },
+      "height": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "prompt"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+     "type": "object",
+     "properties": {
+      "image_url": {
+       "type": "string"
+      },
+      "image_description": {
+       "type": "string"
+      },
+      "metadata": {
+       "type": "object",
+       "additionalProperties": {}
+      }
+     },
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": null
+   },
+   {
+    "name": "image-flux-2-max",
+    "description": "The highest fidelity image model from Black Forest Labs.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "prompt": {
+       "type": "string",
+       "minLength": 1,
+       "description": "Text prompt"
+      },
+      "resolution": {
+       "type": "string",
+       "description": "e.g. \"1 MP\""
+      },
+      "aspect_ratio": {
+       "type": "string",
+       "description": "e.g. \"1:1\" or \"custom\" with width/height"
+      },
+      "input_images": {
+       "type": "array",
+       "items": {
+        "type": "string",
+        "format": "uri"
+       },
+       "maxItems": 8,
+       "description": "HTTPS input image URLs"
+      },
+      "output_format": {
+       "type": "string",
+       "enum": [
+        "webp",
+        "png",
+        "jpg",
+        "jpeg"
+       ]
+      },
+      "output_quality": {
+       "type": "number",
+       "minimum": 0,
+       "maximum": 100
+      },
+      "safety_tolerance": {
+       "type": "number",
+       "minimum": 0,
+       "maximum": 10
+      },
+      "seed": {
+       "type": "number"
+      },
+      "width": {
+       "type": "number"
+      },
+      "height": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "prompt"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+     "type": "object",
+     "properties": {
+      "image_url": {
+       "type": "string"
+      },
+      "image_description": {
+       "type": "string"
+      },
+      "metadata": {
+       "type": "object",
+       "additionalProperties": {}
+      }
+     },
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": null
+   },
+   {
+    "name": "image-flux-2-flex",
+    "description": "Max-quality image generation and editing with support for ten reference images.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "prompt": {
+       "type": "string",
+       "minLength": 1,
+       "description": "Text prompt"
+      },
+      "resolution": {
+       "type": "string",
+       "description": "e.g. \"1 MP\""
+      },
+      "aspect_ratio": {
+       "type": "string",
+       "description": "e.g. \"1:1\" or \"custom\" with width/height"
+      },
+      "input_images": {
+       "type": "array",
+       "items": {
+        "type": "string",
+        "format": "uri"
+       },
+       "maxItems": 8,
+       "description": "HTTPS input image URLs"
+      },
+      "output_format": {
+       "type": "string",
+       "enum": [
+        "webp",
+        "png",
+        "jpg",
+        "jpeg"
+       ]
+      },
+      "output_quality": {
+       "type": "number",
+       "minimum": 0,
+       "maximum": 100
+      },
+      "safety_tolerance": {
+       "type": "number",
+       "minimum": 0,
+       "maximum": 10
+      },
+      "seed": {
+       "type": "number"
+      },
+      "width": {
+       "type": "number"
+      },
+      "height": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "prompt"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+     "type": "object",
+     "properties": {
+      "image_url": {
+       "type": "string"
+      },
+      "image_description": {
+       "type": "string"
+      },
+      "metadata": {
+       "type": "object",
+       "additionalProperties": {}
+      }
+     },
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": null
+   },
+   {
+    "name": "image-gpt-image-2",
+    "description": "OpenAI state-of-the-art image generation via Replicate. High-quality photorealism, sharp text rendering, and strong instruction following. Quality: medium.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "prompt": {
+       "type": "string",
+       "minLength": 1,
+       "description": "Text prompt describing the desired image"
+      },
+      "aspect_ratio": {
+       "type": "string",
+       "enum": [
+        "1:1",
+        "3:2",
+        "2:3"
+       ],
+       "description": "Aspect ratio (default: 1:1)"
+      }
+     },
+     "required": [
+      "prompt"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+     "type": "object",
+     "properties": {
+      "image_url": {
+       "type": "string"
+      },
+      "image_description": {
+       "type": "string"
+      },
+      "metadata": {
+       "type": "object",
+       "additionalProperties": {}
+      }
+     },
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": null
+   },
+   {
+    "name": "video-short-generation",
+    "description": "AI short video generation using Grok Imagine Video. Takes your prompt and generates a 10-second high-quality video.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "prompt": {
+       "type": "string",
+       "minLength": 3,
+       "description": "Prompt for video generation"
+      },
+      "aspect_ratio": {
+       "type": "string",
+       "description": "Video aspect ratio"
+      },
+      "image_url": {
+       "type": "string",
+       "format": "uri",
+       "description": "Optional input image URL for image-to-video generation"
+      }
+     },
+     "required": [
+      "prompt"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+     "type": "object",
+     "properties": {
+      "success": {
+       "type": "boolean"
+      },
+      "video_url": {
+       "type": "string",
+       "description": "The generated video URL"
+      },
+      "duration": {
+       "type": "number",
+       "description": "Video duration in seconds"
+      },
+      "model": {
+       "type": "string",
+       "description": "Model used for generation"
+      },
+      "metadata": {
+       "type": "object",
+       "additionalProperties": {},
+       "description": "Generation metadata"
+      }
+     },
+     "required": [
+      "success"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": null
+   },
+   {
+    "name": "token-pumpfun-trending",
+    "description": "Get trending PumpFun tokens with AI-powered analysis including dominant meta summary, fresh token suggestions, and detailed token information with price changes.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {},
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+     "type": "object",
+     "properties": {
+      "success": {
+       "type": "boolean"
+      },
+      "summary": {
+       "type": "string",
+       "description": "AI-generated summary of dominant memecoin meta"
+      },
+      "suggestions": {
+       "type": "array",
+       "description": "Array of 3 fresh token ideas"
+      },
+      "trending_tokens": {
+       "type": "array",
+       "description": "Array of trending tokens"
+      },
+      "count": {
+       "type": "number",
+       "description": "Number of trending tokens returned"
+      }
+     },
+     "required": [
+      "success"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": null
+   },
+   {
+    "name": "token-pumpfun-movers",
+    "description": "Get movers PumpFun tokens with AI-powered analysis including dominant meta summary, fresh token suggestions, and detailed token information with price changes.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {},
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+     "type": "object",
+     "properties": {
+      "success": {
+       "type": "boolean"
+      },
+      "summary": {
+       "type": "string",
+       "description": "AI-generated summary of dominant memecoin meta"
+      },
+      "suggestions": {
+       "type": "array",
+       "description": "Array of 3 fresh token ideas"
+      },
+      "trending_tokens": {
+       "type": "array",
+       "description": "Array of movers tokens"
+      },
+      "count": {
+       "type": "number",
+       "description": "Number of movers tokens returned"
+      }
+     },
+     "required": [
+      "success"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": null
+   },
+   {
+    "name": "token-news",
+    "description": "Fetch token information from Jupiter via Corbits, get curated news from Syra, and generate banner and social content with Xona.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "token": {
+       "type": "string",
+       "minLength": 1,
+       "description": "Token mint address, symbol, or name"
+      }
+     },
+     "required": [
+      "token"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+     "type": "object",
+     "properties": {
+      "success": {
+       "type": "boolean"
+      },
+      "mint": {
+       "type": "string",
+       "description": "Token mint address from Jupiter"
+      },
+      "token": {
+       "type": "string",
+       "description": "Token name"
+      },
+      "ticker": {
+       "type": "string",
+       "description": "Token ticker symbol"
+      },
+      "trending_news": {
+       "type": "object",
+       "additionalProperties": {},
+       "description": "AI-generated news content with title, tweet_draft, and banner_url"
+      }
+     },
+     "required": [
+      "success"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": null
+   },
+   {
+    "name": "token-starter-kit",
+    "description": "Generate token logo and banner automatically from a prompt. Extracts token information, generates logo, then creates a matching banner.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "prompt": {
+       "type": "string",
+       "minLength": 3,
+       "description": "Description of the token"
+      },
+      "ca_reference": {
+       "type": "string",
+       "description": "Contract address of reference token to extract logo from"
+      }
+     },
+     "required": [
+      "prompt"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+     "type": "object",
+     "properties": {
+      "success": {
+       "type": "boolean"
+      },
+      "token_name": {
+       "type": "string",
+       "description": "The token name"
+      },
+      "token_ticker": {
+       "type": "string",
+       "description": "The token ticker symbol"
+      },
+      "token_description": {
+       "type": "string",
+       "description": "Comprehensive token description"
+      },
+      "logo_url": {
+       "type": "string",
+       "description": "URL of the generated logo (CDN)"
+      },
+      "banner_url": {
+       "type": "string",
+       "description": "URL of the generated banner (CDN)"
+      }
+     },
+     "required": [
+      "success"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": null
+   },
+   {
+    "name": "ai-x-persona",
+    "description": "Extract structured persona from X (Twitter) username. Analyzes posts, profile, and communication style to generate persona, style profile, content patterns, and avatar prompt.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "x_username": {
+       "type": "string",
+       "minLength": 1,
+       "description": "X (Twitter) username (with or without @)"
+      }
+     },
+     "required": [
+      "x_username"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+     "type": "object",
+     "properties": {
+      "success": {
+       "type": "boolean"
+      },
+      "persona": {
+       "type": "object",
+       "additionalProperties": {},
+       "description": "Persona information"
+      },
+      "style_profile": {
+       "type": "object",
+       "additionalProperties": {},
+       "description": "Writing style and voice characteristics"
+      },
+      "content_patterns": {
+       "type": "object",
+       "additionalProperties": {},
+       "description": "Content patterns and posting behavior"
+      },
+      "avatar": {
+       "type": "object",
+       "additionalProperties": {},
+       "description": "Avatar information including image prompt"
+      }
+     },
+     "required": [
+      "success"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": null
+   },
+   {
+    "name": "ai-x-news",
+    "description": "Extract latest news from X (Twitter) username, generate draft tweet and banner with Xona.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "x_username": {
+       "type": "string",
+       "minLength": 1,
+       "description": "X (Twitter) username (with or without @)"
+      },
+      "x_persona": {
+       "type": "string",
+       "description": "X (Twitter) username to mimic persona/style for tweet draft"
+      }
+     },
+     "required": [
+      "x_username"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+     "type": "object",
+     "properties": {
+      "success": {
+       "type": "boolean"
+      },
+      "x_username": {
+       "type": "string",
+       "description": "The X username"
+      },
+      "trending_news": {
+       "type": "object",
+       "additionalProperties": {},
+       "description": "AI-generated news content with title, tweet_draft, and banner_url"
+      }
+     },
+     "required": [
+      "success"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": null
+   },
+   {
+    "name": "ai-prediction-market-limitless-market-list",
+    "description": "List active prediction markets on Limitless Exchange (Base) with optional numeric category filter and pagination. Use this to discover markets before running market-intel on a specific one.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "category_id": {
+       "type": "integer",
+       "description": "Numeric Limitless category id (omit to list across all categories)"
+      },
+      "limit": {
+       "type": "integer",
+       "minimum": 1,
+       "maximum": 25,
+       "description": "Page size, 1–25, default 25 (upstream cap is 25)"
+      },
+      "page": {
+       "type": "integer",
+       "minimum": 1,
+       "description": "1-indexed page number, default 1"
+      }
+     },
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+     "type": "object",
+     "properties": {
+      "markets": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "additionalProperties": {}
+       },
+       "description": "Array of market summaries: {id, slug, title, category, category_id, deadline, yes_price, no_price, volume, volume_raw, liquidity, collateral_token}"
+      },
+      "page": {
+       "type": "number",
+       "description": "Echo of the requested page"
+      },
+      "limit": {
+       "type": "number",
+       "description": "Echo of the requested limit"
+      },
+      "next_page": {
+       "type": [
+        "number",
+        "null"
+       ],
+       "description": "Next page number, or null if this page is the last"
+      }
+     },
+     "required": [
+      "markets"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": null
+   },
+   {
+    "name": "ai-prediction-market-limitless-market-intel",
+    "description": "AI analysis of a single Limitless prediction market. Combines market data with X/news sentiment to return a YES/NO/PASS recommendation, confidence (0–1), thesis, and weighted key signals. Pass the market slug returned by market-list.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "market_id": {
+       "type": "string",
+       "minLength": 1,
+       "description": "Limitless market slug (from market-list)"
+      }
+     },
+     "required": [
+      "market_id"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+     "type": "object",
+     "properties": {
+      "market": {
+       "type": "object",
+       "additionalProperties": {},
+       "description": "Summarized market info (title, prices, volume, deadline)"
+      },
+      "recommendation": {
+       "type": "string",
+       "enum": [
+        "YES",
+        "NO",
+        "PASS"
+       ],
+       "description": "Trading recommendation"
+      },
+      "confidence": {
+       "type": "number",
+       "minimum": 0,
+       "maximum": 1,
+       "description": "0.0–1.0 conviction in the recommendation"
+      },
+      "thesis": {
+       "type": "string",
+       "description": "Short explanation of the call"
+      },
+      "key_signals": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "additionalProperties": {}
+       },
+       "description": "Up to 5 {source, signal, weight} items ordered by weight desc"
+      }
+     },
+     "required": [
+      "recommendation",
+      "confidence"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": null
+   },
+   {
+    "name": "ai-prediction-market-limitless-alpha-feed",
+    "description": "Scan top active Limitless prediction markets, run AI intel on each, and return the best ranked opportunities by edge (basis points). Use this when you want the agent to discover trade ideas autonomously.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "category_id": {
+       "type": "integer",
+       "description": "Numeric Limitless category id (omit to scan across all categories)"
+      },
+      "limit": {
+       "type": "integer",
+       "minimum": 1,
+       "maximum": 20,
+       "description": "Number of opportunities to return, 1–20, default 10"
+      },
+      "min_confidence": {
+       "type": "number",
+       "minimum": 0,
+       "maximum": 1,
+       "description": "Minimum intel confidence to include (0–1)"
+      }
+     },
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+     "type": "object",
+     "properties": {
+      "opportunities": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "additionalProperties": {}
+       },
+       "description": "Ranked {market_id, title, recommendation, confidence, edge_bps, thesis_short} sorted by edge desc"
+      }
+     },
+     "required": [
+      "opportunities"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": null
+   },
+   {
+    "name": "tokens-api-search",
+    "description": "Search assets by text query — returns canonical assets plus singleton Solana tokens with market stats via Tokens API.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "q": {
+       "type": "string",
+       "minLength": 1,
+       "description": "Search query string (name, symbol, or mint address)"
+      },
+      "limit": {
+       "type": "number",
+       "minimum": 1,
+       "maximum": 50,
+       "description": "Max results 1-50 (default 20)"
+      },
+      "category": {
+       "type": "string",
+       "description": "Filter by asset category"
+      }
+     },
+     "required": [
+      "q"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+     "type": "object",
+     "properties": {
+      "success": {
+       "type": "boolean"
+      },
+      "data": {
+       "type": "object",
+       "additionalProperties": {},
+       "description": "Search results with market stats"
+      }
+     },
+     "required": [
+      "success"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": null
+   },
+   {
+    "name": "tokens-api-resolve",
+    "description": "Resolve a Solana mint address or asset reference to its canonical asset ID and variant details.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "mint": {
+       "type": "string",
+       "description": "Solana mint address (base58)"
+      },
+      "ref": {
+       "type": "string",
+       "description": "Asset reference — assetId, alias, mint, or solana-<mint>"
+      }
+     },
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+     "type": "object",
+     "properties": {
+      "success": {
+       "type": "boolean"
+      },
+      "data": {
+       "type": "object",
+       "additionalProperties": {},
+       "description": "Resolved asset with canonical ID and variant"
+      }
+     },
+     "required": [
+      "success"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": null
+   },
+   {
+    "name": "tokens-api-curated",
+    "description": "Retrieve curated/pre-assembled asset collections with market data.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "list": {
+       "type": "string",
+       "description": "Curated list ID or \"all\" (default: all)"
+      },
+      "groupBy": {
+       "type": "string",
+       "description": "\"asset\" (default) or \"mint\""
+      }
+     },
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+     "type": "object",
+     "properties": {
+      "success": {
+       "type": "boolean"
+      },
+      "data": {
+       "type": "object",
+       "additionalProperties": {},
+       "description": "Curated asset list"
+      }
+     },
+     "required": [
+      "success"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": null
+   },
+   {
+    "name": "tokens-api-market-snapshots",
+    "description": "Bulk lookup cached market snapshots for up to 250 Solana mints in one call.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "mints": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       },
+       "minItems": 1,
+       "maxItems": 250,
+       "description": "Array of Solana mint addresses (max 250)"
+      }
+     },
+     "required": [
+      "mints"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+     "type": "object",
+     "properties": {
+      "success": {
+       "type": "boolean"
+      },
+      "data": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "additionalProperties": {}
+       },
+       "description": "Array of token market snapshots"
+      }
+     },
+     "required": [
+      "success"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": null
+   },
+   {
+    "name": "tokens-api-variant-markets",
+    "description": "Batch lookup per-mint variant market snapshots for up to 50 mints.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "mints": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       },
+       "minItems": 1,
+       "maxItems": 50,
+       "description": "Array of Solana mint addresses (max 50)"
+      }
+     },
+     "required": [
+      "mints"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+     "type": "object",
+     "properties": {
+      "success": {
+       "type": "boolean"
+      },
+      "data": {
+       "type": "object",
+       "additionalProperties": {},
+       "description": "Variant market snapshots"
+      }
+     },
+     "required": [
+      "success"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": null
+   },
+   {
+    "name": "tokens-api-risk-summary",
+    "description": "Quick risk/quality assessment for a Solana mint — score, grade, label, and trust flags.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "mint": {
+       "type": "string",
+       "minLength": 1,
+       "description": "Solana mint address"
+      }
+     },
+     "required": [
+      "mint"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+     "type": "object",
+     "properties": {
+      "success": {
+       "type": "boolean"
+      },
+      "data": {
+       "type": "object",
+       "additionalProperties": {},
+       "description": "Risk assessment with score, grade, label, tone"
+      }
+     },
+     "required": [
+      "success"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": null
+   },
+   {
+    "name": "tokens-api-asset-detail",
+    "description": "Complete asset details — metadata, variants, market stats. Optionally include profile, risk, OHLCV, or DEX markets.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "assetId": {
+       "type": "string",
+       "minLength": 1,
+       "description": "Canonical asset slug (e.g. \"solana\", \"usdc\") or singleton ID (\"solana-<mint>\")"
+      },
+      "include": {
+       "type": "string",
+       "description": "Comma-separated: profile, risk, ohlcv, markets"
+      },
+      "mint": {
+       "type": "string",
+       "description": "Specific variant mint for include computations"
+      },
+      "ohlcvInterval": {
+       "type": "string",
+       "description": "Candle interval: 1m, 5m, 15m, 1H, 4H, 1D, 1W"
+      },
+      "ohlcvFrom": {
+       "type": "number",
+       "description": "Unix timestamp start for OHLCV"
+      },
+      "ohlcvTo": {
+       "type": "number",
+       "description": "Unix timestamp end for OHLCV"
+      },
+      "marketsOffset": {
+       "type": "number",
+       "description": "Pagination offset for markets"
+      },
+      "marketsLimit": {
+       "type": "number",
+       "description": "Results per page for markets 1-50"
+      }
+     },
+     "required": [
+      "assetId"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+     "type": "object",
+     "properties": {
+      "success": {
+       "type": "boolean"
+      },
+      "data": {
+       "type": "object",
+       "additionalProperties": {},
+       "description": "Full asset detail with optional includes"
+      }
+     },
+     "required": [
+      "success"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": null
+   },
+   {
+    "name": "tokens-api-asset-variants",
+    "description": "List all token variants (native, wrapped, bridged, etc.) for a canonical asset.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "assetId": {
+       "type": "string",
+       "minLength": 1,
+       "description": "Canonical asset slug or singleton ID"
+      },
+      "kind": {
+       "type": "string",
+       "description": "Filter: native, wrapped, bridged, etf, yield, leveraged, basket, lst, stablecoin, tokenized_equity"
+      },
+      "trustTier": {
+       "type": "string",
+       "description": "Filter: tier1, tier2, experimental"
+      }
+     },
+     "required": [
+      "assetId"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+     "type": "object",
+     "properties": {
+      "success": {
+       "type": "boolean"
+      },
+      "data": {
+       "type": "object",
+       "additionalProperties": {},
+       "description": "Asset variants with per-variant market snapshots"
+      }
+     },
+     "required": [
+      "success"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": null
+   },
+   {
+    "name": "tokens-api-asset-variant-market",
+    "description": "Get the cached market snapshot for a single variant (specific mint) of an asset.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "assetId": {
+       "type": "string",
+       "minLength": 1,
+       "description": "Canonical asset slug or singleton ID"
+      },
+      "mint": {
+       "type": "string",
+       "description": "Specific variant mint (defaults to primary)"
+      }
+     },
+     "required": [
+      "assetId"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+     "type": "object",
+     "properties": {
+      "success": {
+       "type": "boolean"
+      },
+      "data": {
+       "type": "object",
+       "additionalProperties": {},
+       "description": "Variant market snapshot"
+      }
+     },
+     "required": [
+      "success"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": null
+   },
+   {
+    "name": "tokens-api-asset-markets",
+    "description": "List DEX market pools for a specific mint of an asset — liquidity, volume, and protocol tokens.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "assetId": {
+       "type": "string",
+       "minLength": 1,
+       "description": "Canonical asset slug or singleton ID"
+      },
+      "mint": {
+       "type": "string",
+       "description": "Specific variant mint (defaults to primary)"
+      },
+      "offset": {
+       "type": "number",
+       "description": "Pagination offset (default 0)"
+      },
+      "limit": {
+       "type": "number",
+       "description": "Results per page 1-50 (default 10)"
+      }
+     },
+     "required": [
+      "assetId"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+     "type": "object",
+     "properties": {
+      "success": {
+       "type": "boolean"
+      },
+      "data": {
+       "type": "object",
+       "additionalProperties": {},
+       "description": "DEX markets with liquidity, volume data"
+      }
+     },
+     "required": [
+      "success"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": null
+   },
+   {
+    "name": "tokens-api-asset-ohlcv",
+    "description": "Get OHLCV (candlestick) price data for a specific mint — configurable interval and time range.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "assetId": {
+       "type": "string",
+       "minLength": 1,
+       "description": "Canonical asset slug or singleton ID"
+      },
+      "mint": {
+       "type": "string",
+       "description": "Specific variant mint (defaults to primary)"
+      },
+      "interval": {
+       "type": "string",
+       "description": "Candle interval: 1m, 5m, 15m, 1H, 4H, 1D, 1W (default 1H)"
+      },
+      "from": {
+       "type": "number",
+       "description": "Unix timestamp start (default: 7 days ago)"
+      },
+      "to": {
+       "type": "number",
+       "description": "Unix timestamp end (default: now)"
+      }
+     },
+     "required": [
+      "assetId"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+     "type": "object",
+     "properties": {
+      "success": {
+       "type": "boolean"
+      },
+      "data": {
+       "type": "object",
+       "additionalProperties": {},
+       "description": "OHLCV candle data"
+      }
+     },
+     "required": [
+      "success"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": null
+   },
+   {
+    "name": "tokens-api-asset-price-chart",
+    "description": "Get canonical price history chart for an asset — uses external provider data when available.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "assetId": {
+       "type": "string",
+       "minLength": 1,
+       "description": "Canonical asset slug or singleton ID"
+      }
+     },
+     "required": [
+      "assetId"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+     "type": "object",
+     "properties": {
+      "success": {
+       "type": "boolean"
+      },
+      "data": {
+       "type": "object",
+       "additionalProperties": {},
+       "description": "Price chart candle data"
+      }
+     },
+     "required": [
+      "success"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": null
+   },
+   {
+    "name": "tokens-api-asset-profile",
+    "description": "Get the asset profile — aggregated statistics, metadata, and external provider data.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "assetId": {
+       "type": "string",
+       "minLength": 1,
+       "description": "Canonical asset slug or singleton ID"
+      }
+     },
+     "required": [
+      "assetId"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+     "type": "object",
+     "properties": {
+      "success": {
+       "type": "boolean"
+      },
+      "data": {
+       "type": "object",
+       "additionalProperties": {},
+       "description": "Asset profile with external market stats"
+      }
+     },
+     "required": [
+      "success"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": null
+   },
+   {
+    "name": "tokens-api-asset-tickers",
+    "description": "Get exchange ticker listings for an asset — shows where it trades and at what volume.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "assetId": {
+       "type": "string",
+       "minLength": 1,
+       "description": "Canonical asset slug or singleton ID"
+      },
+      "offset": {
+       "type": "number",
+       "description": "Pagination offset (default 0)"
+      },
+      "limit": {
+       "type": "number",
+       "description": "Results per page 1-50 (default 10)"
+      },
+      "order": {
+       "type": "string",
+       "description": "Sort order: volume_desc"
+      }
+     },
+     "required": [
+      "assetId"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+     "type": "object",
+     "properties": {
+      "success": {
+       "type": "boolean"
+      },
+      "data": {
+       "type": "object",
+       "additionalProperties": {},
+       "description": "Exchange ticker data"
+      }
+     },
+     "required": [
+      "success"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": null
+   },
+   {
+    "name": "tokens-api-asset-description",
+    "description": "Get a cached description summary for a specific mint of an asset.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "assetId": {
+       "type": "string",
+       "minLength": 1,
+       "description": "Canonical asset slug or singleton ID"
+      },
+      "mint": {
+       "type": "string",
+       "description": "Specific variant mint (defaults to primary)"
+      }
+     },
+     "required": [
+      "assetId"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+     "type": "object",
+     "properties": {
+      "success": {
+       "type": "boolean"
+      },
+      "data": {
+       "type": "object",
+       "additionalProperties": {},
+       "description": "Mint description summary"
+      }
+     },
+     "required": [
+      "success"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": null
+   },
+   {
+    "name": "tokens-api-asset-risk-summary",
+    "description": "Risk score summary for a specific asset variant — score, grade, and trust flags.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "assetId": {
+       "type": "string",
+       "minLength": 1,
+       "description": "Canonical asset slug or singleton ID"
+      },
+      "mint": {
+       "type": "string",
+       "description": "Specific variant mint (defaults to primary)"
+      }
+     },
+     "required": [
+      "assetId"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+     "type": "object",
+     "properties": {
+      "success": {
+       "type": "boolean"
+      },
+      "data": {
+       "type": "object",
+       "additionalProperties": {},
+       "description": "Risk score, grade, label, and flags"
+      }
+     },
+     "required": [
+      "success"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": null
+   },
+   {
+    "name": "tokens-api-asset-risk-details",
+    "description": "Comprehensive risk analysis with detailed scoring inputs for a specific asset variant.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "assetId": {
+       "type": "string",
+       "minLength": 1,
+       "description": "Canonical asset slug or singleton ID"
+      },
+      "mint": {
+       "type": "string",
+       "description": "Specific variant mint (defaults to primary)"
+      }
+     },
+     "required": [
+      "assetId"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+     "type": "object",
+     "properties": {
+      "success": {
+       "type": "boolean"
+      },
+      "data": {
+       "type": "object",
+       "additionalProperties": {},
+       "description": "Detailed risk analysis with scoring inputs"
+      }
+     },
+     "required": [
+      "success"
+     ],
+     "additionalProperties": false,
+     "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": null
+   }
+  ],
+  "reason": null
+ },
+ "registry": null,
+ "auth": {
+  "required": false,
+  "status": 200,
+  "scheme": null,
+  "hop": "initialize"
+ },
+ "rate_limit": null
+}

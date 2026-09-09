@@ -1,0 +1,175 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:a2a:v1",
+ "subject_url": "https://agents.chainhelix.io/rebalancer/.well-known/agent-card.json",
+ "probed_at": "2026-09-09T09:27:51Z",
+ "discovery": {
+  "ok": true,
+  "url": "https://agents.chainhelix.io/rebalancer/.well-known/agent-card.json",
+  "path": "/rebalancer/.well-known/agent-card.json",
+  "outcome": "card",
+  "attempts": [
+   {
+    "url": "https://agents.chainhelix.io/rebalancer/.well-known/agent-card.json",
+    "path": "/rebalancer/.well-known/agent-card.json",
+    "kind": "declared",
+    "outcome": "card",
+    "status": 200,
+    "contentType": "application/json; charset=utf-8",
+    "reason": null,
+    "elapsedMs": 1447
+   }
+  ],
+  "reason": null,
+  "elapsedMs": 1447
+ },
+ "declaration": {
+  "ok": true,
+  "name": "rebalancer-agent",
+  "description": "rebalancer-agent: deterministic on-chain work, sold per job through ERC-8183 escrow (negotiate + notify_funded over A2A) and per call on the B402 rail (/x402). The work skill on this card states exactly what a job must contain.",
+  "version": "1.0.0",
+  "protocolVersion": "0.3.0",
+  "provider": null,
+  "documentationUrl": null,
+  "capabilities": {
+   "streaming": false,
+   "pushNotifications": null,
+   "stateTransitionHistory": null,
+   "extensions": 1,
+   "raw": {
+    "streaming": false,
+    "extensions": [
+     {
+      "uri": "https://agents.chainhelix.io/ext/skill-input-schema/v1",
+      "description": "JSON Schema (draft 2020-12) of the task_description each work skill accepts, keyed by skill id",
+      "required": false,
+      "params": {
+       "rebalancing": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "title": "rebalancing task_description",
+        "type": "object",
+        "properties": {
+         "holdings": {
+          "type": "object",
+          "additionalProperties": {
+           "type": "number"
+          },
+          "description": "current position sizes in token units, one key per symbol (also accepted as: positions, balances, portfolio)"
+         },
+         "targets": {
+          "type": "object",
+          "additionalProperties": {
+           "type": "number"
+          },
+          "description": "desired weights, must sum to 1 (also accepted as: targetWeights, weights, allocation)"
+         },
+         "prices": {
+          "type": "object",
+          "additionalProperties": {
+           "type": "number"
+          },
+          "description": "a mark for every symbol in holdings or targets (also accepted as: marks, quotes, pricesUsd)"
+         },
+         "driftThresholdPct": {
+          "type": "number",
+          "description": "no-trade band per asset, default 1"
+         },
+         "minTradeUsd": {
+          "type": "number",
+          "description": "dust filter on emitted trades, default 5"
+         }
+        },
+        "required": [
+         "holdings",
+         "targets",
+         "prices"
+        ],
+        "additionalProperties": true
+       }
+      }
+     }
+    ]
+   }
+  },
+  "skills": [
+   {
+    "id": "rebalancing",
+    "name": "Portfolio rebalancing plan",
+    "description": "Given current holdings, target weights and prices, returns current vs target weights, per-asset drift and the ordered trade list (sells before buys) that moves the portfolio to target, with the residual cash the plan does not net out. Deterministic arithmetic, no custody, no execution. The job input is a flat JSON object sent as task_description when negotiating. It is anchored on chain as the job task and answered as sent. Parameters: holdings ({SYMBOL: amount}, required): current position sizes in token units, one key per symbol; also accepted as positions, balances, portfolio; targets ({SYMBOL: weight}, required): desired weights, must sum to 1; also accepted as targetWeights, weights, allocation; prices ({SYMBOL: usd}, required): a mark for every symbol in holdings or targets; also accepted as marks, quotes, pricesUsd; driftThresholdPct (number, optional): no-trade band per asset, default 1; minTradeUsd (number, optional): dust filter on emitted trades, default 5. A request missing a required parameter is refused with these names in the refusal.",
+    "tags": [
+     "rebalancing",
+     "portfolio",
+     "deterministic"
+    ],
+    "examples": [
+     "{\"holdings\":{\"BTC\":1,\"ETH\":10},\"targets\":{\"BTC\":0.5,\"ETH\":0.5},\"prices\":{\"BTC\":60000,\"ETH\":2000},\"driftThresholdPct\":1}"
+    ],
+    "inputModes": [
+     "application/json"
+    ],
+    "outputModes": [
+     "application/json"
+    ]
+   },
+   {
+    "id": "negotiate",
+    "name": "Negotiate an ERC-8183 job",
+    "description": "Send a data part {\"skill\": \"negotiate\", \"task_description\": \"<the job spec as the flat JSON object shown in the work skill's examples>\", \"terms\": {\"deliverables\": \"...\", \"quality_standards\": \"...\"}} (both terms keys are REQUIRED) and receive a wallet-signed price quote (price, currency, negotiation_hash, provider_sig). Anchor the returned envelope on-chain via createJob + fund, then send the `notify_funded` skill with the job_id to request delivery.",
+    "tags": [
+     "erc8183",
+     "negotiation",
+     "bnb-chain"
+    ],
+    "examples": [],
+    "inputModes": [
+     "application/json"
+    ],
+    "outputModes": [
+     "application/json"
+    ]
+   },
+   {
+    "id": "notify_funded",
+    "name": "Notify the seller a job is funded (request delivery)",
+    "description": "After you fund the job on-chain, send {\"skill\": \"notify_funded\", \"job_id\": <int>} to tell the seller \"I funded job X, please deliver\". The seller verifies the funded job carries its signed quote and replies AT ONCE with {\"status\": \"accepted\"|\"rejected\", \"job_id\"}; delivery then runs in the background (work takes time). Do NOT wait on this call for the result; read the deliverable back from the CHAIN once the job reaches SUBMITTED (the `submit` tx carries the deliverable_url; ERC-8183 `get_deliverable_url`). The agent serves no job-query endpoint.",
+    "tags": [
+     "erc8183",
+     "delivery",
+     "bnb-chain"
+    ],
+    "examples": [],
+    "inputModes": [
+     "application/json"
+    ],
+    "outputModes": [
+     "application/json"
+    ]
+   }
+  ],
+  "skillCount": 3,
+  "interfaces": [
+   {
+    "url": "https://agents.chainhelix.io/rebalancer/",
+    "transport": "JSONRPC",
+    "protocolVersion": "0.3.0",
+    "source": "url"
+   }
+  ],
+  "securitySchemes": [],
+  "missingRequired": [],
+  "reason": null
+ },
+ "reachability": {
+  "ok": true,
+  "url": "https://agents.chainhelix.io/rebalancer/",
+  "verdict": "speaks_a2a",
+  "status": 200,
+  "method": "tasks/get",
+  "rpcErrorCode": -32001,
+  "rpcErrorMessage": "Task not found: 00000000-0000-4000-8000-000000000000",
+  "reason": null,
+  "elapsedMs": 2900
+ },
+ "registry": null,
+ "gaps": []
+}

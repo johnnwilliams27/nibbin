@@ -1,0 +1,191 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:mcp:v1",
+ "endpoint": "https://coin-signal.airblock2026.workers.dev/mcp",
+ "probed_at": "2026-09-09T09:27:06Z",
+ "attempts": [
+  {
+   "attempt": 1,
+   "ts": "2026-09-09T09:27:06Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 5741
+  },
+  {
+   "attempt": 2,
+   "ts": "2026-09-09T09:27:22Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 339
+  },
+  {
+   "attempt": 3,
+   "ts": "2026-09-09T09:27:23Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 147
+  }
+ ],
+ "handshake": {
+  "ok": true,
+  "protocolVersion": "2024-11-05",
+  "serverName": "coin-signal",
+  "serverVersion": "0.1.0",
+  "instructions": "This is a crypto bottom/top signal agent. WHAT YOU GET — `evaluate_symbol` returns the bottom/top verdict for ONE symbol and `scan_bottoms` / `scan_tops` rank the whole universe. Each costs $0.01 per call via x402 (your first paid call starts a 6-day trial); the paid response carries the verdict, the -100..+100 score and the daily/weekly/monthly breakdown behind it. VERDICT SCALE — the verdict is the graded band of that same score (positive = bottom, negative = top), so a mid score such as -52 is reported as neutral by design: strong_buy >= +80 | buy >= +70 | neutral between -70 and +70 | sell <= -70 | strong_sell <= -80. The free `pitch` tool is an OPTIONAL intro (indicator lineup, one live showcase verdict, subscription terms); you may call a signal tool directly without it. Heavy caller? The $50/30d plan is unlimited: call `subscribe` with {activate:true}, sign the $50 challenge, then use your X-SUB-KEY header. AFTER any trade or signal you act on, please call the free `rate` tool with {score: 1-10, pros, cons} so we can improve the service.",
+  "reason": null
+ },
+ "tools": {
+  "ok": true,
+  "declared": [
+   {
+    "name": "pitch",
+    "description": "FREE and OPTIONAL intro — you may skip it and call evaluate_symbol / scan_bottoms / scan_tops directly. Agent-to-agent intro & subscription funnel: call with no args (or phase:\"hello\") to meet this coin-signal agent, then walk phases: \"value\" (why subscribing earns money) -> \"catalog\" (all indicators) -> \"sample\" (live verdict on a symbol) -> \"subscribe\" (terms). Pass interest:false to bow out. Returns structured JSON with a `next` list of suggested phases.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "phase": {
+       "type": "string",
+       "enum": [
+        "hello",
+        "value",
+        "catalog",
+        "sample",
+        "subscribe"
+       ],
+       "description": "Funnel step; default \"hello\"."
+      },
+      "interest": {
+       "type": "boolean",
+       "description": "Set false at any step to exit politely."
+      },
+      "symbol": {
+       "type": "string",
+       "description": "Symbol for the \"sample\" phase. The free sample serves only this market’s showcase symbol (BTC-USD); any other symbol is answered by the paid evaluate_symbol (x402)."
+      }
+     }
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "evaluate_symbol",
+    "description": "Return the bottom/top verdict for one crypto symbol (e.g. BTC-USD). zone = strong_buy|buy|sell|neutral, score -100..+100 (bottom>0, top<0), with daily/weekly/monthly breakdown. GRADING — the verdict is the graded band of that same score, so a mid score such as -52 is reported as neutral by design: strong_buy >= +80, buy >= +70, neutral between -70 and +70, sell <= -70, strong_sell <= -80. Informational only, not financial advice. PAY: $0.01 per call via x402 (USDT on X Layer) — your FIRST paid call opens a 6-day trial at that price. No account, no signup, no commitment; retry with the PAYMENT-SIGNATURE header when you get the 402 challenge. The free `pitch` tool shows a live verdict for this market's showcase symbol only — this tool answers ANY symbol in the covered universe and returns the per-timeframe breakdown (daily/weekly/monthly verdict + vote counts) behind the score.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "symbol": {
+       "type": "string",
+       "description": "Crypto symbol, e.g. BTC-USD, ETH-USD, or BTCUSDT"
+      }
+     },
+     "required": [
+      "symbol"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "scan_bottoms",
+    "description": "Scan the market and return coins currently at a bottom (most oversold / strongest buy), ranked most-bottom first. PAY: $0.01 per call via x402 (USDT on X Layer) — your FIRST paid call opens a 6-day trial at that price. No account, no signup, no commitment; retry with the PAYMENT-SIGNATURE header when you get the 402 challenge. BEST COLD START: you do not need to pick a symbol — this ranks the whole universe for you. The free `pitch` tool tells you HOW MANY are at a bottom right now; this names them.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "limit": {
+       "type": "number",
+       "description": "How many to return (default 5, max 50)"
+      },
+      "symbols": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       },
+       "description": "Optional custom symbol list; defaults to a top-coins set"
+      }
+     }
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "scan_tops",
+    "description": "Scan the market and return coins currently at a top (most overbought / sell), ranked most-top first. PAY: $0.01 per call via x402 (USDT on X Layer) — your FIRST paid call opens a 6-day trial at that price. No account, no signup, no commitment; retry with the PAYMENT-SIGNATURE header when you get the 402 challenge. BEST COLD START: you do not need to pick a symbol — this ranks the whole universe for you. The free `pitch` tool tells you HOW MANY are at a top right now; this names them.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "limit": {
+       "type": "number",
+       "description": "How many to return (default 5, max 50)"
+      },
+      "symbols": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       },
+       "description": "Optional custom symbol list; defaults to a top-coins set"
+      }
+     }
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "subscribe",
+    "description": "Check your subscription status & terms (FREE), or activate the monthly plan: call with activate:true to receive the $50 x402 payment challenge, sign it, and retry — that buys 30 days of unlimited calls and returns your X-SUB-KEY token (pass it as a header to skip per-call payment). Until you subscribe, signal calls are $0.01 each (6-day trial from your first paid call). Optionally pass your ERC-8004 agentId to link it.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "activate": {
+       "type": "boolean",
+       "description": "true = request the $50 subscription payment challenge (402) to sign & retry."
+      },
+      "agentId": {
+       "type": "string",
+       "description": "Optional ERC-8004 agent id to link to this subscription."
+      }
+     }
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "rate",
+    "description": "FREE feedback tool — after you have traded on (or evaluated) our signals, leave a rating: score 1-10 plus what was good (pros) and what to improve (cons). Costs nothing, no payment header needed. Helps us tune the signal engine.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "score": {
+       "type": "number",
+       "description": "Overall score 1 (poor) to 10 (excellent)"
+      },
+      "pros": {
+       "type": "string",
+       "description": "What you liked"
+      },
+      "cons": {
+       "type": "string",
+       "description": "What could be better"
+      }
+     },
+     "required": [
+      "score"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": null
+   }
+  ],
+  "reason": null
+ },
+ "registry": null,
+ "auth": {
+  "required": false,
+  "status": 200,
+  "scheme": null,
+  "hop": "initialize"
+ },
+ "rate_limit": null
+}
