@@ -218,14 +218,27 @@ def main():
       f"(`data/raw/candidates.json` for list fields, "
       f"`data/raw/detail/<chain>_<token>.json` for detail fields).")
     W(f"- `data/raw/detail/` holds **{n_detail}** fetched detail responses.")
-    W(f"- Detail fetches that failed after retries: **{fails['count']}**, recorded in "
-      f"`data/raw/detail_failures.json`. A failed fetch is recorded as *our* "
-      f"failure to measure — never as a fact about the agent.")
+    W(f"- Detail fetches we could not complete: **{fails['count']}**, recorded in "
+      f"`data/raw/detail_failures.json` with the reason. The API enforces "
+      f"**1000 requests/hour** (`x-ratelimit-limit`), and this run exhausted "
+      f"the quota (HTTP 429, `retry-after: 3600`). Those agents are still in "
+      f"the dataset, built from their real list-view fields, with `endpoint: "
+      f"null` because only the detail view carries an endpoint. That null "
+      f"means *we did not read it*, never *the agent has none*. Rerunning "
+      f"`fetch_details.py` after the quota resets fills them in; it fetches "
+      f"in value order (endpoint-verified, then agents with feedback) so a "
+      f"truncated run still keeps the highest-signal agents.")
+    no_ep = len([a for a in agents if not a["endpoint"]])
+    unprobed = len([a for a in agents if a["endpoint"] and not a["assessment"]])
     W(f"- `assessment` is populated for **{len(assessed)} of {n}** agents, from the "
-      f"endpoint sweep recorded in `data/probes/endpoint-probes.json`. It is "
-      f"`null` for the {n - len(assessed)} agents that declare no endpoint. "
+      f"endpoint sweep recorded in `data/probes/endpoint-probes.json`. "
       f"No assessment value was synthesised: every field traces to a stored "
       f"probe transcript.")
+    W(f"- It is `null` for the other {n - len(assessed)} agents, for two "
+      f"different reasons that must not be conflated: **{no_ep}** declare no "
+      f"endpoint (there is nothing to probe), and **{unprobed}** declare an "
+      f"endpoint that this sweep had not reached when it ran. The second group "
+      f"is unmeasured, not unreachable — rerunning the probe closes it.")
     W(f"- `is_reference_agent` is `false` for all {n} agents.")
     W("")
     W("> **Disclosure.** An earlier draft of `data/agents.json` in this working "
@@ -285,6 +298,30 @@ def main():
       "agent population is dominated by news/analysis agents, not DeFi "
       "execution agents.")
     W("")
+    W("### Independence: an agent count is not a builder count")
+    W("")
+    W("Minted collections put many on-chain identities behind one operator, so "
+      "a raw count overstates how many distinct things exist. Distinct owners "
+      "and endpoints behind each category:")
+    W("")
+    W("| category | agents | distinct owners | distinct endpoints |")
+    W("|---|---|---|---|")
+    for c, rows, _ in cat_rows:
+        if c == "other":
+            continue
+        ow = len({a["owner_address"] for a in rows if a["owner_address"]})
+        ep = len({a["endpoint"] for a in rows if a["endpoint"]})
+        W(f"| {c} | {len(rows)} | {ow} | {ep} |")
+    W("")
+    big = collections.Counter(a["owner_address"] for a in agents
+                              if a["category"] != "other" and a["owner_address"])
+    if big:
+        o, cnt = big.most_common(1)[0]
+        W(f"The largest single owner accounts for **{cnt}** of the {four} "
+          f"categorised agents (`{o}`). The clearest example in the dataset is "
+          f"the 105-agent `BORT` collection: one owner, three distinct "
+          f"endpoints. Read the category counts as agents, not as teams.")
+    W("")
     W("### How a category is assigned")
     W("")
     W("Deterministic keyword matching over real text only: name, description, "
@@ -293,7 +330,8 @@ def main():
       "`category_evidence` quotes the actual matched term and the field it came "
       "from, so any call can be audited.")
     W("")
-    W("Three deliberate anti-inflation rules:")
+    W("Four deliberate anti-inflation rules, each one added because it caught "
+      "a real false positive in this data:")
     W("")
     W("1. **A category needs a specific term.** Ambiguous tokens (`balance`, "
       "`grid`, `yield`, `collateral`) never assign a category on their own; "
@@ -311,6 +349,12 @@ def main():
       "inflated 73 of 97 rebalancing agents to high confidence in an earlier "
       "pass. Read-only news/analysis agents that merely discuss a topic are "
       "confidence-penalised.")
+    W("4. **A registry tag cannot establish a category on its own.** 159 agents "
+      "carry the `Yield Optimizer` tag while only **4** mention yield anywhere "
+      "in their name or description — the rest are smart-contract audit, infra "
+      "and platform agents. Tags are cheap self-declared metadata, so a "
+      "tag-only match is recorded as a near-miss on an `other` agent. This one "
+      "rule removed 157 false yield agents (271 -> 114).")
     W("")
     W("## Endpoints and usage signal")
     W("")
@@ -350,12 +394,12 @@ def main():
     W("")
     W("```bash")
     W("python3 scripts/fetch_candidates.py   # -> data/raw/list/, candidates.json")
-    W("python3 scripts/fetch_details.py 16   # -> data/raw/detail/")
+    W("python3 scripts/fetch_details.py 5    # -> data/raw/detail/ (1000 req/hr cap)")
     W("python3 scripts/build_dataset.py      # -> data/agents.json")
     W("python3 scripts/generate_summary.py   # -> data/SUMMARY.md")
     W("```")
     W("")
-    W("All three fetch steps are idempotent: cached responses under "
+    W("Both fetch steps are idempotent: cached responses under "
       "`data/raw/` are never re-fetched, so a rerun resumes rather than "
       "restarts.")
     W("")

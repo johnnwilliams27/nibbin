@@ -395,9 +395,14 @@ def main():
             "x402_supported": bool(src.get("x402_supported", False)),
             "scan_total_score": ts if isinstance(ts, (int, float)) else None,
             "scan_feedbacks": int(fb) if isinstance(fb, (int, float)) else 0,
+            # The list view does not carry is_endpoint_verified. For an agent
+            # whose detail we could not fetch, membership of the
+            # is_endpoint_verified=true stream IS the evidence -- without this
+            # a rate-limited fetch would silently downgrade a verified agent
+            # to false, turning our gap into a claim about the agent.
             "scan_endpoint_verified": bool(
                 det.get("is_endpoint_verified", False) if det
-                else c.get("is_endpoint_verified", False)),
+                else "endpoint_verified" in (c.get("_sources") or [])),
             "assessment": assessment,    # from the separate probe run; else null
             "is_reference_agent": False,
         })

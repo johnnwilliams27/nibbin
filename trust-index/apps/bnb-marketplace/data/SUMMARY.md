@@ -1,15 +1,16 @@
 # BSC agent dataset — build summary
 
-Generated: `2026-09-09T04:01:43.509Z`  
+Generated: `2026-09-09T04:19:39Z`  
 Source: 8004scan public API (`https://api.8004scan.io`), chain_id 56 (BSC).  
 Output: `data/agents.json` — **10041 agents**, conforming to `DATA-CONTRACT.md`.
 
 ## Provenance
 
 - **10041 of 10041 agent records are built from real fetched API responses.** Every field traces to a file under `data/raw/` (`data/raw/candidates.json` for list fields, `data/raw/detail/<chain>_<token>.json` for detail fields).
-- `data/raw/detail/` holds **7807** fetched detail responses.
-- Detail fetches that failed after retries: **0**, recorded in `data/raw/detail_failures.json`. A failed fetch is recorded as *our* failure to measure — never as a fact about the agent.
-- `assessment` is populated for **3204 of 10041** agents, from the endpoint sweep recorded in `data/probes/endpoint-probes.json`. It is `null` for the 6837 agents that declare no endpoint. No assessment value was synthesised: every field traces to a stored probe transcript.
+- `data/raw/detail/` holds **8558** fetched detail responses.
+- Detail fetches we could not complete: **1483**, recorded in `data/raw/detail_failures.json` with the reason. The API enforces **1000 requests/hour** (`x-ratelimit-limit`), and this run exhausted the quota (HTTP 429, `retry-after: 3600`). Those agents are still in the dataset, built from their real list-view fields, with `endpoint: null` because only the detail view carries an endpoint. That null means *we did not read it*, never *the agent has none*. Rerunning `fetch_details.py` after the quota resets fills them in; it fetches in value order (endpoint-verified, then agents with feedback) so a truncated run still keeps the highest-signal agents.
+- `assessment` is populated for **3204 of 10041** agents, from the endpoint sweep recorded in `data/probes/endpoint-probes.json`. No assessment value was synthesised: every field traces to a stored probe transcript.
+- It is `null` for the other 6837 agents, for two different reasons that must not be conflated: **1708** declare no endpoint (there is nothing to probe), and **5129** declare an endpoint that this sweep had not reached when it ran. The second group is unmeasured, not unreachable — rerunning the probe closes it.
 - `is_reference_agent` is `false` for all 10041 agents.
 
 > **Disclosure.** An earlier draft of `data/agents.json` in this working directory contained hand-written placeholder agents (fabricated names, owner addresses, endpoints and a populated `assessment`). It was quarantined and discarded, and the dataset was rebuilt end-to-end from the fetched responses in `data/raw/`. None of that content survives in this dataset. We record our own errors rather than hiding them.
@@ -46,29 +47,43 @@ All requests send a `User-Agent` header — the API returns **403** without one.
 
 | category | agents | high >=0.7 | medium 0.5-0.7 | low <0.5 | none |
 |---|---|---|---|---|---|
-| rebalancing | 77 | 18 | 51 | 8 | 0 |
-| grid_trading | 14 | 10 | 4 | 0 | 0 |
-| yield | 128 | 74 | 41 | 13 | 0 |
-| health_factor | 21 | 7 | 10 | 4 | 0 |
-| other | 9801 | 0 | 0 | 0 | 9801 |
+| rebalancing | 78 | 18 | 51 | 9 | 0 |
+| grid_trading | 14 | 8 | 3 | 3 | 0 |
+| yield | 114 | 72 | 32 | 10 | 0 |
+| health_factor | 24 | 9 | 11 | 4 | 0 |
+| other | 9811 | 0 | 0 | 0 | 9811 |
 
-**The four hackathon categories total 240 agents out of 10041 (2.4%).** This is a real finding, not a shortfall: BSC's agent population is dominated by news/analysis agents, not DeFi execution agents.
+**The four hackathon categories total 230 agents out of 10041 (2.3%).** This is a real finding, not a shortfall: BSC's agent population is dominated by news/analysis agents, not DeFi execution agents.
+
+### Independence: an agent count is not a builder count
+
+Minted collections put many on-chain identities behind one operator, so a raw count overstates how many distinct things exist. Distinct owners and endpoints behind each category:
+
+| category | agents | distinct owners | distinct endpoints |
+|---|---|---|---|
+| rebalancing | 78 | 46 | 12 |
+| grid_trading | 14 | 11 | 4 |
+| yield | 114 | 83 | 23 |
+| health_factor | 24 | 20 | 9 |
+
+The largest single owner accounts for **41** of the 230 categorised agents (`0x97e8f3b4bffc1982b2791b21609c3b2542c5eb50`). The clearest example in the dataset is the 105-agent `BORT` collection: one owner, three distinct endpoints. Read the category counts as agents, not as teams.
 
 ### How a category is assigned
 
 Deterministic keyword matching over real text only: name, description, tags, categories, OASF skills and domains, MCP tool names, A2A skill names, and declared skills/capabilities from on-chain metadata. `category_evidence` quotes the actual matched term and the field it came from, so any call can be audited.
 
-Three deliberate anti-inflation rules:
+Four deliberate anti-inflation rules, each one added because it caught a real false positive in this data:
 
 1. **A category needs a specific term.** Ambiguous tokens (`balance`, `grid`, `yield`, `collateral`) never assign a category on their own; they are recorded as near-misses on an `other` agent. Matching the bare word `balance` would have produced hundreds of false rebalancing agents.
 2. **Generic on-topic words need nearby corroboration.** Bare `rebalanc*` only counts with a portfolio/finance context word within 80 characters. Field-level checks are too coarse — this rule correctly rejects a Chinese-metaphysics agent whose description reads "Yin Yang polarity diagnosis and rebalancing" and separately mentions a token on BNB Chain.
 3. **Execution signal must be independent of the matched term.** Otherwise the word `rebalance` assigns the category and is then re-counted as proof the agent executes — a circular boost that had inflated 73 of 97 rebalancing agents to high confidence in an earlier pass. Read-only news/analysis agents that merely discuss a topic are confidence-penalised.
+4. **A registry tag cannot establish a category on its own.** 159 agents carry the `Yield Optimizer` tag while only **4** mention yield anywhere in their name or description — the rest are smart-contract audit, infra and platform agents. Tags are cheap self-declared metadata, so a tag-only match is recorded as a near-miss on an `other` agent. This one rule removed 157 false yield agents (271 -> 114).
 
 ## Endpoints and usage signal
 
-- **3204 agents (31.9%) declare a callable endpoint** (MCP > A2A > web, as declared). These are the probe set.
+- **8333 agents (83.0%) declare a callable endpoint** (MCP > A2A > web, as declared). These are the probe set.
 - 509 agents have >=1 feedback on 8004scan.
-- 0 agents are endpoint-verified by 8004scan.
+- 6 agents are endpoint-verified by 8004scan.
 - 519 agents declare x402 support.
 
 A declared endpoint is *declared*, not *reachable*: some point at placeholder hosts. Reachability is the probe run's job — see the next section, which measured it.
@@ -105,7 +120,7 @@ Run against every distinct endpoint in the dataset. **3204 agents declare 111 di
 
 **0 of 3204 agents carry a non-null `composite`.** That is not a gap in the run; it is the run's finding. Completing a handshake and reading a tool list establishes that an agent EXISTS and what it CLAIMS. Neither is behavioural evidence, and a composite derived from a tool list would be a guess wearing a decimal point. So every row reads `composite: null`, `coverage: "thin"`, and a `withheld_reason` naming exactly what we did and did not do. Publishing a number here is the one thing this project exists not to do.
 
-All 87 agents in the four hackathon categories that declare an endpoint were probed first, ahead of the rest of the population.
+All 75 agents in the four hackathon categories that declare an endpoint were probed first, ahead of the rest of the population.
 
 ## Noise / signal
 
@@ -126,9 +141,9 @@ Bulk-minted agents are **not** excluded: some carry genuinely on-topic descripti
 
 ```bash
 python3 scripts/fetch_candidates.py   # -> data/raw/list/, candidates.json
-python3 scripts/fetch_details.py 16   # -> data/raw/detail/
+python3 scripts/fetch_details.py 5    # -> data/raw/detail/ (1000 req/hr cap)
 python3 scripts/build_dataset.py      # -> data/agents.json
 python3 scripts/generate_summary.py   # -> data/SUMMARY.md
 ```
 
-All three fetch steps are idempotent: cached responses under `data/raw/` are never re-fetched, so a rerun resumes rather than restarts.
+Both fetch steps are idempotent: cached responses under `data/raw/` are never re-fetched, so a rerun resumes rather than restarts.
