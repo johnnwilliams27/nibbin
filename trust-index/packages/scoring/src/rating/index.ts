@@ -524,7 +524,6 @@ export function scoreSubject(subject: Subject): { result: SubjectScoreResult; ca
   const observerWeights: ObserverWeightFx[] = computeObserverWeights(observers, asOfSec, c);
   const weightByObserver = new Map(observerWeights.map((w) => [w.observerId, w.weightFx]));
 
-  const priorGlobalFx = parseFx(subject.priors.global);
   const outcomes: DimensionOutcome[] = profile.dimensions.map((spec) => {
     const entries = resample(usable.filter((o) => o.dimension === spec.id), spec.resampling);
     const priorStr = Object.hasOwn(subject.priors.by_dimension, spec.id)

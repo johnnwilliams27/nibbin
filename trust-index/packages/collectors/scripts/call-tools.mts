@@ -108,7 +108,7 @@ for (const [shape, list] of [...candidates].sort()) {
   console.log(`\n=== ${shape} ===`);
   for (const c of list) {
     await new Promise((r) => setTimeout(r, 400));
-    const { args, skipped } = synthesizeInput(c.declaration.inputSchema);
+    const { skipped } = synthesizeInput(c.declaration.inputSchema);
     const sid = await openSession(c.endpoint);
     if (sid === undefined) {
       console.log(`  ${c.declaration.name}: could not open a session`);

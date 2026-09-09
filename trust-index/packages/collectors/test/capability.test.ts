@@ -16,7 +16,6 @@ import {
   preflight,
   subjectsBlockedBy,
   type CapabilityProbe,
-  type CapabilityReport,
 } from "../src/capability.js";
 import { computeCohortPrior } from "../src/prior.js";
 import type { AssessmentGap } from "@trust-index/types";

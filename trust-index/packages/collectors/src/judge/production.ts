@@ -91,7 +91,7 @@
 import { CAPABILITIES, type CapabilityProbe } from "../capability.js";
 import type { JudgeClient, JudgeOptions } from "./index.js";
 import { JUDGE_PROMPT_VERSION } from "./index.js";
-import { anthropicJudge, chooseModel } from "./provider.js";
+import { anthropicJudge } from "./provider.js";
 
 /** The model this project judges with. Changing it is a measurement, not an opinion. */
 export const PRODUCTION_JUDGE_MODEL = "claude-sonnet-5";

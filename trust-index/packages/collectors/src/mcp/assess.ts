@@ -159,27 +159,6 @@ const MUTATING_VERBS = [
   "enable",
 ] as const;
 
-/**
- * Parameter names that ask the caller to hand over a secret. On a REMOTE MCP
- * server this is a finding: the transport carries the credential to a third
- * party, and the protocol has an authorization story that does not require
- * it. On a local server the same parameter would be unremarkable, which is
- * why this rule is in the remote-server rubric and not in a shared one.
- */
-const CREDENTIAL_PARAMS = [
-  "apikey",
-  "api_key",
-  "token",
-  "access_token",
-  "secret",
-  "password",
-  "passwd",
-  "private_key",
-  "privatekey",
-  "credential",
-  "credentials",
-  "session_key",
-] as const;
 
 export function isMutatingName(name: string): boolean {
   const words = name

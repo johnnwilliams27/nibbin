@@ -29,7 +29,7 @@
  * spent and nothing is mutated — this is the cheap half of the assessment, and
  * the half that scales.
  */
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { probeMcpServer } from "../src/mcp/probe.js";
 import type { ProbeTranscript, RegistryFacts } from "../src/mcp/transcript.js";
 

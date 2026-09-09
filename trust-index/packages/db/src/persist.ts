@@ -54,7 +54,6 @@ function pgText(v: string): string;
 function pgText(v: string | null | undefined): string | null;
 function pgText(v: string | null | undefined): string | null {
   if (v === null || v === undefined) return null;
-  // eslint-disable-next-line no-control-regex
   return v.replace(/\u0000/g, '').replace(/[\u0001-\u0008\u000b\u000c\u000e-\u001f]/g, (c) =>
     `\\x${c.charCodeAt(0).toString(16).padStart(2, '0')}`,
   );

@@ -19,7 +19,6 @@ import { DEFAULT_RATING_CONSTANTS } from "@trust-index/types";
 
 const HOSTED_PROBE = "probe:task-harness:v1";
 const PACKAGE_PROBE = "probe:code-host-reader:v1";
-const PACKAGE_PUBLISHER = "publisher:npm/@acme/agent-kit";
 
 function utcDay(base: readonly [number, number, number], offsetDays: number): string {
   const ms = Date.UTC(base[0], base[1] - 1, base[2]) + offsetDays * 86_400_000;
