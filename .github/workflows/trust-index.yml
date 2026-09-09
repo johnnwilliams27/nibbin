@@ -200,6 +200,17 @@ jobs:
   # do not.
   secret-scan:
     runs-on: ubuntu-latest
+    # gitleaks lists the PR's commits to decide what to scan, and the workflow's
+    # top-level grant is contents: read only — so on every pull request it got
+    # 403 "Resource not accessible by integration" from
+    # GET /repos/{owner}/{repo}/pulls/{n}/commits and crashed. That read as a
+    # failing secret scan on a PR with no secret in it, which is the worst way
+    # for this particular check to be wrong: a scanner that cries wolf gets
+    # ignored, and then it is not a scanner. Scoped to this job rather than
+    # widened at the top level.
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@v4
         with:
