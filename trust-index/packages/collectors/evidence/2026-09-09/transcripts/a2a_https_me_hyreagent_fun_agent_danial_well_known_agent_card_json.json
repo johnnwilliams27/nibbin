@@ -1,0 +1,50 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:a2a:v1",
+ "subject_url": "https://me.hyreagent.fun/agent/danial/.well-known/agent-card.json",
+ "probed_at": "2026-09-09T09:50:19Z",
+ "discovery": {
+  "ok": false,
+  "url": null,
+  "path": null,
+  "outcome": "absent",
+  "attempts": [
+   {
+    "url": "https://me.hyreagent.fun/agent/danial/.well-known/agent-card.json",
+    "path": "/agent/danial/.well-known/agent-card.json",
+    "kind": "declared",
+    "outcome": "absent",
+    "status": 404,
+    "contentType": "application/json",
+    "reason": "no card at this path (HTTP 404)",
+    "elapsedMs": 948
+   },
+   {
+    "url": "https://me.hyreagent.fun/.well-known/agent-card.json",
+    "path": "/.well-known/agent-card.json",
+    "kind": "well-known",
+    "outcome": "absent",
+    "status": 404,
+    "contentType": "text/html; charset=utf-8",
+    "reason": "no card at this path (HTTP 404)",
+    "elapsedMs": 59
+   },
+   {
+    "url": "https://me.hyreagent.fun/.well-known/agent.json",
+    "path": "/.well-known/agent.json",
+    "kind": "well-known",
+    "outcome": "absent",
+    "status": 404,
+    "contentType": "text/html; charset=utf-8",
+    "reason": "no card at this path (HTTP 404)",
+    "elapsedMs": 271
+   }
+  ],
+  "reason": "no card at this path (HTTP 404)",
+  "elapsedMs": 1278
+ },
+ "declaration": null,
+ "reachability": null,
+ "registry": null,
+ "gaps": []
+}

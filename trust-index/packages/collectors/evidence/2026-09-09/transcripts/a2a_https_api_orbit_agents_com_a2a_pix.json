@@ -1,0 +1,72 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:a2a:v1",
+ "subject_url": "https://api.orbit-agents.com/a2a/pix",
+ "probed_at": "2026-09-09T09:27:51Z",
+ "discovery": {
+  "ok": true,
+  "url": "https://api.orbit-agents.com/a2a/pix",
+  "path": "/a2a/pix",
+  "outcome": "card",
+  "attempts": [
+   {
+    "url": "https://api.orbit-agents.com/a2a/pix",
+    "path": "/a2a/pix",
+    "kind": "declared",
+    "outcome": "card",
+    "status": 200,
+    "contentType": "application/json; charset=utf-8",
+    "reason": null,
+    "elapsedMs": 2164
+   }
+  ],
+  "reason": null,
+  "elapsedMs": 2164
+ },
+ "declaration": {
+  "ok": true,
+  "name": "pix",
+  "description": null,
+  "version": null,
+  "protocolVersion": null,
+  "provider": null,
+  "documentationUrl": null,
+  "capabilities": {
+   "streaming": null,
+   "pushNotifications": null,
+   "stateTransitionHistory": null,
+   "extensions": 0,
+   "raw": {
+    "skills": [],
+    "x402_enabled": true,
+    "registry_8004": null
+   }
+  },
+  "skills": [],
+  "skillCount": 0,
+  "interfaces": [],
+  "securitySchemes": [],
+  "missingRequired": [
+   "description",
+   "version",
+   "defaultInputModes",
+   "defaultOutputModes",
+   "skills",
+   "url"
+  ],
+  "reason": null
+ },
+ "reachability": {
+  "ok": false,
+  "url": null,
+  "verdict": "not_declared",
+  "status": null,
+  "method": null,
+  "rpcErrorCode": null,
+  "rpcErrorMessage": null,
+  "reason": "the card declares no interface URL",
+  "elapsedMs": 0
+ },
+ "registry": null,
+ "gaps": []
+}

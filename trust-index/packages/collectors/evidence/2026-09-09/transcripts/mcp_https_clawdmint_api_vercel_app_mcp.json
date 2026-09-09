@@ -1,0 +1,348 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:mcp:v1",
+ "endpoint": "https://clawdmint-api.vercel.app/mcp",
+ "probed_at": "2026-09-09T09:40:23Z",
+ "attempts": [
+  {
+   "attempt": 1,
+   "ts": "2026-09-09T09:40:23Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 505
+  },
+  {
+   "attempt": 2,
+   "ts": "2026-09-09T09:40:24Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 294
+  },
+  {
+   "attempt": 3,
+   "ts": "2026-09-09T09:40:25Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 323
+  }
+ ],
+ "handshake": {
+  "ok": true,
+  "protocolVersion": "2025-06-18",
+  "serverName": "clawdmint-mcp",
+  "serverVersion": "1.0.0",
+  "instructions": null,
+  "reason": null
+ },
+ "tools": {
+  "ok": true,
+  "declared": [
+   {
+    "name": "chat",
+    "description": "Have a natural conversation with ClawdMint AI agent.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "message": {
+       "type": "string",
+       "description": "Your message or question"
+      }
+     },
+     "required": [
+      "message"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "echo",
+    "description": "Echo back the input message (for testing and debugging)",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "message": {
+       "type": "string",
+       "description": "The message to echo"
+      }
+     },
+     "required": [
+      "message"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "get_time",
+    "description": "Get the current UTC time and date",
+    "inputSchema": {
+     "type": "object",
+     "properties": {},
+     "required": []
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "get_balance",
+    "description": "Get the native token or ERC20 token balance of a wallet address on a specified chain.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "address": {
+       "type": "string",
+       "description": "Wallet address (0x...)"
+      },
+      "chain": {
+       "type": "string",
+       "description": "Chain: ethereum, base, arbitrum, optimism, polygon, bsc, gnosis, avalanche, celo, linea, metis, scroll, mantle, taiko, sei, peaq",
+       "default": "ethereum"
+      },
+      "token_address": {
+       "type": "string",
+       "description": "Optional ERC20 token contract address"
+      }
+     },
+     "required": [
+      "address"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "get_multichain_balance",
+    "description": "Get native token balances across multiple chains for a single wallet address.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "address": {
+       "type": "string",
+       "description": "Wallet address (0x...)"
+      },
+      "chains": {
+       "type": "string",
+       "description": "Comma-separated chain names",
+       "default": "ethereum,base,arbitrum,optimism,polygon,bsc"
+      }
+     },
+     "required": [
+      "address"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "get_token_price",
+    "description": "Get the current USD price, 24h change, and market cap of any cryptocurrency token.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "token": {
+       "type": "string",
+       "description": "Token symbol (ETH, BTC, SOL, SEI, PEAQ...) or CoinGecko ID"
+      }
+     },
+     "required": [
+      "token"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "get_market_overview",
+    "description": "Get a real-time market overview of the top cryptocurrencies.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "tokens": {
+       "type": "string",
+       "description": "Comma-separated token symbols",
+       "default": "ETH,BTC,SOL,BNB,MATIC,AVAX"
+      }
+     },
+     "required": []
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "get_tx",
+    "description": "Get full details of a blockchain transaction by hash.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "tx_hash": {
+       "type": "string",
+       "description": "Transaction hash (0x...)"
+      },
+      "chain": {
+       "type": "string",
+       "description": "Chain name",
+       "default": "ethereum"
+      }
+     },
+     "required": [
+      "tx_hash"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "get_gas_prices",
+    "description": "Get current gas prices across multiple chains for cost comparison.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "chains": {
+       "type": "string",
+       "default": "ethereum,base,arbitrum,optimism,polygon,avalanche,bsc,linea,scroll,mantle,metis,taiko,zksync,abstract,monad,megaeth,sei,peaq"
+      }
+     },
+     "required": []
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "get_token_info",
+    "description": "Get detailed information about an ERC20 token contract.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "token_address": {
+       "type": "string",
+       "description": "ERC20 token contract address (0x...)"
+      },
+      "chain": {
+       "type": "string",
+       "description": "Chain name",
+       "default": "ethereum"
+      }
+     },
+     "required": [
+      "token_address"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "resolve_ens",
+    "description": "Resolve an ENS name to an Ethereum address, or reverse-lookup an address to its ENS name.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "name": {
+       "type": "string",
+       "description": "ENS name (e.g. vitalik.eth) or Ethereum address"
+      }
+     },
+     "required": [
+      "name"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "get_yield_opportunities",
+    "description": "Find the best yield opportunities for USDC, USDT, ETH, WETH, USDe across Morpho, Aave v3, Fluid, Spark.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "asset": {
+       "type": "string",
+       "description": "Asset symbol: USDC, USDT, USDT0, ETH, WETH, USDe",
+       "default": "USDC"
+      },
+      "min_tvl_usd": {
+       "type": "number",
+       "default": 5000000
+      },
+      "top_n": {
+       "type": "number",
+       "default": 5
+      }
+     },
+     "required": []
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "get_bridge_route",
+    "description": "Find the best bridge route to transfer tokens between chains using LiFi/Jumper.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "from_chain": {
+       "type": "string",
+       "description": "Source chain"
+      },
+      "to_chain": {
+       "type": "string",
+       "description": "Destination chain"
+      },
+      "from_token": {
+       "type": "string",
+       "default": "USDC"
+      },
+      "to_token": {
+       "type": "string"
+      },
+      "amount": {
+       "type": "string"
+      },
+      "from_address": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "from_chain",
+      "to_chain",
+      "amount"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "get_block",
+    "description": "Get information about a specific block.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "block": {
+       "type": "string",
+       "default": "latest"
+      },
+      "chain": {
+       "type": "string",
+       "default": "ethereum"
+      }
+     },
+     "required": []
+    },
+    "outputSchema": null,
+    "annotations": null
+   }
+  ],
+  "reason": null
+ },
+ "registry": null,
+ "auth": {
+  "required": false,
+  "status": 200,
+  "scheme": null,
+  "hop": "initialize"
+ },
+ "rate_limit": null
+}

@@ -1,0 +1,49 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:mcp:v1",
+ "endpoint": "https://mpp.hyreagent.fun/agents/ocean",
+ "probed_at": "2026-09-09T09:50:17Z",
+ "attempts": [
+  {
+   "attempt": 1,
+   "ts": "2026-09-09T09:50:17Z",
+   "reachable": true,
+   "status": 403,
+   "reason": null,
+   "elapsedMs": 389
+  },
+  {
+   "attempt": 2,
+   "ts": "2026-09-09T09:50:18Z",
+   "reachable": true,
+   "status": 403,
+   "reason": null,
+   "elapsedMs": 333
+  },
+  {
+   "attempt": 3,
+   "ts": "2026-09-09T09:50:19Z",
+   "reachable": true,
+   "status": 403,
+   "reason": null,
+   "elapsedMs": 261
+  }
+ ],
+ "handshake": {
+  "ok": false,
+  "protocolVersion": null,
+  "serverName": null,
+  "serverVersion": null,
+  "instructions": null,
+  "reason": "authentication required (HTTP 403)"
+ },
+ "tools": null,
+ "registry": null,
+ "auth": {
+  "required": true,
+  "status": 403,
+  "scheme": null,
+  "hop": "initialize"
+ },
+ "rate_limit": null
+}

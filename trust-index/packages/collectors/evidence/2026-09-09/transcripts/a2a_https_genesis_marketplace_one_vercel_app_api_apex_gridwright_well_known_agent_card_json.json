@@ -1,0 +1,124 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:a2a:v1",
+ "subject_url": "https://genesis-marketplace-one.vercel.app/api/apex/gridwright/.well-known/agent-card.json",
+ "probed_at": "2026-09-09T09:40:27Z",
+ "discovery": {
+  "ok": true,
+  "url": "https://genesis-marketplace-one.vercel.app/api/apex/gridwright/.well-known/agent-card.json",
+  "path": "/api/apex/gridwright/.well-known/agent-card.json",
+  "outcome": "card",
+  "attempts": [
+   {
+    "url": "https://genesis-marketplace-one.vercel.app/api/apex/gridwright/.well-known/agent-card.json",
+    "path": "/api/apex/gridwright/.well-known/agent-card.json",
+    "kind": "declared",
+    "outcome": "card",
+    "status": 200,
+    "contentType": "application/json",
+    "reason": null,
+    "elapsedMs": 663
+   }
+  ],
+  "reason": null,
+  "elapsedMs": 663
+ },
+ "declaration": {
+  "ok": true,
+  "name": "Gridwright",
+  "description": "Marketplace specialist for grid trading (built by Genesis). Designs multi-level grids between user bounds, sizes notional per level, and returns pause rules for drawdown. You keep execution — Gridwright delivers the strategy brief.",
+  "version": "gridwright@specialist-plan-v1",
+  "protocolVersion": "0.2.9",
+  "provider": "Genesis Marketplace",
+  "documentationUrl": "https://genesis-marketplace-one.vercel.app/genesis/gridwright",
+  "capabilities": {
+   "streaming": false,
+   "pushNotifications": false,
+   "stateTransitionHistory": null,
+   "extensions": 0,
+   "raw": {
+    "streaming": false,
+    "pushNotifications": false
+   }
+  },
+  "skills": [
+   {
+    "id": "gridwright-skill-1",
+    "name": "Grid layout (N levels)",
+    "description": "Automated grid plans on BSC pairs",
+    "tags": [
+     "grid-trading",
+     "erc-8004",
+     "plan-only"
+    ],
+    "examples": [],
+    "inputModes": [],
+    "outputModes": []
+   },
+   {
+    "id": "gridwright-skill-2",
+    "name": "Drawdown pause rules",
+    "description": "Automated grid plans on BSC pairs",
+    "tags": [
+     "grid-trading",
+     "erc-8004",
+     "plan-only"
+    ],
+    "examples": [],
+    "inputModes": [],
+    "outputModes": []
+   },
+   {
+    "id": "gridwright-skill-3",
+    "name": "24h fill simulation",
+    "description": "Automated grid plans on BSC pairs",
+    "tags": [
+     "grid-trading",
+     "erc-8004",
+     "plan-only"
+    ],
+    "examples": [],
+    "inputModes": [],
+    "outputModes": []
+   },
+   {
+    "id": "gridwright-skill-4",
+    "name": "Pair volatility bands",
+    "description": "Automated grid plans on BSC pairs",
+    "tags": [
+     "grid-trading",
+     "erc-8004",
+     "plan-only"
+    ],
+    "examples": [],
+    "inputModes": [],
+    "outputModes": []
+   }
+  ],
+  "skillCount": 4,
+  "interfaces": [
+   {
+    "url": "https://genesis-marketplace-one.vercel.app/api/apex/gridwright",
+    "transport": null,
+    "protocolVersion": "0.2.9",
+    "source": "url"
+   }
+  ],
+  "securitySchemes": [],
+  "missingRequired": [],
+  "reason": null
+ },
+ "reachability": {
+  "ok": false,
+  "url": "https://genesis-marketplace-one.vercel.app/api/apex/gridwright",
+  "verdict": "answered_not_a2a",
+  "status": 405,
+  "method": "tasks/get",
+  "rpcErrorCode": null,
+  "rpcErrorMessage": null,
+  "reason": "HTTP 405 at the declared endpoint",
+  "elapsedMs": 290
+ },
+ "registry": null,
+ "gaps": []
+}

@@ -1,0 +1,37 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:mcp:v1",
+ "endpoint": "https://connector.agent/mcp",
+ "probed_at": "2026-09-09T09:27:06Z",
+ "attempts": [
+  {
+   "attempt": 1,
+   "ts": "2026-09-09T09:27:06Z",
+   "reachable": false,
+   "status": null,
+   "reason": "dns lookup failed: getaddrinfo ENOTFOUND connector.agent",
+   "elapsedMs": 2820
+  },
+  {
+   "attempt": 2,
+   "ts": "2026-09-09T09:27:09Z",
+   "reachable": false,
+   "status": null,
+   "reason": "dns lookup failed: getaddrinfo ENOTFOUND connector.agent",
+   "elapsedMs": 5564
+  },
+  {
+   "attempt": 3,
+   "ts": "2026-09-09T09:27:15Z",
+   "reachable": false,
+   "status": null,
+   "reason": "dns lookup failed: getaddrinfo ENOTFOUND connector.agent",
+   "elapsedMs": 4455
+  }
+ ],
+ "handshake": null,
+ "tools": null,
+ "registry": null,
+ "auth": null,
+ "rate_limit": null
+}

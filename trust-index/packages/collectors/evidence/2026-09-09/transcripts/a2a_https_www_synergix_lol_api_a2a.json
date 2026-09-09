@@ -1,0 +1,208 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:a2a:v1",
+ "subject_url": "https://www.synergix.lol/api/a2a",
+ "probed_at": "2026-09-09T09:27:51Z",
+ "discovery": {
+  "ok": true,
+  "url": "https://www.synergix.lol/.well-known/agent.json",
+  "path": "/.well-known/agent.json",
+  "outcome": "card",
+  "attempts": [
+   {
+    "url": "https://www.synergix.lol/api/a2a",
+    "path": "/api/a2a",
+    "kind": "declared",
+    "outcome": "not_a_card",
+    "status": 200,
+    "contentType": "application/json; charset=utf-8",
+    "reason": "HTTP 200 with JSON that is not an Agent Card",
+    "elapsedMs": 932
+   },
+   {
+    "url": "https://www.synergix.lol/.well-known/agent-card.json",
+    "path": "/.well-known/agent-card.json",
+    "kind": "well-known",
+    "outcome": "absent",
+    "status": 404,
+    "contentType": "application/json",
+    "reason": "no card at this path (HTTP 404)",
+    "elapsedMs": 738
+   },
+   {
+    "url": "https://www.synergix.lol/.well-known/agent.json",
+    "path": "/.well-known/agent.json",
+    "kind": "well-known",
+    "outcome": "card",
+    "status": 200,
+    "contentType": "application/json; charset=utf-8",
+    "reason": null,
+    "elapsedMs": 2658
+   }
+  ],
+  "reason": null,
+  "elapsedMs": 4328
+ },
+ "declaration": {
+  "ok": true,
+  "name": "Synergix",
+  "description": "The world's first AI on Irys/Arweave (permanent storage). Decentralized collective intelligence — every answer is grounded in community knowledge stored permanently on-chain via Irys (BNB payments). Ask questions, explore on-chain knowledge, get token info, and interact with the Synergix reputation system.",
+  "version": "2.0.0",
+  "protocolVersion": null,
+  "provider": "Synergix",
+  "documentationUrl": "https://www.synergix.lol",
+  "capabilities": {
+   "streaming": false,
+   "pushNotifications": false,
+   "stateTransitionHistory": false,
+   "extensions": 0,
+   "raw": {
+    "streaming": false,
+    "pushNotifications": false,
+    "stateTransitionHistory": false
+   }
+  },
+  "skills": [
+   {
+    "id": "synergix_ask",
+    "name": "Ask Synergix",
+    "description": "Ask a question to Synergix's RAG engine backed by Irys/Arweave permanent collective knowledge. Returns AI-generated answers grounded in community contributions stored on-chain forever.",
+    "tags": [
+     "rag",
+     "collective-intelligence",
+     "blockchain",
+     "Irys",
+     "Arweave",
+     "permaweb",
+     "knowledge"
+    ],
+    "examples": [
+     "What is Irys and how does Synergix use it?",
+     "How does the Synergix rank system work?",
+     "What makes Synergix unique among AI agents?"
+    ],
+    "inputModes": [
+     "text/plain"
+    ],
+    "outputModes": [
+     "application/json"
+    ]
+   },
+   {
+    "id": "synergix_ranks",
+    "name": "Rank System",
+    "description": "Get the complete Synergix 6-tier on-chain reputation system with point thresholds, multipliers, and daily limits.",
+    "tags": [
+     "ranks",
+     "reputation",
+     "on-chain",
+     "gamification"
+    ],
+    "examples": [
+     "Show me the Synergix rank table",
+     "What are the ranks in Synergix?",
+     "How many points do I need to reach Oráculo?"
+    ],
+    "inputModes": [
+     "text/plain"
+    ],
+    "outputModes": [
+     "application/json"
+    ]
+   },
+   {
+    "id": "synergix_token",
+    "name": "Token Info",
+    "description": "Get $SYNERGIX token details: contract address on BNB Chain, tax structure, and how 1% buy/sell tax funds Irys/Arweave permanent storage.",
+    "tags": [
+     "token",
+     "BNB-Chain",
+     "tokenomics",
+     "crypto",
+     "DeFi"
+    ],
+    "examples": [
+     "What is the $SYNERGIX contract address?",
+     "How does the Synergix tax work?",
+     "Tell me about the SYNERGIX token"
+    ],
+    "inputModes": [
+     "text/plain"
+    ],
+    "outputModes": [
+     "application/json"
+    ]
+   },
+   {
+    "id": "synergix_bucket",
+    "name": "Irys Storage Info",
+    "description": "Explore the Synergix permanent storage architecture on Irys/Arweave — the on-chain brain powering the AI. Shows tag structure, gateway, and RAG engine architecture.",
+    "tags": [
+     "irys",
+     "arweave",
+     "storage",
+     "decentralized",
+     "permaweb"
+    ],
+    "examples": [
+     "How does Synergix store knowledge on Irys?",
+     "What is the Synergix Arweave tag structure?",
+     "Explain the Synergix permanent storage architecture"
+    ],
+    "inputModes": [
+     "text/plain"
+    ],
+    "outputModes": [
+     "application/json"
+    ]
+   },
+   {
+    "id": "synergix_stats",
+    "name": "Network Stats",
+    "description": "Get global Synergix network statistics: RAG engine status, federation loop, supported languages, and system health.",
+    "tags": [
+     "stats",
+     "network",
+     "system",
+     "health"
+    ],
+    "examples": [
+     "What are the Synergix network statistics?",
+     "Is Synergix operational?",
+     "How many languages does Synergix support?"
+    ],
+    "inputModes": [
+     "text/plain"
+    ],
+    "outputModes": [
+     "application/json"
+    ]
+   }
+  ],
+  "skillCount": 5,
+  "interfaces": [
+   {
+    "url": "https://www.synergix.lol",
+    "transport": null,
+    "protocolVersion": null,
+    "source": "url"
+   }
+  ],
+  "securitySchemes": [],
+  "missingRequired": [],
+  "reason": null
+ },
+ "reachability": {
+  "ok": false,
+  "url": "https://www.synergix.lol",
+  "verdict": "answered_not_a2a",
+  "status": 405,
+  "method": "tasks/get",
+  "rpcErrorCode": null,
+  "rpcErrorMessage": null,
+  "reason": "HTTP 405 at the declared endpoint",
+  "elapsedMs": 231
+ },
+ "registry": null,
+ "gaps": []
+}

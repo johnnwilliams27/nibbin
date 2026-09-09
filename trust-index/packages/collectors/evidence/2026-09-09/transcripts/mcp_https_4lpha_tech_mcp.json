@@ -1,0 +1,114 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:mcp:v1",
+ "endpoint": "https://4lpha.tech/mcp",
+ "probed_at": "2026-09-09T09:27:06Z",
+ "attempts": [
+  {
+   "attempt": 1,
+   "ts": "2026-09-09T09:27:06Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 565
+  },
+  {
+   "attempt": 2,
+   "ts": "2026-09-09T09:27:16Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 5802
+  },
+  {
+   "attempt": 3,
+   "ts": "2026-09-09T09:27:22Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 381
+  }
+ ],
+ "handshake": {
+  "ok": true,
+  "protocolVersion": "2025-06-18",
+  "serverName": "4lpha-marketplace",
+  "serverVersion": "1.0.0",
+  "instructions": null,
+  "reason": null
+ },
+ "tools": {
+  "ok": true,
+  "declared": [
+   {
+    "name": "explain_strategy",
+    "description": "Explain how a 4lpha Grid, LP or Trading strategy works, its main settings, risks and custody boundary. Static product guidance, not live analysis or a private agent report.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "agent": {
+       "type": "string",
+       "enum": [
+        "grid",
+        "lp",
+        "trade"
+       ],
+       "description": "Product id from list_agents."
+      }
+     },
+     "required": [
+      "agent"
+     ],
+     "additionalProperties": false
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "list_agents",
+    "description": "List the 4lpha autonomous DeFi agents available to hire on BNB Chain, with their agent-marketplace category and deploy link.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {},
+     "additionalProperties": false
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "get_hire_link",
+    "description": "Return the deploy link a human opens to hire one 4lpha agent, plus what the hire actually authorises on-chain.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "agent": {
+       "type": "string",
+       "enum": [
+        "grid",
+        "lp",
+        "trade",
+        "health"
+       ],
+       "description": "Agent id from list_agents."
+      }
+     },
+     "required": [
+      "agent"
+     ],
+     "additionalProperties": false
+    },
+    "outputSchema": null,
+    "annotations": null
+   }
+  ],
+  "reason": null
+ },
+ "registry": null,
+ "auth": {
+  "required": false,
+  "status": 200,
+  "scheme": null,
+  "hop": "initialize"
+ },
+ "rate_limit": null
+}

@@ -1,0 +1,2183 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:mcp:v1",
+ "endpoint": "https://erc8004.heyanon.ai/mcp/venus",
+ "probed_at": "2026-09-09T09:40:23Z",
+ "attempts": [
+  {
+   "attempt": 1,
+   "ts": "2026-09-09T09:40:23Z",
+   "reachable": true,
+   "status": 201,
+   "reason": null,
+   "elapsedMs": 698
+  },
+  {
+   "attempt": 2,
+   "ts": "2026-09-09T09:40:25Z",
+   "reachable": true,
+   "status": 201,
+   "reason": null,
+   "elapsedMs": 480
+  },
+  {
+   "attempt": 3,
+   "ts": "2026-09-09T09:40:26Z",
+   "reachable": true,
+   "status": 201,
+   "reason": null,
+   "elapsedMs": 395
+  }
+ ],
+ "handshake": {
+  "ok": true,
+  "protocolVersion": "2025-06-18",
+  "serverName": "heyanon-erc8004-venus",
+  "serverVersion": "1.0.0",
+  "instructions": null,
+  "reason": null
+ },
+ "tools": {
+  "ok": true,
+  "declared": [
+   {
+    "name": "borrow",
+    "description": "Borrow a token from venus lending protocol on a particular chain.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "chainName": {
+       "type": "string",
+       "enum": [
+        "bsc",
+        "ethereum",
+        "base"
+       ],
+       "description": "Chain name where to execute the transaction"
+      },
+      "tokenSymbol": {
+       "type": "string",
+       "description": "The token symbol that is involved in the transaction."
+      },
+      "pool": {
+       "type": "string",
+       "enum": [
+        "CORE",
+        "DEFI"
+       ],
+       "description": "The Pool in which the transaction will be executed."
+      },
+      "amount": {
+       "type": "string",
+       "description": "Amount of tokens in human-readable decimal format (e.g. '1.5')"
+      },
+      "userAddress": {
+       "type": "string",
+       "description": "The wallet address of the user"
+      }
+     },
+     "required": [
+      "chainName",
+      "tokenSymbol",
+      "pool",
+      "amount",
+      "userAddress"
+     ],
+     "additionalProperties": false
+    },
+    "outputSchema": {
+     "type": "object",
+     "anyOf": [
+      {
+       "type": "object",
+       "properties": {
+        "project": {
+         "type": "string",
+         "description": "Protocol identifier"
+        },
+        "operation": {
+         "type": "string",
+         "description": "Operation that produced this response"
+        },
+        "note": {
+         "type": "string",
+         "description": "Human-readable summary of the action"
+        },
+        "transactions": {
+         "type": "array",
+         "items": {
+          "type": "object",
+          "properties": {
+           "chainId": {
+            "type": "number",
+            "description": "EVM chain ID"
+           },
+           "transaction": {
+            "type": "object",
+            "properties": {
+             "target": {
+              "type": "string",
+              "description": "Target contract address"
+             },
+             "data": {
+              "type": "string",
+              "description": "ABI-encoded calldata"
+             },
+             "value": {
+              "description": "Native token value in wei",
+              "type": "string"
+             }
+            },
+            "required": [
+             "target",
+             "data"
+            ],
+            "additionalProperties": false,
+            "description": "EVM transaction parameters"
+           }
+          },
+          "required": [
+           "chainId",
+           "transaction"
+          ],
+          "additionalProperties": false
+         },
+         "description": "EVM transactions to sign and broadcast"
+        }
+       },
+       "required": [
+        "project",
+        "operation",
+        "transactions"
+       ],
+       "additionalProperties": false
+      },
+      {
+       "type": "object",
+       "properties": {
+        "project": {
+         "type": "string",
+         "description": "Protocol identifier"
+        },
+        "operation": {
+         "type": "string",
+         "description": "Operation that produced this response"
+        },
+        "error": {
+         "type": "string",
+         "description": "Error message"
+        }
+       },
+       "required": [
+        "project",
+        "operation",
+        "error"
+       ],
+       "additionalProperties": false
+      }
+     ]
+    },
+    "annotations": null
+   },
+   {
+    "name": "repay",
+    "description": "Repay Token the token that was borrowed from venus lending protocol on a particular chain.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "chainName": {
+       "type": "string",
+       "enum": [
+        "bsc",
+        "ethereum",
+        "base"
+       ],
+       "description": "Chain name where to execute the transaction"
+      },
+      "tokenSymbol": {
+       "type": "string",
+       "description": "The token symbol that is involved in the transaction."
+      },
+      "pool": {
+       "type": "string",
+       "enum": [
+        "CORE",
+        "DEFI"
+       ],
+       "description": "The Pool in which the transaction will be executed."
+      },
+      "amount": {
+       "description": "Amount of tokens in human-readable decimal format (e.g. '1.5'). Mutually exclusive with isFull",
+       "type": "string"
+      },
+      "userAddress": {
+       "type": "string",
+       "description": "The wallet address of the user"
+      },
+      "isFull": {
+       "description": "Set to true to repay the full borrowed amount. Mutually exclusive with amount",
+       "type": "boolean"
+      }
+     },
+     "required": [
+      "chainName",
+      "tokenSymbol",
+      "pool",
+      "userAddress"
+     ],
+     "additionalProperties": false
+    },
+    "outputSchema": {
+     "type": "object",
+     "anyOf": [
+      {
+       "type": "object",
+       "properties": {
+        "project": {
+         "type": "string",
+         "description": "Protocol identifier"
+        },
+        "operation": {
+         "type": "string",
+         "description": "Operation that produced this response"
+        },
+        "note": {
+         "type": "string",
+         "description": "Human-readable summary of the action"
+        },
+        "transactions": {
+         "type": "array",
+         "items": {
+          "type": "object",
+          "properties": {
+           "chainId": {
+            "type": "number",
+            "description": "EVM chain ID"
+           },
+           "transaction": {
+            "type": "object",
+            "properties": {
+             "target": {
+              "type": "string",
+              "description": "Target contract address"
+             },
+             "data": {
+              "type": "string",
+              "description": "ABI-encoded calldata"
+             },
+             "value": {
+              "description": "Native token value in wei",
+              "type": "string"
+             }
+            },
+            "required": [
+             "target",
+             "data"
+            ],
+            "additionalProperties": false,
+            "description": "EVM transaction parameters"
+           }
+          },
+          "required": [
+           "chainId",
+           "transaction"
+          ],
+          "additionalProperties": false
+         },
+         "description": "EVM transactions to sign and broadcast"
+        }
+       },
+       "required": [
+        "project",
+        "operation",
+        "transactions"
+       ],
+       "additionalProperties": false
+      },
+      {
+       "type": "object",
+       "properties": {
+        "project": {
+         "type": "string",
+         "description": "Protocol identifier"
+        },
+        "operation": {
+         "type": "string",
+         "description": "Operation that produced this response"
+        },
+        "error": {
+         "type": "string",
+         "description": "Error message"
+        }
+       },
+       "required": [
+        "project",
+        "operation",
+        "error"
+       ],
+       "additionalProperties": false
+      }
+     ]
+    },
+    "annotations": null
+   },
+   {
+    "name": "mintToken",
+    "description": "Mint or supply token to venus lending protocol.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "chainName": {
+       "type": "string",
+       "enum": [
+        "bsc",
+        "ethereum",
+        "base"
+       ],
+       "description": "Chain name where to execute the transaction"
+      },
+      "tokenSymbol": {
+       "type": "string",
+       "description": "The token symbol that is involved in the transaction."
+      },
+      "pool": {
+       "type": "string",
+       "enum": [
+        "CORE",
+        "DEFI"
+       ],
+       "description": "The Pool in which the transaction will be executed."
+      },
+      "amount": {
+       "type": "string",
+       "description": "Amount of tokens in human-readable decimal format (e.g. '1.5')"
+      },
+      "userAddress": {
+       "type": "string",
+       "description": "The wallet address of the user"
+      }
+     },
+     "required": [
+      "chainName",
+      "tokenSymbol",
+      "pool",
+      "amount",
+      "userAddress"
+     ],
+     "additionalProperties": false
+    },
+    "outputSchema": {
+     "type": "object",
+     "anyOf": [
+      {
+       "type": "object",
+       "properties": {
+        "project": {
+         "type": "string",
+         "description": "Protocol identifier"
+        },
+        "operation": {
+         "type": "string",
+         "description": "Operation that produced this response"
+        },
+        "note": {
+         "type": "string",
+         "description": "Human-readable summary of the action"
+        },
+        "transactions": {
+         "type": "array",
+         "items": {
+          "type": "object",
+          "properties": {
+           "chainId": {
+            "type": "number",
+            "description": "EVM chain ID"
+           },
+           "transaction": {
+            "type": "object",
+            "properties": {
+             "target": {
+              "type": "string",
+              "description": "Target contract address"
+             },
+             "data": {
+              "type": "string",
+              "description": "ABI-encoded calldata"
+             },
+             "value": {
+              "description": "Native token value in wei",
+              "type": "string"
+             }
+            },
+            "required": [
+             "target",
+             "data"
+            ],
+            "additionalProperties": false,
+            "description": "EVM transaction parameters"
+           }
+          },
+          "required": [
+           "chainId",
+           "transaction"
+          ],
+          "additionalProperties": false
+         },
+         "description": "EVM transactions to sign and broadcast"
+        }
+       },
+       "required": [
+        "project",
+        "operation",
+        "transactions"
+       ],
+       "additionalProperties": false
+      },
+      {
+       "type": "object",
+       "properties": {
+        "project": {
+         "type": "string",
+         "description": "Protocol identifier"
+        },
+        "operation": {
+         "type": "string",
+         "description": "Operation that produced this response"
+        },
+        "error": {
+         "type": "string",
+         "description": "Error message"
+        }
+       },
+       "required": [
+        "project",
+        "operation",
+        "error"
+       ],
+       "additionalProperties": false
+      }
+     ]
+    },
+    "annotations": null
+   },
+   {
+    "name": "getVenusBalance",
+    "description": "Return balance in tokens in venus lending protocol.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "chainName": {
+       "type": "string",
+       "enum": [
+        "bsc",
+        "ethereum",
+        "base"
+       ],
+       "description": "Chain name where to execute the transaction"
+      },
+      "tokenSymbols": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       },
+       "description": "Array of token symbols"
+      },
+      "pool": {
+       "type": "string",
+       "enum": [
+        "CORE",
+        "DEFI"
+       ],
+       "description": "The Pool in which the transaction will be executed."
+      },
+      "userAddress": {
+       "type": "string",
+       "description": "The wallet address of the user"
+      }
+     },
+     "required": [
+      "chainName",
+      "tokenSymbols",
+      "pool",
+      "userAddress"
+     ],
+     "additionalProperties": false
+    },
+    "outputSchema": {
+     "type": "object",
+     "anyOf": [
+      {
+       "type": "object",
+       "properties": {
+        "project": {
+         "type": "string",
+         "description": "Protocol identifier"
+        },
+        "operation": {
+         "type": "string",
+         "description": "Operation that produced this response"
+        },
+        "note": {
+         "type": "string",
+         "description": "Human-readable summary of the action"
+        },
+        "data": {
+         "type": "object",
+         "properties": {
+          "chainName": {
+           "type": "string",
+           "description": "Chain name"
+          },
+          "pool": {
+           "type": "string",
+           "description": "Pool name"
+          },
+          "balances": {
+           "type": "array",
+           "items": {
+            "type": "object",
+            "properties": {
+             "tokenSymbol": {
+              "type": "string",
+              "description": "Token symbol"
+             },
+             "balance": {
+              "type": "string",
+              "description": "Token balance in a human-readable decimal format (e.g. '1.5')"
+             }
+            },
+            "required": [
+             "tokenSymbol",
+             "balance"
+            ],
+            "additionalProperties": false
+           }
+          }
+         },
+         "required": [
+          "chainName",
+          "pool",
+          "balances"
+         ],
+         "additionalProperties": false
+        }
+       },
+       "required": [
+        "project",
+        "operation",
+        "data"
+       ],
+       "additionalProperties": false
+      },
+      {
+       "type": "object",
+       "properties": {
+        "project": {
+         "type": "string",
+         "description": "Protocol identifier"
+        },
+        "operation": {
+         "type": "string",
+         "description": "Operation that produced this response"
+        },
+        "error": {
+         "type": "string",
+         "description": "Error message"
+        }
+       },
+       "required": [
+        "project",
+        "operation",
+        "error"
+       ],
+       "additionalProperties": false
+      }
+     ]
+    },
+    "annotations": null
+   },
+   {
+    "name": "redeemUnderlying",
+    "description": "redeem the supplied amount of underlying tokens.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "chainName": {
+       "type": "string",
+       "enum": [
+        "bsc",
+        "ethereum",
+        "base"
+       ],
+       "description": "Chain name where to execute the transaction"
+      },
+      "tokenSymbol": {
+       "type": "string",
+       "description": "The token symbol that is involved in the transaction."
+      },
+      "pool": {
+       "type": "string",
+       "enum": [
+        "CORE",
+        "DEFI"
+       ],
+       "description": "The Pool in which the transaction will be executed."
+      },
+      "amount": {
+       "type": "string",
+       "description": "Amount of tokens in human-readable decimal format. Use \"-1\" to redeem all supplied balance."
+      },
+      "userAddress": {
+       "type": "string",
+       "description": "The wallet address of the user"
+      }
+     },
+     "required": [
+      "chainName",
+      "tokenSymbol",
+      "pool",
+      "amount",
+      "userAddress"
+     ],
+     "additionalProperties": false
+    },
+    "outputSchema": {
+     "type": "object",
+     "anyOf": [
+      {
+       "type": "object",
+       "properties": {
+        "project": {
+         "type": "string",
+         "description": "Protocol identifier"
+        },
+        "operation": {
+         "type": "string",
+         "description": "Operation that produced this response"
+        },
+        "note": {
+         "type": "string",
+         "description": "Human-readable summary of the action"
+        },
+        "transactions": {
+         "type": "array",
+         "items": {
+          "type": "object",
+          "properties": {
+           "chainId": {
+            "type": "number",
+            "description": "EVM chain ID"
+           },
+           "transaction": {
+            "type": "object",
+            "properties": {
+             "target": {
+              "type": "string",
+              "description": "Target contract address"
+             },
+             "data": {
+              "type": "string",
+              "description": "ABI-encoded calldata"
+             },
+             "value": {
+              "description": "Native token value in wei",
+              "type": "string"
+             }
+            },
+            "required": [
+             "target",
+             "data"
+            ],
+            "additionalProperties": false,
+            "description": "EVM transaction parameters"
+           }
+          },
+          "required": [
+           "chainId",
+           "transaction"
+          ],
+          "additionalProperties": false
+         },
+         "description": "EVM transactions to sign and broadcast"
+        }
+       },
+       "required": [
+        "project",
+        "operation",
+        "transactions"
+       ],
+       "additionalProperties": false
+      },
+      {
+       "type": "object",
+       "properties": {
+        "project": {
+         "type": "string",
+         "description": "Protocol identifier"
+        },
+        "operation": {
+         "type": "string",
+         "description": "Operation that produced this response"
+        },
+        "error": {
+         "type": "string",
+         "description": "Error message"
+        }
+       },
+       "required": [
+        "project",
+        "operation",
+        "error"
+       ],
+       "additionalProperties": false
+      }
+     ]
+    },
+    "annotations": null
+   },
+   {
+    "name": "enterMarkets",
+    "description": "Enable tokens as collateral in venus lending protocol for a particular pool.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "chainName": {
+       "type": "string",
+       "enum": [
+        "bsc",
+        "ethereum",
+        "base"
+       ],
+       "description": "Chain name where to execute the transaction"
+      },
+      "tokenSymbols": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       },
+       "description": "Array of token symbols"
+      },
+      "pool": {
+       "type": "string",
+       "enum": [
+        "CORE",
+        "DEFI"
+       ],
+       "description": "The Pool in which the transaction will be executed."
+      },
+      "userAddress": {
+       "type": "string",
+       "description": "The wallet address of the user"
+      }
+     },
+     "required": [
+      "chainName",
+      "tokenSymbols",
+      "pool",
+      "userAddress"
+     ],
+     "additionalProperties": false
+    },
+    "outputSchema": {
+     "type": "object",
+     "anyOf": [
+      {
+       "type": "object",
+       "properties": {
+        "project": {
+         "type": "string",
+         "description": "Protocol identifier"
+        },
+        "operation": {
+         "type": "string",
+         "description": "Operation that produced this response"
+        },
+        "note": {
+         "type": "string",
+         "description": "Human-readable summary of the action"
+        },
+        "transactions": {
+         "type": "array",
+         "items": {
+          "type": "object",
+          "properties": {
+           "chainId": {
+            "type": "number",
+            "description": "EVM chain ID"
+           },
+           "transaction": {
+            "type": "object",
+            "properties": {
+             "target": {
+              "type": "string",
+              "description": "Target contract address"
+             },
+             "data": {
+              "type": "string",
+              "description": "ABI-encoded calldata"
+             },
+             "value": {
+              "description": "Native token value in wei",
+              "type": "string"
+             }
+            },
+            "required": [
+             "target",
+             "data"
+            ],
+            "additionalProperties": false,
+            "description": "EVM transaction parameters"
+           }
+          },
+          "required": [
+           "chainId",
+           "transaction"
+          ],
+          "additionalProperties": false
+         },
+         "description": "EVM transactions to sign and broadcast"
+        }
+       },
+       "required": [
+        "project",
+        "operation",
+        "transactions"
+       ],
+       "additionalProperties": false
+      },
+      {
+       "type": "object",
+       "properties": {
+        "project": {
+         "type": "string",
+         "description": "Protocol identifier"
+        },
+        "operation": {
+         "type": "string",
+         "description": "Operation that produced this response"
+        },
+        "error": {
+         "type": "string",
+         "description": "Error message"
+        }
+       },
+       "required": [
+        "project",
+        "operation",
+        "error"
+       ],
+       "additionalProperties": false
+      }
+     ]
+    },
+    "annotations": null
+   },
+   {
+    "name": "exitMarket",
+    "description": "Disable tokens as collateral in venus lending protocol for a particular pool.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "chainName": {
+       "type": "string",
+       "enum": [
+        "bsc",
+        "ethereum",
+        "base"
+       ],
+       "description": "Chain name where to execute the transaction"
+      },
+      "tokenSymbols": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       },
+       "description": "Array of token symbols"
+      },
+      "pool": {
+       "type": "string",
+       "enum": [
+        "CORE",
+        "DEFI"
+       ],
+       "description": "The Pool in which the transaction will be executed."
+      },
+      "userAddress": {
+       "type": "string",
+       "description": "The wallet address of the user"
+      }
+     },
+     "required": [
+      "chainName",
+      "tokenSymbols",
+      "pool",
+      "userAddress"
+     ],
+     "additionalProperties": false
+    },
+    "outputSchema": {
+     "type": "object",
+     "anyOf": [
+      {
+       "type": "object",
+       "properties": {
+        "project": {
+         "type": "string",
+         "description": "Protocol identifier"
+        },
+        "operation": {
+         "type": "string",
+         "description": "Operation that produced this response"
+        },
+        "note": {
+         "type": "string",
+         "description": "Human-readable summary of the action"
+        },
+        "transactions": {
+         "type": "array",
+         "items": {
+          "type": "object",
+          "properties": {
+           "chainId": {
+            "type": "number",
+            "description": "EVM chain ID"
+           },
+           "transaction": {
+            "type": "object",
+            "properties": {
+             "target": {
+              "type": "string",
+              "description": "Target contract address"
+             },
+             "data": {
+              "type": "string",
+              "description": "ABI-encoded calldata"
+             },
+             "value": {
+              "description": "Native token value in wei",
+              "type": "string"
+             }
+            },
+            "required": [
+             "target",
+             "data"
+            ],
+            "additionalProperties": false,
+            "description": "EVM transaction parameters"
+           }
+          },
+          "required": [
+           "chainId",
+           "transaction"
+          ],
+          "additionalProperties": false
+         },
+         "description": "EVM transactions to sign and broadcast"
+        }
+       },
+       "required": [
+        "project",
+        "operation",
+        "transactions"
+       ],
+       "additionalProperties": false
+      },
+      {
+       "type": "object",
+       "properties": {
+        "project": {
+         "type": "string",
+         "description": "Protocol identifier"
+        },
+        "operation": {
+         "type": "string",
+         "description": "Operation that produced this response"
+        },
+        "error": {
+         "type": "string",
+         "description": "Error message"
+        }
+       },
+       "required": [
+        "project",
+        "operation",
+        "error"
+       ],
+       "additionalProperties": false
+      }
+     ]
+    },
+    "annotations": null
+   },
+   {
+    "name": "getBorrowBalance",
+    "description": "Get borrow balance (debt) of tokens from Venus protocol.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "chainName": {
+       "type": "string",
+       "enum": [
+        "bsc",
+        "ethereum",
+        "base"
+       ],
+       "description": "Chain name where to execute the transaction"
+      },
+      "tokenSymbols": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       },
+       "description": "Array of token symbols"
+      },
+      "pool": {
+       "type": "string",
+       "enum": [
+        "CORE",
+        "DEFI"
+       ],
+       "description": "The Pool in which the transaction will be executed."
+      },
+      "userAddress": {
+       "type": "string",
+       "description": "The wallet address of the user"
+      }
+     },
+     "required": [
+      "chainName",
+      "tokenSymbols",
+      "pool",
+      "userAddress"
+     ],
+     "additionalProperties": false
+    },
+    "outputSchema": {
+     "type": "object",
+     "anyOf": [
+      {
+       "type": "object",
+       "properties": {
+        "project": {
+         "type": "string",
+         "description": "Protocol identifier"
+        },
+        "operation": {
+         "type": "string",
+         "description": "Operation that produced this response"
+        },
+        "note": {
+         "type": "string",
+         "description": "Human-readable summary of the action"
+        },
+        "data": {
+         "type": "object",
+         "properties": {
+          "chainName": {
+           "type": "string",
+           "description": "Chain name"
+          },
+          "pool": {
+           "type": "string",
+           "description": "Pool name"
+          },
+          "balances": {
+           "type": "array",
+           "items": {
+            "type": "object",
+            "properties": {
+             "tokenSymbol": {
+              "type": "string",
+              "description": "Token symbol"
+             },
+             "balance": {
+              "type": "string",
+              "description": "Token balance in a human-readable decimal format (e.g. '1.5')"
+             }
+            },
+            "required": [
+             "tokenSymbol",
+             "balance"
+            ],
+            "additionalProperties": false
+           }
+          }
+         },
+         "required": [
+          "chainName",
+          "pool",
+          "balances"
+         ],
+         "additionalProperties": false
+        }
+       },
+       "required": [
+        "project",
+        "operation",
+        "data"
+       ],
+       "additionalProperties": false
+      },
+      {
+       "type": "object",
+       "properties": {
+        "project": {
+         "type": "string",
+         "description": "Protocol identifier"
+        },
+        "operation": {
+         "type": "string",
+         "description": "Operation that produced this response"
+        },
+        "error": {
+         "type": "string",
+         "description": "Error message"
+        }
+       },
+       "required": [
+        "project",
+        "operation",
+        "error"
+       ],
+       "additionalProperties": false
+      }
+     ]
+    },
+    "annotations": null
+   },
+   {
+    "name": "getBorrowAPR",
+    "description": "Get Current Borrow APR for tokens across multiple chains in specific pools.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "aprRequests": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "chainName": {
+          "type": "string",
+          "enum": [
+           "bsc",
+           "ethereum",
+           "base"
+          ]
+         },
+         "aprRequestDetails": {
+          "type": "array",
+          "items": {
+           "type": "object",
+           "properties": {
+            "tokenSymbols": {
+             "type": "array",
+             "items": {
+              "type": "string"
+             },
+             "description": "Array of token symbols"
+            },
+            "pool": {
+             "type": "string",
+             "enum": [
+              "CORE",
+              "DEFI"
+             ],
+             "description": "The Pool in which the transaction will be executed."
+            }
+           },
+           "required": [
+            "tokenSymbols",
+            "pool"
+           ],
+           "additionalProperties": false
+          }
+         }
+        },
+        "required": [
+         "chainName",
+         "aprRequestDetails"
+        ],
+        "additionalProperties": false
+       }
+      }
+     },
+     "required": [
+      "aprRequests"
+     ],
+     "additionalProperties": false
+    },
+    "outputSchema": {
+     "type": "object",
+     "anyOf": [
+      {
+       "type": "object",
+       "properties": {
+        "project": {
+         "type": "string",
+         "description": "Protocol identifier"
+        },
+        "operation": {
+         "type": "string",
+         "description": "Operation that produced this response"
+        },
+        "note": {
+         "type": "string",
+         "description": "Human-readable summary of the action"
+        },
+        "data": {
+         "type": "array",
+         "items": {
+          "anyOf": [
+           {
+            "type": "object",
+            "properties": {
+             "chain": {
+              "type": "string",
+              "description": "Chain name"
+             },
+             "pool": {
+              "type": "string",
+              "description": "Pool name"
+             },
+             "tokenAPRs": {
+              "type": "string",
+              "description": "Comma-separated token APR values"
+             },
+             "errors": {
+              "description": "Comma-separated error messages for failed tokens",
+              "type": "string"
+             }
+            },
+            "required": [
+             "chain",
+             "pool",
+             "tokenAPRs"
+            ],
+            "additionalProperties": false
+           },
+           {
+            "type": "object",
+            "properties": {
+             "chain": {
+              "description": "Chain name",
+              "type": "string"
+             },
+             "pool": {
+              "description": "Pool name",
+              "type": "string"
+             },
+             "error": {
+              "type": "string",
+              "description": "Error message"
+             }
+            },
+            "required": [
+             "error"
+            ],
+            "additionalProperties": false
+           }
+          ]
+         }
+        }
+       },
+       "required": [
+        "project",
+        "operation",
+        "data"
+       ],
+       "additionalProperties": false
+      },
+      {
+       "type": "object",
+       "properties": {
+        "project": {
+         "type": "string",
+         "description": "Protocol identifier"
+        },
+        "operation": {
+         "type": "string",
+         "description": "Operation that produced this response"
+        },
+        "error": {
+         "type": "string",
+         "description": "Error message"
+        }
+       },
+       "required": [
+        "project",
+        "operation",
+        "error"
+       ],
+       "additionalProperties": false
+      }
+     ]
+    },
+    "annotations": null
+   },
+   {
+    "name": "getSupplyAPR",
+    "description": "Get Current Supply APR for tokens across multiple chains in specific pools.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "aprRequests": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "chainName": {
+          "type": "string",
+          "enum": [
+           "bsc",
+           "ethereum",
+           "base"
+          ]
+         },
+         "aprRequestDetails": {
+          "type": "array",
+          "items": {
+           "type": "object",
+           "properties": {
+            "tokenSymbols": {
+             "type": "array",
+             "items": {
+              "type": "string"
+             },
+             "description": "Array of token symbols"
+            },
+            "pool": {
+             "type": "string",
+             "enum": [
+              "CORE",
+              "DEFI"
+             ],
+             "description": "The Pool in which the transaction will be executed."
+            }
+           },
+           "required": [
+            "tokenSymbols",
+            "pool"
+           ],
+           "additionalProperties": false
+          }
+         }
+        },
+        "required": [
+         "chainName",
+         "aprRequestDetails"
+        ],
+        "additionalProperties": false
+       }
+      }
+     },
+     "required": [
+      "aprRequests"
+     ],
+     "additionalProperties": false
+    },
+    "outputSchema": {
+     "type": "object",
+     "anyOf": [
+      {
+       "type": "object",
+       "properties": {
+        "project": {
+         "type": "string",
+         "description": "Protocol identifier"
+        },
+        "operation": {
+         "type": "string",
+         "description": "Operation that produced this response"
+        },
+        "note": {
+         "type": "string",
+         "description": "Human-readable summary of the action"
+        },
+        "data": {
+         "type": "array",
+         "items": {
+          "anyOf": [
+           {
+            "type": "object",
+            "properties": {
+             "chain": {
+              "type": "string",
+              "description": "Chain name"
+             },
+             "pool": {
+              "type": "string",
+              "description": "Pool name"
+             },
+             "tokenAPRs": {
+              "type": "string",
+              "description": "Comma-separated token APR values"
+             },
+             "errors": {
+              "description": "Comma-separated error messages for failed tokens",
+              "type": "string"
+             }
+            },
+            "required": [
+             "chain",
+             "pool",
+             "tokenAPRs"
+            ],
+            "additionalProperties": false
+           },
+           {
+            "type": "object",
+            "properties": {
+             "chain": {
+              "description": "Chain name",
+              "type": "string"
+             },
+             "pool": {
+              "description": "Pool name",
+              "type": "string"
+             },
+             "error": {
+              "type": "string",
+              "description": "Error message"
+             }
+            },
+            "required": [
+             "error"
+            ],
+            "additionalProperties": false
+           }
+          ]
+         }
+        }
+       },
+       "required": [
+        "project",
+        "operation",
+        "data"
+       ],
+       "additionalProperties": false
+      },
+      {
+       "type": "object",
+       "properties": {
+        "project": {
+         "type": "string",
+         "description": "Protocol identifier"
+        },
+        "operation": {
+         "type": "string",
+         "description": "Operation that produced this response"
+        },
+        "error": {
+         "type": "string",
+         "description": "Error message"
+        }
+       },
+       "required": [
+        "project",
+        "operation",
+        "error"
+       ],
+       "additionalProperties": false
+      }
+     ]
+    },
+    "annotations": null
+   },
+   {
+    "name": "getAccountLiquidity",
+    "description": "Get user borrow limit and shortfall for multiple chains in a specific pool.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "chainNames": {
+       "type": "array",
+       "items": {
+        "type": "string",
+        "enum": [
+         "bsc",
+         "ethereum",
+         "base"
+        ]
+       },
+       "description": "Array of chain names"
+      },
+      "pool": {
+       "type": "string",
+       "enum": [
+        "CORE",
+        "DEFI"
+       ],
+       "description": "The Pool in which the transaction will be executed."
+      },
+      "userAddress": {
+       "type": "string",
+       "description": "The wallet address of the user"
+      }
+     },
+     "required": [
+      "chainNames",
+      "pool",
+      "userAddress"
+     ],
+     "additionalProperties": false
+    },
+    "outputSchema": {
+     "type": "object",
+     "anyOf": [
+      {
+       "type": "object",
+       "properties": {
+        "project": {
+         "type": "string",
+         "description": "Protocol identifier"
+        },
+        "operation": {
+         "type": "string",
+         "description": "Operation that produced this response"
+        },
+        "note": {
+         "type": "string",
+         "description": "Human-readable summary of the action"
+        },
+        "data": {
+         "type": "array",
+         "items": {
+          "anyOf": [
+           {
+            "type": "object",
+            "properties": {
+             "chain": {
+              "type": "string",
+              "description": "Chain name"
+             },
+             "pool": {
+              "type": "string",
+              "description": "Pool name"
+             },
+             "borrowLimit": {
+              "type": "string",
+              "description": "Available borrow limit in USD"
+             },
+             "shortfall": {
+              "type": "string",
+              "description": "Shortfall amount in USD (non-zero means liquidation risk)"
+             }
+            },
+            "required": [
+             "chain",
+             "pool",
+             "borrowLimit",
+             "shortfall"
+            ],
+            "additionalProperties": false
+           },
+           {
+            "type": "object",
+            "properties": {
+             "chain": {
+              "type": "string",
+              "description": "Chain name"
+             },
+             "pool": {
+              "description": "Pool name",
+              "type": "string"
+             },
+             "error": {
+              "type": "string",
+              "description": "Error message"
+             }
+            },
+            "required": [
+             "chain",
+             "error"
+            ],
+            "additionalProperties": false
+           }
+          ]
+         }
+        }
+       },
+       "required": [
+        "project",
+        "operation",
+        "data"
+       ],
+       "additionalProperties": false
+      },
+      {
+       "type": "object",
+       "properties": {
+        "project": {
+         "type": "string",
+         "description": "Protocol identifier"
+        },
+        "operation": {
+         "type": "string",
+         "description": "Operation that produced this response"
+        },
+        "error": {
+         "type": "string",
+         "description": "Error message"
+        }
+       },
+       "required": [
+        "project",
+        "operation",
+        "error"
+       ],
+       "additionalProperties": false
+      }
+     ]
+    },
+    "annotations": null
+   },
+   {
+    "name": "getEnabledCollateral",
+    "description": "Get all enabled collateral assets and their symbols in Venus protocol.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "chainName": {
+       "type": "string",
+       "enum": [
+        "bsc",
+        "ethereum",
+        "base"
+       ],
+       "description": "Chain name where to execute the transaction"
+      },
+      "pool": {
+       "type": "string",
+       "enum": [
+        "CORE",
+        "DEFI"
+       ],
+       "description": "The Pool in which the transaction will be executed."
+      },
+      "userAddress": {
+       "type": "string",
+       "description": "The wallet address of the user"
+      }
+     },
+     "required": [
+      "chainName",
+      "pool",
+      "userAddress"
+     ],
+     "additionalProperties": false
+    },
+    "outputSchema": {
+     "type": "object",
+     "anyOf": [
+      {
+       "type": "object",
+       "properties": {
+        "project": {
+         "type": "string",
+         "description": "Protocol identifier"
+        },
+        "operation": {
+         "type": "string",
+         "description": "Operation that produced this response"
+        },
+        "note": {
+         "type": "string",
+         "description": "Human-readable summary of the action"
+        },
+        "data": {
+         "type": "object",
+         "properties": {
+          "enabledAssets": {
+           "type": "array",
+           "items": {
+            "type": "object",
+            "properties": {
+             "symbol": {
+              "type": "string",
+              "description": "vToken symbol"
+             },
+             "address": {
+              "type": "string",
+              "description": "vToken contract address"
+             }
+            },
+            "required": [
+             "symbol",
+             "address"
+            ],
+            "additionalProperties": false
+           }
+          }
+         },
+         "required": [
+          "enabledAssets"
+         ],
+         "additionalProperties": false
+        }
+       },
+       "required": [
+        "project",
+        "operation",
+        "data"
+       ],
+       "additionalProperties": false
+      },
+      {
+       "type": "object",
+       "properties": {
+        "project": {
+         "type": "string",
+         "description": "Protocol identifier"
+        },
+        "operation": {
+         "type": "string",
+         "description": "Operation that produced this response"
+        },
+        "error": {
+         "type": "string",
+         "description": "Error message"
+        }
+       },
+       "required": [
+        "project",
+        "operation",
+        "error"
+       ],
+       "additionalProperties": false
+      }
+     ]
+    },
+    "annotations": null
+   },
+   {
+    "name": "getDescriptionVenus",
+    "description": "Get detailed information about Venus Protocol features and how to use them.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {},
+     "additionalProperties": false
+    },
+    "outputSchema": {
+     "type": "object",
+     "anyOf": [
+      {
+       "type": "object",
+       "properties": {
+        "project": {
+         "type": "string",
+         "description": "Protocol identifier"
+        },
+        "operation": {
+         "type": "string",
+         "description": "Operation that produced this response"
+        },
+        "note": {
+         "type": "string",
+         "description": "Human-readable summary of the action"
+        },
+        "data": {
+         "type": "object",
+         "properties": {
+          "description": {
+           "type": "string",
+           "description": "Detailed protocol features and usage instructions"
+          }
+         },
+         "required": [
+          "description"
+         ],
+         "additionalProperties": false
+        }
+       },
+       "required": [
+        "project",
+        "operation",
+        "data"
+       ],
+       "additionalProperties": false
+      },
+      {
+       "type": "object",
+       "properties": {
+        "project": {
+         "type": "string",
+         "description": "Protocol identifier"
+        },
+        "operation": {
+         "type": "string",
+         "description": "Operation that produced this response"
+        },
+        "error": {
+         "type": "string",
+         "description": "Error message"
+        }
+       },
+       "required": [
+        "project",
+        "operation",
+        "error"
+       ],
+       "additionalProperties": false
+      }
+     ]
+    },
+    "annotations": null
+   },
+   {
+    "name": "getSupportedTokens",
+    "description": "Get list of supported tokens for a specific pool across multiple chains.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "chainNames": {
+       "type": "array",
+       "items": {
+        "type": "string",
+        "enum": [
+         "bsc",
+         "ethereum",
+         "base"
+        ]
+       },
+       "description": "Array of chain names"
+      },
+      "pool": {
+       "type": "string",
+       "enum": [
+        "CORE",
+        "DEFI"
+       ],
+       "description": "The Pool in which the transaction will be executed."
+      }
+     },
+     "required": [
+      "chainNames",
+      "pool"
+     ],
+     "additionalProperties": false
+    },
+    "outputSchema": {
+     "type": "object",
+     "anyOf": [
+      {
+       "type": "object",
+       "properties": {
+        "project": {
+         "type": "string",
+         "description": "Protocol identifier"
+        },
+        "operation": {
+         "type": "string",
+         "description": "Operation that produced this response"
+        },
+        "note": {
+         "type": "string",
+         "description": "Human-readable summary of the action"
+        },
+        "data": {
+         "type": "array",
+         "items": {
+          "anyOf": [
+           {
+            "type": "object",
+            "properties": {
+             "chain": {
+              "type": "string",
+              "description": "Chain name"
+             },
+             "tokens": {
+              "type": "array",
+              "items": {
+               "type": "string"
+              },
+              "description": "Supported token symbols"
+             }
+            },
+            "required": [
+             "chain",
+             "tokens"
+            ],
+            "additionalProperties": false
+           },
+           {
+            "type": "object",
+            "properties": {
+             "chain": {
+              "type": "string",
+              "description": "Chain name"
+             },
+             "error": {
+              "type": "string",
+              "description": "Error message"
+             }
+            },
+            "required": [
+             "chain",
+             "error"
+            ],
+            "additionalProperties": false
+           }
+          ]
+         }
+        }
+       },
+       "required": [
+        "project",
+        "operation",
+        "data"
+       ],
+       "additionalProperties": false
+      },
+      {
+       "type": "object",
+       "properties": {
+        "project": {
+         "type": "string",
+         "description": "Protocol identifier"
+        },
+        "operation": {
+         "type": "string",
+         "description": "Operation that produced this response"
+        },
+        "error": {
+         "type": "string",
+         "description": "Error message"
+        }
+       },
+       "required": [
+        "project",
+        "operation",
+        "error"
+       ],
+       "additionalProperties": false
+      }
+     ]
+    },
+    "annotations": null
+   },
+   {
+    "name": "updateToken",
+    "description": "Update the exchange rate, borrow balance (debt) and borrow limit for tokens in Venus protocol.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "chainName": {
+       "type": "string",
+       "enum": [
+        "bsc",
+        "ethereum",
+        "base"
+       ],
+       "description": "Chain name where to execute the transaction"
+      },
+      "tokenSymbols": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       },
+       "description": "Array of token symbols"
+      },
+      "pool": {
+       "type": "string",
+       "enum": [
+        "CORE",
+        "DEFI"
+       ],
+       "description": "The Pool in which the transaction will be executed."
+      },
+      "userAddress": {
+       "type": "string",
+       "description": "The wallet address of the user"
+      }
+     },
+     "required": [
+      "chainName",
+      "tokenSymbols",
+      "pool",
+      "userAddress"
+     ],
+     "additionalProperties": false
+    },
+    "outputSchema": {
+     "type": "object",
+     "anyOf": [
+      {
+       "type": "object",
+       "properties": {
+        "project": {
+         "type": "string",
+         "description": "Protocol identifier"
+        },
+        "operation": {
+         "type": "string",
+         "description": "Operation that produced this response"
+        },
+        "note": {
+         "type": "string",
+         "description": "Human-readable summary of the action"
+        },
+        "transactions": {
+         "type": "array",
+         "items": {
+          "type": "object",
+          "properties": {
+           "chainId": {
+            "type": "number",
+            "description": "EVM chain ID"
+           },
+           "transaction": {
+            "type": "object",
+            "properties": {
+             "target": {
+              "type": "string",
+              "description": "Target contract address"
+             },
+             "data": {
+              "type": "string",
+              "description": "ABI-encoded calldata"
+             },
+             "value": {
+              "description": "Native token value in wei",
+              "type": "string"
+             }
+            },
+            "required": [
+             "target",
+             "data"
+            ],
+            "additionalProperties": false,
+            "description": "EVM transaction parameters"
+           }
+          },
+          "required": [
+           "chainId",
+           "transaction"
+          ],
+          "additionalProperties": false
+         },
+         "description": "EVM transactions to sign and broadcast"
+        }
+       },
+       "required": [
+        "project",
+        "operation",
+        "transactions"
+       ],
+       "additionalProperties": false
+      },
+      {
+       "type": "object",
+       "properties": {
+        "project": {
+         "type": "string",
+         "description": "Protocol identifier"
+        },
+        "operation": {
+         "type": "string",
+         "description": "Operation that produced this response"
+        },
+        "error": {
+         "type": "string",
+         "description": "Error message"
+        }
+       },
+       "required": [
+        "project",
+        "operation",
+        "error"
+       ],
+       "additionalProperties": false
+      }
+     ]
+    },
+    "annotations": null
+   },
+   {
+    "name": "getSupportedChains",
+    "description": "Get a list of blockchain networks supported by the Venus",
+    "inputSchema": {
+     "type": "object",
+     "properties": {},
+     "additionalProperties": false
+    },
+    "outputSchema": {
+     "type": "object",
+     "anyOf": [
+      {
+       "type": "object",
+       "properties": {
+        "project": {
+         "type": "string",
+         "description": "Protocol identifier"
+        },
+        "operation": {
+         "type": "string",
+         "description": "Operation that produced this response"
+        },
+        "note": {
+         "type": "string",
+         "description": "Human-readable summary of the action"
+        },
+        "data": {
+         "type": "object",
+         "properties": {
+          "supportedChains": {
+           "type": "array",
+           "items": {
+            "type": "string"
+           },
+           "description": "List of supported chain names"
+          }
+         },
+         "required": [
+          "supportedChains"
+         ],
+         "additionalProperties": false
+        }
+       },
+       "required": [
+        "project",
+        "operation",
+        "data"
+       ],
+       "additionalProperties": false
+      },
+      {
+       "type": "object",
+       "properties": {
+        "project": {
+         "type": "string",
+         "description": "Protocol identifier"
+        },
+        "operation": {
+         "type": "string",
+         "description": "Operation that produced this response"
+        },
+        "error": {
+         "type": "string",
+         "description": "Error message"
+        }
+       },
+       "required": [
+        "project",
+        "operation",
+        "error"
+       ],
+       "additionalProperties": false
+      }
+     ]
+    },
+    "annotations": null
+   }
+  ],
+  "reason": null
+ },
+ "registry": null,
+ "auth": {
+  "required": false,
+  "status": 201,
+  "scheme": null,
+  "hop": "initialize"
+ },
+ "rate_limit": null
+}

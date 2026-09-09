@@ -1,0 +1,121 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:a2a:v1",
+ "subject_url": "https://bnb-yield.172-104-171-139.nip.io/mcp/",
+ "probed_at": "2026-09-09T09:40:27Z",
+ "discovery": {
+  "ok": true,
+  "url": "https://bnb-yield.172-104-171-139.nip.io/.well-known/agent-card.json",
+  "path": "/.well-known/agent-card.json",
+  "outcome": "card",
+  "attempts": [
+   {
+    "url": "https://bnb-yield.172-104-171-139.nip.io/mcp/",
+    "path": "/mcp/",
+    "kind": "declared",
+    "outcome": "not_a_card",
+    "status": 406,
+    "contentType": "application/json",
+    "reason": "HTTP 406",
+    "elapsedMs": 1198
+   },
+   {
+    "url": "https://bnb-yield.172-104-171-139.nip.io/.well-known/agent-card.json",
+    "path": "/.well-known/agent-card.json",
+    "kind": "well-known",
+    "outcome": "card",
+    "status": 200,
+    "contentType": "application/json",
+    "reason": null,
+    "elapsedMs": 945
+   }
+  ],
+  "reason": null,
+  "elapsedMs": 2143
+ },
+ "declaration": {
+  "ok": true,
+  "name": "BNB Yield Optimizer",
+  "description": "Scans BSC lending and liquidity protocols, calculates risk-adjusted yield, and migrates capital when the improvement is economically meaningful.",
+  "version": "0.1.0",
+  "protocolVersion": null,
+  "provider": "BNB Yield Optimizer",
+  "documentationUrl": null,
+  "capabilities": {
+   "streaming": false,
+   "pushNotifications": false,
+   "stateTransitionHistory": null,
+   "extensions": 0,
+   "raw": {
+    "streaming": false,
+    "pushNotifications": false
+   }
+  },
+  "skills": [
+   {
+    "id": "negotiate",
+    "name": "negotiate",
+    "description": "Quote a price for a risk-adjusted BSC yield analysis. Returns the provider address to assign an ERC-8183 job to, and the budget it must be funded with. Rule-based: the price is a fixed list price, never model-derived.",
+    "tags": [
+     "erc8183",
+     "commerce",
+     "defi",
+     "yield"
+    ],
+    "examples": [
+     "{\"skill\": \"negotiate\", \"description\": \"scan BSC yields\"}"
+    ],
+    "inputModes": [
+     "application/json"
+    ],
+    "outputModes": [
+     "application/json"
+    ]
+   },
+   {
+    "id": "notify_funded",
+    "name": "notify_funded",
+    "description": "Tell the agent an ERC-8183 job has been funded on-chain. The job is re-verified against the chain before any work begins; the deliverable is then produced, pinned to IPFS, and its hash submitted on-chain.",
+    "tags": [
+     "erc8183",
+     "commerce",
+     "delivery"
+    ],
+    "examples": [
+     "{\"skill\": \"notify_funded\", \"job_id\": 42}"
+    ],
+    "inputModes": [
+     "application/json"
+    ],
+    "outputModes": [
+     "application/json"
+    ]
+   }
+  ],
+  "skillCount": 2,
+  "interfaces": [
+   {
+    "url": "http://bnb-yield.172-104-171-139.nip.io/a2a",
+    "transport": "jsonrpc",
+    "protocolVersion": "0.3.0",
+    "source": "supportedInterfaces"
+   }
+  ],
+  "securitySchemes": [],
+  "missingRequired": [],
+  "reason": null
+ },
+ "reachability": {
+  "ok": true,
+  "url": "http://bnb-yield.172-104-171-139.nip.io/a2a",
+  "verdict": "speaks_a2a",
+  "status": 200,
+  "method": "tasks/get",
+  "rpcErrorCode": -32602,
+  "rpcErrorMessage": "unknown task: 00000000-0000-4000-8000-000000000000",
+  "reason": null,
+  "elapsedMs": 1146
+ },
+ "registry": null,
+ "gaps": []
+}

@@ -1,0 +1,40 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:a2a:v1",
+ "subject_url": "https://cm-5268dad98979f28b-site-3dac75464188.bubbleupdappos.workers.dev/.well-known/agent-card.json",
+ "probed_at": "2026-09-09T09:27:51Z",
+ "discovery": {
+  "ok": false,
+  "url": null,
+  "path": null,
+  "outcome": "absent",
+  "attempts": [
+   {
+    "url": "https://cm-5268dad98979f28b-site-3dac75464188.bubbleupdappos.workers.dev/.well-known/agent-card.json",
+    "path": "/.well-known/agent-card.json",
+    "kind": "declared",
+    "outcome": "absent",
+    "status": 404,
+    "contentType": "text/plain; charset=UTF-8",
+    "reason": "no card at this path (HTTP 404)",
+    "elapsedMs": 879
+   },
+   {
+    "url": "https://cm-5268dad98979f28b-site-3dac75464188.bubbleupdappos.workers.dev/.well-known/agent.json",
+    "path": "/.well-known/agent.json",
+    "kind": "well-known",
+    "outcome": "absent",
+    "status": 404,
+    "contentType": "text/plain; charset=UTF-8",
+    "reason": "no card at this path (HTTP 404)",
+    "elapsedMs": 1028
+   }
+  ],
+  "reason": "no card at this path (HTTP 404)",
+  "elapsedMs": 1907
+ },
+ "declaration": null,
+ "reachability": null,
+ "registry": null,
+ "gaps": []
+}

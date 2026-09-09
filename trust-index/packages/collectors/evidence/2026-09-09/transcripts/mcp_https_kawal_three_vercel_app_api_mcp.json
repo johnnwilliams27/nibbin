@@ -1,0 +1,344 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:mcp:v1",
+ "endpoint": "https://kawal-three.vercel.app/api/mcp",
+ "probed_at": "2026-09-09T09:27:06Z",
+ "attempts": [
+  {
+   "attempt": 1,
+   "ts": "2026-09-09T09:27:06Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 1555
+  },
+  {
+   "attempt": 2,
+   "ts": "2026-09-09T09:27:20Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 2451
+  },
+  {
+   "attempt": 3,
+   "ts": "2026-09-09T09:27:23Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 358
+  }
+ ],
+ "handshake": {
+  "ok": true,
+  "protocolVersion": "2025-06-18",
+  "serverName": "kawal",
+  "serverVersion": "0.1.0",
+  "instructions": "Kawal reports evidence it gathered itself. find_agents searches by problem; verify_agent dials an agent now; compare_agents asks the same questions of up to three; uptime_history reads every probe kept; read_reputation says who wrote an agent's feedback; check_payment asks whether it really charges; agents_by_owner dials everything one wallet minted; plan_mandate turns capital into four bounded seats without granting them; deep_report is the paid whole. The prompt hire_under_cap walks find, verify, compare, plan in order. Nothing here repeats a registry claim without saying so.",
+  "reason": null
+ },
+ "tools": {
+  "ok": true,
+  "declared": [
+   {
+    "name": "verify_agent",
+    "description": "Call an agent's declared endpoint right now and report what answered. This is a live handshake made by Kawal, not a reading of the registry: an agent whose registration declares MCP but whose endpoint is gone is reported as not answering. Returns the hireability tier and the evidence behind it, including how many times Kawal has reached this endpoint before.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "chainId": {
+       "type": "number",
+       "description": "Chain id. One of 56, 97. Defaults to 56."
+      },
+      "tokenId": {
+       "type": "string",
+       "description": "ERC-8004 token id, decimal digits."
+      }
+     },
+     "required": [
+      "tokenId"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": {
+     "title": "Verify an agent by calling it",
+     "readOnlyHint": true,
+     "destructiveHint": false,
+     "idempotentHint": true,
+     "openWorldHint": true
+    }
+   },
+   {
+    "name": "check_payment",
+    "description": "Send the opening request of the x402 protocol — no payment header — and report whether the server actually demands payment. `x402_supported` on the registry is a flag a registration sets about itself; this is the answer to asking. Kawal never settles a payment, so the price is quoted in the server's own words and nothing moves.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "chainId": {
+       "type": "number",
+       "description": "Chain id. One of 56, 97. Defaults to 56."
+      },
+      "tokenId": {
+       "type": "string",
+       "description": "ERC-8004 token id, decimal digits."
+      }
+     },
+     "required": [
+      "tokenId"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": {
+     "title": "Ask whether an agent really charges",
+     "readOnlyHint": true,
+     "destructiveHint": false,
+     "idempotentHint": true,
+     "openWorldHint": true
+    }
+   },
+   {
+    "name": "read_reputation",
+    "description": "Report who wrote an agent's ERC-8004 feedback, not how much of it there is. A sample of 1,200 BSC records came from 53 addresses, one of which wrote 265 of the oldest 600, so a count of records is a count of writes rather than of opinions. Returns how many carry a mark, how many distinct addresses wrote them, and what share came from the busiest one.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "chainId": {
+       "type": "number",
+       "description": "Chain id. One of 56, 97. Defaults to 56."
+      },
+      "tokenId": {
+       "type": "string",
+       "description": "ERC-8004 token id, decimal digits."
+      }
+     },
+     "required": [
+      "tokenId"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": {
+     "title": "Who wrote an agent's feedback",
+     "readOnlyHint": true,
+     "destructiveHint": false,
+     "idempotentHint": true,
+     "openWorldHint": true
+    }
+   },
+   {
+    "name": "find_agents",
+    "description": "Search the BSC roster by describing the problem rather than naming a product, and get back agents ranked with Kawal's evidence attached. Duplicate registrations are collapsed: roughly two thirds of the newest registrations are copies of a template, and returning all of them would be returning the same agent many times. With `trending`, the list is instead what 8004scan's visitors looked at most over that window — attention, not evidence — each entry carrying the tier Kawal's own record gives it, which is where the two disagree.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "query": {
+       "type": "string",
+       "description": "What you need done, in plain words. Optional when `trending` is given; then it filters the trending list by name or description."
+      },
+      "trending": {
+       "type": "string",
+       "enum": [
+        "24h",
+        "7d",
+        "30d"
+       ],
+       "description": "Return 8004scan's trending agents for this window instead of a search, in the registry's order."
+      },
+      "limit": {
+       "type": "number",
+       "description": "How many to return, at most 20."
+      },
+      "chainId": {
+       "type": "number",
+       "description": "Chain id. One of 56, 97. Defaults to 56."
+      }
+     }
+    },
+    "outputSchema": null,
+    "annotations": {
+     "title": "Search the roster by problem",
+     "readOnlyHint": true,
+     "destructiveHint": false,
+     "idempotentHint": true,
+     "openWorldHint": true
+    }
+   },
+   {
+    "name": "agents_by_owner",
+    "description": "List the agents one wallet registered on BSC and call each of their declared endpoints now. Nothing on the chain tells an owner their endpoint went dark — the registry keeps listing it — so this is the answer to \"is my agent still answering?\": what answered, how each failure looks, and every probe Kawal kept. At most 12 agents are dialled, so a large owner sees the first page.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "owner": {
+       "type": "string",
+       "description": "The wallet that minted the registrations: 0x followed by forty hex characters. `address` is accepted as an alias."
+      },
+      "chainId": {
+       "type": "number",
+       "description": "Chain id. One of 56, 97. Defaults to 56."
+      }
+     },
+     "required": [
+      "owner"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": {
+     "title": "Every agent an address minted, called now",
+     "readOnlyHint": true,
+     "destructiveHint": false,
+     "idempotentHint": true,
+     "openWorldHint": true
+    }
+   },
+   {
+    "name": "compare_agents",
+    "description": "Put two or three agents side by side and answer the same questions of each — the ones a buyer weighs before handing over a spend cap: can it be hired, does it answer right now, has it kept answering, what does it offer, what does it say it costs, does its domain verify, what is its track record, what is flagged against it, and when it was registered. Each agent is dialled for this call. No combined score: the disagreements are the point.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "agents": {
+       "type": "array",
+       "description": "One to 3 agents to compare.",
+       "minItems": 1,
+       "maxItems": 3,
+       "items": {
+        "type": "object",
+        "properties": {
+         "chainId": {
+          "type": "number",
+          "description": "Chain id. One of 56, 97. Defaults to 56."
+         },
+         "tokenId": {
+          "type": "string",
+          "description": "ERC-8004 token id, decimal digits."
+         }
+        },
+        "required": [
+         "tokenId"
+        ]
+       }
+      }
+     },
+     "required": [
+      "agents"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": {
+     "title": "The same questions of two or three agents",
+     "readOnlyHint": true,
+     "destructiveHint": false,
+     "idempotentHint": true,
+     "openWorldHint": true
+    }
+   },
+   {
+    "name": "uptime_history",
+    "description": "Read the history Kawal keeps of one agent's endpoint without dialling it: how many times it was called, how many times it answered in the protocol it declared, since when, and the median and worst latency of the answering calls. This is the record the registry does not have. Null when Kawal has never called this endpoint; verify_agent makes the first call.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "chainId": {
+       "type": "number",
+       "description": "Chain id. One of 56, 97. Defaults to 56."
+      },
+      "tokenId": {
+       "type": "string",
+       "description": "ERC-8004 token id, decimal digits."
+      }
+     },
+     "required": [
+      "tokenId"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": {
+     "title": "Every probe Kawal has made of an agent",
+     "readOnlyHint": true,
+     "destructiveHint": false,
+     "idempotentHint": true,
+     "openWorldHint": true
+    }
+   },
+   {
+    "name": "plan_mandate",
+    "description": "Turn a capital amount and a duration into the four scoped sessions Kawal would grant on Altana — one per seat, each with its own contract allowlist, spend cap and expiry — without granting anything. Pure arithmetic over the venue table: the same plan the mandate form shows, and the same refusals, since a plan that would widen authority (an unproven venue, an empty allowlist, caps that overcommit) is refused rather than built.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "capitalUsdt": {
+       "type": "number",
+       "description": "Capital to entrust, in USDT. Positive, at most 1000000000000.",
+       "exclusiveMinimum": 0,
+       "maximum": 1000000000000
+      },
+      "days": {
+       "type": "integer",
+       "description": "How long the mandate runs, in whole days. 1 to 365.",
+       "minimum": 1,
+       "maximum": 365
+      },
+      "chainId": {
+       "type": "number",
+       "description": "Chain id. One of 56, 97. Defaults to 56."
+      }
+     },
+     "required": [
+      "capitalUsdt",
+      "days"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": {
+     "title": "Plan four bounded seats for a capital amount",
+     "readOnlyHint": true,
+     "destructiveHint": false,
+     "idempotentHint": true,
+     "openWorldHint": false
+    }
+   },
+   {
+    "name": "deep_report",
+    "description": "Everything Kawal holds about one agent in a single answer: the live handshake, the full probe history, how the endpoint fails when it fails, whether it really charges, and who wrote its feedback. This one costs money. Kawal measured that 75 of 200 BSC registrations declare x402 support and that none of the reachable ones ever asks to be paid; this is the counter-example. Calling it without payment returns the terms rather than the report. Pay the terms with a plain BNB transfer and call again with `txHash`; the receipt is read on-chain and spent once.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "chainId": {
+       "type": "number",
+       "description": "Chain id. One of 56, 97. Defaults to 56."
+      },
+      "tokenId": {
+       "type": "string",
+       "description": "ERC-8004 token id, decimal digits."
+      },
+      "txHash": {
+       "type": "string",
+       "description": "Hash of the BNB transfer that paid the terms: 0x followed by 64 hex characters. Omit to receive the terms.",
+       "pattern": "^0x[0-9a-fA-F]{64}$"
+      }
+     },
+     "required": [
+      "tokenId"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": {
+     "title": "Everything Kawal holds about one agent (paid)",
+     "readOnlyHint": false,
+     "destructiveHint": false,
+     "idempotentHint": false,
+     "openWorldHint": true
+    }
+   }
+  ],
+  "reason": null
+ },
+ "registry": null,
+ "auth": {
+  "required": false,
+  "status": 200,
+  "scheme": null,
+  "hop": "initialize"
+ },
+ "rate_limit": null
+}

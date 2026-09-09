@@ -1,0 +1,49 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:mcp:v1",
+ "endpoint": "https://api.githubcopilot.com/mcp",
+ "probed_at": "2026-09-09T09:27:06Z",
+ "attempts": [
+  {
+   "attempt": 1,
+   "ts": "2026-09-09T09:27:06Z",
+   "reachable": true,
+   "status": 401,
+   "reason": null,
+   "elapsedMs": 3081
+  },
+  {
+   "attempt": 2,
+   "ts": "2026-09-09T09:27:09Z",
+   "reachable": true,
+   "status": 401,
+   "reason": null,
+   "elapsedMs": 5552
+  },
+  {
+   "attempt": 3,
+   "ts": "2026-09-09T09:27:15Z",
+   "reachable": true,
+   "status": 401,
+   "reason": null,
+   "elapsedMs": 6491
+  }
+ ],
+ "handshake": {
+  "ok": false,
+  "protocolVersion": null,
+  "serverName": null,
+  "serverVersion": null,
+  "instructions": null,
+  "reason": "authentication required (HTTP 401)"
+ },
+ "tools": null,
+ "registry": null,
+ "auth": {
+  "required": true,
+  "status": 401,
+  "scheme": "Bearer error=\"invalid_request\", error_description=\"No access token was provided in this request\", resource_metadata=\"https://api.githubcopilot.com/.well-known/oauth-protected-resource/mcp\"",
+  "hop": "initialize"
+ },
+ "rate_limit": null
+}

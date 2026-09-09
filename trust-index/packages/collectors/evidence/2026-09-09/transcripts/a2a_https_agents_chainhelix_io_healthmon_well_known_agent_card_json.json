@@ -1,0 +1,225 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:a2a:v1",
+ "subject_url": "https://agents.chainhelix.io/healthmon/.well-known/agent-card.json",
+ "probed_at": "2026-09-09T09:40:27Z",
+ "discovery": {
+  "ok": true,
+  "url": "https://agents.chainhelix.io/healthmon/.well-known/agent-card.json",
+  "path": "/healthmon/.well-known/agent-card.json",
+  "outcome": "card",
+  "attempts": [
+   {
+    "url": "https://agents.chainhelix.io/healthmon/.well-known/agent-card.json",
+    "path": "/healthmon/.well-known/agent-card.json",
+    "kind": "declared",
+    "outcome": "card",
+    "status": 200,
+    "contentType": "application/json; charset=utf-8",
+    "reason": null,
+    "elapsedMs": 921
+   }
+  ],
+  "reason": null,
+  "elapsedMs": 921
+ },
+ "declaration": {
+  "ok": true,
+  "name": "healthmon-agent",
+  "description": "healthmon-agent: deterministic on-chain work, sold per job through ERC-8183 escrow (negotiate + notify_funded over A2A) and per call on the B402 rail (/x402). The work skill on this card states exactly what a job must contain.",
+  "version": "1.0.0",
+  "protocolVersion": "0.3.0",
+  "provider": null,
+  "documentationUrl": null,
+  "capabilities": {
+   "streaming": false,
+   "pushNotifications": null,
+   "stateTransitionHistory": null,
+   "extensions": 1,
+   "raw": {
+    "streaming": false,
+    "extensions": [
+     {
+      "uri": "https://agents.chainhelix.io/ext/skill-input-schema/v1",
+      "description": "JSON Schema (draft 2020-12) of the task_description each work skill accepts, keyed by skill id",
+      "required": false,
+      "params": {
+       "health": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "title": "health task_description",
+        "description": "One question per job: lending health (collateral, debt, prices) or LP range health (position).",
+        "type": "object",
+        "properties": {
+         "collateral": {
+          "type": "object",
+          "additionalProperties": {
+           "type": "object",
+           "properties": {
+            "amount": {
+             "type": "number"
+            },
+            "liqThreshold": {
+             "type": "number"
+            }
+           },
+           "required": [
+            "amount",
+            "liqThreshold"
+           ]
+          },
+          "description": "liqThreshold in (0, 1]; required unless `position` is sent (also accepted as: collaterals, supplied, deposits)"
+         },
+         "debt": {
+          "type": "object",
+          "additionalProperties": {
+           "type": "number"
+          },
+          "description": "outstanding debt per symbol; required unless `position` is sent (also accepted as: debts, borrowed, borrows, loans)"
+         },
+         "prices": {
+          "type": "object",
+          "additionalProperties": {
+           "type": "number"
+          },
+          "description": "a mark for every collateral and debt symbol (also accepted as: marks, quotes, pricesUsd)"
+         },
+         "alertHF": {
+          "type": "number",
+          "description": "warning level, default 1.5"
+         },
+         "criticalHF": {
+          "type": "number",
+          "description": "critical level, must be below alertHF, default 1.1"
+         },
+         "position": {
+          "type": "object",
+          "properties": {
+           "price": {
+            "type": "number"
+           },
+           "lowerPrice": {
+            "type": "number"
+           },
+           "upperPrice": {
+            "type": "number"
+           }
+          },
+          "required": [
+           "price",
+           "lowerPrice",
+           "upperPrice"
+          ],
+          "description": "PancakeSwap v3 LP range health instead of lending health (do not send with collateral or debt); optional nearEdgePct, feesEarnedUsd, positionValueUsd, ageDays; returns range status, distance to each edge, position inside the band and the fee run-rate (also accepted as: lpPosition, range)"
+         },
+         "walls": {
+          "type": "object",
+          "additionalProperties": {
+           "type": "number"
+          },
+          "description": "with position only: strong levels keyed by price, each range edge is annotated with the nearest one"
+         }
+        },
+        "required": [],
+        "anyOf": [
+         {
+          "required": [
+           "collateral",
+           "debt",
+           "prices"
+          ]
+         },
+         {
+          "required": [
+           "position"
+          ]
+         }
+        ],
+        "additionalProperties": true
+       }
+      }
+     }
+    ]
+   }
+  },
+  "skills": [
+   {
+    "id": "health",
+    "name": "Position health report",
+    "description": "Lending health: given collateral rows with liquidation thresholds, debt and prices, returns the health factor, its status (healthy, warning, critical, liquidatable) and per-asset liquidation prices with drop distances. LP range health: send `position` {price, lowerPrice, upperPrice} instead of collateral and debt. One question per job. Deterministic arithmetic, no custody, no execution. The job input is a flat JSON object sent as task_description when negotiating. It is anchored on chain as the job task and answered as sent. Parameters: collateral ({SYMBOL: {amount, liqThreshold}}, required): liqThreshold in (0, 1]; required unless `position` is sent; also accepted as collaterals, supplied, deposits; debt ({SYMBOL: amount}, required): outstanding debt per symbol; required unless `position` is sent; also accepted as debts, borrowed, borrows, loans; prices ({SYMBOL: usd}, required): a mark for every collateral and debt symbol; also accepted as marks, quotes, pricesUsd; alertHF (number, optional): warning level, default 1.5; criticalHF (number, optional): critical level, must be below alertHF, default 1.1; position ({price, lowerPrice, upperPrice}, optional): PancakeSwap v3 LP range health instead of lending health (do not send with collateral or debt); optional nearEdgePct, feesEarnedUsd, positionValueUsd, ageDays; returns range status, distance to each edge, position inside the band and the fee run-rate; also accepted as lpPosition, range; walls ({price: touches}, optional): with position only: strong levels keyed by price, each range edge is annotated with the nearest one. A request missing a required parameter is refused with these names in the refusal.",
+    "tags": [
+     "health",
+     "liquidation",
+     "deterministic"
+    ],
+    "examples": [
+     "{\"collateral\":{\"ETH\":{\"amount\":10,\"liqThreshold\":0.8}},\"debt\":{\"USDT\":10000},\"prices\":{\"ETH\":2000,\"USDT\":1}}"
+    ],
+    "inputModes": [
+     "application/json"
+    ],
+    "outputModes": [
+     "application/json"
+    ]
+   },
+   {
+    "id": "negotiate",
+    "name": "Negotiate an ERC-8183 job",
+    "description": "Send a data part {\"skill\": \"negotiate\", \"task_description\": \"<the job spec as the flat JSON object shown in the work skill's examples>\", \"terms\": {\"deliverables\": \"...\", \"quality_standards\": \"...\"}} (both terms keys are REQUIRED) and receive a wallet-signed price quote (price, currency, negotiation_hash, provider_sig). Anchor the returned envelope on-chain via createJob + fund, then send the `notify_funded` skill with the job_id to request delivery.",
+    "tags": [
+     "erc8183",
+     "negotiation",
+     "bnb-chain"
+    ],
+    "examples": [],
+    "inputModes": [
+     "application/json"
+    ],
+    "outputModes": [
+     "application/json"
+    ]
+   },
+   {
+    "id": "notify_funded",
+    "name": "Notify the seller a job is funded (request delivery)",
+    "description": "After you fund the job on-chain, send {\"skill\": \"notify_funded\", \"job_id\": <int>} to tell the seller \"I funded job X, please deliver\". The seller verifies the funded job carries its signed quote and replies AT ONCE with {\"status\": \"accepted\"|\"rejected\", \"job_id\"}; delivery then runs in the background (work takes time). Do NOT wait on this call for the result; read the deliverable back from the CHAIN once the job reaches SUBMITTED (the `submit` tx carries the deliverable_url; ERC-8183 `get_deliverable_url`). The agent serves no job-query endpoint.",
+    "tags": [
+     "erc8183",
+     "delivery",
+     "bnb-chain"
+    ],
+    "examples": [],
+    "inputModes": [
+     "application/json"
+    ],
+    "outputModes": [
+     "application/json"
+    ]
+   }
+  ],
+  "skillCount": 3,
+  "interfaces": [
+   {
+    "url": "https://agents.chainhelix.io/healthmon/",
+    "transport": "JSONRPC",
+    "protocolVersion": "0.3.0",
+    "source": "url"
+   }
+  ],
+  "securitySchemes": [],
+  "missingRequired": [],
+  "reason": null
+ },
+ "reachability": {
+  "ok": true,
+  "url": "https://agents.chainhelix.io/healthmon/",
+  "verdict": "speaks_a2a",
+  "status": 200,
+  "method": "tasks/get",
+  "rpcErrorCode": -32001,
+  "rpcErrorMessage": "Task not found: 00000000-0000-4000-8000-000000000000",
+  "reason": null,
+  "elapsedMs": 570
+ },
+ "registry": null,
+ "gaps": []
+}

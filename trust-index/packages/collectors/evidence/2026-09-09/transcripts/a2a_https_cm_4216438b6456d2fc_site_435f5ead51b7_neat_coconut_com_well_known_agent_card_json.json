@@ -1,0 +1,45 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:a2a:v1",
+ "subject_url": "https://cm-4216438b6456d2fc-site-435f5ead51b7.neat-coconut.com/.well-known/agent-card.json",
+ "probed_at": "2026-09-09T09:27:51Z",
+ "discovery": {
+  "ok": false,
+  "url": null,
+  "path": null,
+  "outcome": "unmeasured",
+  "attempts": [
+   {
+    "url": "https://cm-4216438b6456d2fc-site-435f5ead51b7.neat-coconut.com/.well-known/agent-card.json",
+    "path": "/.well-known/agent-card.json",
+    "kind": "declared",
+    "outcome": "unmeasured",
+    "status": 503,
+    "contentType": "text/plain",
+    "reason": "server error (HTTP 503) — could not measure",
+    "elapsedMs": 5728
+   },
+   {
+    "url": "https://cm-4216438b6456d2fc-site-435f5ead51b7.neat-coconut.com/.well-known/agent.json",
+    "path": "/.well-known/agent.json",
+    "kind": "well-known",
+    "outcome": "unmeasured",
+    "status": null,
+    "contentType": null,
+    "reason": "the request exceeded its deadline",
+    "elapsedMs": 15002
+   }
+  ],
+  "reason": "server error (HTTP 503) — could not measure",
+  "elapsedMs": 20730
+ },
+ "declaration": null,
+ "reachability": null,
+ "registry": null,
+ "gaps": [
+  {
+   "tier": "discovery",
+   "reason": "server error (HTTP 503) — could not measure"
+  }
+ ]
+}

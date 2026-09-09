@@ -1,0 +1,259 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:a2a:v1",
+ "subject_url": "https://kawal-three.vercel.app/.well-known/agent-card.json",
+ "probed_at": "2026-09-09T09:27:51Z",
+ "discovery": {
+  "ok": true,
+  "url": "https://kawal-three.vercel.app/.well-known/agent-card.json",
+  "path": "/.well-known/agent-card.json",
+  "outcome": "card",
+  "attempts": [
+   {
+    "url": "https://kawal-three.vercel.app/.well-known/agent-card.json",
+    "path": "/.well-known/agent-card.json",
+    "kind": "declared",
+    "outcome": "card",
+    "status": 200,
+    "contentType": "application/json",
+    "reason": null,
+    "elapsedMs": 372
+   }
+  ],
+  "reason": null,
+  "elapsedMs": 372
+ },
+ "declaration": {
+  "ok": true,
+  "name": "Kawal",
+  "description": "Evidence about ERC-8004 agents on BNB Smart Chain, gathered by calling them. Kawal dials a declared endpoint and reports whether it answered, asks an agent that claims x402 whether it really charges, and reads who wrote its feedback. Nothing here repeats a registry claim without saying so. The same skills are served over MCP at /api/mcp. message/stream narrates a skill as task events and the task is gone once the stream closes; there is no authenticated card, the public one is complete.",
+  "version": "0.1.0",
+  "protocolVersion": "0.3.0",
+  "provider": "Kawal",
+  "documentationUrl": null,
+  "capabilities": {
+   "streaming": true,
+   "pushNotifications": false,
+   "stateTransitionHistory": false,
+   "extensions": 0,
+   "raw": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": false
+   }
+  },
+  "skills": [
+   {
+    "id": "verify_agent",
+    "name": "verify agent",
+    "description": "Call an agent's declared endpoint right now and report what answered. This is a live handshake made by Kawal, not a reading of the registry: an agent whose registration declares MCP but whose endpoint is gone is reported as not answering. Returns the hireability tier and the evidence behind it, including how many times Kawal has reached this endpoint before.",
+    "tags": [
+     "erc-8004",
+     "bnb-chain",
+     "verification"
+    ],
+    "examples": [
+     "{\"skill\":\"verify_agent\",\"tokenId\":\"43129\"}"
+    ],
+    "inputModes": [
+     "application/json",
+     "text/plain"
+    ],
+    "outputModes": [
+     "application/json"
+    ]
+   },
+   {
+    "id": "check_payment",
+    "name": "check payment",
+    "description": "Send the opening request of the x402 protocol — no payment header — and report whether the server actually demands payment. `x402_supported` on the registry is a flag a registration sets about itself; this is the answer to asking. Kawal never settles a payment, so the price is quoted in the server's own words and nothing moves.",
+    "tags": [
+     "erc-8004",
+     "bnb-chain",
+     "verification"
+    ],
+    "examples": [
+     "{\"skill\":\"check_payment\",\"tokenId\":\"43129\"}"
+    ],
+    "inputModes": [
+     "application/json",
+     "text/plain"
+    ],
+    "outputModes": [
+     "application/json"
+    ]
+   },
+   {
+    "id": "read_reputation",
+    "name": "read reputation",
+    "description": "Report who wrote an agent's ERC-8004 feedback, not how much of it there is. A sample of 1,200 BSC records came from 53 addresses, one of which wrote 265 of the oldest 600, so a count of records is a count of writes rather than of opinions. Returns how many carry a mark, how many distinct addresses wrote them, and what share came from the busiest one.",
+    "tags": [
+     "erc-8004",
+     "bnb-chain",
+     "verification"
+    ],
+    "examples": [
+     "{\"skill\":\"read_reputation\",\"tokenId\":\"43129\"}"
+    ],
+    "inputModes": [
+     "application/json",
+     "text/plain"
+    ],
+    "outputModes": [
+     "application/json"
+    ]
+   },
+   {
+    "id": "find_agents",
+    "name": "find agents",
+    "description": "Search the BSC roster by describing the problem rather than naming a product, and get back agents ranked with Kawal's evidence attached. Duplicate registrations are collapsed: roughly two thirds of the newest registrations are copies of a template, and returning all of them would be returning the same agent many times. With `trending`, the list is instead what 8004scan's visitors looked at most over that window — attention, not evidence — each entry carrying the tier Kawal's own record gives it, which is where the two disagree.",
+    "tags": [
+     "erc-8004",
+     "bnb-chain",
+     "verification"
+    ],
+    "examples": [
+     "{\"skill\":\"find_agents\",\"query\":\"watch my lending position\"}"
+    ],
+    "inputModes": [
+     "application/json",
+     "text/plain"
+    ],
+    "outputModes": [
+     "application/json"
+    ]
+   },
+   {
+    "id": "agents_by_owner",
+    "name": "agents by owner",
+    "description": "List the agents one wallet registered on BSC and call each of their declared endpoints now. Nothing on the chain tells an owner their endpoint went dark — the registry keeps listing it — so this is the answer to \"is my agent still answering?\": what answered, how each failure looks, and every probe Kawal kept. At most 12 agents are dialled, so a large owner sees the first page.",
+    "tags": [
+     "erc-8004",
+     "bnb-chain",
+     "verification"
+    ],
+    "examples": [
+     "{\"skill\":\"agents_by_owner\",\"owner\":\"0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92\"}"
+    ],
+    "inputModes": [
+     "application/json",
+     "text/plain"
+    ],
+    "outputModes": [
+     "application/json"
+    ]
+   },
+   {
+    "id": "compare_agents",
+    "name": "compare agents",
+    "description": "Put two or three agents side by side and answer the same questions of each — the ones a buyer weighs before handing over a spend cap: can it be hired, does it answer right now, has it kept answering, what does it offer, what does it say it costs, does its domain verify, what is its track record, what is flagged against it, and when it was registered. Each agent is dialled for this call. No combined score: the disagreements are the point.",
+    "tags": [
+     "erc-8004",
+     "bnb-chain",
+     "verification"
+    ],
+    "examples": [
+     "{\"skill\":\"compare_agents\",\"agents\":[{\"tokenId\":\"43129\"},{\"tokenId\":\"153672\"}]}"
+    ],
+    "inputModes": [
+     "application/json",
+     "text/plain"
+    ],
+    "outputModes": [
+     "application/json"
+    ]
+   },
+   {
+    "id": "uptime_history",
+    "name": "uptime history",
+    "description": "Read the history Kawal keeps of one agent's endpoint without dialling it: how many times it was called, how many times it answered in the protocol it declared, since when, and the median and worst latency of the answering calls. This is the record the registry does not have. Null when Kawal has never called this endpoint; verify_agent makes the first call.",
+    "tags": [
+     "erc-8004",
+     "bnb-chain",
+     "verification"
+    ],
+    "examples": [
+     "{\"skill\":\"uptime_history\",\"tokenId\":\"43129\"}"
+    ],
+    "inputModes": [
+     "application/json",
+     "text/plain"
+    ],
+    "outputModes": [
+     "application/json"
+    ]
+   },
+   {
+    "id": "plan_mandate",
+    "name": "plan mandate",
+    "description": "Turn a capital amount and a duration into the four scoped sessions Kawal would grant on Altana — one per seat, each with its own contract allowlist, spend cap and expiry — without granting anything. Pure arithmetic over the venue table: the same plan the mandate form shows, and the same refusals, since a plan that would widen authority (an unproven venue, an empty allowlist, caps that overcommit) is refused rather than built.",
+    "tags": [
+     "erc-8004",
+     "bnb-chain",
+     "verification"
+    ],
+    "examples": [
+     "{\"skill\":\"plan_mandate\",\"capitalUsdt\":10000,\"days\":30}"
+    ],
+    "inputModes": [
+     "application/json",
+     "text/plain"
+    ],
+    "outputModes": [
+     "application/json"
+    ]
+   },
+   {
+    "id": "deep_report",
+    "name": "deep report",
+    "description": "Everything Kawal holds about one agent in a single answer: the live handshake, the full probe history, how the endpoint fails when it fails, whether it really charges, and who wrote its feedback. This one costs money. Kawal measured that 75 of 200 BSC registrations declare x402 support and that none of the reachable ones ever asks to be paid; this is the counter-example. Calling it without payment returns the terms rather than the report. Pay the terms with a plain BNB transfer and call again with `txHash`; the receipt is read on-chain and spent once.",
+    "tags": [
+     "erc-8004",
+     "bnb-chain",
+     "verification"
+    ],
+    "examples": [
+     "{\"skill\":\"deep_report\",\"tokenId\":\"43129\"}"
+    ],
+    "inputModes": [
+     "application/json",
+     "text/plain"
+    ],
+    "outputModes": [
+     "application/json"
+    ]
+   }
+  ],
+  "skillCount": 9,
+  "interfaces": [
+   {
+    "url": "https://kawal-three.vercel.app/api/a2a",
+    "transport": "JSONRPC",
+    "protocolVersion": "0.3.0",
+    "source": "url"
+   },
+   {
+    "url": "https://kawal-three.vercel.app/api/mcp",
+    "transport": "MCP",
+    "protocolVersion": "0.3.0",
+    "source": "additionalInterfaces"
+   }
+  ],
+  "securitySchemes": [],
+  "missingRequired": [],
+  "reason": null
+ },
+ "reachability": {
+  "ok": true,
+  "url": "https://kawal-three.vercel.app/api/a2a",
+  "verdict": "speaks_a2a",
+  "status": 200,
+  "method": "tasks/get",
+  "rpcErrorCode": -32001,
+  "rpcErrorMessage": "Kawal completes every skill inside the request and keeps no tasks",
+  "reason": null,
+  "elapsedMs": 1634
+ },
+ "registry": null,
+ "gaps": []
+}

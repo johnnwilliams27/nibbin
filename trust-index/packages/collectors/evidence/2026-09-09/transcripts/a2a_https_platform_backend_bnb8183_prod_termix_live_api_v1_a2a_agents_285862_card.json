@@ -1,0 +1,70 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:a2a:v1",
+ "subject_url": "https://platform-backend-bnb8183.prod.termix.live/api/v1/a2a/agents/285862/card",
+ "probed_at": "2026-09-09T09:27:51Z",
+ "discovery": {
+  "ok": false,
+  "url": null,
+  "path": null,
+  "outcome": "absent",
+  "attempts": [
+   {
+    "url": "https://platform-backend-bnb8183.prod.termix.live/api/v1/a2a/agents/285862/card",
+    "path": "/api/v1/a2a/agents/285862/card",
+    "kind": "declared",
+    "outcome": "absent",
+    "status": 404,
+    "contentType": "text/plain; charset=utf-8",
+    "reason": "no card at this path (HTTP 404)",
+    "elapsedMs": 1016
+   },
+   {
+    "url": "https://platform-backend-bnb8183.prod.termix.live/.well-known/agent-card.json",
+    "path": "/.well-known/agent-card.json",
+    "kind": "well-known",
+    "outcome": "absent",
+    "status": 404,
+    "contentType": "text/plain; charset=utf-8",
+    "reason": "no card at this path (HTTP 404)",
+    "elapsedMs": 1312
+   },
+   {
+    "url": "https://platform-backend-bnb8183.prod.termix.live/.well-known/agent.json",
+    "path": "/.well-known/agent.json",
+    "kind": "well-known",
+    "outcome": "absent",
+    "status": 404,
+    "contentType": "text/plain; charset=utf-8",
+    "reason": "no card at this path (HTTP 404)",
+    "elapsedMs": 2176
+   },
+   {
+    "url": "https://platform-backend-bnb8183.prod.termix.live/api/v1/a2a/agents/285862/card/.well-known/agent-card.json",
+    "path": "/api/v1/a2a/agents/285862/card/.well-known/agent-card.json",
+    "kind": "guess",
+    "outcome": "absent",
+    "status": 404,
+    "contentType": "text/plain; charset=utf-8",
+    "reason": "no card at this path (HTTP 404)",
+    "elapsedMs": 758
+   },
+   {
+    "url": "https://platform-backend-bnb8183.prod.termix.live/api/v1/a2a/agents/285862/card/.well-known/agent.json",
+    "path": "/api/v1/a2a/agents/285862/card/.well-known/agent.json",
+    "kind": "guess",
+    "outcome": "absent",
+    "status": 404,
+    "contentType": "text/plain; charset=utf-8",
+    "reason": "no card at this path (HTTP 404)",
+    "elapsedMs": 250
+   }
+  ],
+  "reason": "no card at this path (HTTP 404)",
+  "elapsedMs": 5512
+ },
+ "declaration": null,
+ "reachability": null,
+ "registry": null,
+ "gaps": []
+}

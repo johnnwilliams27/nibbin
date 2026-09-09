@@ -1,0 +1,1114 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:mcp:v1",
+ "endpoint": "https://agents.topazdex.com/mcp",
+ "probed_at": "2026-09-09T09:27:06Z",
+ "attempts": [
+  {
+   "attempt": 1,
+   "ts": "2026-09-09T09:27:06Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 5960
+  },
+  {
+   "attempt": 2,
+   "ts": "2026-09-09T09:27:22Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 220
+  },
+  {
+   "attempt": 3,
+   "ts": "2026-09-09T09:27:23Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 229
+  }
+ ],
+ "handshake": {
+  "ok": true,
+  "protocolVersion": "2024-11-05",
+  "serverName": "topaz-agent",
+  "serverVersion": "0.19.2",
+  "instructions": null,
+  "reason": null
+ },
+ "tools": {
+  "ok": true,
+  "declared": [
+   {
+    "name": "topaz_get_protocol_stats",
+    "description": "Get Topaz DEX protocol overview including TVL, volume, fees, TOPAZ price, pool count, gauge count, and current epoch.",
+    "inputSchema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {}
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "topaz_get_pool_stats",
+    "description": "Get top Topaz pools sorted by TVL, volume, fees, or APR. Returns pool pair, type, TVL, volume, fee APR, emission APR, bribe APR, and total APR.",
+    "inputSchema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "sort": {
+       "default": "tvl",
+       "description": "Sort criteria",
+       "type": "string",
+       "enum": [
+        "tvl",
+        "volume24h",
+        "fees24h",
+        "apr"
+       ]
+      },
+      "limit": {
+       "default": 10,
+       "description": "Number of pools to return",
+       "type": "number",
+       "minimum": 1,
+       "maximum": 50
+      },
+      "type": {
+       "default": "all",
+       "description": "Pool type filter",
+       "type": "string",
+       "enum": [
+        "v2",
+        "v3",
+        "all"
+       ]
+      }
+     }
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "topaz_get_gauge_stats",
+    "description": "Get active Topaz gauges with emission APR, pool fee APR, bribe APR, staked TVL, and vote weights — served from the Topaz Stats API snapshot (near-real-time, refreshed ~every 15 min) so many gauges return instantly. lpEmissionApr is the TOPAZ reward APR for staked LPs; poolFeeApr is trading-fee yield. These are different — use lpEmissionApr for LP emission strategy, not poolFeeApr. Falls back to live on-chain reads only if a gauge's snapshot APR is unavailable.",
+    "inputSchema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "limit": {
+       "default": 15,
+       "description": "Max gauges to return",
+       "type": "number",
+       "minimum": 1,
+       "maximum": 40
+      }
+     }
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "topaz_quote_swap",
+    "description": "Get a swap quote for a token pair on Topaz. Uses quote.topazdex.com smart order routing across CL and v2 stable/volatile pools, including splits and mixed routes. Returns expected and minimum output plus route details. Price impact is unavailable from this API; set includeAlternatives for split/hop details.",
+    "inputSchema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "sellToken": {
+       "type": "string",
+       "description": "Token to sell — symbol (e.g. 'WBNB', 'USDT') or address"
+      },
+      "buyToken": {
+       "type": "string",
+       "description": "Token to buy — symbol or address"
+      },
+      "sellAmount": {
+       "type": "string",
+       "description": "Amount to sell in human-readable units (e.g. '1.5', '1000')"
+      },
+      "includeAlternatives": {
+       "default": false,
+       "description": "Include Topaz API route details.",
+       "type": "boolean"
+      }
+     },
+     "required": [
+      "sellToken",
+      "buyToken",
+      "sellAmount"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "topaz_build_swap_calldata",
+    "description": "Build wallet-ready swap calldata that a user can sign and broadcast. Returns ALL ordered calls: ERC20 zero-reset/approve, Permit2.approve, swap, and both allowance cleanups. ERC20 swaps require an atomic wallet/account batch, with no Permit2 signature. Never submit just the final call. NEVER broadcasts — only returns calldata for the user to sign.",
+    "inputSchema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "sellToken": {
+       "type": "string",
+       "description": "Token to sell — symbol or address"
+      },
+      "buyToken": {
+       "type": "string",
+       "description": "Token to buy — symbol or address"
+      },
+      "sellAmount": {
+       "type": "string",
+       "description": "Amount to sell in human-readable units"
+      },
+      "taker": {
+       "type": "string",
+       "description": "The input-owning wallet/account that executes every batch call and receives output"
+      },
+      "slippageBps": {
+       "default": 100,
+       "description": "Slippage tolerance in basis points (100 = 1%)",
+       "type": "integer",
+       "minimum": 1,
+       "maximum": 500
+      }
+     },
+     "required": [
+      "sellToken",
+      "buyToken",
+      "sellAmount",
+      "taker"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "topaz_recommend_lp",
+    "description": "Recommend the best LP positions on Topaz using the Stats API snapshot (near-real-time, ~15 min) for instant APR breakdowns. lpEmissionApr = TOPAZ emission APR for staked LPs. poolFeeApr = trading-fee yield. These are different numbers.",
+    "inputSchema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "amountUsd": {
+       "default": 5000,
+       "description": "USD amount to deploy as LP",
+       "type": "number"
+      },
+      "risk": {
+       "default": "moderate",
+       "description": "Risk tolerance",
+       "type": "string",
+       "enum": [
+        "low",
+        "moderate",
+        "high"
+       ]
+      },
+      "preferredTokens": {
+       "description": "Preferred token symbols (e.g. ['WBNB', 'USDT'])",
+       "type": "array",
+       "items": {
+        "type": "string"
+       }
+      },
+      "includeCL": {
+       "default": true,
+       "description": "Include concentrated liquidity (v3) pools",
+       "type": "boolean"
+      }
+     }
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "topaz_recommend_votes",
+    "description": "Recommend veTOPAZ gauge vote allocations for the current epoch. Analyzes fee returns, bribe incentives, and protocol liquidity needs to suggest optimal vote distribution.",
+    "inputSchema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "strategy": {
+       "default": "balanced",
+       "description": "Voting strategy: max-yield maximizes bribe+fee returns, support-protocol favors deep liquidity pools, balanced is a mix",
+       "type": "string",
+       "enum": [
+        "max-yield",
+        "support-protocol",
+        "balanced"
+       ]
+      },
+      "maxPools": {
+       "default": 5,
+       "description": "Maximum number of pools to vote for",
+       "type": "number",
+       "minimum": 1,
+       "maximum": 30
+      }
+     }
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "topaz_build_vote_calldata",
+    "description": "Build wallet-ready calldata for Voter.vote() to cast veTOPAZ gauge votes. Validates ownership, epoch timing, and gauge existence before building.",
+    "inputSchema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "tokenId": {
+       "type": "string",
+       "description": "The veTOPAZ NFT token ID"
+      },
+      "pools": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       },
+       "description": "Array of pool addresses to vote for"
+      },
+      "weights": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       },
+       "description": "Array of vote weights (relative, will be normalized)"
+      },
+      "taker": {
+       "type": "string",
+       "description": "Wallet address that owns or is approved for the veNFT"
+      }
+     },
+     "required": [
+      "tokenId",
+      "pools",
+      "weights",
+      "taker"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "topaz_recommend_bribe_campaign",
+    "description": "Plan a bribe incentive campaign to attract liquidity for a token on Topaz. Analyzes existing pools, vote distribution, and budget to recommend optimal bribe strategy.",
+    "inputSchema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "projectToken": {
+       "type": "string",
+       "description": "The project token symbol or address"
+      },
+      "budgetUsd": {
+       "type": "number",
+       "description": "Total bribe budget in USD"
+      },
+      "targetLiquidityUsd": {
+       "default": 500000,
+       "description": "Target TVL to attract",
+       "type": "number"
+      },
+      "durationWeeks": {
+       "default": 4,
+       "description": "Campaign duration in weeks",
+       "type": "number",
+       "minimum": 1,
+       "maximum": 52
+      },
+      "preferredQuoteToken": {
+       "default": "WBNB",
+       "description": "Preferred pair token",
+       "type": "string"
+      }
+     },
+     "required": [
+      "projectToken",
+      "budgetUsd"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "topaz_build_bribe_deposit_calldata",
+    "description": "Build calldata to deposit a bribe incentive on a Topaz pool's gauge. Validates the pool has a gauge, the token is whitelisted, and includes approval if needed.",
+    "inputSchema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "pool": {
+       "type": "string",
+       "description": "Pool address to bribe"
+      },
+      "token": {
+       "type": "string",
+       "description": "Reward token symbol or address to deposit as bribe"
+      },
+      "amount": {
+       "type": "string",
+       "description": "Amount in human-readable units"
+      },
+      "taker": {
+       "type": "string",
+       "description": "Wallet address depositing the bribe"
+      }
+     },
+     "required": [
+      "pool",
+      "token",
+      "amount",
+      "taker"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "topaz_get_ve_stats",
+    "description": "Get veTOPAZ stats: total TOPAZ locked, total voting power, foundation wallet info.",
+    "inputSchema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {}
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "topaz_get_epoch_info",
+    "description": "Get current epoch timing information: when the epoch started, when voting ends, how much time remains, and whether we're in a restricted window.",
+    "inputSchema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {}
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "topaz_get_pool_by_pair",
+    "description": "Look up all Topaz pools (v2 volatile, v2 stable, and v3 at each tick spacing) for a specific token pair. Returns pool addresses, types, TVL, volume, and gauge status. Use this when asking about a specific pair like 'WBNB/TOPAZ' or 'USDT/USDC'.",
+    "inputSchema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "tokenA": {
+       "type": "string",
+       "description": "First token symbol or address"
+      },
+      "tokenB": {
+       "type": "string",
+       "description": "Second token symbol or address"
+      }
+     },
+     "required": [
+      "tokenA",
+      "tokenB"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "topaz_check_vote_eligibility",
+    "description": "Check whether a veTOPAZ NFT can vote right now. Checks: voting window, last voted epoch, ownership/approval, veNFT balance. Use this before building vote calldata.",
+    "inputSchema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "tokenId": {
+       "type": "string",
+       "description": "veTOPAZ NFT token ID"
+      },
+      "wallet": {
+       "description": "Wallet address to check ownership/approval (optional)",
+       "type": "string"
+      }
+     },
+     "required": [
+      "tokenId"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "topaz_get_route_alternatives",
+    "description": "DEPRECATED compatibility alias. Use quoteSwap with includeAlternatives=true. Returns v2 and v3 options side by side.",
+    "inputSchema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "sellToken": {
+       "type": "string",
+       "description": "Token to sell — symbol or address"
+      },
+      "buyToken": {
+       "type": "string",
+       "description": "Token to buy — symbol or address"
+      },
+      "sellAmount": {
+       "type": "string",
+       "description": "Amount to sell in human-readable units"
+      }
+     },
+     "required": [
+      "sellToken",
+      "buyToken",
+      "sellAmount"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "topaz_compare_pool_options",
+    "description": "Compare LP options for a pair across v2 volatile, v2 stable, and v3 CL pools. Shows TVL, APR breakdown, and trade-offs for each. Use when a user asks 'should I LP in v2 or v3?' or 'volatile or stable pool?'",
+    "inputSchema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "tokenA": {
+       "type": "string",
+       "description": "First token symbol or address"
+      },
+      "tokenB": {
+       "type": "string",
+       "description": "Second token symbol or address"
+      }
+     },
+     "required": [
+      "tokenA",
+      "tokenB"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "topaz_get_wallet_token_balances",
+    "description": "Get token balances for a wallet: BNB, WBNB, TOPAZ, USDT, USDC, BTCB, ETH, and other major tokens. Use this to understand what a user holds before recommending actions.",
+    "inputSchema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "wallet": {
+       "type": "string",
+       "description": "Wallet address"
+      }
+     },
+     "required": [
+      "wallet"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "topaz_get_ve_nfts",
+    "description": "Get all veTOPAZ NFTs owned by a wallet. Returns tokenId, locked amount, lock end date, voting power, whether expired, and last voted epoch. Locks deposited into a relay report their real relay balance (deposit + compounded rewards) with inRelay=true — never a bare 0. Use this to understand a user's ve position before recommending votes or claims.",
+    "inputSchema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "wallet": {
+       "type": "string",
+       "description": "Wallet address"
+      }
+     },
+     "required": [
+      "wallet"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "topaz_get_user_ve_locks",
+    "description": "Get a complete personal veTOPAZ picture for a wallet: every lock's amount, voting power, expiry, what it is voting for this epoch, manual claimables (fees/bribes/rebase), and whether each lock is manual or deposited into a managed relay (veTOPAZ Maxi / Reward & Distribute). Use this to answer 'what locked TOPAZ do I own?', 'what are my locks voting for?', 'which of my locks are in a relay?', and to decide between manual voting and a relay.",
+    "inputSchema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "wallet": {
+       "type": "string",
+       "description": "Wallet address that owns the veTOPAZ locks"
+      }
+     },
+     "required": [
+      "wallet"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "topaz_get_relays",
+    "description": "List the available Topaz relays (managed veTOPAZ strategies) with their live state and health. For each relay: type (veTOPAZ Maxi / Reward & Distribute), managed voting power, what it voted for this epoch, last keeper harvest, TOPAZ compounded and (for Reward & Distribute) USDT distributed this and last epoch, and a health status with warnings. Use this to answer 'what relays are available?', 'which relay is safer?', 'did Maxi harvest this week?', 'what did Reward & Distribute pay out?', and 'is any relay stale or unhealthy?'.",
+    "inputSchema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {}
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "topaz_get_user_relay_positions",
+    "description": "Get a wallet's managed veTOPAZ relay positions: for each lock deposited into a relay, the relay name/type, the user's deposited weight and share of the managed position, the relay's current votes, last harvest and vote, any claimable distribution (USDT for Reward & Distribute), and a plain-English explanation. Use this when a user asks 'which relay am I in?', 'how much did the relay compound/distribute for me?', 'what's my share?', or 'what can I claim from my relay?'. For manual (non-relay) locks, use getUserVeLocks instead.",
+    "inputSchema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "wallet": {
+       "type": "string",
+       "description": "Wallet address that owns the veTOPAZ locks"
+      }
+     },
+     "required": [
+      "wallet"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "topaz_build_deposit_managed_calldata",
+    "description": "Build wallet-ready calldata to deposit a veTOPAZ lock into a managed relay (Voter.depositManaged). Validates ownership/approval, that the lock is a normal (not already managed) lock with TOPAZ and not expired, that it has not voted this epoch, and that it is not the final-hour window. Use when a user says 'put my lock into Maxi' or 'deposit lock #X into Reward & Distribute'.",
+    "inputSchema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "tokenId": {
+       "type": "string",
+       "description": "The veTOPAZ NFT token ID to deposit"
+      },
+      "relay": {
+       "type": "string",
+       "description": "Relay to deposit into: \"maxi\", \"reward-distribute\", or a relay address"
+      },
+      "taker": {
+       "type": "string",
+       "description": "Wallet address that owns or is approved for the veNFT"
+      }
+     },
+     "required": [
+      "tokenId",
+      "relay",
+      "taker"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "topaz_build_withdraw_managed_calldata",
+    "description": "Build wallet-ready calldata to withdraw a veTOPAZ lock from its managed relay (Voter.withdrawManaged). Validates the lock is currently deposited and the window is not blocked. Use when a user says 'move my lock out of the relay' or 'withdraw lock #X from the relay'.",
+    "inputSchema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "tokenId": {
+       "type": "string",
+       "description": "The veTOPAZ NFT token ID to withdraw from its relay"
+      },
+      "taker": {
+       "type": "string",
+       "description": "Wallet address that owns or is approved for the veNFT"
+      }
+     },
+     "required": [
+      "tokenId",
+      "taker"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "topaz_build_relay_claim_calldata",
+    "description": "Build wallet-ready calldata to claim a relay's stable distribution for a deposited lock (FreeManagedReward.getReward, USDT for Reward & Distribute). Validates the relay type supports distribution and that there is a claimable amount. Use when a user says 'claim my relay USDT' or 'claim my relay rewards'. Note: veTOPAZ Maxi has no claim — it compounds in-place.",
+    "inputSchema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "tokenId": {
+       "type": "string",
+       "description": "The veTOPAZ NFT token ID deposited in the relay"
+      },
+      "taker": {
+       "type": "string",
+       "description": "Wallet address that owns or is approved for the veNFT"
+      }
+     },
+     "required": [
+      "tokenId",
+      "taker"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "topaz_compare_ve_strategies",
+    "description": "Compare the three veTOPAZ strategy modes — Manual, veTOPAZ Maxi, and Reward & Distribute — and recommend one from the user's stated preference (growth / stable income / control / low-maintenance / bribe optimization). Returns each mode's best-for, what you get, and what you give up, plus live relay health and (if a wallet is given) the wallet's manual-vs-relay split. Use this to answer 'should I keep voting manually or use a relay?', 'which relay should I use?', and 'what am I giving up by using a relay?'.",
+    "inputSchema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "preference": {
+       "description": "What the user wants: e.g. 'growth', 'stable income', 'control gauges', 'low maintenance', 'optimize bribes'",
+       "type": "string"
+      },
+      "wallet": {
+       "description": "Optional wallet address to personalize the comparison",
+       "type": "string"
+      }
+     }
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "topaz_get_relay_monitor",
+    "description": "Operator-facing relay monitor: each relay's health status with warnings (stale keeper harvest, missed vote, zero compound/distribute, stuck balances), plus a weekly performance summary (managed voting power, votes, TOPAZ compounded and USDT distributed this and last epoch) and any unregistered relays found on-chain. Use to answer 'is any relay unhealthy?', 'did the keepers run?', or to produce a weekly relay report.",
+    "inputSchema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {}
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "topaz_get_user_relay_alerts",
+    "description": "Proactive per-wallet veTOPAZ alerts: claimable relay distributions (USDT), unclaimed manual fees/bribes/rebase, and manual locks that have not voted this epoch — each with a suggested next action. Use when a user asks 'is there anything I should do with my veTOPAZ?' or to drive notifications.",
+    "inputSchema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "wallet": {
+       "type": "string",
+       "description": "Wallet address to check for actionable veTOPAZ alerts"
+      }
+     },
+     "required": [
+      "wallet"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "topaz_get_cl_position_by_id",
+    "description": "Get detailed info and optional health guidance for a specific CL (v3) position by NFT tokenId. Returns pool, tokens, tick range, current tick, in-range status, liquidity, uncollected fees, boundary distance, urgency, and a recommended action. It does not determine gauge staking status.",
+    "inputSchema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "tokenId": {
+       "type": "string",
+       "description": "NonfungiblePositionManager NFT tokenId"
+      },
+      "includeHealth": {
+       "default": true,
+       "description": "Include boundary/urgency analysis and a recommended action.",
+       "type": "boolean"
+      }
+     },
+     "required": [
+      "tokenId"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "topaz_get_cl_position_health",
+    "description": "DEPRECATED compatibility alias. Use getClPositionById with includeHealth=true. Returns in-range status, boundary distance, urgency, unclaimed-fee presence, and a recommended action; it does not estimate fee productivity.",
+    "inputSchema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "tokenId": {
+       "type": "string",
+       "description": "CL position NFT tokenId"
+      }
+     },
+     "required": [
+      "tokenId"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "topaz_get_user_dex_positions",
+    "description": "Get a wallet's Topaz DEX liquidity positions: v3 CL positions (staked in gauges and held unstaked in the wallet), v2 LP positions (loose and gauge-staked), in-range status, claimable rewards and fees, approximate USD value, pool/gauge metadata, and a summary. Use this when a user asks what positions they have, whether they are staked, what is out of range, what LP rewards/fees are claimable, or whether they have a position in a specific pool. Always report which sources were checked (sourceStatus) and never claim 'no positions' when a source is unavailable or partial.",
+    "inputSchema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "wallet": {
+       "type": "string",
+       "description": "Wallet address to inspect"
+      },
+      "poolAddress": {
+       "description": "Optional pool address to filter/check a specific pool",
+       "type": "string"
+      }
+     },
+     "required": [
+      "wallet"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "topaz_get_claimables",
+    "description": "Get claimable rewards for one specific veTOPAZ NFT: voting fees, bribes, and rebase. This does not scan LP gauge emissions; use the wallet-wide claimables tool when the user asks for every reward source.",
+    "inputSchema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "tokenId": {
+       "type": "string",
+       "description": "veTOPAZ NFT tokenId"
+      },
+      "wallet": {
+       "type": "string",
+       "description": "Wallet address that owns staked positions"
+      }
+     },
+     "required": [
+      "tokenId",
+      "wallet"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "topaz_get_all_claimables",
+    "description": "Get wallet-wide claimables across staked LP gauge emissions, veNFT voting fees/bribes, and veNFT rebase. Automatically finds the wallet's positions and veNFTs, and reports scan coverage because LP discovery is bounded to the first 100 voter pools. Relay payout streams are not included.",
+    "inputSchema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "wallet": {
+       "type": "string",
+       "description": "Wallet address"
+      }
+     },
+     "required": [
+      "wallet"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "topaz_simulate_cl_range",
+    "description": "Simulate a CL position range for a pair. Given a strategy type and optional price bounds, estimate capital efficiency, out-of-range risk, and token composition. Use when a user asks 'what range should I use?' or 'I expect TOPAZ to pump, how should I LP?'",
+    "inputSchema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "tokenA": {
+       "type": "string",
+       "description": "First token symbol or address"
+      },
+      "tokenB": {
+       "type": "string",
+       "description": "Second token symbol or address"
+      },
+      "strategy": {
+       "type": "string",
+       "enum": [
+        "passive",
+        "balanced",
+        "aggressive",
+        "bullish-A",
+        "bearish-A"
+       ],
+       "description": "Strategy type: passive (wide), balanced, aggressive (tight), bullish-A (expects tokenA to rise), bearish-A"
+      },
+      "amountUsd": {
+       "description": "USD amount to deploy",
+       "type": "number"
+      }
+     },
+     "required": [
+      "tokenA",
+      "tokenB",
+      "strategy"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "topaz_compare_hold_lp_vote",
+    "description": "Compare the expected outcomes of holding tokens vs LPing vs voting with veTOPAZ. Use when a user asks 'should I LP or vote?' or 'what's the best use of my TOPAZ?'. Calls multiple data sources to give a holistic comparison.",
+    "inputSchema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "amountUsd": {
+       "description": "USD amount to consider",
+       "type": "number"
+      },
+      "pool": {
+       "description": "Specific pool to evaluate for LP",
+       "type": "string"
+      },
+      "risk": {
+       "description": "Risk tolerance",
+       "type": "string",
+       "enum": [
+        "low",
+        "moderate",
+        "high"
+       ]
+      }
+     }
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "topaz_estimate_bribe_roi",
+    "description": "Estimate the ROI of a bribe campaign: expected vote capture, liquidity attraction, cost-effectiveness, and whether to bribe now vs seed LP first. Use for bribe campaign planning with quantitative rigor.",
+    "inputSchema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "pool": {
+       "description": "Pool address (if known)",
+       "type": "string"
+      },
+      "projectToken": {
+       "type": "string",
+       "description": "Project token symbol or address"
+      },
+      "budgetUsd": {
+       "type": "number",
+       "description": "Total bribe budget in USD"
+      },
+      "durationWeeks": {
+       "default": 4,
+       "description": "Campaign duration",
+       "type": "number"
+      },
+      "currentPoolTvlUsd": {
+       "description": "Current pool TVL (fetched if not provided)",
+       "type": "number"
+      }
+     },
+     "required": [
+      "projectToken",
+      "budgetUsd"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "topaz_recommend_protocol_actions",
+    "description": "Generate internal protocol strategy: which pools to support with votes/bribes, which to avoid, expected impact. Use when the Topaz team asks 'what should we support this epoch?' or for operator-level strategy.",
+    "inputSchema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "objective": {
+       "default": "useful_liquidity",
+       "description": "Strategic objective",
+       "type": "string",
+       "enum": [
+        "useful_liquidity",
+        "topaz_depth",
+        "volume_growth",
+        "stable_depth"
+       ]
+      },
+      "maxPools": {
+       "default": 5,
+       "description": "Max pools to recommend",
+       "type": "number"
+      },
+      "budgetUsd": {
+       "description": "Weekly budget if applicable",
+       "type": "number"
+      }
+     }
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "topaz_get_weekly_strategy",
+    "description": "Generate a comprehensive weekly ve(3,3) strategy report with protocol overview, top gauges, recommended votes, LP recommendations, recent bribes, and market insights.",
+    "inputSchema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {}
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "topaz_get_bribe_markets",
+    "description": "Get the current bribe/incentive markets across all Topaz gauges for the active epoch — total bribe + fee rewards per gauge and the derived dollars-per-vote, ranked highest-yield first. Use for 'where are the best bribes/votes this epoch?' or 'what's the $/vote on gauge X?'.",
+    "inputSchema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "minUsd": {
+       "default": 0,
+       "description": "Drop gauges with total reward USD below this floor",
+       "type": "number",
+       "minimum": 0
+      },
+      "limit": {
+       "default": 15,
+       "description": "Max gauges to return",
+       "type": "number",
+       "minimum": 1,
+       "maximum": 100
+      }
+     }
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "topaz_get_gauge_rewards",
+    "description": "Get the per-epoch, token-by-token actual reward breakdown for a specific gauge — every bribe and fee token deposited/accrued, with USD value at the time. Use to see exactly what a gauge's voters earned (or are earning) by reward token.",
+    "inputSchema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "gaugeAddress": {
+       "type": "string",
+       "description": "Gauge contract address (0x...)"
+      },
+      "limit": {
+       "default": 12,
+       "description": "Max reward rows (most recent epochs first)",
+       "type": "number",
+       "minimum": 1,
+       "maximum": 50
+      }
+     },
+     "required": [
+      "gaugeAddress"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "topaz_get_protocol_history",
+    "description": "Get historical protocol-wide trends for Topaz — daily volume and fees plus a downsampled TVL / TOPAZ-price series over a lookback window. Use for 'how has TVL/volume trended?', growth questions, or charts.",
+    "inputSchema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "days": {
+       "default": 30,
+       "description": "Lookback window in days",
+       "type": "number",
+       "minimum": 1,
+       "maximum": 365
+      }
+     }
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "topaz_get_pool_history",
+    "description": "Get long-horizon daily candles for a specific Topaz pool — daily volume, fees, and end-of-day TVL beyond the 7-day rolling window. Use for per-pool trend/history questions.",
+    "inputSchema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "poolAddress": {
+       "type": "string",
+       "description": "Pool contract address (0x...)"
+      },
+      "days": {
+       "default": 90,
+       "description": "Lookback window in days",
+       "type": "number",
+       "minimum": 1,
+       "maximum": 365
+      }
+     },
+     "required": [
+      "poolAddress"
+     ]
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "topaz_get_recent_epochs",
+    "description": "Get recent Topaz voting-epoch summaries — per-epoch total bribes, foundation vote share, gauge count, and top-voted gauges. Use for 'how did bribes/votes trend across epochs?' or historical voting context.",
+    "inputSchema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "limit": {
+       "default": 8,
+       "description": "How many recent epochs to return",
+       "type": "number",
+       "minimum": 1,
+       "maximum": 52
+      }
+     }
+    },
+    "outputSchema": null,
+    "annotations": null
+   },
+   {
+    "name": "topaz_get_vote_effectiveness",
+    "description": "Get foundation KPI / vote-ROI effectiveness data — per pool/epoch bribe cost, emissions directed, TVL/volume/fee deltas, cost-per-dollar-gained, and a classification (scale/repeat/monitor/reduce/stop/insufficient_data). Use for 'is bribing pool X working?' or operator-level capital-efficiency review.",
+    "inputSchema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "pool": {
+       "description": "Filter to a pool address (optional)",
+       "type": "string"
+      },
+      "limit": {
+       "default": 20,
+       "description": "Max KPI rows",
+       "type": "number",
+       "minimum": 1,
+       "maximum": 100
+      }
+     }
+    },
+    "outputSchema": null,
+    "annotations": null
+   }
+  ],
+  "reason": null
+ },
+ "registry": null,
+ "auth": {
+  "required": false,
+  "status": 200,
+  "scheme": null,
+  "hop": "initialize"
+ },
+ "rate_limit": null
+}

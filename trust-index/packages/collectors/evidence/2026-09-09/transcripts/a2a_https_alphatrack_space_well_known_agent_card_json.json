@@ -1,0 +1,96 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:a2a:v1",
+ "subject_url": "https://alphatrack.space/.well-known/agent-card.json",
+ "probed_at": "2026-09-09T09:27:51Z",
+ "discovery": {
+  "ok": true,
+  "url": "https://alphatrack.space/.well-known/agent-card.json",
+  "path": "/.well-known/agent-card.json",
+  "outcome": "card",
+  "attempts": [
+   {
+    "url": "https://alphatrack.space/.well-known/agent-card.json",
+    "path": "/.well-known/agent-card.json",
+    "kind": "declared",
+    "outcome": "card",
+    "status": 200,
+    "contentType": "application/json",
+    "reason": null,
+    "elapsedMs": 2064
+   }
+  ],
+  "reason": null,
+  "elapsedMs": 2065
+ },
+ "declaration": {
+  "ok": true,
+  "name": "AlphaTrack",
+  "description": "AlphaTrack: Binance smart-money intelligence. Ranks the top Binance Futures copy-trading leaders by 3-day realised PnL, with ROI, assets under management and subscriber counts, straight from Binance's public smart-money leaderboard. Paid via x402 (U on BNB Smart Chain, pay to 0x8a1960AC9EBcb0B0F88926728F10d94962695Db2): top_traders = 0.01 U. A message/send without a PAYMENT-SIGNATURE header returns HTTP 402 with the x402 requirements.",
+  "version": "1.0.0",
+  "protocolVersion": "0.3.0",
+  "provider": null,
+  "documentationUrl": "https://alphatrack.space/",
+  "capabilities": {
+   "streaming": false,
+   "pushNotifications": false,
+   "stateTransitionHistory": false,
+   "extensions": 0,
+   "raw": {
+    "streaming": false,
+    "pushNotifications": false,
+    "stateTransitionHistory": false
+   }
+  },
+  "skills": [
+   {
+    "id": "top_traders",
+    "name": "Binance top traders (3D PnL)",
+    "description": "Top Binance Futures copy-trading leaders ranked by 3-day PnL (descending). Returns up to 10 traders with account name, subscribers, assets under management, 3-day PnL and ROI, plus a one-line human summary per trader. Send a data part {\"skill\": \"top_traders\", ...input fields}. Input: limit (integer): Number of traders to return, 1-10. Default 10. Price: 0.01 U per call (x402).",
+    "tags": [
+     "binance",
+     "copy-trading",
+     "smart-money",
+     "futures",
+     "leaderboard",
+     "top_traders"
+    ],
+    "examples": [
+     "{\"skill\":\"top_traders\"}"
+    ],
+    "inputModes": [
+     "application/json"
+    ],
+    "outputModes": [
+     "application/json",
+     "text/plain"
+    ]
+   }
+  ],
+  "skillCount": 1,
+  "interfaces": [
+   {
+    "url": "https://alphatrack.space/a2a",
+    "transport": "JSONRPC",
+    "protocolVersion": "0.3.0",
+    "source": "url"
+   }
+  ],
+  "securitySchemes": [],
+  "missingRequired": [],
+  "reason": null
+ },
+ "reachability": {
+  "ok": true,
+  "url": "https://alphatrack.space/a2a",
+  "verdict": "speaks_a2a",
+  "status": 200,
+  "method": "tasks/get",
+  "rpcErrorCode": -32001,
+  "rpcErrorMessage": "tasks are not stored: message/send returns the completed task inline",
+  "reason": null,
+  "elapsedMs": 2980
+ },
+ "registry": null,
+ "gaps": []
+}
