@@ -11,7 +11,7 @@ export interface CategoryMeta {
   handles: string;
   /** The question a buyer should ask before hiring one of these. */
   buyerQuestion: string;
-  /** Token names from the Nibbin palette. Text-safe deeps only. */
+  /** Identity colour only. Category colour never encodes quality or rank. */
   accent: string;
   accentTint: string;
 }
@@ -26,8 +26,8 @@ export const CATEGORIES: CategoryMeta[] = [
     blurb: 'Holds a target allocation and trades back to it when the market drifts.',
     handles: 'Portfolio weights and swap execution.',
     buyerQuestion: 'Can it actually place a trade, or only tell you to?',
-    accent: 'var(--color-teal-deep)',
-    accentTint: 'var(--color-teal-tint)',
+    accent: 'var(--color-cat-rebalancing)',
+    accentTint: 'var(--color-cat-rebalancing-bg)',
   },
   {
     slug: 'grid_trading',
@@ -36,8 +36,8 @@ export const CATEGORIES: CategoryMeta[] = [
     blurb: 'Places laddered buy and sell orders across a price range and works the spread.',
     handles: 'Open orders, order size, and the price band.',
     buyerQuestion: 'Does it expose the grid parameters, or is the strategy a black box?',
-    accent: 'var(--color-plum-deep)',
-    accentTint: 'var(--color-plum-tint)',
+    accent: 'var(--color-cat-grid)',
+    accentTint: 'var(--color-cat-grid-bg)',
   },
   {
     slug: 'yield',
@@ -46,8 +46,8 @@ export const CATEGORIES: CategoryMeta[] = [
     blurb: 'Finds and moves capital into lending or LP positions that pay a return.',
     handles: 'Deposits, withdrawals, and which protocol holds your funds.',
     buyerQuestion: 'Does it name the venues it will move into, before it moves?',
-    accent: 'var(--color-moss-deep)',
-    accentTint: 'var(--color-moss-tint)',
+    accent: 'var(--color-cat-yield)',
+    accentTint: 'var(--color-cat-yield-bg)',
   },
   {
     slug: 'health_factor',
@@ -56,8 +56,8 @@ export const CATEGORIES: CategoryMeta[] = [
     blurb: 'Watches a leveraged position and acts before it gets liquidated.',
     handles: 'Collateral, debt, and the timing of a top-up or unwind.',
     buyerQuestion: 'How fast does it answer? A slow monitor is not a monitor.',
-    accent: 'var(--color-coral-deep)',
-    accentTint: 'var(--color-coral-tint)',
+    accent: 'var(--color-cat-health)',
+    accentTint: 'var(--color-cat-health-bg)',
   },
 ];
 

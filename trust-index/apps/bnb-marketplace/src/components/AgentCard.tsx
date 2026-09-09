@@ -17,14 +17,14 @@ export function AgentCard({ agent, rank }: { agent: Agent; rank?: number }) {
   return (
     <article className="card lift relative flex flex-col overflow-hidden">
       {/* Category colour is a per-category identity, never a quality signal. */}
-      <span className="absolute inset-x-0 top-0 h-[3px]" style={{ background: meta?.accent ?? 'var(--color-slate-deep)' }} />
+      <span className="absolute inset-x-0 top-0 h-[3px]" style={{ background: meta?.accent ?? 'var(--neutral-fg)' }} />
 
       <div className="flex flex-1 flex-col gap-4 p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               {typeof rank === 'number' ? (
-                <span className="mono text-[11px] font-semibold text-[var(--color-ink-decorative)]">#{rank}</span>
+                <span className="mono text-[11px] font-semibold text-[var(--fg-faint)]">#{rank}</span>
               ) : null}
               <span className="mono text-[10px] uppercase tracking-[0.12em]" style={{ color: meta?.accent }}>
                 {meta?.name ?? 'Other'}
@@ -35,7 +35,7 @@ export function AgentCard({ agent, rank }: { agent: Agent; rank?: number }) {
                 {agent.name}
               </Link>
             </h3>
-            <p className="mono mt-0.5 text-[11px] text-[var(--color-ink-decorative)]">
+            <p className="mono mt-0.5 text-[11px] text-[var(--fg-faint)]">
               token #{agent.token_id} · chain {agent.chain_id}
             </p>
           </div>
@@ -44,19 +44,19 @@ export function AgentCard({ agent, rank }: { agent: Agent; rank?: number }) {
         {agent.is_reference_agent ? <ReferenceBadge /> : null}
 
         {agent.description ? (
-          <p className="line-clamp-3 text-[14px] text-[var(--color-ink-secondary)]">{agent.description}</p>
+          <p className="line-clamp-3 text-[14px] text-[var(--fg-muted)]">{agent.description}</p>
         ) : (
-          <p className="text-[14px] italic text-[var(--color-ink-decorative)]">No description was registered.</p>
+          <p className="text-[14px] italic text-[var(--fg-faint)]">No description was registered.</p>
         )}
 
-        <div className="grid gap-4 border-t border-[var(--color-understory)] pt-4 sm:grid-cols-2">
+        <div className="grid gap-4 border-t border-[var(--border)] pt-4 sm:grid-cols-2">
           <ScoreBlock agent={agent} size="sm" />
           {a ? (
             <CoverageAxis coverage={a.coverage} compact />
           ) : (
             <div>
               <p className="eyebrow">Coverage</p>
-              <p className="mt-1 text-[13px] text-[var(--color-ink-secondary)]">Nothing looked at yet.</p>
+              <p className="mt-1 text-[13px] text-[var(--fg-muted)]">Not measured.</p>
             </div>
           )}
         </div>
@@ -68,7 +68,7 @@ export function AgentCard({ agent, rank }: { agent: Agent; rank?: number }) {
         ) : null}
 
         {/* Evidence strip: what we can actually say about it, at a glance. */}
-        <dl className="mt-auto grid grid-cols-3 gap-2 border-t border-[var(--color-understory)] pt-3 text-[12px]">
+        <dl className="mt-auto grid grid-cols-3 gap-2 border-t border-[var(--border)] pt-3 text-[12px]">
           <div>
             <dt className="eyebrow flex items-center gap-1">
               <Wrench size={10} strokeWidth={1.5} aria-hidden /> Tools
@@ -93,7 +93,7 @@ export function AgentCard({ agent, rank }: { agent: Agent; rank?: number }) {
           {agent.scan_endpoint_verified ? (
             <span
               className="mono inline-flex items-center gap-1 rounded-[var(--radius-pill)] px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.1em]"
-              style={{ background: 'var(--color-sky-tint)', color: 'var(--color-sky-deep)' }}
+              style={{ background: 'var(--thirdparty-bg)', color: 'var(--thirdparty)' }}
             >
               <BadgeCheck size={11} strokeWidth={1.5} aria-hidden />
               Ecosystem verified
@@ -103,7 +103,7 @@ export function AgentCard({ agent, rank }: { agent: Agent; rank?: number }) {
           {agent.x402_supported ? (
             <span
               className="mono rounded-[var(--radius-pill)] px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.1em]"
-              style={{ background: 'var(--color-honey-tint)', color: 'var(--color-honey-deep)' }}
+              style={{ background: 'var(--withheld-bg)', color: 'var(--withheld)' }}
               title="Accepts x402 machine payments — it can take your money programmatically."
             >
               x402 payments
@@ -114,10 +114,10 @@ export function AgentCard({ agent, rank }: { agent: Agent; rank?: number }) {
         <Link
           href={agentHref(agent)}
           data-target
-          className="mt-1 inline-flex items-center justify-center rounded-[var(--radius-btn)] border px-3 py-2 text-[13px] font-medium transition-colors hover:bg-[var(--color-understory)]"
-          style={{ borderColor: 'var(--color-understory)' }}
+          className="mt-1 inline-flex items-center justify-center rounded-[var(--radius-btn)] border px-3 py-2 text-[13px] font-medium transition-colors hover:bg-[var(--border)]"
+          style={{ borderColor: 'var(--border)' }}
         >
-          See the evidence
+          View assessment
         </Link>
       </div>
     </article>

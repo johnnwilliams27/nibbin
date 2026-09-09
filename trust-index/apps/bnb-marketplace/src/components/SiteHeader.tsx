@@ -1,15 +1,17 @@
 import Link from 'next/link';
 import { CATEGORIES } from '@/lib/categories';
+import { loadDataset } from '@/lib/data';
+import { timestamp } from '@/lib/format';
 
 export function SiteHeader() {
+  const { generated_at, agents } = loadDataset();
+
   return (
-    <header className="sticky top-0 z-40 border-b border-[var(--color-understory)] bg-[rgba(245,246,242,0.92)] backdrop-blur">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-5 py-3">
-        <Link href="/" className="flex items-baseline gap-2">
-          <span className="font-[family-name:var(--font-display)] text-[19px] font-extrabold tracking-tight">
-            Measured
-          </span>
-          <span className="eyebrow hidden sm:inline">BNB Chain agent index</span>
+    <header className="sticky top-0 z-40 border-b border-[var(--border)] bg-[rgba(11,14,19,0.94)] backdrop-blur">
+      <div className="mx-auto flex max-w-[1240px] flex-wrap items-center gap-x-7 gap-y-2 px-5 py-2.5">
+        <Link href="/" className="flex items-baseline gap-2.5">
+          <span className="mono text-[15px] font-semibold tracking-tight">TRUST&nbsp;INDEX</span>
+          <span className="eyebrow hidden sm:inline">independent agent assessment · bsc</span>
         </Link>
 
         <nav aria-label="Agent categories" className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px]">
@@ -17,7 +19,7 @@ export function SiteHeader() {
             <Link
               key={c.path}
               href={`/category/${c.path}`}
-              className="text-[var(--color-ink-secondary)] transition-colors hover:text-[var(--color-ink)]"
+              className="text-[var(--fg-muted)] transition-colors hover:text-[var(--fg)]"
             >
               {c.name}
             </Link>
@@ -25,12 +27,18 @@ export function SiteHeader() {
         </nav>
 
         <div className="ml-auto flex items-center gap-4 text-[13px]">
-          <Link href="/compare" className="text-[var(--color-ink-secondary)] hover:text-[var(--color-ink)]">
+          <Link href="/compare" className="text-[var(--fg-muted)] hover:text-[var(--fg)]">
             Compare
           </Link>
-          <Link href="/methodology" className="text-[var(--color-ink-secondary)] hover:text-[var(--color-ink)]">
+          <Link href="/methodology" className="text-[var(--fg-muted)] hover:text-[var(--fg)]">
             Methodology
           </Link>
+          <span
+            className="mono hidden text-[10px] uppercase tracking-[0.09em] text-[var(--fg-faint)] lg:inline"
+            title={generated_at ? `Snapshot generated ${timestamp(generated_at)}` : 'No snapshot available at build time'}
+          >
+            {generated_at ? `snapshot ${timestamp(generated_at)} · ${agents.length} agents` : 'no snapshot'}
+          </span>
         </div>
       </div>
     </header>

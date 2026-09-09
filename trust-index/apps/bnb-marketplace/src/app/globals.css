@@ -1,113 +1,163 @@
 @import 'tailwindcss';
 
 /*
-  Nibbin design tokens (see .claude/skills/design-system). Deeps are the only
-  text-safe colours; tints are backgrounds. Nothing here is invented locally —
-  values track packages/shared/tokens.css.
+  Trust Index — instrument theme.
+
+  This is an assessor's console, not a product site. The palette is deliberately
+  neutral: a near-black slate base, one cool accent reserved exclusively for
+  numbers WE measured, and semantic colours that only ever carry meaning
+  (withheld / critical / third-party / ours). We do not use the brand palette of
+  any chain, foundation or agent vendor listed on this site — including BNB's —
+  because looking like a participant in the market we rate would undercut the
+  only thing we sell, which is independence.
 */
 @theme {
-  --color-paper: #f5f6f2;
-  --color-canopy: #ffffff;
-  --color-understory: #eaede3;
-  --color-shell: #fbf6e6;
+  /* Surfaces */
+  --color-bg: #0b0e13;
+  --color-panel: #12161d;
+  --color-panel-2: #171d26;
+  --color-border: #232b36;
+  --color-border-strong: #313b49;
 
-  --color-ink: #23291a;
-  --color-ink-secondary: #5a6248;
-  --color-ink-decorative: #8a917b;
+  /* Text */
+  --color-fg: #e6ebf2;
+  --color-fg-muted: #98a3b3;
+  --color-fg-faint: #6c7889;
 
-  --color-moss-deep: #44601f;
-  --color-moss-tint: #eef3e3;
-  --color-teal-deep: #2e5f58;
-  --color-teal-tint: #e4eeec;
-  --color-honey-deep: #8a5f0c;
-  --color-honey-tint: #f9efd8;
-  --color-coral-deep: #b14a22;
-  --color-coral-tint: #fbe9e1;
-  --color-plum-deep: #5c3fb0;
-  --color-plum-tint: #ece7f8;
-  --color-sky-deep: #36619f;
-  --color-sky-tint: #e5edf8;
-  --color-rose-deep: #a23e66;
-  --color-rose-tint: #f8e7ee;
-  --color-slate-deep: #4e5447;
-  --color-slate-tint: #ebede8;
+  /* Semantic. Each colour means exactly one thing, everywhere. */
+  --color-measured: #5ad4c0; /* ours: produced by calling the agent */
+  --color-measured-bg: #10231f;
+  --color-coverage: #7fb0e8; /* how much we looked (an axis, never a score) */
+  --color-coverage-bg: #131e2c;
+  --color-thirdparty: #9aa8bd; /* 8004scan and other outside claims: quiet on purpose */
+  --color-thirdparty-bg: #1a1f28;
+  --color-withheld: #dda45c; /* we assessed and deliberately published no number */
+  --color-withheld-bg: #241c11;
+  --color-critical: #e8695f; /* hard safety caps */
+  --color-critical-bg: #2a1513;
+  --color-reference: #a78bfa; /* our own deployments, never ranked */
+  --color-reference-bg: #1d1830;
+  --color-neutral-fg: #8b96a6; /* nothing measured yet */
+  --color-neutral-bg: #191e26;
 
-  --font-display: 'Bricolage Grotesque', 'Archivo', ui-sans-serif, system-ui, sans-serif;
-  --font-sans: 'Archivo', ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  /* Categories carry identity only. None of these encodes quality. */
+  --color-cat-rebalancing: #79b8f0;
+  --color-cat-rebalancing-bg: #131d29;
+  --color-cat-grid: #b79cf5;
+  --color-cat-grid-bg: #1c1930;
+  --color-cat-yield: #6fcf9a;
+  --color-cat-yield-bg: #122318;
+  --color-cat-health: #ef8f6a;
+  --color-cat-health-bg: #291a13;
 
-  --radius-btn: 4px;
-  --radius-input: 6px;
-  --radius-card: 10px;
-  --radius-shell: 12px;
-  --radius-pill: 20px;
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
 
-  --shadow-1: 0 1px 2px rgba(35, 41, 26, 0.06);
-  --shadow-2: 0 2px 8px rgba(35, 41, 26, 0.08);
-  --shadow-3: 0 12px 32px rgba(35, 41, 26, 0.12);
+  /* Sharp corners read as instrumentation. */
+  --radius-btn: 3px;
+  --radius-input: 3px;
+  --radius-card: 4px;
+  --radius-shell: 4px;
+  --radius-pill: 3px;
+}
 
-  --ease-settle: cubic-bezier(0.16, 1, 0.3, 1);
+/*
+  Short aliases. Tailwind's @theme emits every token as --color-*; components
+  reference the semantic short name so the meaning is legible at the call site
+  (`var(--measured)` says what it is; `var(--color-measured)` says where it came
+  from). One source of truth above, two names for it here.
+*/
+:root {
+  color-scheme: dark;
+
+  --bg: var(--color-bg);
+  --panel: var(--color-panel);
+  --panel-2: var(--color-panel-2);
+  --border: var(--color-border);
+  --border-strong: var(--color-border-strong);
+
+  --fg: var(--color-fg);
+  --fg-muted: var(--color-fg-muted);
+  --fg-faint: var(--color-fg-faint);
+
+  --measured: var(--color-measured);
+  --measured-bg: var(--color-measured-bg);
+  --coverage: var(--color-coverage);
+  --coverage-bg: var(--color-coverage-bg);
+  --thirdparty: var(--color-thirdparty);
+  --thirdparty-bg: var(--color-thirdparty-bg);
+  --withheld: var(--color-withheld);
+  --withheld-bg: var(--color-withheld-bg);
+  --critical: var(--color-critical);
+  --critical-bg: var(--color-critical-bg);
+  --reference: var(--color-reference);
+  --reference-bg: var(--color-reference-bg);
+  --neutral-fg: var(--color-neutral-fg);
+  --neutral-bg: var(--color-neutral-bg);
 }
 
 html {
-  background: var(--color-paper);
+  background: var(--color-bg);
   -webkit-text-size-adjust: 100%;
 }
 
 body {
-  background: var(--color-paper);
-  color: var(--color-ink);
+  background: var(--color-bg);
+  color: var(--color-fg);
   font-family: var(--font-sans);
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.55;
   margin: 0;
+  font-feature-settings: 'cv02', 'cv03', 'cv04';
 }
 
 h1,
-h2 {
-  font-family: var(--font-display);
-  font-weight: 800;
-  letter-spacing: -0.015em;
-  line-height: 1.1;
-}
-
+h2,
 h3,
 h4 {
   font-family: var(--font-sans);
-  font-weight: 700;
-  line-height: 1.25;
+  font-weight: 600;
+  letter-spacing: -0.011em;
+  line-height: 1.2;
+  margin: 0;
 }
 
-/* Mono eyebrows are the only uppercase text in the system. */
+/* All numbers, ids, addresses, scores and labels are mono. Data reads as data. */
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'zero' 1;
+}
+
 .eyebrow {
   font-family: var(--font-mono);
   font-size: 10px;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.09em;
   font-weight: 500;
-  color: var(--color-ink-secondary);
-}
-
-.mono {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
+  color: var(--color-fg-faint);
 }
 
 .card {
-  background: var(--color-canopy);
-  border: 1px solid var(--color-understory);
+  background: var(--color-panel);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-card);
 }
 
 .shell {
-  background: var(--color-canopy);
-  border: 1px solid var(--color-understory);
+  background: var(--color-panel);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-shell);
 }
 
-/* Focus is never removed. 2px moss outline, 2px offset. */
+/* A ruled hairline grid is the main structural device — no drop shadows. */
+.rule {
+  border-top: 1px solid var(--color-border);
+}
+
 :where(a, button, input, select, summary, [tabindex]):focus-visible {
-  outline: 2px solid var(--color-moss-deep);
+  outline: 2px solid var(--color-measured);
   outline-offset: 2px;
   border-radius: 2px;
 }
@@ -117,13 +167,31 @@ a {
   text-decoration: none;
 }
 
-/* Only transform/opacity animate, and only with a growth verb behind them. */
 .lift {
-  transition: transform 250ms var(--ease-settle), box-shadow 250ms var(--ease-settle);
+  transition: border-color 140ms ease, background-color 140ms ease;
 }
 .lift:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-2);
+  border-color: var(--color-border-strong);
+}
+
+table.dense th,
+table.dense td {
+  border-bottom: 1px solid var(--color-border);
+}
+tbody tr:hover {
+  background: var(--color-panel-2);
+}
+
+input,
+select {
+  color: var(--color-fg);
+}
+input::placeholder {
+  color: var(--color-fg-faint);
+}
+select option {
+  background: var(--color-panel);
+  color: var(--color-fg);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -131,15 +199,10 @@ a {
   *::before,
   *::after {
     animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
-  }
-  .lift:hover {
-    transform: none;
   }
 }
 
-/* Touch targets stay >= 44px on small screens. */
 @media (max-width: 640px) {
   button,
   select,
@@ -149,5 +212,5 @@ a {
 }
 
 ::selection {
-  background: var(--color-moss-tint);
+  background: #1f4c46;
 }

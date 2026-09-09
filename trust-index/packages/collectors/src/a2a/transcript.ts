@@ -50,11 +50,25 @@ export function isSubjectFact(outcome: MeasurementOutcome): boolean {
   return outcome !== "unmeasured" && outcome !== "refused";
 }
 
+/**
+ * Where a candidate URL came from.
+ *
+ * Recorded because the three do not carry equal weight. `declared` is the
+ * operator's own claim about where their card lives. `well-known` is what the
+ * spec says. `guess` is ours — the well-known path mounted under a declared
+ * path prefix — and an answer from a guessed path must never outrank an answer
+ * from either of the other two. A batch of 18 agents on one host returned
+ * HTTP 401 to a guessed path and 404 to the spec paths; summarising that as
+ * "auth-walled" would have been our guess dressed up as their state.
+ */
+export type CandidateKind = "declared" | "well-known" | "guess";
+
 /** One card path tried, and what came back. Every path tried is recorded, including the ones that failed. */
 export type CardAttempt = {
   url: string;
   /** The path component, so a sweep can count which spelling the population actually serves. */
   path: string;
+  kind: CandidateKind;
   outcome: MeasurementOutcome;
   status: number | null;
   contentType: string | null;

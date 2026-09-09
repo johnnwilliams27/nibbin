@@ -34,12 +34,12 @@ export function ScoreBlock({ agent, size = 'md' }: { agent: Agent; size?: 'sm' |
     return (
       <div>
         <p className="eyebrow">Our assessment</p>
-        <p className={`mono ${numberClass} font-semibold leading-none`} style={{ color: 'var(--color-moss-deep)' }}>
+        <p className={`mono ${numberClass} font-semibold leading-none`} style={{ color: 'var(--measured)' }}>
           {score}
-          <span className="text-[0.45em] font-normal text-[var(--color-ink-secondary)]"> / 100</span>
+          <span className="text-[0.45em] font-normal text-[var(--fg-muted)]"> / 100</span>
         </p>
-        <p className="mt-1.5 text-[12px] text-[var(--color-ink-secondary)]">
-          Earned by answering our probes. Read it next to coverage, not instead of it.
+        <p className="mt-1.5 text-[12px] text-[var(--fg-muted)]">
+          Composite of our probe results. Read alongside coverage, never instead of it.
         </p>
       </div>
     );
@@ -48,23 +48,23 @@ export function ScoreBlock({ agent, size = 'md' }: { agent: Agent; size?: 'sm' |
   if (state === 'withheld' && agent.assessment) {
     return (
       <div>
-        <p className="eyebrow" style={{ color: 'var(--color-honey-deep)' }}>
+        <p className="eyebrow" style={{ color: 'var(--withheld)' }}>
           Our assessment
         </p>
         <p
-          className={`font-[family-name:var(--font-display)] font-extrabold leading-tight ${
+          className={`font-semibold leading-tight ${
             big ? 'text-[28px]' : 'text-[17px]'
           }`}
-          style={{ color: 'var(--color-honey-deep)' }}
+          style={{ color: 'var(--withheld)' }}
         >
           Not rated
         </p>
-        <p className="mt-1 flex items-start gap-1.5 text-[13px]" style={{ color: 'var(--color-honey-deep)' }}>
+        <p className="mt-1 flex items-start gap-1.5 text-[13px]" style={{ color: 'var(--withheld)' }}>
           <ShieldAlert size={15} strokeWidth={1.5} className="mt-0.5 shrink-0" aria-hidden />
           <span>Insufficient evidence to publish a number.</span>
         </p>
         {agent.assessment.withheld_reason ? (
-          <p className="mt-2 text-[13px] text-[var(--color-ink-secondary)]">{agent.assessment.withheld_reason}</p>
+          <p className="mt-2 text-[13px] text-[var(--fg-muted)]">{agent.assessment.withheld_reason}</p>
         ) : null}
       </div>
     );
@@ -74,14 +74,14 @@ export function ScoreBlock({ agent, size = 'md' }: { agent: Agent; size?: 'sm' |
     <div>
       <p className="eyebrow">Our assessment</p>
       <p
-        className={`font-[family-name:var(--font-display)] font-extrabold leading-tight ${
+        className={`font-semibold leading-tight ${
           big ? 'text-[28px]' : 'text-[17px]'
         }`}
-        style={{ color: 'var(--color-slate-deep)' }}
+        style={{ color: 'var(--neutral-fg)' }}
       >
         Not assessed
       </p>
-      <p className="mt-1 flex items-start gap-1.5 text-[13px]" style={{ color: 'var(--color-slate-deep)' }}>
+      <p className="mt-1 flex items-start gap-1.5 text-[13px]" style={{ color: 'var(--neutral-fg)' }}>
         <CircleSlash size={15} strokeWidth={1.5} className="mt-0.5 shrink-0" aria-hidden />
         <span>{unassessedReason(agent)}</span>
       </p>
@@ -99,10 +99,10 @@ export function CoverageAxis({ coverage, compact = false }: { coverage: Coverage
   return (
     <div>
       <div className="flex items-center gap-2">
-        <p className="eyebrow" style={{ color: 'var(--color-teal-deep)' }}>
+        <p className="eyebrow" style={{ color: 'var(--coverage)' }}>
           Coverage
         </p>
-        <span className="mono text-[13px] font-medium" style={{ color: 'var(--color-teal-deep)' }}>
+        <span className="mono text-[13px] font-medium" style={{ color: 'var(--coverage)' }}>
           {copy.label}
         </span>
       </div>
@@ -112,13 +112,13 @@ export function CoverageAxis({ coverage, compact = false }: { coverage: Coverage
             key={step}
             className="h-1.5 flex-1 rounded-full"
             style={{
-              background: step <= copy.steps ? 'var(--color-teal-deep)' : 'var(--color-understory)',
+              background: step <= copy.steps ? 'var(--coverage)' : 'var(--border)',
               maxWidth: 34,
             }}
           />
         ))}
       </div>
-      {!compact ? <p className="mt-2 text-[12px] text-[var(--color-ink-secondary)]">{copy.meaning}</p> : null}
+      {!compact ? <p className="mt-2 text-[12px] text-[var(--fg-muted)]">{copy.meaning}</p> : null}
     </div>
   );
 }
@@ -132,15 +132,15 @@ export function GateBanner({ gates, agent }: { gates: string[]; agent?: Agent })
   return (
     <div
       className="rounded-[var(--radius-card)] border p-4"
-      style={{ background: 'var(--color-coral-tint)', borderColor: 'var(--color-coral-deep)' }}
+      style={{ background: 'var(--critical-bg)', borderColor: 'var(--critical)' }}
     >
       <div className="flex items-start gap-2.5">
-        <AlertTriangle size={18} strokeWidth={1.5} className="mt-0.5 shrink-0" style={{ color: 'var(--color-coral-deep)' }} aria-hidden />
+        <AlertTriangle size={18} strokeWidth={1.5} className="mt-0.5 shrink-0" style={{ color: 'var(--critical)' }} aria-hidden />
         <div className="min-w-0">
-          <p className="font-semibold" style={{ color: 'var(--color-coral-deep)' }}>
+          <p className="font-semibold" style={{ color: 'var(--critical)' }}>
             {gates.length === 1 ? 'A safety gate fired' : `${gates.length} safety gates fired`}
           </p>
-          <p className="mt-0.5 text-[13px]" style={{ color: 'var(--color-coral-deep)' }}>
+          <p className="mt-0.5 text-[13px]" style={{ color: 'var(--critical)' }}>
             These are hard caps, not deductions. A gate does not lower a score — it means we would not hand this agent
             money.
           </p>
@@ -149,11 +149,11 @@ export function GateBanner({ gates, agent }: { gates: string[]; agent?: Agent })
               const copy = gateCopy(gate);
               return (
                 <li key={gate}>
-                  <p className="text-[14px] font-semibold" style={{ color: 'var(--color-coral-deep)' }}>
+                  <p className="text-[14px] font-semibold" style={{ color: 'var(--critical)' }}>
                     {copy.title}
                   </p>
-                  <p className="text-[13px] text-[var(--color-ink)]">{copy.why}</p>
-                  <p className="mono mt-0.5 text-[10px] uppercase tracking-[0.1em] text-[var(--color-ink-secondary)]">
+                  <p className="text-[13px] text-[var(--fg)]">{copy.why}</p>
+                  <p className="mono mt-0.5 text-[10px] uppercase tracking-[0.1em] text-[var(--fg-muted)]">
                     gate: {gate}
                   </p>
                 </li>
@@ -163,7 +163,7 @@ export function GateBanner({ gates, agent }: { gates: string[]; agent?: Agent })
           {canSpend ? (
             <p
               className="mt-3 rounded-[var(--radius-btn)] px-3 py-2 text-[13px] font-medium"
-              style={{ background: 'var(--color-canopy)', color: 'var(--color-coral-deep)' }}
+              style={{ background: 'var(--panel)', color: 'var(--critical)' }}
             >
               This agent also handles value. A failed gate on something that can move funds is a fund-loss risk, not a
               quality nitpick.
@@ -181,7 +181,7 @@ export function GateFlag({ count }: { count: number }) {
   return (
     <span
       className="mono inline-flex items-center gap-1 rounded-[var(--radius-pill)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em]"
-      style={{ background: 'var(--color-coral-tint)', color: 'var(--color-coral-deep)' }}
+      style={{ background: 'var(--critical-bg)', color: 'var(--critical)' }}
       title="Hard safety caps tripped during assessment"
     >
       <AlertTriangle size={11} strokeWidth={1.5} aria-hidden />
@@ -195,7 +195,7 @@ export function ReferenceBadge({ compact = false }: { compact?: boolean }) {
   return (
     <span
       className="mono inline-flex items-center gap-1 rounded-[var(--radius-pill)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em]"
-      style={{ background: 'var(--color-plum-tint)', color: 'var(--color-plum-deep)' }}
+      style={{ background: 'var(--reference-bg)', color: 'var(--reference)' }}
       title="We deployed this agent. It is excluded from every ranking, sort and leaderboard on this site."
     >
       <HelpCircle size={11} strokeWidth={1.5} aria-hidden />
