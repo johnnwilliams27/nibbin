@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { CATEGORY_BY_SLUG } from '@/lib/categories';
+import { CATEGORIES, CATEGORY_BY_SLUG } from '@/lib/categories';
 import { allAgents, findAgent } from '@/lib/data';
 import { compositeOutOf100, latency, shortAddress, timestamp } from '@/lib/format';
 import { CoverageAxis, GateBanner, ReferenceBadge, ScoreBlock, scoreState, unassessedReason } from '@/components/Assessment';
@@ -9,8 +8,17 @@ import { Figure, ProvenanceChip, ProvenanceSplit } from '@/components/Provenance
 import { HirePanel } from '@/components/HirePanel';
 import { CapabilityList } from '@/components/CapabilityList';
 
+/**
+ * `output: export` refuses to build a dynamic route that produces no paths, and
+ * an empty index is a legitimate state here (the pipeline may not have finished).
+ * So when there are no agents we emit one placeholder path that renders an honest
+ * "not in this snapshot" page. It is a real, truthful page — not a stub agent.
+ */
+const PLACEHOLDER = { chain: 'none', tokenId: 'none' };
+
 export function generateStaticParams() {
-  return allAgents().map((a) => ({ chain: String(a.chain_id), tokenId: a.token_id }));
+  const params = allAgents().map((a) => ({ chain: String(a.chain_id), tokenId: a.token_id }));
+  return params.length > 0 ? params : [PLACEHOLDER];
 }
 
 export async function generateMetadata({
@@ -20,14 +28,14 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { chain, tokenId } = await params;
   const agent = findAgent(chain, tokenId);
-  if (!agent) return { title: 'Agent not found' };
+  if (!agent) return { title: 'Agent not in this snapshot' };
   return { title: agent.name, description: agent.description.slice(0, 160) };
 }
 
 export default async function AgentPage({ params }: { params: Promise<{ chain: string; tokenId: string }> }) {
   const { chain, tokenId } = await params;
   const agent = findAgent(chain, tokenId);
-  if (!agent) notFound();
+  if (!agent) return <NotInSnapshot />;
 
   const meta = CATEGORY_BY_SLUG.get(agent.category);
   const a = agent.assessment;
@@ -270,5 +278,41 @@ function ClassificationCard({ agent }: { agent: Parameters<typeof CapabilityList
         </p>
       ) : null}
     </section>
+  );
+}
+
+/**
+ * Rendered when the requested agent is not in the snapshot — including the
+ * placeholder path emitted when the index is empty. It states the situation
+ * plainly instead of pretending an agent exists.
+ */
+function NotInSnapshot() {
+  return (
+    <div className="mx-auto max-w-[860px] px-5 py-16">
+      <p className="eyebrow">Not indexed</p>
+      <h1 className="mt-2 text-[26px]">This agent is not in the current snapshot</h1>
+      <p className="mt-2 text-[15px] text-[var(--fg-muted)]">
+        Either it has never been indexed, or it was registered after this snapshot was taken. We do not generate a page
+        for an agent we have no record of, and we do not fill one in with placeholder values.
+      </p>
+      <div className="mt-6 flex flex-wrap gap-3 text-[13px]">
+        <Link
+          href="/"
+          className="rounded-[var(--radius-btn)] border px-3 py-2"
+          style={{ borderColor: 'var(--measured)', color: 'var(--measured)' }}
+        >
+          Back to the index
+        </Link>
+        {CATEGORIES.map((c) => (
+          <Link
+            key={c.path}
+            href={`/category/${c.path}`}
+            className="rounded-[var(--radius-btn)] border border-[var(--border)] px-3 py-2"
+          >
+            {c.name}
+          </Link>
+        ))}
+      </div>
+    </div>
   );
 }
