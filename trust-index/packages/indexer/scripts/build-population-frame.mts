@@ -88,6 +88,31 @@ if (chain === undefined) {
 }
 const OUT = arg("--out", `population-${chainName}.ndjson`);
 
+/**
+ * ARCHIVE_RPC / --rpc overrides the built-in endpoint list.
+ *
+ * Measured 2026-09-09: THIRTY-SIX public BSC endpoints were tested for
+ * historical eth_getLogs and every one refused. The dataseed nodes answer
+ * "limit exceeded" even for a 100-block window, which means they are pruned
+ * full nodes rather than range-limited archive nodes — so no amount of chunk
+ * halving reaches old blocks. blockrazor serves archive but caps range at 25
+ * blocks, i.e. ~3M requests for BSC, which is not a route.
+ *
+ * The built-in lists are therefore fine for a recent-blocks run and useless
+ * for a full sweep. A full sweep needs a keyed archive endpoint, and that is
+ * the ONLY thing standing between this script and the complete population.
+ *
+ *   export ARCHIVE_RPC='https://...your-key...'
+ *   pnpm exec tsx scripts/build-population-frame.mts --chain bsc
+ *
+ * Comma-separate several to rotate across them.
+ */
+const rpcOverride = arg("--rpc", process.env["ARCHIVE_RPC"] ?? "");
+if (rpcOverride !== "") {
+  chain.rpcs = rpcOverride.split(",").map((s) => s.trim()).filter((s) => s !== "");
+  console.log(`using ${chain.rpcs.length} override endpoint(s) from ${arg("--rpc", "") !== "" ? "--rpc" : "ARCHIVE_RPC"}`);
+}
+
 type Log = { address: string; topics: string[]; data: string; blockNumber: string };
 
 let rpcIndex = 0;
