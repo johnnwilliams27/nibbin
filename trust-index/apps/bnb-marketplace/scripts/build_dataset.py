@@ -2,8 +2,9 @@
 """Build data/agents.json from the fetched responses in data/raw/.
 
 Every field traces to a fetched API response. Nothing is invented: a value
-that is not present in the source is null. `assessment` is always null --
-a separate probe run fills it in.
+that is not present in the source is null. This script NEVER synthesises an
+`assessment`: it writes null, and carries forward an assessment only if a
+separate probe run already recorded one for that agent at that same endpoint.
 
 Categorisation is deterministic keyword matching over REAL text only
 (name, description, tags, categories, OASF skills/domains, MCP tool names,
