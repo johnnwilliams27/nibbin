@@ -331,7 +331,23 @@ def main():
         with open(fail_path) as f:
             known_fail = {x["agent_id"] for x in json.load(f)["failures"]}
 
-    agents, no_detail = [], 0
+    # A separate probe run writes `assessment` into data/agents.json. Rebuilding
+    # must not destroy that work, so carry forward any assessment already
+    # recorded -- but ONLY when the endpoint is still the same one that was
+    # probed. If the endpoint changed, the old reading no longer describes what
+    # we would dial, so it reverts to null rather than being silently reused.
+    prior = {}
+    if os.path.exists(OUT):
+        try:
+            with open(OUT) as f:
+                for a in json.load(f).get("agents") or []:
+                    if a.get("assessment"):
+                        prior[a["agent_id"]] = (a.get("endpoint"), a["assessment"])
+        except Exception as e:  # noqa: BLE001
+            print(f"warn: could not read prior assessments ({e}); "
+                  f"all assessments will be null")
+
+    agents, no_detail, kept, dropped = [], 0, 0, 0
     for c in cands:
         det = detail_for(c["chain_id"], c["token_id"])
         if det is None:
@@ -340,6 +356,15 @@ def main():
         cat, conf, ev = categorise(c, det)
         ts = det.get("total_score") if det else c.get("total_score")
         fb = det.get("total_feedbacks") if det else c.get("total_feedbacks")
+        ep = pick_endpoint(det)
+        aid = (det or c).get("agent_id") or c["agent_id"]
+        assessment = None
+        if aid in prior:
+            prev_ep, prev_a = prior[aid]
+            if prev_ep == ep and ep is not None:
+                assessment, kept = prev_a, kept + 1
+            else:
+                dropped += 1
         agents.append({
             "agent_id": src.get("agent_id") or c["agent_id"],
             "chain_id": src.get("chain_id", c["chain_id"]),
@@ -352,14 +377,14 @@ def main():
             "category_confidence": conf,
             "category_evidence": ev,
             "protocols": protocols(c, det),
-            "endpoint": pick_endpoint(det),
+            "endpoint": ep,
             "x402_supported": bool(src.get("x402_supported", False)),
             "scan_total_score": ts if isinstance(ts, (int, float)) else None,
             "scan_feedbacks": int(fb) if isinstance(fb, (int, float)) else 0,
             "scan_endpoint_verified": bool(
                 det.get("is_endpoint_verified", False) if det
                 else c.get("is_endpoint_verified", False)),
-            "assessment": None,          # filled by a separate probe run
+            "assessment": assessment,    # from the separate probe run; else null
             "is_reference_agent": False,
         })
 
@@ -374,6 +399,8 @@ def main():
 
     cats = collections.Counter(a["category"] for a in agents)
     print(f"wrote {len(agents)} agents -> {OUT}")
+    print(f"assessments carried forward from probe run: {kept} "
+          f"(dropped because endpoint changed: {dropped})")
     print(f"agents without a detail file: {no_detail} "
           f"(recorded fetch failures: {len(known_fail)})")
     for c in CATEGORIES + ["other"]:
