@@ -1,6 +1,10 @@
 """Validate registry detail before treating its missing endpoint as evidence."""
 import json
 
+# Keys inside `services` that declare a callable interface, and so must be an
+# object when present. Everything else in that map may be scalar metadata.
+INTERFACE_KEYS = frozenset({"mcp", "a2a", "oasf", "web", "email", "api", "x402"})
+
 
 def validate_detail(detail, candidate):
     if not isinstance(detail, dict) or detail.get("error"):
@@ -16,11 +20,23 @@ def validate_detail(detail, candidate):
     services = detail["services"]
     if services is not None and not isinstance(services, dict):
         raise ValueError("detail services must be an object or null")
-    for service in (services or {}).values():
+    for key, service in (services or {}).items():
+        # `services` is not purely a map of service declarations: the registry
+        # also files scalar identity values in it, e.g. services["ens"] =
+        # "clawdmint.eth" and services["did"] = "did:ethr:0x...". Requiring
+        # every value to be an object rejected 4 of 8,590 cached responses that
+        # were perfectly valid, and a validator that discards good evidence is
+        # worse than none -- it turns a live agent into a gap.
+        #
+        # So the object requirement applies only to keys that actually DECLARE
+        # AN INTERFACE. An unknown key carrying a scalar is metadata and is
+        # skipped; an unknown key carrying an object is still checked.
+        if key not in INTERFACE_KEYS and not isinstance(service, dict):
+            continue
         if service is not None and not isinstance(service, dict):
-            raise ValueError("detail service declaration must be an object or null")
+            raise ValueError(f"detail service declaration must be an object or null: {key}")
         if service and service.get("endpoint") is not None and not isinstance(service["endpoint"], str):
-            raise ValueError("detail service endpoint must be a string or null")
+            raise ValueError(f"detail service endpoint must be a string or null: {key}")
     for field in ("mcp_server", "a2a_endpoint", "agent_url"):
         if detail.get(field) is not None and not isinstance(detail[field], str):
             raise ValueError(f"detail {field} must be a string or null")

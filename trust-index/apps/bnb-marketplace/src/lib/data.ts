@@ -66,7 +66,16 @@ function isUsableAgent(a: unknown): a is Agent {
   return typeof candidate.agent_id === 'string' && candidate.agent_id.length > 0;
 }
 
-const KNOWN: CategorySlug[] = ['rebalancing', 'grid_trading', 'yield', 'health_factor', 'other'];
+/**
+ * Derived from CATEGORIES rather than listed again.
+ *
+ * This was a hand-written copy of the four original slugs, and normalise()
+ * coerces anything not in it to `other`. Adding eight categories upstream while
+ * this list stayed at four would have silently reverted all 7,362 newly
+ * classified agents — the data right, the site showing the old answer, nothing
+ * erroring.
+ */
+const KNOWN: CategorySlug[] = [...CATEGORIES.map((c) => c.slug), 'other'];
 
 /** Defensive defaults only for presentation-safety. No score is ever invented here. */
 function normalise(a: Agent): Agent {
@@ -96,6 +105,11 @@ function normalise(a: Agent): Agent {
               ? a.assessment.tool_count
               : (a.assessment.tools_or_skills?.length ?? 0),
           gates_fired: Array.isArray(a.assessment.gates_fired) ? a.assessment.gates_fired : [],
+          // Defaults to 1 = "this agent alone". An older snapshot carries no
+          // fan-out, and claiming a shared measurement is exclusive would be
+          // the inflation this field exists to expose.
+          endpoint_shared_with:
+            typeof a.assessment.endpoint_shared_with === 'number' ? a.assessment.endpoint_shared_with : 1,
           composite: typeof a.assessment.composite === 'number' ? a.assessment.composite : null,
           withheld_reason: a.assessment.withheld_reason ?? null,
         }
@@ -119,10 +133,27 @@ export function allAgents(): Agent[] {
  * with 9,800 unclassifiable rows would be the exact behaviour this site exists
  * to criticise. The count is reported on the landing page as a finding.
  */
-const MARKETPLACE: CategorySlug[] = ['rebalancing', 'grid_trading', 'yield', 'health_factor'];
+const MARKETPLACE: CategorySlug[] = [
+  'rebalancing', 'grid_trading', 'yield', 'health_factor',
+  'payments', 'security', 'research', 'content',
+  'development', 'automation', 'trading', 'staking',
+];
 
+/**
+ * A listed category, OR an agent we actually called and scored.
+ *
+ * The category is a regex match against an agent's own self-written
+ * description — self_reported, weight 0.15. Letting it decide visibility meant
+ * agents we had dialled, exercised and SCORED were invisible while unmeasured
+ * rows containing the word "yield" were listed. Ranking a measured agent below
+ * an unmeasured one because a keyword missed is the inversion this product
+ * exists to correct. `composite: null` still keeps a row out, so this cannot
+ * pad the listings.
+ */
 export function listedAgents(): Agent[] {
-  return allAgents().filter((a) => MARKETPLACE.includes(a.category));
+  return allAgents().filter(
+    (a) => MARKETPLACE.includes(a.category) || (a.assessment?.composite ?? null) !== null,
+  );
 }
 
 /** Indexed but not placed in any of the four categories. Never silently dropped. */
@@ -182,6 +213,8 @@ export interface HeadlineStats {
   endpointUnknown: number;
   assessed: number;
   rated: number;
+  /** Distinct endpoints behind `rated`. Lower when registrations share a service. */
+  ratedEndpoints: number;
   withheld: number;
   ecosystemVerified: number;
   withFeedback: number;
@@ -201,6 +234,11 @@ export function headlineStats(): HeadlineStats {
     endpointUnknown: agents.filter(isEndpointUnknown).length,
     assessed: agents.filter(isAssessed).length,
     rated: agents.filter(isRated).length,
+    // Distinct ENDPOINTS behind those rated rows. A composite measures a
+    // service, and 229 of the rated rows share one endpoint, so quoting the row
+    // count alone turns 13 measured services into "239 rated agents". The
+    // headline states both.
+    ratedEndpoints: new Set(agents.filter(isRated).map((a) => a.endpoint).filter(Boolean)).size,
     withheld: agents.filter((a) => a.assessment !== null && a.assessment.composite === null).length,
     ecosystemVerified: agents.filter((a) => a.scan_endpoint_verified).length,
     withFeedback: agents.filter((a) => a.scan_feedbacks > 0).length,

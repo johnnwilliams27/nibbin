@@ -596,10 +596,29 @@ export function scoreSubject(subject: Subject): { result: SubjectScoreResult; ca
     attemptedChecks.set(o.dimension, set);
   }
   let assessableWeightFx = 0n;
+  /**
+   * The assessable share of each dimension, kept per dimension rather than only
+   * summed, because coverage needs the SAME numbers on both sides of its ratio.
+   *
+   * Coverage is published weight over assessable weight. Counting a published
+   * dimension at its full profile weight while counting it as assessable at a
+   * fraction makes the ratio exceed 1: measured on a2a_agent.v1, a subject with
+   * one blocked check inside a dimension that published reported
+   * dimension_coverage 1.21. A share of the thing we could assess cannot be
+   * more than all of it, and "121% covered" on a page whose whole claim is that
+   * coverage is stated honestly is worse than a wrong number, it is a number
+   * that reads as a bug in the instrument.
+   *
+   * This is the case the note above predicted: latent while every collector
+   * gapped whole dimensions, reachable by the first collector whose
+   * capabilities are per check. The A2A collector is that collector.
+   */
+  const assessableByDimension = new Map<string, bigint>();
   for (const o of outcomes) {
     const blocked = blockedChecks.get(o.spec.id);
     if (blocked === undefined || blocked.size === 0) {
       assessableWeightFx += o.weightFx;
+      assessableByDimension.set(o.spec.id, o.weightFx);
       continue;
     }
     // A check that was gapped AND still produced an observation was attempted;
@@ -607,8 +626,13 @@ export function scoreSubject(subject: Subject): { result: SubjectScoreResult; ca
     const attempted = attemptedChecks.get(o.spec.id) ?? new Set<string>();
     const trulyBlocked = [...blocked].filter((c) => !attempted.has(c)).length;
     const denominator = attempted.size + trulyBlocked;
-    if (denominator === 0) continue;
-    assessableWeightFx += (o.weightFx * BigInt(attempted.size)) / BigInt(denominator);
+    if (denominator === 0) {
+      assessableByDimension.set(o.spec.id, 0n);
+      continue;
+    }
+    const shareFx = (o.weightFx * BigInt(attempted.size)) / BigInt(denominator);
+    assessableWeightFx += shareFx;
+    assessableByDimension.set(o.spec.id, shareFx);
   }
 
   // Composite. The interval assumes the published dimensions are perfectly
@@ -619,12 +643,24 @@ export function scoreSubject(subject: Subject): { result: SubjectScoreResult; ca
   // calibration run measures the correlation.
   let totalWeightFx = 0n;
   let publishedWeightFx = 0n;
+  /**
+   * The published weight measured on the assessable scale, for coverage only.
+   *
+   * Deliberately NOT `publishedWeightFx`, which normalises the composite: a
+   * dimension that published contributes its full weight to the weighted mean,
+   * because the estimate it produced is an estimate of the whole dimension.
+   * Coverage asks a different question — how much of what we could assess
+   * actually produced a score — and must be measured on the same scale as its
+   * denominator.
+   */
+  let publishedAssessableWeightFx = 0n;
   let weightedMeanFx = 0n;
   let weightedHalfFx = 0n;
   for (const o of outcomes) {
     totalWeightFx += o.weightFx;
     if (!o.published) continue;
     publishedWeightFx += o.weightFx;
+    publishedAssessableWeightFx += assessableByDimension.get(o.spec.id) ?? o.weightFx;
     const cappedMeanFx = o.gateCapFx !== null && o.meanFx > o.gateCapFx ? o.gateCapFx : o.meanFx;
     weightedMeanFx += mulFx(o.weightFx, cappedMeanFx);
     weightedHalfFx += mulFx(o.weightFx, o.halfFx);
@@ -635,7 +671,8 @@ export function scoreSubject(subject: Subject): { result: SubjectScoreResult; ca
   // profile. Otherwise one missing credential would silently push thousands of
   // subjects under the coverage floor and withhold their ratings as though
   // they had failed to provide evidence, when in fact we failed to ask.
-  const coverageFx = assessableWeightFx === 0n ? 0n : divFx(publishedWeightFx, assessableWeightFx);
+  const coverageFx =
+    assessableWeightFx === 0n ? 0n : minFx(ONE, divFx(publishedAssessableWeightFx, assessableWeightFx));
   const minCoverageFx = clampFx(parseFx(profile.min_dimension_coverage), 0n, ONE);
 
   const minCompletenessFx = clampFx(parseFx(profile.min_assessment_completeness), 0n, ONE);

@@ -14,16 +14,15 @@
  *   WE COULD NOT MEASURE          reachable: null. Timeout, transport error,
  *                                 DNS failure, 5xx. Says nothing about them.
  *
- * `composite` is null on every row this script writes, without exception. The
- * sweep ran a handshake and an enumeration; neither is behavioural evidence,
- * and a number derived from a tool list would be a guess wearing a decimal
- * point. `withheld_reason` says which of the two it was.
+ * Discovery alone always produces a null composite. An optional scored
+ * artifact can overlay the rating engine's behavioral result, without changing
+ * the discovery observation's timestamp, protocol confirmation or provenance.
  *
  * `gates_fired` carries only what a DECLARATION can establish: a mutating tool
  * with no description, and a tool asking the caller for a credential. Both are
  * read off the enumerated schema with the same helpers the MCP rubric uses.
  */
-import { readFileSync, writeFileSync, renameSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, renameSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { isAbsolute, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -33,6 +32,16 @@ import type { A2aTranscript } from "../src/a2a/transcript.js";
 import { parseServiceDescriptor, type InterfaceTranscript } from "../src/mcp/interface.js";
 
 type CoreAssessment = {
+  /**
+   * Agents in the snapshot sharing this endpoint, this one included.
+   *
+   * Optional here on purpose: the functions below build an assessment from a
+   * transcript and have no view of the dataset, so the fan-out is not knowable
+   * until the write site. Requiring it here would force a placeholder at six
+   * construction sites, and a placeholder is the thing this field exists to
+   * prevent.
+   */
+  endpoint_shared_with?: number;
   reachable: boolean | null;
   protocol_spoken: "mcp" | "a2a" | null;
   tools_or_skills: string[];
@@ -403,7 +412,7 @@ export function assessmentFor(r: EndpointResult): Assessment {
 }
 
 // ---------------------------------------------------------------------------
-export function mergeMarketplace(market: string, refreshPaths: string[] = []): void {
+export function mergeMarketplace(market: string, refreshPaths: string[] = [], scoredPath = ""): void {
 const AGENTS = `${market}/data/agents.json`;
 const RESULTS = `${market}/data/probes/endpoint-probes.json`;
 const dataset = JSON.parse(readFileSync(AGENTS, "utf8")) as {
@@ -463,6 +472,163 @@ for (const [endpoint, selected] of latest) {
     evidence_source: selected.source });
 }
 
+/**
+ * Overlay real composites from score-marketplace.mts.
+ *
+ * Everything above builds an assessment from a handshake and an enumeration,
+ * which is declaration evidence and correctly carries `composite: null`. This
+ * step adds the one thing that was missing: where a subject was actually put
+ * through the behavioural battery and the ENGINE decided to publish, its number
+ * is written here.
+ *
+ * The engine decides, not this file. A subject it withheld stays withheld, and
+ * keeps the engine's own suppression reason rather than the generic
+ * "no behavioural battery run" that was true before the battery existed. No
+ * threshold is applied here and none should ever be: this is a join, and the
+ * moment it starts deciding what publishes, the audit trail forks.
+ */
+const SCORED = scoredPath;
+let overlaid = 0;
+let overlaidWithheld = 0;
+let unjoinable = 0;
+
+/**
+ * Every URL by which a probed endpoint can be named, mapped back to its key.
+ *
+ * A STRAIGHT `byEndpoint.get(sc.endpoint)` LOSES MOST OF THE A2A HALF, silently.
+ * A registration declares where the Agent Card lives
+ * (`…/.well-known/agent-card.json`); the battery dials what that card declares
+ * as its interface (`…/rebalancer/`, or `https://agent.brainonbnb.com/a2a`).
+ * Both files are right about their own subject and the two keys differ, so the
+ * join misses: measured on the first run, 28 of 29 published A2A composites
+ * failed to land and the site would have shown the same "no behavioural battery
+ * run" as before, from a run that had just battered them.
+ *
+ * That failure mode is the dangerous kind — no error, no count, just the old
+ * text — so the misses are counted and reported below rather than trusted to
+ * be zero.
+ */
+/**
+ * TWO PASSES, and the order is the whole correctness of it. A result's OWN
+ * endpoint always wins; another result's declared alias may only claim a URL
+ * nobody owns.
+ *
+ * One pass with first-wins loses scores. Measured: the A2A card result for
+ * `bnb-yield…/.well-known/agent-card.json` declares an interface at
+ * `bnb-yield…/mcp/`, which is ANOTHER probed endpoint's own key. Scanned in
+ * file order, the card claimed it, the MCP composite for that endpoint landed
+ * on the card's row instead of its own, and `bnb-yield` and `kawal` — both
+ * published by the engine at 76.93 and 75.14 — showed no score at all. A join
+ * that moves a rating onto the wrong subject is worse than one that drops it.
+ */
+/**
+ * The weaker of the contract's three tiers, treating a missing depth reading as
+ * "says nothing" rather than as "strong". `none` from the engine means no
+ * dimension published, which cannot coexist with a composite; it floors at
+ * `thin` so a published row never claims less than one look.
+ */
+function weakest(
+  breadth: "thin" | "moderate" | "strong",
+  depth: "none" | "thin" | "moderate" | "strong" | null | undefined,
+): "thin" | "moderate" | "strong" {
+  if (depth === null || depth === undefined) return "thin";
+  const ORDER = ["thin", "moderate", "strong"] as const;
+  const d = depth === "none" ? "thin" : depth;
+  return ORDER.indexOf(d) < ORDER.indexOf(breadth) ? d : breadth;
+}
+
+const aliasToKey = new Map<string, string>();
+for (const endpoint of latest.keys()) aliasToKey.set(endpoint, endpoint);
+for (const { result: r } of latest.values()) {
+  const alias = (u: unknown): void => {
+    if (typeof u === "string" && u !== "" && !aliasToKey.has(u)) aliasToKey.set(u, r.endpoint);
+  };
+  alias(r.mcp?.endpoint);
+  alias(r.a2a?.subject_url);
+  alias(r.a2a?.reachability?.url);
+  alias(r.a2a?.discovery?.url);
+  for (const i of r.a2a?.declaration?.interfaces ?? []) alias(i.url);
+}
+
+if (SCORED !== "") {
+  if (!existsSync(SCORED)) throw new Error("scored artifact does not exist; refusing to erase published ratings");
+  const scored = JSON.parse(readFileSync(SCORED, "utf8")) as {
+    results: Array<{
+      endpoint: string;
+      composite: number | null;
+      dimension_coverage: number | null;
+      evidence_tier: "none" | "thin" | "moderate" | "strong" | null;
+      withheld_reason: string | null;
+      gates_fired: unknown[];
+    }>;
+  };
+  for (const sc of scored.results) {
+    const key = aliasToKey.get(sc.endpoint);
+    const base = key === undefined ? undefined : byEndpoint.get(key);
+    if (base === undefined || key === undefined) {
+      if (sc.composite !== null) unjoinable += 1;
+      continue;
+    }
+
+    if (sc.composite !== null) {
+      byEndpoint.set(key, {
+        ...base,
+        composite: sc.composite,
+        // Coverage stays a separate axis from the score and is never folded
+        // into it — and it is the LOWER of two different questions.
+        //
+        // `dimension_coverage` is breadth: how much of the profile produced a
+        // score. `evidence_tier` is the engine's own depth: how much sampling
+        // stands behind it. A subject probed once has breadth 1.0, because one
+        // run touches every arm, and depth `thin`, because the engine's
+        // strong_min_span_days makes anything more unreachable in a day.
+        //
+        // Breadth alone would print "Strong — we exercised the full probe set,
+        // few blind spots" over a subject we looked at exactly once. Six of the
+        // first seven A2A rows would have said that. The site shows one axis,
+        // so it gets the weaker of the two.
+        coverage: weakest(
+          sc.dimension_coverage === null ? base.coverage
+          : sc.dimension_coverage >= 0.85 ? "strong"
+          : sc.dimension_coverage >= 0.6 ? "moderate"
+          : "thin",
+          sc.evidence_tier,
+        ),
+        withheld_reason: null,
+        gates_fired: (sc.gates_fired as Array<{ gate_id?: string }>).map(
+          (g) => g.gate_id ?? String(g),
+        ),
+      });
+      overlaid += 1;
+    } else if (sc.withheld_reason !== null && base.composite === null) {
+      // Withheld by the engine after a real battery run. That is a stronger and
+      // more specific statement than "no battery was run", so it replaces it.
+      //
+      // `base.composite === null` guards a real collision: one endpoint can be
+      // reached by two subjects, an MCP server and an A2A agent on the same
+      // host. When the MCP half publishes and the A2A half is withheld, writing
+      // the A2A reason here would leave the row carrying BOTH a score and an
+      // explanation of why there is no score. A withholding never annotates a
+      // published rating.
+      byEndpoint.set(key, { ...base, withheld_reason: sc.withheld_reason });
+      overlaidWithheld += 1;
+    }
+  }
+  console.log(
+    `scored overlay: ${overlaid} endpoints now carry a composite, ` +
+      `${overlaidWithheld} carry an engine withholding reason`,
+  );
+  if (unjoinable > 0) {
+    // Loud, because the failure is invisible in the output: a score that does
+    // not join leaves the row reading "no behavioural battery run" from a run
+    // that battered it. Never let this number be discovered by a reader.
+    console.error(
+      `WARNING: ${unjoinable} PUBLISHED composites could not be matched to a probed endpoint ` +
+        `and were dropped. They are real ratings that will not appear on the site.`,
+    );
+  }
+}
+
 let written = 0;
 let skippedReference = 0;
 let noEndpoint = 0;
@@ -488,7 +654,16 @@ for (const a of dataset.agents) {
   }
   // Written in contract order, so a human diffing the file reads the fields in
   // the order DATA-CONTRACT.md lists them.
-  a.assessment = { ...found } satisfies Assessment;
+  a.assessment = {
+    // How many agents in this dataset declare the SAME endpoint, this one
+    // included. One endpoint's behaviour is one measurement, and writing it
+    // onto 229 rows without saying so turns 11 measured services into "239
+    // rated agents" -- the same one-thing-counted-many-times inflation the
+    // registry itself is full of, reproduced by us. The UI renders this
+    // wherever a score appears.
+    ...found,
+    endpoint_shared_with: registrations.get(ep) ?? 1,
+  } satisfies Assessment;
   written += 1;
 }
 
@@ -549,6 +724,26 @@ for (const a of dataset.agents) {
 console.log(JSON.stringify({ endpoints: epCounts, agents: counts }, null, 2));
 }
 
+export function parseMergeArgs(args: string[], defaultMarket: string) {
+  const pending = [...args];
+  const market = resolve(pending[0] && !pending[0].startsWith("--") ? pending.shift()! : defaultMarket);
+  const refreshPaths: string[] = [];
+  let scoredPath = "";
+  while (pending.length) {
+    const value = pending.shift()!;
+    if (value === "--scored") {
+      const path = pending.shift();
+      if (!path || path.startsWith("--") || scoredPath) throw new Error("--scored requires exactly one artifact path");
+      scoredPath = resolve(path);
+    } else {
+      if (value.startsWith("--")) throw new Error(`unknown option: ${value}`);
+      refreshPaths.push(resolve(value));
+    }
+  }
+  return { market, refreshPaths, scoredPath };
+}
+
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  mergeMarketplace(resolve(process.argv[2] ?? fileURLToPath(new URL("../../../apps/bnb-marketplace", import.meta.url))), process.argv.slice(3));
+  const options = parseMergeArgs(process.argv.slice(2), fileURLToPath(new URL("../../../apps/bnb-marketplace", import.meta.url)));
+  mergeMarketplace(options.market, options.refreshPaths, options.scoredPath);
 }

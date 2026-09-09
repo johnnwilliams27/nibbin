@@ -77,6 +77,83 @@ and the `old-nibbin` repository.
     completed job 1179 instead of creating another hire.
     Written design: `superpowers/specs/2026-09-09-buyer-reviews-design.md`.
 
+- **nibbin.com is LIVE**, serving the BNB agent marketplace (308 → `www.nibbin.com`). Vercel
+  project `nibbin-bnb-marketplace`, Root Directory `trust-index/apps/bnb-marketplace`, Next.js
+  static export. The v1 site is down. **Never add a root `vercel.json`** — Root Directory is
+  already set, so a root config that `cd`s into the same path breaks the build.
+- **`main` is protected.** Required checks: `typecheck`, `lint`, `test`, `build`. The
+  `trust-index.yml` `paths:` filter was removed — a required check behind a path filter can never
+  report, so any PR outside those paths was permanently unmergeable (see `GOTCHAS.md`).
+
+### Open P0 — a live integrity defect, fix ordering starts here
+
+- **P0: 4,883 agents carry a verdict that blames them for our limitation.** `agents.json` records
+  2,716 as *"answered HTTP 405 but did not complete an MCP handshake"*. They sit behind 6
+  endpoints; 2,711 behind `https://q402.quackai.ai/api/mcp/info`, which answers `GET 200` with a
+  valid ERC-8004 `service.mcp` descriptor declaring `transport: stdio` and enumerating 8+ tools.
+  The server runs over stdio via npx. Our prober is HTTP-only and structurally cannot dial it. This
+  is `harness_capability_missing` written as a subject failure. Not rendered on the site (all are
+  category `other`) but it ships in `agents.json`. Reword the verdict; then read the descriptor
+  rather than POSTing at it — it is the largest single coverage win available.
+- **P0: the index construction has never been reviewed.** The 230 listed agents come from a 10,041
+  candidate pool = 3.2% of the BSC registry, assembled entirely from 8004scan streams plus 13
+  hand-picked search terms; categories are regex matches over the agents' own self-written
+  descriptions (provenance 0.15, the weakest tier) with median confidence 0.6 and 16 of 230 below
+  0.4; and the 230 resolve to 134 distinct descriptions and 40 distinct endpoints. The sampling
+  frame and the taxonomy were fitted to each other. `HANDOFF.md` §4.4 has the full audit.
+- ~~**P1: why no agent scores is unresolved between two hypotheses.**~~ **Settled 2026-09-09: it
+  was the pipeline, not the thresholds.** No threshold was changed. `score-marketplace.mts` now
+  joins transcripts to battery outcomes and calls `scoreSubject` for both protocols; on 273 live
+  transcripts that gives **42 published composites** (MCP 13/173, A2A 29/100). The A2A half had
+  been structurally unrateable — no profile, no assembler, nothing running the battery — so 100
+  probed agents produced 0 scores from a rubric that was never consulted.
+- **P1: 23 of the 29 published A2A subjects sit at exactly 77.5**, the ceiling for a subject whose
+  every check passes on a single day (shrinkage toward the 0.55 prior, `thin` tier, wide
+  interval). Twelve of them are subdomains of ONE `bubbleupdappos.workers.dev` account and four
+  are one `fly.dev` operator. `endpoint_shared_with` counts registrations per endpoint and does
+  not catch one deployment behind many hostnames. Before these go on the site, either group them
+  or say plainly that they are one operator — twelve identical rows read as twelve agents.
+  Repeated daily sampling is what separates them; one day cannot.
+- **P1: 8004scan supplies the sampling frame**, which `DIRECTION.md` §11's Glama ruling
+  (third-party metadata enriches at 0.60; behavioural evidence stays ours) does not permit.
+  `packages/indexer` already enumerates 496,976 agents from chain independently — use it.
+
+### A2A rating landed 2026-09-09
+
+`a2a_agent.v1` (`packages/types/src/profiles.ts`), its assembler
+(`collectors/src/a2a/subject.ts`), and `scripts/run-a2a-battery.mts`. Weights mirror
+`mcp_server.v2`'s 0.80/0.20 behaviour/declaration split so an A2A 70 means roughly what an MCP 70
+means; v2's 0.20 on `tool_safety` has no A2A equivalent (an AgentSkill has no schema and no
+`readOnlyHint`) and goes to injection resistance 0.25, functional correctness 0.35, robustness
+0.20. The three behavioural dimensions are shared specs now, because a shared dimension id has to
+mean one thing across the compendium.
+
+Running it against 48 live agents found four defects, all of them ours written as facts about the
+subject, all four caught by reading the pass/fail/undecided tallies rather than the scores:
+the safety screen delegated to the MCP verb list and so never checked `swap`/`stake`/`withdraw`
+(three financially-named skills were invoked); determinism compared whole JSON envelopes and
+called 57 of 76 skills inconsistent over protocol-mandated UUIDs; 14 injection verdicts were read
+off calls that only errored, every one recorded as a pass; and the malformed arm sent a legal
+empty text part, leaving robustness undecided 57 times in 76. See `LEARNINGS.md` and `GOTCHAS.md`.
+
+Engine: `dimension_coverage` could exceed 1 (measured 1.21) once a dimension could be partly
+assessable — the case `rating/index.ts` predicted would arrive with the first per-check collector.
+Composite untouched.
+
+### Fixed 2026-09-09
+
+- **A rate-limit gap was being published as "declares no endpoint."** Only the detail view carries
+  an endpoint and that fetch is capped at 1000/hour, so agents we never reached landed with
+  `endpoint: null`, identical to agents that declare none. `build_dataset.py` loaded the failure
+  list and used it in one `print()`, so it never reached the record. Published "1,708 declare no
+  endpoint" (228 do) and told 11 agents' visitors they "cannot be hired at all". Fixed with
+  `detail_status: "read" | "unread_rate_limited"` on every record, `DATA-CONTRACT.md` rule 4, and
+  a normalise() default of *unknown* rather than *read* so old snapshots cannot silently restore
+  the bug.
+- **`fetch_details.py` parked itself for an hour on the first 429.** 8004scan sends
+  `retry-after: 3600`; the uncapped `sleep(max(ra, ...))` put all 16 threads to sleep. Capped at 90s.
+- Detail cache at **8,590/10,041**, snapshotted to `data/cache-snapshot/` (7.5MB, restorable).
+  `data/raw/` is gitignored as regenerable — true, but only at 1000 req/hour ≈ 10 hours cold.
 - **Detail-evidence correctness review, 2026-09-09.** Implemented and reviewed
   on `codex/trust-index-handoff` through `461be71a`. Invalid or mismatched detail
   cache cannot establish a reading; failed rebuilds preserve the snapshot;
@@ -84,6 +161,7 @@ and the `old-nibbin` repository.
   Marketplace tests/build now participate in required CI. Four-reviewer report:
   `gates/2026-09-09-detail-evidence.md`. Initial audit:
   `HANDOFF-REVIEW-2026-09-09.md`. No new production measurements or threshold changes.
+
 - **ERC-8004 population frame, 2026-09-09.** Censused all twelve EVM chains carrying the
   Identity Registry: **496,976 agents**, independently reproduced (within ~1.5%) of
   8004scan's 504,235+ without using their API. BSC holds 341,769 (69%) with ZERO feedback

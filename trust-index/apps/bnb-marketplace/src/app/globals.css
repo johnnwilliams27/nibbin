@@ -45,6 +45,24 @@
   --color-cat-yield-bg: #122318;
   --color-cat-health: #ef8f6a;
   --color-cat-health-bg: #291a13;
+  /* The eight corpus-derived categories. Identity only — a category colour
+     never encodes quality or rank, same rule as the original four. */
+  --color-cat-payments: #e8c35f;
+  --color-cat-payments-bg: #2a2312;
+  --color-cat-security: #f07a8c;
+  --color-cat-security-bg: #2b1519;
+  --color-cat-research: #7fd3d8;
+  --color-cat-research-bg: #12262a;
+  --color-cat-content: #c9a3e0;
+  --color-cat-content-bg: #241a2c;
+  --color-cat-development: #8fb0f5;
+  --color-cat-development-bg: #161e2e;
+  --color-cat-automation: #9dd67f;
+  --color-cat-automation-bg: #1a2614;
+  --color-cat-trading: #f0a860;
+  --color-cat-trading-bg: #2a1f12;
+  --color-cat-staking: #6fc9b4;
+  --color-cat-staking-bg: #12261f;
 
   --font-sans: 'Source Sans 3', 'Segoe UI', ui-sans-serif, system-ui, sans-serif;
   --font-display: 'Source Sans 3', 'Segoe UI', ui-sans-serif, system-ui, sans-serif;

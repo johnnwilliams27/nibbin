@@ -208,6 +208,41 @@ describe("a missing collector must never read as the subject falling short", () 
     // pair that keeps our shortfall from reading as the subject's.
     expect(partly.composite).toBeLessThan(full.composite!);
   });
+
+  /**
+   * The sibling defect the fix above created, found by the first collector whose
+   * capabilities really are per check (A2A).
+   *
+   * Coverage is published weight over assessable weight. Once a dimension can be
+   * PARTLY assessable, counting it at full profile weight in the numerator and
+   * at a fraction in the denominator makes the ratio exceed 1: measured 1.21 on
+   * a real a2a_agent.v1 subject with one blocked check inside a dimension that
+   * published. "121% covered", on a page whose entire claim is that coverage is
+   * stated honestly, reads as a broken instrument — and rightly.
+   *
+   * Both sides are now measured on the assessable scale. The composite is
+   * untouched: a dimension that published contributes its full weight to the
+   * weighted mean, because the estimate it produced is an estimate of the whole
+   * dimension. Coverage asks a different question and gets a different scale.
+   */
+  it("FIXED: coverage never exceeds 1 when a published dimension is partly blocked", () => {
+    const partly = scoreSubject(
+      mcpSubject([...MCP_CORE, measured("tool_safety", "c1", "0")], toolSafetyBlocked(["c2", "c3", "c4", "c5"])),
+    ).result;
+    expect(partly.dimension_coverage).toBeLessThanOrEqual(1);
+    // 0.80 of untouched weight plus one fifth of tool_safety's 0.20, over the
+    // same 0.84 that is assessable: everything assessable was covered.
+    expect(partly.dimension_coverage).toBeCloseTo(1, 6);
+
+    const full = scoreSubject(
+      mcpSubject(
+        [...MCP_CORE, ...["c1", "c2", "c3", "c4", "c5"].map((k) => measured("tool_safety", k, "1"))],
+        [],
+      ),
+    ).result;
+    // And the composite is unchanged by the coverage fix.
+    expect(partly.composite).toBeLessThan(full.composite!);
+  });
 });
 
 describe("resampling policies were chosen for probe cadence", () => {
