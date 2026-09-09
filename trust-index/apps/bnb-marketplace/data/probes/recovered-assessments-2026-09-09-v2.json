@@ -1,0 +1,3242 @@
+{
+  "source_scored_sha256": "488173618aaa879fa9774088992a3fc71f1d2cb0edf0fb78a58fff9510e79228",
+  "source_mcp_battery_sha256": "24262a6613b8eb3726a498fd0aec6d8a4775b663cf65f268ed8d7fe69dad5530",
+  "source_a2a_battery_sha256": "62f1f3363e7fb461b34142ea74e0e24a2bea4a28a3e4a022539ede108d7c6874",
+  "source_transcripts_manifest_sha256": "4de800c305a922223119941b85065da50d3ca7c64f19ce37ac37f3644f93432c",
+  "score_as_of": "2026-09-09T02:00:00Z",
+  "scored_generated_at": "2026-09-09T10:46:12.869Z",
+  "attribution_policy": "Original published scores copied without rescoring. Exact protocol/endpoint joins across score, transcript and battery. A2A declaration links are explicit, never endpoint identity aliases. Protocol response does not establish successful capability execution.",
+  "clock_note": "The original 02:00 scoring parameter precedes the actual observations. It is not the time measured, publication time, or a historical availability claim.",
+  "summary": {
+    "original_subjects": 273,
+    "original_published": 42,
+    "recovered_published": 42,
+    "excluded": []
+  },
+  "assessments": [
+    {
+      "endpoint": "https://agent.brainonbnb.com/a2a",
+      "protocol": "a2a",
+      "assessment": {
+        "reachable": true,
+        "protocol_spoken": null,
+        "tools_or_skills": [
+          "Negotiate an ERC-8183 job",
+          "Notify the seller a job is funded",
+          "Venus health factor & liquidation distance",
+          "Grid trading plan, costed against the real pool",
+          "Venus yield ranking, and whether moving pays for itself",
+          "Portfolio rebalance, priced against the pools that would execute it",
+          "Which PancakeSwap fee tier is actually paying its liquidity providers",
+          "The liquidity agent, on your position"
+        ],
+        "tool_count": 8,
+        "latency_ms": 257,
+        "coverage": "thin",
+        "composite": 75.31,
+        "withheld_reason": null,
+        "gates_fired": [],
+        "checked_at": "2026-09-09T10:34:10.479Z",
+        "evidence_state": "response_received",
+        "evidence_scope": "endpoint",
+        "evidence_endpoint": "https://agent.brainonbnb.com/a2a",
+        "evidence_provenance": "probe_observation",
+        "capability_source": "agent_card"
+      },
+      "provenance": {
+        "score_as_of": "2026-09-09T02:00:00Z",
+        "scored_generated_at": "2026-09-09T10:46:12.869Z",
+        "probe_observed_at": "2026-09-09T09:40:27Z",
+        "battery_observed_at": [
+          "2026-09-09T10:34:10.479Z"
+        ],
+        "transcript_file": "a2a_https_agent_brainonbnb_com_a2a.json",
+        "transcript_sha256": "9b07504ed9c05a3ba49675764c5f38fc78bdf01da5e07205e4e0af7430af9d8f",
+        "battery_sha256": "62f1f3363e7fb461b34142ea74e0e24a2bea4a28a3e4a022539ede108d7c6874",
+        "battery_outcomes": 3,
+        "protocol_confirmation_basis": "nonstandard_message_send_result",
+        "capability_success_claimed": false
+      },
+      "original_score": {
+        "composite_low": 27.25,
+        "composite_high": 100,
+        "dimension_coverage": 1,
+        "assessment_completeness": 0.66,
+        "evidence_tier": "thin",
+        "harness_gaps": [
+          {
+            "capability": "a2a.battery",
+            "check": "battery_skill_refused",
+            "detail": "grid_plan: beyond the per-agent budget of 3",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "battery_skill_refused",
+            "detail": "yield_plan: beyond the per-agent budget of 3",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "battery_skill_refused",
+            "detail": "rebalance_plan: beyond the per-agent budget of 3",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "battery_skill_refused",
+            "detail": "lp_tier_plan: beyond the per-agent budget of 3",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "battery_skill_refused",
+            "detail": "lp_position_plan: beyond the per-agent budget of 3",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill notify_funded",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill health_factor",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill negotiate but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill notify_funded but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill health_factor but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "reports_errors_via_protocol",
+            "detail": "the reports_errors_via_protocol arm produced no decidable result for skill negotiate",
+            "dimension": "robustness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "reports_errors_via_protocol",
+            "detail": "the reports_errors_via_protocol arm produced no decidable result for skill notify_funded",
+            "dimension": "robustness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "reports_errors_via_protocol",
+            "detail": "the reports_errors_via_protocol arm produced no decidable result for skill health_factor",
+            "dimension": "robustness"
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "https://agents.chainhelix.io/healthmon/",
+      "protocol": "a2a",
+      "assessment": {
+        "reachable": true,
+        "protocol_spoken": "a2a",
+        "tools_or_skills": [
+          "Position health report",
+          "Negotiate an ERC-8183 job",
+          "Notify the seller a job is funded (request delivery)"
+        ],
+        "tool_count": 3,
+        "latency_ms": 624,
+        "coverage": "thin",
+        "composite": 77.5,
+        "withheld_reason": null,
+        "gates_fired": [],
+        "checked_at": "2026-09-09T10:34:10.481Z",
+        "evidence_state": "protocol_confirmed",
+        "evidence_scope": "endpoint",
+        "evidence_endpoint": "https://agents.chainhelix.io/healthmon/",
+        "evidence_provenance": "probe_observation",
+        "capability_source": "agent_card"
+      },
+      "provenance": {
+        "score_as_of": "2026-09-09T02:00:00Z",
+        "scored_generated_at": "2026-09-09T10:46:12.869Z",
+        "probe_observed_at": "2026-09-09T09:40:27Z",
+        "battery_observed_at": [
+          "2026-09-09T10:34:10.481Z"
+        ],
+        "transcript_file": "a2a_https_agents_chainhelix_io_healthmon_well_known_agent_card_json.json",
+        "transcript_sha256": "9d33d9d419edba31290140383a42fdb6e8371cc3ba076d4a469070ce0508ee70",
+        "battery_sha256": "62f1f3363e7fb461b34142ea74e0e24a2bea4a28a3e4a022539ede108d7c6874",
+        "battery_outcomes": 3,
+        "protocol_confirmation_basis": "message_send_response",
+        "capability_success_claimed": false
+      },
+      "original_score": {
+        "composite_low": 30.25,
+        "composite_high": 100,
+        "dimension_coverage": 1,
+        "assessment_completeness": 0.9125,
+        "evidence_tier": "thin",
+        "harness_gaps": [
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill negotiate",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill notify_funded",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill health but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill negotiate but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill notify_funded but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "https://agents.chainhelix.io/rebalancer/",
+      "protocol": "a2a",
+      "assessment": {
+        "reachable": true,
+        "protocol_spoken": "a2a",
+        "tools_or_skills": [
+          "Portfolio rebalancing plan",
+          "Negotiate an ERC-8183 job",
+          "Notify the seller a job is funded (request delivery)"
+        ],
+        "tool_count": 3,
+        "latency_ms": 587,
+        "coverage": "thin",
+        "composite": 77.5,
+        "withheld_reason": null,
+        "gates_fired": [],
+        "checked_at": "2026-09-09T10:34:10.481Z",
+        "evidence_state": "protocol_confirmed",
+        "evidence_scope": "endpoint",
+        "evidence_endpoint": "https://agents.chainhelix.io/rebalancer/",
+        "evidence_provenance": "probe_observation",
+        "capability_source": "agent_card"
+      },
+      "provenance": {
+        "score_as_of": "2026-09-09T02:00:00Z",
+        "scored_generated_at": "2026-09-09T10:46:12.869Z",
+        "probe_observed_at": "2026-09-09T09:27:51Z",
+        "battery_observed_at": [
+          "2026-09-09T10:34:10.481Z"
+        ],
+        "transcript_file": "a2a_https_agents_chainhelix_io_rebalancer_well_known_agent_card_json.json",
+        "transcript_sha256": "639be2c645e20bbb9f780027673223a891ccff0d044e339424c6eea7f813d2ed",
+        "battery_sha256": "62f1f3363e7fb461b34142ea74e0e24a2bea4a28a3e4a022539ede108d7c6874",
+        "battery_outcomes": 3,
+        "protocol_confirmation_basis": "message_send_response",
+        "capability_success_claimed": false
+      },
+      "original_score": {
+        "composite_low": 30.25,
+        "composite_high": 100,
+        "dimension_coverage": 1,
+        "assessment_completeness": 0.9125,
+        "evidence_tier": "thin",
+        "harness_gaps": [
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill negotiate",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill notify_funded",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill rebalancing but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill negotiate but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill notify_funded but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "https://agents.topazdex.com/mcp",
+      "protocol": "mcp",
+      "assessment": {
+        "reachable": true,
+        "protocol_spoken": "mcp",
+        "tools_or_skills": [
+          "topaz_get_protocol_stats",
+          "topaz_get_pool_stats",
+          "topaz_get_gauge_stats",
+          "topaz_quote_swap",
+          "topaz_build_swap_calldata",
+          "topaz_recommend_lp",
+          "topaz_recommend_votes",
+          "topaz_build_vote_calldata",
+          "topaz_recommend_bribe_campaign",
+          "topaz_build_bribe_deposit_calldata",
+          "topaz_get_ve_stats",
+          "topaz_get_epoch_info",
+          "topaz_get_pool_by_pair",
+          "topaz_check_vote_eligibility",
+          "topaz_get_route_alternatives",
+          "topaz_compare_pool_options",
+          "topaz_get_wallet_token_balances",
+          "topaz_get_ve_nfts",
+          "topaz_get_user_ve_locks",
+          "topaz_get_relays",
+          "topaz_get_user_relay_positions",
+          "topaz_build_deposit_managed_calldata",
+          "topaz_build_withdraw_managed_calldata",
+          "topaz_build_relay_claim_calldata",
+          "topaz_compare_ve_strategies",
+          "topaz_get_relay_monitor",
+          "topaz_get_user_relay_alerts",
+          "topaz_get_cl_position_by_id",
+          "topaz_get_cl_position_health",
+          "topaz_get_user_dex_positions",
+          "topaz_get_claimables",
+          "topaz_get_all_claimables",
+          "topaz_simulate_cl_range",
+          "topaz_compare_hold_lp_vote",
+          "topaz_estimate_bribe_roi",
+          "topaz_recommend_protocol_actions",
+          "topaz_get_weekly_strategy",
+          "topaz_get_bribe_markets",
+          "topaz_get_gauge_rewards",
+          "topaz_get_protocol_history",
+          "topaz_get_pool_history",
+          "topaz_get_recent_epochs",
+          "topaz_get_vote_effectiveness"
+        ],
+        "tool_count": 43,
+        "latency_ms": 5960,
+        "coverage": "thin",
+        "composite": 45,
+        "withheld_reason": null,
+        "gates_fired": [
+          "mcp.v2.credential_parameter"
+        ],
+        "checked_at": "2026-09-09T09:30:18Z",
+        "evidence_state": "protocol_confirmed",
+        "evidence_scope": "endpoint",
+        "evidence_endpoint": "https://agents.topazdex.com/mcp",
+        "evidence_provenance": "probe_observation",
+        "capability_source": "tools_list"
+      },
+      "provenance": {
+        "score_as_of": "2026-09-09T02:00:00Z",
+        "scored_generated_at": "2026-09-09T10:46:12.869Z",
+        "probe_observed_at": "2026-09-09T09:27:06Z",
+        "battery_observed_at": [
+          "2026-09-09T09:28:49Z",
+          "2026-09-09T09:30:12Z",
+          "2026-09-09T09:30:18Z"
+        ],
+        "transcript_file": "mcp_https_agents_topazdex_com_mcp.json",
+        "transcript_sha256": "a7a18c64f189ddaacba5c861a98ee30b8ff497133a195f595a75ae434abe411c",
+        "battery_sha256": "24262a6613b8eb3726a498fd0aec6d8a4775b663cf65f268ed8d7fe69dad5530",
+        "battery_outcomes": 3,
+        "protocol_confirmation_basis": "initialize_response",
+        "capability_success_claimed": false
+      },
+      "original_score": {
+        "composite_low": 0,
+        "composite_high": 45,
+        "dimension_coverage": 0.97,
+        "assessment_completeness": 1,
+        "evidence_tier": "thin",
+        "harness_gaps": []
+      }
+    },
+    {
+      "endpoint": "https://alphatrack.space/mcp",
+      "protocol": "mcp",
+      "assessment": {
+        "reachable": true,
+        "protocol_spoken": "mcp",
+        "tools_or_skills": [
+          "top_traders"
+        ],
+        "tool_count": 1,
+        "latency_ms": 6936,
+        "coverage": "thin",
+        "composite": 55.25,
+        "withheld_reason": null,
+        "gates_fired": [],
+        "checked_at": "2026-09-09T09:30:28Z",
+        "evidence_state": "protocol_confirmed",
+        "evidence_scope": "endpoint",
+        "evidence_endpoint": "https://alphatrack.space/mcp",
+        "evidence_provenance": "probe_observation",
+        "capability_source": "tools_list"
+      },
+      "provenance": {
+        "score_as_of": "2026-09-09T02:00:00Z",
+        "scored_generated_at": "2026-09-09T10:46:12.869Z",
+        "probe_observed_at": "2026-09-09T09:27:06Z",
+        "battery_observed_at": [
+          "2026-09-09T09:30:28Z"
+        ],
+        "transcript_file": "mcp_https_alphatrack_space_mcp.json",
+        "transcript_sha256": "7e42e8a13f7ce5cb18de2defe4eb7495b561bd0513b5f6f96b728f2a940df505",
+        "battery_sha256": "24262a6613b8eb3726a498fd0aec6d8a4775b663cf65f268ed8d7fe69dad5530",
+        "battery_outcomes": 1,
+        "protocol_confirmation_basis": "initialize_response",
+        "capability_success_claimed": false
+      },
+      "original_score": {
+        "composite_low": 6.73,
+        "composite_high": 100,
+        "dimension_coverage": 0.67,
+        "assessment_completeness": 1,
+        "evidence_tier": "thin",
+        "harness_gaps": []
+      }
+    },
+    {
+      "endpoint": "https://api.xona-agent.com/mcp",
+      "protocol": "mcp",
+      "assessment": {
+        "reachable": true,
+        "protocol_spoken": "mcp",
+        "tools_or_skills": [
+          "list-resources",
+          "image-creative-director",
+          "image-designer",
+          "image-nano-banana-pro",
+          "image-nano-banana",
+          "image-grok-imagine",
+          "image-model-qwen-image",
+          "image-model-seedream-4.5",
+          "image-flux-2-pro",
+          "image-flux-2-max",
+          "image-flux-2-flex",
+          "image-gpt-image-2",
+          "video-short-generation",
+          "token-pumpfun-trending",
+          "token-pumpfun-movers",
+          "token-news",
+          "token-starter-kit",
+          "ai-x-persona",
+          "ai-x-news",
+          "ai-prediction-market-limitless-market-list",
+          "ai-prediction-market-limitless-market-intel",
+          "ai-prediction-market-limitless-alpha-feed",
+          "tokens-api-search",
+          "tokens-api-resolve",
+          "tokens-api-curated",
+          "tokens-api-market-snapshots",
+          "tokens-api-variant-markets",
+          "tokens-api-risk-summary",
+          "tokens-api-asset-detail",
+          "tokens-api-asset-variants",
+          "tokens-api-asset-variant-market",
+          "tokens-api-asset-markets",
+          "tokens-api-asset-ohlcv",
+          "tokens-api-asset-price-chart",
+          "tokens-api-asset-profile",
+          "tokens-api-asset-tickers",
+          "tokens-api-asset-description",
+          "tokens-api-asset-risk-summary",
+          "tokens-api-asset-risk-details"
+        ],
+        "tool_count": 39,
+        "latency_ms": 1247,
+        "coverage": "thin",
+        "composite": 45,
+        "withheld_reason": null,
+        "gates_fired": [
+          "mcp.v2.credential_parameter"
+        ],
+        "checked_at": "2026-09-09T09:30:32Z",
+        "evidence_state": "protocol_confirmed",
+        "evidence_scope": "endpoint",
+        "evidence_endpoint": "https://api.xona-agent.com/mcp",
+        "evidence_provenance": "probe_observation",
+        "capability_source": "tools_list"
+      },
+      "provenance": {
+        "score_as_of": "2026-09-09T02:00:00Z",
+        "scored_generated_at": "2026-09-09T10:46:12.869Z",
+        "probe_observed_at": "2026-09-09T09:27:06Z",
+        "battery_observed_at": [
+          "2026-09-09T09:29:00Z",
+          "2026-09-09T09:29:16Z",
+          "2026-09-09T09:30:32Z"
+        ],
+        "transcript_file": "mcp_https_api_xona_agent_com_mcp.json",
+        "transcript_sha256": "6beb73ee53b33dca08d5c0047548b9174e8123a79ace454a8075f86ed5b04d8e",
+        "battery_sha256": "24262a6613b8eb3726a498fd0aec6d8a4775b663cf65f268ed8d7fe69dad5530",
+        "battery_outcomes": 3,
+        "protocol_confirmation_basis": "initialize_response",
+        "capability_success_claimed": false
+      },
+      "original_score": {
+        "composite_low": 0,
+        "composite_high": 45,
+        "dimension_coverage": 0.97,
+        "assessment_completeness": 1,
+        "evidence_tier": "thin",
+        "harness_gaps": []
+      }
+    },
+    {
+      "endpoint": "https://app.singularry.org/api/mcp",
+      "protocol": "mcp",
+      "assessment": {
+        "reachable": true,
+        "protocol_spoken": "mcp",
+        "tools_or_skills": [
+          "list_active_agents",
+          "get_agent_portfolio",
+          "get_agent_strategies",
+          "get_agent_pnl",
+          "get_recent_decisions"
+        ],
+        "tool_count": 5,
+        "latency_ms": 427,
+        "coverage": "thin",
+        "composite": 68.79,
+        "withheld_reason": null,
+        "gates_fired": [],
+        "checked_at": "2026-09-09T09:40:44Z",
+        "evidence_state": "protocol_confirmed",
+        "evidence_scope": "endpoint",
+        "evidence_endpoint": "https://app.singularry.org/api/mcp",
+        "evidence_provenance": "probe_observation",
+        "capability_source": "tools_list"
+      },
+      "provenance": {
+        "score_as_of": "2026-09-09T02:00:00Z",
+        "scored_generated_at": "2026-09-09T10:46:12.869Z",
+        "probe_observed_at": "2026-09-09T09:40:23Z",
+        "battery_observed_at": [
+          "2026-09-09T09:40:44Z"
+        ],
+        "transcript_file": "mcp_https_app_singularry_org_api_mcp.json",
+        "transcript_sha256": "a169923a92b15197e755a305b4dd9f2c9e53cba1a4fb4e451647fadd0c27f303",
+        "battery_sha256": "24262a6613b8eb3726a498fd0aec6d8a4775b663cf65f268ed8d7fe69dad5530",
+        "battery_outcomes": 3,
+        "protocol_confirmation_basis": "initialize_response",
+        "capability_success_claimed": false
+      },
+      "original_score": {
+        "composite_low": 17.49,
+        "composite_high": 100,
+        "dimension_coverage": 0.67,
+        "assessment_completeness": 1,
+        "evidence_tier": "thin",
+        "harness_gaps": [
+          {
+            "capability": "mcp_account",
+            "check": "invocation_succeeds",
+            "detail": "the server requires credentials we do not hold: Authentication",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "mcp_account",
+            "check": "invocation_succeeds",
+            "detail": "the server requires credentials we do not hold: Authentication",
+            "dimension": "functional_correctness"
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "https://bnb-grid.172-104-171-139.nip.io/",
+      "protocol": "a2a",
+      "assessment": {
+        "reachable": true,
+        "protocol_spoken": "a2a",
+        "tools_or_skills": [
+          "Negotiate an ERC-8183 job",
+          "Notify the seller a job is funded (request delivery)"
+        ],
+        "tool_count": 2,
+        "latency_ms": 917,
+        "coverage": "thin",
+        "composite": 77.5,
+        "withheld_reason": null,
+        "gates_fired": [],
+        "checked_at": "2026-09-09T10:34:15.370Z",
+        "evidence_state": "protocol_confirmed",
+        "evidence_scope": "endpoint",
+        "evidence_endpoint": "https://bnb-grid.172-104-171-139.nip.io/",
+        "evidence_provenance": "probe_observation",
+        "capability_source": "agent_card"
+      },
+      "provenance": {
+        "score_as_of": "2026-09-09T02:00:00Z",
+        "scored_generated_at": "2026-09-09T10:46:12.869Z",
+        "probe_observed_at": "2026-09-09T09:27:51Z",
+        "battery_observed_at": [
+          "2026-09-09T10:34:15.370Z"
+        ],
+        "transcript_file": "a2a_https_bnb_grid_172_104_171_139_nip_io_well_known_agent_card_json.json",
+        "transcript_sha256": "b2f3aa469bdfe8ec74532015bf84aadca13bc7d4664f9c786415be03d5402288",
+        "battery_sha256": "62f1f3363e7fb461b34142ea74e0e24a2bea4a28a3e4a022539ede108d7c6874",
+        "battery_outcomes": 2,
+        "protocol_confirmation_basis": "message_send_response",
+        "capability_success_claimed": false
+      },
+      "original_score": {
+        "composite_low": 30.25,
+        "composite_high": 100,
+        "dimension_coverage": 1,
+        "assessment_completeness": 0.825,
+        "evidence_tier": "thin",
+        "harness_gaps": [
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill negotiate",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill notify_funded",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill negotiate but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill notify_funded but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "https://bnb-guardian.172-104-171-139.nip.io/mcp/",
+      "protocol": "mcp",
+      "assessment": {
+        "reachable": true,
+        "protocol_spoken": "mcp",
+        "tools_or_skills": [
+          "get_status",
+          "get_metadata",
+          "get_strategy",
+          "get_position",
+          "get_pools",
+          "get_risk",
+          "get_stress_test",
+          "get_performance",
+          "get_transactions",
+          "get_chain_info",
+          "monitor_now",
+          "simulate_protection",
+          "pause"
+        ],
+        "tool_count": 13,
+        "latency_ms": 6474,
+        "coverage": "thin",
+        "composite": 76.94,
+        "withheld_reason": null,
+        "gates_fired": [],
+        "checked_at": "2026-09-09T09:30:50Z",
+        "evidence_state": "protocol_confirmed",
+        "evidence_scope": "endpoint",
+        "evidence_endpoint": "https://bnb-guardian.172-104-171-139.nip.io/mcp/",
+        "evidence_provenance": "probe_observation",
+        "capability_source": "tools_list"
+      },
+      "provenance": {
+        "score_as_of": "2026-09-09T02:00:00Z",
+        "scored_generated_at": "2026-09-09T10:46:12.869Z",
+        "probe_observed_at": "2026-09-09T09:27:06Z",
+        "battery_observed_at": [
+          "2026-09-09T09:29:18Z",
+          "2026-09-09T09:29:19Z",
+          "2026-09-09T09:30:50Z"
+        ],
+        "transcript_file": "mcp_https_bnb_guardian_172_104_171_139_nip_io_mcp_.json",
+        "transcript_sha256": "a318341cc909b76da44e0b7e328f3b7ab15e2762138eac0d12097d3df0724c1a",
+        "battery_sha256": "24262a6613b8eb3726a498fd0aec6d8a4775b663cf65f268ed8d7fe69dad5530",
+        "battery_outcomes": 3,
+        "protocol_confirmation_basis": "initialize_response",
+        "capability_success_claimed": false
+      },
+      "original_score": {
+        "composite_low": 29.39,
+        "composite_high": 100,
+        "dimension_coverage": 0.67,
+        "assessment_completeness": 1,
+        "evidence_tier": "thin",
+        "harness_gaps": []
+      }
+    },
+    {
+      "endpoint": "https://bnb-lp.172-104-171-139.nip.io/",
+      "protocol": "a2a",
+      "assessment": {
+        "reachable": true,
+        "protocol_spoken": "a2a",
+        "tools_or_skills": [
+          "Negotiate an ERC-8183 job",
+          "Notify the seller a job is funded (request delivery)"
+        ],
+        "tool_count": 2,
+        "latency_ms": 982,
+        "coverage": "thin",
+        "composite": 77.5,
+        "withheld_reason": null,
+        "gates_fired": [],
+        "checked_at": "2026-09-09T10:34:15.660Z",
+        "evidence_state": "protocol_confirmed",
+        "evidence_scope": "endpoint",
+        "evidence_endpoint": "https://bnb-lp.172-104-171-139.nip.io/",
+        "evidence_provenance": "probe_observation",
+        "capability_source": "agent_card"
+      },
+      "provenance": {
+        "score_as_of": "2026-09-09T02:00:00Z",
+        "scored_generated_at": "2026-09-09T10:46:12.869Z",
+        "probe_observed_at": "2026-09-09T09:40:27Z",
+        "battery_observed_at": [
+          "2026-09-09T10:34:15.660Z"
+        ],
+        "transcript_file": "a2a_https_bnb_lp_172_104_171_139_nip_io_well_known_agent_card_json.json",
+        "transcript_sha256": "f86a56d5a6a9e6f7a022b1f871b9e65c87bb7124d16b433c032b00aff176af4c",
+        "battery_sha256": "62f1f3363e7fb461b34142ea74e0e24a2bea4a28a3e4a022539ede108d7c6874",
+        "battery_outcomes": 2,
+        "protocol_confirmation_basis": "message_send_response",
+        "capability_success_claimed": false
+      },
+      "original_score": {
+        "composite_low": 30.25,
+        "composite_high": 100,
+        "dimension_coverage": 1,
+        "assessment_completeness": 0.825,
+        "evidence_tier": "thin",
+        "harness_gaps": [
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill negotiate",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill notify_funded",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill negotiate but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill notify_funded but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "https://bnb-yield.172-104-171-139.nip.io/mcp/",
+      "protocol": "mcp",
+      "assessment": {
+        "reachable": true,
+        "protocol_spoken": "mcp",
+        "tools_or_skills": [
+          "get_status",
+          "get_metadata",
+          "get_strategy",
+          "get_opportunities",
+          "get_positions",
+          "get_performance",
+          "get_transactions",
+          "get_chain_info",
+          "scan_protocols",
+          "simulate_rebalance",
+          "pause"
+        ],
+        "tool_count": 11,
+        "latency_ms": 1101,
+        "coverage": "thin",
+        "composite": 76.94,
+        "withheld_reason": null,
+        "gates_fired": [],
+        "checked_at": "2026-09-09T09:41:07Z",
+        "evidence_state": "protocol_confirmed",
+        "evidence_scope": "endpoint",
+        "evidence_endpoint": "https://bnb-yield.172-104-171-139.nip.io/mcp/",
+        "evidence_provenance": "probe_observation",
+        "capability_source": "tools_list"
+      },
+      "provenance": {
+        "score_as_of": "2026-09-09T02:00:00Z",
+        "scored_generated_at": "2026-09-09T10:46:12.869Z",
+        "probe_observed_at": "2026-09-09T09:40:23Z",
+        "battery_observed_at": [
+          "2026-09-09T09:40:52Z",
+          "2026-09-09T09:40:53Z",
+          "2026-09-09T09:41:07Z"
+        ],
+        "transcript_file": "mcp_https_bnb_yield_172_104_171_139_nip_io_mcp_.json",
+        "transcript_sha256": "7741ff1dc6e78cd10d343414a86491281f15d45c6182b97986a6ca774cfac1df",
+        "battery_sha256": "24262a6613b8eb3726a498fd0aec6d8a4775b663cf65f268ed8d7fe69dad5530",
+        "battery_outcomes": 3,
+        "protocol_confirmation_basis": "initialize_response",
+        "capability_success_claimed": false
+      },
+      "original_score": {
+        "composite_low": 29.39,
+        "composite_high": 100,
+        "dimension_coverage": 0.67,
+        "assessment_completeness": 1,
+        "evidence_tier": "thin",
+        "harness_gaps": []
+      }
+    },
+    {
+      "endpoint": "https://clawdmint-api.vercel.app/mcp",
+      "protocol": "mcp",
+      "assessment": {
+        "reachable": true,
+        "protocol_spoken": "mcp",
+        "tools_or_skills": [
+          "chat",
+          "echo",
+          "get_time",
+          "get_balance",
+          "get_multichain_balance",
+          "get_token_price",
+          "get_market_overview",
+          "get_tx",
+          "get_gas_prices",
+          "get_token_info",
+          "resolve_ens",
+          "get_yield_opportunities",
+          "get_bridge_route",
+          "get_block"
+        ],
+        "tool_count": 14,
+        "latency_ms": 505,
+        "coverage": "thin",
+        "composite": 45,
+        "withheld_reason": null,
+        "gates_fired": [
+          "mcp.v2.credential_parameter"
+        ],
+        "checked_at": "2026-09-09T09:40:59Z",
+        "evidence_state": "protocol_confirmed",
+        "evidence_scope": "endpoint",
+        "evidence_endpoint": "https://clawdmint-api.vercel.app/mcp",
+        "evidence_provenance": "probe_observation",
+        "capability_source": "tools_list"
+      },
+      "provenance": {
+        "score_as_of": "2026-09-09T02:00:00Z",
+        "scored_generated_at": "2026-09-09T10:46:12.869Z",
+        "probe_observed_at": "2026-09-09T09:40:23Z",
+        "battery_observed_at": [
+          "2026-09-09T09:40:59Z"
+        ],
+        "transcript_file": "mcp_https_clawdmint_api_vercel_app_mcp.json",
+        "transcript_sha256": "7fb1a742819566c41d933795c24b448acb9d7ae47f5fc3e02c08bf8208e3d896",
+        "battery_sha256": "24262a6613b8eb3726a498fd0aec6d8a4775b663cf65f268ed8d7fe69dad5530",
+        "battery_outcomes": 3,
+        "protocol_confirmation_basis": "initialize_response",
+        "capability_success_claimed": false
+      },
+      "original_score": {
+        "composite_low": 0,
+        "composite_high": 45,
+        "dimension_coverage": 0.67,
+        "assessment_completeness": 1,
+        "evidence_tier": "thin",
+        "harness_gaps": []
+      }
+    },
+    {
+      "endpoint": "https://cm-3c862a61841d384e-site-36e24663f69d.bubbleupdappos.workers.dev/",
+      "protocol": "a2a",
+      "assessment": {
+        "reachable": true,
+        "protocol_spoken": "a2a",
+        "tools_or_skills": [
+          "Negotiate an ERC-8183 job",
+          "Notify the seller a job is funded (request delivery)"
+        ],
+        "tool_count": 2,
+        "latency_ms": 728,
+        "coverage": "thin",
+        "composite": 77.5,
+        "withheld_reason": null,
+        "gates_fired": [],
+        "checked_at": "2026-09-09T10:34:20.884Z",
+        "evidence_state": "protocol_confirmed",
+        "evidence_scope": "endpoint",
+        "evidence_endpoint": "https://cm-3c862a61841d384e-site-36e24663f69d.bubbleupdappos.workers.dev/",
+        "evidence_provenance": "probe_observation",
+        "capability_source": "agent_card"
+      },
+      "provenance": {
+        "score_as_of": "2026-09-09T02:00:00Z",
+        "scored_generated_at": "2026-09-09T10:46:12.869Z",
+        "probe_observed_at": "2026-09-09T09:27:51Z",
+        "battery_observed_at": [
+          "2026-09-09T10:34:20.884Z"
+        ],
+        "transcript_file": "a2a_https_cm_3c862a61841d384e_site_36e24663f69d_bubbleupdappos_workers_dev_well_known_agent_ca.json",
+        "transcript_sha256": "ff0749f9c7581c35eacb17c05cd1de2c5a49daf8e0354c0f5f49d37553930c35",
+        "battery_sha256": "62f1f3363e7fb461b34142ea74e0e24a2bea4a28a3e4a022539ede108d7c6874",
+        "battery_outcomes": 2,
+        "protocol_confirmation_basis": "message_send_response",
+        "capability_success_claimed": false
+      },
+      "original_score": {
+        "composite_low": 30.25,
+        "composite_high": 100,
+        "dimension_coverage": 1,
+        "assessment_completeness": 0.825,
+        "evidence_tier": "thin",
+        "harness_gaps": [
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill negotiate",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill notify_funded",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill negotiate but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill notify_funded but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "https://cm-5268dad98979f28b-site-0c59465952e0.bubbleupdappos.workers.dev/",
+      "protocol": "a2a",
+      "assessment": {
+        "reachable": true,
+        "protocol_spoken": "a2a",
+        "tools_or_skills": [
+          "Negotiate an ERC-8183 job",
+          "Notify the seller a job is funded (request delivery)"
+        ],
+        "tool_count": 2,
+        "latency_ms": 497,
+        "coverage": "thin",
+        "composite": 75.31,
+        "withheld_reason": null,
+        "gates_fired": [],
+        "checked_at": "2026-09-09T10:34:21.759Z",
+        "evidence_state": "protocol_confirmed",
+        "evidence_scope": "endpoint",
+        "evidence_endpoint": "https://cm-5268dad98979f28b-site-0c59465952e0.bubbleupdappos.workers.dev/",
+        "evidence_provenance": "probe_observation",
+        "capability_source": "agent_card"
+      },
+      "provenance": {
+        "score_as_of": "2026-09-09T02:00:00Z",
+        "scored_generated_at": "2026-09-09T10:46:12.869Z",
+        "probe_observed_at": "2026-09-09T09:27:51Z",
+        "battery_observed_at": [
+          "2026-09-09T10:34:21.759Z"
+        ],
+        "transcript_file": "a2a_https_cm_5268dad98979f28b_site_0c59465952e0_bubbleupdappos_workers_dev_well_known_agent_ca.json",
+        "transcript_sha256": "dcbc11b004d6dcf04a4625a9fab41e78029553f8e6ecbcb6184ac71703626df2",
+        "battery_sha256": "62f1f3363e7fb461b34142ea74e0e24a2bea4a28a3e4a022539ede108d7c6874",
+        "battery_outcomes": 2,
+        "protocol_confirmation_basis": "message_send_response",
+        "capability_success_claimed": false
+      },
+      "original_score": {
+        "composite_low": 27.25,
+        "composite_high": 100,
+        "dimension_coverage": 1,
+        "assessment_completeness": 0.625,
+        "evidence_tier": "thin",
+        "harness_gaps": [
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill negotiate",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill notify_funded",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill negotiate but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill notify_funded but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "reports_errors_via_protocol",
+            "detail": "the reports_errors_via_protocol arm produced no decidable result for skill negotiate",
+            "dimension": "robustness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "reports_errors_via_protocol",
+            "detail": "the reports_errors_via_protocol arm produced no decidable result for skill notify_funded",
+            "dimension": "robustness"
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "https://cm-5268dad98979f28b-site-0c59465952e0.neat-coconut.com/",
+      "protocol": "a2a",
+      "assessment": {
+        "reachable": true,
+        "protocol_spoken": "a2a",
+        "tools_or_skills": [
+          "Negotiate an ERC-8183 job",
+          "Notify the seller a job is funded (request delivery)"
+        ],
+        "tool_count": 2,
+        "latency_ms": 226,
+        "coverage": "thin",
+        "composite": 75.31,
+        "withheld_reason": null,
+        "gates_fired": [],
+        "checked_at": "2026-09-09T10:34:24.127Z",
+        "evidence_state": "protocol_confirmed",
+        "evidence_scope": "endpoint",
+        "evidence_endpoint": "https://cm-5268dad98979f28b-site-0c59465952e0.neat-coconut.com/",
+        "evidence_provenance": "probe_observation",
+        "capability_source": "agent_card"
+      },
+      "provenance": {
+        "score_as_of": "2026-09-09T02:00:00Z",
+        "scored_generated_at": "2026-09-09T10:46:12.869Z",
+        "probe_observed_at": "2026-09-09T09:27:51Z",
+        "battery_observed_at": [
+          "2026-09-09T10:34:24.127Z"
+        ],
+        "transcript_file": "a2a_https_cm_5268dad98979f28b_site_0c59465952e0_neat_coconut_com_well_known_agent_card_json.json",
+        "transcript_sha256": "f113847d617084d7f82e7e0b368a89d551981428d826018afbdd0a1af471fc19",
+        "battery_sha256": "62f1f3363e7fb461b34142ea74e0e24a2bea4a28a3e4a022539ede108d7c6874",
+        "battery_outcomes": 2,
+        "protocol_confirmation_basis": "message_send_response",
+        "capability_success_claimed": false
+      },
+      "original_score": {
+        "composite_low": 27.25,
+        "composite_high": 100,
+        "dimension_coverage": 1,
+        "assessment_completeness": 0.625,
+        "evidence_tier": "thin",
+        "harness_gaps": [
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill negotiate",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill notify_funded",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill negotiate but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill notify_funded but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "reports_errors_via_protocol",
+            "detail": "the reports_errors_via_protocol arm produced no decidable result for skill negotiate",
+            "dimension": "robustness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "reports_errors_via_protocol",
+            "detail": "the reports_errors_via_protocol arm produced no decidable result for skill notify_funded",
+            "dimension": "robustness"
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "https://cm-5268dad98979f28b-site-3269c4f2c5b0.bubbleupdappos.workers.dev/",
+      "protocol": "a2a",
+      "assessment": {
+        "reachable": true,
+        "protocol_spoken": "a2a",
+        "tools_or_skills": [
+          "Negotiate an ERC-8183 job",
+          "Notify the seller a job is funded (request delivery)"
+        ],
+        "tool_count": 2,
+        "latency_ms": 755,
+        "coverage": "thin",
+        "composite": 77.5,
+        "withheld_reason": null,
+        "gates_fired": [],
+        "checked_at": "2026-09-09T10:34:24.788Z",
+        "evidence_state": "protocol_confirmed",
+        "evidence_scope": "endpoint",
+        "evidence_endpoint": "https://cm-5268dad98979f28b-site-3269c4f2c5b0.bubbleupdappos.workers.dev/",
+        "evidence_provenance": "probe_observation",
+        "capability_source": "agent_card"
+      },
+      "provenance": {
+        "score_as_of": "2026-09-09T02:00:00Z",
+        "scored_generated_at": "2026-09-09T10:46:12.869Z",
+        "probe_observed_at": "2026-09-09T09:27:51Z",
+        "battery_observed_at": [
+          "2026-09-09T10:34:24.788Z"
+        ],
+        "transcript_file": "a2a_https_cm_5268dad98979f28b_site_3269c4f2c5b0_bubbleupdappos_workers_dev_well_known_agent_ca.json",
+        "transcript_sha256": "071a8b23bc580a366ff5c55f7cafba2c9799ebf4c115e37c5369fd14b94d1386",
+        "battery_sha256": "62f1f3363e7fb461b34142ea74e0e24a2bea4a28a3e4a022539ede108d7c6874",
+        "battery_outcomes": 2,
+        "protocol_confirmation_basis": "message_send_response",
+        "capability_success_claimed": false
+      },
+      "original_score": {
+        "composite_low": 30.25,
+        "composite_high": 100,
+        "dimension_coverage": 1,
+        "assessment_completeness": 0.825,
+        "evidence_tier": "thin",
+        "harness_gaps": [
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill negotiate",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill notify_funded",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill negotiate but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill notify_funded but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "https://cm-5268dad98979f28b-site-3ba9cfa81faa.bubbleupdappos.workers.dev/",
+      "protocol": "a2a",
+      "assessment": {
+        "reachable": true,
+        "protocol_spoken": "a2a",
+        "tools_or_skills": [
+          "Negotiate an ERC-8183 job",
+          "Notify the seller a job is funded (request delivery)"
+        ],
+        "tool_count": 2,
+        "latency_ms": 1981,
+        "coverage": "thin",
+        "composite": 77.5,
+        "withheld_reason": null,
+        "gates_fired": [],
+        "checked_at": "2026-09-09T10:34:25.055Z",
+        "evidence_state": "protocol_confirmed",
+        "evidence_scope": "endpoint",
+        "evidence_endpoint": "https://cm-5268dad98979f28b-site-3ba9cfa81faa.bubbleupdappos.workers.dev/",
+        "evidence_provenance": "probe_observation",
+        "capability_source": "agent_card"
+      },
+      "provenance": {
+        "score_as_of": "2026-09-09T02:00:00Z",
+        "scored_generated_at": "2026-09-09T10:46:12.869Z",
+        "probe_observed_at": "2026-09-09T09:27:51Z",
+        "battery_observed_at": [
+          "2026-09-09T10:34:25.055Z"
+        ],
+        "transcript_file": "a2a_https_cm_5268dad98979f28b_site_3ba9cfa81faa_bubbleupdappos_workers_dev_well_known_agent_ca.json",
+        "transcript_sha256": "e9dd49c2cd0295432669bca8daec6b051c8d293096d958dc11569f5c57ef93cb",
+        "battery_sha256": "62f1f3363e7fb461b34142ea74e0e24a2bea4a28a3e4a022539ede108d7c6874",
+        "battery_outcomes": 2,
+        "protocol_confirmation_basis": "message_send_response",
+        "capability_success_claimed": false
+      },
+      "original_score": {
+        "composite_low": 30.25,
+        "composite_high": 100,
+        "dimension_coverage": 1,
+        "assessment_completeness": 0.825,
+        "evidence_tier": "thin",
+        "harness_gaps": [
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill negotiate",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill notify_funded",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill negotiate but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill notify_funded but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "https://cm-5268dad98979f28b-site-3d068a2fc837.bubbleupdappos.workers.dev/",
+      "protocol": "a2a",
+      "assessment": {
+        "reachable": true,
+        "protocol_spoken": "a2a",
+        "tools_or_skills": [
+          "Negotiate an ERC-8183 job",
+          "Notify the seller a job is funded (request delivery)"
+        ],
+        "tool_count": 2,
+        "latency_ms": 1179,
+        "coverage": "thin",
+        "composite": 77.5,
+        "withheld_reason": null,
+        "gates_fired": [],
+        "checked_at": "2026-09-09T10:34:25.481Z",
+        "evidence_state": "protocol_confirmed",
+        "evidence_scope": "endpoint",
+        "evidence_endpoint": "https://cm-5268dad98979f28b-site-3d068a2fc837.bubbleupdappos.workers.dev/",
+        "evidence_provenance": "probe_observation",
+        "capability_source": "agent_card"
+      },
+      "provenance": {
+        "score_as_of": "2026-09-09T02:00:00Z",
+        "scored_generated_at": "2026-09-09T10:46:12.869Z",
+        "probe_observed_at": "2026-09-09T09:27:51Z",
+        "battery_observed_at": [
+          "2026-09-09T10:34:25.481Z"
+        ],
+        "transcript_file": "a2a_https_cm_5268dad98979f28b_site_3d068a2fc837_bubbleupdappos_workers_dev_well_known_agent_ca.json",
+        "transcript_sha256": "39b9d8afef64ad3f7078993a1a3a43f04d8e18c357d4970564e9dd9eb530242d",
+        "battery_sha256": "62f1f3363e7fb461b34142ea74e0e24a2bea4a28a3e4a022539ede108d7c6874",
+        "battery_outcomes": 2,
+        "protocol_confirmation_basis": "message_send_response",
+        "capability_success_claimed": false
+      },
+      "original_score": {
+        "composite_low": 30.25,
+        "composite_high": 100,
+        "dimension_coverage": 1,
+        "assessment_completeness": 0.825,
+        "evidence_tier": "thin",
+        "harness_gaps": [
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill negotiate",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill notify_funded",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill negotiate but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill notify_funded but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "https://cm-5268dad98979f28b-site-4173a74f9d2a.bubbleupdappos.workers.dev/",
+      "protocol": "a2a",
+      "assessment": {
+        "reachable": true,
+        "protocol_spoken": "a2a",
+        "tools_or_skills": [
+          "Negotiate an ERC-8183 job",
+          "Notify the seller a job is funded (request delivery)"
+        ],
+        "tool_count": 2,
+        "latency_ms": 614,
+        "coverage": "thin",
+        "composite": 77.5,
+        "withheld_reason": null,
+        "gates_fired": [],
+        "checked_at": "2026-09-09T10:34:25.527Z",
+        "evidence_state": "protocol_confirmed",
+        "evidence_scope": "endpoint",
+        "evidence_endpoint": "https://cm-5268dad98979f28b-site-4173a74f9d2a.bubbleupdappos.workers.dev/",
+        "evidence_provenance": "probe_observation",
+        "capability_source": "agent_card"
+      },
+      "provenance": {
+        "score_as_of": "2026-09-09T02:00:00Z",
+        "scored_generated_at": "2026-09-09T10:46:12.869Z",
+        "probe_observed_at": "2026-09-09T09:27:51Z",
+        "battery_observed_at": [
+          "2026-09-09T10:34:25.527Z"
+        ],
+        "transcript_file": "a2a_https_cm_5268dad98979f28b_site_4173a74f9d2a_bubbleupdappos_workers_dev_well_known_agent_ca.json",
+        "transcript_sha256": "961f816ee7c3b2d35ed7211b4cb49ae1542700431edbf84456655965c3b81c50",
+        "battery_sha256": "62f1f3363e7fb461b34142ea74e0e24a2bea4a28a3e4a022539ede108d7c6874",
+        "battery_outcomes": 2,
+        "protocol_confirmation_basis": "message_send_response",
+        "capability_success_claimed": false
+      },
+      "original_score": {
+        "composite_low": 30.25,
+        "composite_high": 100,
+        "dimension_coverage": 1,
+        "assessment_completeness": 0.825,
+        "evidence_tier": "thin",
+        "harness_gaps": [
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill negotiate",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill notify_funded",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill negotiate but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill notify_funded but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "https://cm-5268dad98979f28b-site-599d479b89ff.bubbleupdappos.workers.dev/",
+      "protocol": "a2a",
+      "assessment": {
+        "reachable": true,
+        "protocol_spoken": "a2a",
+        "tools_or_skills": [
+          "Negotiate an ERC-8183 job",
+          "Notify the seller a job is funded (request delivery)"
+        ],
+        "tool_count": 2,
+        "latency_ms": 532,
+        "coverage": "thin",
+        "composite": 77.5,
+        "withheld_reason": null,
+        "gates_fired": [],
+        "checked_at": "2026-09-09T10:34:30.116Z",
+        "evidence_state": "protocol_confirmed",
+        "evidence_scope": "endpoint",
+        "evidence_endpoint": "https://cm-5268dad98979f28b-site-599d479b89ff.bubbleupdappos.workers.dev/",
+        "evidence_provenance": "probe_observation",
+        "capability_source": "agent_card"
+      },
+      "provenance": {
+        "score_as_of": "2026-09-09T02:00:00Z",
+        "scored_generated_at": "2026-09-09T10:46:12.869Z",
+        "probe_observed_at": "2026-09-09T09:27:51Z",
+        "battery_observed_at": [
+          "2026-09-09T10:34:30.116Z"
+        ],
+        "transcript_file": "a2a_https_cm_5268dad98979f28b_site_599d479b89ff_bubbleupdappos_workers_dev_well_known_agent_ca.json",
+        "transcript_sha256": "d46706210a8a40e35cd2e93176d02374c831089201d131720684f5a7fd4be0b3",
+        "battery_sha256": "62f1f3363e7fb461b34142ea74e0e24a2bea4a28a3e4a022539ede108d7c6874",
+        "battery_outcomes": 2,
+        "protocol_confirmation_basis": "message_send_response",
+        "capability_success_claimed": false
+      },
+      "original_score": {
+        "composite_low": 30.25,
+        "composite_high": 100,
+        "dimension_coverage": 1,
+        "assessment_completeness": 0.825,
+        "evidence_tier": "thin",
+        "harness_gaps": [
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill negotiate",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill notify_funded",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill negotiate but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill notify_funded but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "https://cm-5268dad98979f28b-site-5c55e867e800.bubbleupdappos.workers.dev/",
+      "protocol": "a2a",
+      "assessment": {
+        "reachable": true,
+        "protocol_spoken": "a2a",
+        "tools_or_skills": [
+          "Negotiate an ERC-8183 job",
+          "Notify the seller a job is funded (request delivery)"
+        ],
+        "tool_count": 2,
+        "latency_ms": 1389,
+        "coverage": "thin",
+        "composite": 77.5,
+        "withheld_reason": null,
+        "gates_fired": [],
+        "checked_at": "2026-09-09T10:34:31.215Z",
+        "evidence_state": "protocol_confirmed",
+        "evidence_scope": "endpoint",
+        "evidence_endpoint": "https://cm-5268dad98979f28b-site-5c55e867e800.bubbleupdappos.workers.dev/",
+        "evidence_provenance": "probe_observation",
+        "capability_source": "agent_card"
+      },
+      "provenance": {
+        "score_as_of": "2026-09-09T02:00:00Z",
+        "scored_generated_at": "2026-09-09T10:46:12.869Z",
+        "probe_observed_at": "2026-09-09T09:27:51Z",
+        "battery_observed_at": [
+          "2026-09-09T10:34:31.215Z"
+        ],
+        "transcript_file": "a2a_https_cm_5268dad98979f28b_site_5c55e867e800_bubbleupdappos_workers_dev_well_known_agent_ca.json",
+        "transcript_sha256": "374b4da4838318b242c74fc964cd089d7664493812f7dc4f32037de0acadf6fc",
+        "battery_sha256": "62f1f3363e7fb461b34142ea74e0e24a2bea4a28a3e4a022539ede108d7c6874",
+        "battery_outcomes": 2,
+        "protocol_confirmation_basis": "message_send_response",
+        "capability_success_claimed": false
+      },
+      "original_score": {
+        "composite_low": 30.25,
+        "composite_high": 100,
+        "dimension_coverage": 1,
+        "assessment_completeness": 0.825,
+        "evidence_tier": "thin",
+        "harness_gaps": [
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill negotiate",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill notify_funded",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill negotiate but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill notify_funded but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "https://cm-5268dad98979f28b-site-80e55bd3ad0f.bubbleupdappos.workers.dev/",
+      "protocol": "a2a",
+      "assessment": {
+        "reachable": true,
+        "protocol_spoken": "a2a",
+        "tools_or_skills": [
+          "Negotiate an ERC-8183 job",
+          "Notify the seller a job is funded (request delivery)"
+        ],
+        "tool_count": 2,
+        "latency_ms": 1103,
+        "coverage": "thin",
+        "composite": 77.5,
+        "withheld_reason": null,
+        "gates_fired": [],
+        "checked_at": "2026-09-09T10:34:32.709Z",
+        "evidence_state": "protocol_confirmed",
+        "evidence_scope": "endpoint",
+        "evidence_endpoint": "https://cm-5268dad98979f28b-site-80e55bd3ad0f.bubbleupdappos.workers.dev/",
+        "evidence_provenance": "probe_observation",
+        "capability_source": "agent_card"
+      },
+      "provenance": {
+        "score_as_of": "2026-09-09T02:00:00Z",
+        "scored_generated_at": "2026-09-09T10:46:12.869Z",
+        "probe_observed_at": "2026-09-09T09:27:51Z",
+        "battery_observed_at": [
+          "2026-09-09T10:34:32.709Z"
+        ],
+        "transcript_file": "a2a_https_cm_5268dad98979f28b_site_80e55bd3ad0f_bubbleupdappos_workers_dev_well_known_agent_ca.json",
+        "transcript_sha256": "e5ae6d87965b80b72788c59b33db027f5d93dc15700c6ee7d21cf6ad9c46bf00",
+        "battery_sha256": "62f1f3363e7fb461b34142ea74e0e24a2bea4a28a3e4a022539ede108d7c6874",
+        "battery_outcomes": 2,
+        "protocol_confirmation_basis": "message_send_response",
+        "capability_success_claimed": false
+      },
+      "original_score": {
+        "composite_low": 30.25,
+        "composite_high": 100,
+        "dimension_coverage": 1,
+        "assessment_completeness": 0.825,
+        "evidence_tier": "thin",
+        "harness_gaps": [
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill negotiate",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill notify_funded",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill negotiate but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill notify_funded but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "https://cm-5268dad98979f28b-site-af401b640674.bubbleupdappos.workers.dev/",
+      "protocol": "a2a",
+      "assessment": {
+        "reachable": true,
+        "protocol_spoken": "a2a",
+        "tools_or_skills": [
+          "Negotiate an ERC-8183 job",
+          "Notify the seller a job is funded (request delivery)"
+        ],
+        "tool_count": 2,
+        "latency_ms": 986,
+        "coverage": "thin",
+        "composite": 77.5,
+        "withheld_reason": null,
+        "gates_fired": [],
+        "checked_at": "2026-09-09T10:34:35.118Z",
+        "evidence_state": "protocol_confirmed",
+        "evidence_scope": "endpoint",
+        "evidence_endpoint": "https://cm-5268dad98979f28b-site-af401b640674.bubbleupdappos.workers.dev/",
+        "evidence_provenance": "probe_observation",
+        "capability_source": "agent_card"
+      },
+      "provenance": {
+        "score_as_of": "2026-09-09T02:00:00Z",
+        "scored_generated_at": "2026-09-09T10:46:12.869Z",
+        "probe_observed_at": "2026-09-09T09:27:51Z",
+        "battery_observed_at": [
+          "2026-09-09T10:34:35.118Z"
+        ],
+        "transcript_file": "a2a_https_cm_5268dad98979f28b_site_af401b640674_bubbleupdappos_workers_dev_well_known_agent_ca.json",
+        "transcript_sha256": "a8c731295b34f37da83fb44c4b11786f1161eefecef5aef7d77a3be8d8957c7e",
+        "battery_sha256": "62f1f3363e7fb461b34142ea74e0e24a2bea4a28a3e4a022539ede108d7c6874",
+        "battery_outcomes": 2,
+        "protocol_confirmation_basis": "message_send_response",
+        "capability_success_claimed": false
+      },
+      "original_score": {
+        "composite_low": 30.25,
+        "composite_high": 100,
+        "dimension_coverage": 1,
+        "assessment_completeness": 0.825,
+        "evidence_tier": "thin",
+        "harness_gaps": [
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill negotiate",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill notify_funded",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill negotiate but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill notify_funded but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "https://cm-5268dad98979f28b-site-bea696cc11eb.bubbleupdappos.workers.dev/",
+      "protocol": "a2a",
+      "assessment": {
+        "reachable": true,
+        "protocol_spoken": "a2a",
+        "tools_or_skills": [
+          "Negotiate an ERC-8183 job",
+          "Notify the seller a job is funded (request delivery)"
+        ],
+        "tool_count": 2,
+        "latency_ms": 1765,
+        "coverage": "thin",
+        "composite": 77.5,
+        "withheld_reason": null,
+        "gates_fired": [],
+        "checked_at": "2026-09-09T10:34:39.617Z",
+        "evidence_state": "protocol_confirmed",
+        "evidence_scope": "endpoint",
+        "evidence_endpoint": "https://cm-5268dad98979f28b-site-bea696cc11eb.bubbleupdappos.workers.dev/",
+        "evidence_provenance": "probe_observation",
+        "capability_source": "agent_card"
+      },
+      "provenance": {
+        "score_as_of": "2026-09-09T02:00:00Z",
+        "scored_generated_at": "2026-09-09T10:46:12.869Z",
+        "probe_observed_at": "2026-09-09T09:27:51Z",
+        "battery_observed_at": [
+          "2026-09-09T10:34:39.617Z"
+        ],
+        "transcript_file": "a2a_https_cm_5268dad98979f28b_site_bea696cc11eb_bubbleupdappos_workers_dev_well_known_agent_ca.json",
+        "transcript_sha256": "c9d84cd7f9115d070934aef2daf21062fdb37c7d57dcb6a18683980dc0ce12b6",
+        "battery_sha256": "62f1f3363e7fb461b34142ea74e0e24a2bea4a28a3e4a022539ede108d7c6874",
+        "battery_outcomes": 2,
+        "protocol_confirmation_basis": "message_send_response",
+        "capability_success_claimed": false
+      },
+      "original_score": {
+        "composite_low": 30.25,
+        "composite_high": 100,
+        "dimension_coverage": 1,
+        "assessment_completeness": 0.825,
+        "evidence_tier": "thin",
+        "harness_gaps": [
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill negotiate",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill notify_funded",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill negotiate but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill notify_funded but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "https://cm-5268dad98979f28b-site-d0d8120419f3.bubbleupdappos.workers.dev/",
+      "protocol": "a2a",
+      "assessment": {
+        "reachable": true,
+        "protocol_spoken": "a2a",
+        "tools_or_skills": [
+          "Negotiate an ERC-8183 job",
+          "Notify the seller a job is funded (request delivery)"
+        ],
+        "tool_count": 2,
+        "latency_ms": 1008,
+        "coverage": "thin",
+        "composite": 77.5,
+        "withheld_reason": null,
+        "gates_fired": [],
+        "checked_at": "2026-09-09T10:34:40.525Z",
+        "evidence_state": "protocol_confirmed",
+        "evidence_scope": "endpoint",
+        "evidence_endpoint": "https://cm-5268dad98979f28b-site-d0d8120419f3.bubbleupdappos.workers.dev/",
+        "evidence_provenance": "probe_observation",
+        "capability_source": "agent_card"
+      },
+      "provenance": {
+        "score_as_of": "2026-09-09T02:00:00Z",
+        "scored_generated_at": "2026-09-09T10:46:12.869Z",
+        "probe_observed_at": "2026-09-09T09:27:51Z",
+        "battery_observed_at": [
+          "2026-09-09T10:34:40.525Z"
+        ],
+        "transcript_file": "a2a_https_cm_5268dad98979f28b_site_d0d8120419f3_bubbleupdappos_workers_dev_well_known_agent_ca.json",
+        "transcript_sha256": "1d8c80c7d5a3a5d4006acf34ed85ecff6155f7bb9087ea4c26b68957076e1557",
+        "battery_sha256": "62f1f3363e7fb461b34142ea74e0e24a2bea4a28a3e4a022539ede108d7c6874",
+        "battery_outcomes": 2,
+        "protocol_confirmation_basis": "message_send_response",
+        "capability_success_claimed": false
+      },
+      "original_score": {
+        "composite_low": 30.25,
+        "composite_high": 100,
+        "dimension_coverage": 1,
+        "assessment_completeness": 0.825,
+        "evidence_tier": "thin",
+        "harness_gaps": [
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill negotiate",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill notify_funded",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill negotiate but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill notify_funded but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "https://coin-signal.airblock2026.workers.dev/mcp",
+      "protocol": "mcp",
+      "assessment": {
+        "reachable": true,
+        "protocol_spoken": "mcp",
+        "tools_or_skills": [
+          "pitch",
+          "evaluate_symbol",
+          "scan_bottoms",
+          "scan_tops",
+          "subscribe",
+          "rate"
+        ],
+        "tool_count": 6,
+        "latency_ms": 5741,
+        "coverage": "thin",
+        "composite": 70.97,
+        "withheld_reason": null,
+        "gates_fired": [],
+        "checked_at": "2026-09-09T09:30:58Z",
+        "evidence_state": "protocol_confirmed",
+        "evidence_scope": "endpoint",
+        "evidence_endpoint": "https://coin-signal.airblock2026.workers.dev/mcp",
+        "evidence_provenance": "probe_observation",
+        "capability_source": "tools_list"
+      },
+      "provenance": {
+        "score_as_of": "2026-09-09T02:00:00Z",
+        "scored_generated_at": "2026-09-09T10:46:12.869Z",
+        "probe_observed_at": "2026-09-09T09:27:06Z",
+        "battery_observed_at": [
+          "2026-09-09T09:30:51Z",
+          "2026-09-09T09:30:56Z",
+          "2026-09-09T09:30:58Z"
+        ],
+        "transcript_file": "mcp_https_coin_signal_airblock2026_workers_dev_mcp.json",
+        "transcript_sha256": "092c1e9e9a609c3610a7fbf72fbf10a7f092f02e10c068540a090302112295bd",
+        "battery_sha256": "24262a6613b8eb3726a498fd0aec6d8a4775b663cf65f268ed8d7fe69dad5530",
+        "battery_outcomes": 3,
+        "protocol_confirmation_basis": "initialize_response",
+        "capability_success_claimed": false
+      },
+      "original_score": {
+        "composite_low": 20.31,
+        "composite_high": 100,
+        "dimension_coverage": 0.67,
+        "assessment_completeness": 1,
+        "evidence_tier": "thin",
+        "harness_gaps": []
+      }
+    },
+    {
+      "endpoint": "https://erc8004.heyanon.ai/mcp/venus",
+      "protocol": "mcp",
+      "assessment": {
+        "reachable": true,
+        "protocol_spoken": "mcp",
+        "tools_or_skills": [
+          "borrow",
+          "repay",
+          "mintToken",
+          "getVenusBalance",
+          "redeemUnderlying",
+          "enterMarkets",
+          "exitMarket",
+          "getBorrowBalance",
+          "getBorrowAPR",
+          "getSupplyAPR",
+          "getAccountLiquidity",
+          "getEnabledCollateral",
+          "getDescriptionVenus",
+          "getSupportedTokens",
+          "updateToken",
+          "getSupportedChains"
+        ],
+        "tool_count": 16,
+        "latency_ms": 698,
+        "coverage": "thin",
+        "composite": 55,
+        "withheld_reason": null,
+        "gates_fired": [
+          "mcp.v2.tool_fabricates"
+        ],
+        "checked_at": "2026-09-09T09:41:01Z",
+        "evidence_state": "protocol_confirmed",
+        "evidence_scope": "endpoint",
+        "evidence_endpoint": "https://erc8004.heyanon.ai/mcp/venus",
+        "evidence_provenance": "probe_observation",
+        "capability_source": "tools_list"
+      },
+      "provenance": {
+        "score_as_of": "2026-09-09T02:00:00Z",
+        "scored_generated_at": "2026-09-09T10:46:12.869Z",
+        "probe_observed_at": "2026-09-09T09:40:23Z",
+        "battery_observed_at": [
+          "2026-09-09T09:40:59Z",
+          "2026-09-09T09:41:00Z",
+          "2026-09-09T09:41:01Z"
+        ],
+        "transcript_file": "mcp_https_erc8004_heyanon_ai_mcp_venus.json",
+        "transcript_sha256": "65acab7cec8913349e9ff76aa62ffd4b47e3256c4a1c423582d4ea6d6f17d40b",
+        "battery_sha256": "24262a6613b8eb3726a498fd0aec6d8a4775b663cf65f268ed8d7fe69dad5530",
+        "battery_outcomes": 3,
+        "protocol_confirmation_basis": "initialize_response",
+        "capability_success_claimed": false
+      },
+      "original_score": {
+        "composite_low": 5.05,
+        "composite_high": 55,
+        "dimension_coverage": 0.97,
+        "assessment_completeness": 1,
+        "evidence_tier": "thin",
+        "harness_gaps": []
+      }
+    },
+    {
+      "endpoint": "https://explainer-agent.onrender.com/",
+      "protocol": "a2a",
+      "assessment": {
+        "reachable": true,
+        "protocol_spoken": "a2a",
+        "tools_or_skills": [
+          "Negotiate an ERC-8183 job",
+          "Notify the seller a job is funded (request delivery)"
+        ],
+        "tool_count": 2,
+        "latency_ms": 334,
+        "coverage": "thin",
+        "composite": 77.5,
+        "withheld_reason": null,
+        "gates_fired": [],
+        "checked_at": "2026-09-09T10:34:43.542Z",
+        "evidence_state": "protocol_confirmed",
+        "evidence_scope": "endpoint",
+        "evidence_endpoint": "https://explainer-agent.onrender.com/",
+        "evidence_provenance": "probe_observation",
+        "capability_source": "agent_card"
+      },
+      "provenance": {
+        "score_as_of": "2026-09-09T02:00:00Z",
+        "scored_generated_at": "2026-09-09T10:46:12.869Z",
+        "probe_observed_at": "2026-09-09T09:27:51Z",
+        "battery_observed_at": [
+          "2026-09-09T10:34:43.542Z"
+        ],
+        "transcript_file": "a2a_https_explainer_agent_onrender_com_well_known_agent_card_json.json",
+        "transcript_sha256": "7f765aaeff3650381ed7bdf3153901c4c0629998ee20761a2ac843c9d7a8a34f",
+        "battery_sha256": "62f1f3363e7fb461b34142ea74e0e24a2bea4a28a3e4a022539ede108d7c6874",
+        "battery_outcomes": 2,
+        "protocol_confirmation_basis": "message_send_response",
+        "capability_success_claimed": false
+      },
+      "original_score": {
+        "composite_low": 30.25,
+        "composite_high": 100,
+        "dimension_coverage": 1,
+        "assessment_completeness": 0.825,
+        "evidence_tier": "thin",
+        "harness_gaps": [
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill negotiate",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill notify_funded",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill negotiate but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill notify_funded but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "https://hevo-grid.fly.dev/",
+      "protocol": "a2a",
+      "assessment": {
+        "reachable": true,
+        "protocol_spoken": "a2a",
+        "tools_or_skills": [
+          "Negotiate an ERC-8183 job",
+          "Notify the seller a job is funded (request delivery)"
+        ],
+        "tool_count": 2,
+        "latency_ms": 475,
+        "coverage": "thin",
+        "composite": 77.5,
+        "withheld_reason": null,
+        "gates_fired": [],
+        "checked_at": "2026-09-09T10:34:46.066Z",
+        "evidence_state": "protocol_confirmed",
+        "evidence_scope": "endpoint",
+        "evidence_endpoint": "https://hevo-grid.fly.dev/",
+        "evidence_provenance": "probe_observation",
+        "capability_source": "agent_card"
+      },
+      "provenance": {
+        "score_as_of": "2026-09-09T02:00:00Z",
+        "scored_generated_at": "2026-09-09T10:46:12.869Z",
+        "probe_observed_at": "2026-09-09T09:27:51Z",
+        "battery_observed_at": [
+          "2026-09-09T10:34:46.066Z"
+        ],
+        "transcript_file": "a2a_https_hevo_grid_fly_dev_well_known_agent_card_json.json",
+        "transcript_sha256": "0bf705f2abac9b4107a28dd50eea5774895554cada536fe9d705f2de1c1ac058",
+        "battery_sha256": "62f1f3363e7fb461b34142ea74e0e24a2bea4a28a3e4a022539ede108d7c6874",
+        "battery_outcomes": 2,
+        "protocol_confirmation_basis": "message_send_response",
+        "capability_success_claimed": false
+      },
+      "original_score": {
+        "composite_low": 30.25,
+        "composite_high": 100,
+        "dimension_coverage": 1,
+        "assessment_completeness": 0.825,
+        "evidence_tier": "thin",
+        "harness_gaps": [
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill negotiate",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill notify_funded",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill negotiate but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill notify_funded but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "https://hevo-rebalance.fly.dev/",
+      "protocol": "a2a",
+      "assessment": {
+        "reachable": true,
+        "protocol_spoken": "a2a",
+        "tools_or_skills": [
+          "Negotiate an ERC-8183 job",
+          "Notify the seller a job is funded (request delivery)"
+        ],
+        "tool_count": 2,
+        "latency_ms": 401,
+        "coverage": "thin",
+        "composite": 77.5,
+        "withheld_reason": null,
+        "gates_fired": [],
+        "checked_at": "2026-09-09T10:34:46.828Z",
+        "evidence_state": "protocol_confirmed",
+        "evidence_scope": "endpoint",
+        "evidence_endpoint": "https://hevo-rebalance.fly.dev/",
+        "evidence_provenance": "probe_observation",
+        "capability_source": "agent_card"
+      },
+      "provenance": {
+        "score_as_of": "2026-09-09T02:00:00Z",
+        "scored_generated_at": "2026-09-09T10:46:12.869Z",
+        "probe_observed_at": "2026-09-09T09:27:51Z",
+        "battery_observed_at": [
+          "2026-09-09T10:34:46.828Z"
+        ],
+        "transcript_file": "a2a_https_hevo_rebalance_fly_dev_well_known_agent_card_json.json",
+        "transcript_sha256": "1681ebd3429cb4b7914258878d0a336cd3d0f6fcf9e162f02a3561f2e97004ff",
+        "battery_sha256": "62f1f3363e7fb461b34142ea74e0e24a2bea4a28a3e4a022539ede108d7c6874",
+        "battery_outcomes": 2,
+        "protocol_confirmation_basis": "message_send_response",
+        "capability_success_claimed": false
+      },
+      "original_score": {
+        "composite_low": 30.25,
+        "composite_high": 100,
+        "dimension_coverage": 1,
+        "assessment_completeness": 0.825,
+        "evidence_tier": "thin",
+        "harness_gaps": [
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill negotiate",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill notify_funded",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill negotiate but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill notify_funded but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "https://hevo-sentinel.fly.dev/",
+      "protocol": "a2a",
+      "assessment": {
+        "reachable": true,
+        "protocol_spoken": "a2a",
+        "tools_or_skills": [
+          "Negotiate an ERC-8183 job",
+          "Notify the seller a job is funded (request delivery)"
+        ],
+        "tool_count": 2,
+        "latency_ms": 466,
+        "coverage": "thin",
+        "composite": 77.5,
+        "withheld_reason": null,
+        "gates_fired": [],
+        "checked_at": "2026-09-09T10:34:49.032Z",
+        "evidence_state": "protocol_confirmed",
+        "evidence_scope": "endpoint",
+        "evidence_endpoint": "https://hevo-sentinel.fly.dev/",
+        "evidence_provenance": "probe_observation",
+        "capability_source": "agent_card"
+      },
+      "provenance": {
+        "score_as_of": "2026-09-09T02:00:00Z",
+        "scored_generated_at": "2026-09-09T10:46:12.869Z",
+        "probe_observed_at": "2026-09-09T09:27:51Z",
+        "battery_observed_at": [
+          "2026-09-09T10:34:49.032Z"
+        ],
+        "transcript_file": "a2a_https_hevo_sentinel_fly_dev_well_known_agent_card_json.json",
+        "transcript_sha256": "7373c81acd7d81125c4e162100919765c7a0a36cf26dc999c71cd0d305456645",
+        "battery_sha256": "62f1f3363e7fb461b34142ea74e0e24a2bea4a28a3e4a022539ede108d7c6874",
+        "battery_outcomes": 2,
+        "protocol_confirmation_basis": "message_send_response",
+        "capability_success_claimed": false
+      },
+      "original_score": {
+        "composite_low": 30.25,
+        "composite_high": 100,
+        "dimension_coverage": 1,
+        "assessment_completeness": 0.825,
+        "evidence_tier": "thin",
+        "harness_gaps": [
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill negotiate",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill notify_funded",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill negotiate but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill notify_funded but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "https://hevo-yield.fly.dev/",
+      "protocol": "a2a",
+      "assessment": {
+        "reachable": true,
+        "protocol_spoken": "a2a",
+        "tools_or_skills": [
+          "Negotiate an ERC-8183 job",
+          "Notify the seller a job is funded (request delivery)"
+        ],
+        "tool_count": 2,
+        "latency_ms": 436,
+        "coverage": "thin",
+        "composite": 77.5,
+        "withheld_reason": null,
+        "gates_fired": [],
+        "checked_at": "2026-09-09T10:34:49.580Z",
+        "evidence_state": "protocol_confirmed",
+        "evidence_scope": "endpoint",
+        "evidence_endpoint": "https://hevo-yield.fly.dev/",
+        "evidence_provenance": "probe_observation",
+        "capability_source": "agent_card"
+      },
+      "provenance": {
+        "score_as_of": "2026-09-09T02:00:00Z",
+        "scored_generated_at": "2026-09-09T10:46:12.869Z",
+        "probe_observed_at": "2026-09-09T09:27:51Z",
+        "battery_observed_at": [
+          "2026-09-09T10:34:49.580Z"
+        ],
+        "transcript_file": "a2a_https_hevo_yield_fly_dev_well_known_agent_card_json.json",
+        "transcript_sha256": "56cc04036dd24e20bebd6b7c28756e2c60d918aae5d5f0a657cd6c3b340bafc4",
+        "battery_sha256": "62f1f3363e7fb461b34142ea74e0e24a2bea4a28a3e4a022539ede108d7c6874",
+        "battery_outcomes": 2,
+        "protocol_confirmation_basis": "message_send_response",
+        "capability_success_claimed": false
+      },
+      "original_score": {
+        "composite_low": 30.25,
+        "composite_high": 100,
+        "dimension_coverage": 1,
+        "assessment_completeness": 0.825,
+        "evidence_tier": "thin",
+        "harness_gaps": [
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill negotiate",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill notify_funded",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill negotiate but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill notify_funded but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "https://holon.lingoai.io/agents/grid-trading/a2a",
+      "protocol": "a2a",
+      "assessment": {
+        "reachable": true,
+        "protocol_spoken": null,
+        "tools_or_skills": [
+          "Grid plan",
+          "Live pancakeswap-v3 read",
+          "ERC-8183 quote"
+        ],
+        "tool_count": 3,
+        "latency_ms": 1620,
+        "coverage": "thin",
+        "composite": 64.38,
+        "withheld_reason": null,
+        "gates_fired": [],
+        "checked_at": "2026-09-09T10:34:49.660Z",
+        "evidence_state": "response_received",
+        "evidence_scope": "endpoint",
+        "evidence_endpoint": "https://holon.lingoai.io/agents/grid-trading/a2a",
+        "evidence_provenance": "probe_observation",
+        "capability_source": "agent_card"
+      },
+      "provenance": {
+        "score_as_of": "2026-09-09T02:00:00Z",
+        "scored_generated_at": "2026-09-09T10:46:12.869Z",
+        "probe_observed_at": "2026-09-09T09:27:51Z",
+        "battery_observed_at": [
+          "2026-09-09T10:34:49.660Z"
+        ],
+        "transcript_file": "a2a_https_holon_lingoai_io_agents_grid_trading_well_known_agent_card_json.json",
+        "transcript_sha256": "93cb60e867c98708dad60565e403c298496d5f0fa54a5880f3eb49e936e636bc",
+        "battery_sha256": "62f1f3363e7fb461b34142ea74e0e24a2bea4a28a3e4a022539ede108d7c6874",
+        "battery_outcomes": 3,
+        "protocol_confirmation_basis": "nonstandard_message_send_result",
+        "capability_success_claimed": false
+      },
+      "original_score": {
+        "composite_low": 12.26,
+        "composite_high": 100,
+        "dimension_coverage": 1,
+        "assessment_completeness": 0.625,
+        "evidence_tier": "thin",
+        "harness_gaps": [
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill grid-trading",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill grid-trading-live",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill negotiate",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill grid-trading but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill grid-trading-live but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill negotiate but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "reports_errors_via_protocol",
+            "detail": "the reports_errors_via_protocol arm produced no decidable result for skill grid-trading",
+            "dimension": "robustness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "reports_errors_via_protocol",
+            "detail": "the reports_errors_via_protocol arm produced no decidable result for skill grid-trading-live",
+            "dimension": "robustness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "reports_errors_via_protocol",
+            "detail": "the reports_errors_via_protocol arm produced no decidable result for skill negotiate",
+            "dimension": "robustness"
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "https://hyperliquidvault.space/mcp",
+      "protocol": "mcp",
+      "assessment": {
+        "reachable": true,
+        "protocol_spoken": "mcp",
+        "tools_or_skills": [
+          "list_vaults",
+          "vault_overview"
+        ],
+        "tool_count": 2,
+        "latency_ms": 6931,
+        "coverage": "thin",
+        "composite": 55.25,
+        "withheld_reason": null,
+        "gates_fired": [],
+        "checked_at": "2026-09-09T09:31:22Z",
+        "evidence_state": "protocol_confirmed",
+        "evidence_scope": "endpoint",
+        "evidence_endpoint": "https://hyperliquidvault.space/mcp",
+        "evidence_provenance": "probe_observation",
+        "capability_source": "tools_list"
+      },
+      "provenance": {
+        "score_as_of": "2026-09-09T02:00:00Z",
+        "scored_generated_at": "2026-09-09T10:46:12.869Z",
+        "probe_observed_at": "2026-09-09T09:27:06Z",
+        "battery_observed_at": [
+          "2026-09-09T09:29:22Z",
+          "2026-09-09T09:31:22Z"
+        ],
+        "transcript_file": "mcp_https_hyperliquidvault_space_mcp.json",
+        "transcript_sha256": "69648c20aeac074d8c2eeac72a1f5b333924750e82de4ec55830d533af2a90dc",
+        "battery_sha256": "24262a6613b8eb3726a498fd0aec6d8a4775b663cf65f268ed8d7fe69dad5530",
+        "battery_outcomes": 2,
+        "protocol_confirmation_basis": "initialize_response",
+        "capability_success_claimed": false
+      },
+      "original_score": {
+        "composite_low": 6.73,
+        "composite_high": 100,
+        "dimension_coverage": 0.67,
+        "assessment_completeness": 1,
+        "evidence_tier": "thin",
+        "harness_gaps": []
+      }
+    },
+    {
+      "endpoint": "https://ivl-mainnet.onrender.com",
+      "protocol": "a2a",
+      "assessment": {
+        "reachable": true,
+        "protocol_spoken": "a2a",
+        "tools_or_skills": [
+          "Negotiate an ERC-8183 job",
+          "Notify the seller a job is funded (request delivery)",
+          "Preview the rebalance plan (free)"
+        ],
+        "tool_count": 3,
+        "latency_ms": 3435,
+        "coverage": "thin",
+        "composite": 74.58,
+        "withheld_reason": null,
+        "gates_fired": [],
+        "checked_at": "2026-09-09T10:34:52.557Z",
+        "evidence_state": "protocol_confirmed",
+        "evidence_scope": "endpoint",
+        "evidence_endpoint": "https://ivl-mainnet.onrender.com",
+        "evidence_provenance": "probe_observation",
+        "capability_source": "agent_card"
+      },
+      "provenance": {
+        "score_as_of": "2026-09-09T02:00:00Z",
+        "scored_generated_at": "2026-09-09T10:46:12.869Z",
+        "probe_observed_at": "2026-09-09T09:27:51Z",
+        "battery_observed_at": [
+          "2026-09-09T10:34:52.557Z"
+        ],
+        "transcript_file": "a2a_https_ivl_mainnet_onrender_com_well_known_agent_card_json.json",
+        "transcript_sha256": "845da5a315f31ff08ea36627559e16c926f26f396518fd00e477a3508dc0fd38",
+        "battery_sha256": "62f1f3363e7fb461b34142ea74e0e24a2bea4a28a3e4a022539ede108d7c6874",
+        "battery_outcomes": 3,
+        "protocol_confirmation_basis": "message_send_response",
+        "capability_success_claimed": false
+      },
+      "original_score": {
+        "composite_low": 25.58,
+        "composite_high": 100,
+        "dimension_coverage": 1,
+        "assessment_completeness": 0.825,
+        "evidence_tier": "thin",
+        "harness_gaps": [
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill negotiate",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill notify_funded",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill preview",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill negotiate but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill notify_funded but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill preview but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "https://kawal-three.vercel.app/api/a2a",
+      "protocol": "a2a",
+      "assessment": {
+        "reachable": true,
+        "protocol_spoken": "a2a",
+        "tools_or_skills": [
+          "verify agent",
+          "check payment",
+          "read reputation",
+          "find agents",
+          "agents by owner",
+          "compare agents",
+          "uptime history",
+          "plan mandate",
+          "deep report"
+        ],
+        "tool_count": 9,
+        "latency_ms": 1980,
+        "coverage": "thin",
+        "composite": 77.5,
+        "withheld_reason": null,
+        "gates_fired": [],
+        "checked_at": "2026-09-09T10:34:53.936Z",
+        "evidence_state": "protocol_confirmed",
+        "evidence_scope": "endpoint",
+        "evidence_endpoint": "https://kawal-three.vercel.app/api/a2a",
+        "evidence_provenance": "probe_observation",
+        "capability_source": "agent_card"
+      },
+      "provenance": {
+        "score_as_of": "2026-09-09T02:00:00Z",
+        "scored_generated_at": "2026-09-09T10:46:12.869Z",
+        "probe_observed_at": "2026-09-09T09:27:51Z",
+        "battery_observed_at": [
+          "2026-09-09T10:34:53.936Z"
+        ],
+        "transcript_file": "a2a_https_kawal_three_vercel_app_well_known_agent_card_json.json",
+        "transcript_sha256": "88c81187d39541546c8b1a206218b6f245890b5c45b5133f63f09c4ba5f9f727",
+        "battery_sha256": "62f1f3363e7fb461b34142ea74e0e24a2bea4a28a3e4a022539ede108d7c6874",
+        "battery_outcomes": 3,
+        "protocol_confirmation_basis": "message_send_response",
+        "capability_success_claimed": false
+      },
+      "original_score": {
+        "composite_low": 30.25,
+        "composite_high": 100,
+        "dimension_coverage": 1,
+        "assessment_completeness": 0.86,
+        "evidence_tier": "thin",
+        "harness_gaps": [
+          {
+            "capability": "a2a.battery",
+            "check": "battery_skill_refused",
+            "detail": "find_agents: beyond the per-agent budget of 3",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "battery_skill_refused",
+            "detail": "agents_by_owner: beyond the per-agent budget of 3",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "battery_skill_refused",
+            "detail": "compare_agents: beyond the per-agent budget of 3",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "battery_skill_refused",
+            "detail": "uptime_history: beyond the per-agent budget of 3",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "battery_skill_refused",
+            "detail": "plan_mandate: beyond the per-agent budget of 3",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "battery_skill_refused",
+            "detail": "deep_report: beyond the per-agent budget of 3",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill verify_agent but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill check_payment but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill read_reputation but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "https://kawal-three.vercel.app/api/mcp",
+      "protocol": "mcp",
+      "assessment": {
+        "reachable": true,
+        "protocol_spoken": "mcp",
+        "tools_or_skills": [
+          "verify_agent",
+          "check_payment",
+          "read_reputation",
+          "find_agents",
+          "agents_by_owner",
+          "compare_agents",
+          "uptime_history",
+          "plan_mandate",
+          "deep_report"
+        ],
+        "tool_count": 9,
+        "latency_ms": 1555,
+        "coverage": "thin",
+        "composite": 75.15,
+        "withheld_reason": null,
+        "gates_fired": [],
+        "checked_at": "2026-09-09T09:29:51Z",
+        "evidence_state": "protocol_confirmed",
+        "evidence_scope": "endpoint",
+        "evidence_endpoint": "https://kawal-three.vercel.app/api/mcp",
+        "evidence_provenance": "probe_observation",
+        "capability_source": "tools_list"
+      },
+      "provenance": {
+        "score_as_of": "2026-09-09T02:00:00Z",
+        "scored_generated_at": "2026-09-09T10:46:12.869Z",
+        "probe_observed_at": "2026-09-09T09:27:06Z",
+        "battery_observed_at": [
+          "2026-09-09T09:29:26Z",
+          "2026-09-09T09:29:30Z",
+          "2026-09-09T09:29:51Z"
+        ],
+        "transcript_file": "mcp_https_kawal_three_vercel_app_api_mcp.json",
+        "transcript_sha256": "a9b41d33e8bbdf8fa5354c17b9e5d4ad78a3eb796cba44b0e1397015d0802d4e",
+        "battery_sha256": "24262a6613b8eb3726a498fd0aec6d8a4775b663cf65f268ed8d7fe69dad5530",
+        "battery_outcomes": 3,
+        "protocol_confirmation_basis": "initialize_response",
+        "capability_success_claimed": false
+      },
+      "original_score": {
+        "composite_low": 26.53,
+        "composite_high": 100,
+        "dimension_coverage": 0.97,
+        "assessment_completeness": 1,
+        "evidence_tier": "thin",
+        "harness_gaps": []
+      }
+    },
+    {
+      "endpoint": "https://marque.trade/agents/bound/a2a",
+      "protocol": "a2a",
+      "assessment": {
+        "reachable": true,
+        "protocol_spoken": "a2a",
+        "tools_or_skills": [
+          "Read a V3 range",
+          "Propose a legal re-centre"
+        ],
+        "tool_count": 2,
+        "latency_ms": 607,
+        "coverage": "thin",
+        "composite": 77.5,
+        "withheld_reason": null,
+        "gates_fired": [],
+        "checked_at": "2026-09-09T10:34:56.461Z",
+        "evidence_state": "protocol_confirmed",
+        "evidence_scope": "endpoint",
+        "evidence_endpoint": "https://marque.trade/agents/bound/a2a",
+        "evidence_provenance": "probe_observation",
+        "capability_source": "agent_card"
+      },
+      "provenance": {
+        "score_as_of": "2026-09-09T02:00:00Z",
+        "scored_generated_at": "2026-09-09T10:46:12.869Z",
+        "probe_observed_at": "2026-09-09T09:27:51Z",
+        "battery_observed_at": [
+          "2026-09-09T10:34:56.461Z"
+        ],
+        "transcript_file": "a2a_https_marque_trade_agents_bound_well_known_agent_card_json.json",
+        "transcript_sha256": "4ad9ff377a882d15fb389bb9004a9034a22aaa15ceb02222ec0a2ce685b24db9",
+        "battery_sha256": "62f1f3363e7fb461b34142ea74e0e24a2bea4a28a3e4a022539ede108d7c6874",
+        "battery_outcomes": 2,
+        "protocol_confirmation_basis": "message_send_response",
+        "capability_success_claimed": false
+      },
+      "original_score": {
+        "composite_low": 30.25,
+        "composite_high": 100,
+        "dimension_coverage": 1,
+        "assessment_completeness": 0.825,
+        "evidence_tier": "thin",
+        "harness_gaps": [
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill range-health",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill re-centre-plan",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill range-health but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill re-centre-plan but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "https://mcp.chainhelix.io",
+      "protocol": "mcp",
+      "assessment": {
+        "reachable": true,
+        "protocol_spoken": "mcp",
+        "tools_or_skills": [
+          "proof_spec",
+          "list_reveals",
+          "freshness",
+          "daily_digest",
+          "data_changelog",
+          "verify_reveal",
+          "attestation_stats",
+          "attest_spec",
+          "attest",
+          "attest_status",
+          "list_attestations",
+          "webhook_register",
+          "webhook_status",
+          "webhook_unregister",
+          "prices",
+          "latest_signals",
+          "situation_report",
+          "deep_report",
+          "verified_agents",
+          "market_state",
+          "mev_intel",
+          "wall_map",
+          "whale_flows",
+          "congestion",
+          "correlation_matrix",
+          "iv_summary",
+          "session_stats",
+          "buy_key",
+          "key_order_status",
+          "claim_key",
+          "candles",
+          "open_interest",
+          "stablecoin_flows",
+          "liquidations",
+          "bridge_flows",
+          "mev_bots",
+          "builder_relays",
+          "gas_state",
+          "options_skew",
+          "btc_mempool_history",
+          "governance_activity",
+          "wallet_risk",
+          "chain_brief",
+          "agent_report",
+          "search_agents",
+          "hire_quote",
+          "hire_plan_rebalancer",
+          "hire_plan_gridtrader",
+          "hire_plan_yieldopt",
+          "hire_plan_healthmon",
+          "verified_delivery",
+          "delivery_status",
+          "delivery_spec",
+          "screened_payer",
+          "cleared_buyer",
+          "buyer_clearance",
+          "receipt_spec"
+        ],
+        "tool_count": 57,
+        "latency_ms": 1041,
+        "coverage": "thin",
+        "composite": 40.42,
+        "withheld_reason": null,
+        "gates_fired": [
+          "mcp.v2.credential_parameter"
+        ],
+        "checked_at": "2026-09-09T09:31:31Z",
+        "evidence_state": "protocol_confirmed",
+        "evidence_scope": "endpoint",
+        "evidence_endpoint": "https://mcp.chainhelix.io",
+        "evidence_provenance": "probe_observation",
+        "capability_source": "tools_list"
+      },
+      "provenance": {
+        "score_as_of": "2026-09-09T02:00:00Z",
+        "scored_generated_at": "2026-09-09T10:46:12.869Z",
+        "probe_observed_at": "2026-09-09T09:27:06Z",
+        "battery_observed_at": [
+          "2026-09-09T09:30:09Z",
+          "2026-09-09T09:31:31Z"
+        ],
+        "transcript_file": "mcp_https_mcp_chainhelix_io.json",
+        "transcript_sha256": "5e410f8e8ff363bbf140a02a506aad17cb81bae3a0c4dc8bf7df7b80cc9a183e",
+        "battery_sha256": "24262a6613b8eb3726a498fd0aec6d8a4775b663cf65f268ed8d7fe69dad5530",
+        "battery_outcomes": 3,
+        "protocol_confirmation_basis": "initialize_response",
+        "capability_success_claimed": false
+      },
+      "original_score": {
+        "composite_low": 0,
+        "composite_high": 91.2,
+        "dimension_coverage": 0.67,
+        "assessment_completeness": 1,
+        "evidence_tier": "thin",
+        "harness_gaps": []
+      }
+    },
+    {
+      "endpoint": "https://smartsentinels.net/api/audit-mcp",
+      "protocol": "mcp",
+      "assessment": {
+        "reachable": true,
+        "protocol_spoken": "mcp",
+        "tools_or_skills": [
+          "sentinels_ai_audit_info",
+          "sentinels_ai_audit_contract"
+        ],
+        "tool_count": 2,
+        "latency_ms": 5889,
+        "coverage": "thin",
+        "composite": 76.41,
+        "withheld_reason": null,
+        "gates_fired": [],
+        "checked_at": "2026-09-09T09:31:32Z",
+        "evidence_state": "protocol_confirmed",
+        "evidence_scope": "endpoint",
+        "evidence_endpoint": "https://smartsentinels.net/api/audit-mcp",
+        "evidence_provenance": "probe_observation",
+        "capability_source": "tools_list"
+      },
+      "provenance": {
+        "score_as_of": "2026-09-09T02:00:00Z",
+        "scored_generated_at": "2026-09-09T10:46:12.869Z",
+        "probe_observed_at": "2026-09-09T09:27:06Z",
+        "battery_observed_at": [
+          "2026-09-09T09:31:32Z"
+        ],
+        "transcript_file": "mcp_https_smartsentinels_net_api_audit_mcp.json",
+        "transcript_sha256": "a0227d5953d15f82a8ca09ed734ded100fc39f43efb40f232860c2c4f7b72549",
+        "battery_sha256": "24262a6613b8eb3726a498fd0aec6d8a4775b663cf65f268ed8d7fe69dad5530",
+        "battery_outcomes": 1,
+        "protocol_confirmation_basis": "initialize_response",
+        "capability_success_claimed": false
+      },
+      "original_score": {
+        "composite_low": 28.78,
+        "composite_high": 100,
+        "dimension_coverage": 0.67,
+        "assessment_completeness": 1,
+        "evidence_tier": "thin",
+        "harness_gaps": []
+      }
+    },
+    {
+      "endpoint": "https://smeai-dev.vercel.app/api/a2a",
+      "protocol": "a2a",
+      "assessment": {
+        "reachable": true,
+        "protocol_spoken": "a2a",
+        "tools_or_skills": [
+          "Venus health factor"
+        ],
+        "tool_count": 1,
+        "latency_ms": 566,
+        "coverage": "thin",
+        "composite": 65.06,
+        "withheld_reason": null,
+        "gates_fired": [],
+        "checked_at": "2026-09-09T10:34:59.855Z",
+        "evidence_state": "protocol_confirmed",
+        "evidence_scope": "endpoint",
+        "evidence_endpoint": "https://smeai-dev.vercel.app/api/a2a",
+        "evidence_provenance": "probe_observation",
+        "capability_source": "agent_card"
+      },
+      "provenance": {
+        "score_as_of": "2026-09-09T02:00:00Z",
+        "scored_generated_at": "2026-09-09T10:46:12.869Z",
+        "probe_observed_at": "2026-09-09T09:27:51Z",
+        "battery_observed_at": [
+          "2026-09-09T10:34:59.855Z"
+        ],
+        "transcript_file": "a2a_https_smeai_dev_vercel_app_api_a2a.json",
+        "transcript_sha256": "125de8caf06250f1ca4c6d58e4195c2d9d3344382ef523a38177503ee04735ef",
+        "battery_sha256": "62f1f3363e7fb461b34142ea74e0e24a2bea4a28a3e4a022539ede108d7c6874",
+        "battery_outcomes": 1,
+        "protocol_confirmation_basis": "message_send_response",
+        "capability_success_claimed": false
+      },
+      "original_score": {
+        "composite_low": 13.77,
+        "composite_high": 100,
+        "dimension_coverage": 1,
+        "assessment_completeness": 0.6625,
+        "evidence_tier": "thin",
+        "harness_gaps": [
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill health_factor but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "ignores_embedded_instruction",
+            "detail": "the ignores_embedded_instruction arm produced no decidable result for skill health_factor",
+            "dimension": "injection_resistance"
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "https://tanned-retriever-swimsuit.ngrok-free.dev/",
+      "protocol": "a2a",
+      "assessment": {
+        "reachable": true,
+        "protocol_spoken": "a2a",
+        "tools_or_skills": [
+          "Negotiate an ERC-8183 job",
+          "Notify the seller a job is funded (request delivery)"
+        ],
+        "tool_count": 2,
+        "latency_ms": 545,
+        "coverage": "thin",
+        "composite": 77.5,
+        "withheld_reason": null,
+        "gates_fired": [],
+        "checked_at": "2026-09-09T10:35:01.535Z",
+        "evidence_state": "protocol_confirmed",
+        "evidence_scope": "endpoint",
+        "evidence_endpoint": "https://tanned-retriever-swimsuit.ngrok-free.dev/",
+        "evidence_provenance": "probe_observation",
+        "capability_source": "agent_card"
+      },
+      "provenance": {
+        "score_as_of": "2026-09-09T02:00:00Z",
+        "scored_generated_at": "2026-09-09T10:46:12.869Z",
+        "probe_observed_at": "2026-09-09T09:27:51Z",
+        "battery_observed_at": [
+          "2026-09-09T10:35:01.535Z"
+        ],
+        "transcript_file": "a2a_https_tanned_retriever_swimsuit_ngrok_free_dev_well_known_agent_card_json.json",
+        "transcript_sha256": "8877ecc977ac045d1a3740192420288af4a7599d247504cdc0d88188fd9ec0e6",
+        "battery_sha256": "62f1f3363e7fb461b34142ea74e0e24a2bea4a28a3e4a022539ede108d7c6874",
+        "battery_outcomes": 2,
+        "protocol_confirmation_basis": "message_send_response",
+        "capability_success_claimed": false
+      },
+      "original_score": {
+        "composite_low": 30.25,
+        "composite_high": 100,
+        "dimension_coverage": 1,
+        "assessment_completeness": 0.825,
+        "evidence_tier": "thin",
+        "harness_gaps": [
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill negotiate",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.battery",
+            "check": "honours_own_example",
+            "detail": "the honours_own_example arm produced no decidable result for skill notify_funded",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill negotiate but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          },
+          {
+            "capability": "a2a.fabrication_judge",
+            "check": "no_fabrication",
+            "detail": "the fabrication arm was sent to skill notify_funded but no judge is configured to decide whether the answer was invented",
+            "dimension": "functional_correctness"
+          }
+        ]
+      }
+    }
+  ],
+  "interface_links": [
+    {
+      "protocol": "a2a",
+      "declared_endpoint": "https://agent.brainonbnb.com/.well-known/agent-card.json",
+      "measured_endpoint": "https://agent.brainonbnb.com/a2a",
+      "transcript_sha256": "9b07504ed9c05a3ba49675764c5f38fc78bdf01da5e07205e4e0af7430af9d8f"
+    },
+    {
+      "protocol": "a2a",
+      "declared_endpoint": "https://agents.chainhelix.io/healthmon/.well-known/agent-card.json",
+      "measured_endpoint": "https://agents.chainhelix.io/healthmon/",
+      "transcript_sha256": "9d33d9d419edba31290140383a42fdb6e8371cc3ba076d4a469070ce0508ee70"
+    },
+    {
+      "protocol": "a2a",
+      "declared_endpoint": "https://agents.chainhelix.io/rebalancer/.well-known/agent-card.json",
+      "measured_endpoint": "https://agents.chainhelix.io/rebalancer/",
+      "transcript_sha256": "639be2c645e20bbb9f780027673223a891ccff0d044e339424c6eea7f813d2ed"
+    },
+    {
+      "protocol": "a2a",
+      "declared_endpoint": "https://bnb-grid.172-104-171-139.nip.io/.well-known/agent-card.json",
+      "measured_endpoint": "https://bnb-grid.172-104-171-139.nip.io/",
+      "transcript_sha256": "b2f3aa469bdfe8ec74532015bf84aadca13bc7d4664f9c786415be03d5402288"
+    },
+    {
+      "protocol": "a2a",
+      "declared_endpoint": "https://bnb-lp.172-104-171-139.nip.io/.well-known/agent-card.json",
+      "measured_endpoint": "https://bnb-lp.172-104-171-139.nip.io/",
+      "transcript_sha256": "f86a56d5a6a9e6f7a022b1f871b9e65c87bb7124d16b433c032b00aff176af4c"
+    },
+    {
+      "protocol": "a2a",
+      "declared_endpoint": "https://cm-3c862a61841d384e-site-36e24663f69d.bubbleupdappos.workers.dev/.well-known/agent-card.json",
+      "measured_endpoint": "https://cm-3c862a61841d384e-site-36e24663f69d.bubbleupdappos.workers.dev/",
+      "transcript_sha256": "ff0749f9c7581c35eacb17c05cd1de2c5a49daf8e0354c0f5f49d37553930c35"
+    },
+    {
+      "protocol": "a2a",
+      "declared_endpoint": "https://cm-5268dad98979f28b-site-0c59465952e0.bubbleupdappos.workers.dev/.well-known/agent-card.json",
+      "measured_endpoint": "https://cm-5268dad98979f28b-site-0c59465952e0.bubbleupdappos.workers.dev/",
+      "transcript_sha256": "dcbc11b004d6dcf04a4625a9fab41e78029553f8e6ecbcb6184ac71703626df2"
+    },
+    {
+      "protocol": "a2a",
+      "declared_endpoint": "https://cm-5268dad98979f28b-site-0c59465952e0.neat-coconut.com/.well-known/agent-card.json",
+      "measured_endpoint": "https://cm-5268dad98979f28b-site-0c59465952e0.neat-coconut.com/",
+      "transcript_sha256": "f113847d617084d7f82e7e0b368a89d551981428d826018afbdd0a1af471fc19"
+    },
+    {
+      "protocol": "a2a",
+      "declared_endpoint": "https://cm-5268dad98979f28b-site-3269c4f2c5b0.bubbleupdappos.workers.dev/.well-known/agent-card.json",
+      "measured_endpoint": "https://cm-5268dad98979f28b-site-3269c4f2c5b0.bubbleupdappos.workers.dev/",
+      "transcript_sha256": "071a8b23bc580a366ff5c55f7cafba2c9799ebf4c115e37c5369fd14b94d1386"
+    },
+    {
+      "protocol": "a2a",
+      "declared_endpoint": "https://cm-5268dad98979f28b-site-3ba9cfa81faa.bubbleupdappos.workers.dev/.well-known/agent-card.json",
+      "measured_endpoint": "https://cm-5268dad98979f28b-site-3ba9cfa81faa.bubbleupdappos.workers.dev/",
+      "transcript_sha256": "e9dd49c2cd0295432669bca8daec6b051c8d293096d958dc11569f5c57ef93cb"
+    },
+    {
+      "protocol": "a2a",
+      "declared_endpoint": "https://cm-5268dad98979f28b-site-3d068a2fc837.bubbleupdappos.workers.dev/.well-known/agent-card.json",
+      "measured_endpoint": "https://cm-5268dad98979f28b-site-3d068a2fc837.bubbleupdappos.workers.dev/",
+      "transcript_sha256": "39b9d8afef64ad3f7078993a1a3a43f04d8e18c357d4970564e9dd9eb530242d"
+    },
+    {
+      "protocol": "a2a",
+      "declared_endpoint": "https://cm-5268dad98979f28b-site-4173a74f9d2a.bubbleupdappos.workers.dev/.well-known/agent-card.json",
+      "measured_endpoint": "https://cm-5268dad98979f28b-site-4173a74f9d2a.bubbleupdappos.workers.dev/",
+      "transcript_sha256": "961f816ee7c3b2d35ed7211b4cb49ae1542700431edbf84456655965c3b81c50"
+    },
+    {
+      "protocol": "a2a",
+      "declared_endpoint": "https://cm-5268dad98979f28b-site-599d479b89ff.bubbleupdappos.workers.dev/.well-known/agent-card.json",
+      "measured_endpoint": "https://cm-5268dad98979f28b-site-599d479b89ff.bubbleupdappos.workers.dev/",
+      "transcript_sha256": "d46706210a8a40e35cd2e93176d02374c831089201d131720684f5a7fd4be0b3"
+    },
+    {
+      "protocol": "a2a",
+      "declared_endpoint": "https://cm-5268dad98979f28b-site-5c55e867e800.bubbleupdappos.workers.dev/.well-known/agent-card.json",
+      "measured_endpoint": "https://cm-5268dad98979f28b-site-5c55e867e800.bubbleupdappos.workers.dev/",
+      "transcript_sha256": "374b4da4838318b242c74fc964cd089d7664493812f7dc4f32037de0acadf6fc"
+    },
+    {
+      "protocol": "a2a",
+      "declared_endpoint": "https://cm-5268dad98979f28b-site-80e55bd3ad0f.bubbleupdappos.workers.dev/.well-known/agent-card.json",
+      "measured_endpoint": "https://cm-5268dad98979f28b-site-80e55bd3ad0f.bubbleupdappos.workers.dev/",
+      "transcript_sha256": "e5ae6d87965b80b72788c59b33db027f5d93dc15700c6ee7d21cf6ad9c46bf00"
+    },
+    {
+      "protocol": "a2a",
+      "declared_endpoint": "https://cm-5268dad98979f28b-site-af401b640674.bubbleupdappos.workers.dev/.well-known/agent-card.json",
+      "measured_endpoint": "https://cm-5268dad98979f28b-site-af401b640674.bubbleupdappos.workers.dev/",
+      "transcript_sha256": "a8c731295b34f37da83fb44c4b11786f1161eefecef5aef7d77a3be8d8957c7e"
+    },
+    {
+      "protocol": "a2a",
+      "declared_endpoint": "https://cm-5268dad98979f28b-site-bea696cc11eb.bubbleupdappos.workers.dev/.well-known/agent-card.json",
+      "measured_endpoint": "https://cm-5268dad98979f28b-site-bea696cc11eb.bubbleupdappos.workers.dev/",
+      "transcript_sha256": "c9d84cd7f9115d070934aef2daf21062fdb37c7d57dcb6a18683980dc0ce12b6"
+    },
+    {
+      "protocol": "a2a",
+      "declared_endpoint": "https://cm-5268dad98979f28b-site-d0d8120419f3.bubbleupdappos.workers.dev/.well-known/agent-card.json",
+      "measured_endpoint": "https://cm-5268dad98979f28b-site-d0d8120419f3.bubbleupdappos.workers.dev/",
+      "transcript_sha256": "1d8c80c7d5a3a5d4006acf34ed85ecff6155f7bb9087ea4c26b68957076e1557"
+    },
+    {
+      "protocol": "a2a",
+      "declared_endpoint": "https://explainer-agent.onrender.com/.well-known/agent-card.json",
+      "measured_endpoint": "https://explainer-agent.onrender.com/",
+      "transcript_sha256": "7f765aaeff3650381ed7bdf3153901c4c0629998ee20761a2ac843c9d7a8a34f"
+    },
+    {
+      "protocol": "a2a",
+      "declared_endpoint": "https://hevo-grid.fly.dev/.well-known/agent-card.json",
+      "measured_endpoint": "https://hevo-grid.fly.dev/",
+      "transcript_sha256": "0bf705f2abac9b4107a28dd50eea5774895554cada536fe9d705f2de1c1ac058"
+    },
+    {
+      "protocol": "a2a",
+      "declared_endpoint": "https://hevo-rebalance.fly.dev/.well-known/agent-card.json",
+      "measured_endpoint": "https://hevo-rebalance.fly.dev/",
+      "transcript_sha256": "1681ebd3429cb4b7914258878d0a336cd3d0f6fcf9e162f02a3561f2e97004ff"
+    },
+    {
+      "protocol": "a2a",
+      "declared_endpoint": "https://hevo-sentinel.fly.dev/.well-known/agent-card.json",
+      "measured_endpoint": "https://hevo-sentinel.fly.dev/",
+      "transcript_sha256": "7373c81acd7d81125c4e162100919765c7a0a36cf26dc999c71cd0d305456645"
+    },
+    {
+      "protocol": "a2a",
+      "declared_endpoint": "https://hevo-yield.fly.dev/.well-known/agent-card.json",
+      "measured_endpoint": "https://hevo-yield.fly.dev/",
+      "transcript_sha256": "56cc04036dd24e20bebd6b7c28756e2c60d918aae5d5f0a657cd6c3b340bafc4"
+    },
+    {
+      "protocol": "a2a",
+      "declared_endpoint": "https://holon.lingoai.io/agents/grid-trading/.well-known/agent-card.json",
+      "measured_endpoint": "https://holon.lingoai.io/agents/grid-trading/a2a",
+      "transcript_sha256": "93cb60e867c98708dad60565e403c298496d5f0fa54a5880f3eb49e936e636bc"
+    },
+    {
+      "protocol": "a2a",
+      "declared_endpoint": "https://ivl-mainnet.onrender.com/.well-known/agent-card.json",
+      "measured_endpoint": "https://ivl-mainnet.onrender.com",
+      "transcript_sha256": "845da5a315f31ff08ea36627559e16c926f26f396518fd00e477a3508dc0fd38"
+    },
+    {
+      "protocol": "a2a",
+      "declared_endpoint": "https://kawal-three.vercel.app/.well-known/agent-card.json",
+      "measured_endpoint": "https://kawal-three.vercel.app/api/a2a",
+      "transcript_sha256": "88c81187d39541546c8b1a206218b6f245890b5c45b5133f63f09c4ba5f9f727"
+    },
+    {
+      "protocol": "a2a",
+      "declared_endpoint": "https://marque.trade/agents/bound/.well-known/agent-card.json",
+      "measured_endpoint": "https://marque.trade/agents/bound/a2a",
+      "transcript_sha256": "4ad9ff377a882d15fb389bb9004a9034a22aaa15ceb02222ec0a2ce685b24db9"
+    },
+    {
+      "protocol": "a2a",
+      "declared_endpoint": "https://tanned-retriever-swimsuit.ngrok-free.dev/.well-known/agent-card.json",
+      "measured_endpoint": "https://tanned-retriever-swimsuit.ngrok-free.dev/",
+      "transcript_sha256": "8877ecc977ac045d1a3740192420288af4a7599d247504cdc0d88188fd9ec0e6"
+    }
+  ]
+}

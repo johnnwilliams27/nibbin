@@ -1,18 +1,18 @@
 /**
  * Probe every distinct endpoint declared by the bnb-marketplace population.
  *
- * WHY DEDUPLICATE BY ENDPOINT. 3,204 agents in the snapshot declare an
- * endpoint and only 111 distinct URLs sit behind them: one factory mints many
+ * WHY DEDUPLICATE BY ENDPOINT. Many registrations in the snapshot declare the
+ * same URL: one factory mints many
  * on-chain identities that all point at the same server. Probing per agent
  * would send the same host the same handshake thirty times to learn one fact.
  * So each distinct endpoint is probed ONCE and the result is fanned out to
  * every agent that declares it, which is both faster and the polite thing to
  * do to somebody else's server.
  *
- * WHAT IS SENT. Handshake and enumeration only. `initialize` + `tools/list`
+ * WHAT IS SENT. Descriptor reads, handshake and enumeration only. `initialize` + `tools/list`
  * for MCP, a GET of the Agent Card (and one benign `tasks/get` for a task id
  * that cannot exist) for A2A. NO TOOL AND NO SKILL IS EVER INVOKED, so nothing
- * is spent and nothing is mutated.
+ * is spent and nothing is mutated. A stdio descriptor is never installed or executed.
  *
  * ETIQUETTE. Two concurrent requests per host, twenty across the run. Two
  * hosts hold half the population between them and must not be burst.
@@ -23,23 +23,14 @@
  * filled in later with a plausible number.
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { probeMcpServer } from "../src/mcp/probe.js";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { probeMcpInterface, declaredProbeTargets, type InterfaceTranscript } from "../src/mcp/interface.js";
 import { probeA2aAgent } from "../src/a2a/probe.js";
 import { probeIdentity } from "../src/mcp/probe-identity.js";
-import type { ProbeTranscript } from "../src/mcp/transcript.js";
 import type { A2aTranscript } from "../src/a2a/transcript.js";
 
-import { fileURLToPath } from "node:url";
-import { dirname, resolve } from "node:path";
-
-/**
- * Repo-relative, not absolute. This was `/home/user/nibbin/...`, which exists
- * on exactly one developer's machine and nowhere else — a scheduled run checks
- * out to `/home/runner/work/nibbin/nibbin`, so the hardcoded path made every
- * one of these scripts unrunnable in CI. Resolved from this file's own location
- * so it holds wherever the repository is cloned.
- */
-const MARKET = resolve(dirname(fileURLToPath(import.meta.url)), "../../../apps/bnb-marketplace");
+const MARKET = resolve(process.env.MARKETPLACE_DIR ?? fileURLToPath(new URL("../../../apps/bnb-marketplace", import.meta.url)));
 const AGENTS = `${MARKET}/data/agents.json`;
 const OUT_DIR = `${MARKET}/data/probes`;
 const RESULTS = `${OUT_DIR}/endpoint-probes.json`;
@@ -53,6 +44,7 @@ type AgentRow = {
   category: string;
   protocols: string[];
   endpoint: string | null;
+  declared_interfaces?: Array<{ protocol: string; endpoint: string }>;
   scan_feedbacks: number;
   is_reference_agent: boolean;
   chain_id: number;
@@ -78,7 +70,7 @@ type EndpointResult = {
   protocols: string[];
   priority: number;
   agent_count: number;
-  mcp: ProbeTranscript | null;
+  mcp: InterfaceTranscript | null;
   a2a: A2aTranscript | null;
   probed_at: string;
 };
@@ -89,7 +81,8 @@ const dataset = JSON.parse(readFileSync(AGENTS, "utf8")) as { generated_at: stri
 const byEndpoint = new Map<string, Task>();
 for (const a of dataset.agents) {
   if (a.is_reference_agent === true) continue; // we do not rate our own
-  const ep = typeof a.endpoint === "string" ? a.endpoint.trim() : "";
+  for (const declared of declaredProbeTargets(a)) {
+  const ep = declared.endpoint;
   if (ep === "") continue;
   let host = "";
   try {
@@ -116,10 +109,11 @@ for (const a of dataset.agents) {
     t.sampleName = a.name;
   }
   t.feedback += typeof a.scan_feedbacks === "number" ? a.scan_feedbacks : 0;
-  for (const p of Array.isArray(a.protocols) ? a.protocols : []) {
+  for (const p of declared.protocols) {
     if (!t.protocols.includes(p)) t.protocols.push(p);
   }
   byEndpoint.set(ep, t);
+  }
 }
 for (const t of byEndpoint.values()) {
   t.priority = t.inCategory > 0 ? 0 : t.feedback > 0 ? 1 : 2;
@@ -160,15 +154,16 @@ function checkpoint(): void {
 const TIMEOUT_MS = Number(process.env.PROBE_TIMEOUT_MS ?? 12_000);
 
 async function runOne(t: Task): Promise<void> {
-  const identity = probeIdentity(t.sampleAgentId);
+  const identity = { ...probeIdentity(t.sampleAgentId), userAgent: "Nibbin Trust Index (https://nibbin.com)",
+    clientName: "Nibbin Trust Index", clientVersion: "1.0.0" };
   const declaresMcp = t.protocols.some((p) => p.toUpperCase() === "MCP");
   const declaresA2a = t.protocols.some((p) => p.toUpperCase() === "A2A");
-  let mcp: ProbeTranscript | null = null;
+  let mcp: InterfaceTranscript | null = null;
   let a2a: A2aTranscript | null = null;
 
   if (declaresMcp) {
     try {
-      mcp = await probeMcpServer(
+      mcp = await probeMcpInterface(
         t.endpoint,
         {
           name: t.sampleName,

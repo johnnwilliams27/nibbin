@@ -20,6 +20,8 @@ export type CategorySlug =
 
 export type Coverage = 'thin' | 'moderate' | 'strong';
 
+export type EvidenceState = 'protocol_confirmed' | 'card_retrieved' | 'descriptor_read' | 'auth_walled' | 'rate_limited' | 'response_received' | 'unmeasured' | 'unsupported_transport';
+
 export interface Assessment {
   /**
    * How many agents in the snapshot declare this same endpoint, this one
@@ -52,6 +54,23 @@ export interface Assessment {
   /** Hard safety caps that tripped. Non-empty is loud by design. */
   gates_fired: string[];
   checked_at: string;
+  evidence_state?: EvidenceState;
+  evidence_scope?: 'endpoint' | 'host';
+  evidence_endpoint?: string;
+  /** Recorded A2A discovery URL linking this registration to the tested service. */
+  evidence_declared_endpoint?: string;
+  evidence_link_sha256?: string;
+  /** Scoring parameter, separate from the actual observation timestamps. */
+  score_as_of?: string;
+  scored_generated_at?: string;
+  probe_observed_at?: string;
+  battery_observed_at?: string[];
+  transcript_sha256?: string;
+  battery_sha256?: string;
+  provenance?: { score_as_of?: string; scored_generated_at?: string; probe_observed_at?: string; battery_observed_at?: string[]; transcript_sha256?: string; battery_sha256?: string };
+  evidence_provenance?: 'probe_observation' | 'self_reported';
+  shared_registration_count?: number;
+  capability_source?: 'tools_list' | 'agent_card' | 'service_descriptor' | null;
 }
 
 export interface Agent {
@@ -66,6 +85,12 @@ export interface Agent {
   description: string;
   owner_address: string;
   image_url: string | null;
+  metadata_source?: string;
+  metadata_checked_at_block?: number | null;
+  token_uri_checked_at_block?: number | null;
+  registered_at_block?: number;
+  owner_source?: 'current_rpc' | 'registration_event' | 'unknown';
+  owner_checked_at_block?: number | null;
 
   category: CategorySlug;
   category_confidence: number;
@@ -73,13 +98,12 @@ export interface Agent {
 
   protocols: string[];
   endpoint: string | null;
+  declared_interfaces?: Array<{ protocol: 'mcp' | 'a2a' | 'web'; endpoint: string }>;
   x402_supported: boolean;
 
   /**
-   * Which kind of `endpoint: null` this is. Only the 8004scan detail view
-   * carries an endpoint, and that fetch is rate-limited, so an agent we never
-   * reached is indistinguishable from one that declares none — unless this
-   * field is checked.
+   * Whether registration metadata was read. Missing metadata is our coverage
+   * gap, never evidence that an agent declares no endpoint.
    *
    * - `read`: we hold the detail response. `endpoint: null` is a FACT.
    * - `unread_rate_limited`: we never got the response. The null is OUR gap.
@@ -91,11 +115,6 @@ export interface Agent {
   // Legacy or invalid snapshots must not acquire an invented failure reason.
   detail_status: 'read' | 'unread_rate_limited' | 'unread_unknown';
 
-  // Third party (8004scan). Never ours.
-  scan_total_score: number | null;
-  scan_feedbacks: number;
-  scan_endpoint_verified: boolean;
-
   // Ours. null = not assessed.
   assessment: Assessment | null;
 
@@ -105,6 +124,14 @@ export interface Agent {
 export interface Dataset {
   generated_at: string | null;
   agents: Agent[];
+  source?: {
+    kind: 'erc8004_registered_events';
+    enumerated_records: number;
+    event_block_range?: { min: number; max: number } | null;
+    current_records?: number;
+    current_block_range?: { min: number; max: number } | null;
+    outcomes?: Record<string, number>;
+  };
   /**
    * Optional free-text state from the producer (e.g. "REBUILDING — ..."). Not
    * part of the frozen contract; the UI surfaces it if present and ignores it

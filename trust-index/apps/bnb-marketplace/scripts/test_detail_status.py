@@ -91,6 +91,24 @@ class DetailStatusTests(unittest.TestCase):
         row = json.loads(self.output.read_text())["agents"][0]
         self.assertEqual(row["detail_status"], "read")
 
+    def test_preserves_distinct_declared_mcp_a2a_and_web_interfaces(self):
+        detail = {**self.agent, "services": {
+            "mcp": {"endpoint": "https://fixture.example/mcp"},
+            "a2a": {"endpoint": "https://fixture.example/agents/1/card"},
+            "web": {"endpoint": "https://fixture.example/agent/1"}}}
+        self.assertIsNone(self.run_build([], detail))
+        row = json.loads(self.output.read_text())["agents"][0]
+        self.assertEqual(row["endpoint"], "https://fixture.example/mcp")
+        self.assertEqual(row.get("declared_interfaces"), [
+            {"protocol": "mcp", "endpoint": "https://fixture.example/mcp"},
+            {"protocol": "a2a", "endpoint": "https://fixture.example/agents/1/card"},
+            {"protocol": "web", "endpoint": "https://fixture.example/agent/1"}])
+
+    def test_missing_detail_does_not_invent_interface_list(self):
+        self.assertIsNone(self.run_build([self.failure("rate_limited", "quota exhausted")]))
+        row = json.loads(self.output.read_text())["agents"][0]
+        self.assertNotIn("declared_interfaces", row)
+
 
 class ServicesShapeTests(unittest.TestCase):
     """`services` mixes interface declarations with scalar identity values."""

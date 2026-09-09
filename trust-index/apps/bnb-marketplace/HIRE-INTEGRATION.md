@@ -1,5 +1,67 @@
 # Hire integration — ERC-8183 on BNB Smart Chain
 
+## Browser implementation — September 9 follow-up
+
+`src/components/HireFlow.tsx` now implements user-confirmed browser hiring for
+compatible ERC-8183 sellers on chains 97 and 56. This is implemented code, not a
+claim that every marketplace registration supports commerce or that new browser
+transactions have been executed in production.
+
+- Connect an injected EIP-1193 wallet; no account request happens on page load.
+- Request an A2A `negotiate` quote or import one, then verify the seller's EIP-191
+  signature, chain, commerce contract, payment token, signed content, and expiry.
+  Smart-contract/1271 quote signers are not supported by this browser version.
+- Review the exact task, budget, contract, and next transaction calldata before
+  each wallet action. Approval is the exact budget, never an unlimited allowance;
+  this browser limits each job to 20 U. Native token value is zero; gas is extra.
+- `createJob` goes to commerce with the router as both evaluator and hook.
+  **Correction to the shorthand below: `registerJob` goes to the router**, then
+  `setBudget` and `fund` go to commerce. The browser reads `jobHasBudget`, so a
+  zero-budget job still gets `setBudget(0)`.
+- Every send checks the selected account/network and simulates before asking the
+  wallet to submit. A transaction with an unknown receipt is not automatically
+  resent. The user can check the receipt and load an existing job by ID.
+  A wallet transport error after submission is explicitly an unknown outcome,
+  not proof that no transaction happened.
+- Funding is not activation by itself: the user sends `notify_funded` to the
+  seller with the exact `funding_tx_hash`; the seller verifies that receipt instead
+  of relying on an unbounded historical log scan. This public hash is retained in
+  session storage scoped by chain, buyer, seller, and job. Resumed jobs can accept
+  a manually supplied funding receipt; tasks and credentials are not persisted.
+  Delivery status is read from chain, not inferred from the seller reply.
+  The buyer downloads the actual manifest and reproduces the SDK's canonical
+  manifest hash, binding the job, chain, and deployment. Only a match to the
+  on-chain digest enables settlement. Integrity is not a correctness rating.
+  Submitted jobs expose user-confirmed settlement/dispute, with chain-enforced
+  policy timing; eligible expired jobs expose refund.
+- Existing funded/submitted jobs must use the supported policy before the UI
+  exposes them. Read-only polling is serial, stops at job expiry or after fifteen
+  minutes per mounted polling session, and leaves manual refresh available.
+
+The browser contract artifact `src/lib/commerce-contracts.ts` is extracted from
+the pinned official `@bnbagent/sdk@0.5.5` client ABIs and network constants.
+`tests/commerce-sdk.test.mjs` checks every entry against the installed SDK.
+The SDK includes Node-only modules, so only its ABI/address data is imported by
+the browser. The quote tests compare real SDK-generated raw and built envelopes
+against the browser implementation, including canonical Unicode escaping.
+Delivery tests likewise compare hashes against SDK `DeliverableManifest` output.
+
+The task form and consent checkbox explicitly warn that the full task, inputs and
+signed terms become permanently public on-chain. Reference mode presents three
+numeric inputs; protocol details and generated task text are in a disclosure.
+
+`HirePanel` supplies connection instructions separately. Copying a configuration
+does not activate anything; descriptor readings do not produce remote HTTP MCP
+configuration. The on-chain flow stays behind safety acknowledgement where a
+declaration gate fired. A fresh signed quote proves the signer accepted those
+terms, not the quality of its eventual work.
+
+Public end-to-end operation also needs a live HTTPS/CORS seller and retrievable
+deliverable storage. The historical localhost jobs below do not establish either.
+Browser gas sponsorship is not implemented; users need BNB/tBNB in their wallet.
+
+---
+
 How the marketplace front end turns "hire this agent" into on-chain reality.
 Everything below was executed for real on **BSC testnet (chain 97)** on 2026-09-09.
 Total spend: **$0.00**.

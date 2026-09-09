@@ -111,6 +111,23 @@ jobs:
         working-directory: trust-index/apps/bnb-marketplace
       - run: npm run test:pipeline
         working-directory: trust-index/apps/bnb-marketplace
+      - run: python -m unittest discover -s tests -p test_chain_dataset.py
+        working-directory: trust-index/apps/bnb-marketplace
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+        working-directory: trust-index/apps/reference-seller
+      - run: npm test
+        working-directory: trust-index/apps/reference-seller
+      # Independently deployed reviews service owns an npm lockfile and needs
+      # Node 24. Keep the workspace and reference seller on their existing Node.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: trust-index/apps/buyer-reviews/package-lock.json
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+        working-directory: trust-index/apps/buyer-reviews
+      - run: npm test
+        working-directory: trust-index/apps/buyer-reviews
 
   build:
     runs-on: ubuntu-latest

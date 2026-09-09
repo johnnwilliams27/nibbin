@@ -16,7 +16,7 @@ const SOURCE_META: Record<Source, { label: string; who: string; fg: string; bg: 
     Icon: Activity,
   },
   third_party: {
-    label: '8004scan',
+    label: 'External source',
     who: 'Third-party reputation data. Reported here as-is; we did not verify it.',
     fg: 'var(--thirdparty)',
     bg: 'var(--thirdparty-bg)',
@@ -24,14 +24,14 @@ const SOURCE_META: Record<Source, { label: string; who: string; fg: string; bg: 
   },
   onchain: {
     label: 'On-chain',
-    who: 'Read from the ERC-8004 identity registry on BSC.',
+    who: 'ERC-8004 registration data read directly from the chain for this snapshot. Linked metadata remains an operator declaration.',
     fg: 'var(--neutral-fg)',
     bg: 'var(--neutral-bg)',
     Icon: Link2,
   },
   self_reported: {
     label: 'Agent claims',
-    who: 'Declared by the agent in its own registration. Nobody checked it.',
+    who: 'Declared by the operator. This label is not evidence that the claim was verified.',
     fg: 'var(--withheld)',
     bg: 'var(--withheld-bg)',
     Icon: FileText,
@@ -84,7 +84,7 @@ export function ProvenanceSplit({
               What we measured
             </p>
             <p className="mt-0.5 text-[13px]" style={{ color: 'var(--measured)' }}>
-              We called this agent and recorded what happened.
+              Endpoint observations and sampled behavioral evidence, when available.
             </p>
           </div>
           <ProvenanceChip source="measured" />
@@ -92,20 +92,20 @@ export function ProvenanceSplit({
         <div className="px-5 py-4">{ours}</div>
       </section>
 
-      <section aria-label="What the ecosystem claims" className="shell overflow-hidden">
+      <section aria-label="Registration and declarations" className="shell overflow-hidden">
         <header
           className="flex items-center justify-between gap-3 px-5 py-3"
           style={{ background: 'var(--thirdparty-bg)' }}
         >
           <div>
             <p className="eyebrow" style={{ color: 'var(--thirdparty)' }}>
-              What the ecosystem claims
+              Registration and declarations
             </p>
             <p className="mt-0.5 text-[13px]" style={{ color: 'var(--thirdparty)' }}>
-              Reported by others. Shown as-is, never folded into our score.
+              Chain identity and operator declarations, separate from measured behavior.
             </p>
           </div>
-          <ProvenanceChip source="third_party" />
+          <ProvenanceChip source="onchain" />
         </header>
         <div className="px-5 py-4">{theirs}</div>
       </section>
@@ -119,12 +119,14 @@ export function Figure({
   value,
   source,
   note,
+  noteTitle,
   tone,
 }: {
   label: string;
   value: React.ReactNode;
   source?: Source;
   note?: string;
+  noteTitle?: string;
   tone?: string;
 }) {
   return (
@@ -135,7 +137,7 @@ export function Figure({
           {value}
         </span>
       </div>
-      {note ? <p className="mt-1 text-[12px] text-[var(--fg-muted)]">{note}</p> : null}
+      {note ? <p title={noteTitle} tabIndex={noteTitle ? 0 : undefined} className="mt-1 text-[12px] text-[var(--fg-muted)]">{note}</p> : null}
       {source ? (
         <div className="mt-1.5">
           <ProvenanceChip source={source} />

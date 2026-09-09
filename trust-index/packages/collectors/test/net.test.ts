@@ -506,6 +506,26 @@ describe("a name that resolves differently at connect time", () => {
 });
 
 describe("the deadline covers the whole call, DNS included", () => {
+  it("bounds and cancels a response body that never finishes after headers", async () => {
+    let cancelled = false;
+    let controller: ReadableStreamDefaultController<Uint8Array> | undefined;
+    const stream = new ReadableStream<Uint8Array>({
+      start(c) { controller = c; c.enqueue(new TextEncoder().encode("data: keepalive\n\n")); },
+      cancel() { cancelled = true; },
+    });
+    const call = guardedFetch("https://203.0.113.8/stream", {
+      timeoutMs: 30,
+      transport: async () => new Response(stream, { headers: { "content-type": "text/event-stream" } }),
+    });
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const out = await Promise.race([call, new Promise<null>((r) => { timer = setTimeout(() => r(null), 250); })]);
+    if (timer) clearTimeout(timer);
+    if (!cancelled) controller?.close(); // clean up the intentionally broken implementation on RED
+    expect(out).not.toBeNull();
+    expect(out?.ok).toBe(false);
+    expect(out?.ok === false && out.reason).toMatch(/deadline/);
+    expect(cancelled).toBe(true);
+  });
   const stall = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
   it("gives up on a resolver that never answers", async () => {

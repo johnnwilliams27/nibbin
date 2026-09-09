@@ -592,7 +592,10 @@ export async function guardedFetch(raw: string, options: GuardedFetchOptions = {
         let total = 0;
         let over = false;
         for (;;) {
-          const { done, value } = await reader.read();
+          // Headers can arrive while the body stays open forever (SSE, or a
+          // stalled peer). Socket abort alone does not settle every reader.
+          const { done, value } = await withDeadline(reader.read(), deadline, "body read")
+            .catch((err: unknown) => { void reader.cancel().catch(() => {}); throw err; });
           if (done) break;
           if (value === undefined) continue;
           total += value.byteLength;
