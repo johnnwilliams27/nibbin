@@ -53,3 +53,22 @@ separate decision:
   user data; if any deletion request is outstanding, stopping them leaves a
   data-deletion obligation unmet. Check before tearing the deployment down.
 - Supabase projects, and any connected Gmail/OAuth grants held for users.
+
+## A v1 fix landed after the archive point
+
+`old-nibbin` was created from `b6c4159`. One v1 commit reached `main` after that:
+
+    2607349  fix(study): tick the field-study countdown, show days, listen for
+             study:status (#255)
+
+It touches `apps/web/app/app/study/page.tsx`,
+`apps/web/components/study/DesktopOrStudyCard.tsx` and
+`apps/web/lib/desktop/bridge.ts`. Merging it here produced four modify/delete
+conflicts — `main` edited files this branch archives — and they were resolved by
+keeping the deletion, because four files importing packages that no longer exist
+is not a working product, just debris.
+
+The fix is not lost: #255 is an ancestor of `main`, so it stays in this
+repository's history. Anyone reviving v1 should take it from `main` at the merge
+of this pull request rather than from `b6c4159`, which predates it, and should
+prefer that over the `old-nibbin` snapshot for the same reason.
