@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { LayoutGrid, Rows3, Search } from 'lucide-react';
 import type { Agent, CategorySlug } from '@/lib/types';
 import { CATEGORIES, CATEGORY_BY_SLUG } from '@/lib/categories';
-import { AgentCard, agentHref } from './AgentCard';
+import { AgentCard } from './AgentCard';
+import { agentHref } from '@/lib/routes';
 import { CoverageAxis, GateFlag, ReferenceBadge, scoreState } from './Assessment';
 import { EmptyState } from './EmptyState';
 import { compositeOutOf100, latency } from '@/lib/format';
@@ -310,7 +311,9 @@ function ComparisonTable({ agents, rankFrom }: { agents: Agent[]; rankFrom?: num
                       <ReferenceBadge compact />
                     </div>
                   ) : null}
-                  <div className="mono mt-0.5 text-[11px] text-[var(--fg-faint)]">#{agent.token_id}</div>
+                  <div className="mono mt-0.5 text-[11px] text-[var(--fg-faint)]">
+                    {agent.token_id ? `#${agent.token_id}` : 'unregistered'}
+                  </div>
                 </Td>
                 <Td>
                   <span className="mono text-[11px] uppercase tracking-[0.1em]" style={{ color: meta?.accent }}>

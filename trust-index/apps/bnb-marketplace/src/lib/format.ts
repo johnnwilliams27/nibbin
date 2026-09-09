@@ -1,5 +1,19 @@
 import type { Coverage } from './types';
 
+const CHAIN_NAMES: Record<number, string> = {
+  56: 'BNB Smart Chain',
+  97: 'BSC testnet',
+};
+
+/** Never label a testnet as mainnet. An unknown chain is named by its id, not guessed. */
+export function chainName(chainId: number): string {
+  return CHAIN_NAMES[chainId] ?? `chain ${chainId}`;
+}
+
+export function isTestnet(chainId: number): boolean {
+  return chainId === 97;
+}
+
 export function num(value: number): string {
   return value.toLocaleString('en-US');
 }

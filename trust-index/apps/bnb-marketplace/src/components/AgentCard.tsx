@@ -4,11 +4,8 @@ import type { Agent } from '@/lib/types';
 import { CATEGORY_BY_SLUG } from '@/lib/categories';
 import { CoverageAxis, GateFlag, ReferenceBadge, ScoreBlock } from './Assessment';
 import { ProvenanceChip } from './Provenance';
-import { latency } from '@/lib/format';
-
-export function agentHref(agent: Agent): string {
-  return `/agent/${agent.chain_id}/${agent.token_id}`;
-}
+import { chainName, latency } from '@/lib/format';
+import { agentHref } from '@/lib/routes';
 
 export function AgentCard({ agent, rank }: { agent: Agent; rank?: number }) {
   const meta = CATEGORY_BY_SLUG.get(agent.category);
@@ -36,7 +33,7 @@ export function AgentCard({ agent, rank }: { agent: Agent; rank?: number }) {
               </Link>
             </h3>
             <p className="mono mt-0.5 text-[11px] text-[var(--fg-faint)]">
-              token #{agent.token_id} · chain {agent.chain_id}
+              {agent.token_id ? `token #${agent.token_id}` : 'not ERC-8004 registered'} · {chainName(agent.chain_id)}
             </p>
           </div>
         </div>

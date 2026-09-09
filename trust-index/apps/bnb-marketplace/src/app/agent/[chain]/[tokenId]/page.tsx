@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { CATEGORIES, CATEGORY_BY_SLUG } from '@/lib/categories';
-import { allAgents, findAgent } from '@/lib/data';
-import { compositeOutOf100, latency, shortAddress, timestamp } from '@/lib/format';
+import { allAgents, findAgent, routeTokenId } from '@/lib/data';
+import { chainName, compositeOutOf100, isTestnet, latency, shortAddress, timestamp } from '@/lib/format';
 import { CoverageAxis, GateBanner, ReferenceBadge, ScoreBlock, scoreState, unassessedReason } from '@/components/Assessment';
 import { Figure, ProvenanceChip, ProvenanceSplit } from '@/components/Provenance';
 import { HirePanel } from '@/components/HirePanel';
@@ -17,7 +17,7 @@ import { CapabilityList } from '@/components/CapabilityList';
 const PLACEHOLDER = { chain: 'none', tokenId: 'none' };
 
 export function generateStaticParams() {
-  const params = allAgents().map((a) => ({ chain: String(a.chain_id), tokenId: a.token_id }));
+  const params = allAgents().map((a) => ({ chain: String(a.chain_id), tokenId: routeTokenId(a) }));
   return params.length > 0 ? params : [PLACEHOLDER];
 }
 
@@ -57,7 +57,9 @@ export default async function AgentPage({ params }: { params: Promise<{ chain: s
             <span className="mx-2">/</span>
           </>
         ) : null}
-        <span className="mono text-[var(--fg-muted)]">#{agent.token_id}</span>
+        <span className="mono text-[var(--fg-muted)]">
+          {agent.token_id ? `#${agent.token_id}` : 'unregistered'}
+        </span>
       </nav>
 
       <header className="mt-4 flex flex-wrap items-start justify-between gap-6 border-b border-[var(--border)] pb-6">
@@ -234,8 +236,24 @@ export default async function AgentPage({ params }: { params: Promise<{ chain: s
                   tone={agent.x402_supported ? 'var(--withheld)' : undefined}
                 />
                 <Figure label="Owner" value={<span className="text-[12px]">{shortAddress(agent.owner_address)}</span>} source="onchain" />
-                <Figure label="Token id" value={agent.token_id} source="onchain" />
-                <Figure label="Chain" value={`${agent.chain_id} (BNB Smart Chain)`} source="onchain" />
+                <Figure
+                  label="Token id"
+                  value={agent.token_id ?? 'None'}
+                  note={
+                    agent.token_id
+                      ? undefined
+                      : 'Not registered in the ERC-8004 identity registry. Registration costs gas that is not sponsored, so a working agent can legitimately lack one — it just means there is no on-chain identity to check it against.'
+                  }
+                  source="onchain"
+                  tone={agent.token_id ? undefined : 'var(--withheld)'}
+                />
+                <Figure
+                  label="Chain"
+                  value={`${agent.chain_id} · ${chainName(agent.chain_id)}`}
+                  note={isTestnet(agent.chain_id) ? 'Testnet. Nothing here moves real funds.' : undefined}
+                  source="onchain"
+                  tone={isTestnet(agent.chain_id) ? 'var(--withheld)' : undefined}
+                />
               </>
             }
           />

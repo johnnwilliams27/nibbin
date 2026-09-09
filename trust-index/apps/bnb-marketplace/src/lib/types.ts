@@ -25,7 +25,11 @@ export interface Assessment {
 export interface Agent {
   agent_id: string;
   chain_id: number;
-  token_id: string;
+  /**
+   * null when the agent is not ERC-8004 registered. Registration costs
+   * unsponsored gas, so a working agent can legitimately lack one.
+   */
+  token_id: string | null;
   name: string;
   description: string;
   owner_address: string;

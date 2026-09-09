@@ -3,6 +3,18 @@
 import { useState } from 'react';
 import { AlertTriangle, Check, Copy, ExternalLink } from 'lucide-react';
 import type { Agent } from '@/lib/types';
+import { chainName, isTestnet } from '@/lib/format';
+
+/**
+ * An endpoint on loopback is real, but it is not reachable by anyone reading
+ * this page. Saying "copy this URL into your client" for 127.0.0.1 would be a
+ * dead end dressed up as an activation, so those agents get the honest
+ * CLI-assisted path instead.
+ */
+function isLocalEndpoint(endpoint: string | null): boolean {
+  if (!endpoint) return false;
+  return /^https?:\/\/(127\.0\.0\.1|localhost|0\.0\.0\.0|\[::1\])(:|\/|$)/i.test(endpoint);
+}
 
 /**
  * Activation is the end of the journey, so it carries the warnings rather than
@@ -15,6 +27,7 @@ export function HirePanel({ agent }: { agent: Agent }) {
 
   const gates = agent.assessment?.gates_fired ?? [];
   const blocked = gates.length > 0 && !acknowledged;
+  const local = isLocalEndpoint(agent.endpoint);
   const protocol = agent.assessment?.protocol_spoken ?? (agent.protocols.some((p) => /a2a/i.test(p)) ? 'a2a' : 'mcp');
 
   const config =
@@ -31,6 +44,18 @@ export function HirePanel({ agent }: { agent: Agent }) {
             null,
             2,
           );
+
+  const cliCommand = [
+    `# 1. negotiate off-chain for a seller-signed quote (valid 15 min)`,
+    `#    POST the "negotiate" skill to the seller and save the reply's data part as quote.json`,
+    `# 2. the four on-chain writes, as one command:`,
+    `bag erc8183 buy \\`,
+    `  --provider ${agent.owner_address || '<SELLER_ADDRESS>'} \\`,
+    `  --quote-json ./quote.json \\`,
+    `  --budget-u 0 --deadline-min 20 \\`,
+    `  --network ${agent.chain_id === 97 ? 'bsc-testnet' : 'bsc-mainnet'}`,
+    `# 3. tell the seller it is funded, then: bag erc8183 status <JOB_ID>`,
+  ].join('\n');
 
   async function copy(text: string, key: string) {
     try {
@@ -53,7 +78,56 @@ export function HirePanel({ agent }: { agent: Agent }) {
       </header>
 
       <div className="p-5">
-        {agent.endpoint === null ? (
+        {local ? (
+          <div>
+            <p className="text-[13px] font-medium" style={{ color: 'var(--withheld)' }}>
+              Not reachable from your machine
+            </p>
+            <p className="mt-1.5 text-[13px] text-[var(--fg-muted)]">
+              Its endpoint is <span className="mono break-all">{agent.endpoint}</span> — a loopback address. It runs,
+              and we have exercised it, but it is not published on the public internet, so there is no URL you can point
+              a client at. We are not going to give you one that fails.
+            </p>
+            <p className="mt-3 text-[13px] text-[var(--fg-muted)]">
+              Hiring it goes through ERC-8183 on {chainName(agent.chain_id)}, which is five steps, not one: negotiate
+              off-chain for a seller-signed quote (valid 15 minutes), then <span className="mono">createJob</span>,{' '}
+              <span className="mono">registerJob</span>, <span className="mono">setBudget</span> and{' '}
+              <span className="mono">fund</span> on the commerce contract. There is no single{' '}
+              <span className="mono">hire()</span> entrypoint.
+            </p>
+
+            <p className="eyebrow mt-4">CLI-assisted hire</p>
+            <p className="mt-1 text-[12px] text-[var(--fg-muted)]">
+              Run this against a local checkout with the seller running. This is a command for you to execute — the
+              button below copies text, it does not hire anything.
+            </p>
+            <pre className="mono mt-2 overflow-x-auto rounded-[var(--radius-btn)] border border-[var(--border)] bg-[var(--panel-2)] p-3 text-[11px] leading-relaxed">
+              {cliCommand}
+            </pre>
+            <button
+              type="button"
+              onClick={() => copy(cliCommand, 'cli')}
+              className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-[var(--radius-btn)] border px-4 py-2.5 text-[13px] font-medium"
+              style={{ borderColor: 'var(--withheld)', color: 'var(--withheld)' }}
+            >
+              {copied === 'cli' ? (
+                <>
+                  <Check size={14} strokeWidth={1.5} /> Copied
+                </>
+              ) : (
+                <>
+                  <Copy size={14} strokeWidth={1.5} /> Copy the hire command
+                </>
+              )}
+            </button>
+            {isTestnet(agent.chain_id) ? (
+              <p className="mt-2 text-[12px] text-[var(--fg-faint)]">
+                {chainName(agent.chain_id)}. No real funds move, and you will need testnet gas of your own — the
+                sponsorship that made our own runs free is not available to a browser wallet.
+              </p>
+            ) : null}
+          </div>
+        ) : agent.endpoint === null ? (
           <div>
             <p className="text-[13px] font-medium" style={{ color: 'var(--neutral-fg)' }}>
               This agent cannot be hired

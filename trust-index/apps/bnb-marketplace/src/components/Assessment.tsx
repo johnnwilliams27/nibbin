@@ -18,8 +18,14 @@ export function scoreState(agent: Agent): ScoreState {
 
 /** Why an agent has no assessment at all. Contract rule 1: never a blank. */
 export function unassessedReason(agent: Agent): string {
+  if (agent.is_reference_agent) {
+    return 'We do not score our own agents. An assessor that rates its own deployments has nothing to say about anyone else’s.';
+  }
   if (!agent.endpoint && !agent.protocols.some((p) => /mcp|a2a/i.test(p))) {
     return 'It declares no callable endpoint, so there is nothing for us to call.';
+  }
+  if (agent.endpoint && /^https?:\/\/(127\.0\.0\.1|localhost|0\.0\.0\.0|\[::1\])(:|\/|$)/i.test(agent.endpoint)) {
+    return 'Its endpoint is a loopback address, so there is nothing publicly reachable for us — or for you — to call.';
   }
   return 'It is registered and callable, but has not reached the front of our probe queue yet.';
 }

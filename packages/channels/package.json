@@ -1,9 +1,0 @@
-{
-  "name": "@nibbin/channels",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
-  "description": "Multi-channel reach-me delivery (spec §5/§10) — uniform ChannelPort, Telegram/SMS/WhatsApp adapters, fallback chain to the in-app notifications floor.",
-  "exports": { ".": "./src/index.ts" },
-  "scripts": { "typecheck": "tsc --noEmit" }
-}

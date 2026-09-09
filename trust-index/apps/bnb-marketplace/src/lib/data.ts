@@ -2,6 +2,9 @@ import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { CATEGORIES } from './categories';
 import type { Agent, CategorySlug, Coverage, Dataset } from './types';
+import { routeTokenId } from './routes';
+
+export { routeTokenId, agentHref } from './routes';
 
 // Read at build time. Static export means the deployed site is a snapshot, so we
 // carry generated_at through to the UI and label it — a stale number that says
@@ -48,15 +51,17 @@ export function loadDataset(): Dataset {
   return dataset;
 }
 
-/** A row without an id or a name cannot be linked to or named honestly. Drop it. */
+/**
+ * A row without an agent_id cannot be linked to or named honestly, so it is
+ * dropped. token_id is deliberately NOT required: an agent can genuinely exist
+ * without an ERC-8004 registration (registration costs gas that is not
+ * sponsored), and silently dropping those would hide real agents — including our
+ * own reference agent, which is precisely the row we must never hide.
+ */
 function isUsableAgent(a: unknown): a is Agent {
   if (!a || typeof a !== 'object') return false;
   const candidate = a as Partial<Agent>;
-  return (
-    typeof candidate.agent_id === 'string' &&
-    typeof candidate.token_id === 'string' &&
-    typeof candidate.chain_id === 'number'
-  );
+  return typeof candidate.agent_id === 'string' && candidate.agent_id.length > 0;
 }
 
 const KNOWN: CategorySlug[] = ['rebalancing', 'grid_trading', 'yield', 'health_factor', 'other'];
@@ -65,7 +70,9 @@ const KNOWN: CategorySlug[] = ['rebalancing', 'grid_trading', 'yield', 'health_f
 function normalise(a: Agent): Agent {
   return {
     ...a,
-    name: a.name?.trim() || `Agent #${a.token_id}`,
+    name: a.name?.trim() || (a.token_id ? `Agent #${a.token_id}` : 'Unnamed agent'),
+    chain_id: typeof a.chain_id === 'number' ? a.chain_id : 0,
+    token_id: typeof a.token_id === 'string' && a.token_id.length > 0 ? a.token_id : null,
     description: a.description ?? '',
     category: KNOWN.includes(a.category) ? a.category : 'other',
     category_confidence: typeof a.category_confidence === 'number' ? a.category_confidence : 0,
@@ -119,7 +126,7 @@ export function agentsInCategory(slug: CategorySlug): Agent[] {
 }
 
 export function findAgent(chainId: string, tokenId: string): Agent | undefined {
-  return allAgents().find((a) => String(a.chain_id) === String(chainId) && a.token_id === tokenId);
+  return allAgents().find((a) => String(a.chain_id) === String(chainId) && routeTokenId(a) === tokenId);
 }
 
 /** Callable = we can actually reach out and talk to it. A declared endpoint is the floor. */
