@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-09-09T03:51:45.098Z",
+ "generated_at": "2026-09-09T03:52:40.523Z",
  "results": [
   {
    "endpoint": "https://api.bortagent.xyz/.well-known/agent-card.json",
@@ -14794,6 +14794,307 @@
     "gaps": []
    },
    "probed_at": "2026-09-09T03:51:45Z"
+  },
+  {
+   "endpoint": "https://evoevo.ai/agent/detail?id=3853055",
+   "host": "evoevo.ai",
+   "protocols": [
+    "Web"
+   ],
+   "priority": 2,
+   "agent_count": 1,
+   "mcp": null,
+   "a2a": {
+    "transcript_version": "1",
+    "probe_id": "probe:a2a:v1",
+    "subject_url": "https://evoevo.ai/agent/detail?id=3853055",
+    "probed_at": "2026-09-09T03:51:44Z",
+    "discovery": {
+     "ok": false,
+     "url": null,
+     "path": null,
+     "outcome": "not_json",
+     "attempts": [
+      {
+       "url": "https://evoevo.ai/agent/detail?id=3853055",
+       "path": "/agent/detail",
+       "kind": "declared",
+       "outcome": "not_json",
+       "status": 200,
+       "contentType": "text/html",
+       "reason": "HTTP 200 but the body is not JSON (text/html)",
+       "elapsedMs": 458
+      },
+      {
+       "url": "https://evoevo.ai/.well-known/agent-card.json",
+       "path": "/.well-known/agent-card.json",
+       "kind": "well-known",
+       "outcome": "not_json",
+       "status": 200,
+       "contentType": "text/html",
+       "reason": "HTTP 200 but the body is not JSON (text/html)",
+       "elapsedMs": 301
+      },
+      {
+       "url": "https://evoevo.ai/.well-known/agent.json",
+       "path": "/.well-known/agent.json",
+       "kind": "well-known",
+       "outcome": "not_json",
+       "status": 200,
+       "contentType": "text/html",
+       "reason": "HTTP 200 but the body is not JSON (text/html)",
+       "elapsedMs": 276
+      },
+      {
+       "url": "https://evoevo.ai/agent/detail/.well-known/agent-card.json",
+       "path": "/agent/detail/.well-known/agent-card.json",
+       "kind": "guess",
+       "outcome": "not_json",
+       "status": 200,
+       "contentType": "text/html",
+       "reason": "HTTP 200 but the body is not JSON (text/html)",
+       "elapsedMs": 294
+      },
+      {
+       "url": "https://evoevo.ai/agent/detail/.well-known/agent.json",
+       "path": "/agent/detail/.well-known/agent.json",
+       "kind": "guess",
+       "outcome": "not_json",
+       "status": 200,
+       "contentType": "text/html",
+       "reason": "HTTP 200 but the body is not JSON (text/html)",
+       "elapsedMs": 304
+      }
+     ],
+     "reason": "HTTP 200 but the body is not JSON (text/html)",
+     "elapsedMs": 1634
+    },
+    "declaration": null,
+    "reachability": null,
+    "registry": {
+     "name": "Market Structure",
+     "description": null,
+     "declared_endpoint": "https://evoevo.ai/agent/detail?id=3853055",
+     "declared_version": null
+    },
+    "gaps": []
+   },
+   "probed_at": "2026-09-09T03:51:46Z"
+  },
+  {
+   "endpoint": "https://evoevo.ai/agent/detail?id=3853860",
+   "host": "evoevo.ai",
+   "protocols": [
+    "Web"
+   ],
+   "priority": 2,
+   "agent_count": 1,
+   "mcp": null,
+   "a2a": {
+    "transcript_version": "1",
+    "probe_id": "probe:a2a:v1",
+    "subject_url": "https://evoevo.ai/agent/detail?id=3853860",
+    "probed_at": "2026-09-09T03:51:45Z",
+    "discovery": {
+     "ok": false,
+     "url": null,
+     "path": null,
+     "outcome": "not_json",
+     "attempts": [
+      {
+       "url": "https://evoevo.ai/agent/detail?id=3853860",
+       "path": "/agent/detail",
+       "kind": "declared",
+       "outcome": "not_json",
+       "status": 200,
+       "contentType": "text/html",
+       "reason": "HTTP 200 but the body is not JSON (text/html)",
+       "elapsedMs": 463
+      },
+      {
+       "url": "https://evoevo.ai/.well-known/agent-card.json",
+       "path": "/.well-known/agent-card.json",
+       "kind": "well-known",
+       "outcome": "not_json",
+       "status": 200,
+       "contentType": "text/html",
+       "reason": "HTTP 200 but the body is not JSON (text/html)",
+       "elapsedMs": 250
+      },
+      {
+       "url": "https://evoevo.ai/.well-known/agent.json",
+       "path": "/.well-known/agent.json",
+       "kind": "well-known",
+       "outcome": "not_json",
+       "status": 200,
+       "contentType": "text/html",
+       "reason": "HTTP 200 but the body is not JSON (text/html)",
+       "elapsedMs": 249
+      },
+      {
+       "url": "https://evoevo.ai/agent/detail/.well-known/agent-card.json",
+       "path": "/agent/detail/.well-known/agent-card.json",
+       "kind": "guess",
+       "outcome": "not_json",
+       "status": 200,
+       "contentType": "text/html",
+       "reason": "HTTP 200 but the body is not JSON (text/html)",
+       "elapsedMs": 292
+      },
+      {
+       "url": "https://evoevo.ai/agent/detail/.well-known/agent.json",
+       "path": "/agent/detail/.well-known/agent.json",
+       "kind": "guess",
+       "outcome": "not_json",
+       "status": 200,
+       "contentType": "text/html",
+       "reason": "HTTP 200 but the body is not JSON (text/html)",
+       "elapsedMs": 279
+      }
+     ],
+     "reason": "HTTP 200 but the body is not JSON (text/html)",
+     "elapsedMs": 1534
+    },
+    "declaration": null,
+    "reachability": null,
+    "registry": {
+     "name": "MARKET QUANT",
+     "description": null,
+     "declared_endpoint": "https://evoevo.ai/agent/detail?id=3853860",
+     "declared_version": null
+    },
+    "gaps": []
+   },
+   "probed_at": "2026-09-09T03:51:46Z"
+  },
+  {
+   "endpoint": "https://api.openrite.app/mcp",
+   "host": "api.openrite.app",
+   "protocols": [
+    "MCP",
+    "A2A",
+    "OASF",
+    "Web"
+   ],
+   "priority": 1,
+   "agent_count": 2,
+   "mcp": {
+    "transcript_version": "1",
+    "probe_id": "probe:mcp:v1",
+    "endpoint": "https://api.openrite.app/mcp",
+    "probed_at": "2026-09-09T03:51:15Z",
+    "attempts": [
+     {
+      "attempt": 1,
+      "ts": "2026-09-09T03:51:15Z",
+      "reachable": false,
+      "status": null,
+      "reason": "the request exceeded its deadline",
+      "elapsedMs": 12008
+     },
+     {
+      "attempt": 2,
+      "ts": "2026-09-09T03:51:28Z",
+      "reachable": false,
+      "status": null,
+      "reason": "the request exceeded its deadline",
+      "elapsedMs": 12001
+     }
+    ],
+    "handshake": null,
+    "tools": null,
+    "registry": {
+     "name": "buyback&burn",
+     "description": null,
+     "version": null,
+     "published_at": null,
+     "first_published_at": null,
+     "repository_url": null
+    },
+    "auth": null,
+    "rate_limit": null
+   },
+   "a2a": {
+    "transcript_version": "1",
+    "probe_id": "probe:a2a:v1",
+    "subject_url": "https://api.openrite.app/mcp",
+    "probed_at": "2026-09-09T03:51:40Z",
+    "discovery": {
+     "ok": false,
+     "url": null,
+     "path": null,
+     "outcome": "unmeasured",
+     "attempts": [
+      {
+       "url": "https://api.openrite.app/mcp",
+       "path": "/mcp",
+       "kind": "declared",
+       "outcome": "unmeasured",
+       "status": null,
+       "contentType": null,
+       "reason": "the request exceeded its deadline",
+       "elapsedMs": 12003
+      },
+      {
+       "url": "https://api.openrite.app/.well-known/agent-card.json",
+       "path": "/.well-known/agent-card.json",
+       "kind": "well-known",
+       "outcome": "unmeasured",
+       "status": null,
+       "contentType": null,
+       "reason": "the request exceeded its deadline",
+       "elapsedMs": 12007
+      },
+      {
+       "url": "https://api.openrite.app/.well-known/agent.json",
+       "path": "/.well-known/agent.json",
+       "kind": "well-known",
+       "outcome": "unmeasured",
+       "status": null,
+       "contentType": null,
+       "reason": "the request exceeded its deadline",
+       "elapsedMs": 12012
+      },
+      {
+       "url": "https://api.openrite.app/mcp/.well-known/agent-card.json",
+       "path": "/mcp/.well-known/agent-card.json",
+       "kind": "guess",
+       "outcome": "unmeasured",
+       "status": null,
+       "contentType": null,
+       "reason": "the request exceeded its deadline",
+       "elapsedMs": 12011
+      },
+      {
+       "url": "https://api.openrite.app/mcp/.well-known/agent.json",
+       "path": "/mcp/.well-known/agent.json",
+       "kind": "guess",
+       "outcome": "unmeasured",
+       "status": null,
+       "contentType": null,
+       "reason": "the request exceeded its deadline",
+       "elapsedMs": 12013
+      }
+     ],
+     "reason": "the request exceeded its deadline",
+     "elapsedMs": 60047
+    },
+    "declaration": null,
+    "reachability": null,
+    "registry": {
+     "name": "buyback&burn",
+     "description": null,
+     "declared_endpoint": "https://api.openrite.app/mcp",
+     "declared_version": null
+    },
+    "gaps": [
+     {
+      "tier": "discovery",
+      "reason": "the request exceeded its deadline"
+     }
+    ]
+   },
+   "probed_at": "2026-09-09T03:52:40Z"
   }
  ]
 }
