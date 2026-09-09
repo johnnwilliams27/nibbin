@@ -1,0 +1,271 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:a2a:v1",
+ "subject_url": "https://agents.topazdex.com/api/chat",
+ "probed_at": "2026-09-09T09:27:51Z",
+ "discovery": {
+  "ok": true,
+  "url": "https://agents.topazdex.com/.well-known/agent-card.json",
+  "path": "/.well-known/agent-card.json",
+  "outcome": "card",
+  "attempts": [
+   {
+    "url": "https://agents.topazdex.com/api/chat",
+    "path": "/api/chat",
+    "kind": "declared",
+    "outcome": "absent",
+    "status": 404,
+    "contentType": "text/html; charset=utf-8",
+    "reason": "no card at this path (HTTP 404)",
+    "elapsedMs": 475
+   },
+   {
+    "url": "https://agents.topazdex.com/.well-known/agent-card.json",
+    "path": "/.well-known/agent-card.json",
+    "kind": "well-known",
+    "outcome": "card",
+    "status": 200,
+    "contentType": "application/json; charset=utf-8",
+    "reason": null,
+    "elapsedMs": 1003
+   }
+  ],
+  "reason": null,
+  "elapsedMs": 1478
+ },
+ "declaration": {
+  "ok": true,
+  "name": "Topaz Agent",
+  "description": "Agentic ve(3,3) DeFi execution and strategy agent for Topaz Dex on BNB Chain.",
+  "version": "0.19.2",
+  "protocolVersion": null,
+  "provider": null,
+  "documentationUrl": null,
+  "capabilities": {
+   "streaming": false,
+   "pushNotifications": false,
+   "stateTransitionHistory": null,
+   "extensions": 0,
+   "raw": {
+    "streaming": false,
+    "pushNotifications": false
+   }
+  },
+  "skills": [
+   {
+    "id": "swap-quote",
+    "name": "Swap Quote",
+    "description": "Quote Topaz API split and mixed CL/v2 routes",
+    "tags": [],
+    "examples": [],
+    "inputModes": [],
+    "outputModes": []
+   },
+   {
+    "id": "swap-build",
+    "name": "Swap Build",
+    "description": "Build complete atomic Permit2 approval, swap and cleanup batches",
+    "tags": [],
+    "examples": [],
+    "inputModes": [],
+    "outputModes": []
+   },
+   {
+    "id": "lp-recommend",
+    "name": "LP Recommend",
+    "description": "Recommend LP positions by risk, yield, and preference",
+    "tags": [],
+    "examples": [],
+    "inputModes": [],
+    "outputModes": []
+   },
+   {
+    "id": "vote-recommend",
+    "name": "Vote Recommend",
+    "description": "Recommend veTOPAZ gauge vote allocations",
+    "tags": [],
+    "examples": [],
+    "inputModes": [],
+    "outputModes": []
+   },
+   {
+    "id": "bribe-recommend",
+    "name": "Bribe Recommend",
+    "description": "Plan bribe campaigns to attract liquidity",
+    "tags": [],
+    "examples": [],
+    "inputModes": [],
+    "outputModes": []
+   },
+   {
+    "id": "strategy-report",
+    "name": "Weekly Strategy",
+    "description": "Generate weekly ve(3,3) strategy report",
+    "tags": [],
+    "examples": [],
+    "inputModes": [],
+    "outputModes": []
+   },
+   {
+    "id": "pool-lookup",
+    "name": "Pool Lookup",
+    "description": "Find all pools for a token pair with gauge status",
+    "tags": [],
+    "examples": [],
+    "inputModes": [],
+    "outputModes": []
+   },
+   {
+    "id": "vote-check",
+    "name": "Vote Eligibility",
+    "description": "Check if a veNFT can vote this epoch",
+    "tags": [],
+    "examples": [],
+    "inputModes": [],
+    "outputModes": []
+   },
+   {
+    "id": "route-compare",
+    "name": "Route Alternatives",
+    "description": "Inspect Topaz API route splits and CL/v2 hops",
+    "tags": [],
+    "examples": [],
+    "inputModes": [],
+    "outputModes": []
+   },
+   {
+    "id": "pool-compare",
+    "name": "Pool Compare",
+    "description": "Compare v2 volatile vs stable vs v3 CL for a pair",
+    "tags": [],
+    "examples": [],
+    "inputModes": [],
+    "outputModes": []
+   },
+   {
+    "id": "bribe-markets",
+    "name": "Bribe Markets",
+    "description": "Per-gauge bribe + fee rewards and dollars-per-vote for the current epoch",
+    "tags": [],
+    "examples": [],
+    "inputModes": [],
+    "outputModes": []
+   },
+   {
+    "id": "analytics-history",
+    "name": "Analytics History",
+    "description": "Historical protocol/pool TVL, volume, fee, and epoch trends",
+    "tags": [],
+    "examples": [],
+    "inputModes": [],
+    "outputModes": []
+   },
+   {
+    "id": "vote-effectiveness",
+    "name": "Vote Effectiveness",
+    "description": "Foundation KPI / vote-ROI effectiveness per pool and epoch",
+    "tags": [],
+    "examples": [],
+    "inputModes": [],
+    "outputModes": []
+   },
+   {
+    "id": "ve-locks",
+    "name": "veTOPAZ Locks",
+    "description": "Personal veTOPAZ lock intelligence: votes, claimables, and manual vs relay status",
+    "tags": [],
+    "examples": [],
+    "inputModes": [],
+    "outputModes": []
+   },
+   {
+    "id": "relays",
+    "name": "Relays",
+    "description": "Discover Topaz relays (managed veTOPAZ) with live state and health",
+    "tags": [],
+    "examples": [],
+    "inputModes": [],
+    "outputModes": []
+   },
+   {
+    "id": "relay-positions",
+    "name": "Relay Positions",
+    "description": "A wallet's managed veTOPAZ positions, share, and claimable distributions",
+    "tags": [],
+    "examples": [],
+    "inputModes": [],
+    "outputModes": []
+   },
+   {
+    "id": "relay-actions",
+    "name": "Relay Actions",
+    "description": "Build deposit/withdraw/claim calldata for veTOPAZ relays",
+    "tags": [],
+    "examples": [],
+    "inputModes": [],
+    "outputModes": []
+   },
+   {
+    "id": "ve-strategy",
+    "name": "veTOPAZ Strategy",
+    "description": "Compare manual voting vs relay strategies and recommend a mode",
+    "tags": [],
+    "examples": [],
+    "inputModes": [],
+    "outputModes": []
+   },
+   {
+    "id": "relay-monitor",
+    "name": "Relay Monitor",
+    "description": "Operator relay health and weekly performance summary",
+    "tags": [],
+    "examples": [],
+    "inputModes": [],
+    "outputModes": []
+   },
+   {
+    "id": "ve-alerts",
+    "name": "veTOPAZ Alerts",
+    "description": "Per-wallet actionable veTOPAZ alerts: claimable, unclaimed, and unvoted locks",
+    "tags": [],
+    "examples": [],
+    "inputModes": [],
+    "outputModes": []
+   },
+   {
+    "id": "dex-positions",
+    "name": "DEX Positions",
+    "description": "A wallet's Topaz v2/v3 LP positions: staked/unstaked, in-range status, claimables, and value",
+    "tags": [],
+    "examples": [],
+    "inputModes": [],
+    "outputModes": []
+   }
+  ],
+  "skillCount": 21,
+  "interfaces": [
+   {
+    "url": "https://agents.topazdex.com",
+    "transport": null,
+    "protocolVersion": null,
+    "source": "url"
+   }
+  ],
+  "securitySchemes": [],
+  "missingRequired": [],
+  "reason": null
+ },
+ "reachability": {
+  "ok": false,
+  "url": "https://agents.topazdex.com",
+  "verdict": "answered_not_a2a",
+  "status": 404,
+  "method": "tasks/get",
+  "rpcErrorCode": null,
+  "rpcErrorMessage": null,
+  "reason": "HTTP 404 at the declared endpoint",
+  "elapsedMs": 2466
+ },
+ "registry": null,
+ "gaps": []
+}

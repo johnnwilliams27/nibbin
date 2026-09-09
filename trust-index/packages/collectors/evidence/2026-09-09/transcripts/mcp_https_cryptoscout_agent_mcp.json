@@ -1,0 +1,37 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:mcp:v1",
+ "endpoint": "https://cryptoscout.agent/mcp",
+ "probed_at": "2026-09-09T09:27:06Z",
+ "attempts": [
+  {
+   "attempt": 1,
+   "ts": "2026-09-09T09:27:06Z",
+   "reachable": false,
+   "status": null,
+   "reason": "dns lookup failed: getaddrinfo ENOTFOUND cryptoscout.agent",
+   "elapsedMs": 773
+  },
+  {
+   "attempt": 2,
+   "ts": "2026-09-09T09:27:07Z",
+   "reachable": false,
+   "status": null,
+   "reason": "dns lookup failed: getaddrinfo ENOTFOUND cryptoscout.agent",
+   "elapsedMs": 5256
+  },
+  {
+   "attempt": 3,
+   "ts": "2026-09-09T09:27:12Z",
+   "reachable": false,
+   "status": null,
+   "reason": "dns lookup failed: getaddrinfo ENOTFOUND cryptoscout.agent",
+   "elapsedMs": 6000
+  }
+ ],
+ "handshake": null,
+ "tools": null,
+ "registry": null,
+ "auth": null,
+ "rate_limit": null
+}

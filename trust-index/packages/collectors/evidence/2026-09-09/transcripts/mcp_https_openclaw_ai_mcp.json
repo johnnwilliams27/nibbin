@@ -1,0 +1,37 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:mcp:v1",
+ "endpoint": "https://openclaw.ai/mcp",
+ "probed_at": "2026-09-09T09:27:06Z",
+ "attempts": [
+  {
+   "attempt": 1,
+   "ts": "2026-09-09T09:27:06Z",
+   "reachable": false,
+   "status": 404,
+   "reason": "HTTP 404",
+   "elapsedMs": 5270
+  },
+  {
+   "attempt": 2,
+   "ts": "2026-09-09T09:27:11Z",
+   "reachable": false,
+   "status": 404,
+   "reason": "HTTP 404",
+   "elapsedMs": 3419
+  },
+  {
+   "attempt": 3,
+   "ts": "2026-09-09T09:27:15Z",
+   "reachable": false,
+   "status": 404,
+   "reason": "HTTP 404",
+   "elapsedMs": 6510
+  }
+ ],
+ "handshake": null,
+ "tools": null,
+ "registry": null,
+ "auth": null,
+ "rate_limit": null
+}

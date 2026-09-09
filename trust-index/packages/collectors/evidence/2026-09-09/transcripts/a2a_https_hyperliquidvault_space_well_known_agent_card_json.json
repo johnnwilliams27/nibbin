@@ -1,0 +1,119 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:a2a:v1",
+ "subject_url": "https://hyperliquidvault.space/.well-known/agent-card.json",
+ "probed_at": "2026-09-09T09:27:51Z",
+ "discovery": {
+  "ok": true,
+  "url": "https://hyperliquidvault.space/.well-known/agent-card.json",
+  "path": "/.well-known/agent-card.json",
+  "outcome": "card",
+  "attempts": [
+   {
+    "url": "https://hyperliquidvault.space/.well-known/agent-card.json",
+    "path": "/.well-known/agent-card.json",
+    "kind": "declared",
+    "outcome": "card",
+    "status": 200,
+    "contentType": "application/json",
+    "reason": null,
+    "elapsedMs": 1979
+   }
+  ],
+  "reason": null,
+  "elapsedMs": 1979
+ },
+ "declaration": {
+  "ok": true,
+  "name": "HyperliquidVault",
+  "description": "Hyperliquid Vault Strategy Intelligence: discover Hyperliquid vaults and review a vault's key strategy metrics (TVL, APR, leader, followers, capacity, withdrawal availability, commission terms, deposit status) from the public Hyperliquid API. Paid via x402 (U on BNB Smart Chain, pay to 0xA06Db692d7e28356f80199Ff77E22a0Ef02A3518): list_vaults = 0.01 U, vault_overview = 0.01 U. A message/send without a PAYMENT-SIGNATURE header returns HTTP 402 with the x402 requirements.",
+  "version": "1.0.0",
+  "protocolVersion": "0.3.0",
+  "provider": null,
+  "documentationUrl": "https://hyperliquidvault.space/",
+  "capabilities": {
+   "streaming": false,
+   "pushNotifications": false,
+   "stateTransitionHistory": false,
+   "extensions": 0,
+   "raw": {
+    "streaming": false,
+    "pushNotifications": false,
+    "stateTransitionHistory": false
+   }
+  },
+  "skills": [
+   {
+    "id": "list_vaults",
+    "name": "List Hyperliquid vaults",
+    "description": "Discover Hyperliquid vaults: filter by open/closed and relationship (normal / parent / child), sort by TVL, APR or creation time, and cap the count. Each row has vault address, name, leader, TVL, APR, closed flag, relationship and creation time. Send a data part {\"skill\": \"list_vaults\", ...input fields}. Input: include_closed (boolean): Include closed vaults. Default false; limit (integer): Max rows to return, 1-999. Default 20; relationship (string): Filter: any (default), normal, parent, or child; sort_by (string): Sort order: tvl (default), apr, or created (newest first). Price: 0.01 U per call (x402).",
+    "tags": [
+     "hyperliquid",
+     "vaults",
+     "tvl",
+     "apr",
+     "perpetuals",
+     "list_vaults"
+    ],
+    "examples": [
+     "{\"skill\":\"list_vaults\"}"
+    ],
+    "inputModes": [
+     "application/json"
+    ],
+    "outputModes": [
+     "application/json",
+     "text/plain"
+    ]
+   },
+   {
+    "id": "vault_overview",
+    "name": "Hyperliquid vault overview",
+    "description": "Review one Hyperliquid vault by address: leader, strategy description, APR, TVL, follower count, distributable and withdrawable capacity, leader commission and fraction, closed flag and deposit availability. Send a data part {\"skill\": \"vault_overview\", ...input fields}. Input: vault_address (string, required): 0x-prefixed Hyperliquid vault address (40 hex chars). Price: 0.01 U per call (x402).",
+    "tags": [
+     "hyperliquid",
+     "vaults",
+     "tvl",
+     "apr",
+     "perpetuals",
+     "vault_overview"
+    ],
+    "examples": [
+     "{\"skill\":\"vault_overview\",\"vault_address\":\"...\"}"
+    ],
+    "inputModes": [
+     "application/json"
+    ],
+    "outputModes": [
+     "application/json",
+     "text/plain"
+    ]
+   }
+  ],
+  "skillCount": 2,
+  "interfaces": [
+   {
+    "url": "https://hyperliquidvault.space/a2a",
+    "transport": "JSONRPC",
+    "protocolVersion": "0.3.0",
+    "source": "url"
+   }
+  ],
+  "securitySchemes": [],
+  "missingRequired": [],
+  "reason": null
+ },
+ "reachability": {
+  "ok": true,
+  "url": "https://hyperliquidvault.space/a2a",
+  "verdict": "speaks_a2a",
+  "status": 200,
+  "method": "tasks/get",
+  "rpcErrorCode": -32001,
+  "rpcErrorMessage": "tasks are not stored: message/send returns the completed task inline",
+  "reason": null,
+  "elapsedMs": 3119
+ },
+ "registry": null,
+ "gaps": []
+}

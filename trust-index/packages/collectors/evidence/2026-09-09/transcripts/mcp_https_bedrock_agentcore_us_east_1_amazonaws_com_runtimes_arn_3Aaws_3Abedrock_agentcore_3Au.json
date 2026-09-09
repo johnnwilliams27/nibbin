@@ -1,0 +1,49 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:mcp:v1",
+ "endpoint": "https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A899042279537%3Aruntime%2Fallowancelatch-yq44YjEaH6/invocations?qualifier=DEFAULT",
+ "probed_at": "2026-09-09T09:27:06Z",
+ "attempts": [
+  {
+   "attempt": 1,
+   "ts": "2026-09-09T09:27:06Z",
+   "reachable": true,
+   "status": 401,
+   "reason": null,
+   "elapsedMs": 6000
+  },
+  {
+   "attempt": 2,
+   "ts": "2026-09-09T09:27:12Z",
+   "reachable": true,
+   "status": 401,
+   "reason": null,
+   "elapsedMs": 3616
+  },
+  {
+   "attempt": 3,
+   "ts": "2026-09-09T09:27:16Z",
+   "reachable": true,
+   "status": 401,
+   "reason": null,
+   "elapsedMs": 5931
+  }
+ ],
+ "handshake": {
+  "ok": false,
+  "protocolVersion": null,
+  "serverName": null,
+  "serverVersion": null,
+  "instructions": null,
+  "reason": "authentication required (HTTP 401)"
+ },
+ "tools": null,
+ "registry": null,
+ "auth": {
+  "required": true,
+  "status": 401,
+  "scheme": "Bearer resource_metadata=\"https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A899042279537%3Aruntime%2Fallowancelatch-yq44YjEaH6/invocations/.well-known/oauth-protected-resource?qualifier=DEFAULT\"",
+  "hop": "initialize"
+ },
+ "rate_limit": null
+}

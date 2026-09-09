@@ -1,0 +1,45 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:a2a:v1",
+ "subject_url": "https://pokebookai.com/.well-known/agent-card.json",
+ "probed_at": "2026-09-09T09:27:51Z",
+ "discovery": {
+  "ok": false,
+  "url": null,
+  "path": null,
+  "outcome": "unmeasured",
+  "attempts": [
+   {
+    "url": "https://pokebookai.com/.well-known/agent-card.json",
+    "path": "/.well-known/agent-card.json",
+    "kind": "declared",
+    "outcome": "unmeasured",
+    "status": null,
+    "contentType": null,
+    "reason": "dns lookup failed: getaddrinfo ENOTFOUND pokebookai.com",
+    "elapsedMs": 88
+   },
+   {
+    "url": "https://pokebookai.com/.well-known/agent.json",
+    "path": "/.well-known/agent.json",
+    "kind": "well-known",
+    "outcome": "unmeasured",
+    "status": null,
+    "contentType": null,
+    "reason": "dns lookup failed: getaddrinfo ENOTFOUND pokebookai.com",
+    "elapsedMs": 1195
+   }
+  ],
+  "reason": "dns lookup failed: getaddrinfo ENOTFOUND pokebookai.com",
+  "elapsedMs": 1283
+ },
+ "declaration": null,
+ "reachability": null,
+ "registry": null,
+ "gaps": [
+  {
+   "tier": "discovery",
+   "reason": "dns lookup failed: getaddrinfo ENOTFOUND pokebookai.com"
+  }
+ ]
+}

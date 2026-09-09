@@ -1,0 +1,90 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:a2a:v1",
+ "subject_url": "https://smeai-dev.vercel.app/api/a2a",
+ "probed_at": "2026-09-09T09:27:51Z",
+ "discovery": {
+  "ok": true,
+  "url": "https://smeai-dev.vercel.app/api/a2a",
+  "path": "/api/a2a",
+  "outcome": "card",
+  "attempts": [
+   {
+    "url": "https://smeai-dev.vercel.app/api/a2a",
+    "path": "/api/a2a",
+    "kind": "declared",
+    "outcome": "card",
+    "status": 200,
+    "contentType": "application/json",
+    "reason": null,
+    "elapsedMs": 1639
+   }
+  ],
+  "reason": null,
+  "elapsedMs": 1639
+ },
+ "declaration": {
+  "ok": true,
+  "name": "SMEAI Reference Health Factor Monitor",
+  "description": "Reads a wallet's Venus position on BSC mainnet and returns its real health factor — weighted collateral over debt, priced by the Venus oracle. Published by SMEAI as a reference implementation, free to call, and deliberately excluded from every statistic on the site.",
+  "version": null,
+  "protocolVersion": "0.2.0",
+  "provider": "SMEAI",
+  "documentationUrl": null,
+  "capabilities": {
+   "streaming": false,
+   "pushNotifications": false,
+   "stateTransitionHistory": null,
+   "extensions": 0,
+   "raw": {
+    "streaming": false,
+    "pushNotifications": false
+   }
+  },
+  "skills": [
+   {
+    "id": "health_factor",
+    "name": "Venus health factor",
+    "description": "Send {\"skill\":\"health_factor\",\"wallet\":\"0x…\"} and receive the account's weighted collateral, debt, health factor and how far collateral can fall before liquidation.",
+    "tags": [
+     "venus",
+     "health factor",
+     "liquidation",
+     "lending"
+    ],
+    "examples": [
+     "{\"skill\":\"health_factor\",\"wallet\":\"0x0000000000000000000000000000000000000000\"}"
+    ],
+    "inputModes": [],
+    "outputModes": []
+   }
+  ],
+  "skillCount": 1,
+  "interfaces": [
+   {
+    "url": "https://smeai-dev.vercel.app/api/a2a",
+    "transport": null,
+    "protocolVersion": "0.2.0",
+    "source": "url"
+   }
+  ],
+  "securitySchemes": [],
+  "missingRequired": [
+   "version"
+  ],
+  "reason": null
+ },
+ "reachability": {
+  "ok": true,
+  "url": "https://smeai-dev.vercel.app/api/a2a",
+  "verdict": "jsonrpc_no_a2a_method",
+  "status": 200,
+  "method": "GetTask",
+  "rpcErrorCode": -32601,
+  "rpcErrorMessage": "Unknown method \"GetTask\". This agent speaks A2A message/send.",
+  "reason": "GetTask is not implemented (-32601)",
+  "elapsedMs": 3002
+ },
+ "registry": null,
+ "gaps": []
+}

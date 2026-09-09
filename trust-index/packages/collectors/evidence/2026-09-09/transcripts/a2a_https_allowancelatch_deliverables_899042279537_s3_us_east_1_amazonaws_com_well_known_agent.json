@@ -1,0 +1,112 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:a2a:v1",
+ "subject_url": "https://allowancelatch-deliverables-899042279537.s3.us-east-1.amazonaws.com/.well-known/agent-card.json",
+ "probed_at": "2026-09-09T09:27:51Z",
+ "discovery": {
+  "ok": true,
+  "url": "https://allowancelatch-deliverables-899042279537.s3.us-east-1.amazonaws.com/.well-known/agent-card.json",
+  "path": "/.well-known/agent-card.json",
+  "outcome": "card",
+  "attempts": [
+   {
+    "url": "https://allowancelatch-deliverables-899042279537.s3.us-east-1.amazonaws.com/.well-known/agent-card.json",
+    "path": "/.well-known/agent-card.json",
+    "kind": "declared",
+    "outcome": "card",
+    "status": 200,
+    "contentType": "application/json",
+    "reason": null,
+    "elapsedMs": 1296
+   }
+  ],
+  "reason": null,
+  "elapsedMs": 1296
+ },
+ "declaration": {
+  "ok": true,
+  "name": "AllowanceLatch",
+  "description": "AllowanceLatch is a pre-trade security agent on BNB Smart Chain. It maps ERC-20 and Permit2 allowances, inspects a token for proxy/owner/tax/honeypot signals, simulates approve and PancakeSwap V2 buy/sell with eth_call, and returns unsigned approve(0) plus Permit2 lockdown calldata. Non-custodial — the user wallet must sign. Hireable over ERC-8183 for 0.10 $U. Built with BNB Agent Studio.",
+  "version": "1.0.0",
+  "protocolVersion": "0.3.0",
+  "provider": null,
+  "documentationUrl": null,
+  "capabilities": {
+   "streaming": false,
+   "pushNotifications": null,
+   "stateTransitionHistory": null,
+   "extensions": 0,
+   "raw": {
+    "streaming": false
+   }
+  },
+  "skills": [
+   {
+    "id": "negotiate",
+    "name": "Hire AllowanceLatch for a pre-trade security scan",
+    "description": "Request a fixed, wallet-signed quote. Input: wallet 0x, optional tokens, optional extra spenders. Returns allowance map, token posture, eth_call simulations, unsigned revoke calldata.",
+    "tags": [
+     "erc8183",
+     "security",
+     "allowance",
+     "honeypot",
+     "permit2",
+     "bnb-chain"
+    ],
+    "examples": [],
+    "inputModes": [
+     "application/json"
+    ],
+    "outputModes": [
+     "application/json"
+    ]
+   },
+   {
+    "id": "notify_funded",
+    "name": "Deliver a funded AllowanceLatch job",
+    "description": "After you fund the job, AllowanceLatch delivers the scan plus unsigned approve(0) / Permit2 lockdown calldata. It never broadcasts.",
+    "tags": [
+     "erc8183",
+     "delivery",
+     "security",
+     "allowance",
+     "bnb-chain"
+    ],
+    "examples": [],
+    "inputModes": [
+     "application/json"
+    ],
+    "outputModes": [
+     "application/json"
+    ]
+   }
+  ],
+  "skillCount": 2,
+  "interfaces": [
+   {
+    "url": "https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A899042279537%3Aruntime%2Fallowancelatch-yq44YjEaH6/invocations?qualifier=DEFAULT",
+    "transport": "JSONRPC",
+    "protocolVersion": "0.3.0",
+    "source": "url"
+   }
+  ],
+  "securitySchemes": [
+   "oauth2"
+  ],
+  "missingRequired": [],
+  "reason": null
+ },
+ "reachability": {
+  "ok": true,
+  "url": "https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A899042279537%3Aruntime%2Fallowancelatch-yq44YjEaH6/invocations?qualifier=DEFAULT",
+  "verdict": "auth_walled",
+  "status": 401,
+  "method": "tasks/get",
+  "rpcErrorCode": null,
+  "rpcErrorMessage": null,
+  "reason": "the endpoint declined an anonymous client (HTTP 401)",
+  "elapsedMs": 2501
+ },
+ "registry": null,
+ "gaps": []
+}

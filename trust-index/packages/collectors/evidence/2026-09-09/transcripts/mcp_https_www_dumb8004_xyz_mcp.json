@@ -1,0 +1,37 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:mcp:v1",
+ "endpoint": "https://www.dumb8004.xyz/mcp",
+ "probed_at": "2026-09-09T09:27:06Z",
+ "attempts": [
+  {
+   "attempt": 1,
+   "ts": "2026-09-09T09:27:06Z",
+   "reachable": false,
+   "status": 404,
+   "reason": "HTTP 404",
+   "elapsedMs": 883
+  },
+  {
+   "attempt": 2,
+   "ts": "2026-09-09T09:27:07Z",
+   "reachable": false,
+   "status": 404,
+   "reason": "HTTP 404",
+   "elapsedMs": 5566
+  },
+  {
+   "attempt": 3,
+   "ts": "2026-09-09T09:27:13Z",
+   "reachable": false,
+   "status": 404,
+   "reason": "HTTP 404",
+   "elapsedMs": 6304
+  }
+ ],
+ "handshake": null,
+ "tools": null,
+ "registry": null,
+ "auth": null,
+ "rate_limit": null
+}

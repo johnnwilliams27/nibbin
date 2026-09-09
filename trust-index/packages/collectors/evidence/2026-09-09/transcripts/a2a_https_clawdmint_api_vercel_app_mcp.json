@@ -1,0 +1,103 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:a2a:v1",
+ "subject_url": "https://clawdmint-api.vercel.app/mcp",
+ "probed_at": "2026-09-09T09:40:27Z",
+ "discovery": {
+  "ok": true,
+  "url": "https://clawdmint-api.vercel.app/mcp",
+  "path": "/mcp",
+  "outcome": "card",
+  "attempts": [
+   {
+    "url": "https://clawdmint-api.vercel.app/mcp",
+    "path": "/mcp",
+    "kind": "declared",
+    "outcome": "card",
+    "status": 200,
+    "contentType": "application/json; charset=utf-8",
+    "reason": null,
+    "elapsedMs": 396
+   }
+  ],
+  "reason": null,
+  "elapsedMs": 397
+ },
+ "declaration": {
+  "ok": true,
+  "name": "clawdmint-mcp",
+  "description": null,
+  "version": "1.0.0",
+  "protocolVersion": null,
+  "provider": null,
+  "documentationUrl": null,
+  "capabilities": {
+   "streaming": null,
+   "pushNotifications": null,
+   "stateTransitionHistory": null,
+   "extensions": 0,
+   "raw": {
+    "tools": {
+     "list": [
+      "chat",
+      "echo",
+      "get_time",
+      "get_balance",
+      "get_multichain_balance",
+      "get_token_price",
+      "get_market_overview",
+      "get_tx",
+      "get_gas_prices",
+      "get_token_info",
+      "resolve_ens",
+      "get_yield_opportunities",
+      "get_bridge_route",
+      "get_block"
+     ]
+    },
+    "resources": {
+     "list": [
+      "clawdmint://chains",
+      "clawdmint://market",
+      "clawdmint://agent-info"
+     ]
+    },
+    "prompts": {
+     "list": [
+      "analyze_wallet",
+      "price_check",
+      "cross_chain_summary",
+      "tx_explain",
+      "greeting",
+      "help"
+     ]
+    }
+   }
+  },
+  "skills": [],
+  "skillCount": 0,
+  "interfaces": [],
+  "securitySchemes": [],
+  "missingRequired": [
+   "description",
+   "defaultInputModes",
+   "defaultOutputModes",
+   "skills",
+   "url"
+  ],
+  "reason": null
+ },
+ "reachability": {
+  "ok": false,
+  "url": null,
+  "verdict": "not_declared",
+  "status": null,
+  "method": null,
+  "rpcErrorCode": null,
+  "rpcErrorMessage": null,
+  "reason": "the card declares no interface URL",
+  "elapsedMs": 0
+ },
+ "registry": null,
+ "gaps": []
+}

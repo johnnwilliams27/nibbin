@@ -1,0 +1,312 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:mcp:v1",
+ "endpoint": "https://swapgod.space/mcp",
+ "probed_at": "2026-09-09T09:27:06Z",
+ "attempts": [
+  {
+   "attempt": 1,
+   "ts": "2026-09-09T09:27:06Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 7010
+  },
+  {
+   "attempt": 2,
+   "ts": "2026-09-09T09:27:24Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 1264
+  },
+  {
+   "attempt": 3,
+   "ts": "2026-09-09T09:27:25Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 370
+  }
+ ],
+ "handshake": {
+  "ok": true,
+  "protocolVersion": "2025-06-18",
+  "serverName": "SwapGod",
+  "serverVersion": "1.0.0",
+  "instructions": "SwapGod: DEX swap quotes on BNB Smart Chain. Compares PancakeSwap v2 (direct and via WBNB) and PancakeSwap v3 (all fee tiers) for an exact-input swap and returns the best route, expected output, minimum output after slippage and the implied price. Quote only: nothing is executed.\n\nPaid tools (x402, U on BSC, pay to 0x442b37739E704094337C68977843E5DBE2a5d298): swap_quote = 0.01 U. A tools/call without a PAYMENT-SIGNATURE header returns HTTP 402 with the x402 requirements.",
+  "reason": null
+ },
+ "tools": {
+  "ok": true,
+  "declared": [
+   {
+    "name": "swap_quote",
+    "description": "Best exact-input swap quote on BNB Smart Chain across PancakeSwap v2 (direct + via WBNB) and PancakeSwap v3 (100/500/2500/10000 fee tiers). Tokens are BEP-20 contract addresses or the symbols BNB, WBNB, USDT, USDC, USD1, U, BTCB, ETH, CAKE. Returns the best route, expected and minimum output (after slippage), implied price, and every candidate route. Quote only; nothing is executed.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "token_in": {
+       "type": "string",
+       "description": "Token to sell: BEP-20 contract address on BSC, or a symbol (BNB, WBNB, USDT, USDC, USD1, U, BTCB, ETH, CAKE). BNB is quoted as WBNB."
+      },
+      "token_out": {
+       "type": "string",
+       "description": "Token to buy: BEP-20 contract address on BSC, or one of the symbols above."
+      },
+      "amount_in": {
+       "type": "string",
+       "description": "Amount of token_in to sell, in human units (e.g. \"1.5\"), not wei."
+      },
+      "slippage_bps": {
+       "type": "integer",
+       "description": "Slippage tolerance in basis points for amount_out_min (100 = 1%). Default 100, max 5000.",
+       "minimum": 0,
+       "maximum": 4294967295
+      }
+     },
+     "required": [
+      "token_in",
+      "token_out",
+      "amount_in"
+     ],
+     "additionalProperties": false
+    },
+    "outputSchema": {
+     "type": "object",
+     "properties": {
+      "chain": {
+       "type": "string"
+      },
+      "token_in": {
+       "type": "object",
+       "properties": {
+        "address": {
+         "type": "string"
+        },
+        "symbol": {
+         "type": "string"
+        },
+        "decimals": {
+         "type": "integer"
+        }
+       },
+       "required": [
+        "address",
+        "symbol",
+        "decimals"
+       ],
+       "additionalProperties": false
+      },
+      "token_out": {
+       "type": "object",
+       "properties": {
+        "address": {
+         "type": "string"
+        },
+        "symbol": {
+         "type": "string"
+        },
+        "decimals": {
+         "type": "integer"
+        }
+       },
+       "required": [
+        "address",
+        "symbol",
+        "decimals"
+       ],
+       "additionalProperties": false
+      },
+      "amount_in": {
+       "type": "string"
+      },
+      "amount_in_wei": {
+       "type": "string"
+      },
+      "slippage_bps": {
+       "type": "integer",
+       "minimum": 0,
+       "maximum": 4294967295
+      },
+      "best": {
+       "type": [
+        "null",
+        "object"
+       ],
+       "properties": {
+        "dex": {
+         "type": "string",
+         "description": "pancakeswap_v2 or pancakeswap_v3"
+        },
+        "path": {
+         "type": [
+          "null",
+          "array"
+         ],
+         "items": {
+          "type": "string"
+         },
+         "description": "Token addresses along the route"
+        },
+        "fee_tier": {
+         "type": "integer",
+         "description": "v3 pool fee in hundredths of a bip (500 = 0.05%)",
+         "minimum": 0,
+         "maximum": 4294967295
+        },
+        "amount_out": {
+         "type": "string",
+         "description": "Expected output in human units"
+        },
+        "amount_out_wei": {
+         "type": "string"
+        },
+        "price": {
+         "type": "string",
+         "description": "token_out per 1 token_in"
+        },
+        "gas_estimate": {
+         "type": "string",
+         "description": "v3 quoter gas estimate for the swap"
+        },
+        "error": {
+         "type": "string",
+         "description": "Set when this route could not be quoted (no pool / no liquidity)"
+        },
+        "is_best": {
+         "type": "boolean"
+        },
+        "quoted_by": {
+         "type": "string",
+         "description": "Router / quoter contract that produced the quote"
+        }
+       },
+       "description": "Best route by output amount; null when no route has liquidity",
+       "required": [
+        "dex",
+        "path",
+        "amount_out",
+        "amount_out_wei",
+        "price",
+        "is_best",
+        "quoted_by"
+       ],
+       "additionalProperties": false
+      },
+      "amount_out_min": {
+       "type": "string",
+       "description": "best.amount_out reduced by slippage_bps, human units"
+      },
+      "candidates": {
+       "type": [
+        "null",
+        "array"
+       ],
+       "items": {
+        "type": "object",
+        "properties": {
+         "dex": {
+          "type": "string",
+          "description": "pancakeswap_v2 or pancakeswap_v3"
+         },
+         "path": {
+          "type": [
+           "null",
+           "array"
+          ],
+          "items": {
+           "type": "string"
+          },
+          "description": "Token addresses along the route"
+         },
+         "fee_tier": {
+          "type": "integer",
+          "description": "v3 pool fee in hundredths of a bip (500 = 0.05%)",
+          "minimum": 0,
+          "maximum": 4294967295
+         },
+         "amount_out": {
+          "type": "string",
+          "description": "Expected output in human units"
+         },
+         "amount_out_wei": {
+          "type": "string"
+         },
+         "price": {
+          "type": "string",
+          "description": "token_out per 1 token_in"
+         },
+         "gas_estimate": {
+          "type": "string",
+          "description": "v3 quoter gas estimate for the swap"
+         },
+         "error": {
+          "type": "string",
+          "description": "Set when this route could not be quoted (no pool / no liquidity)"
+         },
+         "is_best": {
+          "type": "boolean"
+         },
+         "quoted_by": {
+          "type": "string",
+          "description": "Router / quoter contract that produced the quote"
+         }
+        },
+        "required": [
+         "dex",
+         "path",
+         "amount_out",
+         "amount_out_wei",
+         "price",
+         "is_best",
+         "quoted_by"
+        ],
+        "additionalProperties": false
+       }
+      },
+      "block_number": {
+       "type": "integer",
+       "minimum": 0
+      },
+      "quoted_at": {
+       "type": "string"
+      },
+      "execution_note": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "chain",
+      "token_in",
+      "token_out",
+      "amount_in",
+      "amount_in_wei",
+      "slippage_bps",
+      "best",
+      "amount_out_min",
+      "candidates",
+      "block_number",
+      "quoted_at",
+      "execution_note"
+     ],
+     "additionalProperties": false
+    },
+    "annotations": {
+     "idempotentHint": false,
+     "openWorldHint": true,
+     "readOnlyHint": true
+    }
+   }
+  ],
+  "reason": null
+ },
+ "registry": null,
+ "auth": {
+  "required": false,
+  "status": 200,
+  "scheme": null,
+  "hop": "initialize"
+ },
+ "rate_limit": null
+}

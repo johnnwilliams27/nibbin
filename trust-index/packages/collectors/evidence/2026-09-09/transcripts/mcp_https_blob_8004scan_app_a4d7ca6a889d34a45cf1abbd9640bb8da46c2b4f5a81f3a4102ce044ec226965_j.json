@@ -1,0 +1,49 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:mcp:v1",
+ "endpoint": "https://blob.8004scan.app/a4d7ca6a889d34a45cf1abbd9640bb8da46c2b4f5a81f3a4102ce044ec226965.jpg",
+ "probed_at": "2026-09-09T09:27:06Z",
+ "attempts": [
+  {
+   "attempt": 1,
+   "ts": "2026-09-09T09:27:06Z",
+   "reachable": true,
+   "status": 401,
+   "reason": null,
+   "elapsedMs": 3084
+  },
+  {
+   "attempt": 2,
+   "ts": "2026-09-09T09:27:09Z",
+   "reachable": true,
+   "status": 401,
+   "reason": null,
+   "elapsedMs": 5680
+  },
+  {
+   "attempt": 3,
+   "ts": "2026-09-09T09:27:15Z",
+   "reachable": true,
+   "status": 401,
+   "reason": null,
+   "elapsedMs": 6433
+  }
+ ],
+ "handshake": {
+  "ok": false,
+  "protocolVersion": null,
+  "serverName": null,
+  "serverVersion": null,
+  "instructions": null,
+  "reason": "authentication required (HTTP 401)"
+ },
+ "tools": null,
+ "registry": null,
+ "auth": {
+  "required": true,
+  "status": 401,
+  "scheme": null,
+  "hop": "initialize"
+ },
+ "rate_limit": null
+}

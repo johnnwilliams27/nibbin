@@ -1,0 +1,53 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:mcp:v1",
+ "endpoint": "https://modelcontextprotocol.name",
+ "probed_at": "2026-09-09T09:27:06Z",
+ "attempts": [
+  {
+   "attempt": 1,
+   "ts": "2026-09-09T09:27:06Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 453
+  },
+  {
+   "attempt": 2,
+   "ts": "2026-09-09T09:27:16Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 6122
+  },
+  {
+   "attempt": 3,
+   "ts": "2026-09-09T09:27:22Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 123
+  }
+ ],
+ "handshake": {
+  "ok": true,
+  "protocolVersion": null,
+  "serverName": null,
+  "serverVersion": null,
+  "instructions": null,
+  "reason": null
+ },
+ "tools": {
+  "ok": true,
+  "declared": [],
+  "reason": null
+ },
+ "registry": null,
+ "auth": {
+  "required": false,
+  "status": 200,
+  "scheme": null,
+  "hop": "initialize"
+ },
+ "rate_limit": null
+}

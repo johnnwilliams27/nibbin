@@ -1,0 +1,20 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:mcp:v1",
+ "endpoint": "npm://@quackai/q402-mcp",
+ "probed_at": "2026-09-09T09:40:23Z",
+ "attempts": [
+  {
+   "attempt": 1,
+   "ts": "2026-09-09T09:40:23Z",
+   "reachable": false,
+   "status": null,
+   "reason": "refused: unsupported scheme npm:",
+   "elapsedMs": 0
+  }
+ ],
+ "handshake": null,
+ "tools": null,
+ "registry": null,
+ "auth": null
+}

@@ -16,8 +16,13 @@ cohort-base/
 # written incrementally DURING a run, so a commit mid-run captures a partial
 # file that is stale the moment it lands. The reproducibility envelope is the
 # seed plus the rubric version, not the checked-in bytes.
-assessment*.json
-transcripts/
+# Anchored to the packages' own scratch locations, not matched at any depth.
+# Unanchored, `transcripts/` also excluded `packages/collectors/evidence/*/
+# transcripts/` — deliberately preserved evidence — and because git does not
+# descend into an excluded directory, `git add -A` reported success while
+# staging 4 files instead of 277.
+packages/*/assessment*.json
+packages/*/transcripts/
 
 # Underscore-prefixed scripts are throwaway diagnostics — an agent or a person
 # working something out at the console. They were committed once, removed a few

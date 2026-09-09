@@ -1,0 +1,49 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:mcp:v1",
+ "endpoint": "https://facebook.com",
+ "probed_at": "2026-09-09T09:27:06Z",
+ "attempts": [
+  {
+   "attempt": 1,
+   "ts": "2026-09-09T09:27:06Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 8953
+  },
+  {
+   "attempt": 2,
+   "ts": "2026-09-09T09:27:15Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 7421
+  },
+  {
+   "attempt": 3,
+   "ts": "2026-09-09T09:27:23Z",
+   "reachable": true,
+   "status": 200,
+   "reason": null,
+   "elapsedMs": 394
+  }
+ ],
+ "handshake": {
+  "ok": false,
+  "protocolVersion": null,
+  "serverName": null,
+  "serverVersion": null,
+  "instructions": null,
+  "reason": "Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON"
+ },
+ "tools": null,
+ "registry": null,
+ "auth": {
+  "required": false,
+  "status": 200,
+  "scheme": null,
+  "hop": "initialize"
+ },
+ "rate_limit": null
+}

@@ -1,0 +1,107 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:a2a:v1",
+ "subject_url": "https://mpp.hyreagent.fun/agents/bobo",
+ "probed_at": "2026-09-09T09:40:27Z",
+ "discovery": {
+  "ok": true,
+  "url": "https://mpp.hyreagent.fun/.well-known/agent-card.json",
+  "path": "/.well-known/agent-card.json",
+  "outcome": "card",
+  "attempts": [
+   {
+    "url": "https://mpp.hyreagent.fun/agents/bobo",
+    "path": "/agents/bobo",
+    "kind": "declared",
+    "outcome": "absent",
+    "status": 404,
+    "contentType": "application/json",
+    "reason": "no card at this path (HTTP 404)",
+    "elapsedMs": 409
+   },
+   {
+    "url": "https://mpp.hyreagent.fun/.well-known/agent-card.json",
+    "path": "/.well-known/agent-card.json",
+    "kind": "well-known",
+    "outcome": "card",
+    "status": 200,
+    "contentType": "application/json",
+    "reason": null,
+    "elapsedMs": 62
+   }
+  ],
+  "reason": null,
+  "elapsedMs": 471
+ },
+ "declaration": {
+  "ok": true,
+  "name": "HYRE Agent",
+  "description": "AI-enhanced DeFi intelligence API. 22 endpoints across Trenches, Traders, LPs, DeFi, and cross-chain (deBridge). Pay-per-call via x402 on Solana, Base, and SKALE. Returns LLM-interpreted insights with confidence-scored signals. No API keys — payment is the only gate.",
+  "version": null,
+  "protocolVersion": null,
+  "provider": null,
+  "documentationUrl": null,
+  "capabilities": {
+   "streaming": null,
+   "pushNotifications": null,
+   "stateTransitionHistory": null,
+   "extensions": 0,
+   "raw": {
+    "x402": {
+     "routing": {
+      "solana": {
+       "prefix": "/",
+       "facilitator": "https://facilitator.payai.network",
+       "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+       "payTo": "7G73PLhKvAPBGTzG5ESAE4coE7QrVeTTKfhTxQZbyGgC"
+      },
+      "base": {
+       "prefix": "/base/",
+       "facilitator": "https://facilitator.payai.network",
+       "network": "eip155:8453",
+       "payTo": "0xb5998e11E666Fd1e7f3B8e8d9122A755eec1E9b7"
+      },
+      "skale": {
+       "prefix": "/skale/",
+       "facilitator": "https://facilitator.payai.network",
+       "network": "eip155:1187947933",
+       "payTo": "0xb5998e11E666Fd1e7f3B8e8d9122A755eec1E9b7"
+      },
+      "bsc": {
+       "prefix": "/bsc/",
+       "facilitator": "https://b402-proxy.hyreagent.fun",
+       "network": "eip155:56",
+       "payTo": "0xb5998e11e666fd1e7f3b8e8d9122a755eec1e9b7"
+      }
+     },
+     "note": "Each chain has its own endpoint prefix. Root paths accept Solana only. Use /base/* for Base, /skale/* for SKALE, /bsc/* for BSC (USD1 via b402)."
+    }
+   }
+  },
+  "skills": [],
+  "skillCount": 0,
+  "interfaces": [],
+  "securitySchemes": [],
+  "missingRequired": [
+   "version",
+   "defaultInputModes",
+   "defaultOutputModes",
+   "skills",
+   "url"
+  ],
+  "reason": null
+ },
+ "reachability": {
+  "ok": false,
+  "url": null,
+  "verdict": "not_declared",
+  "status": null,
+  "method": null,
+  "rpcErrorCode": null,
+  "rpcErrorMessage": null,
+  "reason": "the card declares no interface URL",
+  "elapsedMs": 0
+ },
+ "registry": null,
+ "gaps": []
+}

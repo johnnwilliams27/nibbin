@@ -30,7 +30,17 @@ import { isMutatingName, isCredentialParam } from "../src/mcp/assess.js";
 import type { ProbeTranscript, ToolDeclaration } from "../src/mcp/transcript.js";
 import type { A2aTranscript } from "../src/a2a/transcript.js";
 
-const MARKET = "/home/user/nibbin/trust-index/apps/bnb-marketplace";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
+
+/**
+ * Repo-relative, not absolute. This was `/home/user/nibbin/...`, which exists
+ * on exactly one developer's machine and nowhere else — a scheduled run checks
+ * out to `/home/runner/work/nibbin/nibbin`, so the hardcoded path made every
+ * one of these scripts unrunnable in CI. Resolved from this file's own location
+ * so it holds wherever the repository is cloned.
+ */
+const MARKET = resolve(dirname(fileURLToPath(import.meta.url)), "../../../apps/bnb-marketplace");
 const AGENTS = `${MARKET}/data/agents.json`;
 const RESULTS = `${MARKET}/data/probes/endpoint-probes.json`;
 

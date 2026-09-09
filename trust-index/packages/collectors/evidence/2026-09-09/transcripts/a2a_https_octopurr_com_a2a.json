@@ -1,0 +1,75 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:a2a:v1",
+ "subject_url": "https://octopurr.com/a2a",
+ "probed_at": "2026-09-09T09:27:51Z",
+ "discovery": {
+  "ok": false,
+  "url": null,
+  "path": null,
+  "outcome": "unmeasured",
+  "attempts": [
+   {
+    "url": "https://octopurr.com/a2a",
+    "path": "/a2a",
+    "kind": "declared",
+    "outcome": "unmeasured",
+    "status": null,
+    "contentType": null,
+    "reason": "the request exceeded its deadline",
+    "elapsedMs": 15009
+   },
+   {
+    "url": "https://octopurr.com/.well-known/agent-card.json",
+    "path": "/.well-known/agent-card.json",
+    "kind": "well-known",
+    "outcome": "unmeasured",
+    "status": null,
+    "contentType": null,
+    "reason": "the request exceeded its deadline",
+    "elapsedMs": 15010
+   },
+   {
+    "url": "https://octopurr.com/.well-known/agent.json",
+    "path": "/.well-known/agent.json",
+    "kind": "well-known",
+    "outcome": "unmeasured",
+    "status": null,
+    "contentType": null,
+    "reason": "the request exceeded its deadline",
+    "elapsedMs": 15015
+   },
+   {
+    "url": "https://octopurr.com/a2a/.well-known/agent-card.json",
+    "path": "/a2a/.well-known/agent-card.json",
+    "kind": "guess",
+    "outcome": "unmeasured",
+    "status": null,
+    "contentType": null,
+    "reason": "the request exceeded its deadline",
+    "elapsedMs": 15016
+   },
+   {
+    "url": "https://octopurr.com/a2a/.well-known/agent.json",
+    "path": "/a2a/.well-known/agent.json",
+    "kind": "guess",
+    "outcome": "unmeasured",
+    "status": null,
+    "contentType": null,
+    "reason": "the request exceeded its deadline",
+    "elapsedMs": 15015
+   }
+  ],
+  "reason": "the request exceeded its deadline",
+  "elapsedMs": 75066
+ },
+ "declaration": null,
+ "reachability": null,
+ "registry": null,
+ "gaps": [
+  {
+   "tier": "discovery",
+   "reason": "the request exceeded its deadline"
+  }
+ ]
+}

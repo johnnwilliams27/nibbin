@@ -1,0 +1,105 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:a2a:v1",
+ "subject_url": "https://bnb-lp.172-104-171-139.nip.io/.well-known/agent-card.json",
+ "probed_at": "2026-09-09T09:40:27Z",
+ "discovery": {
+  "ok": true,
+  "url": "https://bnb-lp.172-104-171-139.nip.io/.well-known/agent-card.json",
+  "path": "/.well-known/agent-card.json",
+  "outcome": "card",
+  "attempts": [
+   {
+    "url": "https://bnb-lp.172-104-171-139.nip.io/.well-known/agent-card.json",
+    "path": "/.well-known/agent-card.json",
+    "kind": "declared",
+    "outcome": "card",
+    "status": 200,
+    "contentType": "application/json",
+    "reason": null,
+    "elapsedMs": 978
+   }
+  ],
+  "reason": null,
+  "elapsedMs": 978
+ },
+ "declaration": {
+  "ok": true,
+  "name": "bnbLpRangeRebalancer-agent",
+  "description": "ERC-8183 seller agent (bnbLpRangeRebalancer-agent) — negotiate + notify_funded over A2A.",
+  "version": "1.0.0",
+  "protocolVersion": "0.3.0",
+  "provider": null,
+  "documentationUrl": null,
+  "capabilities": {
+   "streaming": false,
+   "pushNotifications": null,
+   "stateTransitionHistory": null,
+   "extensions": 0,
+   "raw": {
+    "streaming": false
+   }
+  },
+  "skills": [
+   {
+    "id": "negotiate",
+    "name": "Negotiate an ERC-8183 job",
+    "description": "Send a data part {\"skill\": \"negotiate\", \"task_description\": \"...\", \"terms\": {\"deliverables\": \"...\", \"quality_standards\": \"...\"}} (both terms keys are REQUIRED) and receive a wallet-signed price quote (price, currency, negotiation_hash, provider_sig). Anchor the returned envelope on-chain via createJob + fund, then send the `notify_funded` skill with the job_id to request delivery.",
+    "tags": [
+     "erc8183",
+     "negotiation",
+     "bnb-chain"
+    ],
+    "examples": [],
+    "inputModes": [
+     "application/json"
+    ],
+    "outputModes": [
+     "application/json"
+    ]
+   },
+   {
+    "id": "notify_funded",
+    "name": "Notify the seller a job is funded (request delivery)",
+    "description": "After you fund the job on-chain, send {\"skill\": \"notify_funded\", \"job_id\": <int>} to tell the seller \"I funded job X — please deliver\". The seller verifies the funded job carries its signed quote and replies AT ONCE with {\"status\": \"accepted\"|\"rejected\", \"job_id\"}; delivery then runs in the background (work takes time). Do NOT wait on this call for the result — read the deliverable back from the CHAIN once the job reaches SUBMITTED (the `submit` tx carries the deliverable_url; ERC-8183 `get_deliverable_url`). The agent serves no job-query endpoint.",
+    "tags": [
+     "erc8183",
+     "delivery",
+     "bnb-chain"
+    ],
+    "examples": [],
+    "inputModes": [
+     "application/json"
+    ],
+    "outputModes": [
+     "application/json"
+    ]
+   }
+  ],
+  "skillCount": 2,
+  "interfaces": [
+   {
+    "url": "https://bnb-lp.172-104-171-139.nip.io/",
+    "transport": "JSONRPC",
+    "protocolVersion": "0.3.0",
+    "source": "url"
+   }
+  ],
+  "securitySchemes": [],
+  "missingRequired": [],
+  "reason": null
+ },
+ "reachability": {
+  "ok": true,
+  "url": "https://bnb-lp.172-104-171-139.nip.io/",
+  "verdict": "speaks_a2a",
+  "status": 200,
+  "method": "tasks/get",
+  "rpcErrorCode": -32001,
+  "rpcErrorMessage": "Task not found",
+  "reason": null,
+  "elapsedMs": 924
+ },
+ "registry": null,
+ "gaps": []
+}

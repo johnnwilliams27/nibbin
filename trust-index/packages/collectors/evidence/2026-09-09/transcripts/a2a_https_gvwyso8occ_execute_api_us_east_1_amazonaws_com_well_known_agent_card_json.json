@@ -1,0 +1,111 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:a2a:v1",
+ "subject_url": "https://gvwyso8occ.execute-api.us-east-1.amazonaws.com/.well-known/agent-card.json",
+ "probed_at": "2026-09-09T09:27:51Z",
+ "discovery": {
+  "ok": true,
+  "url": "https://gvwyso8occ.execute-api.us-east-1.amazonaws.com/.well-known/agent-card.json",
+  "path": "/.well-known/agent-card.json",
+  "outcome": "card",
+  "attempts": [
+   {
+    "url": "https://gvwyso8occ.execute-api.us-east-1.amazonaws.com/.well-known/agent-card.json",
+    "path": "/.well-known/agent-card.json",
+    "kind": "declared",
+    "outcome": "card",
+    "status": 200,
+    "contentType": "application/json; charset=utf-8",
+    "reason": null,
+    "elapsedMs": 1175
+   }
+  ],
+  "reason": null,
+  "elapsedMs": 1175
+ },
+ "declaration": {
+  "ok": true,
+  "name": "mandaterebalance-agent",
+  "description": "MandateX PancakeSwap V3 rebalancing reference agent (mandaterebalance-agent) - deterministic quote policy plus simulation/refusal receipts over ERC-8183.",
+  "version": "1.0.0",
+  "protocolVersion": "0.3.0",
+  "provider": null,
+  "documentationUrl": null,
+  "capabilities": {
+   "streaming": false,
+   "pushNotifications": null,
+   "stateTransitionHistory": null,
+   "extensions": 0,
+   "raw": {
+    "streaming": false
+   }
+  },
+  "skills": [
+   {
+    "id": "negotiate",
+    "name": "Quote a bounded PancakeSwap V3 rebalance",
+    "description": "Send a data part {\"skill\":\"negotiate\",\"request\":{\"mandate\":{...}}} using the MandateX rebalancing v1 schema. Fixed code reads the supplied PancakeSwap V3 pool and NFT position, applies freshness, range, cost, expiry, contract, and call-allowlist gates, then signs only an eligible normalized offer. The seller replaces caller terms with fixed terms for a simulation-ready or policy-refusal JSON receipt.",
+    "tags": [
+     "erc8183",
+     "mandatex",
+     "pancakeswap-v3",
+     "rebalancing",
+     "bnb-chain"
+    ],
+    "examples": [],
+    "inputModes": [
+     "application/json"
+    ],
+    "outputModes": [
+     "application/json"
+    ]
+   },
+   {
+    "id": "notify_funded",
+    "name": "Notify the seller a job is funded (request delivery)",
+    "description": "After you fund the job on-chain, send {\"skill\": \"notify_funded\", \"job_id\": <non-negative safe integer>}. The seller verifies the funded job carries its signed quote and replies AT ONCE with {\"status\": \"accepted\"|\"rejected\", \"job_id\"}; delivery then re-reads state in the background and submits either a clearly labelled simulation_ready receipt or a deterministic refusal receipt. Accepted means processing started, not that a rebalance executed. Read the result from the chain once the job reaches SUBMITTED; this milestone does not move liquidity.",
+    "tags": [
+     "erc8183",
+     "mandatex",
+     "simulation",
+     "refusal",
+     "bnb-chain"
+    ],
+    "examples": [],
+    "inputModes": [
+     "application/json"
+    ],
+    "outputModes": [
+     "application/json"
+    ]
+   }
+  ],
+  "skillCount": 2,
+  "interfaces": [
+   {
+    "url": "https://gvwyso8occ.execute-api.us-east-1.amazonaws.com/a2a",
+    "transport": "JSONRPC",
+    "protocolVersion": "0.3.0",
+    "source": "url"
+   }
+  ],
+  "securitySchemes": [
+   "oauth2"
+  ],
+  "missingRequired": [],
+  "reason": null
+ },
+ "reachability": {
+  "ok": true,
+  "url": "https://gvwyso8occ.execute-api.us-east-1.amazonaws.com/a2a",
+  "verdict": "auth_walled",
+  "status": 401,
+  "method": "tasks/get",
+  "rpcErrorCode": null,
+  "rpcErrorMessage": null,
+  "reason": "the endpoint declined an anonymous client (HTTP 401)",
+  "elapsedMs": 2663
+ },
+ "registry": null,
+ "gaps": []
+}

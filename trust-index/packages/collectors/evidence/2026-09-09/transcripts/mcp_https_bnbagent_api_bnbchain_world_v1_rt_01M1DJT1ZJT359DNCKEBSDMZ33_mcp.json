@@ -1,0 +1,49 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:mcp:v1",
+ "endpoint": "https://bnbagent-api.bnbchain.world/v1/rt/01M1DJT1ZJT359DNCKEBSDMZ33/mcp",
+ "probed_at": "2026-09-09T09:27:06Z",
+ "attempts": [
+  {
+   "attempt": 1,
+   "ts": "2026-09-09T09:27:06Z",
+   "reachable": true,
+   "status": 401,
+   "reason": null,
+   "elapsedMs": 6550
+  },
+  {
+   "attempt": 2,
+   "ts": "2026-09-09T09:27:13Z",
+   "reachable": true,
+   "status": 401,
+   "reason": null,
+   "elapsedMs": 7444
+  },
+  {
+   "attempt": 3,
+   "ts": "2026-09-09T09:27:20Z",
+   "reachable": true,
+   "status": 401,
+   "reason": null,
+   "elapsedMs": 2374
+  }
+ ],
+ "handshake": {
+  "ok": false,
+  "protocolVersion": null,
+  "serverName": null,
+  "serverVersion": null,
+  "instructions": null,
+  "reason": "authentication required (HTTP 401)"
+ },
+ "tools": null,
+ "registry": null,
+ "auth": {
+  "required": true,
+  "status": 401,
+  "scheme": "Bearer resource_metadata=\"https://bnbagent-api.bnbchain.world/.well-known/oauth-protected-resource\"",
+  "hop": "initialize"
+ },
+ "rate_limit": null
+}

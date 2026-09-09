@@ -1,0 +1,180 @@
+{
+ "transcript_version": "1",
+ "probe_id": "probe:a2a:v1",
+ "subject_url": "https://bnb-agent-marketplace-ruby.vercel.app/grid/.well-known/agent-card.json",
+ "probed_at": "2026-09-09T09:27:51Z",
+ "discovery": {
+  "ok": true,
+  "url": "https://bnb-agent-marketplace-ruby.vercel.app/grid/.well-known/agent-card.json",
+  "path": "/grid/.well-known/agent-card.json",
+  "outcome": "card",
+  "attempts": [
+   {
+    "url": "https://bnb-agent-marketplace-ruby.vercel.app/grid/.well-known/agent-card.json",
+    "path": "/grid/.well-known/agent-card.json",
+    "kind": "declared",
+    "outcome": "card",
+    "status": 200,
+    "contentType": "application/json",
+    "reason": null,
+    "elapsedMs": 1678
+   }
+  ],
+  "reason": null,
+  "elapsedMs": 1678
+ },
+ "declaration": {
+  "ok": true,
+  "name": "marketplace-operated-grid-planner",
+  "description": "Marketplace-operated Grid seller. It computes deterministic plans and performs no trading or custody. Not an official BNB reference agent.",
+  "version": "1.0.0",
+  "protocolVersion": "0.3.0",
+  "provider": null,
+  "documentationUrl": null,
+  "capabilities": {
+   "streaming": false,
+   "pushNotifications": false,
+   "stateTransitionHistory": null,
+   "extensions": 1,
+   "raw": {
+    "streaming": false,
+    "pushNotifications": false,
+    "extensions": [
+     {
+      "uri": "https://marketplace.trust8004.xyz/extensions/negotiation-input/v1",
+      "description": "Marketplace-specific negotiation input contract; not an ERC-8183 or A2A standard schema.",
+      "required": false,
+      "params": {
+       "skill": "negotiate-erc8183-job",
+       "taskDescriptionPrefix": "GRID_PLAN_V1:",
+       "capabilityProbeParameters": {
+        "pair": "BNB/USDT",
+        "lowerPrice": "700",
+        "upperPrice": "900",
+        "capital": "1000",
+        "gridCount": 9
+       },
+       "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+         "pair",
+         "lowerPrice",
+         "upperPrice",
+         "capital",
+         "gridCount"
+        ],
+        "properties": {
+         "pair": {
+          "type": "string",
+          "title": "Trading pair",
+          "pattern": "^[A-Z0-9]{2,12}/[A-Z0-9]{2,12}$"
+         },
+         "lowerPrice": {
+          "type": "string",
+          "title": "Lower price",
+          "minLength": 1,
+          "maxLength": 40,
+          "description": "Positive decimal, up to 8 decimal places; must be below upperPrice."
+         },
+         "upperPrice": {
+          "type": "string",
+          "title": "Upper price",
+          "minLength": 1,
+          "maxLength": 40,
+          "description": "Positive decimal, up to 8 decimal places; must exceed lowerPrice."
+         },
+         "capital": {
+          "type": "string",
+          "title": "Simulated capital",
+          "minLength": 1,
+          "maxLength": 40,
+          "description": "Positive decimal, up to 8 decimal places; no funds are traded."
+         },
+         "gridCount": {
+          "type": "integer",
+          "title": "Grid levels",
+          "minimum": 2,
+          "maximum": 100
+         }
+        }
+       },
+       "terms": {
+        "deliverables": "Deterministic Grid plan JSON with levels, allocation, triggers and assumptions",
+        "quality_standards": "Deterministic output, no order execution and no custody",
+        "evaluation_required": true,
+        "evaluator_type": "uma_oov3"
+       }
+      }
+     }
+    ]
+   }
+  },
+  "skills": [
+   {
+    "id": "negotiate-erc8183-job",
+    "name": "Negotiate a deterministic Grid plan",
+    "description": "Quote a reproducible Grid calculation with no order execution or custody.",
+    "tags": [
+     "erc8183",
+     "grid-trading",
+     "bnb-chain"
+    ],
+    "examples": [],
+    "inputModes": [],
+    "outputModes": []
+   },
+   {
+    "id": "negotiate",
+    "name": "Negotiate a deterministic Grid plan",
+    "description": "Quote a reproducible Grid calculation with no order execution or custody.",
+    "tags": [
+     "erc8183",
+     "grid-trading",
+     "bnb-chain"
+    ],
+    "examples": [],
+    "inputModes": [],
+    "outputModes": []
+   },
+   {
+    "id": "notify_funded",
+    "name": "Compute and submit a funded Grid plan",
+    "description": "Verify a FUNDED job, compute its deterministic plan and submit the manifest hash.",
+    "tags": [
+     "erc8183",
+     "grid-trading",
+     "bnb-chain"
+    ],
+    "examples": [],
+    "inputModes": [],
+    "outputModes": []
+   }
+  ],
+  "skillCount": 3,
+  "interfaces": [
+   {
+    "url": "https://bnb-agent-marketplace-ruby.vercel.app/api/sellers/grid/a2a",
+    "transport": "JSONRPC",
+    "protocolVersion": "0.3.0",
+    "source": "url"
+   }
+  ],
+  "securitySchemes": [],
+  "missingRequired": [],
+  "reason": null
+ },
+ "reachability": {
+  "ok": false,
+  "url": "https://bnb-agent-marketplace-ruby.vercel.app/api/sellers/grid/a2a",
+  "verdict": "answered_not_a2a",
+  "status": 400,
+  "method": "tasks/get",
+  "rpcErrorCode": null,
+  "rpcErrorMessage": null,
+  "reason": "HTTP 400 at the declared endpoint",
+  "elapsedMs": 2774
+ },
+ "registry": null,
+ "gaps": []
+}
