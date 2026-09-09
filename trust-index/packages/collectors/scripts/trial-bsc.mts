@@ -32,6 +32,17 @@ const TARGETS = arg("--targets", "battery-targets.json");
 const OUT = arg("--out", "trial-transcripts");
 const N_MCP = Number(arg("--mcp", "12"));
 const N_A2A = Number(arg("--a2a", "12"));
+/**
+ * How many endpoints to take from ONE host. Default 1, because the usual job is
+ * to learn the publication rate across DIFFERENT services and twelve endpoints
+ * on one backend would measure one server twelve times.
+ *
+ * Raise it when a host genuinely carries distinct agents rather than one
+ * service behind many paths — api.orbit-agents.com/a2a/<name> is eight agents,
+ * not eight views of one. It is still a sample: never set it high enough to
+ * exhaust a host.
+ */
+const PER_HOST = Number(arg("--per-host", "1"));
 
 type Target = { url: string; host: string; protocols: string[]; registrations: number };
 const doc = JSON.parse(readFileSync(TARGETS, "utf8")) as {
@@ -42,19 +53,23 @@ const doc = JSON.parse(readFileSync(TARGETS, "utf8")) as {
 const shared = new Set(doc.shared_backends.map((s) => s.host));
 
 /**
- * One target per host. The point of a trial is to learn the publication rate
- * across DIFFERENT services; twelve endpoints on one backend would measure one
- * server twelve times and tell us nothing about the population.
+ * Up to PER_HOST targets per host, default one.
+ *
+ * The point of a trial is to learn the publication rate across DIFFERENT
+ * services, and twelve endpoints on one backend would measure one server twelve
+ * times and say nothing about the population. Hosts named in
+ * `shared_backends` are excluded outright for the same reason.
  */
 function pick(protocol: string, n: number): Target[] {
-  const seen = new Set<string>();
+  const perHost = new Map<string, number>();
   const out: Target[] = [];
   for (const t of doc.targets) {
     if (out.length >= n) break;
     if (!t.protocols.includes(protocol)) continue;
     if (shared.has(t.host)) continue;
-    if (seen.has(t.host)) continue;
-    seen.add(t.host);
+    const used = perHost.get(t.host) ?? 0;
+    if (used >= PER_HOST) continue;
+    perHost.set(t.host, used + 1);
     out.push(t);
   }
   return out;
@@ -62,7 +77,10 @@ function pick(protocol: string, n: number): Target[] {
 
 const mcp = pick("mcp", N_MCP);
 const a2a = pick("a2a", N_A2A);
-console.log(`trial: ${mcp.length} MCP + ${a2a.length} A2A, one per host, none on a shared backend\n`);
+console.log(
+  `trial: ${mcp.length} MCP + ${a2a.length} A2A, ` +
+    `up to ${PER_HOST} per host, none on a shared backend\n`,
+);
 
 mkdirSync(OUT, { recursive: true });
 const safe = (u: string): string => u.replace(/[^a-z0-9]+/gi, "_").slice(0, 90);
