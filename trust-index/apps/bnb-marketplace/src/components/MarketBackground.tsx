@@ -8,7 +8,7 @@ export function MarketBackground() {
     <div className="market-backdrop" aria-hidden="true">
       <div className="market-orbit market-orbit-one">
         <svg className="market-bnb-mark pointer-events-none" viewBox="-2 -2 100 100" fill="none" focusable="false">
-          <path d={bnbMark} stroke="currentColor" strokeWidth=".6" strokeLinejoin="round" />
+          <path d={bnbMark} stroke="currentColor" strokeWidth=".9" strokeLinejoin="round" />
         </svg>
       </div>
       <div className="market-orbit market-orbit-two" />
