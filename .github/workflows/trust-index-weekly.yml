@@ -1,0 +1,253 @@
+# The weekly re-probe.
+#
+# This is the job `trust-index-daily.yml` deliberately refused to be. That one
+# scores evidence already in the repository and touches nobody; this one CALLS
+# THIRD-PARTY SERVERS — a handshake and an enumeration for every declared
+# endpoint, then a behavioural battery against those that answer. Its header
+# said putting that on an unattended schedule was the owner's decision. The
+# owner has made it.
+#
+# WHAT THAT OBLIGES US TO. These are strangers' servers. They did not ask to be
+# tested and they absorb the load either way, so the run is bounded by design
+# rather than by how fast the runner happens to be:
+#
+#   - Per-host concurrency caps in every prober. One host carries a quarter of
+#     the population; a fast global fetcher is a denial of service aimed at one
+#     operator.
+#   - Weekly, not daily. Availability decays with a 14-day half-life, so weekly
+#     sampling is what the rubric can actually use — and it is the difference
+#     between the coverage tier ever reaching `moderate` and every subject
+#     sitting at `thin` forever, which is what scoring alone produces.
+#   - A per-agent skill budget and a mutating-verb screen in the A2A battery, so
+#     nothing that reads as an instruction to act is ever sent.
+#
+# WHAT STOPS IT PUBLISHING A LIE. `guard-refresh.mts` runs before anything is
+# merged. If a large share of endpoints that answered last week return nothing
+# at all, that is far more likely our network than hundreds of unrelated
+# operators failing in the same hour — the job fails and merges nothing. An
+# unattended run has no reader to notice a screen of timeouts, so the check has
+# to be mechanical.
+name: trust-index-weekly
+
+on:
+  schedule:
+    # 03:40 UTC Sunday. Off the hour because everything schedules on the hour
+    # and GitHub queues those; Sunday because it is the quietest time to add
+    # load to someone else's server.
+    - cron: "40 3 * * 0"
+  workflow_dispatch:
+    inputs:
+      max_regression:
+        description: "Share of previously-answering endpoints allowed to go silent (default 0.25). Raise ONLY with a reason, and say it in the run."
+        required: false
+        type: string
+      dry_run:
+        description: "Probe, score and report, but commit nothing."
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  # Never two sweeps at once. Two runs would double the load every operator
+  # absorbs, and they would race on the same data files.
+  group: trust-index-weekly
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+defaults:
+  run:
+    working-directory: trust-index
+
+jobs:
+  reprobe:
+    runs-on: ubuntu-latest
+    # Generous: the sweep is deliberately slow because it is polite. If it is
+    # still running at three hours something is wrong and stopping is correct.
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      # Fail loudly rather than probing with an ephemeral seed. Without the
+      # seed the probe values are unguessable but NOT reproducible, so nobody
+      # can replay a published rating — and a scheduled job that quietly
+      # degrades that way stays broken for months.
+      - name: Require the probe seed
+        env:
+          TRUST_INDEX_PROBE_SEED: ${{ secrets.TRUST_INDEX_PROBE_SEED }}
+        run: |
+          if [ -z "$TRUST_INDEX_PROBE_SEED" ]; then
+            echo "::error::TRUST_INDEX_PROBE_SEED is not set. Probe values would be unreplayable, so published ratings could not be audited."
+            exit 1
+          fi
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: trust-index/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+
+      # Keep last week's readings to compare against. The guard needs a
+      # baseline that is not the file we are about to overwrite.
+      - name: Snapshot the previous probe results
+        run: |
+          mkdir -p /tmp/nibbin
+          if [ -f apps/bnb-marketplace/data/probes/endpoint-probes.json ]; then
+            cp apps/bnb-marketplace/data/probes/endpoint-probes.json /tmp/nibbin/baseline-probes.json
+            echo "baseline saved"
+          else
+            echo "no committed probe results; this run will be treated as a first run"
+          fi
+
+      - name: Probe every declared endpoint
+        env:
+          TRUST_INDEX_PROBE_SEED: ${{ secrets.TRUST_INDEX_PROBE_SEED }}
+        working-directory: trust-index/packages/collectors
+        run: pnpm exec tsx scripts/probe-marketplace.mts
+
+      # The join the pipeline was missing: the probe writes one bundle, the
+      # batteries and the scorer read a directory of transcripts.
+      - name: Explode probe results into transcripts
+        working-directory: trust-index/packages/collectors
+        run: pnpm exec tsx scripts/probes-to-transcripts.mts --out /tmp/nibbin/transcripts
+
+      # THE GATE. Everything above only reads; nothing below runs if the sweep
+      # looks like our own outage. Placed before the batteries as well as before
+      # the merge, so a broken run does not also spend other people's capacity
+      # invoking their tools.
+      - name: Refuse a run that looks like our failure
+        working-directory: trust-index/packages/collectors
+        run: |
+          BASE=""
+          if [ -f /tmp/nibbin/baseline-probes.json ]; then
+            BASE="--baseline /tmp/nibbin/baseline-probes.json"
+          fi
+          pnpm exec tsx scripts/guard-refresh.mts \
+            $BASE \
+            --candidate ../../apps/bnb-marketplace/data/probes/endpoint-probes.json \
+            --max-regression "${{ inputs.max_regression || '0.25' }}"
+
+      # ANTHROPIC_API_KEY is optional and its absence is not a failure: the
+      # battery degrades honestly, recording judged checks (does the response
+      # match the shape the description promised; is this an invention or a
+      # correctly-worded refusal) as harness gaps rather than as failures. That
+      # costs completeness on every subject, so an unset key quietly lowers how
+      # much of the population can publish. Set it if you want those checks.
+      - name: Run the MCP behavioural battery
+        env:
+          TRUST_INDEX_PROBE_SEED: ${{ secrets.TRUST_INDEX_PROBE_SEED }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        working-directory: trust-index/packages/collectors
+        run: |
+          pnpm exec tsx scripts/assess.mts --i-have-approval \
+            --transcripts /tmp/nibbin/transcripts \
+            --out /tmp/nibbin/assessment.json
+
+      - name: Run the A2A behavioural battery
+        env:
+          TRUST_INDEX_PROBE_SEED: ${{ secrets.TRUST_INDEX_PROBE_SEED }}
+        working-directory: trust-index/packages/collectors
+        run: |
+          pnpm exec tsx scripts/run-a2a-battery.mts \
+            --transcripts /tmp/nibbin/transcripts \
+            --out /tmp/nibbin/a2a-battery.json \
+            --max-skills 3 --concurrency 4
+
+      # One pass, both protocols, one as-of. Scoring MCP and A2A separately is
+      # how the A2A half stayed at zero published while the MCP half worked.
+      - name: Score both protocols
+        env:
+          TRUST_INDEX_PROBE_SEED: ${{ secrets.TRUST_INDEX_PROBE_SEED }}
+        working-directory: trust-index/packages/collectors
+        run: |
+          pnpm exec tsx scripts/score-marketplace.mts \
+            --transcripts /tmp/nibbin/transcripts \
+            --battery /tmp/nibbin/assessment.json \
+            --a2a-battery /tmp/nibbin/a2a-battery.json \
+            --out /tmp/nibbin/scored.json
+
+      - name: Merge into the marketplace dataset
+        working-directory: trust-index/packages/collectors
+        run: pnpm exec tsx scripts/merge-marketplace-assessments.mts --scored /tmp/nibbin/scored.json
+
+      # The dataset feeds a static export. If it cannot build, it must not ship,
+      # and the previous week's site stays up rather than a broken one.
+      - name: Validate the export
+        working-directory: trust-index/apps/bnb-marketplace
+        run: |
+          npm ci
+          npm run typecheck
+          npm test
+          npm run build
+          npm run test:export
+
+      # A PULL REQUEST, NOT A PUSH TO MAIN. `main` is protected and its required
+      # checks are the point of the protection, so a bot pushing straight to it
+      # would either be rejected every Sunday or would mean weakening the rule
+      # that keeps a broken export off the site. The refreshed index goes
+      # through the same gate as everything else.
+      #
+      # Auto-merge is requested, not forced. Where the repository has auto-merge
+      # enabled the PR lands by itself once the required checks pass and the
+      # site redeploys unattended; where it does not, the PR simply waits for a
+      # person — which is a safe default and, unlike a failed push, visible.
+      - name: Open a pull request with the refreshed index
+        if: ${{ inputs.dry_run != true }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "nibbin-trust-index[bot]"
+          git config user.email "noreply@anthropic.com"
+          git add apps/bnb-marketplace/data/agents.json apps/bnb-marketplace/data/probes/endpoint-probes.json
+          if git diff --cached --quiet; then
+            echo "no change in the index this week; nothing to open"
+            exit 0
+          fi
+
+          WEEK=$(date -u +%Y-%m-%d)
+          BRANCH="index/weekly-${WEEK}"
+          SUMMARY=$(node -e "
+            const d=require('./apps/bnb-marketplace/data/agents.json');
+            const r=d.agents.filter(a=>a.assessment&&a.assessment.composite!==null);
+            const w=d.agents.filter(a=>a.assessment&&a.assessment.composite===null);
+            console.log(\`\${r.length} rated rows across \${new Set(r.map(a=>a.endpoint)).size} distinct services; \${w.length} withheld with a reason\`);
+          ")
+
+          git checkout -b "$BRANCH"
+          git commit -m "Weekly re-probe ${WEEK}: ${SUMMARY}" \
+                     -m "Automated run of trust-index-weekly.yml. Probed every declared endpoint, ran the MCP and A2A behavioural batteries, and rescored both protocols in one pass. The refresh guard passed, so the readings here are the population's and not ours." \
+                     -m "Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
+          git push -u origin "$BRANCH"
+
+          gh pr create \
+            --title "Weekly re-probe ${WEEK}" \
+            --body "$(printf '%s\n\n%s\n\n%s\n' \
+                "${SUMMARY}." \
+                "Produced by \`trust-index-weekly.yml\`. Every declared endpoint was probed, both behavioural batteries ran, and \`guard-refresh.mts\` confirmed the run does not look like our own outage before anything was merged. The static export was type-checked, tested and built before this was opened." \
+                "_Generated by [Claude Code](https://claude.ai/code)_")" \
+            --base main --head "$BRANCH"
+
+          # Best-effort: harmless where auto-merge is not enabled.
+          gh pr merge --auto --squash "$BRANCH" || \
+            echo "auto-merge unavailable; the PR is open and waiting for a person."
+
+      - name: Keep the run's evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-evidence
+          # 14 days: long enough to investigate a bad week against the run
+          # before it, short enough not to hoard other people's response bodies.
+          retention-days: 14
+          if-no-files-found: warn
+          path: |
+            /tmp/nibbin/transcripts
+            /tmp/nibbin/assessment.json
+            /tmp/nibbin/a2a-battery.json
+            /tmp/nibbin/scored.json

@@ -113,3 +113,21 @@
   transfer, pay. It has NO swap, buy, sell, trade, mint, burn, stake, withdraw or approve. Any
   safety screen for on-chain subjects that delegates to it is not checking the verbs that move
   money — a live run invoked `swap-quote`, `swap-build` and `trade` through exactly this gap.
+- Collector scripts hardcoded `/home/user/nibbin/trust-index/apps/bnb-marketplace` as an absolute
+  path. That exists on one developer's machine and nowhere else — a scheduled run checks out to
+  `/home/runner/work/nibbin/nibbin` — so `probe-marketplace.mts` and
+  `merge-marketplace-assessments.mts` were unrunnable in CI. Resolve paths from
+  `fileURLToPath(import.meta.url)`, never from an absolute prefix.
+- A guard that fails OPEN on operator error is not a guard. `guard-refresh.mts` first treated
+  "baseline file absent" and "baseline path given but wrong" as the same case and published
+  unguarded — a mistyped path silently disabled the only check standing between an unattended
+  probe run and publishing our own outage as a population-wide finding. An omitted flag means
+  first run; a path that was given and does not resolve is an error, and must exit non-zero.
+- `probe-marketplace.mts` writes ONE bundle (`endpoint-probes.json`); `assess.mts`,
+  `run-a2a-battery.mts` and `score-marketplace.mts` all read a DIRECTORY of per-subject
+  transcripts. `transcripts-to-probes.mts` went one way and nothing went the other, so an
+  automated refresh could probe the whole population and then have nothing to hand the battery.
+  `probes-to-transcripts.mts` is that step; check both directions exist before wiring a pipeline.
+- `main` is protected, so a scheduled job cannot `git push` to it — the push is rejected every
+  run. A bot that needs to change committed data opens a PR and requests auto-merge; never
+  weaken the protection to let the bot through.
