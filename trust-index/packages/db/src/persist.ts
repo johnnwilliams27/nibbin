@@ -32,6 +32,56 @@ export type PersistArgs = {
 };
 
 /**
+ * Text that Postgres will actually accept.
+ *
+ * A `text` column cannot hold a NUL byte — Postgres rejects the whole statement,
+ * not the character — and several of these fields are built from a SUBJECT'S OWN
+ * BYTES. A server answering with a gzip body we then try to JSON.parse produces
+ * `Unexpected token '\x1f', "\x1f\x8b\x08\x00\x00..."`, and that error text goes
+ * into a gap's `detail`.
+ *
+ * Measured: exactly that dropped `shop.tier1/tier1-shop` from a 15,043-subject
+ * run. The whole subject vanished — identity, evidence and snapshot — because
+ * one diagnostic string had a control byte in it. That is a subject deleted from
+ * the compendium by the shape of its own error message, which is the same class
+ * of bug as reading "I could not obtain it" as "it is not there".
+ *
+ * NUL is removed; the other C0 controls are escaped rather than dropped so the
+ * detail still reads as the bytes that came back. Nothing here is scored — these
+ * are diagnostic strings — so this cannot change a rating, only whether it lands.
+ */
+function pgText(v: string): string;
+function pgText(v: string | null | undefined): string | null;
+function pgText(v: string | null | undefined): string | null {
+  if (v === null || v === undefined) return null;
+  // eslint-disable-next-line no-control-regex
+  return v.replace(/\u0000/g, '').replace(/[\u0001-\u0008\u000b\u000c\u000e-\u001f]/g, (c) =>
+    `\\x${c.charCodeAt(0).toString(16).padStart(2, '0')}`,
+  );
+}
+
+/**
+ * The same cleaning, applied to every string anywhere in a value.
+ *
+ * The gap tables are not the only place a subject's bytes land: the same detail
+ * string is embedded in `frame_json` and `result_json`, and jsonb rejects a NUL
+ * exactly as `text` does. Cleaning the two objects once, here, is what makes the
+ * whole write safe — sanitising the columns one at a time fixed the gap insert
+ * and then failed on the snapshot two statements later.
+ */
+function sanitizeDeep<T>(value: T): T {
+  if (typeof value === 'string') return pgText(value) as unknown as T;
+  if (Array.isArray(value)) return value.map((v) => sanitizeDeep(v)) as unknown as T;
+  if (value !== null && typeof value === 'object') {
+    if (value instanceof Date) return value;
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) out[k] = sanitizeDeep(v);
+    return out as unknown as T;
+  }
+  return value;
+}
+
+/**
  * Everything a run learned about one subject, in a single transaction.
  *
  * The transaction boundary is the point. A row in `rating_results` whose
@@ -39,7 +89,11 @@ export type PersistArgs = {
  * check, and it would look exactly like a good one.
  */
 export async function persistScoredSubject(db: Db, a: PersistArgs): Promise<void> {
-  const s = a.subject;
+  // Cleaned ONCE, at the boundary, before anything is written. See sanitizeDeep:
+  // the same subject-supplied string reaches a text column, a jsonb frame and the
+  // result payload, and every one of them rejects a NUL.
+  const s = sanitizeDeep(a.subject);
+  const result = sanitizeDeep(a.result);
   const key = { kind: s.kind, source_registry: s.source.registry, subject_id: s.subject_id };
   const now = new Date();
   const asOf = new Date(s.as_of_ts);
@@ -160,7 +214,7 @@ export async function persistScoredSubject(db: Db, a: PersistArgs): Promise<void
   await writeDailySnapshot(db, {
     ...key,
     utc_day: a.utc_day,
-    result: a.result,
+    result,
     // The Subject MINUS its observations: they are already in `observations`
     // and the day selects exactly the ones that entered this score. What is
     // kept is everything that is current-state elsewhere and would otherwise
