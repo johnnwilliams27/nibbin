@@ -65,6 +65,9 @@ STRONG_GENERIC = {
     "rebalancing": [r"re-?balanc\w*"],
 }
 CTX_WINDOW = 80
+# Fields that are cheap, self-declared registry labels. A category match found
+# ONLY in these is recorded as a near-miss, never as the basis for a category.
+WEAK_FIELDS = {"tag", "category_field", "oasf_domain"}
 PORTFOLIO_CTX = re.compile(
     r"portfolio|allocation|\basset|position|weight|holding|treasury|index|"
     r"basket|vault|pool|fund", re.I)
@@ -233,7 +236,7 @@ def categorise(cand, det):
     fields = text_fields(cand, det)
     analysis_hit = any_match(A_RX, fields)
 
-    scored, strong_hits, exec_hits = {}, {}, {}
+    scored, strong_hits, exec_hits, tag_only = {}, {}, {}, {}
     for cat in CATEGORIES:
         hits = find(S_RX[cat], fields)
         gen_hits, tier = find_generic(cat, fields)
@@ -249,6 +252,15 @@ def categorise(cand, det):
             conf = 0.60 if tier == "portfolio" else 0.50
         conf = min(conf, 0.85)
 
+        # A match found ONLY in a registry tag / taxonomy label is not enough.
+        # Measured: 159 agents carry the "Yield Optimizer" tag while only 4
+        # mention yield anywhere in their name or description -- the rest are
+        # audit, infra and platform agents. The tag is cheap self-declared
+        # metadata, so it corroborates a category but cannot establish one.
+        if all(f in WEAK_FIELDS for _, f, _ in all_hits):
+            tag_only.setdefault(cat, all_hits)
+            continue
+
         ex_pats = {p for p, _, _ in all_hits}
         ex_txts = {t.lower() for _, _, t in all_hits}
         exec_hit = exec_signal(fields, ex_pats, ex_txts)
@@ -263,7 +275,8 @@ def categorise(cand, det):
         scored[cat] = max(0.15, min(0.95, round(conf, 2)))
 
     if not scored:
-        near = []
+        near = [f"{c}:'{h[2]}'({h[1]}) tag-only, uncorroborated"
+                for c, hs in tag_only.items() for h in hs[:1]]
         for cat in CATEGORIES:
             for pat, fname, txt in find(W_RX[cat], fields):
                 near.append(f"{cat}:'{txt}'({fname})")

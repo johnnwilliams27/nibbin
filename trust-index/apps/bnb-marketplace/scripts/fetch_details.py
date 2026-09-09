@@ -70,6 +70,19 @@ def main():
     os.makedirs(DET, exist_ok=True)
     with open(os.path.join(RAW, "candidates.json")) as f:
         cands = json.load(f)["candidates"]
+
+    # The API allows 1000 requests/hour, so a run CAN be cut off mid-way.
+    # Fetch in value order, not registry order, so that whatever we do get is
+    # the highest-signal part of the population rather than an arbitrary slice.
+    def priority(c):
+        s = set(c.get("_sources") or [])
+        return (
+            0 if "endpoint_verified" in s else
+            1 if "feedback" in s or (c.get("total_feedbacks") or 0) > 0 else
+            2 if any(x.startswith("search:") for x in s) else
+            3 if "mcp" in s else 4)
+
+    cands.sort(key=priority)
     total = len(cands)
     print(f"{total} candidates, concurrency={conc}", flush=True)
 
