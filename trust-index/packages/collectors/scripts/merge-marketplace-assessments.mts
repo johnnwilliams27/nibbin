@@ -25,7 +25,7 @@
  * with no description, and a tool asking the caller for a credential. Both are
  * read off the enumerated schema with the same helpers the MCP rubric uses.
  */
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { isMutatingName, isCredentialParam } from "../src/mcp/assess.js";
 import type { ProbeTranscript, ToolDeclaration } from "../src/mcp/transcript.js";
 import type { A2aTranscript } from "../src/a2a/transcript.js";
@@ -347,6 +347,70 @@ const probed = JSON.parse(readFileSync(RESULTS, "utf8")) as { results: EndpointR
 
 const byEndpoint = new Map<string, Assessment>();
 for (const r of probed.results) byEndpoint.set(r.endpoint, assessmentFor(r));
+
+/**
+ * Overlay real composites from score-marketplace.mts.
+ *
+ * Everything above builds an assessment from a handshake and an enumeration,
+ * which is declaration evidence and correctly carries `composite: null`. This
+ * step adds the one thing that was missing: where a subject was actually put
+ * through the behavioural battery and the ENGINE decided to publish, its number
+ * is written here.
+ *
+ * The engine decides, not this file. A subject it withheld stays withheld, and
+ * keeps the engine's own suppression reason rather than the generic
+ * "no behavioural battery run" that was true before the battery existed. No
+ * threshold is applied here and none should ever be: this is a join, and the
+ * moment it starts deciding what publishes, the audit trail forks.
+ */
+const SCORED = process.argv.includes("--scored")
+  ? (process.argv[process.argv.indexOf("--scored") + 1] ?? "")
+  : "";
+let overlaid = 0;
+let overlaidWithheld = 0;
+if (SCORED !== "" && existsSync(SCORED)) {
+  const scored = JSON.parse(readFileSync(SCORED, "utf8")) as {
+    results: Array<{
+      endpoint: string;
+      composite: number | null;
+      dimension_coverage: number | null;
+      withheld_reason: string | null;
+      gates_fired: unknown[];
+    }>;
+  };
+  for (const sc of scored.results) {
+    const base = byEndpoint.get(sc.endpoint);
+    if (base === undefined) continue;
+    if (sc.composite !== null) {
+      byEndpoint.set(sc.endpoint, {
+        ...base,
+        composite: sc.composite,
+        // Coverage is the engine's dimension_coverage, mapped onto the
+        // contract's three tiers. It stays a separate axis from the score and
+        // is never folded into it.
+        coverage:
+          sc.dimension_coverage === null ? base.coverage
+          : sc.dimension_coverage >= 0.85 ? "strong"
+          : sc.dimension_coverage >= 0.6 ? "moderate"
+          : "thin",
+        withheld_reason: null,
+        gates_fired: (sc.gates_fired as Array<{ gate_id?: string }>).map(
+          (g) => g.gate_id ?? String(g),
+        ),
+      });
+      overlaid += 1;
+    } else if (sc.withheld_reason !== null) {
+      // Withheld by the engine after a real battery run. That is a stronger and
+      // more specific statement than "no battery was run", so it replaces it.
+      byEndpoint.set(sc.endpoint, { ...base, withheld_reason: sc.withheld_reason });
+      overlaidWithheld += 1;
+    }
+  }
+  console.log(
+    `scored overlay: ${overlaid} endpoints now carry a composite, ` +
+      `${overlaidWithheld} carry an engine withholding reason`,
+  );
+}
 
 let written = 0;
 let skippedReference = 0;

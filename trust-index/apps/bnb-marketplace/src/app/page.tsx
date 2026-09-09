@@ -61,9 +61,9 @@ export default function HomePage() {
             source="onchain"
           />
           <StatTile
-            label="Listed in a category"
+            label="Listed"
             value={stats.total}
-            note="Rows we could place in rebalancing, grid trading, yield or health factor. These are the only agents this marketplace lists."
+            note="Rows we could place in rebalancing, grid trading, yield or health factor — plus any agent we called and scored, whatever its category. A measured agent is not kept off the list because a keyword missed its self-description."
             source="measured"
           />
           <StatTile

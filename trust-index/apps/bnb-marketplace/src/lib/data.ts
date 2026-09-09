@@ -125,8 +125,27 @@ export function allAgents(): Agent[] {
  */
 const MARKETPLACE: CategorySlug[] = ['rebalancing', 'grid_trading', 'yield', 'health_factor'];
 
+/**
+ * ...OR an agent we actually called and assessed, whatever its category.
+ *
+ * The category comes from regex-matching an agent's own self-written
+ * description — provenance `self_reported`, weight 0.15, the weakest evidence
+ * this project recognises. Letting it decide what appears meant that seven
+ * agents we had dialled, exercised with a behavioural battery and SCORED were
+ * invisible, while unmeasured rows that happened to contain the word "yield"
+ * were listed. The site said "0 produced enough evidence to rate" while its own
+ * dataset carried seven composites between 40 and 77.
+ *
+ * Ranking a measured agent below an unmeasured one because a keyword missed is
+ * the inversion this whole product exists to correct, so a published assessment
+ * is now sufficient on its own. It does not widen the listings by much — an
+ * assessment is far harder to earn than a keyword — and it cannot pad them,
+ * because `composite: null` still keeps a row out.
+ */
 export function listedAgents(): Agent[] {
-  return allAgents().filter((a) => MARKETPLACE.includes(a.category));
+  return allAgents().filter(
+    (a) => MARKETPLACE.includes(a.category) || (a.assessment?.composite ?? null) !== null,
+  );
 }
 
 /** Indexed but not placed in any of the four categories. Never silently dropped. */
