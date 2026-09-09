@@ -18,7 +18,7 @@ describe("bounded listed endpoint refresh planning", () => {
     expect(targets.find((t) => t.endpoint === "https://app.singularry.org/api/mcp")?.agent_ids).toHaveLength(29);
   });
   it("excludes reference agents and null endpoints even inside a listed category", () => {
-    const row = dataset.agents.find((a: { endpoint: unknown; category: string }) => a.endpoint && a.category !== "other");
+    const row = dataset.agents[0]!;
     expect(planListedRefresh([{ ...row, is_reference_agent: true }, { ...row, endpoint: null }])).toEqual([]);
   });
 });
