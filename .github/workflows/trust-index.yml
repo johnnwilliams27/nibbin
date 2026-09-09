@@ -1,21 +1,18 @@
-# CI for the trust-index workspace only. The host repo has its own CI
-# (ci.yml); this workflow is path-filtered so the two never overlap.
-# Branch protection (marking these jobs required) is a repo-settings step
-# for the author; see trust-index/docs/RUNBOOK.md.
+# CI for this repository. It was originally path-filtered to trust-index/**
+# so it would not overlap with the host repo's own ci.yml — but ci.yml went
+# away with the v1 archive, and typecheck/lint/test/build are now REQUIRED
+# checks. A required check that is also path-filtered is a trap: a pull
+# request touching only root files never triggers the workflow, so the
+# required checks never report, so the PR can never merge and there is
+# nothing on it to re-run. Path filters and required checks are mutually
+# exclusive; the filter is what has to go.
 name: trust-index
 
 on:
   pull_request:
-    paths:
-      - "trust-index/**"
-      - ".github/workflows/trust-index.yml"
   push:
     branches:
-      - "trust-index/**"
-      - "feat/trust-index**"
-    paths:
-      - "trust-index/**"
-      - ".github/workflows/trust-index.yml"
+      - main
 
 concurrency:
   group: trust-index-${{ github.ref }}
