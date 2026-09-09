@@ -20,10 +20,12 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@bnbagent/sdk": "0.5.5",
     "lucide-react": "0.469.0",
     "next": "15.5.24",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "viem": "2.56.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.1.13",

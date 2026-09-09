@@ -1,0 +1,1 @@
+{"name":"@nibbin/buyer-reviews","private":true,"type":"module","engines":{"node":">=24"},"scripts":{"test":"node --test tests/*.test.mjs","dev":"node scripts/dev.mjs","migrate":"node scripts/migrate.mjs","hide":"node scripts/hide.mjs","verify:deployment":"node scripts/verify-deployment.mjs"},"dependencies":{"pg":"8.23.0","viem":"2.56.0"}}

@@ -29,18 +29,22 @@ export function unassessedReason(agent: Agent): string {
     return `${detailGapReason(agent.detail_status)} That is our gap, not a finding about the agent.`;
   }
   if (!agent.endpoint && !agent.protocols.some((p) => /mcp|a2a/i.test(p))) {
-    return 'It declares no callable endpoint, so there is nothing for us to call.';
+    return 'The registry detail we read declares no endpoint for our remote checks.';
   }
   if (agent.endpoint && /^https?:\/\/(127\.0\.0\.1|localhost|0\.0\.0\.0|\[::1\])(:|\/|$)/i.test(agent.endpoint)) {
     return 'Its endpoint is a loopback address, so there is nothing publicly reachable for us — or for you — to call.';
   }
-  return 'It is registered and callable, but has not reached the front of our probe queue yet.';
+  return 'An interface is declared, but we have not established its behavior in this snapshot.';
 }
 
 export function ScoreBlock({ agent, size = 'md' }: { agent: Agent; size?: 'sm' | 'md' | 'lg' }) {
   const state = scoreState(agent);
   const big = size === 'lg';
   const numberClass = big ? 'text-[44px]' : size === 'md' ? 'text-[28px]' : 'text-[20px]';
+
+  if (size === 'sm' && state !== 'rated') {
+    return <p className="text-[12px] text-[var(--fg-muted)]">No behavioral rating published.</p>;
+  }
 
   if (state === 'rated' && agent.assessment?.composite !== null && agent.assessment) {
     const score = compositeOutOf100(agent.assessment.composite as number);
@@ -74,7 +78,7 @@ export function ScoreBlock({ agent, size = 'md' }: { agent: Agent; size?: 'sm' |
         </p>
         <p className="mt-1 flex items-start gap-1.5 text-[13px]" style={{ color: 'var(--withheld)' }}>
           <ShieldAlert size={15} strokeWidth={1.5} className="mt-0.5 shrink-0" aria-hidden />
-          <span>Insufficient evidence to publish a number.</span>
+          <span>Endpoint evidence is not a behavioral rating.</span>
         </p>
         {agent.assessment.withheld_reason ? (
           <p className="mt-2 text-[13px] text-[var(--fg-muted)]">{agent.assessment.withheld_reason}</p>

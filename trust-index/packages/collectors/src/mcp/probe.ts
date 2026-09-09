@@ -51,14 +51,32 @@ export function isoNow(): string {
   return `${new Date().toISOString().slice(0, 19)}Z`;
 }
 
-type JsonRpcReply = { result?: unknown; error?: { message?: string; code?: number } };
+type JsonRpcReply = { jsonrpc?: unknown; id?: unknown; result?: unknown; error?: { message?: string; code?: number } };
+
+function record(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/** A JSON document is not a protocol handshake. Validate before confirming it. */
+export function validInitializeReply(value: unknown, id: number): boolean {
+  if (!record(value) || value.jsonrpc !== "2.0" || value.id !== id || value.error !== undefined) return false;
+  const r = value.result;
+  return record(r) && str(r.protocolVersion) !== null && record(r.capabilities) &&
+    record(r.serverInfo) && str(r.serverInfo.name) !== null && str(r.serverInfo.version) !== null;
+}
+
+export function validToolsReply(value: unknown, id: number): boolean {
+  if (!record(value) || value.jsonrpc !== "2.0" || value.id !== id || value.error !== undefined ||
+      !record(value.result) || !Array.isArray(value.result.tools)) return false;
+  return value.result.tools.every((tool) => record(tool) && str(tool.name) !== null && record(tool.inputSchema));
+}
 
 /**
  * Extract the JSON-RPC payload from a response body that may be plain JSON or
  * an SSE stream. An SSE frame's `data:` lines are concatenated per the spec
  * before parsing.
  */
-export function parseRpcBody(body: string, contentType: string | null): JsonRpcReply | { parseError: string } {
+export function parseRpcBody(body: string, contentType: string | null, expectedId?: number): JsonRpcReply | { parseError: string } {
   const looksSse = (contentType ?? "").includes("text/event-stream") || /^\s*(event|data):/m.test(body);
   if (looksSse) {
     const frames: string[] = [];
@@ -76,7 +94,9 @@ export function parseRpcBody(body: string, contentType: string | null): JsonRpcR
       try {
         const parsed = JSON.parse(frame) as JsonRpcReply;
         // Skip frames that are not the reply we are waiting for (pings, logs).
-        if (typeof parsed === "object" && parsed !== null && ("result" in parsed || "error" in parsed)) {
+        if (record(parsed) && ("result" in parsed || "error" in parsed) &&
+          (expectedId === undefined || (parsed.jsonrpc === "2.0" && parsed.id === expectedId))) {
+          if (parsed.error !== undefined && !record(parsed.error)) return { parseError: "invalid JSON-RPC error" };
           return parsed;
         }
       } catch {
@@ -86,7 +106,13 @@ export function parseRpcBody(body: string, contentType: string | null): JsonRpcR
     return { parseError: "no JSON-RPC frame in event stream" };
   }
   try {
-    return JSON.parse(body) as JsonRpcReply;
+    const parsed: unknown = JSON.parse(body);
+    if (!record(parsed)) return { parseError: "JSON-RPC reply must be an object" };
+    if (expectedId !== undefined && (parsed.jsonrpc !== "2.0" || parsed.id !== expectedId)) {
+      return { parseError: "JSON-RPC reply does not match the request" };
+    }
+    if (parsed.error !== undefined && !record(parsed.error)) return { parseError: "invalid JSON-RPC error" };
+    return parsed as JsonRpcReply;
   } catch (err) {
     return { parseError: err instanceof Error ? err.message.slice(0, 80) : "unparseable body" };
   }
@@ -138,6 +164,7 @@ export async function probeMcpServer(
     method: "POST",
     timeoutMs: options.timeoutMs ?? 10_000,
     ...(options.fetchImpl === undefined ? {} : { fetchImpl: options.fetchImpl }),
+    ...(options.resolver === undefined ? {} : { resolver: options.resolver }),
   };
 
   const attempts: ProbeAttempt[] = [];
@@ -255,7 +282,7 @@ export async function probeMcpServer(
     if (handshake !== null) continue;
 
     sessionId = res.headers.get("mcp-session-id");
-    const parsed = parseRpcBody(res.body, res.headers.get("content-type"));
+    const parsed = parseRpcBody(res.body, res.headers.get("content-type"), 1);
     if ("parseError" in parsed) {
       handshake = {
         ok: false,
@@ -278,7 +305,12 @@ export async function probeMcpServer(
       };
       continue;
     }
-    const result = (parsed.result ?? {}) as Record<string, unknown>;
+    if (!validInitializeReply(parsed, 1)) {
+      handshake = { ok: false, protocolVersion: null, serverName: null, serverVersion: null,
+        instructions: null, reason: "initialize response lacks required MCP result fields; protocol not established" };
+      continue;
+    }
+    const result = parsed.result as Record<string, unknown>;
     const serverInfo = (typeof result.serverInfo === "object" && result.serverInfo !== null
       ? result.serverInfo
       : {}) as Record<string, unknown>;
@@ -309,7 +341,7 @@ export async function probeMcpServer(
       tools = { ok: false, declared: [], reason: listed.reason };
       continue;
     }
-    const listParsed = parseRpcBody(listed.body, listed.headers.get("content-type"));
+    const listParsed = parseRpcBody(listed.body, listed.headers.get("content-type"), 2);
     if ("parseError" in listParsed) {
       tools = { ok: false, declared: [], reason: listParsed.parseError };
     } else if (listParsed.error !== undefined) {
@@ -318,6 +350,8 @@ export async function probeMcpServer(
         declared: [],
         reason: `tools/list error: ${listParsed.error.message ?? String(listParsed.error.code ?? "unknown")}`.slice(0, 120),
       };
+    } else if (!validToolsReply(listParsed, 2)) {
+      tools = { ok: false, declared: [], reason: "tools/list response lacks a valid tools array" };
     } else {
       tools = { ok: true, declared: readTools(listParsed.result), reason: null };
     }

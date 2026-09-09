@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "functions": { "api/agent.mjs": { "maxDuration": 60 } },
+  "rewrites": [
+    { "source": "/", "destination": "/api/agent" },
+    { "source": "/.well-known/agent-card.json", "destination": "/api/agent?route=card" },
+    { "source": "/.well-known/agent.json", "destination": "/api/agent?route=card" },
+    { "source": "/result/v1/:chain/:job", "destination": "/api/agent?route=result&chain=:chain&job=:job" }
+  ]
+}

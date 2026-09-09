@@ -2,6 +2,42 @@
 
 ## Measuring subjects
 
+- A shared URL can back thousands of registrations. Exact-URL evidence replay
+  must preserve the original check time and source hash; the replay clock is not
+  a new measurement. An empty gate list is not proof a safety battery ran.
+- Static A2A cards and stdio descriptors are declarations. Never promote their
+  capability names to executed behavior or offer a descriptor URL as HTTP MCP.
+
+## Public ERC-8183 hiring
+
+- SDK0.5.5 registers a job on the **router**, not commerce. A zero-budget job
+  still needs setBudget(0); read jobHasBudget instead of inferring it from budget.
+- Public BNB RPC endpoints may reject the SDK's funding-event log range. Use a
+  successful canonical funding receipt and verify its event and block timestamp.
+- SDK receiptTimeout is measured in seconds. Serverless work must be awaited;
+  detached delivery promises may be discarded as soon as a response is sent.
+- Never replace a stable testnet seller origin with mainnet configuration.
+  Historical delivery URLs include the chain and must keep resolving.
+- The browser and sponsored CLI runner have different gas behavior. Do not
+  promise gas-free browser hiring because the SDK smoke runner used MegaFuel.
+- An ambiguous wallet transport error may follow a broadcast. Preserve its
+  unknown outcome and require checking wallet activity; never silently resend.
+
+## Parallel local previews
+
+- next dev and next build cannot safely share .next. Use NIBBIN_DEV_PREVIEW=1
+  for the marketplace's isolated .next-preview output while building in parallel.
+- A shared unlayered `padding: 0 32px` overrides Tailwind route `py-*` classes.
+  Set `padding-inline` only on page wrappers; check main/header/footer geometry
+  rather than hiding overflow. Replace live-preview files atomically with Update
+  patches, not separate delete/add calls that leave imports missing.
+- Unlayered heading resets also override utility margins. Keep defaults in the
+  base layer. A transform on an animated results wrapper can become the containing
+  block for absolutely positioned screen-reader text; position the inner table
+  scroll region relatively so hidden captions cannot widen the document.
+
+## Earlier measurement and pipeline traps
+
 - A validation failure must happen before publishing the replacement snapshot.
   The first detail-status fix returned an error for unexplained gaps only after
   replacing `agents.json`. It also accepted every fetch failure as evidence of

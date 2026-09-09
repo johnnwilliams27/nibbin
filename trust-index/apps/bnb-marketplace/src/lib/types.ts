@@ -5,6 +5,8 @@ export type CategorySlug = 'rebalancing' | 'grid_trading' | 'yield' | 'health_fa
 
 export type Coverage = 'thin' | 'moderate' | 'strong';
 
+export type EvidenceState = 'protocol_confirmed' | 'card_retrieved' | 'descriptor_read' | 'auth_walled' | 'rate_limited' | 'response_received' | 'unmeasured' | 'unsupported_transport';
+
 export interface Assessment {
   /**
    * null = WE COULD NOT MEASURE. A timeout, a 5xx or a DNS failure is our
@@ -26,6 +28,12 @@ export interface Assessment {
   /** Hard safety caps that tripped. Non-empty is loud by design. */
   gates_fired: string[];
   checked_at: string;
+  evidence_state?: EvidenceState;
+  evidence_scope?: 'endpoint' | 'host';
+  evidence_endpoint?: string;
+  evidence_provenance?: 'probe_observation' | 'self_reported';
+  shared_registration_count?: number;
+  capability_source?: 'tools_list' | 'agent_card' | 'service_descriptor' | null;
 }
 
 export interface Agent {
@@ -47,6 +55,7 @@ export interface Agent {
 
   protocols: string[];
   endpoint: string | null;
+  declared_interfaces?: Array<{ protocol: 'mcp' | 'a2a' | 'web'; endpoint: string }>;
   x402_supported: boolean;
 
   /**

@@ -3,285 +3,81 @@
 import { useState } from 'react';
 import { AlertTriangle, Check, Copy, ExternalLink } from 'lucide-react';
 import type { Agent } from '@/lib/types';
-import { chainName, isTestnet } from '@/lib/format';
 import { detailGapReason } from '@/lib/detail-state';
+import { connectionPlan } from '@/lib/activation';
+import { HireFlow } from './HireFlow';
 
-/**
- * An endpoint on loopback is real, but it is not reachable by anyone reading
- * this page. Saying "copy this URL into your client" for 127.0.0.1 would be a
- * dead end dressed up as an activation, so those agents get the honest
- * CLI-assisted path instead.
- */
-function isLocalEndpoint(endpoint: string | null): boolean {
-  if (!endpoint) return false;
-  return /^https?:\/\/(127\.0\.0\.1|localhost|0\.0\.0\.0|\[::1\])(:|\/|$)/i.test(endpoint);
-}
+const buttonClass = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--radius-btn)] border border-[var(--border)] px-4 py-2 text-[13px] disabled:cursor-not-allowed disabled:opacity-40';
 
-/**
- * Activation is the end of the journey, so it carries the warnings rather than
- * hiding them behind the button. An agent with a fired gate can still be hired —
- * we are an assessor, not a gatekeeper — but not without reading what tripped.
- */
+/** Connection instructions are not a hire. No external call happens on render. */
 export function HirePanel({ agent }: { agent: Agent }) {
   const [copied, setCopied] = useState<string | null>(null);
   const [acknowledged, setAcknowledged] = useState(false);
-
   const gates = agent.assessment?.gates_fired ?? [];
   const blocked = gates.length > 0 && !acknowledged;
-  const local = isLocalEndpoint(agent.endpoint);
-  const protocol = agent.assessment?.protocol_spoken ?? (agent.protocols.some((p) => /a2a/i.test(p)) ? 'a2a' : 'mcp');
-
-  const config =
-    agent.endpoint === null
-      ? null
-      : protocol === 'a2a'
-        ? JSON.stringify({ agent_card: agent.endpoint, chain_id: agent.chain_id, token_id: agent.token_id }, null, 2)
-        : JSON.stringify(
-            {
-              mcpServers: {
-                [slug(agent.name)]: { url: agent.endpoint, transport: 'http' },
-              },
-            },
-            null,
-            2,
-          );
-
-  const cliCommand = [
-    `# 1. negotiate off-chain for a seller-signed quote (valid 15 min)`,
-    `#    POST the "negotiate" skill to the seller and save the reply's data part as quote.json`,
-    `# 2. the four on-chain writes, as one command:`,
-    `bag erc8183 buy \\`,
-    `  --provider ${agent.owner_address || '<SELLER_ADDRESS>'} \\`,
-    `  --quote-json ./quote.json \\`,
-    `  --budget-u 0 --deadline-min 20 \\`,
-    `  --network ${agent.chain_id === 97 ? 'bsc-testnet' : 'bsc-mainnet'}`,
-    `# 3. tell the seller it is funded, then: bag erc8183 status <JOB_ID>`,
-  ].join('\n');
+  const plan = connectionPlan(agent);
 
   async function copy(text: string, key: string) {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(key);
-      setTimeout(() => setCopied(null), 2000);
-    } catch {
-      setCopied('failed');
-      setTimeout(() => setCopied(null), 2500);
-    }
+    if (blocked) return;
+    try { await navigator.clipboard.writeText(text); setCopied(key); }
+    catch { setCopied('failed'); }
   }
 
   return (
-    <section className="card overflow-hidden">
+    <section className="card min-w-0 overflow-hidden" id="connect">
       <header className="border-b border-[var(--border)] bg-[var(--panel-2)] px-5 py-3">
-        <h2 className="text-[15px]">Hire this agent</h2>
-        <p className="mt-0.5 text-[12px] text-[var(--fg-muted)]">
-          Trust Index does not broker, host or take payment for any agent. You connect to the operator directly.
-        </p>
+        <h2 className="text-[15px]">Connect to this agent</h2>
+        <p className="mt-1 max-w-4xl text-[12px] text-[var(--fg-muted)]">Review the declared interface, then connect through your own client. Nibbin does not host the operator or collect payments.</p>
       </header>
-
       <div className="p-5">
-        {local ? (
-          <div>
-            <p className="text-[13px] font-medium" style={{ color: 'var(--withheld)' }}>
-              Not reachable from your machine
-            </p>
-            <p className="mt-1.5 text-[13px] text-[var(--fg-muted)]">
-              Its endpoint is <span className="mono break-all">{agent.endpoint}</span> — a loopback address. It runs,
-              and we have exercised it, but it is not published on the public internet, so there is no URL you can point
-              a client at. We are not going to give you one that fails.
-            </p>
-            <p className="mt-3 text-[13px] text-[var(--fg-muted)]">
-              Hiring it goes through ERC-8183 on {chainName(agent.chain_id)}, which is five steps, not one: negotiate
-              off-chain for a seller-signed quote (valid 15 minutes), then <span className="mono">createJob</span>,{' '}
-              <span className="mono">registerJob</span>, <span className="mono">setBudget</span> and{' '}
-              <span className="mono">fund</span> on the commerce contract. There is no single{' '}
-              <span className="mono">hire()</span> entrypoint.
-            </p>
+        {gates.length > 0 ? <div className="mb-4 rounded-[var(--radius-btn)] border p-3" style={{ borderColor: 'var(--critical)', background: 'var(--critical-bg)' }}>
+          <p className="flex items-start gap-2 text-[13px] font-medium" style={{ color: 'var(--critical)' }}><AlertTriangle size={16} strokeWidth={1.5} className="shrink-0" aria-hidden /> Safety findings need your attention</p>
+          <ul className="mono mt-2 space-y-1 break-all text-[11px]">{gates.map((gate) => <li key={gate}>{gate}</li>)}</ul>
+          <p className="mt-2 text-[12px]">Read the evidence and safety section before connecting. Acknowledging a finding does not clear it.</p>
+          <label className="mt-3 flex min-h-11 cursor-pointer items-center gap-2 text-[12px]"><input type="checkbox" checked={acknowledged} onChange={(event) => setAcknowledged(event.target.checked)} /><span>I have read the findings and want the connection details.</span></label>
+        </div> : null}
 
-            <p className="eyebrow mt-4">CLI-assisted hire</p>
-            <p className="mt-1 text-[12px] text-[var(--fg-muted)]">
-              Run this against a local checkout with the seller running. This is a command for you to execute — the
-              button below copies text, it does not hire anything.
-            </p>
-            <pre className="mono mt-2 overflow-x-auto rounded-[var(--radius-btn)] border border-[var(--border)] bg-[var(--panel-2)] p-3 text-[11px] leading-relaxed">
-              {cliCommand}
-            </pre>
-            <button
-              type="button"
-              onClick={() => copy(cliCommand, 'cli')}
-              className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-[var(--radius-btn)] border px-4 py-2.5 text-[13px] font-medium"
-              style={{ borderColor: 'var(--withheld)', color: 'var(--withheld)' }}
-            >
-              {copied === 'cli' ? (
-                <>
-                  <Check size={14} strokeWidth={1.5} /> Copied
-                </>
-              ) : (
-                <>
-                  <Copy size={14} strokeWidth={1.5} /> Copy the hire command
-                </>
-              )}
-            </button>
-            {isTestnet(agent.chain_id) ? (
-              <p className="mt-2 text-[12px] text-[var(--fg-faint)]">
-                {chainName(agent.chain_id)}. No real funds move, and you will need testnet gas of your own — the
-                sponsorship that made our own runs free is not available to a browser wallet.
-              </p>
-            ) : null}
-          </div>
-        ) : agent.endpoint === null && agent.detail_status !== 'read' ? (
-          // We never read this agent's registry detail, so we do not know
-          // whether it declares an endpoint. Saying "cannot be hired" here
-          // would publish our rate-limit gap as a fact about the agent.
-          <div>
-            <p className="text-[13px] font-medium" style={{ color: 'var(--neutral-fg)' }}>
-              We do not know whether this agent can be hired
-            </p>
-            <p className="mt-1.5 text-[13px] text-[var(--fg-muted)]">
-              {detailGapReason(agent.detail_status)} This is a gap in our data. It is excluded from our
-              &ldquo;declares no endpoint&rdquo; counts until we obtain the detail.
-            </p>
-          </div>
+        {agent.endpoint === null && agent.detail_status !== 'read' ? (
+          <div><p className="text-[13px] font-medium">We do not know whether this agent can be hired</p><p className="mt-2 text-[13px] text-[var(--fg-muted)]">{detailGapReason(agent.detail_status)} This is a gap in our data, not an absent endpoint established by a reading.</p></div>
         ) : agent.endpoint === null ? (
-          <div>
-            <p className="text-[13px] font-medium" style={{ color: 'var(--neutral-fg)' }}>
-              No endpoint declared in the registry detail we read
-            </p>
-            <p className="mt-1.5 text-[13px] text-[var(--fg-muted)]">
-              This snapshot gives us no endpoint to connect to. We have not established whether the agent
-              can be reached or hired elsewhere.
-            </p>
-          </div>
-        ) : (
-          <>
-            {gates.length > 0 ? (
-              <div
-                className="mb-4 rounded-[var(--radius-btn)] border p-3"
-                style={{ borderColor: 'var(--critical)', background: 'var(--critical-bg)' }}
-              >
-                <p className="flex items-start gap-2 text-[13px] font-medium" style={{ color: 'var(--critical)' }}>
-                  <AlertTriangle size={15} strokeWidth={1.5} className="mt-0.5 shrink-0" aria-hidden />
-                  {gates.length === 1 ? 'A safety gate fired on this agent' : `${gates.length} safety gates fired on this agent`}
-                </p>
-                <p className="mt-1.5 text-[12px] text-[var(--fg-muted)]">
-                  Read the safety section above before connecting.
-                  {agent.x402_supported
-                    ? ' This agent also accepts x402 payments, so a failed gate here can cost you funds directly.'
-                    : ''}
-                </p>
-                <label className="mt-2.5 flex cursor-pointer items-start gap-2 text-[12px]" style={{ color: 'var(--fg)' }}>
-                  <input
-                    type="checkbox"
-                    checked={acknowledged}
-                    onChange={(e) => setAcknowledged(e.target.checked)}
-                    className="mt-0.5"
-                  />
-                  <span>I have read what tripped and want the connection details anyway.</span>
-                </label>
-              </div>
-            ) : null}
-
-            <div className={blocked ? 'pointer-events-none select-none opacity-35' : ''} aria-hidden={blocked}>
-              <p className="eyebrow">Endpoint</p>
-              <div className="mt-1.5 flex items-start gap-2">
-                <code className="mono min-w-0 flex-1 break-all rounded-[var(--radius-btn)] border border-[var(--border)] bg-[var(--panel-2)] px-2.5 py-2 text-[11px]">
-                  {agent.endpoint}
-                </code>
-                <button
-                  type="button"
-                  onClick={() => copy(agent.endpoint!, 'endpoint')}
-                  className="shrink-0 rounded-[var(--radius-btn)] border border-[var(--border)] p-2"
-                  title="Copy endpoint"
-                  disabled={blocked}
-                >
-                  {copied === 'endpoint' ? (
-                    <Check size={14} strokeWidth={1.5} style={{ color: 'var(--measured)' }} />
-                  ) : (
-                    <Copy size={14} strokeWidth={1.5} />
-                  )}
-                </button>
-              </div>
-
-              {config ? (
-                <>
-                  <p className="eyebrow mt-4">
-                    {protocol === 'a2a' ? 'A2A client config' : 'MCP client config'}
-                  </p>
-                  <p className="mt-1 text-[12px] text-[var(--fg-muted)]">
-                    Paste into your client&apos;s config file to connect.
-                  </p>
-                  <pre className="mono mt-2 overflow-x-auto rounded-[var(--radius-btn)] border border-[var(--border)] bg-[var(--panel-2)] p-3 text-[11px] leading-relaxed">
-                    {config}
-                  </pre>
-                  <button
-                    type="button"
-                    onClick={() => copy(config, 'config')}
-                    disabled={blocked}
-                    className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-[var(--radius-btn)] border px-4 py-2.5 text-[13px] font-medium"
-                    style={{ borderColor: 'var(--measured)', color: 'var(--measured)' }}
-                  >
-                    {copied === 'config' ? (
-                      <>
-                        <Check size={14} strokeWidth={1.5} /> Copied
-                      </>
-                    ) : (
-                      <>
-                        <Copy size={14} strokeWidth={1.5} /> Copy config and activate
-                      </>
-                    )}
-                  </button>
-                  {copied === 'failed' ? (
-                    <p className="mt-2 text-[12px]" style={{ color: 'var(--withheld)' }}>
-                      Your browser blocked the clipboard. Nothing was sent anywhere — select the text above and copy it
-                      manually.
-                    </p>
-                  ) : null}
-                </>
-              ) : null}
-
-              <a
-                href={agent.endpoint}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="mt-2 inline-flex items-center gap-1.5 text-[12px] text-[var(--fg-muted)] underline underline-offset-2"
-              >
-                Open the endpoint directly <ExternalLink size={12} strokeWidth={1.5} aria-hidden />
-              </a>
+          <div><p className="text-[13px] font-medium">No endpoint declared in the registry detail we read</p><p className="mt-2 text-[13px] text-[var(--fg-muted)]">This snapshot gives us no endpoint to connect to. We have not established whether the agent can be reached or hired elsewhere.</p></div>
+        ) : !plan.url ? (
+          <div><p className="text-[13px] font-medium">No safe public connection link</p><p className="mt-2 text-[13px] text-[var(--fg-muted)]">The declared address is local, private, malformed, or not a supported web URL. It is not offered as a connection link. Ask the operator for a public HTTPS interface.</p><code className="mono mt-2 block break-all text-[11px]">{agent.endpoint}</code>{agent.is_reference_agent ? <p className="mt-3 text-[12px] text-[var(--fg-muted)]">This is Nibbin’s local reference implementation, not a public seller. Its historical testnet jobs are demonstrations, not jobs you can start from this page.</p> : null}</div>
+        ) : <>
+          <div className="grid min-w-0 items-center gap-4 lg:grid-cols-[minmax(0,1fr)_auto]">
+            <div className="min-w-0"><p className="text-[13px] font-medium">Operator-declared endpoint</p>
+              <code className="mt-2 block break-all rounded-[var(--radius-btn)] border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-[12px]">{plan.url}</code>
             </div>
-          </>
-        )}
-
-        <dl className="mt-5 space-y-1.5 border-t border-[var(--border)] pt-4 text-[12px]">
-          <div className="flex justify-between gap-3">
-            <dt className="text-[var(--fg-muted)]">Payment</dt>
-            <dd className="mono">{agent.x402_supported ? 'x402 supported' : 'Not declared'}</dd>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className={buttonClass} disabled={blocked} onClick={() => copy(plan.url!, 'endpoint')}><Copy size={14} strokeWidth={1.5} aria-hidden />{copied === 'endpoint' ? 'Endpoint copied' : 'Copy endpoint'}</button>
+            {blocked ? <span className={`${buttonClass} opacity-40`}>Review findings to open</span> : <a href={plan.url} target="_blank" rel="noreferrer noopener" className={buttonClass}>Open {plan.descriptor ? 'descriptor' : 'declared endpoint'}<ExternalLink size={14} strokeWidth={1.5} aria-hidden /></a>}
           </div>
-          <div className="flex justify-between gap-3">
-            <dt className="text-[var(--fg-muted)]">Protocol</dt>
-            <dd className="mono">
-              {agent.assessment?.protocol_spoken?.toUpperCase() ?? (agent.protocols.join(', ') || 'None')}
-            </dd>
           </div>
-          <div className="flex justify-between gap-3">
-            <dt className="text-[var(--fg-muted)]">Operator</dt>
-            <dd className="mono break-all">{agent.owner_address || 'Unknown'}</dd>
+          <p className="mt-3 text-[12px] text-[var(--fg-muted)]">{plan.descriptor ? 'This is a service descriptor, not a remote MCP session. Read the operator’s installation instructions; Nibbin has not run or verified the package.' : plan.protocol === 'a2a' ? 'Use this declaration with an A2A-compatible client. A card or endpoint being listed does not prove that its skills run.' : plan.protocol === 'mcp' ? 'This template is for clients that accept remote MCP URLs. Client formats and authentication requirements vary; a declaration is not a connection test.' : 'We have not established a client protocol for this address. We will not invent an MCP configuration for it.'}</p>
+          <p className="mt-3 text-[12px] text-[var(--fg-muted)]">Opening or copying connection details does not activate or hire anything. Visiting the operator’s site shares your request with that operator.</p>
+        </>}
+        <p role="status" aria-live="polite" className="mt-2 text-[12px]" style={{ color: 'var(--withheld)' }}>{copied === 'failed' ? 'The clipboard was unavailable. Select and copy the text manually. Nothing was sent to the operator.' : copied ? 'Copied locally. No agent was activated and no payment was requested.' : ''}</p>
+        <details className="mt-3 border-t border-[var(--border)] pt-2">
+          <summary className="min-h-11 cursor-pointer py-2 text-[14px] font-medium">Connection setup and operator details</summary>
+          <div className="grid min-w-0 gap-5 pt-2 lg:grid-cols-2">
+          {plan.config ? <div className="min-w-0">
+            <p className="text-[13px] font-medium">MCP connection template</p>
+            <pre className="mono mt-2 overflow-x-auto rounded-[var(--radius-btn)] border border-[var(--border)] bg-[var(--panel-2)] p-3 text-[11px]">{plan.config}</pre>
+            <button type="button" className={`${buttonClass} mt-2`} disabled={blocked} onClick={() => copy(plan.config!, 'config')}>{copied === 'config' ? <Check size={14} strokeWidth={1.5} aria-hidden /> : <Copy size={14} strokeWidth={1.5} aria-hidden />}{copied === 'config' ? 'Configuration copied' : 'Copy configuration'}</button>
+            <ol className="mt-3 list-decimal space-y-1 pl-4 text-[12px] text-[var(--fg-muted)]"><li>Add the URL in your client’s remote MCP settings, or adapt this template to its documented format.</li><li>Review requested permissions and authenticate directly with the operator if needed.</li><li>Inspect available tools before enabling any call. Set spending limits separately.</li></ol>
+          </div> : null}
+          <dl className="min-w-0 space-y-3 text-[12px]">
+            <div><dt className="text-[var(--fg-muted)]">Payment declaration</dt><dd className="mt-1">{agent.x402_supported ? 'x402 · Self-reported' : 'Not declared'}</dd></div>
+            <div><dt className="text-[var(--fg-muted)]">Declared protocols</dt><dd className="mt-1 break-words">{agent.protocols.join(', ') || 'Unknown'}</dd></div>
+            <div><dt className="text-[var(--fg-muted)]">Registry owner · not a verified payment recipient</dt><dd className="mt-1 break-all">{agent.owner_address || 'Unknown'}</dd></div>
+          </dl>
           </div>
-        </dl>
-
-        <p className="mt-4 text-[12px] text-[var(--fg-faint)]">
-          Give it the narrowest permission that lets it do the job, and a spend limit you could lose without it
-          mattering. Our assessment tells you what answered when we called — it is not a guarantee of future behaviour.
-        </p>
+        </details>
+        {agent.chain_id === 56 || agent.chain_id === 97 ? <details className="mt-1">
+          <summary className="min-h-11 cursor-pointer py-2 text-[14px] font-medium">Hire through an ERC-8183-compatible seller</summary>
+          <HireFlow key={agent.agent_id} chainId={agent.chain_id} providerAddress={agent.owner_address} sellerEndpoint={plan.protocol === 'a2a' ? plan.url ?? '' : ''} defaultTask="" disabled={blocked} />
+        </details> : null}
       </div>
     </section>
-  );
-}
-
-function slug(name: string): string {
-  return (
-    name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '')
-      .slice(0, 40) || 'agent'
   );
 }

@@ -34,7 +34,15 @@
  * is re-vetted before it is dialled rather than trusted for being a redirect
  * from a host we already accepted.
  */
-import { pinnedFetch, vetResolved, vetUrl } from "../net.js";
+import { pinnedFetch, vetResolved, vetUrl, type PinnedTransport } from "../net.js";
+
+export type SseProbeOptions = {
+  timeoutMs?: number;
+  headers?: Record<string, string>;
+  maxBytes?: number;
+  transport?: PinnedTransport;
+  resolver?: Parameters<typeof vetResolved>[1];
+};
 
 export type SseCall = { id: number; method: string; params?: unknown };
 
@@ -83,7 +91,17 @@ export function parseFrames(buffer: string): { frames: Array<{ event: string; da
  * same set `guardedFetch` strips, kept here because `pinnedFetch` does not
  * redirect on its own and this dial has to.
  */
-const ORIGIN_BOUND = new Set(["authorization", "proxy-authorization", "cookie", "mcp-session-id", "x-api-key", "api-key"]);
+const ORIGIN_BOUND = new Set(["authorization", "proxy-authorization", "cookie", "mcp-session-id", "x-api-key", "api-key", "x-auth-token", "x-access-token"]);
+
+function beforeDeadline<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+  if (signal.aborted) return Promise.reject(new Error("exchange exceeded its deadline"));
+  return new Promise<T>((resolve, reject) => {
+    const abort = (): void => reject(new Error("exchange exceeded its deadline"));
+    signal.addEventListener("abort", abort, { once: true });
+    promise.then((value) => { signal.removeEventListener("abort", abort); resolve(value); },
+      (err: unknown) => { signal.removeEventListener("abort", abort); reject(err); });
+  });
+}
 
 /**
  * Dial through the same guard as everything else, and FOLLOW REDIRECTS.
@@ -100,24 +118,25 @@ const ORIGIN_BOUND = new Set(["authorization", "proxy-authorization", "cookie", 
 async function dial(
   url: string,
   init: { method: string; headers: Record<string, string>; body?: string; signal: AbortSignal },
+  options: SseProbeOptions,
   maxRedirects = 3,
-): Promise<Response> {
+): Promise<{ response: Response; url: string }> {
   let current = url;
   let headers = init.headers;
   for (let hop = 0; hop <= maxRedirects; hop += 1) {
     const vetted = vetUrl(current);
     if (!vetted.allowed) throw new Error(`blocked: ${vetted.reason}`);
-    const resolved = await vetResolved(vetted.url.hostname);
+    const resolved = await beforeDeadline(vetResolved(vetted.url.hostname, options.resolver), init.signal);
     if (!resolved.allowed) throw new Error(`blocked: ${resolved.reason}`);
-    const res = await pinnedFetch(vetted.url.toString(), { ...init, headers, addresses: resolved.addresses });
+    const res = await beforeDeadline((options.transport ?? pinnedFetch)(vetted.url.toString(), { ...init, headers, addresses: resolved.addresses }), init.signal);
     if (res.status >= 300 && res.status < 400) {
       const location = res.headers.get("location");
-      if (location === null) return res;
+      if (location === null) return { response: res, url: current };
       let next: URL;
       try {
         next = new URL(location, vetted.url);
       } catch {
-        return res;
+        return { response: res, url: current };
       }
       if (next.origin !== vetted.url.origin) {
         headers = Object.fromEntries(Object.entries(headers).filter(([k]) => !ORIGIN_BOUND.has(k.toLowerCase())));
@@ -126,7 +145,7 @@ async function dial(
       current = next.toString();
       continue;
     }
-    return res;
+    return { response: res, url: current };
   }
   throw new Error(`more than ${maxRedirects} redirects`);
 }
@@ -143,7 +162,7 @@ async function dial(
 export async function probeViaSse(
   endpoint: string,
   calls: SseCall[],
-  opts: { timeoutMs?: number; headers?: Record<string, string>; maxBytes?: number } = {},
+  opts: SseProbeOptions = {},
 ): Promise<SseProbeResult> {
   const started = Date.now();
   const timeoutMs = opts.timeoutMs ?? 12_000;
@@ -153,13 +172,15 @@ export async function probeViaSse(
   const replies = new Map<number, unknown>();
   let messageUrl: string | null = null;
   let status: number | null = null;
+  let streamReader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 
   try {
-    const res = await dial(endpoint, {
+    const opened = await dial(endpoint, {
       method: "GET",
       headers: { accept: "text/event-stream", "cache-control": "no-cache", ...(opts.headers ?? {}) },
       signal: controller.signal,
-    });
+    }, opts);
+    const res = opened.response;
     status = res.status;
     const ctype = res.headers.get("content-type") ?? "";
     if (!res.ok || !ctype.includes("text/event-stream")) {
@@ -184,10 +205,11 @@ export async function probeViaSse(
     }
 
     const reader = res.body.getReader();
+    streamReader = reader;
     const decoder = new TextDecoder();
     let buffer = "";
     let bytes = 0;
-    let posted = false;
+    let posted = 0;
 
     // RACE EVERY READ AGAINST THE DEADLINE.
     //
@@ -201,10 +223,13 @@ export async function probeViaSse(
     const readOrTimeout = async (): Promise<{ done: boolean; value?: Uint8Array }> => {
       const left = deadlineAt - Date.now();
       if (left <= 0) return { done: true };
-      return Promise.race([
-        reader.read() as Promise<{ done: boolean; value?: Uint8Array }>,
-        new Promise<{ done: boolean }>((r) => setTimeout(() => r({ done: true }), left)),
-      ]);
+      let readTimer: ReturnType<typeof setTimeout> | undefined;
+      try {
+        return await Promise.race([
+          reader.read() as Promise<{ done: boolean; value?: Uint8Array }>,
+          new Promise<{ done: boolean }>((r) => { readTimer = setTimeout(() => r({ done: true }), left); }),
+        ]);
+      } finally { if (readTimer !== undefined) clearTimeout(readTimer); }
     };
 
     for (;;) {
@@ -224,7 +249,7 @@ export async function probeViaSse(
           // Subject-chosen url. Resolve against the stream's own origin, then
           // let dial() re-vet it — a path here can be absolute, and an absolute
           // one can point anywhere.
-          messageUrl = new URL(f.data, endpoint).toString();
+          messageUrl = new URL(f.data, opened.url).toString();
         } else if (f.data.startsWith("{")) {
           try {
             const msg = JSON.parse(f.data) as { id?: number };
@@ -235,23 +260,42 @@ export async function probeViaSse(
         }
       }
 
-      // Post everything once, as soon as we know where.
-      if (messageUrl !== null && !posted) {
-        posted = true;
-        for (const c of calls) {
-          await dial(messageUrl, {
+      // The initialized notification and enumeration follow the initialize
+      // reply, not merely its HTTP202 acknowledgement.
+      if (messageUrl !== null) {
+        for (; posted < calls.length; posted += 1) {
+          const c = calls[posted]!;
+          const initialize = calls.find((call) => call.method === "initialize");
+          if (initialize !== undefined && posted > 0 && !replies.has(initialize.id)) break;
+          const initReply = initialize === undefined ? null : replies.get(initialize.id);
+          if (typeof initReply === "object" && initReply !== null && "error" in initReply) {
+            return { ok: false, messageUrl, replies, status, reason: "SSE initialize returned an error",
+              elapsedMs: Date.now() - started, authStatus: null, wwwAuthenticate: null };
+          }
+          let boundHeaders = opts.headers ?? {};
+          if (new URL(messageUrl).origin !== new URL(endpoint).origin) {
+            boundHeaders = Object.fromEntries(Object.entries(boundHeaders).filter(([key]) => !ORIGIN_BOUND.has(key.toLowerCase())));
+          }
+          const postedResponse = await dial(messageUrl, {
             method: "POST",
-            headers: { "content-type": "application/json", accept: "application/json, text/event-stream", ...(opts.headers ?? {}) },
-            body: JSON.stringify({ jsonrpc: "2.0", id: c.id, method: c.method, ...(c.params === undefined ? {} : { params: c.params }) }),
+            headers: { "content-type": "application/json", accept: "application/json, text/event-stream", ...boundHeaders },
+            body: JSON.stringify({ jsonrpc: "2.0", ...(c.method.startsWith("notifications/") ? {} : { id: c.id }),
+              method: c.method, ...(c.params === undefined ? {} : { params: c.params }) }),
             signal: controller.signal,
-          }).catch(() => undefined);
+          }, opts);
+          const response = postedResponse.response;
+          void response.body?.cancel().catch(() => undefined);
+          if (!response.ok) return { ok: false, messageUrl, replies, status: response.status,
+            reason: `SSE message POST returned HTTP ${response.status}`, elapsedMs: Date.now() - started,
+            authStatus: response.status === 401 || response.status === 403 ? response.status : null,
+            wwwAuthenticate: response.headers.get("www-authenticate") };
           // notifications/* never get a reply, so they must not be waited on.
           if (c.method.startsWith("notifications/")) replies.set(c.id, null);
         }
       }
 
       const wanted = calls.filter((c) => !c.method.startsWith("notifications/")).map((c) => c.id);
-      if (posted && wanted.every((id) => replies.has(id))) {
+      if (posted === calls.length && wanted.every((id) => replies.has(id))) {
         void reader.cancel();
         break;
       }
@@ -280,6 +324,7 @@ export async function probeViaSse(
       wwwAuthenticate: null,
     };
   } finally {
+    void streamReader?.cancel().catch(() => undefined);
     clearTimeout(timer);
     controller.abort();
   }

@@ -299,6 +299,24 @@ def categorise(cand, det):
     return cat, scored[cat], ev
 
 
+def declared_interfaces(det):
+    """Preserve each service declaration; selecting one must not erase the rest."""
+    interfaces = []
+    if not det:
+        return interfaces
+    services = det.get("services") or {}
+    for protocol in ("mcp", "a2a", "web"):
+        endpoint = (services.get(protocol) or {}).get("endpoint")
+        if endpoint:
+            interfaces.append({"protocol": protocol, "endpoint": endpoint})
+    for key, protocol in (("mcp_server", "mcp"), ("a2a_endpoint", "a2a"), ("agent_url", "web")):
+        endpoint = det.get(key)
+        entry = {"protocol": protocol, "endpoint": endpoint}
+        if endpoint and entry not in interfaces:
+            interfaces.append(entry)
+    return interfaces
+
+
 def pick_endpoint(det):
     """The callable endpoint as DECLARED. Reachability is the probe's job."""
     if not det:
@@ -400,6 +418,7 @@ def main():
             "category_evidence": ev,
             "protocols": protocols(c, det),
             "endpoint": ep,
+            **({"declared_interfaces": declared_interfaces(det)} if det is not None else {}),
             "x402_supported": bool(src.get("x402_supported", False)),
             "scan_total_score": ts if isinstance(ts, (int, float)) else None,
             "scan_feedbacks": int(fb) if isinstance(fb, (int, float)) else 0,

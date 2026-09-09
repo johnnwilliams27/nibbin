@@ -111,6 +111,10 @@ jobs:
         working-directory: trust-index/apps/bnb-marketplace
       - run: npm run test:pipeline
         working-directory: trust-index/apps/bnb-marketplace
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+        working-directory: trust-index/apps/reference-seller
+      - run: npm test
+        working-directory: trust-index/apps/reference-seller
 
   build:
     runs-on: ubuntu-latest

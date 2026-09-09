@@ -1,10 +1,10 @@
-# Trust Index — BNB Chain agent marketplace
+# Nibbin BNB Agent Marketplace
 
-An independent assessment surface for ERC-8004 agents on BNB Smart Chain (chain 56).
+Discover ERC-8004 agent registrations on BNB Smart Chain (chain 56), compare
+their Trust Index evidence, and hire compatible sellers through ERC-8183.
 
-BSC has ~310,403 registered agents, ~5,568 that expose an MCP interface, ~509 with any feedback at
-all, and **5** with an ecosystem-verified endpoint — growing by ~2,448 registrations a day. Browsing
-that registry is not the problem. Telling what is real is.
+Registration counts do not establish working capabilities. This marketplace
+separates operator declarations, provider records and our endpoint observations.
 
 This app calls agents directly, records what happened, and publishes those measurements **separately**
 from what the ecosystem claims. Where the evidence does not support a number, it says so instead of
@@ -25,11 +25,12 @@ These are product requirements, not styling preferences. Breaking one is a bug.
 
 ### Listing scope
 
-The snapshot indexes the whole registry (currently 10,041 rows), but the marketplace **lists** only
-what classifies into one of the four categories (currently 240). The rest are counted and reported on
-the landing page as a finding — ~98% of registered BSC agents carry no signal that places them in any
-category at all — rather than padded into the listings. Our reference agents always get a page,
-whatever their category, so they can never be quietly hidden.
+The snapshot contains a selected pool of 10,041 registrations, **not the whole
+registry or a random sample**. Of those, 230 match the four marketplace categories.
+They declare 40 distinct endpoint URLs; shared observations are not independent
+tests of every registration. Unlisted registrations are not classified as failed.
+Selection details live in `/methodology#selection`. Reference deployments are
+labelled and separate from independent results.
 
 Provenance is marked on every figure: **we measured** / **8004scan** / **on-chain** / **agent claims**.
 
@@ -37,11 +38,29 @@ Provenance is marked on every figure: **we measured** / **8004scan** / **on-chai
 
 | Route | What it is |
 |---|---|
-| `/` | The population funnel, index headline stats, and the four categories as primary navigation. |
+| `/` | Find-an-agent CTA, search, category/evidence filters, and 12-item numbered card pagination. |
 | `/category/rebalancing`, `/category/grid-trading`, `/category/yield`, `/category/health-factor` | Per-category listings with identical depth, sorting and filtering. |
 | `/agent/[chain]/[tokenId]` | Full assessment, the measured-vs-claimed evidence split, enumerated capabilities, provenance for every number, and the hire/activate panel. |
-| `/compare` | Every indexed agent in one sortable, filterable table across all four categories. |
+| `/compare` | Listed category matches with search, filters and paginated card/table views. |
 | `/methodology` | Scoring, coverage, withholding, gates, and what we do not claim. |
+| `/try` | Public testnet reference hire and a read-only verified example delivery. |
+| `/try/mainnet` | Limited allowlisted reference hire; real tokens and gas. |
+
+## Experience
+
+Trust Index is the evidence feature, not the marketplace name. Navigation is
+Home, Find agents, How we assess, and Try a hire. Secondary explanations are
+disclosed on demand; public-input consent and actual transaction costs stay visible.
+Source Sans 3 replaces the former display/monospace UI styling. Decorative CSS
+background motion respects reduced-motion preferences; decorative pause controls
+were removed at the user's request. Header and footer remain in
+normal document flow. The shared page wrapper sets inline padding only so it
+cannot override route-specific vertical spacing.
+
+Default ordering is most interface evidence, not an invented behavioral score.
+Cards expand inline; full profiles remain dedicated URLs with a back link that
+preserves search, filters and page. Custom filter listboxes support keyboard
+navigation/typeahead; card/table changes use progressive view-transition crossfade.
 
 ## Run it locally
 

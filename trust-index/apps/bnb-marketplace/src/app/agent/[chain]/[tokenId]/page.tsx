@@ -7,6 +7,8 @@ import { CoverageAxis, GateBanner, ReferenceBadge, ScoreBlock, scoreState, unass
 import { Figure, ProvenanceChip, ProvenanceSplit } from '@/components/Provenance';
 import { HirePanel } from '@/components/HirePanel';
 import { CapabilityList } from '@/components/CapabilityList';
+import { evidenceSummary } from '@/lib/evidence';
+import { BackToAgents } from '@/components/BackToAgents';
 
 /**
  * `output: export` refuses to build a dynamic route that produces no paths, and
@@ -41,12 +43,14 @@ export default async function AgentPage({ params }: { params: Promise<{ chain: s
   const a = agent.assessment;
   const state = scoreState(agent);
   const gates = a?.gates_fired ?? [];
+  const evidence = evidenceSummary(agent);
 
   return (
     <div className="mx-auto max-w-[1240px] px-5 py-9">
-      <nav className="text-[12px] text-[var(--fg-faint)]">
+      <BackToAgents />
+      <nav aria-label="Breadcrumb" className="text-[14px] text-[var(--fg-muted)]">
         <Link href="/" className="hover:text-[var(--fg)]">
-          Index
+          Home
         </Link>
         <span className="mx-2">/</span>
         {meta ? (
@@ -62,8 +66,8 @@ export default async function AgentPage({ params }: { params: Promise<{ chain: s
         </span>
       </nav>
 
-      <header className="mt-4 flex flex-wrap items-start justify-between gap-6 border-b border-[var(--border)] pb-6">
-        <div className="min-w-[280px] max-w-2xl flex-1">
+      <header className="mt-4 grid items-start gap-4 border-b border-[var(--border)] pb-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:items-stretch lg:gap-6">
+        <div className="card min-w-0 p-5 sm:p-6">
           <div className="flex flex-wrap items-center gap-2">
             {meta ? (
               <Link
@@ -77,7 +81,7 @@ export default async function AgentPage({ params }: { params: Promise<{ chain: s
             {agent.is_reference_agent ? <ReferenceBadge /> : null}
           </div>
           <h1 className="mt-2 text-[28px]">{agent.name}</h1>
-          <p className="mono mt-1.5 text-[11px] text-[var(--fg-faint)]">{agent.agent_id}</p>
+          <p className="mono mt-1.5 break-all text-[11px] text-[var(--fg-faint)]">{agent.agent_id}</p>
           <p className="mt-3 text-[15px] leading-relaxed text-[var(--fg-muted)]">
             {agent.description || 'No description was registered for this agent.'}
           </p>
@@ -87,10 +91,16 @@ export default async function AgentPage({ params }: { params: Promise<{ chain: s
               Name and description are the operator&apos;s own words.
             </span>
           </div>
+          <div className="mt-5 border-t border-[var(--border)] pt-4">
+            <p className="text-[14px] font-medium" style={{ color: evidence.tone }}>{evidence.label}</p>
+            <p className="mt-1 text-[13px] text-[var(--fg-muted)]">{evidence.detail}</p>
+            {a?.shared_registration_count && a.shared_registration_count > 1 ? <p className="mt-2 text-[12px] text-[var(--fg-muted)]">{a.shared_registration_count.toLocaleString('en-US')} registrations share this endpoint. This is shared interface evidence, not independent tests of each registration.</p> : null}
+          </div>
         </div>
 
-        <div className="card w-full max-w-sm p-5">
-          <ScoreBlock agent={agent} size="lg" />
+        <section aria-labelledby="rating-coverage-heading" className="card min-w-0 p-5 sm:p-6">
+          <h2 id="rating-coverage-heading" className="text-[14px] font-medium">Rating and evidence coverage</h2>
+          <div className="mt-4"><ScoreBlock agent={agent} size="md" />
           {a ? (
             <div className="mt-5 border-t border-[var(--border)] pt-4">
               <CoverageAxis coverage={a.coverage} />
@@ -102,9 +112,11 @@ export default async function AgentPage({ params }: { params: Promise<{ chain: s
               : state === 'withheld'
                 ? 'We assessed this agent and chose not to publish a number. That is a deliberate outcome, not a missing field.'
                 : 'No number is shown because no measurement exists. We do not substitute a zero.'}
-          </p>
-        </div>
+          </p></div>
+        </section>
       </header>
+
+      <div className="mt-5"><HirePanel agent={agent} /></div>
 
       {gates.length > 0 ? (
         <section className="mt-6">
@@ -116,8 +128,7 @@ export default async function AgentPage({ params }: { params: Promise<{ chain: s
       <section className="mt-8">
         <h2 className="text-[18px]">Evidence</h2>
         <p className="mt-1 max-w-3xl text-[14px] text-[var(--fg-muted)]">
-          Two columns, two sources. Nothing on the left came from a review, and nothing on the right went into our
-          score.
+          Our endpoint observations sit alongside registry and operator declarations. Neither a registration nor a successful connection establishes investment performance.
         </p>
         <div className="mt-4">
           <ProvenanceSplit
@@ -139,11 +150,11 @@ export default async function AgentPage({ params }: { params: Promise<{ chain: s
                   <Figure
                     label="Coverage"
                     value={a.coverage}
-                    note="How much of the agent we exercised. Independent of the score."
+                    note="How much evidence these endpoint checks provide. Independent of any score."
                     tone="var(--coverage)"
                   />
                   <Figure
-                    label="Reachable when we called"
+                    label="Endpoint answered our request"
                     value={a.reachable === null ? 'Unknown' : a.reachable ? 'Yes' : 'No'}
                     note={
                       a.reachable === null
@@ -158,11 +169,11 @@ export default async function AgentPage({ params }: { params: Promise<{ chain: s
                           : 'var(--critical)'
                     }
                   />
-                  <Figure label="Protocol it actually spoke" value={a.protocol_spoken ?? 'None established'} />
+                  <Figure label="Protocol exchange confirmed" value={evidence.confirmed ? (a.protocol_spoken?.toUpperCase() ?? 'Confirmed') : 'Not established'} note={a.evidence_scope === 'host' ? 'Discovery was at the host level; it may not describe this individual agent.' : undefined} />
                   <Figure
-                    label="Capabilities we enumerated"
+                    label="Capability names reported"
                     value={a.tool_count}
-                    note={a.tool_count === 0 ? 'It answered, but exposed nothing we could call.' : undefined}
+                    note={a.tool_count === 0 ? 'No capability names were recorded by this check.' : 'From a tool list, agent card, or descriptor. These capabilities have not been executed by this check.'}
                   />
                   <Figure
                     label="Response time"
@@ -170,12 +181,12 @@ export default async function AgentPage({ params }: { params: Promise<{ chain: s
                     tone={a.latency_ms !== null ? 'var(--measured)' : undefined}
                   />
                   <Figure
-                    label="Safety gates fired"
-                    value={gates.length === 0 ? 'None' : String(gates.length)}
-                    tone={gates.length > 0 ? 'var(--critical)' : 'var(--measured)'}
-                    note={gates.length > 0 ? gates.join(', ') : 'No hard cap tripped during this assessment.'}
+                    label="Safety battery"
+                    value={gates.length === 0 ? 'Not established' : `${gates.length} gates fired`}
+                    tone={gates.length > 0 ? 'var(--critical)' : undefined}
+                    note={gates.length > 0 ? gates.join(', ') : 'This endpoint record does not establish that behavioral safety checks ran. An empty gate list is not a clearance.'}
                   />
-                  <Figure label="Assessed at" value={timestamp(a.checked_at)} />
+                  <Figure label="Endpoint checked at" value={timestamp(a.checked_at)} />
                 </>
               ) : (
                 <div className="py-2">
@@ -203,7 +214,7 @@ export default async function AgentPage({ params }: { params: Promise<{ chain: s
                   value={agent.scan_feedbacks}
                   note={
                     agent.scan_feedbacks === 0
-                      ? 'No feedback exists. Across BSC that is the norm, not a red flag on its own.'
+                      ? 'No feedback is recorded in this source snapshot.'
                       : 'Volume of third-party feedback. Volume is not quality, and we do not weight it.'
                   }
                   tone="var(--thirdparty)"
@@ -213,8 +224,8 @@ export default async function AgentPage({ params }: { params: Promise<{ chain: s
                   value={agent.scan_endpoint_verified ? 'Yes' : 'No'}
                   note={
                     agent.scan_endpoint_verified
-                      ? 'One of very few BSC agents 8004scan has verified.'
-                      : 'Not verified by 8004scan. Only 5 BSC agents are.'
+                      ? 'Verified according to the registry data provider, not independently by us.'
+                      : 'No provider verification is recorded in this snapshot.'
                   }
                   tone="var(--thirdparty)"
                 />
@@ -230,17 +241,17 @@ export default async function AgentPage({ params }: { params: Promise<{ chain: s
                     agent.endpoint ? (
                       <span className="break-all text-[12px]">{agent.endpoint}</span>
                     ) : (
-                      'None declared'
+                      agent.detail_status === 'read' ? 'No endpoint in the detail we read' : 'Registry detail not confirmed'
                     )
                   }
                   source="self_reported"
                 />
                 <Figure
                   label="x402 payments"
-                  value={agent.x402_supported ? 'Supported' : 'Not declared'}
+                  value={agent.x402_supported ? 'Declared' : 'Not declared'}
                   note={
                     agent.x402_supported
-                      ? 'It can take machine payments. Read the safety section before pointing a wallet at it.'
+                      ? 'The operator declares payment support. We have not verified a payment or price.'
                       : undefined
                   }
                   source="self_reported"
@@ -274,7 +285,6 @@ export default async function AgentPage({ params }: { params: Promise<{ chain: s
       <div className="mt-8 grid gap-4 lg:grid-cols-[1.6fr_1fr]">
         <CapabilityList agent={agent} />
         <div className="space-y-4">
-          <HirePanel agent={agent} />
           <ClassificationCard agent={agent} />
         </div>
       </div>
@@ -289,17 +299,18 @@ function ClassificationCard({ agent }: { agent: Parameters<typeof CapabilityList
     <section className="card p-5">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-[15px]">Why it is filed here</h2>
-        <ProvenanceChip source="measured" />
+        <ProvenanceChip source="self_reported" />
       </div>
       <p className="mt-3 text-[13px]">
         <span className="mono" style={{ color: meta?.accent }}>
           {meta?.name ?? 'Other'}
         </span>
-        <span className="mono ml-2 text-[12px] text-[var(--fg-faint)]">confidence {confidence}%</span>
+        <span className="mono ml-2 text-[12px] text-[var(--fg-faint)]">rule-match strength {confidence}/100</span>
       </p>
       <p className="mt-2 text-[13px] text-[var(--fg-muted)]">
         {agent.category_evidence || 'No classification evidence was recorded for this agent.'}
       </p>
+      <p className="mt-2 text-[12px] text-[var(--fg-muted)]">A deterministic match against declared text, not a measured probability or proof that the agent performs this task.</p>
       {confidence < 60 ? (
         <p className="mt-3 rounded-[var(--radius-btn)] p-2.5 text-[12px]" style={{ background: 'var(--withheld-bg)', color: 'var(--withheld)' }}>
           Low classification confidence. Check the capability list below before treating this as a{' '}

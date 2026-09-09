@@ -8,3 +8,5 @@ packages:
   # npm-managed package under a pnpm lockfile and broke every CI job with
   # ERR_PNPM_OUTDATED_LOCKFILE.
   - "!apps/bnb-marketplace"
+  # Independently deployed serverless seller also owns an npm lockfile.
+  - "!apps/reference-seller"

@@ -18,7 +18,10 @@ Agent = {
   category_evidence: string   // why it was categorised this way
 
   protocols: string[]         // ["MCP","A2A","Web",...]
-  endpoint: string | null     // the callable endpoint, if declared
+  endpoint: string | null     // preferred declared URL; NOT proof it is callable
+  // Additive 2026-09-09: populated only from a validated detail response.
+  // Old snapshots omit it. Never reconstruct missing A2A URLs from an MCP URL.
+  declared_interfaces?: { protocol: "mcp" | "a2a" | "web", endpoint: string }[]
   x402_supported: boolean
 
   // AMENDED 2026-09-09 (detail-fetch gap): `endpoint: null` was ambiguous and
@@ -58,10 +61,11 @@ Agent = {
     // AMENDED 2026-09-09 (probe sweep): widened from `boolean` to
     // `boolean | null`. null = WE COULD NOT MEASURE — a timeout, a 5xx or a
     // hostname that does not resolve. Writing that as `false` would publish our
-    // blind spot as the agent's downtime, which rule 1 forbids. `false` is now
-    // reserved for an endpoint that settles it: a non-HTTP scheme, or a private
-    // or loopback host nobody could call.
+    // blind spot as the agent's downtime, which rule 1 forbids. A guard refusal
+    // or unsupported scheme is also null: we did not attempt that transport.
     reachable: boolean | null
+    // Confirmed protocol exchange only. An HTTP auth wall, service descriptor,
+    // or A2A card by itself does NOT establish protocol_spoken.
     protocol_spoken: "mcp" | "a2a" | null
     tools_or_skills: string[]      // enumerated capability names
     tool_count: number
@@ -73,11 +77,46 @@ Agent = {
     withheld_reason: string | null
     gates_fired: string[]
     checked_at: string
+
+    // Additive endpoint-evidence correction, 2026-09-09. Missing fields mean
+    // legacy evidence, not a confirmed protocol. No state below claims a tool
+    // works, a job can be fulfilled, an agent is safe, or a rating was earned.
+    evidence_state?: "protocol_confirmed" | "card_retrieved" | "descriptor_read"
+      | "auth_walled" | "rate_limited" | "response_received" | "unmeasured"
+      | "unsupported_transport"
+    evidence_scope?: "endpoint" | "host" // host: fallback card, not this identity
+    evidence_endpoint?: string            // URL associated with this reading
+    evidence_provenance?: "probe_observation" | "self_reported"
+    capability_source?: "tools_list" | "agent_card" | "service_descriptor" | null
+    shared_registration_count?: number    // non-reference registrations sharing EXACT declared URL
+    evidence_source?: string              // local data/probes artifact containing the selected reading
   }
 
   // Reference agents WE deployed. Excluded from all rankings and leaderboards.
   is_reference_agent: boolean
 }
+
+Offline replay adds top-level `assessments_replayed_at` and
+`assessment_probe_source_sha256`. `generated_at` stays the original registry
+snapshot timestamp; each `checked_at` stays the original probe timestamp. The
+source hash identifies the unchanged `data/probes/endpoint-probes.json` bytes.
+Replay associates existing endpoint evidence with current registrations. It is
+not a new probe, and shared registrations are not independent measurements.
+
+An explicitly scoped live refresh adds an immutable timestamped artifact;
+`assessment_probe_sources` records each source's relative path, SHA-256, artifact
+generation time, and scope. `assessment_probe_source_sha256` continues to identify
+the original probe artifact. The merger chooses the latest observation per exact
+endpoint URL, preserving older raw artifacts and the registry's `generated_at`.
+A newer measurement gap does not erase the historical reading or establish that
+the agent is down. The listed-interface refresh uses static A2A card discovery
+only (no task or skill invocation); a card is not a fresh A2A liveness confirmation.
+
+`descriptor_read` requires a fetched body with the explicit ERC-8004 MCP service
+type and `transport: "stdio"`. Tools are self-reported declarations. The prober
+keeps the descriptor body and SHA-256 in its transcript; it does not install or
+execute anything named in that document. HTTP405 alone is not a stdio finding.
+An empty declared skill/tool list does not establish inability to perform work.
 
 RULES (these are the product, not decoration):
 1. A missing measurement is `null` + a reason. Never a zero, never a guess.
