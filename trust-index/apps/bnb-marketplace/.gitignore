@@ -1,0 +1,6 @@
+node_modules/
+.next/
+out/
+.vercel/
+# Raw API responses, cached so a rerun refetches nothing. Regenerable, large.
+data/raw/
