@@ -109,12 +109,62 @@ try {
   // correct reading. It is not evidence about the subject.
 }
 
+const files = readdirSync(join(root, "transcripts")).filter((f) => f.endsWith(".json"));
+
+/**
+ * The probe observer's own track record — MEASURED, not asserted.
+ *
+ * These three were hardcoded at 4000/600/400, which described the 600-subject
+ * pilot and stopped being true the moment the sweep reached the whole registry.
+ * They are not idle: `inputs_hash` covers them (hash.ts), so every published
+ * snapshot carried a false claim about how much of the world this harness has
+ * actually looked at — in the one field a reader would use to audit that claim.
+ *
+ * They do NOT feed the velocity penalty; that applies only to `reviewer` and
+ * `publisher` observers, never to a probe (weights.ts). So this is a
+ * truthfulness fix, not a scoring change: composites are unaffected, hashes
+ * move, and they move to the number we can defend.
+ *
+ * `distinct_subjects` is the transcript count. The observation totals come from
+ * a pre-pass that assembles each subject and counts what it yields — assembly is
+ * cheap next to scoring, and an observation count does not depend on the
+ * observer's reputation fields, so counting first and scoring second is sound.
+ * `total_observations` is this sweep's volume, which is a floor on the harness's
+ * lifetime output and is stated as such rather than guessed upward.
+ */
+const provisionalProbe = {
+  first_seen_ts: process.env["PROBE_SINCE"] ?? "2024-09-01T00:00:00Z",
+  total_observations: 1,
+  distinct_subjects: 1,
+  max_observations_single_day: 1,
+};
+let sweepObservations = 0;
+for (const f of files) {
+  try {
+    const t = JSON.parse(readFileSync(join(root, "transcripts", f), "utf8")) as ProbeTranscript;
+    const b = battery.get(t.endpoint) ?? [];
+    sweepObservations += transcriptToSubject(t, {
+      probe: provisionalProbe,
+      asOfTs,
+      gaps: [...transcriptGaps(t), ...batteryGaps(b)],
+      battery: b,
+    }).observations.length;
+  } catch {
+    // A transcript that will not assemble contributes no observations. It is
+    // counted as a scoring failure in the real pass, where it can be named.
+  }
+}
+
 const probe = {
   first_seen_ts: process.env["PROBE_SINCE"] ?? "2024-09-01T00:00:00Z",
-  total_observations: 4000,
-  distinct_subjects: 600,
-  max_observations_single_day: 400,
+  total_observations: sweepObservations,
+  distinct_subjects: files.length,
+  // One full sweep lands in one day, so the day's volume IS the sweep's volume.
+  max_observations_single_day: sweepObservations,
 };
+console.log(
+  `probe observer: ${probe.distinct_subjects} subjects, ${probe.total_observations} observations this sweep`,
+);
 
 const { db, close } = createDb(url);
 const counters: RunCounters = {
@@ -135,7 +185,6 @@ const run_id = dryRun
     });
 console.log(`run ${run_id}  day=${day}  battery for ${battery.size} servers${dryRun ? "  (DRY RUN)" : ""}`);
 
-const files = readdirSync(join(root, "transcripts")).filter((f) => f.endsWith(".json"));
 const failures: string[] = [];
 
 try {

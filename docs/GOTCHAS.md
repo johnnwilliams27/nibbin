@@ -163,3 +163,25 @@
   today (once per study, subscription-absorbed). If M7 makes it a user-triggerable metered action
   it must be charged FRONTIER (3 credits) — STANDARD (1 credit) is −147% margin, a guaranteed
   loss (#52).
+- An MCP server's "HTTP 404" is not evidence the server is gone. MCP has two HTTP transports:
+  `streamable-http` (POST, reply in the response) and `sse` (GET opens a stream, an `event:
+  endpoint` frame names a SECOND url to POST to). Probing an `sse` server with a POST earns
+  404/405/400, which reads as dead. Measured over the full registry: sse failed at 74% against
+  16% for streamable-http — the gap was our client, not their servers. Judge these by the body
+  and the transport, never by the status alone.
+- Worse, the SSE path hid TWO more signals inside that fake 404. `pinnedFetch` does not follow
+  redirects (only `guardedFetch` does), so a server answering `GET /sse` with `307 -> /sse/` —
+  one trailing slash — was filed as a 404; and a `401` on the stream GET was filed as "no
+  reading" rather than as the auth wall it is. An auth wall is a KNOWN, rateable state; a 404 is
+  not. Whenever a probe reports "gone", check that we knocked on the right door, followed the
+  redirect, and read the challenge.
+- Calibrate a hunch on the population before believing it. Hand-checking 5 SSE failures found 3
+  auth walls and suggested a large misclassification; run against all 1,930, the corrected probe
+  still could not reach 1,888 of them — the real wall rate was ~1%. A 5-server sample is a
+  hypothesis, not a rate.
+- The probe observer's own track record (`total_observations`, `distinct_subjects`,
+  `max_observations_single_day` in daily.mts) was hardcoded to the 600-subject pilot and is
+  covered by `inputs_hash`. Stale values put a false claim about our own coverage into the very
+  field a reader uses to audit it. They do NOT feed the velocity penalty (that is `reviewer`/
+  `publisher` only), so fixing them moves hashes without moving composites — but they must be
+  measured from the sweep, never asserted.
