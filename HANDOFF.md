@@ -19,6 +19,32 @@ The distinguishing property, and the entire reason anyone should trust the outpu
 Everything below is downstream of that sentence. A change that makes a number look better by
 blurring it is a regression, even if it ships.
 
+### Read these first, in this order
+
+| doc | what it is | why you need it |
+|---|---|---|
+| `CLAUDE.md` | the router, <50 lines | the seven rules, and a table of what to read per task |
+| **`docs/DIRECTION.md`** | **574 lines. The direction doc. Authoritative** | positioning, the business model, the honest self-assessment, **§10 open questions**, **§11 what is settled and must not be relitigated** |
+| `trust-index/METHODOLOGY.md` | 244 lines | what we rate and how: dimensions, behavioural checks, evidence and scoring, publication, the judge, reproducibility, limits |
+| `docs/GOTCHAS.md` | traps already paid for | read before debugging anything |
+| `docs/STATE.md` | current state, open P0/P1 | |
+| `apps/bnb-marketplace/DATA-CONTRACT.md` | frozen data contract | its 4 rules bind the marketplace |
+
+**`docs/DIRECTION.md` §11 is a list of decisions that are closed.** Among them: not building a
+standalone MCP server index; not competing on coverage; not tokenizing; not a freemium metered
+wall; not chasing more agent sources; do not soften the withholding rate; do not let participation
+or payment influence a score. **Read it before proposing architecture** — several obvious-looking
+ideas are already settled against, with reasoning.
+
+§10 is the live open-questions list, and several bear directly on the work below: whether a rating
+attaches to the subject, the endpoint or the version (remote servers change silently behind stable
+URLs); how a safety gate transfers from a server to the agent that declares it; whether automated
+first-party feedback (RelAI auto-submits `successRate` after every paid relay) is already distorting
+cohort priors.
+
+*(That doc existed only as a chat upload until this handoff and was one container reclaim away from
+being lost. It is now committed. Keep it in the repo.)*
+
 ### The seven rules (non-negotiable, from `CLAUDE.md`)
 
 1. **A gap is never evidence.** "We could not obtain the data" is recorded as *our* failure, never
@@ -246,20 +272,189 @@ into one claim and it was wrong. State which population every number describes.
 
 ---
 
-## 5. Withholding — the honest tension
+## 4.4 What the index is actually made of — audit this independently, do not take it on trust
 
-The site currently publishes **0 scores and withholds all 75 assessed** listed agents. That is
-correct under rule 5 and it is the product's whole thesis.
+**This section is a request for your own judgement, not a description to accept.** The index is the
+product's foundation: everything on the site is a claim about the agents in it. If the construction
+is unsound, every downstream number inherits that. Nobody has independently reviewed it. Do that
+first, and be willing to conclude it needs rebuilding.
 
-It is also, for a hackathon judge, a site that rates nothing.
+### How the 230 listed agents were actually arrived at
 
-**Do not resolve this by lowering the bar.** Resolve it by *earning* scores: run the behavioural
-battery (§4.2.6) on the agents that answered, so the withholding becomes selective rather than
-total. A site that rates 40 agents and withholds 190 with stated reasons is dramatically stronger
-than one that withholds everything — and infinitely stronger than one that lowered a threshold.
+**Step 1 — candidate pool: 10,041 of 310,403 registered BSC agents (3.2%).** Not a random or
+complete sample. Every candidate entered through an 8004scan-derived stream:
 
-The earlier withholding-rate analysis: 98.9% withheld, of which only ~17% is genuinely thin
-subjects and **~83% is our own harness gaps**. Closing §4.2 moves that ratio honestly.
+```
+  5571  mcp                 (8004scan's has_mcp flag)
+  3000  a2a                 (8004scan's has_a2a flag — note the suspiciously round 3000; likely a
+                             pagination cap, not a population count. VERIFY THIS)
+   509  feedback            (has any third-party feedback)
+  1578  search:<term>       (8004scan full-text search for ~13 hand-chosen terms:
+                             apy, liquidation, yield, yield optimizer, rebalancing, rebalance,
+                             health factor, yield farming, portfolio rebalancing, grid trading,
+                             trading grid, grid bot, collateral ratio)
+     6  endpoint_verified
+```
+
+So the frame is **8004scan's index of the chain, filtered by 13 keywords somebody picked**, not an
+independent enumeration. This matters twice over: it is a hidden dependency (see §6), and the
+search terms were chosen to match four categories that were themselves chosen in advance — the
+sampling frame and the taxonomy were fitted to each other.
+
+We *can* enumerate independently. `packages/indexer` already derived 496,976 agents across 12
+chains directly from `Registered` logs, within ~1.5% of 8004scan's published figure. **The
+independent frame exists and is not being used to build the index.**
+
+**Step 2 — categorisation: regex keyword matching over the agent's self-written description.**
+`scripts/build_dataset.py` holds STRONG and WEAK regex sets; a STRONG hit assigns a category, WEAK
+hits are recorded as near-misses. Actual evidence strings from the shipped data:
+
+```
+[rebalancing @ 0.5]  matched 'rebalancing' in description;
+                     independent execution signal 'automated' in description
+[yield @ 0.6]        matched 'yield optimization' in description
+```
+
+**Confidence distribution across the 230:**
+
+| ≥0.9 | ≥0.7 | ≥0.5 | ≥0.4 | <0.4 |
+|---|---|---|---|---|
+| 12 | 95 | 97 | 10 | **16** |
+
+Median **0.6**. Only 12 of 230 are high-confidence. Sixteen are below 0.4 and still listed.
+
+**Step 3 — what the 230 actually contain:**
+
+| | |
+|---|---|
+| Listed agents | 230 |
+| Distinct descriptions | **134** (96 share text with another listed agent) |
+| Distinct owners | 142 |
+| Distinct endpoints | **40** |
+
+### The problems, stated plainly
+
+1. **The category — the site's primary navigation — is derived from `self_reported` text.** That is
+   provenance weight **0.15**, the weakest tier in the whole system. An agent is in "yield" because
+   it wrote "yield optimization" about itself. Rule 6 says self-reported data stays labelled;
+   here it is not merely unlabelled, it is the organising structure. **Is that defensible? Decide.**
+2. **The sampling frame is a competitor's index plus 13 hand-picked keywords.** Any agent
+   describing itself in other words, another language, or not at all is invisible — and the
+   registry is full of bulk registrations with no description. What is the actual coverage of the
+   real BSC DeFi-agent population? Nobody has measured it.
+3. **The taxonomy may not be earned.** Four categories were chosen, then search terms were chosen
+   to fill them. That guarantees the categories appear populated regardless of whether they carve
+   the population at real joints. Would a bottom-up clustering of the 310,403 produce these four?
+4. **230 agents behind 40 endpoints and 134 descriptions is not 230 independent subjects.**
+   Presenting them as 230 rows implies a diversity the data does not have. Combined with §3.6
+   (2,711 identities on one endpoint; 105 on one owner), the duplicate structure may be the most
+   important true fact about this population — and the index currently obscures it.
+5. **`a2a: 3000` is almost certainly a cap, not a count.** If so, the pool is silently truncated and
+   nobody recorded it as a gap. Under rule 1 that would need to be an explicit `harness` gap.
+
+### What to do
+
+Form your own view. Options, roughly in order of ambition:
+
+- **Rebuild the frame from chain** via `packages/indexer` so the population is ours, then apply
+  categorisation to that. Fixes problems 1(partly), 2 and §6 in one move.
+- **Re-derive the taxonomy bottom-up** from the corpus rather than assuming four categories.
+- **Demote category to a labelled, self-reported hint** with visible confidence, and navigate by
+  something we actually measured (callable / responds / capability count / duplicate-cluster).
+- **Collapse duplicates** into a single subject with N registrations, and make the duplication a
+  displayed signal rather than 96 near-identical rows.
+- **Keep it and defend it** — a legitimate outcome if you conclude keyword categorisation over
+  self-descriptions is adequate for a discovery surface, *provided* the confidence and provenance
+  are shown to the user and the sampling frame is disclosed.
+
+Whatever you choose, **write the reasoning down**. The current construction is undocumented as a
+methodology, and a rating product whose selection process is unexamined has a hole underneath
+everything it publishes.
+
+---
+
+## 5. Withholding — and an open question you should settle before building
+
+The site publishes **0 scores** and withholds all 3,204 assessed agents. Under rule 5 that is a
+legitimate output. For a hackathon judge it is also a site that rates nothing.
+
+**There are two competing explanations and they demand opposite responses. Determine which is true
+before you write any code.**
+
+### Hypothesis A — the battery was never run
+
+Evidence for it, and it is strong:
+
+`packages/collectors/scripts/merge-marketplace-assessments.mts` hardcodes
+
+```ts
+const COVERAGE = "thin" as const;   // "No behavioural battery was run, so nothing here
+                                    //  can be more than thin."
+```
+
+and sets `composite: null` at **every** construction site. Confirmed in the shipped data: all
+3,204 assessments are `coverage: "thin"`, without exception. **This pipeline is declaration-only by
+construction — it cannot emit a score.** So the current zero is a fact about the pipeline, not a
+verdict on the thresholds.
+
+Supporting: of 3,204 assessed, only **358 spoke a protocol at all** (231 mcp, 127 a2a). The other
+2,846 have `protocol_spoken: null` — mostly §3.1's misattributed stdio agents. There was very
+little for a battery to run against even if one had been wired up.
+
+### Hypothesis B — the battery is calibrated too aggressively to pass
+
+Take this seriously. **It has already happened once in this codebase**, and the rubric notes in
+`packages/collectors/src/mcp/assess.ts` say so explicitly, describing the v2 → v3 bump:
+
+> *"the global per-shape cap no longer starves servers by default. Under v2's shipped defaults
+> **125 of 161 eligible servers were never probed at all**, so **'no rating' under v2 frequently
+> meant 'not selected' rather than anything about the server**."*
+
+That is precisely the failure this project exists to prevent, committed by the harness against
+itself: a configuration choice producing an absence that reads as a finding. It was fixed in v3,
+but the same class of mis-tuning can recur anywhere in the rubric — selection, budgets, occurrence
+gates, pass/fail rules.
+
+There is also evidence the thresholds get calibrated rather than guessed, which cuts *for*
+trusting them: `maintenance_fresh_days` was moved from 90/730 to 14/180 against the observed
+population because the old ramp put 74% of servers at exactly 1.0 — *"a constant wearing a
+dimension's clothes."* Someone has done this properly before. Check whether every threshold got
+that treatment or only that one.
+
+### How to settle it — do this before deciding anything
+
+1. Run the battery end-to-end against **known-good MCP servers** — ones you can independently
+   confirm are healthy and well-behaved. If a server you know is fine cannot clear the bar, the
+   bar is wrong. If it clears comfortably, hypothesis A holds and the answer is coverage.
+2. Instrument **why** each subject fails to reach a composite. Distinguish, per subject:
+   never selected / selected but unrunnable / ran and failed a check / ran and passed but coverage
+   stayed thin. Right now these are indistinguishable in the output, which is itself the bug —
+   "no rating" must never be a single undifferentiated bucket.
+3. Check the gates are live but not trigger-happy. Currently **3 gates fired across 3,204
+   assessments**, all `mcp.credential_parameter`. That is consistent with "gates work, almost
+   nothing was probed" — but confirm it, because a gate that never fires and a gate that fires on
+   everything are both broken, and they look identical from a summary.
+4. Sanity-check the occurrence gates specifically. Per-server budget is 3 tools under v3; gates
+   that need multiple observations to fire will behave very differently at budget 3 vs 1.
+
+### Then, and only then
+
+- **If A**: the answer is coverage, not calibration. Wire the battery in, widen §4.2, and the
+  withholding becomes selective rather than total.
+- **If B**: recalibrate against the observed population the way `maintenance_fresh_days` was, and
+  **bump `MCP_RUBRIC_VERSION`** (currently `mcp.rubric.v3`). That string is hashed into every
+  result. Changing a threshold without bumping it has caused a silent compendium-wide shift before
+  — the file says so in as many words.
+
+**What is not acceptable either way:** lowering a threshold to make scores appear. A site that
+rates 40 agents and withholds 190 with stated reasons is far stronger than one that withholds
+everything, and infinitely stronger than one that moved a bar to get a number. If recalibration is
+warranted, it is warranted on evidence about the population, and the reasoning gets written down.
+
+For context on the size of the prize: the earlier withholding analysis found 98.9% withheld, of
+which only **~17% is genuinely thin subjects** and **~83% is our own harness gaps**. Most of the
+silence is ours, not theirs — which is the strongest single argument that A dominates B, and that
+coverage work pays before calibration work does.
 
 ---
 
@@ -281,6 +476,19 @@ every `total_score` and every endpoint-verification comes from 8004scan's API. *
 attribution while keeping the data would convert a labelled third-party dataset into an implied
 first-party one — a direct rule 6 violation, and the most damaging kind, because it is the exact
 thing we criticise others for.**
+
+**There is already a settled precedent for exactly this, and it should govern the answer.**
+`docs/DIRECTION.md` §11, on Glama:
+
+> *"Not consuming Glama's probing as load-bearing evidence. Their catalog metadata and scores can
+> enter as `third_party_review` at 0.60 for enrichment and comparison. **Behavioural evidence stays
+> ours**, because borrowed observations cannot carry the reproducibility guarantee."*
+
+Apply the same line to 8004scan. Their metadata may enrich; their observations may not be
+load-bearing. Measured against that standard the current build **fails it** — 8004scan supplies not
+just enrichment but the entire *sampling frame* (§4.4), which is more load-bearing than the Glama
+ruling ever contemplated. That is the real finding here, and it makes option (a) below not merely
+preferable but the one consistent with a decision already taken.
 
 So the clean-up has to mean one of:
 
