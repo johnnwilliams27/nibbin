@@ -1,0 +1,18 @@
+# Exact reviewed false positives only. No path-wide or rule-wide suppression.
+# MCP absence/injection request tokenId values are deterministic synthetic probe inputs,
+# not credentials. See evidence/2026-09-09/README.md and src/mcp/battery.ts.
+bd0292291e7e8c1831bf25097932020137c2c69a:trust-index/packages/collectors/evidence/2026-09-09/mcp-battery.json:generic-api-key:75
+bd0292291e7e8c1831bf25097932020137c2c69a:trust-index/packages/collectors/evidence/2026-09-09/mcp-battery.json:generic-api-key:82
+bd0292291e7e8c1831bf25097932020137c2c69a:trust-index/packages/collectors/evidence/2026-09-09/mcp-battery.json:generic-api-key:108
+bd0292291e7e8c1831bf25097932020137c2c69a:trust-index/packages/collectors/evidence/2026-09-09/mcp-battery.json:generic-api-key:115
+bd0292291e7e8c1831bf25097932020137c2c69a:trust-index/packages/collectors/evidence/2026-09-09/mcp-battery.json:generic-api-key:1120
+bd0292291e7e8c1831bf25097932020137c2c69a:trust-index/packages/collectors/evidence/2026-09-09/mcp-battery.json:generic-api-key:1127
+bd0292291e7e8c1831bf25097932020137c2c69a:trust-index/packages/collectors/evidence/2026-09-09/mcp-battery.json:generic-api-key:1153
+bd0292291e7e8c1831bf25097932020137c2c69a:trust-index/packages/collectors/evidence/2026-09-09/mcp-battery.json:generic-api-key:1160
+bd0292291e7e8c1831bf25097932020137c2c69a:trust-index/packages/collectors/evidence/2026-09-09/mcp-battery.json:generic-api-key:1439
+bd0292291e7e8c1831bf25097932020137c2c69a:trust-index/packages/collectors/evidence/2026-09-09/mcp-battery.json:generic-api-key:1446
+bd0292291e7e8c1831bf25097932020137c2c69a:trust-index/packages/collectors/evidence/2026-09-09/mcp-battery.json:generic-api-key:1472
+bd0292291e7e8c1831bf25097932020137c2c69a:trust-index/packages/collectors/evidence/2026-09-09/mcp-battery.json:generic-api-key:1479
+# Public ERC-20 contract addresses copied from @bnbagent/sdk; checked by commerce-sdk.test.mjs.
+b5d384254f202c837d56fce48d50e7768c824382:trust-index/apps/bnb-marketplace/src/lib/commerce-contracts.ts:generic-api-key:6
+b5d384254f202c837d56fce48d50e7768c824382:trust-index/apps/bnb-marketplace/src/lib/commerce-contracts.ts:generic-api-key:15
