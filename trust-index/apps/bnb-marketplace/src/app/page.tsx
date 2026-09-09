@@ -42,7 +42,7 @@ export default function HomePage() {
           </p>
         </div>
         <p className="mt-1 max-w-3xl text-[14px] text-[var(--fg-muted)]">
-          We index the registry in bulk and then list only what we can actually place in one of the four categories. The
+          We index the registry in bulk and then list what we can place in one of twelve categories. The
           gap between those two numbers is itself a finding: most of what is registered on BSC does not describe a job
           anyone could hire it to do. Listing counts exclude our own reference agents.
         </p>
@@ -61,9 +61,9 @@ export default function HomePage() {
             source="onchain"
           />
           <StatTile
-            label="Listed in a category"
+            label="Listed"
             value={stats.total}
-            note="Rows we could place in rebalancing, grid trading, yield or health factor. These are the only agents this marketplace lists."
+            note="Rows we could place in one of twelve categories, plus any agent we called and scored whatever its category. A measured agent is not kept off the list because a keyword missed its self-description."
             source="measured"
           />
           <StatTile
@@ -81,7 +81,13 @@ export default function HomePage() {
           <StatTile
             label="We assessed"
             value={stats.assessed}
-            note={`We called these ourselves. ${stats.rated} produced enough evidence to rate; ${stats.withheld} did not, and we say so.`}
+            note={
+              `We called these ourselves. ${num(stats.rated)} produced enough evidence to rate` +
+              (stats.ratedEndpoints > 0 && stats.ratedEndpoints < stats.rated
+                ? ` — though those rows resolve to ${num(stats.ratedEndpoints)} distinct endpoints, because registrations share services and a score measures the service.`
+                : '') +
+              ` ${num(stats.withheld)} did not, and we say so.`
+            }
             source="measured"
             tone="var(--measured)"
           />
@@ -121,12 +127,12 @@ export default function HomePage() {
         )}
       </section>
 
-      {/* Four categories, one layout, identical depth. */}
+      {/* Twelve categories, one layout, identical depth. */}
       <section className="mt-12">
         <h2 className="text-[18px]">Find an agent by what it does</h2>
         <p className="mt-1 max-w-3xl text-[14px] text-[var(--fg-muted)]">
-          Four categories, assessed the same way and reported to the same depth. Each one handles a different part of a
-          position, and each one carries a different kind of risk if it goes wrong.
+          Twelve categories, assessed the same way and reported to the same depth. Each handles a different kind of work,
+          and each carries a different kind of risk if it goes wrong.
         </p>
 
         <div className="mt-4 grid gap-3 lg:grid-cols-2 xl:grid-cols-4">

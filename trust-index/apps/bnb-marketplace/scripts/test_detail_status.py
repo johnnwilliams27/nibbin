@@ -8,6 +8,7 @@ import unittest
 from unittest.mock import patch
 
 import build_dataset
+from detail_response import validate_detail
 
 
 class DetailStatusTests(unittest.TestCase):
@@ -89,6 +90,37 @@ class DetailStatusTests(unittest.TestCase):
         self.assertIsNone(self.run_build([], use_cache=True))
         row = json.loads(self.output.read_text())["agents"][0]
         self.assertEqual(row["detail_status"], "read")
+
+
+class ServicesShapeTests(unittest.TestCase):
+    """`services` mixes interface declarations with scalar identity values."""
+
+    CANDIDATE = {"agent_id": "a", "chain_id": 56, "token_id": "1"}
+
+    def _detail(self, services):
+        return {"agent_id": "a", "chain_id": 56, "token_id": "1",
+                "supported_protocols": ["mcp"], "services": services}
+
+    def test_scalar_identity_values_do_not_reject_the_record(self):
+        # Measured on the live cache: 4 of 8,590 responses file services["ens"]
+        # = "name.eth" and services["did"] = "did:ethr:0x..." alongside the real
+        # service objects. Requiring every value to be an object discarded those
+        # four valid records, turning live agents into gaps -- the failure this
+        # validator exists to prevent, committed by the validator.
+        detail = self._detail({
+            "mcp": {"endpoint": "https://example.invalid/mcp"},
+            "ens": "clawdmint.eth",
+            "did": "did:ethr:0x75b583C518215E272f3C0a3BCC1b27012F294Adc",
+        })
+        self.assertIs(validate_detail(detail, self.CANDIDATE), detail)
+
+    def test_an_interface_key_must_still_be_an_object(self):
+        with self.assertRaises(ValueError):
+            validate_detail(self._detail({"mcp": "not-an-object"}), self.CANDIDATE)
+
+    def test_an_interface_endpoint_must_still_be_a_string(self):
+        with self.assertRaises(ValueError):
+            validate_detail(self._detail({"a2a": {"endpoint": 42}}), self.CANDIDATE)
 
 
 if __name__ == "__main__":

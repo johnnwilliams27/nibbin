@@ -1,6 +1,6 @@
 import { AlertTriangle, CircleSlash, HelpCircle, ShieldAlert } from 'lucide-react';
 import type { Agent, Coverage } from '@/lib/types';
-import { COVERAGE_COPY, compositeOutOf100, gateCopy } from '@/lib/format';
+import { COVERAGE_COPY, compositeOutOf100, gateCopy, num } from '@/lib/format';
 import { detailGapReason } from '@/lib/detail-state';
 
 /**
@@ -54,6 +54,12 @@ export function ScoreBlock({ agent, size = 'md' }: { agent: Agent; size?: 'sm' |
         <p className="mt-1.5 text-[12px] text-[var(--fg-muted)]">
           Composite of our probe results. Read alongside coverage, never instead of it.
         </p>
+        {agent.assessment.endpoint_shared_with > 1 ? (
+          <p className="mt-1.5 text-[12px]" style={{ color: 'var(--withheld)' }}>
+            Measured once, at an endpoint {num(agent.assessment.endpoint_shared_with)} registrations share. This
+            number describes that service, not this registration on its own.
+          </p>
+        ) : null}
       </div>
     );
   }

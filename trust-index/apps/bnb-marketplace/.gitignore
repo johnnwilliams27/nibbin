@@ -15,4 +15,7 @@ public/data/agents.json
 # Raw 8004scan API responses, cached so a rerun refetches nothing. 2,600+ files
 # and ~43MB of regenerable data — the pipeline reproduces it from the documented
 # queries in data/SUMMARY.md, so it has no business in history.
+# Exception: data/cache-snapshot/ holds a compressed restorable snapshot of this
+# directory. See its README — "regenerable" is true but costs ~10 hours of
+# 1000/hour quota, which is long enough to block a rebuild from a fresh clone.
 data/raw/

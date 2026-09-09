@@ -30,10 +30,11 @@
 - An uncapped `Retry-After` is a self-inflicted hang. 8004scan answers every 429 with
   `retry-after: 3600`, so `time.sleep(max(retry_after, backoff))` parks a worker for a full
   hour on its FIRST throttle; with a 16-thread pool and 8 retries the run goes silent for
-  hours and reads as crashed rather than throttled. A 90s cap still admitted every queued
-  identity and retried too early. Stop admitting requests across the shared pool on the
-  first 429, record queued work as deferred by that quota, and rerun after it resets.
-  Already-running requests can finish and valid cached files are still reused.
+  hours and reads as crashed rather than throttled. A 90s cap was the first fix and was NOT
+  enough: it still admitted every queued identity and retried too early. Stop admitting
+  requests across the shared pool on the first 429, record queued work as deferred by that
+  quota, and rerun after it resets. Already-running requests can finish and valid cached files
+  are still reused.
 - Recording a gap correctly is only half of rule 1; the CONSUMER has to carry it. `fetch_details`
   wrote all 1,476 unfetched agents to `detail_failures.json` as `rate_limited` (correct), but
   `build_dataset.py` loaded that set and used it in a single `print()` — it never reached the

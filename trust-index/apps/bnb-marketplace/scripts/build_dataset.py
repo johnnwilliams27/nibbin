@@ -27,7 +27,22 @@ RAW = os.path.join(HERE, "data", "raw")
 DET = os.path.join(RAW, "detail")
 OUT = os.path.join(HERE, "data", "agents.json")
 
-CATEGORIES = ["rebalancing", "grid_trading", "yield", "health_factor"]
+# The four DeFi-position categories this marketplace started with, plus eight
+# derived from the corpus rather than assumed.
+#
+# 9,811 agents sat in `other` while their own descriptions said plainly what
+# they were: 5,170 "Gasless stablecoin payment agent", 309 "automation & ops",
+# 300 "security & verification". Twenty-six descriptions account for 74.6% of
+# that pile. Calling them unclassifiable was a statement about the taxonomy,
+# not about them.
+#
+# These are still SELF-REPORTED (weight 0.15) and the confidence and evidence
+# fields say so on every row. A category is a description, never a measurement.
+CATEGORIES = [
+    "rebalancing", "grid_trading", "yield", "health_factor",
+    "payments", "security", "research", "content",
+    "development", "automation", "trading", "staking",
+]
 
 # STRONG: specific enough that a match is real evidence of the category.
 STRONG = {
@@ -36,6 +51,44 @@ STRONG = {
         r"target weight\w*", r"portfolio drift",
         r"allocation drift", r"drift threshold", r"re-?weight\w*",
         r"target allocation", r"portfolio allocation", r"asset allocation",
+    ],
+    # Derived from the observed corpus. Each pattern was written against real
+    # descriptions and its yield measured, not guessed at.
+    "payments": [
+        r"gasless stablecoin payment", r"stablecoin payment agent",
+        r"payment agent", r"payments? rail", r"x402 payment", r"gasless payment",
+        r"settle(?:s|ment) payments?", r"invoic\w+ agent",
+    ],
+    "security": [
+        r"security & verification", r"smart[- ]contract (?:security )?(?:review|audit)\w*",
+        r"vulnerability analysis", r"security audit\w*", r"audit\w* (?:and|&) gas optimi",
+        r"exploit detection", r"threat detection",
+    ],
+    "research": [
+        r"market & protocol research", r"data & research",
+        r"research agent", r"narrative analyst", r"intelligence (?:&|and) narrative",
+        r"on-?chain analytics", r"market research",
+    ],
+    "content": [
+        r"writing & content", r"content agent", r"copywrit\w+",
+        r"content generation", r"social (?:media )?content",
+    ],
+    "development": [
+        r"code & smart contracts", r"smart contract develop\w*",
+        r"code (?:generation|review) agent", r"developer agent",
+    ],
+    "automation": [
+        r"automation & ops", r"ops agent", r"workflow automation",
+        r"autonomous automation",
+    ],
+    "trading": [
+        r"autonomous (?:defi )?trading agent", r"ai trading agent",
+        r"trading agent \(simple-?mode\)", r"autonomous trading",
+        r"sizes entries", r"manages buys and exits",
+    ],
+    "staking": [
+        r"liquid[- ]staking", r"staking agent", r"stake (?:and|&) restake",
+        r"validator (?:selection|agent)",
     ],
     "grid_trading": [
         r"grid trading", r"grid[- _]?bot", r"grid strateg\w*",
@@ -273,7 +326,7 @@ def categorise(cand, det):
         near = [f"{c}:'{h[2]}'({h[1]}) tag-only, uncorroborated"
                 for c, hs in tag_only.items() for h in hs[:1]]
         for cat in CATEGORIES:
-            for pat, fname, txt in find(W_RX[cat], fields):
+            for pat, fname, txt in find(W_RX.get(cat, []), fields):  # .get: corpus categories have no WEAK list
                 near.append(f"{cat}:'{txt}'({fname})")
         ev = ("no strong category term matched; "
               + ("weak/ambiguous near-misses: " + ", ".join(near[:6])
