@@ -1,7 +1,0 @@
-{
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "cd trust-index/apps/bnb-marketplace && npm install && npm run build",
-  "outputDirectory": "trust-index/apps/bnb-marketplace/out",
-  "installCommand": "echo 'install handled by buildCommand'",
-  "framework": null
-}

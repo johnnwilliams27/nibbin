@@ -1,40 +1,54 @@
-# Security Policy
+# Security policy
 
 ## Reporting a vulnerability
 
-Please report security issues **privately** — do not open a public issue.
+Email **jnwilliams27@gmail.com**. Please do not open a public issue for anything
+exploitable.
 
-- **Email:** hello@nibbin.com (preferred)
-- Or use GitHub's **private vulnerability reporting** (repo → Security → Report a vulnerability).
-
-Include: affected component (web, desktop Observer, installer), a description, reproduction steps, and impact. We aim to acknowledge within 3 business days and to keep you updated through to a fix. Please give us a reasonable window to remediate before any public disclosure.
+Include the affected component, a description, reproduction steps, and impact.
+We aim to acknowledge within 3 business days and to keep you updated through to a
+fix. Please give us a reasonable window to remediate before public disclosure.
 
 ## Scope
 
-- **Web app** (nibbin.com) and account/auth surfaces
-- **Desktop Observer** (the Tauri client + `observerd` daemon)
-- **Installers** distributed via the public `nibbin-desktop` repo
+- The scoring engine (`trust-index/packages/scoring`)
+- The probe harness (`trust-index/packages/collectors`) — in particular the
+  network guard in `src/net.ts`
+- The on-chain indexer (`trust-index/packages/indexer`)
+- Persistence and the credential store (`trust-index/packages/db`)
+- The marketplace app (`trust-index/apps/bnb-marketplace`)
 
-## Verifying desktop downloads
+The v1 product (web app, desktop Observer, installers) was archived on
+2026-09-09 and is out of scope here. See `ARCHIVE.md` and the `old-nibbin`
+repository.
 
-Installers are built only in CI from source (never locally) and published with:
+## What we consider a vulnerability, specifically
 
-- **SHA-256 checksums** (`SHA256SUMS.txt` on each release) — verify your download matches.
-- **Signed build provenance** — verify an artifact is genuinely built from this repo's workflow:
-  ```
-  gh attestation verify <installer-file> --repo johnnwilliams27/nibbin
-  ```
-- **Code signing** (when configured): macOS Developer ID + notarization; Windows Authenticode. Until signing is enabled, installers are unsigned and the OS will warn on first launch.
+This project makes outbound requests to endpoints that **subjects control**, and
+stores credentials for some of them. The interesting attack surface is therefore
+not the usual web one:
 
-## Handling of sensitive data (Observer)
+- **SSRF and DNS rebinding.** `src/net.ts` vets a URL, resolves it, refuses
+  private and link-local addresses, and PINS the socket to the address it
+  vetted, re-vetting on every redirect. A way to reach an internal address
+  through a subject-supplied URL, an `endpoint` event, an A2A agent card's `url`,
+  or a redirect chain is a vulnerability.
+- **Credential exposure.** Secrets are encrypted at rest (AES-256-GCM, key from
+  the environment, no default) and decrypted only when a request is about to be
+  authenticated. A path that logs, returns, or transmits a stored secret to the
+  wrong origin is a vulnerability. Origin-bound headers must not survive a
+  cross-origin redirect.
+- **Rating integrity.** The engine must not be manipulable by a subject into
+  publishing a score it did not earn. Probe values are derived per subject from a
+  held seed for exactly this reason. A way to recover those, or to make a gap
+  read as evidence, is a vulnerability.
 
-The Observer captures screen/activity data to learn your workflow. By design:
+## Handling of subject data
 
-- Capture and the study database stay **local to your machine** (SQLCipher; key in the OS keystore) — they are never uploaded.
-- Multi-layer **redaction** runs before anything is persisted; secure fields are suppressed at capture.
-- A **hard day-14 stop** and a **pause hotkey** are enforced by the daemon.
-- Auth tokens live only in the **OS keychain** (never on disk or in the study DB).
+We fetch and store public declarations — registration documents, tool and skill
+lists, and responses to probes. We do not collect personal data from the
+subjects we rate, and probe responses are stored as evidence for the ratings
+derived from them.
 
-## Supported versions
-
-The project is pre-1.0; only the latest release receives security fixes.
+Probes are read-only by default: the harness performs a handshake and enumerates
+declared capabilities. It does not call tools that mutate state.
