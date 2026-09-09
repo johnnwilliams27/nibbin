@@ -26,7 +26,6 @@ export default function MethodologyPage() {
           <li><strong>Link endpoint evidence.</strong> A probe result belongs to the endpoint we checked. Several registrations may reference that endpoint; reusing its result does not mean each agent was independently tested.</li>
         </ol>
         <p>The published snapshot contains {num(stats.listed)} listings. Registrations absent from it may have unresolved metadata or declarations outside our supported interfaces. Their absence is not a safety verdict. Registration counts, listings, and independently tested services are different units.</p>
-        {source?.event_block_range ? <p className="text-[13px]">Recorded registration events span blocks {num(source.event_block_range.min)}–{num(source.event_block_range.max)}. This is a bounded snapshot, not a live or exhaustive view of today’s registry.</p> : null}
       </Section>
       <Section id="evidence" title="What we have—and have not—checked">
         <p>We first check the declared MCP or A2A interface: can we reach it, exchange protocol messages, and discover its reported tools or skills? A retrieved card, a confirmed exchange, an authentication wall, and a failed reading remain distinct observations.</p>
