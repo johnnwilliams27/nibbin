@@ -11,7 +11,9 @@ import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..');
-const source = resolve(root, 'data/agents.json');
+const source = process.env.TRUST_INDEX_DATA
+  ? resolve(process.env.TRUST_INDEX_DATA)
+  : resolve(root, 'data/agents.json');
 const target = resolve(root, 'public/data/agents.json');
 
 mkdirSync(dirname(target), { recursive: true });

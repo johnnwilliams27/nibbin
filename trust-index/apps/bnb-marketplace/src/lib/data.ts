@@ -6,7 +6,12 @@ import type { Agent, CategorySlug, Coverage, Dataset } from './types';
 // Read at build time. Static export means the deployed site is a snapshot, so we
 // carry generated_at through to the UI and label it — a stale number that says
 // when it was taken beats a live-looking number that does not.
-const DATA_PATH = resolve(process.cwd(), 'data/agents.json');
+// TRUST_INDEX_DATA lets a maintainer render the site against an alternative
+// snapshot (e.g. a slice derived from data/raw/) without touching the file the
+// pipeline owns. Unset in every deploy; data/agents.json is the source of truth.
+const DATA_PATH = process.env.TRUST_INDEX_DATA
+  ? resolve(process.env.TRUST_INDEX_DATA)
+  : resolve(process.cwd(), 'data/agents.json');
 
 let cached: Dataset | null = null;
 

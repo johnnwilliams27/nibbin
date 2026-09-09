@@ -69,6 +69,15 @@ The frozen shape is in [`DATA-CONTRACT.md`](./DATA-CONTRACT.md). The front end r
 
 To pick up new data, rebuild. There is no runtime fetch to go stale silently.
 
+To preview the site against an alternative snapshot without touching the file the pipeline owns, point
+`TRUST_INDEX_DATA` at it:
+
+```bash
+TRUST_INDEX_DATA=/tmp/slice.json npm run build
+```
+
+Leave it unset in every deploy. `data/agents.json` is the source of truth.
+
 ## Deploy
 
 The app is a fully static export (`out/`) with no server runtime, no environment variables and no
@@ -101,6 +110,10 @@ or any static host. `trailingSlash` is enabled so directory-index hosting works 
   encode quality.
 - All four categories share one component path and one stats computation. If one category ever gets a
   richer summary than the others, that is a regression.
+- **Never invent agent data**, not even temporarily for layout work. A missing measurement renders as
+  "Not assessed" with a reason; it never renders as a plausible-looking value. If you need to see a
+  populated layout, derive a slice from real records in `data/raw/` and load it via `TRUST_INDEX_DATA`
+  — and do not commit it.
 - `src/lib/sorting.ts` deliberately separates *sortable* from *not sortable* per key. Agents missing
   the measurement a sort depends on drop into a labelled section rather than being ordered with a
   substituted value.
