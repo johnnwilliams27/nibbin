@@ -69,7 +69,22 @@ if (credKey === undefined || credKey.length < 16) {
   process.exit(1);
 }
 
-const json = async (url: string, init?: RequestInit): Promise<unknown> => {
+/**
+ * Fetch JSON from an OAuth discovery endpoint.
+ *
+ * `any`, deliberately and narrowly. This walks somebody else's
+ * `.well-known/oauth-authorization-server` and registration responses, where
+ * every field is optional, servers disagree about shape, and the script reads
+ * opportunistically — it is discovery, not a contract. `unknown` turns each of
+ * the dozen call sites below into a narrowing exercise over data we have no
+ * schema for, and a generic needs an annotation at every one of those sites to
+ * mean anything. Neither buys type safety here; both just move the assertion.
+ *
+ * Scoped to this one helper in one operational script. Nothing that scores a
+ * subject may do this.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const json = async (url: string, init?: RequestInit): Promise<any> => {
   const res = await fetch(url, init);
   if (!res.ok) throw new Error(`${url} -> HTTP ${res.status}: ${(await res.text()).slice(0, 300)}`);
   return res.json();
