@@ -28,8 +28,9 @@ import {
   parseAgentCard,
   readInterfaces,
   readSkills,
+  summarizeDiscovery,
 } from "../src/a2a/probe.js";
-import { isSubjectFact, type MeasurementOutcome } from "../src/a2a/transcript.js";
+import { isSubjectFact, type CardAttempt, type MeasurementOutcome } from "../src/a2a/transcript.js";
 import type { HttpOutcome } from "../src/net.js";
 
 /** An HTTP 2xx with a body, as guardedFetch returns one. */
@@ -102,13 +103,24 @@ describe("cardCandidates", () => {
     expect(urls).toContain("https://app.singularry.org/.well-known/agent-card.json");
   });
 
-  it("also tries the well-known path under a base's own path prefix, last", () => {
-    const paths = cardCandidates("https://host.example/agents/191").map((c) => c.path);
-    expect(paths).toEqual([
-      "/.well-known/agent-card.json",
-      "/.well-known/agent.json",
-      "/agents/191/.well-known/agent-card.json",
-      "/agents/191/.well-known/agent.json",
+  it("fetches a declared card URL that ends in no extension at all", () => {
+    // 18 of the 23 most recently minted A2A agents on BSC declare exactly this
+    // shape (placeholder included). An earlier version only tried a declared
+    // URL when it ended in `.json`, so this whole batch never had its own
+    // endpoint fetched.
+    const c = cardCandidates("https://platform-backend.prod.termix.live/api/v1/a2a/agents/{agentId}/card");
+    expect(c[0]?.kind).toBe("declared");
+    expect(c[0]?.path).toBe("/api/v1/a2a/agents/%7BagentId%7D/card");
+  });
+
+  it("marks the path-prefix fallback as a guess, and puts it last", () => {
+    const c = cardCandidates("https://host.example/agents/191");
+    expect(c.map((x) => `${x.kind} ${x.path}`)).toEqual([
+      "declared /agents/191",
+      "well-known /.well-known/agent-card.json",
+      "well-known /.well-known/agent.json",
+      "guess /agents/191/.well-known/agent-card.json",
+      "guess /agents/191/.well-known/agent.json",
     ]);
   });
 
@@ -345,6 +357,56 @@ describe("classifyRpcResponse", () => {
     expect(classifyRpcResponse(fail(429), "tasks/get").verdict).toBe("rate_limited");
     expect(classifyRpcResponse(fail(502), "tasks/get").verdict).toBe("unmeasured");
     expect(classifyRpcResponse(noResponse("dns lookup failed"), "tasks/get").verdict).toBe("unmeasured");
+  });
+});
+
+describe("summarizeDiscovery", () => {
+  const attempt = (kind: CardAttempt["kind"], outcome: MeasurementOutcome, status: number | null): CardAttempt => ({
+    url: `https://h.example/${kind}`,
+    path: `/${kind}`,
+    kind,
+    outcome,
+    status,
+    contentType: null,
+    reason: outcome === "card" ? null : `HTTP ${String(status)}`,
+    elapsedMs: 5,
+  });
+
+  it("never lets an answer from a path we invented outrank the spec's path", () => {
+    // The termix.live batch, exactly: 404 from both well-known paths, 401 from
+    // the path this prober guessed. The subject is not auth-walled; a route we
+    // made up is. Summarising it the other way would be our guess written down
+    // as their state.
+    const s = summarizeDiscovery(
+      [attempt("well-known", "absent", 404), attempt("well-known", "absent", 404), attempt("guess", "auth_walled", 401)],
+      attempt("guess", "auth_walled", 401),
+    );
+    expect(s.outcome).toBe("absent");
+  });
+
+  it("prefers the operator's own declared path over the well-known ones", () => {
+    const s = summarizeDiscovery(
+      [attempt("declared", "auth_walled", 401), attempt("well-known", "absent", 404)],
+      attempt("declared", "auth_walled", 401),
+    );
+    expect(s.outcome).toBe("auth_walled");
+  });
+
+  it("reports a card whenever one was found, whatever else failed", () => {
+    const found = attempt("well-known", "card", 200);
+    expect(summarizeDiscovery([attempt("declared", "absent", 404), found], found).outcome).toBe("card");
+  });
+
+  it("summarises as a gap only when no path produced a fact about the subject", () => {
+    const s = summarizeDiscovery([attempt("declared", "unmeasured", null), attempt("well-known", "unmeasured", 503)], null);
+    expect(s.outcome).toBe("unmeasured");
+  });
+
+  it("keeps a fact from one path even when another path timed out", () => {
+    // A partially-measured subject is still measured. The gap stays visible in
+    // `attempts`; it does not erase what we did learn.
+    const s = summarizeDiscovery([attempt("well-known", "unmeasured", null), attempt("guess", "absent", 404)], null);
+    expect(s.outcome).toBe("absent");
   });
 });
 

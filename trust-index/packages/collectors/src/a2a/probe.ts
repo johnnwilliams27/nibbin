@@ -70,6 +70,7 @@ import type {
   A2aRegistryFacts,
   A2aTranscript,
   AssessmentGap,
+  CandidateKind,
   CardAttempt,
   CardDeclaration,
   CardDiscovery,
@@ -114,36 +115,46 @@ export function isoNow(): string {
 /**
  * Every URL worth trying for a card, in order, deduplicated.
  *
- * A caller hands us whatever a registry stored, and the registries store both
- * shapes: a bare origin (`https://agent.example.com`) and a fully-qualified
- * card URL (`https://app.singularry.org/agents/191/agent-card.json`). A prober
- * that assumed one shape would either fetch `.../agent-card.json/.well-known/
- * agent-card.json` or never try the well-known path at all.
+ * A caller hands us whatever a registry stored, and the registries store every
+ * shape: a bare origin (`https://agent.example.com`), a fully-qualified card
+ * URL (`https://app.singularry.org/agents/191/agent-card.json`), and card URLs
+ * that end in no extension at all
+ * (`https://platform-backend.prod.termix.live/api/v1/a2a/agents/{agentId}/card`
+ * — 18 of the 23 most recently minted A2A agents on BSC, verbatim, template
+ * placeholder and all).
  *
- * The declared URL goes FIRST when it already looks like a document, because
- * an operator who published a specific location meant it — and the well-known
- * paths still follow it, because EZCTO's declared location was wrong and the
- * well-known one was right. Neither source is trusted to be the only one.
+ * THE DECLARED URL IS ALWAYS TRIED, and tried first. An earlier version only
+ * tried it when the path ended in `.json`, which meant that whole batch of 18
+ * never had its own declared endpoint fetched: the prober went to the
+ * well-known paths, got 404s, guessed a third path, got a 401 from an
+ * unrelated API route and summarised the subject as auth-walled. Our guess,
+ * recorded as their state. The rule is now simply: if the operator named a
+ * path, fetch the path the operator named.
+ *
+ * The well-known paths still follow it, because EZCTO's declared location 404s
+ * while a well-known path on another host of theirs was the one to check.
+ * Neither source is trusted to be the only one.
  */
-export function cardCandidates(baseUrl: string): Array<{ url: string; path: string }> {
+export function cardCandidates(baseUrl: string): Array<{ url: string; path: string; kind: CandidateKind }> {
   const vetted = vetUrl(baseUrl);
   if (!vetted.allowed) return [];
   const url = vetted.url;
-  const out: Array<{ url: string; path: string }> = [];
-  const push = (u: URL): void => {
+  const out: Array<{ url: string; path: string; kind: CandidateKind }> = [];
+  const push = (u: URL, kind: CandidateKind): void => {
     const s = u.toString();
-    if (!out.some((c) => c.url === s)) out.push({ url: s, path: u.pathname });
+    if (!out.some((c) => c.url === s)) out.push({ url: s, path: u.pathname, kind });
   };
-  // A path that names a document is a location, not a base to append to.
-  const looksLikeDocument = /\.json$/i.test(url.pathname);
-  if (looksLikeDocument) push(url);
-  for (const p of CARD_PATHS) push(new URL(p, url.origin));
-  // A base with a path prefix (`https://host/agents/191`) may mount its card
-  // under that prefix rather than at the origin. Tried last: it is a guess,
-  // where the two above are the spec and the operator's own claim.
-  if (!looksLikeDocument && url.pathname !== "/" && url.pathname !== "") {
+  // A path beyond the root is a location the operator chose to publish.
+  const hasPath = url.pathname !== "/" && url.pathname !== "";
+  if (hasPath) push(url, "declared");
+  for (const p of CARD_PATHS) push(new URL(p, url.origin), "well-known");
+  // A base with a path prefix may mount its card under that prefix rather than
+  // at the origin. Tried last and marked as OURS: an answer from a path we
+  // invented must not outrank an answer from the spec's path or the
+  // operator's own.
+  if (hasPath && !/\.json$/i.test(url.pathname)) {
     const prefix = url.pathname.replace(/\/+$/, "");
-    for (const p of CARD_PATHS) push(new URL(`${prefix}${p}`, url.origin));
+    for (const p of CARD_PATHS) push(new URL(`${prefix}${p}`, url.origin), "guess");
   }
   return out;
 }
@@ -441,6 +452,32 @@ export function classifyRpcResponse(res: HttpOutcome, method: string): {
   return { verdict: "speaks_a2a", rpcErrorCode: code, rpcErrorMessage: message, reason: null };
 }
 
+/**
+ * One outcome for the whole of tier 1, from every path tried.
+ *
+ * The ordering rule, and why it exists: an answer from a path WE invented never
+ * outranks an answer from the spec's path or from the operator's own. The
+ * termix.live batch is the case in point — 404 from both well-known paths and
+ * 401 from the path this prober guessed. Reporting that subject as auth-walled
+ * would be reporting our guess as their state.
+ *
+ * A measurement gap is only the summary when nothing better was learned: if any
+ * authoritative path produced a fact, that fact is the finding, and the gap on
+ * another path stays visible in `attempts`.
+ */
+export function summarizeDiscovery(
+  attempts: CardAttempt[],
+  chosen: CardAttempt | null,
+): { outcome: MeasurementOutcome; reason: string | null } {
+  if (chosen?.outcome === "card") return { outcome: "card", reason: null };
+  const authoritative = attempts.filter((a) => a.kind !== "guess" && isSubjectFact(a.outcome));
+  const anyFact = attempts.filter((a) => isSubjectFact(a.outcome));
+  const pick = authoritative[0] ?? anyFact[0] ?? null;
+  if (pick !== null) return { outcome: pick.outcome, reason: pick.reason };
+  const gap = attempts[0] ?? null;
+  return { outcome: gap?.outcome ?? "unmeasured", reason: gap?.reason ?? "no card at any candidate path" };
+}
+
 function gapFor(tier: AssessmentGap["tier"], outcome: MeasurementOutcome | ReachabilityVerdict, reason: string | null): AssessmentGap | null {
   if (outcome !== "unmeasured" && outcome !== "refused") return null;
   return { tier, reason: reason ?? "unmeasured" };
@@ -491,6 +528,7 @@ export async function probeA2aAgent(baseUrl: string, opts: A2aProbeOptions = {})
       const attempt: CardAttempt = {
         url: c.url,
         path: c.path,
+        kind: c.kind,
         outcome: verdict.outcome,
         status: res.status,
         contentType: res.headers?.get("content-type") ?? null,
@@ -510,25 +548,14 @@ export async function probeA2aAgent(baseUrl: string, opts: A2aProbeOptions = {})
         break;
       }
     }
-    const last = chosen ?? attempts[attempts.length - 1] ?? null;
-    // The most informative outcome across everything tried. A 404 on one path
-    // and a timeout on another is a partially-measured subject, and the summary
-    // must not round that to "absent".
-    const anyUnmeasured = attempts.some((a) => !isSubjectFact(a.outcome));
-    const outcome: MeasurementOutcome =
-      chosen?.outcome === "card"
-        ? "card"
-        : (chosen?.outcome ?? (anyUnmeasured ? "unmeasured" : (last?.outcome ?? "unmeasured")));
+    const summary = summarizeDiscovery(attempts, chosen);
     discovery = {
-      ok: outcome === "card",
-      url: outcome === "card" ? (chosen?.url ?? null) : null,
-      path: outcome === "card" ? (chosen?.path ?? null) : null,
-      outcome,
+      ok: summary.outcome === "card",
+      url: summary.outcome === "card" ? (chosen?.url ?? null) : null,
+      path: summary.outcome === "card" ? (chosen?.path ?? null) : null,
+      outcome: summary.outcome,
       attempts,
-      reason:
-        outcome === "card"
-          ? null
-          : (chosen?.reason ?? last?.reason ?? "no card at any candidate path"),
+      reason: summary.reason,
       elapsedMs: Date.now() - started,
     };
   }
