@@ -7,7 +7,7 @@ import type { Agent, CategorySlug } from '@/lib/types';
 import { CATEGORIES, CATEGORY_BY_SLUG } from '@/lib/categories';
 import { AgentCard, agentHref } from './AgentCard';
 import { CoverageAxis, GateFlag, ReferenceBadge, scoreState } from './Assessment';
-import { EmptyState } from './DataStatus';
+import { EmptyState } from './EmptyState';
 import { compositeOutOf100, latency } from '@/lib/format';
 import { FILTERS, SORTS, compareAgents, isSortable, passesFilter, type FilterKey, type SortKey } from '@/lib/sorting';
 

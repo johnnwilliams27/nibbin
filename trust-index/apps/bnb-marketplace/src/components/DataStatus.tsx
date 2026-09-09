@@ -1,6 +1,8 @@
-import { Loader, Inbox } from 'lucide-react';
+import { Loader } from 'lucide-react';
 import { loadDataset } from '@/lib/data';
 import { timestamp } from '@/lib/format';
+
+export { EmptyState } from './EmptyState';
 
 /**
  * The index pipeline runs independently of this build. If it had not finished
@@ -33,16 +35,6 @@ export function DataStatusBanner() {
           </p>
         </div>
       </div>
-    </div>
-  );
-}
-
-export function EmptyState({ title, body }: { title: string; body: string }) {
-  return (
-    <div className="card flex flex-col items-center gap-2 px-6 py-14 text-center">
-      <Inbox size={22} strokeWidth={1.5} style={{ color: 'var(--fg-faint)' }} aria-hidden />
-      <p className="font-semibold">{title}</p>
-      <p className="max-w-md text-[14px] text-[var(--fg-muted)]">{body}</p>
     </div>
   );
 }
