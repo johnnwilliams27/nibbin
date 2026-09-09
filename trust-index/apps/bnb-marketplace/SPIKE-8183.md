@@ -269,3 +269,84 @@ as protocol fluency, not a gap. Do **not** promise a `COMPLETED` job in the demo
 - Mainnet is **never** gas-sponsored. Keep the demo on testnet.
 - `--provider` is a required *flag*; the task is positional or `--task`, never both.
 
+---
+---
+
+# PHASE 2 — submit path closed, agent activated end-to-end
+
+Everything below also ran on BSC testnet for **$0.00**. Integration handoff:
+`HIRE-INTEGRATION.md`.
+
+## The signed-quote gate is closed ✅
+
+The `submit` blocker is solved. The seller mints its own quote over A2A; the buyer
+anchors it with `--quote-json`:
+
+```bash
+ERC8183_AGENT_URL=http://127.0.0.1:9000/erc8183 bag dev --port 9000   # seller up
+curl -X POST http://127.0.0.1:9000/ -d '{...{"skill":"negotiate",...}...}'  # signed quote
+bag erc8183 buy --provider <seller> --quote-json ./quote.json --budget-u 0
+curl -X POST http://127.0.0.1:9000/ -d '{...{"skill":"notify_funded","job_id":N}...}'
+```
+
+The negotiate path is deterministic seller-side code — **no LLM key needed to quote**.
+
+## Two full jobs, on-chain
+
+**Job 1162** — buyer `0x9d8c…EA39`, provider `0x6d46…B7e8`, budget 0
+```
+create   0xfbb864278bfbde8b8201ba14181e1b2e80473e32b023e40b98e0d4af2303e3a3
+register 0xf24503a18a54008a89f17945a4f7918fd5d8ebed61a5fd3ad6442610fa8944bc
+setBudget 0xecf5461aca072194293e5cd3384717c89ca42fd5595ab5a5119b703daaa13d02
+fund     0x7842498d01dca33c8ff6dc4fe90299eb1a93c2a9acebcf0c35e980809dfbbff1
+submit   0xdf395de14d28cedf29919800959a2b73757db8fc11fbec3651e2ef7a1f984d2e   → SUBMITTED
+```
+
+**Job 1163 — fully autonomous.** Negotiated, funded, then activated via `notify_funded`;
+the agent did the work and submitted **by itself**, no human in the delivery loop:
+```
+create   0xafc2bb20a671bd459358acc8405b056d17747ef9979622ca048e3557d1d1e98b
+register 0x062422bcd36241f1872a1986460d2303c67cac1033edd1659b8e4882cbe39450
+setBudget 0xb77a53ee574d105262e840f0b8e42ffd23e297367ac16f34cb0b685f187a59df
+fund     0x895071bddb995341165247935d5605eeb006a52411dc96f28452773a41502159
+submit   0xb27b3e2d5d077c9b03fa8190f85fdb2f33d7a784367209fbf34b011b8ec7c11d   → SUBMITTED
+```
+Every one: `effective_gas_price_wei: 0`, `wallet_paid_wei: 0`.
+
+**This is the "activate an agent end-to-end" criterion, satisfied.**
+
+## ⚠️ CORRECTION: the dispute window is 15 minutes, not 24 hours
+
+The bundled docs say 24 h. The deployed testnet policy contract disagrees:
+
+```
+policy.disputeWindow() = 900   (15 minutes)
+```
+
+Read it from the chain; never hard-code it. This was the single biggest assumption in
+Phase 1 and it was **wrong in our favour** — a genuinely `COMPLETED` job is reachable in
+15 minutes, not tomorrow.
+
+## ⚠️ Sponsorship has a hard boundary: commerceProxy only
+
+| Operation | Contract | Sponsored? |
+|---|---|---|
+| createJob / registerJob / setBudget / fund / submit | commerceProxy | ✅ yes, gas paid 0 |
+| `dispute` | policy | ❌ **no** — `insufficient funds ... have 0 want 180322000000000` |
+| `erc8004 register` | ERC-8004 registry | ❌ **no** — needs ~0.002 tBNB |
+
+So **the hire + deliver loop is free, but settlement and identity registration are not.**
+Both need tBNB from the Telegram faucet (a human). `settle` routes via the **router**
+contract, so whether approve is sponsored is a separate question from `dispute`.
+
+## Reference agents — one real one, deliberately
+
+Built **one** working agent (`health_factor`), not three. It computes
+`(collateral × threshold) / debt` deterministically — no LLM, no external data, output
+checkable by hand. Jobs 1162 and 1163 are its real work.
+
+`token_id` is **`null`**: ERC-8004 registration is unsponsored and we have no tBNB.
+Two more agents in `rebalancing` / `yield` that compute nothing would be padding — the
+exact conflict this marketplace exists to criticise. `is_reference_agent: true`,
+`assessment: null`, excluded from all rankings. Details in `HIRE-INTEGRATION.md` §7.
+
