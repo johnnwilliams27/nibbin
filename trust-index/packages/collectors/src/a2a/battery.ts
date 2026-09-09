@@ -24,9 +24,9 @@
  * published no example. One screen survives, and it is not a coverage
  * restriction:
  *
- *   A skill whose NAME, ID, TAGS or published EXAMPLES carry a mutating verb is
- *   never invoked. Its description is not scanned — see `invokable` for why
- *   scanning prose refused four fifths of the population.
+ *   A skill whose ID, TAGS or published EXAMPLES carry a mutating verb is never
+ *   invoked. Its `name` and `description` are not scanned — both are prose in
+ *   A2A, and see `invokable` for what scanning prose cost.
  *
  * That screen exists because of what these subjects are. They are DeFi agents
  * on BSC and 13,715 of them declare `x402Support: true`, which is a live
@@ -115,9 +115,11 @@ export type A2aBatteryResult = {
  *
  * So the screen now follows the MCP side exactly:
  *
- *   id, name, tags  -> matched by STEM via isMutatingName. These are the
- *                      skill's contract, chosen by the operator to say what it
- *                      does, and a stem match on a word boundary is precise.
+ *   id, tags        -> matched by STEM via isMutatingName. These are the
+ *                      skill's identifiers, and a stem match on a word boundary
+ *                      is precise. `name` is EXCLUDED: the A2A spec makes it a
+ *                      human-readable label, and operators write sentences in
+ *                      it.
  *   examples        -> matched by substring, because these are not prose ABOUT
  *                      the skill, they are text we would literally SEND.
  *   description     -> NOT scanned.
@@ -130,12 +132,19 @@ export type A2aBatteryResult = {
  * that refuses four fifths of the population costs the measurement itself.
  */
 export function invokable(s: SkillDeclaration): { ok: boolean; reason: string } {
-  // Identity fields, matched by STEM. isMutatingName splits camelCase and
-  // snake_case into words and tests whole-word membership, so `execute_trade`
-  // is refused and `executive_summary` is not.
-  for (const field of [s.id, s.name ?? "", ...s.tags]) {
+  // IDENTIFIERS only — `id` and `tags`. NOT `name`.
+  //
+  // This is where A2A differs from MCP and where a straight port went wrong. In
+  // MCP the tool `name` IS the identifier, so scanning it is scanning a
+  // contract. In A2A the spec makes `id` the identifier and `name` a
+  // human-readable label, which operators write as a sentence. Measured: a skill
+  // with id `rebalance_plan` is named "Portfolio rebalance, priced against the
+  // pools that would execute it" — refused on "execute", a word describing the
+  // pools rather than the skill. That is the prose problem again, one field
+  // down, so `name` is out and the identifier fields stand alone.
+  for (const field of [s.id, ...s.tags]) {
     if (field !== "" && isMutatingName(field)) {
-      return { ok: false, reason: `its name or tags carry a mutating verb (${field}); never invoked` };
+      return { ok: false, reason: `its id or tags carry a mutating verb (${field}); never invoked` };
     }
   }
   // Examples ARE scanned, and by substring rather than stem, because unlike the
