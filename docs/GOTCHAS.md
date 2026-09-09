@@ -2,6 +2,11 @@
 
 ## Measuring subjects
 
+- A validation failure must happen before publishing the replacement snapshot.
+  The first detail-status fix returned an error for unexplained gaps only after
+  replacing `agents.json`. It also accepted every fetch failure as evidence of
+  throttling. Check the recorded cause, preserve the prior artifact on rejection,
+  and never give an old snapshot an invented rate-limit reason at presentation.
 - M7 trap: the diagnosis (Opus, ~$0.025/call, ~37x a draft) is an UNMETERED pipeline splurge
   today (once per study, subscription-absorbed). If M7 makes it a user-triggerable metered action
   it must be charged FRONTIER (3 credits) — STANDARD (1 credit) is −147% margin, a guaranteed
@@ -25,9 +30,11 @@
 - An uncapped `Retry-After` is a self-inflicted hang. 8004scan answers every 429 with
   `retry-after: 3600`, so `time.sleep(max(retry_after, backoff))` parks a worker for a full
   hour on its FIRST throttle; with a 16-thread pool and 8 retries the run goes silent for
-  hours and reads as crashed rather than throttled. Honour Retry-After, but cap it (90s) and
-  let the run END with honest `rate_limited` records — a resumable fetcher that skips cached
-  files loses nothing by exiting early, and everything by looking dead.
+  hours and reads as crashed rather than throttled. A 90s cap was the first fix and was NOT
+  enough: it still admitted every queued identity and retried too early. Stop admitting
+  requests across the shared pool on the first 429, record queued work as deferred by that
+  quota, and rerun after it resets. Already-running requests can finish and valid cached files
+  are still reused.
 - Recording a gap correctly is only half of rule 1; the CONSUMER has to carry it. `fetch_details`
   wrote all 1,476 unfetched agents to `detail_failures.json` as `rate_limited` (correct), but
   `build_dataset.py` loaded that set and used it in a single `print()` — it never reached the

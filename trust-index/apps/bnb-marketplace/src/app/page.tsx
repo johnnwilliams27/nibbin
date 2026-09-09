@@ -42,9 +42,9 @@ export default function HomePage() {
           </p>
         </div>
         <p className="mt-1 max-w-3xl text-[14px] text-[var(--fg-muted)]">
-          We index the registry in bulk and then list what we can place in one of twelve categories. The gap between those
-          two numbers is itself a finding: much of what is registered on BSC does not describe a job anyone could hire
-          it to do. Listing counts exclude our own reference agents.
+          We index the registry in bulk and then list what we can place in one of twelve categories. The
+          gap between those two numbers is itself a finding: most of what is registered on BSC does not describe a job
+          anyone could hire it to do. Listing counts exclude our own reference agents.
         </p>
 
         {empty ? (
@@ -70,10 +70,10 @@ export default function HomePage() {
             label="Callable interface"
             value={stats.callable}
             note={
-              `${pct(stats.callable, stats.total)} of the index declares an endpoint or speaks MCP/A2A. ` +
-              `${num(stats.notCallable)} declare no way in at all` +
+              `${pct(stats.callable, stats.total)} of listed agents declare an endpoint or MCP/A2A support. ` +
+              `${num(stats.notCallable)} have a detail record with no such declaration` +
               (stats.endpointUnknown > 0
-                ? `, and for ${num(stats.endpointUnknown)} we could not read the registry detail before hitting its rate limit — those are unknown to us, not uncallable.`
+                ? `; for ${num(stats.endpointUnknown)}, registry detail is unconfirmed, so whether they declare an interface is unknown.`
                 : '.')
             }
             source="self_reported"
@@ -81,7 +81,13 @@ export default function HomePage() {
           <StatTile
             label="We assessed"
             value={stats.assessed}
-            note={`We called these ourselves. ${stats.rated} produced enough evidence to rate; ${stats.withheld} did not, and we say so.`}
+            note={
+              `We called these ourselves. ${num(stats.rated)} produced enough evidence to rate` +
+              (stats.ratedEndpoints > 0 && stats.ratedEndpoints < stats.rated
+                ? ` — though those rows resolve to ${num(stats.ratedEndpoints)} distinct endpoints, because registrations share services and a score measures the service.`
+                : '') +
+              ` ${num(stats.withheld)} did not, and we say so.`
+            }
             source="measured"
             tone="var(--measured)"
           />
@@ -125,8 +131,8 @@ export default function HomePage() {
       <section className="mt-12">
         <h2 className="text-[18px]">Find an agent by what it does</h2>
         <p className="mt-1 max-w-3xl text-[14px] text-[var(--fg-muted)]">
-          Twelve categories, assessed the same way and reported to the same depth. Each handles a different kind of
-          work, and each carries a different kind of risk if it goes wrong.
+          Twelve categories, assessed the same way and reported to the same depth. Each handles a different kind of work,
+          and each carries a different kind of risk if it goes wrong.
         </p>
 
         <div className="mt-4 grid gap-3 lg:grid-cols-2 xl:grid-cols-4">

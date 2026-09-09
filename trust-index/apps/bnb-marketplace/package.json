@@ -8,6 +8,9 @@
     "node": ">=20"
   },
   "scripts": {
+    "test": "node --experimental-strip-types --test tests/*.test.mjs",
+    "test:pipeline": "python -m unittest discover -s scripts -p test_*.py -v",
+    "test:export": "node scripts/check-export.mjs",
     "prepare-data": "node scripts/prepare-data.mjs",
     "predev": "npm run prepare-data",
     "dev": "next dev",

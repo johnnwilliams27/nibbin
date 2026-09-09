@@ -38,7 +38,15 @@ Agent = {
   //                             must be excluded from the denominator of any
   //                             "has no endpoint" / "not callable" statistic,
   //                             and surfaced as unknown in the UI.
-  detail_status: "read" | "unread_rate_limited"
+  // AMENDED 2026-09-09 (handoff review): old or invalid snapshots cannot be
+  // assumed to have hit a rate limit. The presentation fallback is
+  // "unread_unknown"; it never counts as a confirmed absence of an endpoint.
+  // The builder still refuses to publish unexplained or non-throttle gaps.
+  // A detail is "read" only after its identity and interface fields validate.
+  // Invalid cached bodies reject publication, even with a historical 429.
+  // Rate-limited includes queued fetches deferred after this run observed a
+  // shared-quota 429; the fetch log distinguishes those from requested rows.
+  detail_status: "read" | "unread_rate_limited" | "unread_unknown"
 
   // 8004scan-sourced (third_party_review provenance, weight 0.60)
   scan_total_score: number | null
@@ -47,6 +55,13 @@ Agent = {
 
   // OUR assessment. null = not assessed; NEVER invent a value.
   assessment: null | {
+    // AMENDED 2026-09-09 (scoring): agents in this snapshot declaring the SAME
+    // endpoint, this one included. A composite measures a SERVICE. 229
+    // registrations share one endpoint here and all inherit its score; writing
+    // that onto 229 rows silently turns 13 measured services into "239 rated
+    // agents", which is the one-thing-counted-many-times inflation that fills
+    // this registry, reproduced by us. Render it wherever a shared score shows.
+    endpoint_shared_with: number
     // AMENDED 2026-09-09 (probe sweep): widened from `boolean` to
     // `boolean | null`. null = WE COULD NOT MEASURE — a timeout, a 5xx or a
     // hostname that does not resolve. Writing that as `false` would publish our

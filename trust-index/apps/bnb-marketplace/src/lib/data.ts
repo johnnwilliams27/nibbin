@@ -3,8 +3,10 @@ import { resolve } from 'node:path';
 import { CATEGORIES } from './categories';
 import type { Agent, CategorySlug, Coverage, Dataset } from './types';
 import { routeTokenId } from './routes';
+import { normaliseDetailStatus, isCallable, isEndpointUnknown, isNotCallable } from './detail-state';
 
 export { routeTokenId, agentHref } from './routes';
+export { isCallable, isEndpointUnknown, isNotCallable } from './detail-state';
 
 // Read at build time. Static export means the deployed site is a snapshot, so we
 // carry generated_at through to the UI and label it — a stale number that says
@@ -70,8 +72,8 @@ function isUsableAgent(a: unknown): a is Agent {
  * This was a hand-written copy of the four original slugs, and normalise()
  * coerces anything not in it to `other`. Adding eight categories upstream while
  * this list stayed at four would have silently reverted all 7,362 newly
- * classified agents to `other` — the data would have been right, the site
- * would have shown the old answer, and nothing would have errored.
+ * classified agents — the data right, the site showing the old answer, nothing
+ * erroring.
  */
 const KNOWN: CategorySlug[] = [...CATEGORIES.map((c) => c.slug), 'other'];
 
@@ -88,13 +90,7 @@ function normalise(a: Agent): Agent {
     category_evidence: a.category_evidence ?? '',
     protocols: Array.isArray(a.protocols) ? a.protocols : [],
     endpoint: a.endpoint ?? null,
-    // Defaults to `unread_rate_limited`, NOT to `read`. A row from an older
-    // snapshot carries no detail_status, and we genuinely do not know whether
-    // its detail was fetched — so the safe default is the one that says "we
-    // don't know" and keeps the agent out of every "declares no endpoint"
-    // count. Defaulting to `read` would silently restore the bug this field
-    // was added to fix, and it would do so quietly, on old data.
-    detail_status: a.detail_status === 'read' ? 'read' : 'unread_rate_limited',
+    detail_status: normaliseDetailStatus(a.detail_status),
     x402_supported: a.x402_supported === true,
     scan_total_score: typeof a.scan_total_score === 'number' ? a.scan_total_score : null,
     scan_feedbacks: typeof a.scan_feedbacks === 'number' ? a.scan_feedbacks : 0,
@@ -111,8 +107,7 @@ function normalise(a: Agent): Agent {
           gates_fired: Array.isArray(a.assessment.gates_fired) ? a.assessment.gates_fired : [],
           // Defaults to 1 = "this agent alone". An older snapshot carries no
           // fan-out, and claiming a shared measurement is exclusive would be
-          // the inflation this field exists to expose, so 1 is the value that
-          // makes the UI say the least.
+          // the inflation this field exists to expose.
           endpoint_shared_with:
             typeof a.assessment.endpoint_shared_with === 'number' ? a.assessment.endpoint_shared_with : 1,
           composite: typeof a.assessment.composite === 'number' ? a.assessment.composite : null,
@@ -132,15 +127,11 @@ export function allAgents(): Agent[] {
 }
 
 /**
- * The categories this marketplace lists. Everything else in the registry is
- * indexed and counted, but not listed: an agent we cannot place in a category
- * is not something we can help anyone hire, and padding the listings with
- * unclassifiable rows would be the exact behaviour this site exists to
- * criticise. The remainder is reported on the landing page as a finding.
- *
- * Eight of these twelve were derived from the corpus after 9,811 agents sat in
- * `other` while their own descriptions said plainly what they were. That count
- * is now 2,449.
+ * The four categories this marketplace lists. Everything else in the registry is
+ * indexed and counted, but not listed: an agent we cannot even place in a
+ * category is not something we can help anyone hire, and padding the listings
+ * with 9,800 unclassifiable rows would be the exact behaviour this site exists
+ * to criticise. The count is reported on the landing page as a finding.
  */
 const MARKETPLACE: CategorySlug[] = [
   'rebalancing', 'grid_trading', 'yield', 'health_factor',
@@ -149,21 +140,15 @@ const MARKETPLACE: CategorySlug[] = [
 ];
 
 /**
- * ...OR an agent we actually called and assessed, whatever its category.
+ * A listed category, OR an agent we actually called and scored.
  *
- * The category comes from regex-matching an agent's own self-written
- * description — provenance `self_reported`, weight 0.15, the weakest evidence
- * this project recognises. Letting it decide what appears meant that seven
- * agents we had dialled, exercised with a behavioural battery and SCORED were
- * invisible, while unmeasured rows that happened to contain the word "yield"
- * were listed. The site said "0 produced enough evidence to rate" while its own
- * dataset carried seven composites between 40 and 77.
- *
- * Ranking a measured agent below an unmeasured one because a keyword missed is
- * the inversion this whole product exists to correct, so a published assessment
- * is now sufficient on its own. It does not widen the listings by much — an
- * assessment is far harder to earn than a keyword — and it cannot pad them,
- * because `composite: null` still keeps a row out.
+ * The category is a regex match against an agent's own self-written
+ * description — self_reported, weight 0.15. Letting it decide visibility meant
+ * agents we had dialled, exercised and SCORED were invisible while unmeasured
+ * rows containing the word "yield" were listed. Ranking a measured agent below
+ * an unmeasured one because a keyword missed is the inversion this product
+ * exists to correct. `composite: null` still keeps a row out, so this cannot
+ * pad the listings.
  */
 export function listedAgents(): Agent[] {
   return allAgents().filter(
@@ -171,7 +156,7 @@ export function listedAgents(): Agent[] {
   );
 }
 
-/** Indexed but not placed in any listed category. Never silently dropped. */
+/** Indexed but not placed in any of the four categories. Never silently dropped. */
 export function unclassifiedCount(): number {
   return allAgents().length - listedAgents().length;
 }
@@ -204,26 +189,6 @@ export function pageableAgents(): Agent[] {
   return [...listed, ...referenceAgents().filter((a) => !seen.has(a.agent_id))];
 }
 
-/** Callable = we can actually reach out and talk to it. A declared endpoint is the floor. */
-export function isCallable(a: Agent): boolean {
-  return Boolean(a.endpoint) || a.protocols.some((p) => p.toUpperCase() === 'MCP' || p.toUpperCase() === 'A2A');
-}
-
-/**
- * We never read this agent's detail, so we do not know whether it is callable.
- * NOT the same as "not callable" — this is our rate-limit gap, and the three-way
- * split (callable / not callable / unknown) exists so the UI can never state the
- * second when it means the third.
- */
-export function isEndpointUnknown(a: Agent): boolean {
-  return a.detail_status === 'unread_rate_limited' && !isCallable(a);
-}
-
-/** Measured as not callable: we read the detail and it declares no way in. */
-export function isNotCallable(a: Agent): boolean {
-  return !isCallable(a) && !isEndpointUnknown(a);
-}
-
 export function isAssessed(a: Agent): boolean {
   return a.assessment !== null;
 }
@@ -248,6 +213,8 @@ export interface HeadlineStats {
   endpointUnknown: number;
   assessed: number;
   rated: number;
+  /** Distinct endpoints behind `rated`. Lower when registrations share a service. */
+  ratedEndpoints: number;
   withheld: number;
   ecosystemVerified: number;
   withFeedback: number;
@@ -267,6 +234,11 @@ export function headlineStats(): HeadlineStats {
     endpointUnknown: agents.filter(isEndpointUnknown).length,
     assessed: agents.filter(isAssessed).length,
     rated: agents.filter(isRated).length,
+    // Distinct ENDPOINTS behind those rated rows. A composite measures a
+    // service, and 229 of the rated rows share one endpoint, so quoting the row
+    // count alone turns 13 measured services into "239 rated agents". The
+    // headline states both.
+    ratedEndpoints: new Set(agents.filter(isRated).map((a) => a.endpoint).filter(Boolean)).size,
     withheld: agents.filter((a) => a.assessment !== null && a.assessment.composite === null).length,
     ecosystemVerified: agents.filter((a) => a.scan_endpoint_verified).length,
     withFeedback: agents.filter((a) => a.scan_feedbacks > 0).length,

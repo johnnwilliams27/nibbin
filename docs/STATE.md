@@ -54,6 +54,13 @@ and the `old-nibbin` repository.
   `retry-after: 3600`; the uncapped `sleep(max(ra, ...))` put all 16 threads to sleep. Capped at 90s.
 - Detail cache at **8,590/10,041**, snapshotted to `data/cache-snapshot/` (7.5MB, restorable).
   `data/raw/` is gitignored as regenerable — true, but only at 1000 req/hour ≈ 10 hours cold.
+- **Detail-evidence correctness review, 2026-09-09.** Implemented and reviewed
+  on `codex/trust-index-handoff` through `461be71a`. Invalid or mismatched detail
+  cache cannot establish a reading; failed rebuilds preserve the snapshot;
+  missing-status rows stay unknown; shared quota exhaustion defers queued work.
+  Marketplace tests/build now participate in required CI. Four-reviewer report:
+  `gates/2026-09-09-detail-evidence.md`. Initial audit:
+  `HANDOFF-REVIEW-2026-09-09.md`. No new production measurements or threshold changes.
 
 - **ERC-8004 population frame, 2026-09-09.** Censused all twelve EVM chains carrying the
   Identity Registry: **496,976 agents**, independently reproduced (within ~1.5%) of
@@ -122,4 +129,3 @@ and the `old-nibbin` repository.
     resolve-then-pin it describes and does not implement. gpt-5.5 answered 97 of 120 items under our
     rate limit, so the benchmark's vendor ordering means nothing (its structural findings survive).
     No human has reviewed a sample of the Claude-drafted ground-truth labels.
-

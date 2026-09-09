@@ -20,6 +20,7 @@ and small rather than large and wrong.
 Usage: python3 scripts/build_dataset.py
 """
 import json, os, re, sys, time, collections
+from detail_response import read_detail
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RAW = os.path.join(HERE, "data", "raw")
@@ -31,10 +32,9 @@ OUT = os.path.join(HERE, "data", "agents.json")
 #
 # 9,811 agents sat in `other` while their own descriptions said plainly what
 # they were: 5,170 "Gasless stablecoin payment agent", 309 "automation & ops",
-# 300 "security & verification", and so on. Twenty-six descriptions account for
-# 74.6% of that pile. Calling them unclassifiable was a statement about the
-# taxonomy, not about them -- and "indexed but not listed" is a much weaker
-# thing to publish than "here is what it says it does".
+# 300 "security & verification". Twenty-six descriptions account for 74.6% of
+# that pile. Calling them unclassifiable was a statement about the taxonomy,
+# not about them.
 #
 # These are still SELF-REPORTED (weight 0.15) and the confidence and evidence
 # fields say so on every row. A category is a description, never a measurement.
@@ -193,15 +193,9 @@ def find_generic(cat, fields):
     return hits, best
 
 
-def detail_for(chain_id, token_id):
-    p = os.path.join(DET, f"{chain_id}_{token_id}.json")
-    if os.path.exists(p) and os.path.getsize(p) > 2:
-        try:
-            with open(p) as f:
-                return json.load(f)
-        except Exception:
-            return None
-    return None
+def detail_for(candidate):
+    p = os.path.join(DET, f"{candidate['chain_id']}_{candidate['token_id']}.json")
+    return read_detail(p, candidate)
 
 
 def text_fields(cand, det):
@@ -332,12 +326,7 @@ def categorise(cand, det):
         near = [f"{c}:'{h[2]}'({h[1]}) tag-only, uncorroborated"
                 for c, hs in tag_only.items() for h in hs[:1]]
         for cat in CATEGORIES:
-            # .get: the corpus-derived categories carry no WEAK patterns. A weak
-            # list is for words ambiguous enough to need corroboration, and
-            # inventing one per new category would be guessing at ambiguity we
-            # have not measured. No weak list means no near-misses, which is
-            # the honest default.
-            for pat, fname, txt in find(W_RX.get(cat, []), fields):
+            for pat, fname, txt in find(W_RX.get(cat, []), fields):  # .get: corpus categories have no WEAK list
                 near.append(f"{cat}:'{txt}'({fname})")
         ev = ("no strong category term matched; "
               + ("weak/ambiguous near-misses: " + ", ".join(near[:6])
@@ -402,7 +391,15 @@ def main():
     known_fail = set()
     if os.path.exists(fail_path):
         with open(fail_path) as f:
-            known_fail = {x["agent_id"] for x in json.load(f)["failures"]}
+            # The fetcher also records 404s and timeouts. Membership alone is
+            # not evidence of throttling. Support the legacy HTTPError record
+            # and an explicit structured rate-limit status.
+            known_fail = {
+                x["agent_id"] for x in json.load(f)["failures"]
+                if x.get("status") == "rate_limited"
+                or (x.get("status") == "failed"
+                    and str(x.get("error", "")).startswith("<HTTPError 429:"))
+            }
 
     # A separate probe run writes `assessment` into data/agents.json. Rebuilding
     # must not destroy that work, so carry forward any assessment already
@@ -422,7 +419,12 @@ def main():
 
     agents, no_detail, kept, dropped = [], 0, 0, 0
     for c in cands:
-        det = detail_for(c["chain_id"], c["token_id"])
+        try:
+            det = detail_for(c)
+        except (ValueError, OSError) as error:
+            print(f"ERROR: invalid detail cache for {c['agent_id']}: {error}. "
+                  f"Existing dataset preserved; rerun fetch_details.py to repair the cache.")
+            return 1
         if det is None:
             no_detail += 1
         src = det or c
@@ -472,17 +474,7 @@ def main():
             "is_reference_agent": False,
         })
 
-    payload = {
-        "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "agents": agents,
-    }
-    tmp = OUT + ".tmp"
-    with open(tmp, "w") as f:
-        json.dump(payload, f)
-    os.replace(tmp, OUT)
-
     cats = collections.Counter(a["category"] for a in agents)
-    print(f"wrote {len(agents)} agents -> {OUT}")
     print(f"assessments carried forward from probe run: {kept} "
           f"(dropped because endpoint changed: {dropped})")
     print(f"agents without a detail file: {no_detail} "
@@ -497,11 +489,23 @@ def main():
                   if a["detail_status"] == "unread_rate_limited"}
     unexplained = unread_ids - known_fail
     if unexplained:
-        print(f"ERROR: {len(unexplained)} agents have no detail file and no "
-              f"recorded fetch failure, so 'unread_rate_limited' would be a "
-              f"guess. Re-run fetch_details.py so the reason is recorded.")
+        print(f"ERROR: {len(unexplained)} agents have no readable detail and no "
+              f"recorded rate-limit failure, so 'unread_rate_limited' would be a "
+              f"guess. Inspect the fetch record. Existing dataset preserved.")
         print(f"  e.g. {sorted(unexplained)[:5]}")
         return 1
+
+    # Validate before creating even a temporary output. A failed command must
+    # leave the last publishable snapshot byte-for-byte intact.
+    payload = {
+        "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "agents": agents,
+    }
+    tmp = OUT + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(payload, f)
+    os.replace(tmp, OUT)
+    print(f"wrote {len(agents)} agents -> {OUT}")
 
     counts = collections.Counter(a["detail_status"] for a in agents)
     real_no_ep = sum(1 for a in agents

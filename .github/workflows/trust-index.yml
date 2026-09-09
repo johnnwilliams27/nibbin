@@ -56,6 +56,11 @@ jobs:
           cache-dependency-path: trust-index/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: pnpm run typecheck
+      # The marketplace is intentionally excluded from the pnpm workspace.
+      - run: npm ci --no-audit --no-fund
+        working-directory: trust-index/apps/bnb-marketplace
+      - run: npm run typecheck
+        working-directory: trust-index/apps/bnb-marketplace
 
   lint:
     runs-on: ubuntu-latest
@@ -97,6 +102,15 @@ jobs:
       # script do not fail the build. Golden score tests in packages/scoring
       # run here once Track B lands them.
       - run: pnpm run test
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm ci --no-audit --no-fund
+        working-directory: trust-index/apps/bnb-marketplace
+      - run: npm test
+        working-directory: trust-index/apps/bnb-marketplace
+      - run: npm run test:pipeline
+        working-directory: trust-index/apps/bnb-marketplace
 
   build:
     runs-on: ubuntu-latest
@@ -112,6 +126,12 @@ jobs:
           cache-dependency-path: trust-index/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: pnpm run build
+      - run: npm ci --no-audit --no-fund
+        working-directory: trust-index/apps/bnb-marketplace
+      - run: npm run build
+        working-directory: trust-index/apps/bnb-marketplace
+      - run: npm run test:export
+        working-directory: trust-index/apps/bnb-marketplace
 
   # SPEC 22 golden tests: regenerate the committed fixtures and fail on any
   # drift. The scoring-side golden tests rerun in the test job; this job

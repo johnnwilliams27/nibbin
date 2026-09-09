@@ -85,8 +85,11 @@ export interface Agent {
    * - `unread_rate_limited`: we never got the response. The null is OUR gap.
    *   Exclude it from any "has no endpoint" / "not callable" denominator and
    *   render it as unknown. Counting it as an absence is a rule 1 violation.
+   * - `unread_unknown`: detail status is missing or invalid; the reason is
+   *   unknown too. Apply the same exclusion without claiming a rate limit.
    */
-  detail_status: 'read' | 'unread_rate_limited';
+  // Legacy or invalid snapshots must not acquire an invented failure reason.
+  detail_status: 'read' | 'unread_rate_limited' | 'unread_unknown';
 
   // Third party (8004scan). Never ours.
   scan_total_score: number | null;

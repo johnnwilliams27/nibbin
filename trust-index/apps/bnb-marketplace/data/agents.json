@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-09-09T09:45:08.537Z",
+ "generated_at": "2026-09-09T09:56:02.435Z",
  "agents": [
   {
    "agent_id": "56:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:1",
@@ -1521,7 +1521,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -1565,7 +1565,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -1609,7 +1609,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -1653,7 +1653,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -1697,7 +1697,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -1741,7 +1741,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -1785,7 +1785,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -1829,7 +1829,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -1873,7 +1873,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -1917,7 +1917,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -1961,7 +1961,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -2005,7 +2005,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -2049,7 +2049,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -2093,7 +2093,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -2137,7 +2137,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -2181,7 +2181,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -2225,7 +2225,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -2290,7 +2290,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -2334,7 +2334,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -2378,7 +2378,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -2422,7 +2422,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -2594,7 +2594,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -2673,7 +2673,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -2740,7 +2740,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -2819,7 +2819,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -2863,7 +2863,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -2907,7 +2907,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -2951,7 +2951,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -2995,7 +2995,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -3306,7 +3306,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -3487,7 +3487,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -3532,7 +3532,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -3577,7 +3577,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -3622,7 +3622,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -3667,7 +3667,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -3768,7 +3768,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -3813,7 +3813,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -3858,7 +3858,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -3903,7 +3903,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -3948,7 +3948,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -4016,7 +4016,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -4096,7 +4096,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -4162,7 +4162,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -4207,7 +4207,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -4287,7 +4287,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -4353,7 +4353,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -4398,7 +4398,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -4443,7 +4443,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -4488,7 +4488,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -4533,7 +4533,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -4613,7 +4613,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -4717,7 +4717,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -4762,7 +4762,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -4807,7 +4807,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -4852,7 +4852,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -4975,7 +4975,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -5020,7 +5020,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -5089,7 +5089,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -5204,7 +5204,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -6145,7 +6145,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -6190,7 +6190,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -6235,7 +6235,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -6280,7 +6280,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -6410,7 +6410,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -6455,7 +6455,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -6673,7 +6673,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -6718,7 +6718,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -6800,7 +6800,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -6845,7 +6845,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -6911,7 +6911,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -6956,7 +6956,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -7078,7 +7078,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -7123,7 +7123,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -7168,7 +7168,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -7278,7 +7278,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -7323,7 +7323,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -7368,7 +7368,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -7413,7 +7413,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -7485,7 +7485,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -7530,7 +7530,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -7575,7 +7575,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -7620,7 +7620,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -7702,7 +7702,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -7774,7 +7774,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -7819,7 +7819,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -7864,7 +7864,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -7909,7 +7909,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -7954,7 +7954,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -8026,7 +8026,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -8071,7 +8071,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -8187,7 +8187,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -8232,7 +8232,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -8277,7 +8277,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -8322,7 +8322,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -8402,7 +8402,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -8447,7 +8447,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -8492,7 +8492,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -8537,7 +8537,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -8582,7 +8582,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -8627,7 +8627,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -8699,7 +8699,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -8765,7 +8765,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -8810,7 +8810,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -8855,7 +8855,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -8900,7 +8900,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -8945,7 +8945,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -8990,7 +8990,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -9035,7 +9035,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -9080,7 +9080,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -9125,7 +9125,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -9170,7 +9170,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -9215,7 +9215,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -9260,7 +9260,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -9305,7 +9305,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -9350,7 +9350,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -9395,7 +9395,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -9440,7 +9440,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -9485,7 +9485,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -9530,7 +9530,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -9575,7 +9575,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -9620,7 +9620,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -9665,7 +9665,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -9710,7 +9710,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -9776,7 +9776,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -10030,7 +10030,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -10075,7 +10075,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -10120,7 +10120,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -10165,7 +10165,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -10210,7 +10210,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -10278,7 +10278,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -10323,7 +10323,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -10389,7 +10389,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -10434,7 +10434,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -10479,7 +10479,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -10524,7 +10524,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -10569,7 +10569,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -10614,7 +10614,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -10659,7 +10659,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -10727,7 +10727,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -10772,7 +10772,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -10817,7 +10817,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -10862,7 +10862,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -10907,7 +10907,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -10952,7 +10952,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -11020,7 +11020,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -11065,7 +11065,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -11110,7 +11110,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -11155,7 +11155,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -11200,7 +11200,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -11245,7 +11245,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -11290,7 +11290,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -11335,7 +11335,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -11380,7 +11380,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -11425,7 +11425,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -11470,7 +11470,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -11515,7 +11515,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -11560,7 +11560,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -11605,7 +11605,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -11650,7 +11650,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -11695,7 +11695,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -11740,7 +11740,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -11785,7 +11785,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -11853,7 +11853,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -11898,7 +11898,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -11943,7 +11943,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -11988,7 +11988,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -12033,7 +12033,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -12078,7 +12078,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -12123,7 +12123,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -12168,7 +12168,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -12213,7 +12213,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -12279,7 +12279,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -12324,7 +12324,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -12369,7 +12369,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -12435,7 +12435,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -12480,7 +12480,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -12525,7 +12525,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -12570,7 +12570,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -12638,7 +12638,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -12683,7 +12683,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -12728,7 +12728,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -12773,7 +12773,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -12818,7 +12818,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -12863,7 +12863,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -12908,7 +12908,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -12953,7 +12953,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -12998,7 +12998,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -13078,7 +13078,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -13123,7 +13123,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -13168,7 +13168,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -13213,7 +13213,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -13258,7 +13258,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -13303,7 +13303,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -13369,7 +13369,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -13414,7 +13414,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -13459,7 +13459,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -13504,7 +13504,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -13549,7 +13549,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -13594,7 +13594,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -13639,7 +13639,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -13684,7 +13684,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -13729,7 +13729,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -13774,7 +13774,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -13819,7 +13819,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -13864,7 +13864,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -13909,7 +13909,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -13954,7 +13954,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -13999,7 +13999,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -14044,7 +14044,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -14089,7 +14089,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -14134,7 +14134,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -14179,7 +14179,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -14224,7 +14224,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -14269,7 +14269,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -14314,7 +14314,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -14359,7 +14359,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -14404,7 +14404,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -14449,7 +14449,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -18854,7 +18854,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -18899,7 +18899,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -61118,7 +61118,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -74029,7 +74029,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -75590,7 +75590,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -127141,7 +127141,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -135308,7 +135308,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -141889,7 +141889,7 @@
     "tool_count": 2,
     "latency_ms": 238,
     "coverage": "moderate",
-    "composite": 76.41,
+    "composite": 76.4,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:27:06Z"
@@ -198184,7 +198184,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -198741,7 +198741,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -202030,7 +202030,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
@@ -221168,7 +221168,7 @@
     "tool_count": 5,
     "latency_ms": 418,
     "coverage": "moderate",
-    "composite": 68.79,
+    "composite": 68.78,
     "withheld_reason": null,
     "gates_fired": [],
     "checked_at": "2026-09-09T09:40:23Z"
