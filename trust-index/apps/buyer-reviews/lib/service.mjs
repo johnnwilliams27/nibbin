@@ -1,6 +1,6 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { verifyMessage } from 'viem';
-import { PROVIDER,ROUTER,ReviewError,requireThat,strictObject,parseReview,reviewMessage,publicReview } from './protocol.mjs';
+import { PROVIDER,ROUTER,requireThat,strictObject,parseReview,reviewMessage,publicReview } from './protocol.mjs';
 export function createService({store,readJob,audience,now=()=>Math.floor(Date.now()/1000)}) {
  requireThat(typeof audience==='string'&&new URL(audience).origin===audience,'Configure a canonical API origin',503);
  async function verifyJob(c) {
