@@ -1,0 +1,153 @@
+@import 'tailwindcss';
+
+/*
+  Nibbin design tokens (see .claude/skills/design-system). Deeps are the only
+  text-safe colours; tints are backgrounds. Nothing here is invented locally —
+  values track packages/shared/tokens.css.
+*/
+@theme {
+  --color-paper: #f5f6f2;
+  --color-canopy: #ffffff;
+  --color-understory: #eaede3;
+  --color-shell: #fbf6e6;
+
+  --color-ink: #23291a;
+  --color-ink-secondary: #5a6248;
+  --color-ink-decorative: #8a917b;
+
+  --color-moss-deep: #44601f;
+  --color-moss-tint: #eef3e3;
+  --color-teal-deep: #2e5f58;
+  --color-teal-tint: #e4eeec;
+  --color-honey-deep: #8a5f0c;
+  --color-honey-tint: #f9efd8;
+  --color-coral-deep: #b14a22;
+  --color-coral-tint: #fbe9e1;
+  --color-plum-deep: #5c3fb0;
+  --color-plum-tint: #ece7f8;
+  --color-sky-deep: #36619f;
+  --color-sky-tint: #e5edf8;
+  --color-rose-deep: #a23e66;
+  --color-rose-tint: #f8e7ee;
+  --color-slate-deep: #4e5447;
+  --color-slate-tint: #ebede8;
+
+  --font-display: 'Bricolage Grotesque', 'Archivo', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Archivo', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+
+  --radius-btn: 4px;
+  --radius-input: 6px;
+  --radius-card: 10px;
+  --radius-shell: 12px;
+  --radius-pill: 20px;
+
+  --shadow-1: 0 1px 2px rgba(35, 41, 26, 0.06);
+  --shadow-2: 0 2px 8px rgba(35, 41, 26, 0.08);
+  --shadow-3: 0 12px 32px rgba(35, 41, 26, 0.12);
+
+  --ease-settle: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+html {
+  background: var(--color-paper);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.55;
+  margin: 0;
+}
+
+h1,
+h2 {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  line-height: 1.1;
+}
+
+h3,
+h4 {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+/* Mono eyebrows are the only uppercase text in the system. */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 500;
+  color: var(--color-ink-secondary);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.card {
+  background: var(--color-canopy);
+  border: 1px solid var(--color-understory);
+  border-radius: var(--radius-card);
+}
+
+.shell {
+  background: var(--color-canopy);
+  border: 1px solid var(--color-understory);
+  border-radius: var(--radius-shell);
+}
+
+/* Focus is never removed. 2px moss outline, 2px offset. */
+:where(a, button, input, select, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-moss-deep);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Only transform/opacity animate, and only with a growth verb behind them. */
+.lift {
+  transition: transform 250ms var(--ease-settle), box-shadow 250ms var(--ease-settle);
+}
+.lift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .lift:hover {
+    transform: none;
+  }
+}
+
+/* Touch targets stay >= 44px on small screens. */
+@media (max-width: 640px) {
+  button,
+  select,
+  a[data-target] {
+    min-height: 44px;
+  }
+}
+
+::selection {
+  background: var(--color-moss-tint);
+}

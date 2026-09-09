@@ -24,3 +24,7 @@ export * as judgeMeta from "./judge/meta.js";
 // The production judge: one model, chosen by measurement. See production.ts.
 export * from "./judge/production.js";
 export * as mcp from "./mcp/index.js";
+// A2A agents, which the MCP collector could not see at all: 28,459 of them on
+// BSC declare A2A and would have been probed with the wrong protocol. See
+// a2a/probe.ts.
+export * as a2a from "./a2a/index.js";
