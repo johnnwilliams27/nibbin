@@ -16,12 +16,9 @@
 # deliberate, human-run step and this job turns its results into history.
 name: trust-index-daily
 
+# Nightly schedule disabled at repository owner's request on 2026-10-07.
+# Manual runs remain available in GitHub Actions.
 on:
-  schedule:
-    # 02:15 UTC. Off the hour because everything schedules on the hour and
-    # GitHub queues those; off midnight so a run that starts late still lands
-    # inside the day it is scoring.
-    - cron: "15 2 * * *"
   workflow_dispatch:
     inputs:
       day:
