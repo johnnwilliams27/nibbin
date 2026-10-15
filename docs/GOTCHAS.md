@@ -1,5 +1,15 @@
 # GOTCHAS
 
+## Production marketplace URL
+
+- `nibbin-bnb-marketplace.vercel.app` is the public marketplace. `nibbin.com`
+  currently aliases `nibbin-agents`; do not infer alias ownership from the
+  marketplace project's stale custom-domain list. Keep marketplace custom-domain
+  auto-assignment disabled unless a domain move is explicitly intended.
+- Buyer reviews use `REVIEWS_ALLOWED_ORIGINS`; reference sellers use an exact
+  allowlist in `lib/guards.mjs`. Both must include the marketplace origin. Review
+  environment changes require redeploying the service before they take effect.
+
 ## Measuring subjects
 
 - A shared URL can back thousands of registrations. Exact-URL evidence replay

@@ -50,7 +50,7 @@ On testnet the seller additionally refuses to sign any nonzero gas-price transac
 
 `GET /result/v1/97/123` reconstructs the exact version-1 manifest from the job's immutable signed description and deterministic fixed-point calculation. The response is served **only** if its canonical hash matches the saved on-chain deliverable and the job is submitted/completed. No `/tmp` files or instance memory are needed. This is reproducibility from on-chain inputs, not a promise that Vercel or the RPC can never be unavailable. Keep the service and versioned implementation online.
 
-External calls use only fixed BNB RPC and MegaFuel destinations. Request URLs are never fetched. CORS allows only `https://nibbin.com`, `https://www.nibbin.com`, and localhost ports 3000/3100; CORS is not treated as authentication. On-chain provider/buyer checks and signing limits are the security boundary.
+External calls use only fixed BNB RPC and MegaFuel destinations. Request URLs are never fetched. CORS allows only `https://nibbin.com`, `https://www.nibbin.com`, `https://nibbin-bnb-marketplace.vercel.app`, and localhost ports 3000/3100; CORS is not treated as authentication. On-chain provider/buyer checks and signing limits are the security boundary.
 
 ## Verify
 
