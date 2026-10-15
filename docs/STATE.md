@@ -6,6 +6,26 @@ and the `old-nibbin` repository.
 
 ## Current
 
+- **Marketplace production deployment, 2026-10-15.** Public URL:
+  `https://nibbin-bnb-marketplace.vercel.app`, Vercel project
+  `nibbin-bnb-marketplace`, deployment `dpl_6qt5AoPFoSWjJsNgK48rQFx8q5Le`,
+  marketplace source `da6ff950a2fbd8c1c5c574d5fef272a03fbbe98d`.
+  `nibbin.com` currently aliases the separate `nibbin-agents` project; the older
+  statement below that it serves this marketplace is superseded. Custom-domain
+  auto-assignment is disabled for the marketplace. Production is public and
+  previews require Vercel authentication. Build generated 5,435 static pages;
+  CI for that source passed typecheck, lint, test and export checks (120
+  marketplace tests, 27 pipeline tests, 22 chain-import tests). Anonymous HTTP
+  checks returned 200 for home, compare, agent, methodology and both hire pages.
+  Desktop/mobile browser checks passed search, profiles and page loading without
+  JavaScript errors or overflow. Added the public marketplace origin to the
+  reviews service's production allowlist and redeployed its existing source;
+  browser review reads then passed. Reference sellers need the same exact origin,
+  now included in `reference-seller/lib/guards.mjs`. No wallet transaction or
+  mainnet spending was performed. Snapshot remains 2026-09-09T11:52:00Z (5,415
+  registrations); weekly reprobe currently fails for missing `TRUST_INDEX_PROBE_SEED`.
+  No log drains are configured; a five-minute runtime error scan returned no logs.
+
 - **Release integration, 2026-09-09 (supersedes older counts below).** Direct
   registration-frame import now publishes 5,415 registrations with 557 declared
   interfaces from the 342,016-event frame, without directory-provider metadata.
