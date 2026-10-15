@@ -1,5 +1,13 @@
 # Trust Index learnings
 
+## Production hosting — 2026-10-15
+
+- Project domain membership can outlive an alias reassignment. Check the actual
+  Vercel alias owner before releasing to a previously attached custom domain.
+- A new marketplace origin must be allowed by both buyer reviews and the reference
+  sellers. Successful static-page checks do not establish that cross-origin API
+  calls work; verify those requests in an anonymous browser.
+
 ## Marketplace UX correction — 2026-09-09
 
 - The marketplace is the product; Trust Index is its evidence feature. Lead with
