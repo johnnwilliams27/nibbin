@@ -1,5 +1,5 @@
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
-const ALLOWED_ORIGINS = new Set(['https://nibbin.com', 'https://www.nibbin.com', 'http://localhost:3000', 'http://localhost:3100']);
+const ALLOWED_ORIGINS = new Set(['https://nibbin.com', 'https://www.nibbin.com', 'https://nibbin-bnb-marketplace.vercel.app', 'http://localhost:3000', 'http://localhost:3100']);
 
 export function isAllowedOrigin(origin) { return ALLOWED_ORIGINS.has(origin); }
 
